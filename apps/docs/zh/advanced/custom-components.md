@@ -4,7 +4,7 @@
 
 ## 组件契约
 
-`react.tsx` 中 `FieldRenderer` 传入的属性：
+`@formily-bao/react` 中 `FieldRenderer` 传入的属性：
 
 ```ts
 {
@@ -81,7 +81,7 @@ function InlineDecorator({ children, label, required, errors }) {
 ## 使用 FieldContext
 
 ```tsx
-import { useField } from '@formily-bao/core'
+import { useField } from '@formily-bao/react'
 
 function SmartInput(props) {
   const field = useField()

@@ -3,8 +3,6 @@
  * Full alignment with Formily Schema Protocol
  */
 
-import type React from 'react'
-
 // ============================================================
 // Basic Types
 // ============================================================
@@ -384,10 +382,3 @@ export interface IForm {
   onFieldChange(path: string, listener: (field: IField) => void): () => void
   onValuesChange(listener: (values: Record<string, any>) => void): () => void
 }
-
-// ============================================================
-// Component/Decorator Maps
-// ============================================================
-
-export type ComponentMap = Record<string, React.ComponentType<any>>
-export type DecoratorMap = Record<string, React.ComponentType<any>>

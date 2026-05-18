@@ -3,13 +3,14 @@
 ## Installation
 
 ```bash
-npm install @formily-bao/core @formily-bao/ui
+npm install @formily-bao/core @formily-bao/react @formily-bao/ui
 ```
 
 ## Quick Example
 
 ```tsx
-import { createForm, FormProvider, SchemaField } from '@formily-bao/core'
+import { createForm } from '@formily-bao/core'
+import { FormProvider, SchemaField } from '@formily-bao/react'
 import { Input, Select, FormItem } from '@formily-bao/ui'
 
 const form = createForm({
@@ -98,5 +99,5 @@ JSON Schema (Formily Protocol)
 
 | Package | Description |
 |---------|-------------|
-| `@formily-bao/core` | Form model, field state, React bindings, expression engine |
+| `@formily-bao/core` | Headless form model, field state, expression engine |
 | `@formily-bao/ui` | UI components: Input, Select, Switch, Rating, ArrayCards, FormGrid, etc. |

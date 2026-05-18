@@ -3,7 +3,7 @@
  * Fully aligned with Formily Schema Protocol
  */
 
-import { signal, computed, effect, startBatch, endBatch } from 'alien-signals'
+import { signal, effect, startBatch, endBatch } from 'alien-signals'
 import { Field } from './field'
 import type {
   IForm,
@@ -259,11 +259,10 @@ export class Form implements IForm {
     this._reactionDisposers = []
     for (const dispose of this._asyncDisposers) dispose()
     this._asyncDisposers = []
+    this.fields.clear()
 
     // Resolve $ref and definitions
-    if (schema.definitions) {
-      this._definitions = schema.definitions
-    }
+    this._definitions = schema.definitions || {}
 
     if (schema.properties) {
       // Sort by x-index before creating fields
@@ -274,6 +273,7 @@ export class Form implements IForm {
     this._setupReactions(schema)
     // Setup async data sources
     this._setupAsyncDataSources(schema)
+    this._bumpVersion()
   }
 
   // ============================================================
@@ -328,6 +328,42 @@ export class Form implements IForm {
         handler(field, this)
       }
     }
+  }
+
+
+  _notifyFieldChange(path: string, field: IField): void {
+    const handlers = this._fieldChangeListeners.get(path)
+    if (handlers) {
+      for (const handler of handlers) handler(field)
+    }
+    const wildcardHandlers = this._fieldChangeListeners.get('*')
+    if (wildcardHandlers) {
+      for (const handler of wildcardHandlers) handler(field)
+    }
+    this._bumpVersion()
+  }
+
+  _notifyFieldValueChange(path: string, field: IField): void {
+    this._emitLifecycle('onFieldValueChange', path, field)
+    this._emitLifecycle('onFieldInputValueChange', path, field)
+    this._notifyFieldChange(path, field)
+    this._notifyValuesChange()
+  }
+
+  _notifyFieldValidateStart(path: string, field: IField): void {
+    this._emitLifecycle('onFieldValidateStart', path, field)
+  }
+
+  _notifyFieldValidateEnd(path: string, field: IField): void {
+    this._emitLifecycle('onFieldValidateEnd', path, field)
+  }
+
+  _notifyFieldValidateFailed(path: string, field: IField): void {
+    this._emitLifecycle('onFieldValidateFailed', path, field)
+  }
+
+  _notifyFieldValidateSuccess(path: string, field: IField): void {
+    this._emitLifecycle('onFieldValidateSuccess', path, field)
   }
 
   // ============================================================
@@ -844,7 +880,10 @@ export class Form implements IForm {
           if (config.method === 'POST' && config.data) {
             options.body = JSON.stringify(resolveTemplateObject(config.data, deps))
           }
-          const response = await fetch(url)
+          const response = await fetch(url, options)
+          if (!response.ok) {
+            throw new Error(`Async data source request failed: ${response.status} ${response.statusText}`)
+          }
           const json = await response.json()
 
           if (config.transformResponse) {

@@ -1,5 +1,5 @@
 /**
- * @formily-bao/core — React bindings
+ * @formily-bao/react — React bindings
  * Fully aligned with Formily Schema Protocol
  */
 
@@ -7,15 +7,14 @@ import React, {
   createContext,
   useContext,
   useMemo,
-  useCallback,
-  useSyncExternalStore,
   useEffect,
-  useRef,
   useState,
 } from 'react'
-import { effect, startBatch, endBatch } from 'alien-signals'
-import type { IForm, IField, IFormSchema, IFieldSchema, ComponentMap, DecoratorMap } from './types'
-import { Field as FieldModel } from './field'
+import type { IForm, IField, IFormSchema } from '@formily-bao/core'
+
+
+export type ComponentMap = Record<string, React.ComponentType<any>>
+export type DecoratorMap = Record<string, React.ComponentType<any>>
 
 // --- Contexts ---
 
@@ -121,12 +120,10 @@ export const SchemaField: React.FC<SchemaFieldProps> = ({ schema }) => {
 
   const { form, components, decorators } = ctx
 
-  // Initialize fields from schema (once)
-  const initialized = useRef(false)
-  if (!initialized.current) {
+  // Initialize or replace fields when schema/form changes
+  useEffect(() => {
     form.setSchema(schema)
-    initialized.current = true
-  }
+  }, [form, schema])
 
   if (!schema.properties) return null
 

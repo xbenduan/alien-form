@@ -136,7 +136,7 @@ Standard field wrapper providing label, required indicator, errors, and descript
 { "x-decorator": "FormItem" }
 ```
 
-The `FieldRenderer` in `react.tsx` passes these props to the decorator automatically:
+The `FieldRenderer` in `@formily-bao/react` passes these props to the decorator automatically:
 
 - `label` — from `field.title`
 - `required` — from `field.required`

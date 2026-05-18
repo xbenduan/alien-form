@@ -10,43 +10,54 @@ export default defineConfig({
 
   locales: {
     root: {
-      label: 'English',
+      label: 'Home',
       lang: 'en',
       themeConfig: {
         nav: [
-          { text: 'Guide', link: '/guide/getting-started' },
-          { text: 'API', link: '/api/core' },
-          { text: 'Advanced', link: '/advanced/linkage' },
+          { text: 'English', link: '/en/' },
+          { text: '中文', link: '/zh/' },
+        ],
+      },
+    },
+    en: {
+      label: 'English',
+      lang: 'en',
+      link: '/en/',
+      themeConfig: {
+        nav: [
+          { text: 'Guide', link: '/en/guide/getting-started' },
+          { text: 'API', link: '/en/api/core' },
+          { text: 'Advanced', link: '/en/advanced/linkage' },
         ],
         sidebar: {
-          '/guide/': [
+          '/en/guide/': [
             {
               text: 'Introduction',
               items: [
-                { text: 'Getting Started', link: '/guide/getting-started' },
-                { text: 'Tutorial', link: '/guide/tutorial' },
+                { text: 'Getting Started', link: '/en/guide/getting-started' },
+                { text: 'Tutorial', link: '/en/guide/tutorial' },
               ],
             },
           ],
-          '/api/': [
+          '/en/api/': [
             {
               text: 'API Reference',
               items: [
-                { text: 'Core', link: '/api/core' },
-                { text: 'Schema', link: '/api/schema' },
-                { text: 'Components', link: '/api/components' },
+                { text: 'Core', link: '/en/api/core' },
+                { text: 'Schema', link: '/en/api/schema' },
+                { text: 'Components', link: '/en/api/components' },
               ],
             },
           ],
-          '/advanced/': [
+          '/en/advanced/': [
             {
               text: 'Advanced',
               items: [
-                { text: 'Field Linkage', link: '/advanced/linkage' },
-                { text: 'Array Fields', link: '/advanced/array-fields' },
-                { text: 'Layout', link: '/advanced/layout' },
-                { text: 'Async Data Source', link: '/advanced/async-datasource' },
-                { text: 'Custom Components', link: '/advanced/custom-components' },
+                { text: 'Field Linkage', link: '/en/advanced/linkage' },
+                { text: 'Array Fields', link: '/en/advanced/array-fields' },
+                { text: 'Layout', link: '/en/advanced/layout' },
+                { text: 'Async Data Source', link: '/en/advanced/async-datasource' },
+                { text: 'Custom Components', link: '/en/advanced/custom-components' },
               ],
             },
           ],

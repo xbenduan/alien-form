@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useCallback } from 'react'
-import { createForm, FormProvider, SchemaField } from '@formily-bao/core'
-import type { ComponentMap, DecoratorMap, FormConfig } from '@formily-bao/core'
+import { createForm } from '@formily-bao/core'
+import { FormProvider, SchemaField } from '@formily-bao/react'
+import type { FormConfig } from '@formily-bao/core'
+import type { ComponentMap, DecoratorMap } from '@formily-bao/react'
 import {
   Card, CardHeader, CardTitle, CardContent, CardFooter,
   Tabs, TabsList, TabsTrigger, TabsContent,

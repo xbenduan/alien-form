@@ -4,7 +4,7 @@ Layout components use `type: "void"` — they produce no form value and serve pu
 
 ## Void Field Handling
 
-In `react.tsx`, `SchemaFieldItem` detects `type === 'void'` and:
+In `@formily-bao/react`, `SchemaFieldItem` detects `type === 'void'` and:
 
 1. Looks up the `x-component` in the registered components map
 2. Passes `x-component-props` and `x-layout-props` as props

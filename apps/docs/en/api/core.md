@@ -157,7 +157,7 @@ field.moveDown(index: number): void
 ## React Hooks
 
 ```ts
-import { useForm, useField, useFormState, useArrayField } from '@formily-bao/core'
+import { useForm, useField, useFormState, useArrayField } from '@formily-bao/react'
 
 // Access form instance from context
 const form = useForm()
@@ -175,7 +175,7 @@ const { field, items, push, remove, moveUp, moveDown } = useArrayField('contacts
 ## React Components
 
 ```tsx
-import { FormProvider, SchemaField } from '@formily-bao/core'
+import { FormProvider, SchemaField } from '@formily-bao/react'
 
 <FormProvider form={form} components={{ Input, Select }} decorators={{ FormItem }}>
   <SchemaField schema={schema} />

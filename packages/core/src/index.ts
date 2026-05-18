@@ -6,18 +6,6 @@
 export { createForm, Form } from './form'
 export { Field } from './field'
 
-// React bindings
-export {
-  FormProvider,
-  SchemaField,
-  useForm,
-  useField,
-  useFormState,
-  useArrayField,
-  FieldContext,
-  FormContext,
-} from './react'
-
 // Types
 export type {
   IForm,
@@ -41,8 +29,6 @@ export type {
   ValidatorFn,
   ValidatorRule,
   FormConfig,
-  ComponentMap,
-  DecoratorMap,
   AsyncDataSource,
   LayoutProps,
 } from './types'

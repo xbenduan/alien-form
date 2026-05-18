@@ -1,0 +1,20 @@
+{
+  "name": "@formily-bao/react",
+  "version": "1.0.0",
+  "description": "React bindings for Formily Bao core",
+  "main": "src/index.tsx",
+  "types": "src/index.tsx",
+  "scripts": {
+    "build": "tsup src/index.tsx --format esm,cjs --dts --external react --external react-dom --external @formily-bao/core"
+  },
+  "peerDependencies": {
+    "@formily-bao/core": "workspace:*",
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "@types/react": "^18.3.0"
+  },
+  "license": "MIT"
+}

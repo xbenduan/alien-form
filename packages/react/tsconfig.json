@@ -6,16 +6,13 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
+    "jsx": "react-jsx",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "lib": ["ES2020"]
+    "outDir": "dist",
+    "rootDir": "src",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"]
   },
-  "files": [],
-  "references": [
-    { "path": "./apps/demo" },
-    { "path": "./packages/core" },
-    { "path": "./packages/ui" }
-  ]
+  "include": ["src"]
 }

@@ -3,13 +3,14 @@
 ## 安装
 
 ```bash
-npm install @formily-bao/core @formily-bao/ui
+npm install @formily-bao/core @formily-bao/react @formily-bao/ui
 ```
 
 ## 基本示例
 
 ```tsx
-import { createForm, FormProvider, SchemaField } from '@formily-bao/core'
+import { createForm } from '@formily-bao/core'
+import { FormProvider, SchemaField } from '@formily-bao/react'
 import { Input, Select, FormItem } from '@formily-bao/ui'
 
 const form = createForm({
@@ -97,5 +98,5 @@ JSON Schema (Formily 协议)
 
 | 包名 | 说明 |
 |------|------|
-| `@formily-bao/core` | 表单模型、字段状态、React 绑定、表达式引擎 |
+| `@formily-bao/core` | 无头表单模型、字段状态、表达式引擎 |
 | `@formily-bao/ui` | UI 组件：Input、Select、Switch、Rating、ArrayCards、FormGrid 等 |

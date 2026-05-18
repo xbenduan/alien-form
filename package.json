@@ -7,7 +7,7 @@
     "build": "pnpm -r run build",
     "package:source": "bash ./scripts/package-project.sh",
     "test": "pnpm -r run test",
-    "test:reactive": "pnpm --filter @formily-bao/reactive run test"
+    "test:core": "pnpm --filter @formily-bao/core run test"
   },
   "devDependencies": {
     "typescript": "^5.4.0"

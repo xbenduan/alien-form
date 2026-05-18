@@ -91,7 +91,7 @@ const form = createForm({
 ## 3. Render with React
 
 ```tsx
-import { FormProvider, SchemaField } from '@formily-bao/core'
+import { FormProvider, SchemaField } from '@formily-bao/react'
 import { Input, Select, Textarea, FormItem } from '@formily-bao/ui'
 
 function RegistrationForm() {

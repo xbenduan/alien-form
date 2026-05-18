@@ -110,7 +110,7 @@ field.moveDown(index): void
 ## React Hooks
 
 ```ts
-import { useForm, useField, useFormState, useArrayField } from '@formily-bao/core'
+import { useForm, useField, useFormState, useArrayField } from '@formily-bao/react'
 
 const form = useForm()
 const field = useField('username')

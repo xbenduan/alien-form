@@ -3,7 +3,7 @@
  * Fully aligned with Formily Schema Protocol
  */
 
-import { signal, computed, effect, startBatch, endBatch } from 'alien-signals'
+import { signal, effect, startBatch, endBatch } from 'alien-signals'
 import type {
   IField,
   FieldError,
@@ -90,7 +90,10 @@ export class Field implements IField {
     this._loading = signal(false)
     this._data = signal(schema['x-data'] || {})
     this._content = signal(schema['x-content'] || null)
-    this._validators = normalizeValidators(schema['x-validator'])
+    this._validators = normalizeValidators([
+      ...schemaValidators(schema),
+      ...normalizeValidators(schema['x-validator']),
+    ])
     this._version = signal(0)
     this._arrayRows = signal(this.isArrayField ? (Array.isArray(defaultValue) ? defaultValue.length : 0) : 0)
   }
@@ -179,6 +182,7 @@ export class Field implements IField {
   setValue(value: any): void {
     this._value(value)
     this._bumpVersion()
+    this._notifyValueChange()
   }
 
   setErrors(errors: FieldError[]): void {
@@ -276,6 +280,11 @@ export class Field implements IField {
     }
     this._bumpVersion()
     endBatch()
+    if ('value' in state || 'visible' in state || 'hidden' in state || 'display' in state) {
+      this._notifyValueChange()
+    } else {
+      this._notifyFieldChange()
+    }
   }
 
   // ============================================================
@@ -298,6 +307,7 @@ export class Field implements IField {
 
     this._arrayRows(currentRows + 1)
     this._bumpVersion()
+    this._notifyValueChange()
   }
 
   remove(index: number): void {
@@ -336,6 +346,7 @@ export class Field implements IField {
 
     this._arrayRows(currentRows - 1)
     this._bumpVersion()
+    this._notifyValueChange()
   }
 
   moveUp(index: number): void {
@@ -367,6 +378,7 @@ export class Field implements IField {
     }
 
     this._bumpVersion()
+    this._notifyValueChange()
   }
 
   // ============================================================
@@ -376,26 +388,33 @@ export class Field implements IField {
   async validate(): Promise<FieldError[]> {
     if (this._display() === 'none') return []
 
+    this._form?._notifyFieldValidateStart?.(this.path, this)
     this._validateStatus('validating')
     const errors: FieldError[] = []
+    const val = this.value
 
     // Required check
     if (this._required()) {
-      const val = this._value()
-      if (val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0)) {
+      if (isEmptyValue(val)) {
         errors.push({ message: `${this._title() || this.path} is required`, type: 'required' })
       }
     }
 
     // Run validators
     for (const validator of this._validators) {
-      const errs = await runValidator(validator, this._value(), this)
+      const errs = await runValidator(validator, val, this)
       if (errs) errors.push(...errs)
     }
 
     this._errors(errors)
     this._validateStatus(errors.length > 0 ? 'error' : 'success')
     this._bumpVersion()
+    if (errors.length > 0) {
+      this._form?._notifyFieldValidateFailed?.(this.path, this)
+    } else {
+      this._form?._notifyFieldValidateSuccess?.(this.path, this)
+    }
+    this._form?._notifyFieldValidateEnd?.(this.path, this)
     return errors
   }
 
@@ -410,6 +429,7 @@ export class Field implements IField {
     }
     this._bumpVersion()
     endBatch()
+    this._notifyValueChange()
   }
 
   subscribe(listener: () => void): () => void {
@@ -431,6 +451,14 @@ export class Field implements IField {
 
   private _bumpVersion() {
     this._version(this._version() + 1)
+  }
+
+  private _notifyValueChange() {
+    this._form?._notifyFieldValueChange?.(this.path, this)
+  }
+
+  private _notifyFieldChange() {
+    this._form?._notifyFieldChange?.(this.path, this)
   }
 }
 
@@ -460,6 +488,28 @@ function normalizeValidators(v?: Validator | Validator[]): Validator[] {
   return [v]
 }
 
+function schemaValidators(schema: IFieldSchema): ValidatorRule[] {
+  const rule: ValidatorRule = {}
+  if (schema.minimum !== undefined) rule.min = schema.minimum
+  if (schema.maximum !== undefined) rule.max = schema.maximum
+  if (schema.exclusiveMinimum !== undefined) rule.exclusiveMinimum = schema.exclusiveMinimum
+  if (schema.exclusiveMaximum !== undefined) rule.exclusiveMaximum = schema.exclusiveMaximum
+  if (schema.multipleOf !== undefined) rule.multipleOf = schema.multipleOf
+  if (schema.minLength !== undefined) rule.minLength = schema.minLength
+  if (schema.maxLength !== undefined) rule.maxLength = schema.maxLength
+  if (schema.pattern !== undefined) rule.pattern = schema.pattern
+  if (schema.format !== undefined) rule.format = schema.format
+  if (schema.minItems !== undefined) rule.minItems = schema.minItems
+  if (schema.maxItems !== undefined) rule.maxItems = schema.maxItems
+  if (schema.uniqueItems !== undefined) rule.uniqueItems = schema.uniqueItems
+  if (schema.const !== undefined) rule.const = schema.const
+  return Object.keys(rule).length > 0 ? [rule] : []
+}
+
+function isEmptyValue(value: any): boolean {
+  return value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0)
+}
+
 async function runValidator(
   validator: Validator,
   value: any,
@@ -480,7 +530,7 @@ async function runValidator(
       if (msg) errors.push({ message: msg })
       continue
     }
-    if (r.required && (value === undefined || value === null || value === '')) {
+    if (r.required && isEmptyValue(value)) {
       errors.push({ message: r.message || `Field is required`, type: 'required' })
     }
     if (r.min !== undefined && typeof value === 'number' && value < r.min) {

@@ -4,7 +4,7 @@ Extend FormBao with custom field components and decorators.
 
 ## Component Contract
 
-Every component receives these props from `FieldRenderer` in `react.tsx`:
+Every component receives these props from `FieldRenderer` in `@formily-bao/react`:
 
 ```ts
 {
@@ -123,7 +123,7 @@ function InlineDecorator({ children, label, required, errors }) {
 Custom components can access the full field instance:
 
 ```tsx
-import { useField } from '@formily-bao/core'
+import { useField } from '@formily-bao/react'
 
 function SmartInput(props) {
   const field = useField()
