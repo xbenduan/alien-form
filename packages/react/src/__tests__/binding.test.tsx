@@ -9,7 +9,9 @@ afterEach(() => {
 })
 
 function Input(props: any) {
-  const { value, onChange, ...rest } = props
+  const { value, onChange, loading: _loading, readPretty: _readPretty, ...rest } = props
+  void _loading
+  void _readPretty
   return (
     <input
       {...rest}
@@ -21,15 +23,19 @@ function Input(props: any) {
 
 const components = { Input }
 
+function buildNameSchema() {
+  return {
+    type: 'object' as const,
+    properties: {
+      name: { type: 'string' as const, component: 'Input', props: { 'data-testid': 'name' } },
+    },
+  }
+}
+
 describe('react bindings', () => {
   it('renders and propagates setValue', () => {
     const form = createForm()
-    const schema = {
-      type: 'object' as const,
-      properties: {
-        name: { type: 'string' as const, component: 'Input', props: { 'data-testid': 'name' } },
-      },
-    }
+    const schema = buildNameSchema()
     form.setSchema(schema)
     const { getByTestId } = render(
       <FormProvider form={form} components={components}>
@@ -69,12 +75,43 @@ describe('react bindings', () => {
     expect(queryByTestId('adult')).not.toBeNull()
   })
 
-  it('useFormState triggers rerender', () => {
+  it('renders interactive fields from root definitions $ref', () => {
     const form = createForm()
     const schema = {
       type: 'object' as const,
-      properties: { name: { type: 'string' as const, component: 'Input', props: { 'data-testid': 'name' } } },
+      definitions: {
+        profileSection: {
+          type: 'void' as const,
+          properties: {
+            name: {
+              type: 'string' as const,
+              component: 'Input',
+              props: { 'data-testid': 'ref-name' },
+            },
+          },
+        },
+      },
+      properties: {
+        profile: {
+          $ref: '#/definitions/profileSection',
+        },
+      },
     }
+
+    const { getByTestId } = render(
+      <FormProvider form={form} components={components}>
+        <SchemaField schema={schema as any} />
+      </FormProvider>,
+    )
+
+    const input = getByTestId('ref-name') as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'bao' } })
+    expect(form.values.profile.name).toBe('bao')
+  })
+
+  it('useFormState triggers rerender', () => {
+    const form = createForm()
+    const schema = buildNameSchema()
     function StateView() {
       const state = useFormState()
       const f = useForm()
@@ -136,5 +173,101 @@ describe('react bindings', () => {
     form.setSchema({ type: 'object', properties: { b: { type: 'string', component: 'Input' } } })
     expect(form.getField('a')).toBeUndefined()
     expect(form.getField('b')).toBeTruthy()
+  })
+
+  it('does not rerender array container on unrelated field changes', () => {
+    const form = createForm()
+    let arrayRenderCount = 0
+    const ArrayView = ({ rows }: { rows: React.ReactNode[][] }) => {
+      arrayRenderCount += 1
+      return <div data-testid="array-size">{rows.length}</div>
+    }
+    form.setSchema({
+      type: 'object',
+      properties: {
+        title: { type: 'string', component: 'Input', props: { 'data-testid': 'title' } },
+        users: {
+          type: 'array',
+          component: 'ArrayView',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', component: 'Input' },
+            },
+          },
+        },
+      },
+    })
+    form.getArrayField('users')?.push({ name: 'Bao' })
+
+    const allComponents = { ...components, ArrayView }
+    render(
+      <FormProvider form={form} components={allComponents}>
+        <SchemaField schema={{
+          type: 'object',
+          properties: {
+            title: { type: 'string', component: 'Input', props: { 'data-testid': 'title' } },
+            users: {
+              type: 'array',
+              component: 'ArrayView',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', component: 'Input' },
+                },
+              },
+            },
+          },
+        }} />
+      </FormProvider>,
+    )
+
+    const before = arrayRenderCount
+    act(() => {
+      form.getField('title')?.setValue('changed')
+    })
+    expect(arrayRenderCount).toBe(before)
+  })
+
+  it('does not rebuild fields when parent rerenders with an equivalent schema object', () => {
+    const form = createForm()
+
+    function Wrapper() {
+      const [, setTick] = React.useState(0)
+      const schema = {
+        type: 'object' as const,
+        properties: {
+          name: {
+            type: 'string' as const,
+            component: 'Input',
+            props: { 'data-testid': 'name' },
+          },
+        },
+      }
+
+      return (
+        <>
+          <SchemaField schema={schema} />
+          <button data-testid="rerender" onClick={() => setTick((value) => value + 1)} />
+        </>
+      )
+    }
+
+    const { getByTestId } = render(
+      <FormProvider form={form} components={components}>
+        <Wrapper />
+      </FormProvider>,
+    )
+
+    const input = getByTestId('name') as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'persisted' } })
+    expect(form.values.name).toBe('persisted')
+
+    act(() => {
+      fireEvent.click(getByTestId('rerender'))
+    })
+
+    expect((getByTestId('name') as HTMLInputElement).value).toBe('persisted')
+    expect(form.values.name).toBe('persisted')
   })
 })

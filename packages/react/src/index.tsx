@@ -9,6 +9,7 @@ import {
   useMemo,
   useEffect,
   useState,
+  useRef,
   Fragment,
 } from 'react'
 import type React from 'react'
@@ -117,19 +118,31 @@ export const SchemaField: React.FC<SchemaFieldProps> = ({ schema }) => {
   if (!ctx) throw new Error('SchemaField must be used within FormProvider')
 
   const { form, components, decorators } = ctx
+  const resolvedSchema = useMemo(() => resolveSchemaRefs(schema), [schema])
 
   // Initialize or replace fields when schema/form changes. setSchema rebuilds
   // the field registry; force a render afterwards so the first paint includes
   // the freshly created fields rather than waiting for an unrelated update.
   const [, forceRender] = useState(0)
+  const lastAppliedSchemaRef = useRef<{ form: IForm | null; schema: IFormSchema | null }>({
+    form: null,
+    schema: null,
+  })
   useEffect(() => {
+    if (
+      lastAppliedSchemaRef.current.form === form &&
+      areDeepEqual(lastAppliedSchemaRef.current.schema, schema)
+    ) {
+      return
+    }
     form.setSchema(schema)
+    lastAppliedSchemaRef.current = { form, schema }
     forceRender((v) => v + 1)
   }, [form, schema])
 
-  if (!schema.properties) return null
+  if (!resolvedSchema.properties) return null
 
-  const sortedEntries = getSortedEntries(schema.properties)
+  const sortedEntries = getSortedEntries(resolvedSchema.properties)
 
   return (
     <>
@@ -268,7 +281,6 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
   const [, forceRender] = useState(0)
 
   useEffect(() => field.subscribe(() => forceRender((v) => v + 1)), [field])
-  useEffect(() => form.subscribe(() => forceRender((v) => v + 1)), [form])
 
   if (field.display === 'none') return null
   if (field.display === 'hidden') return <div style={{ display: 'none' }} />
@@ -478,6 +490,99 @@ function getSortedEntries(properties: Record<string, any>): [string, any][] {
     const bi = b?.order ?? Infinity
     return ai - bi
   })
+}
+
+function resolveSchemaRefs(schema: IFormSchema): IFormSchema {
+  const definitions = schema.definitions || {}
+  return {
+    ...schema,
+    properties: schema.properties ? resolveProperties(schema.properties, definitions) : schema.properties,
+  }
+}
+
+function resolveProperties(
+  properties: Record<string, any>,
+  definitions: Record<string, any>,
+): Record<string, any> {
+  return Object.fromEntries(
+    Object.entries(properties).map(([key, fieldSchema]) => [
+      key,
+      resolveFieldSchema(fieldSchema, definitions),
+    ]),
+  )
+}
+
+function resolveFieldSchema(
+  schema: any,
+  definitions: Record<string, any>,
+  seen: Set<string> = new Set(),
+): any {
+  if (!schema || typeof schema !== 'object') return schema
+
+  let resolved = schema
+  if (typeof schema.$ref === 'string') {
+    const refPath = schema.$ref.replace(/^#\/definitions\//, '')
+    if (seen.has(refPath)) {
+      const { $ref: _ignored, ...localProps } = schema
+      void _ignored
+      resolved = localProps
+    } else {
+      const referenced = definitions[refPath]
+      if (referenced) {
+        const { $ref: _ignored, ...localProps } = schema
+        void _ignored
+        resolved = {
+          ...resolveFieldSchema(referenced, definitions, new Set([...seen, refPath])),
+          ...localProps,
+        }
+      }
+    }
+  }
+
+  if (resolved.properties) {
+    resolved = {
+      ...resolved,
+      properties: resolveProperties(resolved.properties, definitions),
+    }
+  }
+
+  if (resolved.items) {
+    resolved = {
+      ...resolved,
+      items: Array.isArray(resolved.items)
+        ? resolved.items.map((item: any) => resolveFieldSchema(item, definitions, seen))
+        : resolveFieldSchema(resolved.items, definitions, seen),
+    }
+  }
+
+  return resolved
+}
+
+function areDeepEqual(a: any, b: any, seen: WeakMap<object, object> = new WeakMap()): boolean {
+  if (Object.is(a, b)) return true
+  if (typeof a !== typeof b) return false
+  if (a === null || b === null) return a === b
+  if (typeof a !== 'object') return false
+
+  if (seen.get(a) === b) return true
+  seen.set(a, b)
+
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false
+    for (let index = 0; index < a.length; index++) {
+      if (!areDeepEqual(a[index], b[index], seen)) return false
+    }
+    return true
+  }
+
+  const keysA = Object.keys(a)
+  const keysB = Object.keys(b)
+  if (keysA.length !== keysB.length) return false
+  for (const key of keysA) {
+    if (!Object.prototype.hasOwnProperty.call(b, key)) return false
+    if (!areDeepEqual(a[key], b[key], seen)) return false
+  }
+  return true
 }
 
 // Re-export contexts for custom components

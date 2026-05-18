@@ -107,6 +107,8 @@ export class Form implements IForm {
   private _definitions: Record<string, IFieldSchema> = {}
   private _valuesCache: Record<string, any> | null = null
   private _rawValuesCache: Record<string, any> | null = null
+  private _asyncReactionVersions: Map<string, number> = new Map()
+  private _fieldLoadingCounts: Map<string, number> = new Map()
 
   constructor(config: FormConfig = {}) {
     this._config = config
@@ -308,11 +310,7 @@ export class Form implements IForm {
 
   setSchema(schema: IFormSchema): void {
     this._schema = schema
-    // Dispose previous reactions
-    for (const dispose of this._reactionDisposers) dispose()
-    this._reactionDisposers = []
-    this._reactionValueTriggers.clear()
-    this._reactionRunners = []
+    this._disposeReactions()
     this._fieldFormats.clear()
     this.fields.clear()
     this._actionCache.clear()
@@ -607,6 +605,12 @@ export class Form implements IForm {
     this._setupFieldReactions('', schema.properties)
   }
 
+  _rebuildReactions(): void {
+    if (!this._schema) return
+    this._disposeReactions()
+    this._setupReactions(this._schema)
+  }
+
   private _setupFieldReactions(prefix: string, properties: Record<string, IFieldSchema>): void {
     for (const [key, schema] of Object.entries(properties)) {
       const path = prefix ? `${prefix}.${key}` : key
@@ -630,7 +634,13 @@ export class Form implements IForm {
       if (schema.items) {
         const itemSchema = Array.isArray(schema.items) ? schema.items[0] : schema.items
         if (itemSchema && typeof itemSchema === 'object' && (itemSchema as IFieldSchema).properties) {
-          this._setupFieldReactions(path, (itemSchema as IFieldSchema).properties!)
+          const arrayField = this.fields.get(path)
+          const rowCount = arrayField?.isArrayField && Array.isArray(arrayField.value)
+            ? arrayField.value.length
+            : 0
+          for (let index = 0; index < rowCount; index++) {
+            this._setupFieldReactions(`${path}.${index}`, (itemSchema as IFieldSchema).properties!)
+          }
         }
       }
     }
@@ -696,11 +706,16 @@ export class Form implements IForm {
     try {
       const value = this._resolveXRuleValue(field, reactionKey, rule, scope, 'x-reaction')
       if (isPromiseLike(value)) {
+        const versionKey = this._getAsyncReactionVersionKey(field.path, reactionKey)
+        const currentVersion = (this._asyncReactionVersions.get(versionKey) || 0) + 1
+        this._asyncReactionVersions.set(versionKey, currentVersion)
         void value
           .then((resolved) => {
+            if (this._asyncReactionVersions.get(versionKey) !== currentVersion) return
             this._applyReactionValue(field, reactionKey, resolved)
           })
           .catch((err) => {
+            if (this._asyncReactionVersions.get(versionKey) !== currentVersion) return
             this._emitError({ scope: 'reaction', path: field.path, key: reactionKey, message: err instanceof Error ? err.message : String(err), cause: err })
           })
         return
@@ -738,7 +753,7 @@ export class Form implements IForm {
         const handler = this._config.handlers?.[rule.handler]
         if (!handler) return undefined
         const shouldSetLoading = kind === 'x-reaction' && !!field
-        if (shouldSetLoading) field?.setLoading(true)
+        if (shouldSetLoading) this._beginFieldLoading(field as IField)
         const result = handler({
           field: field as IField,
           form: this,
@@ -753,10 +768,10 @@ export class Form implements IForm {
         })
         if (isPromiseLike(result)) {
           return result.finally(() => {
-            if (shouldSetLoading) field?.setLoading(false)
+            if (shouldSetLoading) this._endFieldLoading(field as IField)
           })
         }
-        if (shouldSetLoading) field?.setLoading(false)
+        if (shouldSetLoading) this._endFieldLoading(field as IField)
         return result
       }
     }
@@ -997,6 +1012,37 @@ export class Form implements IForm {
     this._valuesCache = null
     this._rawValuesCache = null
     this._version(this._version() + 1)
+  }
+
+  private _disposeReactions(): void {
+    for (const dispose of this._reactionDisposers) dispose()
+    this._reactionDisposers = []
+    this._reactionValueTriggers.clear()
+    this._reactionRunners = []
+    this._asyncReactionVersions.clear()
+    this._fieldLoadingCounts.clear()
+  }
+
+  private _getAsyncReactionVersionKey(path: string, reactionKey: string): string {
+    return `${path}:${reactionKey}`
+  }
+
+  private _beginFieldLoading(field: IField): void {
+    const nextCount = (this._fieldLoadingCounts.get(field.path) || 0) + 1
+    this._fieldLoadingCounts.set(field.path, nextCount)
+    if (nextCount === 1) {
+      field.setLoading(true)
+    }
+  }
+
+  private _endFieldLoading(field: IField): void {
+    const currentCount = this._fieldLoadingCounts.get(field.path) || 0
+    if (currentCount <= 1) {
+      this._fieldLoadingCounts.delete(field.path)
+      field.setLoading(false)
+      return
+    }
+    this._fieldLoadingCounts.set(field.path, currentCount - 1)
   }
 
   private _rawValues(): Record<string, any> {

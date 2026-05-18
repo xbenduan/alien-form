@@ -1,0 +1,111 @@
+{
+  "id": "ref-definitions",
+  "name": "$ref 本地复用",
+  "description": "演示当前实现支持的根级 definitions + #/definitions/Name 本地引用：复用字段定义与 void 区块定义，并在引用处覆盖标题和描述。",
+  "category": "01 基础能力",
+  "order": 25,
+  "tags": [
+    "$ref",
+    "definitions",
+    "reuse"
+  ],
+  "schema": {
+    "type": "object",
+    "title": "$ref 本地复用演示",
+    "definitions": {
+      "contactName": {
+        "type": "string",
+        "title": "联系人姓名",
+        "required": true,
+        "component": "Input",
+        "decorator": "FormItem",
+        "props": {
+          "placeholder": "请输入联系人姓名"
+        }
+      },
+      "contactEmail": {
+        "type": "string",
+        "title": "邮箱",
+        "component": "Input",
+        "decorator": "FormItem",
+        "props": {
+          "placeholder": "name@example.com"
+        },
+        "validators": [
+          {
+            "format": "email",
+            "message": "邮箱格式不正确"
+          }
+        ]
+      },
+      "contactPhone": {
+        "type": "string",
+        "title": "手机号",
+        "component": "Input",
+        "decorator": "FormItem",
+        "props": {
+          "placeholder": "请输入手机号"
+        }
+      },
+      "contactSection": {
+        "type": "void",
+        "component": "FormSection",
+        "props": {
+          "bordered": true
+        },
+        "properties": {
+          "grid": {
+            "type": "void",
+            "component": "FormGrid",
+            "props": {
+              "columns": 2,
+              "gap": 4
+            },
+            "properties": {
+              "name": {
+                "$ref": "#/definitions/contactName",
+                "order": 10
+              },
+              "email": {
+                "$ref": "#/definitions/contactEmail",
+                "order": 20
+              },
+              "phone": {
+                "$ref": "#/definitions/contactPhone",
+                "order": 30
+              }
+            }
+          }
+        }
+      }
+    },
+    "properties": {
+      "intro": {
+        "type": "string",
+        "title": "说明",
+        "default": "这个示例里，主联系人和备用联系人都来自同一个 #/definitions/contactSection。你可以修改其中一个区块的字段定义，再观察两个区块会一起变化。",
+        "component": "Textarea",
+        "decorator": "FormItem",
+        "state": {
+          "pattern": "readPretty"
+        },
+        "props": {
+          "rows": 3
+        },
+        "order": 5
+      },
+      "primaryContact": {
+        "$ref": "#/definitions/contactSection",
+        "title": "主联系人",
+        "description": "这里覆盖了引用节点自身的 title 和 description，但内部字段仍然来自同一份 definitions。",
+        "order": 10
+      },
+      "backupContact": {
+        "$ref": "#/definitions/contactSection",
+        "title": "备用联系人",
+        "description": "这是第二次引用同一个区块定义，最终会生成 backupContact.name / email / phone 这些字段路径。",
+        "order": 20
+      }
+    }
+  }
+}

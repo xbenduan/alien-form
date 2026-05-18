@@ -21,6 +21,16 @@ async function waitFor(predicate: () => boolean, timeout = 1000): Promise<void> 
   }
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
+
 describe('@formily-bao/core', () => {
   it('creates fields from schema and returns form values', () => {
     const form = createForm({ initialValues: { name: 'Bao', age: 20 } })
@@ -70,6 +80,42 @@ describe('@formily-bao/core', () => {
 
     users?.remove(0)
     await expect(form.validate()).resolves.toBe(false)
+  })
+
+  it('syncs array child fields when setValues replaces array length', () => {
+    const form = createForm()
+    form.setSchema({
+      type: 'object',
+      properties: {
+        users: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+            },
+          },
+        },
+      },
+    })
+
+    form.getArrayField('users')?.push({ name: 'first' })
+    form.getArrayField('users')?.push({ name: 'second' })
+
+    form.setValues({
+      users: [{ name: 'only' }],
+    })
+
+    expect(form.values).toEqual({ users: [{ name: 'only' }] })
+    expect(form.getField('users.0.name')?.value).toBe('only')
+    expect(form.getField('users.1.name')).toBeUndefined()
+
+    form.setValues({
+      users: [{ name: 'left' }, { name: 'right' }],
+    })
+
+    expect(form.values).toEqual({ users: [{ name: 'left' }, { name: 'right' }] })
+    expect(form.getField('users.1.name')?.value).toBe('right')
   })
 
   it('notifies field, values and validation lifecycle changes', async () => {
@@ -647,6 +693,39 @@ describe('@formily-bao/core', () => {
     expect(form.errors).toEqual([{ message: 'Passwords do not match', type: 'x-validate' }])
   })
 
+  it('moves array rows by row identity instead of swapping only values', () => {
+    const form = createForm()
+    form.setSchema({
+      type: 'object',
+      properties: {
+        users: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+            },
+          },
+        },
+      },
+    })
+
+    const users = form.getArrayField('users')
+    users?.push({ name: 'first' })
+    users?.push({ name: 'second' })
+
+    const row0Before = form.getField('users.0.name')!
+    const row1Before = form.getField('users.1.name')!
+    row1Before.setErrors([{ message: 'row-1-error' }])
+
+    users?.moveUp(1)
+
+    expect(form.getField('users.0.name')).toBe(row1Before)
+    expect(form.getField('users.1.name')).toBe(row0Before)
+    expect(form.getField('users.0.name')?.errors).toEqual([{ message: 'row-1-error' }])
+    expect(form.values).toEqual({ users: [{ name: 'second' }, { name: 'first' }] })
+  })
+
   it('supports computed x-format handlers and x-validate rules', async () => {
     const normalizeCode = vi.fn(({ value }) => String(value || '').trim().toUpperCase())
     const checkCode = vi.fn(async ({ value }) => {
@@ -702,6 +781,83 @@ describe('@formily-bao/core', () => {
     })
     expect(errors.length).toBeGreaterThan(0)
     expect(errors.some((e) => e.scope === 'reaction' && e.path === 'a')).toBe(true)
+  })
+
+  it('keeps only the latest async reaction result', async () => {
+    const pending = new Map<string, ReturnType<typeof createDeferred<Array<{ label: string; value: string }>>>>()
+    const loadCities = vi.fn(({ deps }) => {
+      const deferred = createDeferred<Array<{ label: string; value: string }>>()
+      pending.set(String(deps.country), deferred)
+      return deferred.promise
+    })
+    const form = createForm({ handlers: { loadCities } })
+    form.setSchema({
+      type: 'object',
+      properties: {
+        country: { type: 'string' },
+        city: {
+          type: 'string',
+          'x-reaction': {
+            dataSource: {
+              dependencies: { country: 'country' },
+              type: 'computed',
+              handler: 'loadCities',
+            },
+          },
+        },
+      },
+    })
+
+    form.getField('country')?.setValue('cn')
+    form.getField('country')?.setValue('sg')
+
+    pending.get('sg')?.resolve([{ label: 'Singapore', value: 'sg' }])
+    await waitFor(() => form.getField('city')?.dataSource[0]?.value === 'sg')
+
+    pending.get('cn')?.resolve([{ label: 'Beijing', value: 'cn' }])
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(form.getField('city')?.dataSource).toEqual([{ label: 'Singapore', value: 'sg' }])
+  })
+
+  it('installs x-reaction for array item fields using indexed paths', () => {
+    const form = createForm()
+    form.setSchema({
+      type: 'object',
+      properties: {
+        users: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              type: {
+                type: 'string',
+                default: 'person',
+              },
+              companyName: {
+                type: 'string',
+                state: { visible: false },
+                'x-reaction': {
+                  visible: {
+                    dependencies: { type: '.type' },
+                    type: 'expression',
+                    expression: "$deps.type === 'company'",
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    })
+
+    form.getArrayField('users')?.push()
+
+    const companyName = form.getField('users.0.companyName')
+    expect(companyName?.visible).toBe(false)
+
+    form.getField('users.0.type')?.setValue('company')
+    expect(companyName?.visible).toBe(true)
   })
 
 })

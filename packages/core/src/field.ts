@@ -27,6 +27,7 @@ export interface FieldHost {
   fields: Map<string, IField>
   getField(path: string): IField | undefined
   createField(path: string, schema: IFieldSchema, initialValue?: any): IField
+  _rebuildReactions?(): void
   _notifyFieldChange?(path: string, field: IField): void
   _notifyFieldValueChange?(path: string, field: IField): void
   _notifyFieldValidateStart?(path: string, field: IField): void
@@ -206,6 +207,10 @@ export class Field implements IField {
   // ============================================================
 
   setValue(value: any): void {
+    if (this.isArrayField && this._form && this._itemSchema?.properties) {
+      this._setArrayValue(Array.isArray(value) ? value : [])
+      return
+    }
     this._value(value)
     this._bumpVersion()
     this._notifyValueChange()
@@ -364,15 +369,10 @@ export class Field implements IField {
     const currentRows = this._arrayRows()
     const newIndex = currentRows
 
-    // Create child fields for the new row
-    for (const [key, childSchema] of Object.entries(this._itemSchema.properties)) {
-      const fieldPath = `${this.path}.${newIndex}.${key}`
-      const initVal = initialValues ? initialValues[key] : undefined
-      const schema = { ...childSchema as IFieldSchema }
-      this._form.createField(fieldPath, schema, initVal)
-    }
+    this._createRowFields(newIndex, initialValues)
 
     this._arrayRows(currentRows + 1)
+    this._form._rebuildReactions?.()
     this._bumpVersion()
     this._notifyValueChange()
   }
@@ -384,36 +384,16 @@ export class Field implements IField {
     if (index < 0 || index >= currentRows) return
 
     // Drop the target row's fields (preserve identity for subsequent rows).
-    const targetPrefix = `${this.path}.${index}.`
-    for (const fieldPath of Array.from(this._form.fields.keys())) {
-      if (fieldPath === `${this.path}.${index}` || fieldPath.startsWith(targetPrefix)) {
-        this._form.fields.delete(fieldPath)
-      }
-    }
+    this._deleteRowFields(index)
 
     // Reindex subsequent rows by renaming in place — keeps Field instances,
     // so subscriptions / errors / dirty state stay attached to the same row.
     for (let i = index + 1; i < currentRows; i++) {
-      const fromPrefix = `${this.path}.${i}`
-      const toPrefix = `${this.path}.${i - 1}`
-      // Snapshot first to avoid concurrent mutation while iterating the map.
-      const movingPaths: string[] = []
-      for (const fieldPath of this._form.fields.keys()) {
-        if (fieldPath === fromPrefix || fieldPath.startsWith(`${fromPrefix}.`)) {
-          movingPaths.push(fieldPath)
-        }
-      }
-      for (const fromPath of movingPaths) {
-        const toPath = toPrefix + fromPath.slice(fromPrefix.length)
-        const moving = this._form.fields.get(fromPath) as Field | undefined
-        if (!moving) continue
-        this._form.fields.delete(fromPath)
-        moving._renamePath(toPath)
-        this._form.fields.set(toPath, moving)
-      }
+      this._renameRow(i, i - 1)
     }
 
     this._arrayRows(currentRows - 1)
+    this._form._rebuildReactions?.()
     this._bumpVersion()
     this._notifyValueChange()
   }
@@ -439,21 +419,97 @@ export class Field implements IField {
   private _swapRows(indexA: number, indexB: number): void {
     if (!this._form || !this._itemSchema?.properties) return
 
-    const properties = this._itemSchema.properties
-    for (const key of Object.keys(properties)) {
-      const pathA = `${this.path}.${indexA}.${key}`
-      const pathB = `${this.path}.${indexB}.${key}`
-      const fieldA = this._form.getField(pathA)
-      const fieldB = this._form.getField(pathB)
-      if (fieldA && fieldB) {
-        const tempValue = fieldA.value
-        fieldA.setValue(fieldB.value)
-        fieldB.setValue(tempValue)
+    if (indexA === indexB) return
+
+    const tempIndex = `__swap__${indexA}_${indexB}_${Date.now()}`
+    this._renameRow(indexA, tempIndex)
+    this._renameRow(indexB, indexA)
+    this._renameRow(tempIndex, indexB)
+
+    this._form._rebuildReactions?.()
+    this._bumpVersion()
+    this._notifyValueChange()
+  }
+
+  private _setArrayValue(value: Record<string, any>[]): void {
+    if (!this._form || !this._itemSchema?.properties) return
+
+    const normalizedRows = Array.isArray(value) ? value : []
+    const currentRows = this._arrayRows()
+    startBatch()
+
+    for (let index = 0; index < normalizedRows.length; index++) {
+      const rowValue = normalizedRows[index] || {}
+      if (index >= currentRows) {
+        this._createRowFields(index, rowValue)
+      }
+      for (const key of Object.keys(this._itemSchema.properties)) {
+        const childPath = `${this.path}.${index}.${key}`
+        let childField = this._form.getField(childPath)
+        if (!childField) {
+          childField = this._form.createField(
+            childPath,
+            { ...(this._itemSchema.properties[key] as IFieldSchema) },
+            rowValue[key]
+          )
+        }
+        childField.setValue(rowValue[key])
       }
     }
 
+    for (let index = currentRows - 1; index >= normalizedRows.length; index--) {
+      this._deleteRowFields(index)
+    }
+
+    this._arrayRows(normalizedRows.length)
+    this._value(normalizedRows)
+    if (currentRows !== normalizedRows.length) {
+      this._form._rebuildReactions?.()
+    }
     this._bumpVersion()
+    endBatch()
     this._notifyValueChange()
+  }
+
+  private _createRowFields(index: number, initialValues?: Record<string, any>): void {
+    if (!this._form || !this._itemSchema?.properties) return
+    for (const [key, childSchema] of Object.entries(this._itemSchema.properties)) {
+      const fieldPath = `${this.path}.${index}.${key}`
+      const initVal = initialValues ? initialValues[key] : undefined
+      const schema = { ...childSchema as IFieldSchema }
+      this._form.createField(fieldPath, schema, initVal)
+    }
+  }
+
+  private _deleteRowFields(index: number | string): void {
+    if (!this._form) return
+    const rowPrefix = `${this.path}.${index}`
+    const childPrefix = `${rowPrefix}.`
+    for (const fieldPath of Array.from(this._form.fields.keys())) {
+      if (fieldPath === rowPrefix || fieldPath.startsWith(childPrefix)) {
+        this._form.fields.delete(fieldPath)
+      }
+    }
+  }
+
+  private _renameRow(fromIndex: number | string, toIndex: number | string): void {
+    if (!this._form) return
+    const fromPrefix = `${this.path}.${fromIndex}`
+    const toPrefix = `${this.path}.${toIndex}`
+    const movingPaths: string[] = []
+    for (const fieldPath of this._form.fields.keys()) {
+      if (fieldPath === fromPrefix || fieldPath.startsWith(`${fromPrefix}.`)) {
+        movingPaths.push(fieldPath)
+      }
+    }
+    for (const fromPath of movingPaths) {
+      const toPath = toPrefix + fromPath.slice(fromPrefix.length)
+      const moving = this._form.fields.get(fromPath) as Field | undefined
+      if (!moving) continue
+      this._form.fields.delete(fromPath)
+      moving._renamePath(toPath)
+      this._form.fields.set(toPath, moving)
+    }
   }
 
   // ============================================================
