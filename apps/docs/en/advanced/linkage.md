@@ -1,157 +1,88 @@
-# Field Linkage
+# Linkage Protocol
 
-FormBao implements the full Formily `reactions` protocol. Reactions are set up by `Form._setupFieldReactions()` during `setSchema()`, using Alien Signals `effect()` for reactivity.
+FormBao `reactions` are **field-owned, property-level** derivation rules. A field declares how one of its own properties is computed from dependencies; it does not control another field.
 
-## Active Mode
-
-The field declaring `reactions` controls a **target** field:
+## Basic structure
 
 ```json
 {
-  "isVip": {
-    "type": "boolean",
-    "component": "Switch",
-    "reactions": {
-      "target": "vipCode",
-      "fulfill": {
-        "state": { "display": "visible", "required": true }
-      },
-      "otherwise": {
-        "state": { "display": "none", "required": false }
+  "type": "string",
+  "title": "邮箱",
+  "reactions": {
+    "visible": {
+      "dependencies": { "contactType": "contactType" },
+      "type": "expression",
+      "expression": "$deps.contactType === 'email'"
+    },
+    "required": {
+      "dependencies": { "contactType": "contactType" },
+      "type": "expression",
+      "expression": "$deps.contactType === 'email'"
+    }
+  }
+}
+```
+
+## Built-in types
+
+FormBao has exactly four built-in reaction rule types:
+
+- `static`：write a fixed value.
+- `expression`：evaluate a safe raw expression string.
+- `match`：map dependency values to outputs.
+- `computed`：call application-registered `reactionHandlers` for async data or complex computation.
+
+## Property-level derivation
+
+```json
+{
+  "reactions": {
+    "display": {
+      "dependencies": { "enabled": "enabled" },
+      "type": "expression",
+      "expression": "$deps.enabled ? 'visible' : 'none'"
+    },
+    "props": {
+      "dependencies": { "mode": "mode" },
+      "type": "match",
+      "source": "$deps.mode",
+      "match": {
+        "readonly": { "placeholder": "只读模式" },
+        "default": { "placeholder": "可编辑模式" }
       }
     }
   }
 }
 ```
 
-Internally, `_setupActiveReaction()` creates an `effect()` that:
-1. Reads `$self.value` (the Switch field)
-2. Resolves the target path
-3. Evaluates `when` (defaults to `$self.value` truthiness if omitted)
-4. Applies `fulfill` or `otherwise` branch to the target
+## Async data
 
-## Passive Mode
+Core does not fetch URLs. Register application-level handlers for remote options:
 
-The field with `reactions` **reacts to its dependencies**:
+```ts
+const form = createForm({
+  reactionHandlers: {
+    fetchCities: async ({ deps }) => api.getCities(deps.country),
+  },
+})
+```
 
 ```json
 {
-  "city": {
-    "reactions": {
+  "reactions": {
+    "dataSource": {
       "dependencies": { "country": "country" },
-      "when": "{{$deps.country === 'cn'}}",
-      "fulfill": {
-        "schema": {
-          "props": { "placeholder": "Select Chinese city" }
-        }
-      },
-      "otherwise": {
-        "schema": {
-          "props": { "placeholder": "Select city" }
-        }
-      }
+      "type": "computed",
+      "handler": "fetchCities"
     }
   }
 }
 ```
 
-`_setupPassiveReaction()` reads dependency field values inside an `effect()`, so it re-runs whenever a dependency changes.
+## Constraints
 
-## Expression Strings
-
-A reaction can be a bare expression string:
-
-```json
-{ "reactions": "{{$self.value = $values.firstName + ' ' + $values.lastName}}" }
-```
-
-This is handled by `_setupExpressionReaction()`.
-
-## Dependencies Format
-
-**Array form** — values accessible via `$deps[index]`:
-
-```json
-{ "dependencies": ["fieldA", "fieldB"] }
-```
-
-**Object form** — values accessible via `$deps.alias`:
-
-```json
-{ "dependencies": { "myAlias": "some.field.path" } }
-```
-
-## Expression Scope
-
-Built by `_buildScope()`:
-
-| Variable | Value |
-|----------|-------|
-| `$self` | The field declaring the reaction |
-| `$form` | The form instance |
-| `$values` | `form.values` |
-| `$deps` | Resolved dependency values (array or object) |
-| `$dependencies` | Always object form |
-| `$target` | Target field (active) or self (passive) |
-| Custom scope | Merged from `FormConfig.scope` |
-
-## Branch Actions
-
-Each branch (`fulfill` / `otherwise`) can contain:
-
-### `state`
-
-Calls `targetField.setState()`:
-
-```json
-{ "state": { "display": "visible", "required": true, "value": "{{$deps[0] * 2}}" } }
-```
-
-Expression values (double-brace syntax) in state are evaluated via `_evalInScope()`.
-
-### `schema`
-
-Updates schema-derived properties:
-
-```json
-{
-  "schema": {
-    "title": "New Title",
-    "props": { "placeholder": "..." },
-    "decoratorProps": { "style": {} },
-    "enum": ["a", "b", "c"],
-    "state.display": "hidden",
-    "state.pattern": "readOnly",
-    "required": true
-  }
-}
-```
-
-### `run`
-
-Executes arbitrary JavaScript with scope:
-
-```json
-{ "run": "$target.setDataSource([{label:'A',value:'a'}])" }
-```
-
-## Relative Paths
-
-Inside array items, use `.` prefix for sibling references:
-
-```json
-{ "target": ".shipping" }
-```
-
-Resolved by `_resolveFieldPath()`: strips the last segment from `selfPath` and appends the relative path.
-
-## Multiple Reactions
-
-```json
-{
-  "reactions": [
-    { "target": "fieldA", "fulfill": { "state": { "visible": true } } },
-    { "target": "fieldB", "fulfill": { "state": { "disabled": true } } }
-  ]
-}
-```
+- No cross-field control.
+- No branch/action protocol.
+- No arbitrary script execution in schema.
+- No URL fetch in core.
+- All dynamic behavior is expressed as field-owned property derivation.

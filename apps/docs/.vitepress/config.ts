@@ -36,6 +36,7 @@ export default defineConfig({
               items: [
                 { text: 'Getting Started', link: '/en/guide/getting-started' },
                 { text: 'Tutorial', link: '/en/guide/tutorial' },
+                { text: 'Protocol Design', link: '/en/guide/protocol' },
               ],
             },
           ],
@@ -58,6 +59,7 @@ export default defineConfig({
                 { text: 'Layout', link: '/en/advanced/layout' },
                 { text: 'Async Data Source', link: '/en/advanced/async-datasource' },
                 { text: 'Custom Components', link: '/en/advanced/custom-components' },
+                { text: 'Enterprise Security', link: '/en/advanced/enterprise-security' },
               ],
             },
           ],
@@ -81,6 +83,7 @@ export default defineConfig({
               items: [
                 { text: '快速开始', link: '/zh/guide/getting-started' },
                 { text: '教程', link: '/zh/guide/tutorial' },
+                { text: '协议设计', link: '/zh/guide/protocol' },
               ],
             },
           ],
@@ -103,6 +106,7 @@ export default defineConfig({
                 { text: '布局', link: '/zh/advanced/layout' },
                 { text: '异步数据源', link: '/zh/advanced/async-datasource' },
                 { text: '自定义组件', link: '/zh/advanced/custom-components' },
+                { text: '企业安全实践', link: '/zh/advanced/enterprise-security' },
               ],
             },
           ],

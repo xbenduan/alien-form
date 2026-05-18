@@ -33,5 +33,12 @@
         "decorator": "FormItem"
       }
     }
-  }
+  },
+  "category": "基础表单",
+  "order": 10,
+  "tags": [
+    "component",
+    "props",
+    "validators"
+  ]
 }

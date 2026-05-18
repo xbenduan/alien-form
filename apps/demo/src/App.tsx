@@ -9,13 +9,13 @@ export const App: React.FC = () => {
 
   const selectedSchema = useMemo(
     () => schemas.find((s) => s.id === selectedId) || schemas[0],
-    [selectedId]
+    [schemas, selectedId]
   )
 
   return (
     <div className="flex h-screen">
-      {/* Left panel — Schema list */}
-      <aside className="w-72 shrink-0 border-r bg-card">
+      {/* Left panel — curated schema learning path */}
+      <aside className="w-80 shrink-0 border-r bg-card">
         <SchemaList
           schemas={schemas}
           selectedId={selectedId}
@@ -24,8 +24,8 @@ export const App: React.FC = () => {
       </aside>
 
       {/* Right panel — Renderer */}
-      <main className="flex-1 overflow-auto p-6">
-        <div className="mx-auto max-w-3xl">
+      <main className="flex-1 overflow-auto bg-muted/20 p-6">
+        <div className="mx-auto max-w-5xl">
           <SchemaRenderer key={selectedId} schema={selectedSchema} />
         </div>
       </main>

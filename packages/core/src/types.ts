@@ -1,6 +1,6 @@
 /**
  * @formily-bao/core — Field types and interfaces
- * Full alignment with Formily Schema Protocol
+ * Enterprise schema protocol inspired by Formily
  */
 
 // ============================================================
@@ -76,63 +76,68 @@ export interface ValidatorRule {
 }
 
 // ============================================================
-// Schema Reactions (aligned with Formily protocol)
+// Schema Reactions
 // ============================================================
 
-export type SchemaReactionEffect =
-  | 'onFieldInit'
-  | 'onFieldMount'
-  | 'onFieldUnmount'
-  | 'onFieldValueChange'
-  | 'onFieldInputValueChange'
-  | 'onFieldInitialValueChange'
-  | 'onFieldValidateStart'
-  | 'onFieldValidateEnd'
-  | 'onFieldValidateFailed'
-  | 'onFieldValidateSuccess'
+export type SchemaReactionType = 'static' | 'expression' | 'match' | 'computed'
 
-export type SchemaReaction =
-  | {
-      /** Dependencies — array (read by index via $deps) or object (read by alias) */
-      dependencies?: string[] | Record<string, string>
-      /** Condition — expression string or boolean */
-      when?: string | boolean
-      /** Target field path for active mode (supports FormPathPattern, NOT relative paths) */
-      target?: string
-      /** Lifecycle hooks for active mode */
-      effects?: SchemaReactionEffect[]
-      /** Branch when condition is met */
-      fulfill?: {
-        state?: Record<string, any>
-        schema?: Record<string, any>
-        run?: string
-      }
-      /** Branch when condition is NOT met */
-      otherwise?: {
-        state?: Record<string, any>
-        schema?: Record<string, any>
-        run?: string
-      }
-    }
-  | string  // expression string like "{{myReaction}}"
+export type SchemaReactionKey =
+  | 'value'
+  | 'display'
+  | 'visible'
+  | 'hidden'
+  | 'pattern'
+  | 'disabled'
+  | 'readOnly'
+  | 'readPretty'
+  | 'editable'
+  | 'required'
+  | 'title'
+  | 'description'
+  | 'props'
+  | 'decoratorProps'
+  | 'component'
+  | 'decorator'
+  | 'dataSource'
 
-export type SchemaReactions = SchemaReaction | SchemaReaction[]
-
-// ============================================================
-// Async Data Source
-// ============================================================
-
-export interface AsyncDataSource {
-  url?: string
-  method?: 'GET' | 'POST'
-  params?: Record<string, any>
-  headers?: Record<string, string>
-  data?: Record<string, any>
-  service?: ((params: Record<string, any>) => Promise<Array<{ label: string; value: any; [key: string]: any }>>) | string
-  transformResponse?: ((response: any) => Array<{ label: string; value: any; [key: string]: any }>) | string
-  dependencies?: Record<string, string> | string[]
-  fetchOnMount?: boolean
+export interface ReactionHandlerContext {
+  field: IField
+  form: IForm
+  values: Record<string, any>
+  deps: Record<string, any>
+  dependencies: Record<string, any>
+  scope: Record<string, any>
+  key: SchemaReactionKey | string
+  rule: SchemaReactionRule
 }
+
+export type ReactionHandler = (context: ReactionHandlerContext) => any | Promise<any>
+
+export type SchemaReactionRule =
+  | {
+      type: 'static'
+      dependencies?: string[] | Record<string, string>
+      value: any
+    }
+  | {
+      type: 'expression'
+      dependencies?: string[] | Record<string, string>
+      expression: string
+    }
+  | {
+      type: 'match'
+      dependencies?: string[] | Record<string, string>
+      source?: string
+      match: Record<string, any>
+    }
+  | {
+      type: 'computed'
+      dependencies?: string[] | Record<string, string>
+      handler: string
+      params?: Record<string, any>
+    }
+
+export type SchemaReactions = Partial<Record<SchemaReactionKey | string, SchemaReactionRule | SchemaReactionRule[]>>
 
 // ============================================================
 // Schema Enum
@@ -300,7 +305,6 @@ export interface IFieldSchema {
   content?: any
   data?: Record<string, any>
   dataSource?: Array<{ label: string; value: any; [key: string]: any }>
-  asyncDataSource?: AsyncDataSource
   layoutProps?: LayoutProps
 }
 
@@ -341,10 +345,8 @@ export interface FormConfig {
   effects?: (form: IForm) => void
   /** Custom expression scope variables */
   scope?: Record<string, any>
-  /** Service registry for async data sources */
-  services?: Record<string, (params: Record<string, any>) => Promise<Array<{ label: string; value: any; [key: string]: any }>>>
-  /** Transform response registry for async data sources */
-  transformers?: Record<string, (response: any) => Array<{ label: string; value: any; [key: string]: any }>>
+  /** Registered computed handlers for schema reactions */
+  reactionHandlers?: Record<string, ReactionHandler>
 }
 
 // ============================================================

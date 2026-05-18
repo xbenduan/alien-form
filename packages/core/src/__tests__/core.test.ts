@@ -115,41 +115,360 @@ describe('@formily-bao/core', () => {
     expect(form.values).toEqual({ newField: 'new' })
   })
 
-  it('uses async data source fetch options', async () => {
-    const fetchMock = vi.fn(async (_url: string, _options?: RequestInit) => ({
-      ok: true,
-      status: 200,
-      statusText: 'OK',
-      json: async () => [{ label: 'Remote', value: 'remote' }],
-    }))
-    vi.stubGlobal('fetch', fetchMock)
-
+  it('initializes FormBao protocol fields and sorts by order', () => {
     const form = createForm()
     form.setSchema({
       type: 'object',
       properties: {
-        choice: {
+        second: {
           type: 'string',
-          asyncDataSource: {
-            url: '/api/options',
-            method: 'POST',
-            headers: { 'X-Test': 'yes' },
-            data: { scope: 'core' },
+          title: 'Second',
+          order: 2,
+          component: 'Select',
+          props: { placeholder: 'pick one' },
+          decorator: 'FormItem',
+          decoratorProps: { tooltip: 'help' },
+          dataSource: [{ label: 'A', value: 'a' }],
+          data: { tracking: 'second' },
+          state: { display: 'hidden', pattern: 'disabled' },
+        },
+        first: {
+          type: 'string',
+          title: 'First',
+          order: 1,
+          state: { readPretty: true },
+        },
+      },
+    })
+
+    expect(Array.from(form.fields.keys())).toEqual(['first', 'second'])
+    const second = form.getField('second')
+    expect(second?.component).toBe('Select')
+    expect(second?.componentProps).toEqual({ placeholder: 'pick one' })
+    expect(second?.decoratorProps).toEqual({ tooltip: 'help' })
+    expect(second?.dataSource).toEqual([{ label: 'A', value: 'a' }])
+    expect(second?.data).toEqual({ tracking: 'second' })
+    expect(second?.display).toBe('hidden')
+    expect(second?.disabled).toBe(true)
+    expect(form.getField('first')?.readPretty).toBe(true)
+  })
+
+  it('derives field attributes through property-level expression reactions', () => {
+    const form = createForm()
+    form.setSchema({
+      type: 'object',
+      properties: {
+        type: { type: 'string', default: 'person' },
+        name: {
+          type: 'string',
+          title: 'Name',
+          reactions: {
+            visible: {
+              dependencies: { type: 'type' },
+              type: 'expression',
+              expression: "$deps.type === 'company'",
+            },
+            title: {
+              dependencies: { type: 'type' },
+              type: 'expression',
+              expression: "$deps.type === 'company' ? 'Company Name' : 'Person Name'",
+            },
+            props: {
+              dependencies: { type: 'type' },
+              type: 'match',
+              source: '$deps.type',
+              match: {
+                company: { placeholder: 'Company' },
+                default: { placeholder: 'Person' },
+              },
+            },
+            dataSource: {
+              dependencies: { type: 'type' },
+              type: 'match',
+              source: '$deps.type',
+              match: {
+                company: [{ label: 'Company', value: 'company' }],
+                default: [{ label: 'Person', value: 'person' }],
+              },
+            },
           },
         },
       },
     })
 
-    const field = form.getField('choice')
+    const name = form.getField('name')
+    expect(name?.visible).toBe(false)
+    expect(name?.title).toBe('Person Name')
+    expect(name?.componentProps).toEqual({ placeholder: 'Person' })
+    expect(name?.dataSource).toEqual([{ label: 'Person', value: 'person' }])
+
+    form.getField('type')?.setValue('company')
+    expect(name?.visible).toBe(true)
+    expect(name?.title).toBe('Company Name')
+    expect(name?.componentProps).toEqual({ placeholder: 'Company' })
+    expect(name?.dataSource).toEqual([{ label: 'Company', value: 'company' }])
+  })
+
+  it('loads dataSource through computed reaction handlers', async () => {
+    const loadCities = vi.fn(async ({ deps }) => {
+      if (deps.country === 'cn') return [{ label: 'Beijing', value: 'beijing' }]
+      return []
+    })
+    const form = createForm({ reactionHandlers: { loadCities } })
+    form.setSchema({
+      type: 'object',
+      properties: {
+        country: { type: 'string' },
+        city: {
+          type: 'string',
+          reactions: {
+            dataSource: {
+              dependencies: { country: 'country' },
+              type: 'computed',
+              handler: 'loadCities',
+            },
+          },
+        },
+      },
+    })
+
+    const city = form.getField('city')
+    expect(city?.dataSource).toEqual([])
+
+    form.getField('country')?.setValue('cn')
+    await waitFor(() => (city?.dataSource.length || 0) > 0)
+    expect(loadCities).toHaveBeenCalledWith(expect.objectContaining({ deps: { country: 'cn' } }))
+    expect(city?.dataSource).toEqual([{ label: 'Beijing', value: 'beijing' }])
+  })
+
+  it('supports static, expression, match and computed reaction types only', async () => {
+    const form = createForm({
+      reactionHandlers: {
+        buildOptions: async ({ deps }) => [{ label: String(deps.kind), value: deps.kind }],
+      },
+    })
+    form.setSchema({
+      type: 'object',
+      properties: {
+        kind: { type: 'string', default: 'a' },
+        field: {
+          type: 'string',
+          reactions: {
+            title: { type: 'static', value: 'Static Title' },
+            display: {
+              dependencies: { kind: 'kind' },
+              type: 'expression',
+              expression: "$deps.kind === 'hidden' ? 'none' : 'visible'",
+            },
+            props: {
+              dependencies: { kind: 'kind' },
+              type: 'match',
+              source: '$deps.kind',
+              match: {
+                a: { placeholder: 'A' },
+                default: { placeholder: 'Other' },
+              },
+            },
+            dataSource: {
+              dependencies: { kind: 'kind' },
+              type: 'computed',
+              handler: 'buildOptions',
+            },
+          },
+        },
+      },
+    })
+
+    const field = form.getField('field')
     await waitFor(() => (field?.dataSource.length || 0) > 0)
+    expect(field?.title).toBe('Static Title')
+    expect(field?.display).toBe('visible')
+    expect(field?.componentProps).toEqual({ placeholder: 'A' })
+    expect(field?.dataSource).toEqual([{ label: 'a', value: 'a' }])
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/options', expect.objectContaining({
-      method: 'POST',
-      headers: expect.objectContaining({ 'Content-Type': 'application/json', 'X-Test': 'yes' }),
-      body: JSON.stringify({ scope: 'core' }),
-    }))
-    expect(field?.dataSource).toEqual([{ label: 'Remote', value: 'remote' }])
+    form.getField('kind')?.setValue('hidden')
+    expect(field?.display).toBe('none')
+    expect(field?.componentProps).toEqual({ placeholder: 'Other' })
+  })
 
-    vi.unstubAllGlobals()
+  it('rejects unsafe expressions without run escape hatches', () => {
+    const form = createForm()
+    form.setSchema({
+      type: 'object',
+      properties: {
+        source: { type: 'string', default: 'x' },
+        unsafeField: {
+          type: 'string',
+          reactions: {
+            value: {
+              dependencies: { source: 'source' },
+              type: 'expression',
+              expression: 'globalThis.process',
+            },
+          },
+        },
+      },
+    })
+
+    expect(form.getField('unsafeField')?.value).toBeUndefined()
+  })
+
+  it('keeps field-owned reactions independent across dependencies', () => {
+    const form = createForm()
+    form.setSchema({
+      type: 'object',
+      properties: {
+        source: { type: 'string', default: 'off' },
+        first: {
+          type: 'string',
+          state: { visible: false },
+          reactions: {
+            visible: {
+              dependencies: { source: 'source' },
+              type: 'expression',
+              expression: "$deps.source === 'on'",
+            },
+          },
+        },
+        second: {
+          type: 'string',
+          state: { visible: false },
+          reactions: {
+            visible: {
+              dependencies: { source: 'source' },
+              type: 'expression',
+              expression: "$deps.source === 'on'",
+            },
+          },
+        },
+      },
+    })
+
+    expect(form.getField('first')?.visible).toBe(false)
+    expect(form.getField('second')?.visible).toBe(false)
+
+    form.getField('source')?.setValue('on')
+    expect(form.getField('first')?.visible).toBe(true)
+    expect(form.getField('second')?.visible).toBe(true)
+  })
+
+  it('initializes all state shortcuts and excludes display none fields from values and validation', async () => {
+    const form = createForm({
+      initialValues: {
+        hiddenByVisible: '',
+        hiddenByDisplay: '',
+        hiddenField: 'kept-in-runtime',
+        disabledField: 'disabled',
+        readOnlyField: 'readonly',
+        readPrettyField: 'pretty',
+        nonEditableField: 'locked',
+      },
+    })
+
+    form.setSchema({
+      type: 'object',
+      properties: {
+        hiddenByVisible: {
+          type: 'string',
+          title: 'Hidden by visible',
+          required: true,
+          state: { visible: false },
+        },
+        hiddenByDisplay: {
+          type: 'string',
+          title: 'Hidden by display',
+          required: true,
+          state: { display: 'none' },
+        },
+        hiddenField: {
+          type: 'string',
+          state: { hidden: true },
+        },
+        disabledField: {
+          type: 'string',
+          state: { disabled: true },
+        },
+        readOnlyField: {
+          type: 'string',
+          state: { readOnly: true },
+        },
+        readPrettyField: {
+          type: 'string',
+          state: { readPretty: true },
+        },
+        nonEditableField: {
+          type: 'string',
+          state: { editable: false },
+        },
+      },
+    })
+
+    expect(form.getField('hiddenByVisible')?.display).toBe('none')
+    expect(form.getField('hiddenByDisplay')?.visible).toBe(false)
+    expect(form.getField('hiddenField')?.display).toBe('hidden')
+    expect(form.getField('hiddenField')?.hidden).toBe(true)
+    expect(form.getField('disabledField')?.disabled).toBe(true)
+    expect(form.getField('readOnlyField')?.readOnly).toBe(true)
+    expect(form.getField('readPrettyField')?.readPretty).toBe(true)
+    expect(form.getField('nonEditableField')?.readOnly).toBe(true)
+
+    expect(form.values).not.toHaveProperty('hiddenByVisible')
+    expect(form.values).not.toHaveProperty('hiddenByDisplay')
+    expect(form.values).toHaveProperty('hiddenField', 'kept-in-runtime')
+    await expect(form.validate()).resolves.toBe(true)
+  })
+
+  it('updates decorator, component and props through property reactions', () => {
+    const form = createForm()
+    form.setSchema({
+      type: 'object',
+      properties: {
+        mode: { type: 'string', default: 'readonly' },
+        derivedField: {
+          type: 'string',
+          component: 'Input',
+          props: { placeholder: 'initial' },
+          decorator: 'FormItem',
+          reactions: {
+            component: {
+              dependencies: { mode: 'mode' },
+              type: 'match',
+              source: '$deps.mode',
+              match: { readonly: 'Textarea', default: 'Input' },
+            },
+            props: {
+              dependencies: { mode: 'mode' },
+              type: 'match',
+              source: '$deps.mode',
+              match: {
+                readonly: { rows: 4, placeholder: 'readonly mode' },
+                default: { placeholder: 'editable mode' },
+              },
+            },
+            decoratorProps: {
+              type: 'static',
+              value: { tooltip: 'dynamic help' },
+            },
+            pattern: {
+              dependencies: { mode: 'mode' },
+              type: 'match',
+              source: '$deps.mode',
+              match: { readonly: 'readOnly', default: 'editable' },
+            },
+          },
+        },
+      },
+    })
+
+    const derivedField = form.getField('derivedField')
+    expect(derivedField?.component).toBe('Textarea')
+    expect(derivedField?.componentProps).toEqual({ placeholder: 'readonly mode', rows: 4 })
+    expect(derivedField?.decoratorProps).toEqual({ tooltip: 'dynamic help' })
+    expect(derivedField?.readOnly).toBe(true)
+
+    form.getField('mode')?.setValue('editable')
+    expect(derivedField?.component).toBe('Input')
+    expect(derivedField?.componentProps).toEqual({ placeholder: 'editable mode', rows: 4 })
+    expect(derivedField?.editable).toBe(true)
   })
 })

@@ -12,11 +12,10 @@ import type {
   IFormSchema,
   IFieldSchema,
   FormConfig,
-  SchemaReaction,
   SchemaReactions,
-  AsyncDataSource,
+  SchemaReactionRule,
+  SchemaReactionKey,
   FieldMutableState,
-  SchemaReactionEffect,
 } from './types'
 
 // ============================================================
@@ -24,6 +23,18 @@ import type {
 // ============================================================
 
 type LifecycleHandler = (field: IField, form: IForm) => void
+
+type SchemaReactionEffect =
+  | 'onFieldInit'
+  | 'onFieldMount'
+  | 'onFieldUnmount'
+  | 'onFieldValueChange'
+  | 'onFieldInputValueChange'
+  | 'onFieldInitialValueChange'
+  | 'onFieldValidateStart'
+  | 'onFieldValidateEnd'
+  | 'onFieldValidateFailed'
+  | 'onFieldValidateSuccess'
 
 interface LifecycleRegistry {
   onFieldInit: Map<string, Set<LifecycleHandler>>
@@ -66,7 +77,8 @@ export class Form implements IForm {
   private _valuesChangeListeners: Set<(values: Record<string, any>) => void> = new Set()
   private _schema: IFormSchema | null = null
   private _reactionDisposers: Array<() => void> = []
-  private _asyncDisposers: Array<() => void> = []
+  private _reactionValueTriggers: Map<string, Set<() => void>> = new Map()
+  private _actionCache: Map<string, string> = new Map()
   private _config: FormConfig
   private _scope: Record<string, any>
   private _lifecycle: LifecycleRegistry
@@ -257,9 +269,9 @@ export class Form implements IForm {
     // Dispose previous reactions
     for (const dispose of this._reactionDisposers) dispose()
     this._reactionDisposers = []
-    for (const dispose of this._asyncDisposers) dispose()
-    this._asyncDisposers = []
+    this._reactionValueTriggers.clear()
     this.fields.clear()
+    this._actionCache.clear()
 
     // Resolve $ref and definitions
     this._definitions = schema.definitions || {}
@@ -271,8 +283,6 @@ export class Form implements IForm {
     }
     // Setup reactions after all fields created
     this._setupReactions(schema)
-    // Setup async data sources
-    this._setupAsyncDataSources(schema)
     this._bumpVersion()
   }
 
@@ -297,7 +307,7 @@ export class Form implements IForm {
     }
   }
 
-  // Formily-style lifecycle registration (used in effects)
+  // Lifecycle registration (used in effects)
   registerLifecycle(event: SchemaReactionEffect, path: string, handler: LifecycleHandler): () => void {
     const map = this._lifecycle[event]
     if (!map) return () => {}
@@ -346,6 +356,7 @@ export class Form implements IForm {
   _notifyFieldValueChange(path: string, field: IField): void {
     this._emitLifecycle('onFieldValueChange', path, field)
     this._emitLifecycle('onFieldInputValueChange', path, field)
+    this._runReactionValueTriggers(path)
     this._notifyFieldChange(path, field)
     this._notifyValuesChange()
   }
@@ -461,7 +472,7 @@ export class Form implements IForm {
   }
 
   // ============================================================
-  // Reaction system — Full Formily protocol
+  // Reaction system
   // ============================================================
 
   private _setupReactions(schema: IFormSchema): void {
@@ -470,25 +481,17 @@ export class Form implements IForm {
   }
 
   private _setupFieldReactions(prefix: string, properties: Record<string, IFieldSchema>): void {
-    for (const [key, rawSchema] of Object.entries(properties)) {
+    for (const [key, schema] of Object.entries(properties)) {
       const path = prefix ? `${prefix}.${key}` : key
-      const schema = this._resolveRef(rawSchema)
       const reactions = schema.reactions
 
       if (reactions) {
-        const reactionList = Array.isArray(reactions) ? reactions : [reactions]
-        for (const reaction of reactionList) {
-          if (typeof reaction === 'string') {
-            // Expression string like "{{myReaction}}" — passive mode
-            this._setupExpressionReaction(path, reaction)
-          } else {
-            if (reaction.target) {
-              // Active mode — this field's reaction targets another field
-              this._setupActiveReaction(path, reaction)
-            } else {
-              // Passive mode — this field reacts to dependencies
-              this._setupPassiveReaction(path, reaction)
-            }
+        for (const [reactionKey, ruleOrRules] of Object.entries(reactions)) {
+          if (!ruleOrRules) continue
+          const rules = Array.isArray(ruleOrRules) ? ruleOrRules : [ruleOrRules]
+          for (const rule of rules) {
+            if (!rule) continue
+            this._setupPropertyReaction(path, reactionKey, rule)
           }
         }
       }
@@ -506,112 +509,208 @@ export class Form implements IForm {
     }
   }
 
-  /**
-   * Passive mode: the field with reactions reacts to its dependencies
-   * The field itself is the target
-   */
-  private _setupPassiveReaction(selfPath: string, reaction: Exclude<SchemaReaction, string>): void {
-    const dispose = effect(() => {
-      const selfField = this.fields.get(selfPath)
-      if (!selfField) return
+  private _setupPropertyReaction(selfPath: string, reactionKey: string, rule: SchemaReactionRule): void {
+    const runner = () => {
+      const field = this.fields.get(selfPath)
+      if (!field) return
 
-      // Resolve dependencies
-      const { deps, depsArray } = this._resolveDependencies(reaction.dependencies, selfPath)
+      const { deps, depsArray } = this._resolveDependencies(rule.dependencies, selfPath)
+      const scope = this._buildScope(field, deps, depsArray)
+      void this._runPropertyReaction(field, reactionKey, rule, scope)
+    }
 
-      // Build scope
-      const scope = this._buildScope(selfField, deps, depsArray, selfField)
+    const depPaths = this._getReactionDependencyPaths(rule, selfPath)
+    if (depPaths.length === 0) {
+      runner()
+      return
+    }
 
-      // Evaluate condition
-      const conditionMet = this._evaluateCondition(reaction.when, scope)
-
-      // Apply branch
-      const branch = conditionMet ? reaction.fulfill : reaction.otherwise
-      if (branch) {
-        this._applyBranch(branch, selfField, scope)
-      }
-    })
-
-    this._reactionDisposers.push(dispose)
+    runner()
+    for (const depPath of depPaths) {
+      this._registerReactionValueTrigger(depPath, runner)
+    }
   }
 
-  /**
-   * Active mode: reaction on field A targets field B
-   * The target is specified in reaction.target
-   */
-  private _setupActiveReaction(selfPath: string, reaction: Exclude<SchemaReaction, string>): void {
-    const dispose = effect(() => {
-      const selfField = this.fields.get(selfPath)
-      if (!selfField) return
+  private _getReactionDependencyPaths(rule: SchemaReactionRule, selfPath: string): string[] {
+    const dependencies = rule.dependencies
+    if (!dependencies) return [selfPath]
 
-      // Resolve the target field path
-      const targetPath = this._resolveFieldPath(reaction.target!, selfPath)
-      const targetField = this.fields.get(targetPath)
-      if (!targetField) return
-
-      // Resolve dependencies
-      const { deps, depsArray } = this._resolveDependencies(reaction.dependencies, selfPath)
-
-      // Build scope with $target
-      const scope = this._buildScope(selfField, deps, depsArray, targetField)
-
-      // Handle effects/lifecycle hooks
-      if (reaction.effects && reaction.effects.length > 0) {
-        // Register lifecycle handlers — effects are only triggered on specific events
-        // For now, we evaluate immediately and let the effect system handle re-runs
-      }
-
-      // Evaluate condition
-      const conditionMet = this._evaluateCondition(reaction.when, scope)
-
-      // Apply branch to TARGET
-      const branch = conditionMet ? reaction.fulfill : reaction.otherwise
-      if (branch) {
-        this._applyBranch(branch, targetField, scope)
-      }
-    })
-
-    this._reactionDisposers.push(dispose)
+    const rawPaths = Array.isArray(dependencies) ? dependencies : Object.values(dependencies)
+    return Array.from(new Set(rawPaths.map((path) => this._resolveFieldPath(path, selfPath))))
   }
 
-  /**
-   * Expression string reaction: "{{expression}}"
-   */
-  private _setupExpressionReaction(selfPath: string, expression: string): void {
-    const dispose = effect(() => {
-      const selfField = this.fields.get(selfPath)
-      if (!selfField) return
-
-      const scope = this._buildScope(selfField, {}, [], selfField)
-
-      try {
-        const compiled = this._compileExpression(expression)
-        compiled(scope)
-      } catch (err) {
-        console.warn(`[formily-bao] Expression reaction error for "${selfPath}":`, err)
-      }
+  private _registerReactionValueTrigger(path: string, runner: () => void): void {
+    if (!this._reactionValueTriggers.has(path)) {
+      this._reactionValueTriggers.set(path, new Set())
+    }
+    const runners = this._reactionValueTriggers.get(path)!
+    runners.add(runner)
+    this._reactionDisposers.push(() => {
+      runners.delete(runner)
     })
+  }
 
-    this._reactionDisposers.push(dispose)
+  private _runReactionValueTriggers(path: string): void {
+    const runners = this._reactionValueTriggers.get(path)
+    if (!runners || runners.size === 0) return
+    for (const runner of Array.from(runners)) {
+      runner()
+    }
+  }
+
+  private _runPropertyReaction(
+    field: IField,
+    reactionKey: string,
+    rule: SchemaReactionRule,
+    scope: Record<string, any>
+  ): void {
+    try {
+      const value = this._resolveReactionValue(field, reactionKey, rule, scope)
+      if (isPromiseLike(value)) {
+        void value
+          .then((resolved) => {
+            this._applyReactionValue(field, reactionKey, resolved)
+          })
+          .catch((err) => {
+            console.warn(`[formily-bao] reaction "${reactionKey}" error for "${field.path}":`, err)
+          })
+        return
+      }
+      this._applyReactionValue(field, reactionKey, value)
+    } catch (err) {
+      console.warn(`[formily-bao] reaction "${reactionKey}" error for "${field.path}":`, err)
+    }
+  }
+
+  private _resolveReactionValue(
+    field: IField,
+    reactionKey: string,
+    rule: SchemaReactionRule,
+    scope: Record<string, any>
+  ): any {
+    switch (rule.type) {
+      case 'static':
+        return rule.value
+      case 'expression':
+        return this._evalExpressionInScope(rule.expression, scope)
+      case 'match': {
+        const source = rule.source
+          ? this._evalExpressionInScope(rule.source, scope)
+          : this._defaultMatchSource(scope)
+        const key = source === undefined || source === null ? 'default' : String(source)
+        return Object.prototype.hasOwnProperty.call(rule.match, key)
+          ? rule.match[key]
+          : rule.match.default
+      }
+      case 'computed': {
+        const handler = this._config.reactionHandlers?.[rule.handler]
+        if (!handler) return undefined
+        field.setLoading(true)
+        const result = handler({
+          field,
+          form: this,
+          values: this.values,
+          deps: scope.$dependencies,
+          dependencies: scope.$dependencies,
+          scope,
+          key: reactionKey,
+          rule,
+        })
+        if (isPromiseLike(result)) {
+          return result.finally(() => {
+            field.setLoading(false)
+          })
+        }
+        field.setLoading(false)
+        return result
+      }
+    }
+  }
+
+  private _defaultMatchSource(scope: Record<string, any>): any {
+    const deps = scope.$dependencies || {}
+    const values = Object.values(deps)
+    return values.length === 1 ? values[0] : undefined
+  }
+
+  private _applyReactionValue(field: IField, reactionKey: string, value: any): void {
+    if (value === undefined) return
+
+    switch (reactionKey as SchemaReactionKey | string) {
+      case 'value':
+        field.setValue(value)
+        break
+      case 'display':
+        field.setDisplay(value)
+        break
+      case 'visible':
+        field.setState({ visible: value })
+        break
+      case 'hidden':
+        field.setState({ hidden: value })
+        break
+      case 'pattern':
+        field.setPattern(value)
+        break
+      case 'disabled':
+        field.setState({ disabled: value })
+        break
+      case 'readOnly':
+        field.setState({ readOnly: value })
+        break
+      case 'readPretty':
+        field.setState({ readPretty: value })
+        break
+      case 'editable':
+        field.setState({ editable: value })
+        break
+      case 'required':
+        field.setState({ required: value })
+        break
+      case 'title':
+        field.setState({ title: value })
+        break
+      case 'description':
+        field.setState({ description: value })
+        break
+      case 'props':
+        field.setState({ componentProps: { ...field.componentProps, ...value } })
+        break
+      case 'decoratorProps':
+        field.setState({ decoratorProps: { ...field.decoratorProps, ...value } })
+        break
+      case 'component':
+        if (Array.isArray(value)) field.setComponent(value[0], value[1])
+        else field.setComponent(value)
+        break
+      case 'decorator':
+        if (Array.isArray(value)) field.setDecorator(value[0], value[1])
+        else field.setDecorator(value)
+        break
+      case 'dataSource':
+        field.setDataSource(normalizeDataSource(value))
+        break
+      default:
+        console.warn(`[formily-bao] unsupported reaction key "${reactionKey}" for "${field.path}"`)
+    }
   }
 
   // ============================================================
-  // Scope building — $self, $values, $form, $deps, $dependencies, $target
+  // Scope building — $self, $values, $form, $deps, $dependencies
   // ============================================================
 
   private _buildScope(
     selfField: IField,
     deps: Record<string, any>,
-    depsArray: any[],
-    targetField: IField
+    depsArray: any[]
   ): Record<string, any> {
     return {
-      // Formily built-in scope variables
+      // Built-in scope variables
       $self: selfField,
       $form: this,
       $values: this.values,
       $deps: depsArray.length > 0 ? depsArray : deps,
       $dependencies: deps,
-      $target: targetField,
       // User custom scope
       ...this._scope,
     }
@@ -652,290 +751,43 @@ export class Form implements IForm {
   // Path resolution — supports relative paths and wildcards
   // ============================================================
 
-  private _resolveFieldPath(targetPath: string, selfPath: string): string {
+  private _resolveFieldPath(depPath: string, selfPath: string): string {
     // Relative path starting with '.' — resolve relative to parent
-    if (targetPath.startsWith('.')) {
+    if (depPath.startsWith('.')) {
       const parts = selfPath.split('.')
       parts.pop() // Remove current field name
-      return parts.join('.') + targetPath
+      return parts.join('.') + depPath
     }
-    return targetPath
+    return depPath
   }
 
   // ============================================================
-  // Condition evaluation
-  // ============================================================
-
-  private _evaluateCondition(
-    when: string | boolean | undefined,
-    scope: Record<string, any>
-  ): boolean {
-    if (when === undefined) return true
-    if (typeof when === 'boolean') return when
-
-    // Strip {{ }} wrapper if present
-    let expr = when.trim()
-    if (expr.startsWith('{{') && expr.endsWith('}}')) {
-      expr = expr.slice(2, -2).trim()
-    }
-
-    try {
-      return Boolean(this._evalInScope(expr, scope))
-    } catch {
-      return false
-    }
-  }
-
-  // ============================================================
-  // Branch application — state / schema / run
-  // ============================================================
-
-  private _applyBranch(
-    branch: { state?: Record<string, any>; schema?: Record<string, any>; run?: string },
-    targetField: IField,
-    scope: Record<string, any>
-  ): void {
-    // Apply state changes
-    if (branch.state) {
-      const resolvedState: Record<string, any> = {}
-      for (const [key, value] of Object.entries(branch.state)) {
-        if (typeof value === 'string' && value.startsWith('{{') && value.endsWith('}}')) {
-          // Expression in state value
-          try {
-            resolvedState[key] = this._evalInScope(value.slice(2, -2), scope)
-          } catch {
-            resolvedState[key] = value
-          }
-        } else {
-          resolvedState[key] = value
-        }
-      }
-      targetField.setState(resolvedState as Partial<FieldMutableState>)
-    }
-
-    // Apply schema changes (props, decoratorProps, title, etc.)
-    if (branch.schema) {
-      const schemaUpdate = branch.schema
-      const stateFromSchema: Partial<FieldMutableState> = {}
-
-      if ('props' in schemaUpdate) {
-        stateFromSchema.componentProps = {
-          ...targetField.componentProps,
-          ...schemaUpdate.props,
-        }
-      }
-      if ('decoratorProps' in schemaUpdate) {
-        stateFromSchema.decoratorProps = {
-          ...targetField.decoratorProps,
-          ...schemaUpdate.decoratorProps,
-        }
-      }
-      if ('title' in schemaUpdate) {
-        stateFromSchema.title = schemaUpdate.title
-      }
-      if ('description' in schemaUpdate) {
-        stateFromSchema.description = schemaUpdate.description
-      }
-      if ('state' in schemaUpdate && 'visible' in schemaUpdate.state) {
-        stateFromSchema.visible = schemaUpdate.state?.visible
-      }
-      if ('state' in schemaUpdate && 'hidden' in schemaUpdate.state) {
-        stateFromSchema.hidden = schemaUpdate.state?.hidden
-      }
-      if ('state' in schemaUpdate && 'disabled' in schemaUpdate.state) {
-        stateFromSchema.disabled = schemaUpdate.state?.disabled
-      }
-      if ('state' in schemaUpdate && 'display' in schemaUpdate.state) {
-        stateFromSchema.display = schemaUpdate.state?.display
-      }
-      if ('state' in schemaUpdate && 'pattern' in schemaUpdate.state) {
-        stateFromSchema.pattern = schemaUpdate.state?.pattern
-      }
-      if ('enum' in schemaUpdate || 'dataSource' in schemaUpdate) {
-        const ds = schemaUpdate.dataSource || schemaUpdate['enum']
-        if (Array.isArray(ds)) {
-          stateFromSchema.dataSource = ds.map((item: any) => {
-            if (typeof item === 'string' || typeof item === 'number') {
-              return { label: String(item), value: item }
-            }
-            return item
-          })
-        }
-      }
-      if ('required' in schemaUpdate) {
-        stateFromSchema.required = schemaUpdate.required
-      }
-      if ('component' in schemaUpdate) {
-        stateFromSchema.component = [schemaUpdate.component, schemaUpdate.props]
-      }
-      if ('decorator' in schemaUpdate) {
-        stateFromSchema.decorator = [schemaUpdate.decorator, schemaUpdate.decoratorProps]
-      }
-
-      if (Object.keys(stateFromSchema).length > 0) {
-        targetField.setState(stateFromSchema)
-      }
-    }
-
-    // Execute run statement
-    if (branch.run) {
-      try {
-        this._evalInScope(branch.run, scope)
-      } catch (err) {
-        console.warn('[formily-bao] run statement error:', err)
-      }
-    }
-  }
-
-  // ============================================================
-  // Expression compilation engine
+  // Expression evaluation
   // ============================================================
 
   /**
-   * Compile a {{expression}} template string
-   * Returns a function that executes with the given scope
+   * Evaluate a safe expression string with scope variables.
+   * Scope includes: $self, $values, $form, $deps, $dependencies, and custom scope.
    */
-  private _compileExpression(template: string): (scope: Record<string, any>) => any {
-    // Strip {{ }} wrapper
-    const expr = template.replace(/^\{\{/, '').replace(/\}\}$/, '').trim()
-    return (scope: Record<string, any>) => {
-      return this._evalInScope(expr, scope)
-    }
+  private _evalExpressionInScope(expr: string, scope: Record<string, any>): any {
+    assertSafeExpression(expr)
+    return this._evalUnsafeInScope(expr, scope, false)
   }
 
   /**
-   * Evaluate an expression string with scope variables
-   * Scope includes: $self, $values, $form, $deps, $dependencies, $target, and custom scope
+   * Unsafe evaluator used internally after expression safety checks.
    */
-  private _evalInScope(expr: string, scope: Record<string, any>): any {
+  private _evalUnsafeInScope(expr: string, scope: Record<string, any>, statement: boolean): any {
     const keys = Object.keys(scope)
     const values = Object.values(scope)
-
-    // Create a function with scope variables as parameters
-    try {
-      const fn = new Function(...keys, `"use strict"; return (${expr})`)
-      return fn(...values)
-    } catch {
-      // Try as statement (for `run` which may contain assignments, function calls, etc.)
-      try {
-        const fn = new Function(...keys, `"use strict"; ${expr}`)
-        return fn(...values)
-      } catch (err) {
-        throw err
-      }
-    }
+    const body = statement ? `"use strict"; ${expr}` : `"use strict"; return (${expr})`
+    const fn = new Function(...keys, body)
+    return fn(...values)
   }
 
   // ============================================================
-  // Async Data Source
+  // Expression safety
   // ============================================================
-
-  private _setupAsyncDataSources(schema: IFormSchema): void {
-    if (!schema.properties) return
-    this._setupAsyncFieldDataSources('', schema.properties)
-  }
-
-  private _setupAsyncFieldDataSources(prefix: string, properties: Record<string, IFieldSchema>): void {
-    for (const [key, rawSchema] of Object.entries(properties)) {
-      const path = prefix ? `${prefix}.${key}` : key
-      const schema = this._resolveRef(rawSchema)
-      const asyncDs = schema.asyncDataSource
-
-      if (asyncDs) {
-        this._setupSingleAsyncDataSource(path, asyncDs)
-      }
-
-      // Recurse
-      if (schema.properties) {
-        this._setupAsyncFieldDataSources(path, schema.properties)
-      }
-    }
-  }
-
-  private _setupSingleAsyncDataSource(targetPath: string, config: AsyncDataSource): void {
-    const field = this.fields.get(targetPath)
-    if (!field) return
-
-    let hasFetched = false
-
-    const doFetch = async (deps: Record<string, any>) => {
-      field.setLoading(true)
-      try {
-        let result: Array<{ label: string; value: any }>
-
-        if (config.service) {
-          if (typeof config.service === 'function') {
-            result = await config.service(deps)
-          } else if (typeof config.service === 'string' && this._config.services?.[config.service]) {
-            result = await this._config.services[config.service](deps)
-          } else {
-            result = []
-          }
-        } else if (config.url) {
-          const url = resolveTemplate(config.url, deps)
-          const options: RequestInit = {
-            method: config.method || 'GET',
-            headers: { 'Content-Type': 'application/json', ...(config.headers || {}) },
-          }
-          if (config.method === 'POST' && config.data) {
-            options.body = JSON.stringify(resolveTemplateObject(config.data, deps))
-          }
-          const response = await fetch(url, options)
-          if (!response.ok) {
-            throw new Error(`Async data source request failed: ${response.status} ${response.statusText}`)
-          }
-          const json = await response.json()
-
-          if (config.transformResponse) {
-            if (typeof config.transformResponse === 'function') {
-              result = config.transformResponse(json)
-            } else if (typeof config.transformResponse === 'string' && this._config.transformers?.[config.transformResponse]) {
-              result = this._config.transformers[config.transformResponse](json)
-            } else {
-              result = json
-            }
-          } else {
-            result = json
-          }
-        } else {
-          result = []
-        }
-
-        field.setDataSource(result)
-      } catch (err) {
-        console.error(`[formily-bao] Async data source error for "${targetPath}":`, err)
-        field.setDataSource([])
-      } finally {
-        field.setLoading(false)
-      }
-    }
-
-    if (config.dependencies) {
-      const dispose = effect(() => {
-        const deps: Record<string, any> = {}
-        if (Array.isArray(config.dependencies)) {
-          for (const depPath of config.dependencies) {
-            const depField = this.fields.get(depPath)
-            if (depField) deps[depPath] = depField.value
-          }
-        } else if (config.dependencies) {
-          for (const [alias, depPath] of Object.entries(config.dependencies)) {
-            const depField = this.fields.get(depPath)
-            if (depField) deps[alias] = depField.value
-          }
-        }
-
-        const hasValue = Object.values(deps).some((v) => v !== undefined && v !== null && v !== '')
-        if (hasValue || (!hasFetched && config.fetchOnMount !== false)) {
-          hasFetched = true
-          doFetch(deps)
-        }
-      })
-      this._asyncDisposers.push(dispose)
-    } else if (config.fetchOnMount !== false) {
-      doFetch({})
-    }
-  }
 
   // ============================================================
   // Internal helpers
@@ -949,6 +801,26 @@ export class Form implements IForm {
     const vals = this.values
     for (const listener of this._valuesChangeListeners) {
       listener(vals)
+    }
+  }
+}
+
+
+// ============================================================
+// Expression safety
+// ============================================================
+
+const UNSAFE_EXPRESSION_PATTERNS: Array<{ pattern: RegExp; message: string }> = [
+  { pattern: /(^|[^.$\w])(?:globalThis|window|document|process|Function|eval|constructor|prototype|__proto__)(?=$|[^$\w])/u, message: 'global or reflective access is not allowed' },
+  { pattern: /=>|function|class|new/u, message: 'function/class construction is not allowed' },
+  { pattern: /(?:^|[^=!<>])=(?!=)/u, message: 'assignment is not allowed in expressions' },
+  { pattern: /;|`/u, message: 'statements and template literals are not allowed in expressions' },
+]
+
+function assertSafeExpression(expr: string): void {
+  for (const rule of UNSAFE_EXPRESSION_PATTERNS) {
+    if (rule.pattern.test(expr)) {
+      throw new Error(`Unsafe expression rejected: ${rule.message}`)
     }
   }
 }
@@ -982,22 +854,21 @@ function setDeepValue(obj: Record<string, any>, path: string, value: any): void 
   current[keys[keys.length - 1]] = value
 }
 
-function resolveTemplate(template: string, deps: Record<string, any>): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => {
-    return deps[key] !== undefined ? String(deps[key]) : ''
-  })
+function isPromiseLike(value: any): value is Promise<any> {
+  return !!value && typeof value.then === 'function'
 }
 
-function resolveTemplateObject(obj: Record<string, any>, deps: Record<string, any>): Record<string, any> {
-  const result: Record<string, any> = {}
-  for (const [key, value] of Object.entries(obj)) {
-    if (typeof value === 'string') {
-      result[key] = resolveTemplate(value, deps)
-    } else {
-      result[key] = value
+function normalizeDataSource(ds?: Array<any> | null): Array<{ label: string; value: any; [key: string]: any }> {
+  if (!ds || !Array.isArray(ds)) return []
+  return ds.map((item) => {
+    if (typeof item === 'string' || typeof item === 'number') {
+      return { label: String(item), value: item }
     }
-  }
-  return result
+    if (item && 'key' in item && 'title' in item && !('label' in item)) {
+      return { label: String(item.title), value: item.key, ...item }
+    }
+    return item as { label: string; value: any; [key: string]: any }
+  })
 }
 
 /**

@@ -1,7 +1,7 @@
 {
   "id": "schema-protocol",
   "name": "Schema 协议",
-  "description": "完整演示 FormBao Schema 协议：reactions、$ref/definitions、state.display、state.pattern、表达式编译与 order 排序",
+  "description": "完整演示 FormBao Schema 协议：property-level reactions、$ref/definitions、state.display、state.pattern、表达式编译与 order 排序",
   "schema": {
     "type": "object",
     "title": "Schema 协议演示",
@@ -16,13 +16,37 @@
             "decorator": "FormItem",
             "props": {
               "placeholder": "请输入街道地址"
+            },
+            "state": {
+              "display": "none"
+            },
+            "reactions": {
+              "display": {
+                "dependencies": {
+                  "hasAddress": "conditionalSection.hasAddress"
+                },
+                "type": "expression",
+                "expression": "$deps.hasAddress === true ? 'visible' : 'none'"
+              }
             }
           },
           "city": {
             "type": "string",
             "title": "城市",
             "component": "Input",
-            "decorator": "FormItem"
+            "decorator": "FormItem",
+            "state": {
+              "display": "none"
+            },
+            "reactions": {
+              "display": {
+                "dependencies": {
+                  "hasAddress": "conditionalSection.hasAddress"
+                },
+                "type": "expression",
+                "expression": "$deps.hasAddress === true ? 'visible' : 'none'"
+              }
+            }
           },
           "zipCode": {
             "type": "string",
@@ -34,7 +58,19 @@
                 "pattern": "^\\d{5,6}$",
                 "message": "邮编格式不正确"
               }
-            ]
+            ],
+            "state": {
+              "display": "none"
+            },
+            "reactions": {
+              "display": {
+                "dependencies": {
+                  "hasAddress": "conditionalSection.hasAddress"
+                },
+                "type": "expression",
+                "expression": "$deps.hasAddress === true ? 'visible' : 'none'"
+              }
+            }
           }
         }
       }
@@ -115,7 +151,7 @@
       },
       "conditionalSection": {
         "type": "void",
-        "title": "条件字段（reactions 主动模式）",
+        "title": "条件字段（property-level reactions）",
         "component": "FormSection",
         "props": {
           "bordered": true,
@@ -128,28 +164,12 @@
             "title": "是否有地址？",
             "component": "Switch",
             "decorator": "FormItem",
-            "order": 0,
-            "reactions": {
-              "target": "conditionalSection.homeAddress",
-              "fulfill": {
-                "state": {
-                  "display": "visible"
-                }
-              },
-              "otherwise": {
-                "state": {
-                  "display": "none"
-                }
-              }
-            }
+            "order": 0
           },
           "homeAddress": {
             "$ref": "#/definitions/address",
             "title": "家庭地址（$ref）",
-            "order": 1,
-            "state": {
-              "display": "none"
-            }
+            "order": 1
           },
           "country": {
             "type": "string",
@@ -186,28 +206,15 @@
             "component": "Input",
             "decorator": "FormItem",
             "order": 3,
-            "reactions": [
-              {
+            "reactions": {
+              "props": {
                 "dependencies": {
                   "country": "conditionalSection.country"
                 },
-                "when": "{{$deps.country !== undefined && $deps.country !== ''}}",
-                "fulfill": {
-                  "schema": {
-                    "props": {
-                      "placeholder": "请输入所选国家对应的手机号"
-                    }
-                  }
-                },
-                "otherwise": {
-                  "schema": {
-                    "props": {
-                      "placeholder": "请先选择国家"
-                    }
-                  }
-                }
+                "type": "expression",
+                "expression": "$deps.country !== undefined && $deps.country !== '' ? { placeholder: '请输入所选国家对应的手机号' } : { placeholder: '请先选择国家' }"
               }
-            ]
+            }
           }
         }
       },
@@ -245,15 +252,7 @@
                 "value": "readPretty"
               }
             ],
-            "order": 0,
-            "reactions": {
-              "target": "patternSection.demoField",
-              "fulfill": {
-                "state": {
-                  "pattern": "{{$self.value || 'editable'}}"
-                }
-              }
-            }
+            "order": 0
           },
           "demoField": {
             "type": "string",
@@ -261,7 +260,16 @@
             "default": "你好，世界",
             "component": "Input",
             "decorator": "FormItem",
-            "order": 1
+            "order": 1,
+            "reactions": {
+              "pattern": {
+                "dependencies": {
+                  "mode": "patternSection.mode"
+                },
+                "type": "expression",
+                "expression": "$deps.mode || 'editable'"
+              }
+            }
           },
           "displayMode": {
             "type": "string",
@@ -283,15 +291,7 @@
                 "value": "none"
               }
             ],
-            "order": 2,
-            "reactions": {
-              "target": "patternSection.displayTarget",
-              "fulfill": {
-                "state": {
-                  "display": "{{$self.value || 'visible'}}"
-                }
-              }
-            }
+            "order": 2
           },
           "displayTarget": {
             "type": "string",
@@ -299,7 +299,16 @@
             "default": "我可以被隐藏！",
             "component": "Input",
             "decorator": "FormItem",
-            "order": 3
+            "order": 3,
+            "reactions": {
+              "display": {
+                "dependencies": {
+                  "displayMode": "patternSection.displayMode"
+                },
+                "type": "expression",
+                "expression": "$deps.displayMode || 'visible'"
+              }
+            }
           }
         }
       },
@@ -385,5 +394,12 @@
         }
       }
     }
-  }
+  },
+  "category": "协议总览",
+  "order": 100,
+  "tags": [
+    "protocol",
+    "reactions",
+    "safety"
+  ]
 }

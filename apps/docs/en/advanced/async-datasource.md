@@ -1,158 +1,59 @@
-# Async Data Source
+# Async Options
 
-Load remote options using `asyncDataSource`. Implemented in `Form._setupSingleAsyncDataSource()`.
+FormBao core does not fetch URLs and does not expose a standalone async data source field. Async options are handled by `computed` reactions calling application-registered `reactionHandlers`.
 
-## Configuration
-
-```ts
-interface AsyncDataSource {
-  url?: string
-  method?: 'GET' | 'POST'
-  params?: Record<string, any>
-  headers?: Record<string, string>
-  data?: Record<string, any>
-  service?: ((params) => Promise<Array<{label, value}>>) | string
-  transformResponse?: ((response) => Array<{label, value}>) | string
-  dependencies?: Record<string, string> | string[]
-  fetchOnMount?: boolean
-}
-```
-
-## Basic Usage (Service Registry)
-
-```json
-{
-  "country": {
-    "type": "string",
-    "title": "Country",
-    "component": "Select",
-    "decorator": "FormItem",
-    "asyncDataSource": {
-      "service": "fetchCountries"
-    }
-  }
-}
-```
+## Register handlers
 
 ```ts
 const form = createForm({
-  services: {
-    fetchCountries: async () => {
-      const res = await fetch('/api/countries')
-      return res.json() // [{ label: "China", value: "cn" }, ...]
-    }
-  }
+  reactionHandlers: {
+    fetchCountries: async () => [
+      { label: '中国', value: 'cn' },
+      { label: '新加坡', value: 'sg' },
+    ],
+    fetchCities: async ({ deps }) => {
+      if (!deps.country) return []
+      return api.fetchCities(deps.country)
+    },
+  },
 })
 ```
 
-## With Dependencies (Cascading)
+## Schema
 
 ```json
 {
-  "city": {
-    "type": "string",
-    "component": "Select",
-    "asyncDataSource": {
-      "service": "fetchCities",
-      "dependencies": ["country"]
-    }
-  }
-}
-```
-
-```ts
-services: {
-  fetchCities: async (deps) => {
-    // deps = { country: "cn" }
-    const res = await fetch(`/api/cities?country=${deps.country}`)
-    return res.json()
-  }
-}
-```
-
-When `country` field value changes, the `effect()` re-runs and triggers `doFetch()` with updated dependency values.
-
-## URL-Based Fetching
-
-```json
-{
-  "asyncDataSource": {
-    "url": "/api/options",
-    "method": "GET",
-    "headers": { "Authorization": "Bearer ..." },
-    "transformResponse": "toOptions"
-  }
-}
-```
-
-```ts
-const form = createForm({
-  transformers: {
-    toOptions: (json) => json.data.map(item => ({ label: item.name, value: item.id }))
-  }
-})
-```
-
-## Loading State
-
-While fetching, `field.setLoading(true)` is called. Components receive `loading` prop:
-
-```ts
-// In the renderer:
-componentProps.loading = field.loading
-```
-
-## `fetchOnMount`
-
-Controls whether to fetch on initial render (default: `true`). Set to `false` to only fetch when dependencies change:
-
-```json
-{
-  "asyncDataSource": {
-    "service": "fetchCities",
-    "dependencies": ["country"],
-    "fetchOnMount": false
-  }
-}
-```
-
-## Implementation Details
-
-From `form.ts`:
-
-```ts
-private _setupSingleAsyncDataSource(targetPath, config) {
-  const field = this.fields.get(targetPath)
-
-  const doFetch = async (deps) => {
-    field.setLoading(true)
-    try {
-      let result
-      if (config.service) {
-        // Call registered service function
-        result = await this._config.services[config.service](deps)
-      } else if (config.url) {
-        // HTTP fetch with template resolution
-        const response = await fetch(resolveTemplate(config.url, deps))
-        const json = await response.json()
-        result = config.transformResponse
-          ? this._config.transformers[config.transformResponse](json)
-          : json
+  "type": "object",
+  "properties": {
+    "country": {
+      "type": "string",
+      "title": "国家",
+      "component": "Select",
+      "reactions": {
+        "dataSource": {
+          "type": "computed",
+          "handler": "fetchCountries"
+        }
       }
-      field.setDataSource(result)
-    } finally {
-      field.setLoading(false)
+    },
+    "city": {
+      "type": "string",
+      "title": "城市",
+      "component": "Select",
+      "reactions": {
+        "dataSource": {
+          "dependencies": { "country": "country" },
+          "type": "computed",
+          "handler": "fetchCities"
+        }
+      }
     }
-  }
-
-  if (config.dependencies) {
-    // Wrap in effect() — re-runs when dependency field values change
-    effect(() => {
-      const deps = /* resolve dep field values */
-      doFetch(deps)
-    })
-  } else if (config.fetchOnMount !== false) {
-    doFetch({})
   }
 }
 ```
+
+## Why this design
+
+- Network, auth, cache, and error handling belong to the application layer.
+- Schema only describes how field properties are derived, making it auditable.
+- Core stays clean and does not bind to fetch, URL allowlists, or response adapter protocols.

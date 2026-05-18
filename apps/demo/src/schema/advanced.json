@@ -101,20 +101,23 @@
           }
         ],
         "reactions": {
-          "dependencies": {
-            "newsletter": "newsletter"
+          "visible": {
+            "dependencies": {
+              "newsletter": "newsletter"
+            },
+            "type": "expression",
+            "expression": "$deps.newsletter === true"
           },
-          "when": "newsletter === true",
-          "fulfill": {
-            "state": {
-              "visible": true
-            }
-          },
-          "otherwise": {
-            "state": {
-              "visible": false
-            }
+          "required": {
+            "dependencies": {
+              "newsletter": "newsletter"
+            },
+            "type": "expression",
+            "expression": "$deps.newsletter === true"
           }
+        },
+        "state": {
+          "visible": false
         }
       },
       "notes": {
@@ -128,5 +131,12 @@
         }
       }
     }
-  }
+  },
+  "category": "高级组件",
+  "order": 90,
+  "tags": [
+    "components",
+    "readPretty",
+    "state"
+  ]
 }

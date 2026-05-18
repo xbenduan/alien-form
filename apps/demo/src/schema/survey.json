@@ -74,5 +74,12 @@
         }
       }
     }
-  }
+  },
+  "category": "基础表单",
+  "order": 30,
+  "tags": [
+    "dataSource",
+    "validators",
+    "components"
+  ]
 }

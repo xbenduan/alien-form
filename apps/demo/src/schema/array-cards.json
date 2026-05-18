@@ -108,5 +108,12 @@
         }
       }
     }
-  }
+  },
+  "category": "数组字段",
+  "order": 50,
+  "tags": [
+    "array",
+    "ArrayCards",
+    "items"
+  ]
 }

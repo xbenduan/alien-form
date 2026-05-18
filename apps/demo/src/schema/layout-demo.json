@@ -201,5 +201,12 @@
         }
       }
     }
-  }
+  },
+  "category": "布局与容器",
+  "order": 40,
+  "tags": [
+    "void",
+    "layoutProps",
+    "decorator"
+  ]
 }

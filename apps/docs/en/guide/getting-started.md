@@ -55,7 +55,7 @@ function App() {
 
 1. **`createForm()`** creates a reactive form instance backed by Alien Signals.
 2. **`FormProvider`** establishes the React context with registered components/decorators.
-3. **`SchemaField`** calls `form.setSchema()` internally, which creates `Field` instances for each property and sets up `reactions` and `asyncDataSource` effects.
+3. **`SchemaField`** calls `form.setSchema()` internally, which creates `Field` instances for each property and sets up `reactions` effects.
 4. Each `Field` stores its state in signals (`_value`, `_display`, `_pattern`, `_errors`, etc.) — only subscribed components re-render on change.
 
 ## Architecture

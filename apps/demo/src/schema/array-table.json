@@ -70,5 +70,12 @@
         "decorator": "FormItem"
       }
     }
-  }
+  },
+  "category": "数组字段",
+  "order": 60,
+  "tags": [
+    "array",
+    "ArrayTable",
+    "items"
+  ]
 }

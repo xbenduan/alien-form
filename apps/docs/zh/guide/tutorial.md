@@ -1,82 +1,61 @@
 # 教程
 
-逐步构建注册表单。
+本教程展示一个最小的动态表单：根据联系人类型显示不同字段，并通过应用层 handler 加载选项。
 
-## 1. 创建表单
+## 创建表单
 
 ```ts
-import { createForm } from '@formily-bao/core'
-
 const form = createForm({
-  initialValues: { role: 'developer' },
-  scope: {
-    isDevRole: (role: string) => role === 'developer',
+  reactionHandlers: {
+    fetchCities: async ({ deps }) => {
+      if (!deps.country) return []
+      return api.fetchCities(deps.country)
+    },
   },
 })
 ```
 
-`FormConfig` 字段：
-
-- `initialValues` — 初始值
-- `validateFirst` — 第一个错误即停止
-- `effects` — 生命周期注册回调
-- `scope` — `{{expression}}` 中可用的自定义变量
-- `services` — 异步数据源函数注册
-- `transformers` — 响应转换器注册
-
-## 2. 定义 Schema
+## 编写 Schema
 
 ```json
 {
   "type": "object",
   "properties": {
-    "username": {
+    "contactType": {
       "type": "string",
-      "title": "用户名",
-      "required": true,
-      "component": "Input",
-      "decorator": "FormItem",
-      "validators": [
-        { "minLength": 3, "message": "至少 3 个字符" },
-        { "pattern": "^[a-zA-Z0-9_]+$", "message": "仅限字母、数字、下划线" }
+      "title": "联系方式",
+      "component": "Select",
+      "dataSource": [
+        { "label": "邮箱", "value": "email" },
+        { "label": "电话", "value": "phone" }
       ]
     },
     "email": {
       "type": "string",
       "title": "邮箱",
-      "required": true,
       "component": "Input",
-      "decorator": "FormItem",
-      "validators": [{ "format": "email" }]
-    },
-    "role": {
-      "type": "string",
-      "title": "角色",
-      "component": "Select",
-      "decorator": "FormItem",
-      "enum": [
-        { "label": "开发者", "value": "developer" },
-        { "label": "设计师", "value": "designer" },
-        { "label": "管理者", "value": "manager" }
-      ]
-    },
-    "bio": {
-      "type": "string",
-      "title": "简介",
-      "component": "Textarea",
-      "decorator": "FormItem",
       "reactions": {
-        "dependencies": { "role": "role" },
-        "when": "{{$deps.role === 'developer'}}",
-        "fulfill": {
-          "schema": {
-            "props": { "placeholder": "介绍你的技术栈..." }
-          }
+        "visible": {
+          "dependencies": { "contactType": "contactType" },
+          "type": "expression",
+          "expression": "$deps.contactType === 'email'"
         },
-        "otherwise": {
-          "schema": {
-            "props": { "placeholder": "介绍一下自己..." }
-          }
+        "required": {
+          "dependencies": { "contactType": "contactType" },
+          "type": "expression",
+          "expression": "$deps.contactType === 'email'"
+        }
+      }
+    },
+    "country": { "type": "string", "component": "Select" },
+    "city": {
+      "type": "string",
+      "component": "Select",
+      "reactions": {
+        "dataSource": {
+          "dependencies": { "country": "country" },
+          "type": "computed",
+          "handler": "fetchCities"
         }
       }
     }
@@ -84,48 +63,9 @@ const form = createForm({
 }
 ```
 
-## 3. 渲染
+## 核心心智模型
 
-```tsx
-import { FormProvider, SchemaField } from '@formily-bao/react'
-import { Input, Select, Textarea, FormItem } from '@formily-bao/ui'
-
-function RegistrationForm() {
-  return (
-    <FormProvider
-      form={form}
-      components={{ Input, Select, Textarea }}
-      decorators={{ FormItem }}
-    >
-      <SchemaField schema={schema} />
-      <button onClick={handleSubmit}>注册</button>
-    </FormProvider>
-  )
-}
-```
-
-`SchemaField` 在首次渲染时调用 `form.setSchema(schema)`，依次：
-
-1. 通过 `_resolveRef()` 解析 `$ref` 引用
-2. 按 `order` 排序属性
-3. 通过 `createField()` 创建 `Field` 实例
-4. 为 `reactions` 设置响应式 effect
-5. 为 `asyncDataSource` 设置异步获取器
-
-## 4. 提交
-
-```tsx
-const handleSubmit = async () => {
-  try {
-    const values = await form.submit()
-    console.log('成功:', values)
-  } catch (err) {
-    console.error('验证错误:', err.messages)
-  }
-}
-```
-
-`form.submit()` 内部逻辑：
-1. 调用 `form.validate()` — 并行验证所有可见字段
-2. 失败则抛出 `err.messages`
-3. 成功则返回 `form.values`
+1. 字段只派生自己的属性。
+2. 依赖通过 `dependencies` 声明。
+3. 简单逻辑用 `expression` 或 `match`。
+4. 异步和复杂逻辑交给 `computed` handler。

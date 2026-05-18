@@ -129,5 +129,12 @@
         "decorator": "FormItem"
       }
     }
-  }
+  },
+  "category": "基础表单",
+  "order": 20,
+  "tags": [
+    "validators",
+    "dataSource",
+    "props"
+  ]
 }

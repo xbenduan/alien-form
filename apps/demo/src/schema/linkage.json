@@ -44,21 +44,19 @@
           }
         ],
         "reactions": {
-          "dependencies": {
-            "contactType": "contactType"
+          "visible": {
+            "dependencies": {
+              "contactType": "contactType"
+            },
+            "type": "expression",
+            "expression": "$deps.contactType === 'email'"
           },
-          "when": "contactType === 'email'",
-          "fulfill": {
-            "state": {
-              "visible": true,
-              "required": true
-            }
-          },
-          "otherwise": {
-            "state": {
-              "visible": false,
-              "required": false
-            }
+          "required": {
+            "dependencies": {
+              "contactType": "contactType"
+            },
+            "type": "expression",
+            "expression": "$deps.contactType === 'email'"
           }
         },
         "state": {
@@ -74,21 +72,19 @@
           "placeholder": "+86 138 0000 0000"
         },
         "reactions": {
-          "dependencies": {
-            "contactType": "contactType"
+          "visible": {
+            "dependencies": {
+              "contactType": "contactType"
+            },
+            "type": "expression",
+            "expression": "$deps.contactType === 'phone'"
           },
-          "when": "contactType === 'phone'",
-          "fulfill": {
-            "state": {
-              "visible": true,
-              "required": true
-            }
-          },
-          "otherwise": {
-            "state": {
-              "visible": false,
-              "required": false
-            }
+          "required": {
+            "dependencies": {
+              "contactType": "contactType"
+            },
+            "type": "expression",
+            "expression": "$deps.contactType === 'phone'"
           }
         },
         "state": {
@@ -104,21 +100,19 @@
           "placeholder": "请输入微信号"
         },
         "reactions": {
-          "dependencies": {
-            "contactType": "contactType"
+          "visible": {
+            "dependencies": {
+              "contactType": "contactType"
+            },
+            "type": "expression",
+            "expression": "$deps.contactType === 'wechat'"
           },
-          "when": "contactType === 'wechat'",
-          "fulfill": {
-            "state": {
-              "visible": true,
-              "required": true
-            }
-          },
-          "otherwise": {
-            "state": {
-              "visible": false,
-              "required": false
-            }
+          "required": {
+            "dependencies": {
+              "contactType": "contactType"
+            },
+            "type": "expression",
+            "expression": "$deps.contactType === 'wechat'"
           }
         },
         "state": {
@@ -135,5 +129,12 @@
         }
       }
     }
-  }
+  },
+  "category": "响应式联动",
+  "order": 70,
+  "tags": [
+    "reactions",
+    "state",
+    "dependencies"
+  ]
 }

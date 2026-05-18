@@ -1,85 +1,59 @@
-# 异步数据源
+# 异步选项
 
-使用 `asyncDataSource` 加载远程选项。由 `Form._setupSingleAsyncDataSource()` 实现。
+FormBao core 不内置 URL 获取，也不提供独立的异步数据源字段。异步选项统一通过 `computed` reaction 调用应用层注册的 `reactionHandlers`。
 
-## 配置
-
-```ts
-interface AsyncDataSource {
-  url?: string
-  method?: 'GET' | 'POST'
-  params?: Record<string, any>
-  headers?: Record<string, string>
-  service?: ((params) => Promise<Array<{label, value}>>) | string
-  transformResponse?: ((response) => Array<{label, value}>) | string
-  dependencies?: Record<string, string> | string[]
-  fetchOnMount?: boolean
-}
-```
-
-## 基本用法
-
-```json
-{
-  "country": {
-    "type": "string",
-    "component": "Select",
-    "asyncDataSource": { "service": "fetchCountries" }
-  }
-}
-```
+## 注册 handler
 
 ```ts
 const form = createForm({
-  services: {
-    fetchCountries: async () => {
-      const res = await fetch('/api/countries')
-      return res.json()
-    }
-  }
+  reactionHandlers: {
+    fetchCountries: async () => [
+      { label: '中国', value: 'cn' },
+      { label: '新加坡', value: 'sg' },
+    ],
+    fetchCities: async ({ deps }) => {
+      if (!deps.country) return []
+      return api.fetchCities(deps.country)
+    },
+  },
 })
 ```
 
-## 依赖级联
+## Schema 写法
 
 ```json
 {
-  "city": {
-    "component": "Select",
-    "asyncDataSource": {
-      "service": "fetchCities",
-      "dependencies": ["country"]
+  "type": "object",
+  "properties": {
+    "country": {
+      "type": "string",
+      "title": "国家",
+      "component": "Select",
+      "reactions": {
+        "dataSource": {
+          "type": "computed",
+          "handler": "fetchCountries"
+        }
+      }
+    },
+    "city": {
+      "type": "string",
+      "title": "城市",
+      "component": "Select",
+      "reactions": {
+        "dataSource": {
+          "dependencies": { "country": "country" },
+          "type": "computed",
+          "handler": "fetchCities"
+        }
+      }
     }
   }
 }
 ```
 
-`country` 值变化时，`effect()` 重新运行并触发 `doFetch()`。
+## 为什么这样设计
 
-## URL 获取
-
-```json
-{
-  "asyncDataSource": {
-    "url": "/api/options",
-    "method": "GET",
-    "transformResponse": "toOptions"
-  }
-}
-```
-
-```ts
-const form = createForm({
-  transformers: {
-    toOptions: (json) => json.data.map(item => ({ label: item.name, value: item.id }))
-  }
-})
-```
-
-## 加载状态
-
-获取过程中 `field.setLoading(true)` 被调用，组件接收 `loading` prop。
-
-## `fetchOnMount`
-
-默认 `true`。设为 `false` 则仅在依赖变化时获取。
+- 网络、鉴权、缓存、错误处理属于应用层职责。
+- Schema 只描述字段属性如何派生，便于审计。
+- core 保持纯净，不绑定 fetch、URL 白名单或响应转换协议。

@@ -1,10 +1,11 @@
-# Formily Bao
+# FormBao
 
-Formily Bao is a pnpm workspace for a lightweight Formily-style schema form engine built with Alien Signals and React.
+FormBao is a lightweight enterprise Schema Form engine inspired by Formily, but it is not a Formily compatibility layer. It uses a headless core, framework bindings, and a natural schema protocol designed for auditability and long-term extensibility.
 
 ## Packages
 
-- `@formily-bao/core`: headless form model, schema parser, validation, reactions, and async data source support.
+- `@formily-bao/core`: headless form model, schema parser, validation, safe property-level reactions, and computed handler integration.
+- `@formily-bao/react`: React binding package for rendering schemas with custom component/decorator maps.
 - `@formily-bao/ui`: reusable React UI components used by the demo renderer.
 - `@formily-bao/demo`: Vite demo app for rendering example schemas.
 - `@formily-bao/docs`: VitePress documentation site.
@@ -14,16 +15,12 @@ Formily Bao is a pnpm workspace for a lightweight Formily-style schema form engi
 - Node.js 18+
 - pnpm
 
-This repository is intended to be managed with pnpm. Avoid mixing npm lockfiles with `pnpm-lock.yaml`.
-
 ## Getting Started
 
 ```bash
 pnpm install
 pnpm dev
 ```
-
-Open the Vite dev server URL printed by the command.
 
 ## Common Commands
 
@@ -41,33 +38,67 @@ pnpm dev:docs       # start the documentation site
 import { createForm } from '@formily-bao/core'
 
 const form = createForm({
-  initialValues: { name: 'Bao' },
+  initialValues: { type: 'person' },
+  reactionHandlers: {
+    fetchCities: async ({ deps }) => [{ label: String(deps.country), value: deps.country }],
+  },
 })
 
 form.setSchema({
   type: 'object',
-  required: ['name'],
   properties: {
+    type: {
+      type: 'string',
+      component: 'Select',
+      dataSource: [
+        { label: '个人', value: 'person' },
+        { label: '企业', value: 'company' },
+      ],
+    },
     name: {
       type: 'string',
-      title: 'Name',
-      minLength: 2,
-      'component': 'Input',
+      title: '名称',
+      component: 'Input',
+      reactions: {
+        title: {
+          dependencies: { type: 'type' },
+          type: 'expression',
+          expression: "$deps.type === 'company' ? '企业名称' : '姓名'",
+        },
+        props: {
+          dependencies: { type: 'type' },
+          type: 'match',
+          source: '$deps.type',
+          match: {
+            company: { placeholder: '请输入企业名称' },
+            default: { placeholder: '请输入姓名' },
+          },
+        },
+      },
     },
   },
 })
-
-await form.submit((values) => {
-  console.log(values)
-})
 ```
+
+## Reaction Protocol
+
+`reactions` are field-owned property-level derivation rules. The schema key is the property to write, and the rule describes how to derive that property.
+
+Supported built-in rule types are exactly:
+
+- `static`
+- `expression`
+- `match`
+- `computed`
+
+Core intentionally does not support cross-field control, branch/action layers, arbitrary script execution, or built-in URL fetching. Async data loading should be implemented by application-owned `reactionHandlers` and referenced from `computed` rules.
 
 ## Notes
 
 - `setSchema` replaces the current field registry and rebuilds fields from the new schema.
 - Standard JSON Schema validation keywords such as `minimum`, `maximum`, `minLength`, `maxLength`, `pattern`, `format`, `minItems`, `maxItems`, `uniqueItems`, and `const` are supported by core validation.
-- `asyncDataSource` supports service-based loading and URL-based loading with method, headers, and body options.
-- Expression reactions currently execute JavaScript expressions and should only be used with trusted schemas.
+- Expression reactions use raw expression strings, for example `$deps.type === 'company'`, not double-brace templates.
+- Remote schemas should keep business effects in registered handlers rather than embedding imperative logic in schema.
 
 ## Testing
 
