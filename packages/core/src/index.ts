@@ -38,4 +38,6 @@ export type {
   ValidatorRule,
   FormConfig,
   LayoutProps,
+  FormError,
+  FormErrorScope,
 } from './types'

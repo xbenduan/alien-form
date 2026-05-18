@@ -683,4 +683,25 @@ describe('@formily-bao/core', () => {
     expect(form.errors).toEqual([{ message: 'Code must be OK', type: 'x-validate' }])
   })
 
+  it('routes runtime errors through onError listeners', () => {
+    const errors: any[] = []
+    const form = createForm({
+      onError: (e) => errors.push(e),
+    })
+    form.setSchema({
+      type: 'object',
+      properties: {
+        a: {
+          type: 'string',
+          'x-reaction': {
+            // unsupported reaction key — should emit a reaction error
+            mystery: { type: 'static', value: true } as any,
+          } as any,
+        },
+      },
+    })
+    expect(errors.length).toBeGreaterThan(0)
+    expect(errors.some((e) => e.scope === 'reaction' && e.path === 'a')).toBe(true)
+  })
+
 })

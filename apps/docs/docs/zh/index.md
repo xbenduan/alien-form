@@ -1,3 +1,30 @@
+---
+pageType: home
+
+hero:
+  name: FormBao
+  text: Schema 驱动表单引擎
+  tagline: 基于最新版 Rspress 官方本地化结构构建的双语文档站
+  image:
+    src: /logo.svg
+    alt: FormBao
+  actions:
+    - theme: brand
+      text: 快速开始
+      link: /zh/guide/getting-started
+    - theme: alt
+      text: English Docs
+      link: /
+
+features:
+  - title: 中文文档
+    details: 中文内容位于 docs/zh，并通过 /zh 路由前缀对外提供访问。
+  - title: 英文文档
+    details: 英文内容位于 docs/en，作为默认语言直接输出为无 /en 前缀路由。
+  - title: 官方本地化切换
+    details: 语言切换基于 locales、locale 首页和 _nav/_meta 的 i18n key 自动完成。
+---
+
 # FormBao
 
 FormBao 是面向企业场景的 Schema Form 引擎，基于 JSON Schema 建模，并提供 headless core、React 绑定、UI 组件和文档示例。

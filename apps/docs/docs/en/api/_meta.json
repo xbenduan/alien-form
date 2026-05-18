@@ -1,0 +1,17 @@
+[
+  {
+    "type": "file",
+    "name": "core",
+    "label": "core"
+  },
+  {
+    "type": "file",
+    "name": "schema",
+    "label": "schema"
+  },
+  {
+    "type": "file",
+    "name": "components",
+    "label": "components"
+  }
+]

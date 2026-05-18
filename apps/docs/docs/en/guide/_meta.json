@@ -1,0 +1,17 @@
+[
+  {
+    "type": "file",
+    "name": "getting-started",
+    "label": "gettingStarted"
+  },
+  {
+    "type": "file",
+    "name": "tutorial",
+    "label": "tutorial"
+  },
+  {
+    "type": "file",
+    "name": "protocol",
+    "label": "protocolDesign"
+  }
+]

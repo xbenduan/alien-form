@@ -3,15 +3,16 @@
  * Enterprise schema protocol inspired by Formily
  */
 
-import React, {
+import {
   createContext,
   useContext,
   useMemo,
   useEffect,
   useState,
+  Fragment,
 } from 'react'
+import type React from 'react'
 import type { IForm, IField, IFormSchema } from '@formily-bao/core'
-
 
 export type ComponentMap = Record<string, React.ComponentType<any>>
 export type DecoratorMap = Record<string, React.ComponentType<any>>
@@ -38,20 +39,18 @@ export function useForm(): IForm {
 export function useField(path?: string): IField | null {
   const ctx = useContext(FormContext)
   const parentField = useContext(FieldContext)
-  if (!ctx) return null
 
   const resolvedPath = path || parentField?.path
-  if (!resolvedPath) return null
+  const field = ctx && resolvedPath ? ctx.form.getField(resolvedPath) || null : null
 
-  const field = ctx.form.getField(resolvedPath) || null
-
-  // Subscribe to field changes
+  // Subscribe to field changes (hooks must run unconditionally).
   const [, forceRender] = useState(0)
   useEffect(() => {
     if (!field) return
     return field.subscribe(() => forceRender((v) => v + 1))
   }, [field])
 
+  if (!ctx) return null
   return field
 }
 
@@ -73,7 +72,6 @@ export function useFormState() {
 }
 
 export function useArrayField(path: string) {
-  const form = useForm()
   const field = useField(path)
 
   return {
@@ -103,9 +101,9 @@ export const FormProvider: React.FC<FormProviderProps> = ({
 }) => {
   const value = useMemo(
     () => ({ form, components, decorators }),
-    [form, components, decorators]
+    [form, components, decorators],
   )
-  return React.createElement(FormContext.Provider, { value }, children)
+  return <FormContext.Provider value={value}>{children}</FormContext.Provider>
 }
 
 // --- SchemaField: renders a form from schema ---
@@ -120,10 +118,9 @@ export const SchemaField: React.FC<SchemaFieldProps> = ({ schema }) => {
 
   const { form, components, decorators } = ctx
 
-  // Initialize or replace fields when schema/form changes.
-  // The first render happens before useEffect runs, so force a render after
-  // setSchema creates fields; otherwise default components stay empty until
-  // another UI interaction triggers a parent render.
+  // Initialize or replace fields when schema/form changes. setSchema rebuilds
+  // the field registry; force a render afterwards so the first paint includes
+  // the freshly created fields rather than waiting for an unrelated update.
   const [, forceRender] = useState(0)
   useEffect(() => {
     form.setSchema(schema)
@@ -132,23 +129,22 @@ export const SchemaField: React.FC<SchemaFieldProps> = ({ schema }) => {
 
   if (!schema.properties) return null
 
-  // Sort by order
   const sortedEntries = getSortedEntries(schema.properties)
 
-  return React.createElement(
-    React.Fragment,
-    null,
-    ...sortedEntries.map(([key, fieldSchema]) => {
-      return React.createElement(SchemaFieldItem, {
-        key,
-        path: key,
-        schema: fieldSchema,
-        components,
-        decorators,
-        form,
-        parentPath: '',
-      })
-    })
+  return (
+    <>
+      {sortedEntries.map(([key, fieldSchema]) => (
+        <SchemaFieldItem
+          key={key}
+          path={key}
+          schema={fieldSchema}
+          components={components}
+          decorators={decorators}
+          form={form}
+          parentPath=""
+        />
+      ))}
+    </>
   )
 }
 
@@ -182,70 +178,72 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
       description: schema.description,
     }
 
-    // Sort children by order
     const sortedChildren = getSortedEntries(schema.properties)
-
-    const children = sortedChildren.map(([key, childSchema]) =>
-      React.createElement(SchemaFieldItem, {
-        key,
-        path: key,
-        schema: childSchema,
-        components,
-        decorators,
-        form,
-        parentPath: fullPath,
-      })
-    )
+    const children = sortedChildren.map(([key, childSchema]) => (
+      <SchemaFieldItem
+        key={key}
+        path={key}
+        schema={childSchema}
+        components={components}
+        decorators={decorators}
+        form={form}
+        parentPath={fullPath}
+      />
+    ))
 
     if (LayoutComponent) {
-      return React.createElement(LayoutComponent, layoutProps, ...children)
+      return <LayoutComponent {...layoutProps}>{children}</LayoutComponent>
     }
-    return React.createElement(React.Fragment, null, ...children)
+    return <>{children}</>
   }
 
   // Object nodes with children but no component
   if (schema.type === 'object' && schema.properties && !schema.component) {
     const sortedChildren = getSortedEntries(schema.properties)
-    return React.createElement(
-      React.Fragment,
-      null,
-      ...sortedChildren.map(([key, childSchema]) =>
-        React.createElement(SchemaFieldItem, {
-          key,
-          path: key,
-          schema: childSchema,
-          components,
-          decorators,
-          form,
-          parentPath: fullPath,
-        })
-      )
+    return (
+      <>
+        {sortedChildren.map(([key, childSchema]) => (
+          <SchemaFieldItem
+            key={key}
+            path={key}
+            schema={childSchema}
+            components={components}
+            decorators={decorators}
+            form={form}
+            parentPath={fullPath}
+          />
+        ))}
+      </>
     )
   }
 
   // Array field
   if (schema.type === 'array' && schema.items?.properties) {
     if (!field) return null
-    return React.createElement(ArrayFieldRenderer, {
-      field,
-      schema,
-      components,
-      decorators,
-      form,
-      fullPath,
-    })
+    return (
+      <ArrayFieldRenderer
+        field={field}
+        schema={schema}
+        components={components}
+        decorators={decorators}
+        form={form}
+        fullPath={fullPath}
+      />
+    )
   }
 
   if (!field) return null
 
-  return React.createElement(FieldRenderer, {
-    field,
-    schema,
-    components,
-    decorators,
-    form,
-    fullPath,
-  })
+  return (
+    <FieldRenderer
+      field={field}
+      schema={schema}
+      components={components}
+      decorators={decorators}
+      form={form}
+      fullPath={fullPath}
+    />
+  )
 }
 
 // --- ArrayFieldRenderer ---
@@ -269,24 +267,14 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
 }) => {
   const [, forceRender] = useState(0)
 
-  useEffect(() => {
-    return field.subscribe(() => forceRender((v) => v + 1))
-  }, [field])
+  useEffect(() => field.subscribe(() => forceRender((v) => v + 1)), [field])
+  useEffect(() => form.subscribe(() => forceRender((v) => v + 1)), [form])
 
-  useEffect(() => {
-    return form.subscribe(() => forceRender((v) => v + 1))
-  }, [form])
-
-  // Check display
   if (field.display === 'none') return null
-  if (field.display === 'hidden') {
-    return React.createElement('div', { style: { display: 'none' } })
-  }
+  if (field.display === 'hidden') return <div style={{ display: 'none' }} />
 
-  const componentName = field.component
-  const decoratorName = field.decorator
-  const ArrayComponent = components[componentName]
-  const Decorator = decorators[decoratorName]
+  const ArrayComponent = components[field.component]
+  const Decorator = decorators[field.decorator]
 
   const arrayValue = Array.isArray(field.value) ? field.value : []
   const itemSchema = schema.items
@@ -301,15 +289,15 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
         const childField = form.getField(childPath)
         if (childField) {
           rowFields.push(
-            React.createElement(FieldRenderer, {
-              key: childKey,
-              field: childField,
-              schema: childSchema,
-              components,
-              decorators,
-              form,
-              fullPath: childPath,
-            })
+            <FieldRenderer
+              key={childKey}
+              field={childField}
+              schema={childSchema}
+              components={components}
+              decorators={decorators}
+              form={form}
+              fullPath={childPath}
+            />,
           )
         }
       }
@@ -317,7 +305,6 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
     return rowFields
   })
 
-  // Build array component props
   const arrayProps = {
     ...field.componentProps,
     field,
@@ -331,78 +318,61 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
     readPretty: field.readPretty,
   }
 
+  const decoratorProps = {
+    ...field.decoratorProps,
+    label: field.title,
+    required: field.required,
+    errors: field.errors,
+    warnings: field.warnings,
+    description: field.description,
+    validateStatus: field.validateStatus,
+  }
+
   if (ArrayComponent) {
-    const rendered = React.createElement(ArrayComponent, arrayProps)
-    if (Decorator) {
-      const decoratorProps = {
-        ...field.decoratorProps,
-        label: field.title,
-        required: field.required,
-        errors: field.errors,
-        warnings: field.warnings,
-        description: field.description,
-        validateStatus: field.validateStatus,
-      }
-      return React.createElement(
-        FieldContext.Provider,
-        { value: field },
-        React.createElement(Decorator, decoratorProps, rendered)
-      )
-    }
-    return React.createElement(FieldContext.Provider, { value: field }, rendered)
+    const rendered = <ArrayComponent {...arrayProps} />
+    return (
+      <FieldContext.Provider value={field}>
+        {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
+      </FieldContext.Provider>
+    )
   }
 
   // Fallback: simple list rendering
-  const fallback = React.createElement(
-    'div',
-    { className: 'space-y-3' },
-    ...rows.map((rowFields, index) =>
-      React.createElement(
-        'div',
-        { key: index, className: 'flex items-start gap-2 p-3 border rounded-lg' },
-        React.createElement('div', { className: 'flex-1 space-y-2' }, ...rowFields),
-        !field.readPretty && React.createElement(
-          'button',
-          {
-            type: 'button',
-            className: 'text-destructive text-xs mt-2',
-            onClick: () => field.remove(index),
-            disabled: field.disabled || field.readOnly,
-          },
-          'Remove'
-        )
-      )
-    ),
-    !field.readPretty && React.createElement(
-      'button',
-      {
-        type: 'button',
-        className: 'text-primary text-sm',
-        onClick: () => field.push(),
-        disabled: field.disabled || field.readOnly,
-      },
-      '+ Add Item'
-    )
+  const fallback = (
+    <div className="space-y-3">
+      {rows.map((rowFields, index) => (
+        <div key={index} className="flex items-start gap-2 p-3 border rounded-lg">
+          <div className="flex-1 space-y-2">{rowFields}</div>
+          {!field.readPretty && (
+            <button
+              type="button"
+              className="text-destructive text-xs mt-2"
+              onClick={() => field.remove(index)}
+              disabled={field.disabled || field.readOnly}
+            >
+              Remove
+            </button>
+          )}
+        </div>
+      ))}
+      {!field.readPretty && (
+        <button
+          type="button"
+          className="text-primary text-sm"
+          onClick={() => field.push()}
+          disabled={field.disabled || field.readOnly}
+        >
+          + Add Item
+        </button>
+      )}
+    </div>
   )
 
-  if (Decorator) {
-    const decoratorProps = {
-      ...field.decoratorProps,
-      label: field.title,
-      required: field.required,
-      errors: field.errors,
-      warnings: field.warnings,
-      description: field.description,
-      validateStatus: field.validateStatus,
-    }
-    return React.createElement(
-      FieldContext.Provider,
-      { value: field },
-      React.createElement(Decorator, decoratorProps, fallback)
-    )
-  }
-
-  return React.createElement(FieldContext.Provider, { value: field }, fallback)
+  return (
+    <FieldContext.Provider value={field}>
+      {Decorator ? <Decorator {...decoratorProps}>{fallback}</Decorator> : fallback}
+    </FieldContext.Provider>
+  )
 }
 
 // --- FieldRenderer ---
@@ -418,66 +388,53 @@ interface FieldRendererProps {
 
 const FieldRenderer: React.FC<FieldRendererProps> = ({
   field,
-  schema,
   components,
   decorators,
-  form,
-  fullPath,
 }) => {
   const [, forceRender] = useState(0)
 
-  useEffect(() => {
-    return field.subscribe(() => forceRender((v) => v + 1))
-  }, [field])
+  useEffect(() => field.subscribe(() => forceRender((v) => v + 1)), [field])
 
-  // Handle display
   if (field.display === 'none') return null
-  if (field.display === 'hidden') {
-    return React.createElement('div', { style: { display: 'none' } })
+  if (field.display === 'hidden') return <div style={{ display: 'none' }} />
+
+  const Component = components[field.component]
+  const Decorator = decorators[field.decorator]
+
+  const decoratorProps = {
+    ...field.decoratorProps,
+    label: field.title,
+    required: field.required,
+    errors: field.errors,
+    warnings: field.warnings,
+    description: field.description,
+    validateStatus: field.validateStatus,
+    pattern: field.pattern,
   }
-
-  const componentName = field.component
-  const decoratorName = field.decorator
-
-  const Component = components[componentName]
-  const Decorator = decorators[decoratorName]
 
   // content: render content directly if specified
   if (field.content !== null && field.content !== undefined) {
-    const contentNode = typeof field.content === 'string'
-      ? React.createElement('span', null, field.content)
-      : field.content
+    const contentNode =
+      typeof field.content === 'string' ? <span>{field.content}</span> : field.content
 
-    if (Decorator) {
-      const decoratorProps = {
-        ...field.decoratorProps,
-        label: field.title,
-        required: field.required,
-        errors: field.errors,
-        warnings: field.warnings,
-        description: field.description,
-        validateStatus: field.validateStatus,
-      }
-      return React.createElement(
-        FieldContext.Provider,
-        { value: field },
-        React.createElement(Decorator, decoratorProps, contentNode)
-      )
-    }
-    return React.createElement(FieldContext.Provider, { value: field }, contentNode)
+    return (
+      <FieldContext.Provider value={field}>
+        {Decorator ? <Decorator {...decoratorProps}>{contentNode}</Decorator> : contentNode}
+      </FieldContext.Provider>
+    )
   }
 
   if (!Component) {
-    return React.createElement('div', { className: 'text-destructive text-sm' }, `Unknown component: ${componentName}`)
+    return (
+      <div className="text-destructive text-sm">{`Unknown component: ${field.component}`}</div>
+    )
   }
 
   // Build component props
   const componentProps: Record<string, any> = {
     ...field.componentProps,
     value: field.value,
-    onChange: (val: any) => {
-      field.setValue(val)
-    },
+    onChange: (val: any) => field.setValue(val),
     disabled: field.disabled,
     readOnly: field.readOnly,
     readPretty: field.readPretty,
@@ -485,59 +442,32 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
     pattern: field.pattern,
   }
 
-  // Add dataSource for components that support it
   if (field.dataSource.length > 0) {
     componentProps.dataSource = field.dataSource
   }
 
-  // readPretty mode — show value as text if no specific readPretty handling in component
+  // readPretty mode: prefer a registered ReadPretty variant, fall back to the
+  // base component below.
   if (field.readPretty) {
-    const PreviewComponent = components[`${componentName}.ReadPretty`] || components[`ReadPretty.${componentName}`]
+    const PreviewComponent =
+      components[`${field.component}.ReadPretty`] ||
+      components[`ReadPretty.${field.component}`]
     if (PreviewComponent) {
-      const rendered = React.createElement(PreviewComponent, componentProps)
-      if (Decorator) {
-        const decoratorProps = {
-          ...field.decoratorProps,
-          label: field.title,
-          required: field.required,
-          errors: field.errors,
-          warnings: field.warnings,
-          description: field.description,
-          validateStatus: field.validateStatus,
-          pattern: field.pattern,
-        }
-        return React.createElement(
-          FieldContext.Provider,
-          { value: field },
-          React.createElement(Decorator, decoratorProps, rendered)
-        )
-      }
-      return React.createElement(FieldContext.Provider, { value: field }, rendered)
+      const rendered = <PreviewComponent {...componentProps} />
+      return (
+        <FieldContext.Provider value={field}>
+          {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
+        </FieldContext.Provider>
+      )
     }
   }
 
-  const rendered = React.createElement(Component, componentProps)
-
-  // Wrap in decorator
-  if (Decorator) {
-    const decoratorProps = {
-      ...field.decoratorProps,
-      label: field.title,
-      required: field.required,
-      errors: field.errors,
-      warnings: field.warnings,
-      description: field.description,
-      validateStatus: field.validateStatus,
-      pattern: field.pattern,
-    }
-    return React.createElement(
-      FieldContext.Provider,
-      { value: field },
-      React.createElement(Decorator, decoratorProps, rendered)
-    )
-  }
-
-  return React.createElement(FieldContext.Provider, { value: field }, rendered)
+  const rendered = <Component {...componentProps} />
+  return (
+    <FieldContext.Provider value={field}>
+      {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
+    </FieldContext.Provider>
+  )
 }
 
 // --- Helpers ---
@@ -550,5 +480,8 @@ function getSortedEntries(properties: Record<string, any>): [string, any][] {
   })
 }
 
-// Re-export FieldContext for custom components
+// Re-export contexts for custom components
 export { FieldContext, FormContext }
+
+// Suppress unused import warning when toolchain inlines Fragment elsewhere
+void Fragment

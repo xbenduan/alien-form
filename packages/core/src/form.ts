@@ -19,7 +19,22 @@ import type {
   Validator,
   ValidatorRule,
   FieldMutableState,
+  FormError,
 } from './types'
+
+import { assertSafeExpression } from './expression-safety'
+import {
+  getDeepValue,
+  setDeepValue,
+  isPromiseLike,
+  sortByOrder,
+  isVoidField,
+} from './path-utils'
+import {
+  normalizeDataSource,
+  normalizeValidationErrors,
+} from './validator-runner'
+
 
 // ============================================================
 // Lifecycle event types
@@ -78,9 +93,11 @@ export class Form implements IForm {
   private _version: ReturnType<typeof signal<number>>
   private _fieldChangeListeners: Map<string, Set<(field: IField) => void>> = new Map()
   private _valuesChangeListeners: Set<(values: Record<string, any>) => void> = new Set()
+  private _errorListeners: Set<(error: FormError) => void> = new Set()
   private _schema: IFormSchema | null = null
   private _reactionDisposers: Array<() => void> = []
   private _reactionValueTriggers: Map<string, Set<() => void>> = new Map()
+  private _reactionRunners: Array<() => void> = []
   private _actionCache: Map<string, string> = new Map()
   private _fieldFormats: Map<string, SchemaFormat> = new Map()
   private _formattingValuePaths: Set<string> = new Set()
@@ -88,6 +105,8 @@ export class Form implements IForm {
   private _scope: Record<string, any>
   private _lifecycle: LifecycleRegistry
   private _definitions: Record<string, IFieldSchema> = {}
+  private _valuesCache: Record<string, any> | null = null
+  private _rawValuesCache: Record<string, any> | null = null
 
   constructor(config: FormConfig = {}) {
     this._config = config
@@ -96,6 +115,10 @@ export class Form implements IForm {
     this._version = signal(0)
     this._scope = config.scope || {}
     this._lifecycle = createLifecycleRegistry()
+
+    if (config.onError) {
+      this._errorListeners.add(config.onError)
+    }
 
     if (config.effects) {
       config.effects(this)
@@ -107,6 +130,7 @@ export class Form implements IForm {
   // ============================================================
 
   get values(): Record<string, any> {
+    if (this._valuesCache !== null) return this._valuesCache
     const result: Record<string, any> = {}
     for (const [path, field] of this.fields) {
       if (!field.visible) continue
@@ -116,6 +140,7 @@ export class Form implements IForm {
       if (field.component && isVoidField(path, this._schema)) continue
       setDeepValue(result, path, this._formatFieldValue(path, field.value, 'output'))
     }
+    this._valuesCache = result
     return result
   }
 
@@ -219,6 +244,15 @@ export class Form implements IForm {
     for (const [, field] of this.fields) {
       field.reset()
     }
+    // Replay reactions so derived properties (visible/title/dataSource/etc.) re-apply
+    // on the freshly restored initial values rather than staying with stale derivations.
+    for (const runner of this._reactionRunners) {
+      try {
+        runner()
+      } catch (err) {
+        this._emitError({ scope: 'reaction', path: '', message: 'reaction runner failed during reset', cause: err })
+      }
+    }
     this._bumpVersion()
     endBatch()
     this._notifyValuesChange()
@@ -278,6 +312,7 @@ export class Form implements IForm {
     for (const dispose of this._reactionDisposers) dispose()
     this._reactionDisposers = []
     this._reactionValueTriggers.clear()
+    this._reactionRunners = []
     this._fieldFormats.clear()
     this.fields.clear()
     this._actionCache.clear()
@@ -313,6 +348,29 @@ export class Form implements IForm {
     this._valuesChangeListeners.add(listener)
     return () => {
       this._valuesChangeListeners.delete(listener)
+    }
+  }
+
+  onError(listener: (error: FormError) => void): () => void {
+    this._errorListeners.add(listener)
+    return () => {
+      this._errorListeners.delete(listener)
+    }
+  }
+
+  private _emitError(error: FormError): void {
+    if (this._errorListeners.size === 0) {
+      // Fall back to console so silent failures remain debuggable when no
+      // listener is attached. Hosts that subscribe take full ownership.
+      console.warn(`[formily-bao] [${error.scope}${error.key ? ":" + error.key : ""}] ${error.path || "<form>"}: ${error.message}`, error.cause ?? "")
+      return
+    }
+    for (const listener of this._errorListeners) {
+      try {
+        listener(error)
+      } catch (err) {
+        console.error("[formily-bao] onError listener threw:", err)
+      }
     }
   }
 
@@ -466,18 +524,26 @@ export class Form implements IForm {
   // $ref and definitions resolution
   // ============================================================
 
-  private _resolveRef(schema: IFieldSchema): IFieldSchema {
+  private _resolveRef(schema: IFieldSchema, seen: Set<string> = new Set()): IFieldSchema {
     if (!schema.$ref) return schema
     // $ref format: "#/definitions/Name"
     const refPath = schema.$ref.replace(/^#\/definitions\//, '')
+    if (seen.has(refPath)) {
+      this._emitError({ scope: 'ref-resolve', path: '', message: `Circular $ref detected: ${schema.$ref} (chain: ${Array.from(seen).join(' -> ')} -> ${refPath})` })
+      const { $ref: _ignored, ...localProps } = schema
+      void _ignored
+      return localProps as IFieldSchema
+    }
     const resolved = this._definitions[refPath]
     if (!resolved) {
-      console.warn(`[formily-bao] Could not resolve $ref: ${schema.$ref}`)
+      this._emitError({ scope: 'ref-resolve', path: '', message: `Could not resolve $ref: ${schema.$ref}` })
       return schema
     }
+    const nextSeen = new Set(seen)
+    nextSeen.add(refPath)
     // Merge: schema props override $ref props (local overrides)
     const { $ref, ...localProps } = schema
-    return { ...this._resolveRef(resolved), ...localProps }
+    return { ...this._resolveRef(resolved, nextSeen), ...localProps }
   }
 
   // ============================================================
@@ -580,6 +646,8 @@ export class Form implements IForm {
       void this._runPropertyReaction(field, reactionKey, rule, scope)
     }
 
+    this._reactionRunners.push(runner)
+
     const depPaths = this._getReactionDependencyPaths(rule, selfPath)
     if (depPaths.length === 0) {
       runner()
@@ -633,13 +701,13 @@ export class Form implements IForm {
             this._applyReactionValue(field, reactionKey, resolved)
           })
           .catch((err) => {
-            console.warn(`[formily-bao] reaction "${reactionKey}" error for "${field.path}":`, err)
+            this._emitError({ scope: 'reaction', path: field.path, key: reactionKey, message: err instanceof Error ? err.message : String(err), cause: err })
           })
         return
       }
       this._applyReactionValue(field, reactionKey, value)
     } catch (err) {
-      console.warn(`[formily-bao] reaction "${reactionKey}" error for "${field.path}":`, err)
+      this._emitError({ scope: 'reaction', path: field.path, key: reactionKey, message: err instanceof Error ? err.message : String(err), cause: err })
     }
   }
 
@@ -708,7 +776,19 @@ export class Form implements IForm {
       const valueScope = { ...scope, $value: current }
       const value = this._resolveXRuleValue(field, key, rule, valueScope, kind)
       if (isPromiseLike(value)) {
-        console.warn(`[formily-bao] ${kind} "${key}" for "${field?.path || '<root>'}" returned a Promise in a synchronous phase`)
+        // x-format runs on the synchronous value-update path (form.values is a
+        // sync getter, setValue is sync). Async computed handlers there would
+        // silently return Promise objects as the formatted value, producing
+        // values like "[object Promise]". Make this a hard, attributable error.
+        const path = field?.path || '<root>'
+        const msg = `[formily-bao] ${kind} "${key}" for "${path}" returned a Promise in a synchronous phase. ` +
+          (kind === 'x-format'
+            ? 'x-format handlers must be synchronous — move async work to x-reaction (computed) where Promises are awaited.'
+            : 'This phase does not await Promises; the rule was skipped.')
+        if (kind === 'x-format') {
+          throw new Error(msg)
+        }
+        this._emitError({ scope: kind, path: field?.path || '', key, message: msg })
         continue
       }
       if (value !== undefined) current = value
@@ -798,7 +878,7 @@ export class Form implements IForm {
         field.setDataSource(normalizeDataSource(value))
         break
       default:
-        console.warn(`[formily-bao] unsupported reaction key "${reactionKey}" for "${field.path}"`)
+        this._emitError({ scope: 'reaction', path: field.path, key: reactionKey, message: `unsupported reaction key "${reactionKey}"` })
     }
   }
 
@@ -914,10 +994,13 @@ export class Form implements IForm {
   // ============================================================
 
   private _bumpVersion(): void {
+    this._valuesCache = null
+    this._rawValuesCache = null
     this._version(this._version() + 1)
   }
 
   private _rawValues(): Record<string, any> {
+    if (this._rawValuesCache !== null) return this._rawValuesCache
     const result: Record<string, any> = {}
     for (const [path, field] of this.fields) {
       if (!field.visible) continue
@@ -925,6 +1008,7 @@ export class Form implements IForm {
       if (field.component && isVoidField(path, this._schema)) continue
       setDeepValue(result, path, field.value)
     }
+    this._rawValuesCache = result
     return result
   }
 
@@ -934,185 +1018,6 @@ export class Form implements IForm {
       listener(vals)
     }
   }
-}
-
-
-// ============================================================
-// Expression safety
-// ============================================================
-
-const UNSAFE_EXPRESSION_PATTERNS: Array<{ pattern: RegExp; message: string }> = [
-  { pattern: /(^|[^.$\w])(?:globalThis|window|document|process|Function|eval|constructor|prototype|__proto__)(?=$|[^$\w])/u, message: 'global or reflective access is not allowed' },
-  { pattern: /=>|function|class|new/u, message: 'function/class construction is not allowed' },
-  { pattern: /(?:^|[^=!<>])=(?!=)/u, message: 'assignment is not allowed in expressions' },
-  { pattern: /;|`/u, message: 'statements and template literals are not allowed in expressions' },
-]
-
-function assertSafeExpression(expr: string): void {
-  for (const rule of UNSAFE_EXPRESSION_PATTERNS) {
-    if (rule.pattern.test(expr)) {
-      throw new Error(`Unsafe expression rejected: ${rule.message}`)
-    }
-  }
-}
-
-// ============================================================
-// Utility functions
-// ============================================================
-
-function getDeepValue(obj: Record<string, any>, path: string): any {
-  const keys = path.split('.')
-  let current: any = obj
-  for (const key of keys) {
-    if (current === undefined || current === null) return undefined
-    current = current[key]
-  }
-  return current
-}
-
-function setDeepValue(obj: Record<string, any>, path: string, value: any): void {
-  const keys = path.split('.')
-  let current = obj
-  for (let i = 0; i < keys.length - 1; i++) {
-    const key = keys[i]
-    // If next key is a number, create an array; otherwise object
-    if (!(key in current) || typeof current[key] !== 'object') {
-      const nextKey = keys[i + 1]
-      current[key] = /^\d+$/.test(nextKey) ? [] : {}
-    }
-    current = current[key]
-  }
-  current[keys[keys.length - 1]] = value
-}
-
-function isPromiseLike(value: any): value is Promise<any> {
-  return !!value && typeof value.then === 'function'
-}
-
-function normalizeDataSource(ds?: Array<any> | null): Array<{ label: string; value: any; [key: string]: any }> {
-  if (!ds || !Array.isArray(ds)) return []
-  return ds.map((item) => {
-    if (typeof item === 'string' || typeof item === 'number') {
-      return { label: String(item), value: item }
-    }
-    if (item && 'key' in item && 'title' in item && !('label' in item)) {
-      return { label: String(item.title), value: item.key, ...item }
-    }
-    return item as { label: string; value: any; [key: string]: any }
-  })
-}
-
-function normalizeValidationErrors(result: any): FieldError[] {
-  if (result === undefined || result === null || result === true) return []
-  if (result === false) return [{ message: 'Invalid value', type: 'x-validate' }]
-  if (typeof result === 'string') return [{ message: result, type: 'x-validate' }]
-  const values = Array.isArray(result) ? result : [result]
-  const errors: FieldError[] = []
-  for (const item of values) {
-    if (item === undefined || item === null || item === true) continue
-    if (item === false) {
-      errors.push({ message: 'Invalid value', type: 'x-validate' })
-      continue
-    }
-    if (typeof item === 'string') {
-      errors.push({ message: item, type: 'x-validate' })
-      continue
-    }
-    if (typeof item === 'object') {
-      const rule = item as ValidatorRule
-      const fieldError = item as FieldError
-      if ('message' in fieldError && !isValidatorRule(rule)) {
-        errors.push({ message: fieldError.message, type: fieldError.type || 'x-validate' })
-        continue
-      }
-      const validatorErrors = runValidatorRule(rule, (item as any).value)
-      if (validatorErrors.length > 0) errors.push(...validatorErrors)
-      else if ('message' in fieldError) errors.push({ message: fieldError.message, type: fieldError.type || 'x-validate' })
-    }
-  }
-  return errors
-}
-
-function isValidatorRule(rule: ValidatorRule): boolean {
-  return !!rule && (
-    'required' in rule ||
-    'min' in rule ||
-    'max' in rule ||
-    'minLength' in rule ||
-    'maxLength' in rule ||
-    'pattern' in rule ||
-    'format' in rule ||
-    'exclusiveMinimum' in rule ||
-    'exclusiveMaximum' in rule ||
-    'multipleOf' in rule ||
-    'maxItems' in rule ||
-    'minItems' in rule ||
-    'uniqueItems' in rule ||
-    'const' in rule
-  )
-}
-
-function runValidatorRule(rule: ValidatorRule, value: any): FieldError[] {
-  const errors: FieldError[] = []
-  if (rule.required && isEmptyValue(value)) {
-    errors.push({ message: rule.message || 'Field is required', type: 'required' })
-  }
-  if (rule.min !== undefined && typeof value === 'number' && value < rule.min) {
-    errors.push({ message: rule.message || `Must be >= ${rule.min}`, type: 'min' })
-  }
-  if (rule.max !== undefined && typeof value === 'number' && value > rule.max) {
-    errors.push({ message: rule.message || `Must be <= ${rule.max}`, type: 'max' })
-  }
-  if (rule.minLength !== undefined && typeof value === 'string' && value.length < rule.minLength) {
-    errors.push({ message: rule.message || `Min length: ${rule.minLength}`, type: 'minLength' })
-  }
-  if (rule.maxLength !== undefined && typeof value === 'string' && value.length > rule.maxLength) {
-    errors.push({ message: rule.message || `Max length: ${rule.maxLength}`, type: 'maxLength' })
-  }
-  if (rule.pattern) {
-    const regex = typeof rule.pattern === 'string' ? new RegExp(rule.pattern) : rule.pattern
-    if (value && !regex.test(String(value))) errors.push({ message: rule.message || 'Invalid format', type: 'pattern' })
-  }
-  if (rule.const !== undefined && value !== rule.const) {
-    errors.push({ message: rule.message || `Must equal ${JSON.stringify(rule.const)}`, type: 'const' })
-  }
-  return errors
-}
-
-function isEmptyValue(value: any): boolean {
-  return value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0)
-}
-
-/**
- * Sort schema properties by order
- */
-function sortByOrder(properties: Record<string, IFieldSchema>): Record<string, IFieldSchema> {
-  const entries = Object.entries(properties)
-  entries.sort(([, a], [, b]) => {
-    const ai = a.order ?? Infinity
-    const bi = b.order ?? Infinity
-    return ai - bi
-  })
-  return Object.fromEntries(entries)
-}
-
-/**
- * Check if a field path refers to a void-type schema node
- */
-function isVoidField(path: string, schema: IFormSchema | null): boolean {
-  if (!schema?.properties) return false
-  const parts = path.split('.')
-  let current: Record<string, IFieldSchema> | undefined = schema.properties
-  for (let i = 0; i < parts.length; i++) {
-    if (!current) return false
-    const fs: IFieldSchema | undefined = current[parts[i]]
-    if (!fs) return false
-    if (i === parts.length - 1) {
-      return fs.type === 'void'
-    }
-    current = fs.properties
-  }
-  return false
 }
 
 // ============================================================

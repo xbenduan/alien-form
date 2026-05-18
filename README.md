@@ -107,3 +107,94 @@ Core behavior is covered by Vitest tests under `packages/core/src/__tests__`. Ru
 ```bash
 pnpm test:core
 ```
+
+## Schema Protocol Reference
+
+### Rule Shape
+
+Every `x-reaction` / `x-format` / `x-validate` rule shares the same envelope:
+
+```ts
+{
+  type: 'static' | 'expression' | 'match' | 'computed',
+  dependencies?: string[] | Record<string, string>,
+  // type-specific fields below
+}
+```
+
+`dependencies` may be:
+
+- **Array form** — `['otherField', 'sibling.path']`. Resolved values are
+  available in expressions as positional `$deps[0]`, `$deps[1]`, …
+- **Object form** — `{ aliasName: 'otherField' }`. Resolved values are exposed
+  under `$deps.aliasName`. This is the recommended form because expressions
+  stay readable when fields are renamed.
+- **Relative paths** — `'.sibling'` resolves against the current field's
+  parent (useful inside array items). `'..uncle'` walks one level further up.
+
+### Rule Types
+
+| Type | Meaning |
+|---|---|
+| `static` | Returns `value` verbatim. Useful for one-shot defaults. |
+| `expression` | Evaluates `expression` (raw JS expression) against `{ $deps, $value, $self, $form, ...scope }`. |
+| `match` | Looks up `match[$deps.<source>]`; falls back to `match.default` when no key matches. |
+| `computed` | Calls `handlers[handler]({ deps, depsArray, value, self, form, kind, params })`. May return a Promise inside `x-reaction`/async `x-validate`. |
+
+### Synchronous vs Asynchronous Phases
+
+- `x-format` runs on the **synchronous** value-update path. Async (Promise)
+  results from `computed` handlers throw a hard error here — async work must
+  live in `x-reaction` or the async portion of `x-validate`.
+- `x-reaction` is reactive and awaits Promises returned by `computed`
+  handlers; deps changes re-fire the runner.
+- `x-validate` supports both sync and async runs; async is awaited inside
+  `form.validate()`.
+
+### Expression Safety
+
+`expression` rules are evaluated via `new Function(...)` after a defense-in-depth
+denylist filter (no `import`, `require`, `__proto__`, `globalThis`, etc.).
+The filter is **not** a sandbox — schema sources are assumed trusted.
+
+### Handlers
+
+```ts
+handlers: {
+  fetchCities: async ({ deps, value, self, form, kind, params }) => { … },
+}
+```
+
+The `kind` field identifies the calling phase (`x-reaction` | `x-format` |
+`x-validate`) so a single handler can branch on context. `params` contains
+the rule-level `params` object for `computed` rules.
+
+### Errors
+
+```ts
+form.onError((e) => {
+  // e.scope: 'reaction' | 'x-reaction' | 'x-format' | 'x-validate' | 'ref-resolve' | 'expression'
+  // e.path, e.key, e.message, e.cause
+})
+```
+
+Hosts that subscribe take full ownership; without a listener errors fall back
+to `console.warn` so silent failures stay debuggable.
+
+### dataSource Policies
+
+When a field's `dataSource` is recomputed by a reaction, its current value is
+reconciled by `dataSourcePolicy`:
+
+| Policy | Behavior on dataSource change |
+|---|---|
+| `preserve` (default) | keep current value as-is |
+| `clear` | reset to schema default |
+| `filter` | keep current value only if it still appears in the new options |
+| `first` | adopt the first option's value |
+
+### Lifecycle Events
+
+`onFieldInit`, `onFieldMount`, `onFieldValueChange`, `onFieldValidateStart`,
+`onFieldValidateEnd`, `onFieldUnmount` are dispatched via the registry; bind
+in `FormConfig.effects(form)` using `form.registerLifecycle(event, path, fn)`.

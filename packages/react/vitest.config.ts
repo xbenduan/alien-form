@@ -1,0 +1,10 @@
+import { defineConfig } from 'vitest/config'
+
+export default defineConfig({
+  test: {
+    environment: 'happy-dom',
+    globals: false,
+    include: ['src/__tests__/**/*.test.{ts,tsx}'],
+  },
+  esbuild: { jsx: 'automatic' },
+})

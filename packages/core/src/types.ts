@@ -363,6 +363,30 @@ export interface FormConfig {
   scope?: Record<string, any>
   /** Registered computed handlers for x-reaction, x-format and x-validate */
   handlers?: Record<string, RuntimeRuleHandler>
+  /** Subscribe to non-fatal runtime errors (reaction/format/validator/ref). */
+  onError?: (error: FormError) => void
+}
+
+// ============================================================
+// FormError — surface non-fatal errors from reactions/format/validators
+// ============================================================
+
+export type FormErrorScope =
+  | 'reaction'
+  | 'x-reaction'
+  | 'x-format'
+  | 'x-validate'
+  | 'ref-resolve'
+  | 'expression'
+
+export interface FormError {
+  scope: FormErrorScope
+  /** Field path that owns the rule, or '' for form-level errors. */
+  path: string
+  /** Optional reaction key (e.g. 'visible', 'title') or rule kind. */
+  key?: string
+  message: string
+  cause?: unknown
 }
 
 // ============================================================
@@ -399,4 +423,5 @@ export interface IForm {
   // Lifecycle
   onFieldChange(path: string, listener: (field: IField) => void): () => void
   onValuesChange(listener: (values: Record<string, any>) => void): () => void
+  onError(listener: (error: FormError) => void): () => void
 }

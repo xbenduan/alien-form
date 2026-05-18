@@ -17,3 +17,7 @@ package-lock.json
 
 
 **.py
+
+# VitePress
+apps/docs/.vitepress/cache
+apps/docs/.vitepress/dist

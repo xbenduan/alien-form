@@ -19,6 +19,23 @@ import type {
   FieldPatternTypes,
 } from './types'
 
+/**
+ * Internal contract used by Field to talk back to its owning Form without
+ * creating a circular module import. Form implements every member.
+ */
+export interface FieldHost {
+  fields: Map<string, IField>
+  getField(path: string): IField | undefined
+  createField(path: string, schema: IFieldSchema, initialValue?: any): IField
+  _notifyFieldChange?(path: string, field: IField): void
+  _notifyFieldValueChange?(path: string, field: IField): void
+  _notifyFieldValidateStart?(path: string, field: IField): void
+  _notifyFieldValidateEnd?(path: string, field: IField): void
+  _notifyFieldValidateFailed?(path: string, field: IField): void
+  _notifyFieldValidateSuccess?(path: string, field: IField): void
+  _runXValidate?(field: IField, rules: SchemaXValidate, value: any): Promise<FieldError[]>
+}
+
 export class Field implements IField {
   // Signals for reactive state
   private _value: ReturnType<typeof signal<any>>
@@ -53,7 +70,9 @@ export class Field implements IField {
   readonly isArrayField: boolean
   private _itemSchema: IFieldSchema | null
   private _arrayRows: ReturnType<typeof signal<number>>
-  private _form: any // reference to parent form, set externally
+  // Structural reference to the owning form. Defined as an interface so we
+  // don't import the Form class (which would create a circular import).
+  private _form: FieldHost | null = null
 
   constructor(path: string, schema: IFieldSchema, initialValue?: any) {
     this.path = path
@@ -106,7 +125,7 @@ export class Field implements IField {
   }
 
   // Set form reference (called by Form after creating the field)
-  _setForm(form: any) {
+  _setForm(form: FieldHost) {
     this._form = form
   }
 
@@ -364,37 +383,45 @@ export class Field implements IField {
     const currentRows = this._arrayRows()
     if (index < 0 || index >= currentRows) return
 
-    const properties = this._itemSchema.properties
-    // Remove fields for deleted row
-    for (const key of Object.keys(properties)) {
-      const fieldPath = `${this.path}.${index}.${key}`
-      this._form.fields.delete(fieldPath)
-    }
-
-    // Reindex subsequent rows
-    for (let i = index + 1; i < currentRows; i++) {
-      for (const key of Object.keys(properties)) {
-        const oldPath = `${this.path}.${i}.${key}`
-        const newPath = `${this.path}.${i - 1}.${key}`
-        const field = this._form.fields.get(oldPath)
-        if (field) {
-          this._form.fields.delete(oldPath)
-          const childSchema = properties[key] as IFieldSchema
-          this._form.createField(newPath, childSchema, field.value)
-        }
+    // Drop the target row's fields (preserve identity for subsequent rows).
+    const targetPrefix = `${this.path}.${index}.`
+    for (const fieldPath of Array.from(this._form.fields.keys())) {
+      if (fieldPath === `${this.path}.${index}` || fieldPath.startsWith(targetPrefix)) {
+        this._form.fields.delete(fieldPath)
       }
     }
 
-    // Remove last row's fields (now duplicated)
-    const lastIdx = currentRows - 1
-    for (const key of Object.keys(properties)) {
-      const fieldPath = `${this.path}.${lastIdx}.${key}`
-      this._form.fields.delete(fieldPath)
+    // Reindex subsequent rows by renaming in place — keeps Field instances,
+    // so subscriptions / errors / dirty state stay attached to the same row.
+    for (let i = index + 1; i < currentRows; i++) {
+      const fromPrefix = `${this.path}.${i}`
+      const toPrefix = `${this.path}.${i - 1}`
+      // Snapshot first to avoid concurrent mutation while iterating the map.
+      const movingPaths: string[] = []
+      for (const fieldPath of this._form.fields.keys()) {
+        if (fieldPath === fromPrefix || fieldPath.startsWith(`${fromPrefix}.`)) {
+          movingPaths.push(fieldPath)
+        }
+      }
+      for (const fromPath of movingPaths) {
+        const toPath = toPrefix + fromPath.slice(fromPrefix.length)
+        const moving = this._form.fields.get(fromPath) as Field | undefined
+        if (!moving) continue
+        this._form.fields.delete(fromPath)
+        moving._renamePath(toPath)
+        this._form.fields.set(toPath, moving)
+      }
     }
 
     this._arrayRows(currentRows - 1)
     this._bumpVersion()
     this._notifyValueChange()
+  }
+
+  /** Internal — rename this field's path/address. Used by array reindex. */
+  _renamePath(newPath: string): void {
+    ;(this as any).path = newPath
+    ;(this as any).address = newPath
   }
 
   moveUp(index: number): void {
