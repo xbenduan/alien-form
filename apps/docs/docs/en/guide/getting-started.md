@@ -1,21 +1,38 @@
 # Getting Started
 
+This page only covers functionality that is implemented and exported in the current repository: `@formily-bao/core`, `@formily-bao/react`, and `@formily-bao/ui`.
+
 ## Installation
 
 ```bash
-npm install @formily-bao/core @formily-bao/react @formily-bao/ui
+pnpm add @formily-bao/core @formily-bao/react @formily-bao/ui
 ```
 
-## Quick Example
+## Minimal Working Example
+
+`FieldRenderer` passes a unified field contract into your components: `value`, `onChange`, `disabled`, `readOnly`, `readPretty`, `loading`, and `pattern`. Native text inputs such as `Input` and `Textarea` still emit DOM events, so you usually add a thin adapter layer.
 
 ```tsx
 import { createForm } from '@formily-bao/core'
 import { FormProvider, SchemaField } from '@formily-bao/react'
-import { Input, Select, FormItem } from '@formily-bao/ui'
+import { Button, Input, Select, FormItem } from '@formily-bao/ui'
 
 const form = createForm({
   initialValues: { role: 'developer' },
 })
+
+const components = {
+  Input: ({ value, onChange, ...rest }: any) => (
+    <Input
+      value={value ?? ''}
+      onChange={(event) => onChange(event.target.value)}
+      {...rest}
+    />
+  ),
+  Select,
+}
+
+const decorators = { FormItem }
 
 const schema = {
   type: 'object',
@@ -24,16 +41,17 @@ const schema = {
       type: 'string',
       title: 'Username',
       required: true,
-      'component': 'Input',
-      'decorator': 'FormItem',
-      'validators': [{ minLength: 3, message: 'At least 3 characters' }],
+      component: 'Input',
+      decorator: 'FormItem',
+      validators: [{ minLength: 3, message: 'At least 3 characters' }],
+      props: { placeholder: 'Enter a username' },
     },
     role: {
       type: 'string',
       title: 'Role',
-      'component': 'Select',
-      'decorator': 'FormItem',
-      enum: [
+      component: 'Select',
+      decorator: 'FormItem',
+      dataSource: [
         { label: 'Developer', value: 'developer' },
         { label: 'Designer', value: 'designer' },
       ],
@@ -41,63 +59,35 @@ const schema = {
   },
 }
 
-function App() {
+export function App() {
   return (
-    <FormProvider form={form} components={{ Input, Select }} decorators={{ FormItem }}>
+    <FormProvider form={form} components={components} decorators={decorators}>
       <SchemaField schema={schema} />
-      <button onClick={() => form.submit(console.log)}>Submit</button>
+      <Button onClick={() => form.submit(console.log)}>Submit</Button>
     </FormProvider>
   )
 }
 ```
 
-## How It Works
+## Runtime Flow
 
-1. **`createForm()`** creates a reactive form instance backed by Alien Signals.
-2. **`FormProvider`** establishes the React context with registered components/decorators.
-3. **`SchemaField`** calls `form.setSchema()` internally, which creates `Field` instances for each property and sets up `x-reaction` effects.
-4. Each `Field` stores its state in signals (`_value`, `_display`, `_pattern`, `_errors`, etc.) — only subscribed components re-render on change.
+1. `createForm()` creates the `Form` instance and wires `effects`, `handlers`, and `onError`.
+2. `FormProvider` exposes `form`, `components`, and `decorators` through React context.
+3. `SchemaField` calls `form.setSchema(schema)` inside `useEffect`, rebuilding the field registry and reactions.
+4. `FieldRenderer` and `ArrayFieldRenderer` read field state and pass the normalized props into UI components.
+5. `form.submit()` runs `validate()` first, then returns `form.values`, applying `x-format.output` on the way out.
 
-## Architecture
+## Package Responsibilities
 
-```
-JSON Schema (Formily Protocol)
-        │
-        ▼
-┌─────────────────────────────┐
-│        Form (form.ts)       │
-│  • createField()            │
-│  • setSchema() — resolves   │
-│    $ref, order, creates   │
-│    fields, sets up x-reaction │
-│  • Expression engine        │
-│  • Lifecycle registry       │
-└──────────────┬──────────────┘
-               │ creates
-               ▼
-┌─────────────────────────────┐
-│       Field (field.ts)      │
-│  • Alien Signals state      │
-│  • validate() with format   │
-│    validators               │
-│  • Array operations         │
-│  • setState() / display /   │
-│    pattern control          │
-└──────────────┬──────────────┘
-               │ consumed by
-               ▼
-┌─────────────────────────────┐
-│      React Layer (react.tsx) │
-│  • FormProvider / SchemaField│
-│  • useForm / useField       │
-│  • FieldRenderer            │
-│  • ArrayFieldRenderer       │
-└─────────────────────────────┘
-```
+| Package | Current responsibility |
+| --- | --- |
+| `@formily-bao/core` | `Form`, `Field`, schema protocol, expressions, validation, array operations |
+| `@formily-bao/react` | `FormProvider`, `SchemaField`, `useForm`, `useField`, `useFormState`, `useArrayField` |
+| `@formily-bao/ui` | Default widgets such as `Input`, `Select`, `Checkbox`, `ArrayCards`, `FormGrid`, and `FormSection` |
 
-## Packages
+## Where To Go Next
 
-| Package | Description |
-|---------|-------------|
-| `@formily-bao/core` | Headless form model, field state, expression engine |
-| `@formily-bao/ui` | UI components: Input, Select, Switch, Rating, ArrayCards, FormGrid, etc. |
+- Model layer: [Core API](../api/core)
+- Rendering layer: [React API](../api/react)
+- Protocol fields: [Schema API](../api/schema)
+- Component registration: [Components API](../api/components)

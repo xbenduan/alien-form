@@ -1,165 +1,310 @@
-# Components
+# Components API
 
-All components are exported from `@formily-bao/ui` and registered via `FormProvider`.
+All UI components are exported from `@formily-bao/ui`, but when you integrate them with FormBao, the most important thing is the field contract passed by the React layer, not just each component's local props.
 
-## Form Controls
+## Start With The Shared Contract
 
-### Input
+Normal field components registered through `FieldRenderer` receive at least this shape:
 
-```json
-{ "component": "Input", "props": { "placeholder": "...", "type": "text" } }
-```
-
-Supported `type`: `text`, `password`, `number`, `email`.
-
-### Textarea
-
-```json
-{ "component": "Textarea", "props": { "rows": 4 } }
-```
-
-### Select
-
-Options from `enum` or `dataSource`:
-
-```json
+```ts
 {
-  "component": "Select",
-  "enum": [
-    { "label": "Option A", "value": "a" },
-    { "label": "Option B", "value": "b" }
-  ]
+  value,
+  onChange,
+  disabled,
+  readOnly,
+  readPretty,
+  loading,
+  pattern,
+  dataSource,
+  ...field.componentProps,
 }
 ```
 
-### Checkbox
+That means:
 
-```json
-{ "type": "boolean", "component": "Checkbox" }
+- Components such as `Select`, `Checkbox`, `Switch`, and `Rating` can usually be registered directly.
+- Native event-based inputs such as `Input` and `Textarea` need an adapter that turns `event.target.value` into `onChange(value)`.
+
+## Text Inputs
+
+### Input
+
+Source type: `React.InputHTMLAttributes<HTMLInputElement>`.
+
+Recommended adapter:
+
+```tsx
+const InputAdapter = ({ value, onChange, ...rest }: any) => (
+  <Input
+    value={value ?? ''}
+    onChange={(event) => onChange(event.target.value)}
+    {...rest}
+  />
+)
 ```
 
-### Switch
+Good for normal text, number, and password inputs.
 
-```json
-{ "type": "boolean", "component": "Switch" }
+### Textarea
+
+Source type: `React.TextareaHTMLAttributes<HTMLTextAreaElement>`.
+
+```tsx
+const TextareaAdapter = ({ value, onChange, ...rest }: any) => (
+  <Textarea
+    value={value ?? ''}
+    onChange={(event) => onChange(event.target.value)}
+    {...rest}
+  />
+)
 ```
+
+### ItemInput
+
+| props | Meaning |
+| --- | --- |
+| `value?: string[]` | Current chip list |
+| `onChange?: (value: string[]) => void` | Value change callback |
+| `placeholder?: string` | Placeholder |
+| `maxItems?: number` | Maximum number of items |
+
+Useful for tags, keywords, and whitelist-like string arrays.
+
+## Choice And Boolean Inputs
+
+### Select
+
+| props | Meaning |
+| --- | --- |
+| `value?: any` | Current value |
+| `onChange?: (value: any) => void` | Change callback |
+| `dataSource?: SelectOption[]` | Option list |
+| `multiple?: boolean` | Multiple selection |
+| `placeholder?: string` | Placeholder text |
+| `disabled?: boolean` | Disabled state |
+
+- Supports single and multiple selection.
+- Shows `No options` when `dataSource` is empty.
 
 ### RadioGroup
 
-```json
-{ "component": "RadioGroup", "enum": ["small", "medium", "large"] }
-```
+| props | Meaning |
+| --- | --- |
+| `value?: any` | Current value |
+| `onChange?: (value: any) => void` | Change callback |
+| `dataSource?: RadioOption[]` | Radio options |
+| `direction?: 'horizontal' | 'vertical'` | Layout direction |
 
-### DateInput
+### Checkbox
 
-```json
-{ "type": "date", "component": "DateInput" }
-```
+| props | Meaning |
+| --- | --- |
+| `value?: boolean` | Checked state |
+| `onChange?: (value: boolean) => void` | Toggle callback |
+| `label?: string` | Inline label |
+| `disabled?: boolean` | Disabled state |
+
+### Switch
+
+| props | Meaning |
+| --- | --- |
+| `value?: boolean` | Switch state |
+| `onChange?: (value: boolean) => void` | Toggle callback |
+| `disabled?: boolean` | Disabled state |
 
 ### Rating
 
-```json
-{ "type": "number", "component": "Rating", "props": { "max": 5 } }
-```
+| props | Meaning |
+| --- | --- |
+| `value?: number` | Current rating |
+| `onChange?: (value: number) => void` | Rating callback |
+| `max?: number` | Maximum score, default `5` |
+| `size?: 'sm' | 'md' | 'lg'` | Size |
+| `disabled?: boolean` | Disabled state |
+
+### DateInput
+
+| props | Meaning |
+| --- | --- |
+| `value?: string` | Date string |
+| `onChange?: (value: string) => void` | Date change callback |
+| `min?: string` / `max?: string` | Range limits |
+| `placeholder?: string` | Placeholder |
+
+## Decorator
+
+### FormItem
+
+`FormItem` is the current default decorator. `FieldRenderer` / `ArrayFieldRenderer` automatically inject:
+
+- `label`
+- `required`
+- `errors`
+- `warnings`
+- `description`
+- `validateStatus`
+- `pattern`
+
+Any custom decorator that supports this shape can plug into the current renderer.
+
+## Layout Components
+
+### FormGrid
+
+| props | Meaning |
+| --- | --- |
+| `columns?: number` | Column count, default `2` |
+| `gap?: number` | Gap multiplier, eventually multiplied by `4px` |
+| `title?: string` | Small heading |
+| `description?: string` | Description |
+
+Best used under `type: 'void'` for multi-column form layout.
+
+### FormLayout
+
+| props | Meaning |
+| --- | --- |
+| `direction?: 'horizontal' | 'vertical'` | Layout direction |
+| `gap?: number` | Gap multiplier |
+| `title?: string` | Small heading |
+| `description?: string` | Description |
+
+### FormSection
+
+| props | Meaning |
+| --- | --- |
+| `title?: string` | Section title |
+| `description?: string` | Section description |
+| `bordered?: boolean` | Whether to show a border |
+| `collapsible?: boolean` | Whether the section is collapsible |
+| `defaultCollapsed?: boolean` | Initial collapsed state |
 
 ## Array Components
 
 ### ArrayCards
 
-Card-based repeatable layout. Receives `field`, `rows`, `onAdd`, `onRemove`, `onMoveUp`, `onMoveDown` from the renderer.
+| props | Meaning |
+| --- | --- |
+| `rows?: ReactNode[][]` | Already-rendered fields for each row |
+| `onAdd` / `onRemove` / `onMoveUp` / `onMoveDown` | Array operation callbacks |
+| `maxItems?: number` | Maximum item count |
+| `addText?: string` | Add-button text |
+| `disabled?: boolean` / `readOnly?: boolean` | State control |
 
-```json
-{
-  "type": "array",
-  "component": "ArrayCards",
-  "props": { "title": "Contact" },
-  "items": {
-    "properties": {
-      "name": { "type": "string", "component": "Input", "decorator": "FormItem" },
-      "phone": { "type": "string", "component": "Input", "decorator": "FormItem" }
-    }
-  }
-}
-```
+This is a card-list UI and works well for contacts, addresses, and approval nodes.
 
 ### ArrayTable
 
-Table-based repeatable layout.
+Props are almost the same as `ArrayCards`, but the visual structure is row-based and better suited to line-item entry.
+
+## Demo: Register Basic Inputs
+
+```tsx
+const components = {
+  Input: ({ value, onChange, ...rest }: any) => (
+    <Input
+      value={value ?? ''}
+      onChange={(event) => onChange(event.target.value)}
+      {...rest}
+    />
+  ),
+  Select,
+  Checkbox,
+  Switch,
+  DateInput,
+  RadioGroup,
+  Rating,
+}
+```
+
+## Demo: Layout And Array Fields
+
+This schema fragment comes from `apps/demo/src/schema/02-layout-and-collections.json`:
 
 ```json
 {
-  "type": "array",
-  "component": "ArrayTable",
-  "items": {
+  "basicSection": {
+    "type": "void",
+    "title": "Basic Information",
+    "component": "FormSection",
+    "props": {
+      "bordered": true,
+      "collapsible": true
+    },
     "properties": {
-      "name": { "type": "string", "title": "Name", "component": "Input" },
-      "qty": { "type": "number", "title": "Qty", "component": "Input" }
+      "basicGrid": {
+        "type": "void",
+        "component": "FormGrid",
+        "props": {
+          "columns": 2,
+          "gap": 4
+        },
+        "properties": {
+          "projectName": {
+            "type": "string",
+            "title": "Project Name",
+            "component": "Input",
+            "decorator": "FormItem"
+          },
+          "riskLevel": {
+            "type": "number",
+            "title": "Risk Score",
+            "component": "Rating",
+            "decorator": "FormItem",
+            "props": { "max": 5 }
+          }
+        }
+      }
+    }
+  },
+  "contacts": {
+    "type": "array",
+    "title": "Project Contacts",
+    "component": "ArrayCards",
+    "decorator": "FormItem",
+    "props": { "addText": "+ Add Contact" }
+  },
+  "milestones": {
+    "type": "array",
+    "title": "Milestones",
+    "component": "ArrayTable",
+    "decorator": "FormItem",
+    "props": { "addText": "+ Add Milestone" }
+  }
+}
+```
+
+## Demo: Display Mode And Dynamic Props
+
+This fragment comes from `apps/demo/src/schema/06-state-and-display.json`:
+
+```json
+{
+  "nickname": {
+    "type": "string",
+    "title": "Nickname",
+    "component": "Input",
+    "decorator": "FormItem",
+    "x-reaction": {
+      "pattern": {
+        "type": "match",
+        "dependencies": { "mode": "mode" },
+        "match": {
+          "readonly": "readPretty",
+          "default": "editable"
+        }
+      },
+      "props": {
+        "type": "expression",
+        "dependencies": { "mode": "mode" },
+        "expression": "{ placeholder: $deps.mode === 'readonly' ? 'Read-only mode' : 'Enter a nickname' }"
+      }
     }
   }
 }
 ```
 
-## Layout Components
+This example shows two important design points:
 
-Layout components use `type: "void"` — they don't produce form values.
-
-### FormGrid
-
-```json
-{ "type": "void", "component": "FormGrid", "props": { "columns": 2, "gap": 16 } }
-```
-
-### FormLayout
-
-```json
-{ "type": "void", "component": "FormLayout", "props": { "direction": "horizontal", "gap": 8 } }
-```
-
-### FormSection
-
-```json
-{
-  "type": "void",
-  "title": "Section Title",
-  "component": "FormSection",
-  "props": { "bordered": true, "collapsible": true, "defaultCollapsed": false }
-}
-```
-
-## Decorators
-
-### FormItem
-
-Standard field wrapper providing label, required indicator, errors, and description.
-
-```json
-{ "decorator": "FormItem" }
-```
-
-The `FieldRenderer` in `@formily-bao/react` passes these props to the decorator automatically:
-
-- `label` — from `field.title`
-- `required` — from `field.required`
-- `errors` — from `field.errors`
-- `warnings` — from `field.warnings`
-- `description` — from `field.description`
-- `validateStatus` — from `field.validateStatus`
-- `pattern` — from `field.pattern`
-
-## Component Props Contract
-
-Every component registered with FormBao receives:
-
-```ts
-{
-  value: any
-  onChange: (val: any) => void
-  disabled: boolean
-  readOnly: boolean
-  readPretty: boolean
-  loading: boolean
-  pattern: FieldPatternTypes
-  dataSource?: Array<{ label: string; value: any }>
-  ...componentProps  // from props
-}
-```
+- Components do not need to understand the linkage protocol; they only consume the final `pattern`, `readPretty`, and `props`.
+- The actual dynamic logic lives in `@formily-bao/core`, while UI components stay presentational.

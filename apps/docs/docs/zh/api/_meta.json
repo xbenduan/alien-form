@@ -6,6 +6,11 @@
   },
   {
     "type": "file",
+    "name": "react",
+    "label": "react"
+  },
+  {
+    "type": "file",
     "name": "schema",
     "label": "schema"
   },

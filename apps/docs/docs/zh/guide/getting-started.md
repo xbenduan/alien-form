@@ -1,21 +1,38 @@
 # 快速开始
 
+本页只覆盖当前仓库里已经实现并公开导出的能力：`@formily-bao/core`、`@formily-bao/react`、`@formily-bao/ui`。
+
 ## 安装
 
 ```bash
-npm install @formily-bao/core @formily-bao/react @formily-bao/ui
+pnpm add @formily-bao/core @formily-bao/react @formily-bao/ui
 ```
 
-## 基本示例
+## 最小可运行示例
+
+`FieldRenderer` 传给组件的是统一协议：`value`、`onChange`、`disabled`、`readOnly`、`readPretty`、`loading`、`pattern`。但像 `Input`、`Textarea` 这种原生输入组件接收的是 DOM 事件，因此你通常需要做一层适配。
 
 ```tsx
 import { createForm } from '@formily-bao/core'
 import { FormProvider, SchemaField } from '@formily-bao/react'
-import { Input, Select, FormItem } from '@formily-bao/ui'
+import { Button, Input, Select, FormItem } from '@formily-bao/ui'
 
 const form = createForm({
   initialValues: { role: 'developer' },
 })
+
+const components = {
+  Input: ({ value, onChange, ...rest }: any) => (
+    <Input
+      value={value ?? ''}
+      onChange={(event) => onChange(event.target.value)}
+      {...rest}
+    />
+  ),
+  Select,
+}
+
+const decorators = { FormItem }
 
 const schema = {
   type: 'object',
@@ -24,79 +41,53 @@ const schema = {
       type: 'string',
       title: '用户名',
       required: true,
-      'component': 'Input',
-      'decorator': 'FormItem',
-      'validators': [{ minLength: 3, message: '至少 3 个字符' }],
+      component: 'Input',
+      decorator: 'FormItem',
+      validators: [{ minLength: 3, message: '至少 3 个字符' }],
+      props: { placeholder: '请输入用户名' },
     },
     role: {
       type: 'string',
       title: '角色',
-      'component': 'Select',
-      'decorator': 'FormItem',
-      enum: [
-        { label: '开发者', value: 'developer' },
-        { label: '设计师', value: 'designer' },
+      component: 'Select',
+      decorator: 'FormItem',
+      dataSource: [
+        { label: '开发', value: 'developer' },
+        { label: '设计', value: 'designer' },
       ],
     },
   },
 }
 
-function App() {
+export function App() {
   return (
-    <FormProvider form={form} components={{ Input, Select }} decorators={{ FormItem }}>
+    <FormProvider form={form} components={components} decorators={decorators}>
       <SchemaField schema={schema} />
-      <button onClick={() => form.submit(console.log)}>提交</button>
+      <Button onClick={() => form.submit(console.log)}>提交</Button>
     </FormProvider>
   )
 }
 ```
 
-## 工作原理
+## 运行链路
 
-1. **`createForm()`** 创建由 Alien Signals 支持的响应式表单实例
-2. **`FormProvider`** 建立 React Context，注册组件和装饰器
-3. **`SchemaField`** 内部调用 `form.setSchema()`，为每个属性创建 `Field` 实例并设置 `x-reaction` 效果
-4. 每个 `Field` 将状态存储在 signal 中（`_value`、`_display`、`_pattern`、`_errors` 等）— 仅订阅的组件会重新渲染
+1. `createForm()` 创建 `Form` 实例，并在构造时执行 `effects`、注册 `handlers` 与 `onError`。
+2. `FormProvider` 通过 React Context 暴露 `form`、`components`、`decorators`。
+3. `SchemaField` 在 `useEffect` 中调用 `form.setSchema(schema)`，重建字段注册表并初始化联动。
+4. `FieldRenderer` 和 `ArrayFieldRenderer` 从字段实例读取状态，再把统一协议 props 传给 UI 组件。
+5. `form.submit()` 先 `validate()`，校验通过后返回 `form.values`，并在输出前执行 `x-format.output`。
 
-## 架构
+## 当前包职责
 
-```
-JSON Schema (Formily 协议)
-        │
-        ▼
-┌─────────────────────────────┐
-│        Form (form.ts)       │
-│  • createField()            │
-│  • setSchema() — 解析 $ref、│
-│    order、创建字段、       │
-│    设置 x-reaction            │
-│  • 表达式引擎               │
-│  • 生命周期注册             │
-└──────────────┬──────────────┘
-               │ 创建
-               ▼
-┌─────────────────────────────┐
-│       Field (field.ts)      │
-│  • Alien Signals 状态       │
-│  • validate() + 格式验证    │
-│  • 数组操作                 │
-│  • setState() / display /   │
-│    pattern 控制             │
-└──────────────┬──────────────┘
-               │ 消费
-               ▼
-┌─────────────────────────────┐
-│    React 层 (react.tsx)     │
-│  • FormProvider / SchemaField│
-│  • useForm / useField       │
-│  • FieldRenderer            │
-│  • ArrayFieldRenderer       │
-└─────────────────────────────┘
-```
+| 包名 | 当前职责 |
+| --- | --- |
+| `@formily-bao/core` | `Form`、`Field`、Schema 协议、表达式、校验、数组操作 |
+| `@formily-bao/react` | `FormProvider`、`SchemaField`、`useForm`、`useField`、`useFormState`、`useArrayField` |
+| `@formily-bao/ui` | `Input`、`Select`、`Checkbox`、`ArrayCards`、`FormGrid`、`FormSection` 等默认组件 |
 
-## 包
+## 从哪里继续看
 
-| 包名 | 说明 |
-|------|------|
-| `@formily-bao/core` | 无头表单模型、字段状态、表达式引擎 |
-| `@formily-bao/ui` | UI 组件：Input、Select、Switch、Rating、ArrayCards、FormGrid 等 |
+- 如果你先想看模型层：读 [Core API](../api/core)
+- 如果你先想看渲染层：读 [React API](../api/react)
+- 如果你先想看协议字段：读 [Schema API](../api/schema)
+- 如果你先想看组件注册：读 [Components API](../api/components)

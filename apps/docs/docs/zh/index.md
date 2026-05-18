@@ -4,7 +4,7 @@ pageType: home
 hero:
   name: FormBao
   text: Schema 驱动表单引擎
-  tagline: 基于最新版 Rspress 官方本地化结构构建的双语文档站
+  tagline: 以真实源码为准的双语文档，覆盖 core、react、ui 与完整协议示例
   image:
     src: /logo.svg
     alt: FormBao
@@ -17,31 +17,35 @@ hero:
       link: /
 
 features:
-  - title: 中文文档
-    details: 中文内容位于 docs/zh，并通过 /zh 路由前缀对外提供访问。
-  - title: 英文文档
-    details: 英文内容位于 docs/en，作为默认语言直接输出为无 /en 前缀路由。
-  - title: 官方本地化切换
-    details: 语言切换基于 locales、locale 首页和 _nav/_meta 的 i18n key 自动完成。
+  - title: Core / React / UI 分层
+    details: 文档按真实导出拆分为 headless core、React 绑定层和 UI 组件层，便于从源码到用法逐层理解。
+  - title: 协议与实现对齐
+    details: `x-reaction`、`x-format`、`x-validate`、`dataSourcePolicy` 等说明均以当前仓库实现为准，不写不存在的能力。
+  - title: 每页附真实 Demo
+    details: 示例直接来自 apps/demo 中的 schema 场景，并拆分到对应 API 页面，便于边读边对照运行效果。
 ---
 
 # FormBao
 
-FormBao 是面向企业场景的 Schema Form 引擎，基于 JSON Schema 建模，并提供 headless core、React 绑定、UI 组件和文档示例。
+FormBao 是面向企业场景的 Schema Form 引擎，当前仓库由三个运行时包组成：
 
-## 特性
+- `@formily-bao/core`：表单模型、字段状态、表达式与动态协议执行。
+- `@formily-bao/react`：React Context、Schema 渲染器、hooks。
+- `@formily-bao/ui`：默认 UI 组件与布局容器。
 
-- 自然字段协议：`component`、`props`、`decorator`、`dataSource`、`validators`。
-- 字段自有属性级 `x-reaction`：用 `static`、`expression`、`match`、`computed` 描述动态派生。
-- 安全表达式：只做受控表达式求值，不提供任意脚本执行入口。
-- 框架分层：core 与 React 绑定解耦，后续可扩展 Vue、Solid 等社区绑定。
-- 企业可审计：异步请求由应用层 `handlers` 接管，core 不内置 URL 获取。
+## 你会在这里看到什么
+
+- 真实导出清单：只记录 `packages/*/src/index.*` 里当前真的导出的 API。
+- 真实行为说明：例如 `SchemaField` 会调用 `form.setSchema()`，`useField()` 会订阅字段变化，`form.values` 会经过 `x-format.output`。
+- 真实 demo：文档示例优先复用 `apps/demo` 中的 schema 片段，而不是重新发明一套脱离实现的例子。
 
 ## 快速入口
 
 - [快速开始](./guide/getting-started)
-- [协议设计](./guide/protocol)
-- [联动协议](./advanced/linkage)
-- [异步选项](./advanced/async-datasource)
-- [Schema API](./api/schema)
 - [Core API](./api/core)
+- [React API](./api/react)
+- [Schema API](./api/schema)
+- [Components API](./api/components)
+- [联动协议](./advanced/linkage)
+- [数组字段](./advanced/array-fields)
+- [异步数据源](./advanced/async-datasource)
