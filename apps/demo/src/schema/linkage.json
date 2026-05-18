@@ -1,0 +1,133 @@
+{
+  "id": "linkage",
+  "name": "Linkage Demo",
+  "description": "Field linkage: type selection controls which fields are visible",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "contactType": {
+        "type": "string",
+        "title": "Contact Method",
+        "required": true,
+        "x-component": "Select",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "placeholder": "How should we reach you?"
+        },
+        "x-data-source": [
+          {
+            "label": "Email",
+            "value": "email"
+          },
+          {
+            "label": "Phone",
+            "value": "phone"
+          },
+          {
+            "label": "WeChat",
+            "value": "wechat"
+          }
+        ]
+      },
+      "emailAddress": {
+        "type": "string",
+        "title": "Email Address",
+        "x-component": "Input",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "placeholder": "your@email.com"
+        },
+        "x-validator": [
+          {
+            "format": "email",
+            "message": "Invalid email"
+          }
+        ],
+        "x-visible": false,
+        "x-reactions": {
+          "dependencies": {
+            "contactType": "contactType"
+          },
+          "when": "contactType === 'email'",
+          "fulfill": {
+            "state": {
+              "visible": true,
+              "required": true
+            }
+          },
+          "otherwise": {
+            "state": {
+              "visible": false,
+              "required": false
+            }
+          }
+        }
+      },
+      "phoneNumber": {
+        "type": "string",
+        "title": "Phone Number",
+        "x-component": "Input",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "placeholder": "+86 138 0000 0000"
+        },
+        "x-visible": false,
+        "x-reactions": {
+          "dependencies": {
+            "contactType": "contactType"
+          },
+          "when": "contactType === 'phone'",
+          "fulfill": {
+            "state": {
+              "visible": true,
+              "required": true
+            }
+          },
+          "otherwise": {
+            "state": {
+              "visible": false,
+              "required": false
+            }
+          }
+        }
+      },
+      "wechatId": {
+        "type": "string",
+        "title": "WeChat ID",
+        "x-component": "Input",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "placeholder": "Your WeChat ID"
+        },
+        "x-visible": false,
+        "x-reactions": {
+          "dependencies": {
+            "contactType": "contactType"
+          },
+          "when": "contactType === 'wechat'",
+          "fulfill": {
+            "state": {
+              "visible": true,
+              "required": true
+            }
+          },
+          "otherwise": {
+            "state": {
+              "visible": false,
+              "required": false
+            }
+          }
+        }
+      },
+      "satisfaction": {
+        "type": "number",
+        "title": "Satisfaction",
+        "x-component": "Rating",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "max": 5
+        }
+      }
+    }
+  }
+}

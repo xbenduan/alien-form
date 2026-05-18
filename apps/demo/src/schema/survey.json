@@ -1,0 +1,78 @@
+{
+  "id": "survey",
+  "name": "Survey Form",
+  "description": "A product satisfaction survey with various input types",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "productRating": {
+        "type": "number",
+        "title": "How would you rate our product?",
+        "required": true,
+        "x-component": "Rating",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "max": 5,
+          "size": "lg"
+        }
+      },
+      "usedFeatures": {
+        "type": "array",
+        "title": "Which features have you used?",
+        "x-component": "Select",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "multiple": true,
+          "placeholder": "Select features"
+        },
+        "x-data-source": [
+          {
+            "label": "Schema Builder",
+            "value": "schema-builder"
+          },
+          {
+            "label": "Form Preview",
+            "value": "preview"
+          },
+          {
+            "label": "Validation Engine",
+            "value": "validation"
+          },
+          {
+            "label": "Field Linkage",
+            "value": "linkage"
+          },
+          {
+            "label": "Custom Components",
+            "value": "custom-components"
+          }
+        ]
+      },
+      "wouldRecommend": {
+        "type": "boolean",
+        "title": "Would you recommend this product?",
+        "x-component": "Switch",
+        "x-decorator": "FormItem"
+      },
+      "improvements": {
+        "type": "array",
+        "title": "Suggested improvements",
+        "x-component": "ItemInput",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "placeholder": "Type a suggestion and press Enter"
+        }
+      },
+      "feedback": {
+        "type": "string",
+        "title": "Additional feedback",
+        "x-component": "Textarea",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "placeholder": "Tell us more...",
+          "rows": 4
+        }
+      }
+    }
+  }
+}

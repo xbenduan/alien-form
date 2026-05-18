@@ -1,0 +1,97 @@
+{
+  "id": "array-cards",
+  "name": "Array Cards Demo",
+  "description": "Dynamic list with ArrayCards — add/remove/reorder contact entries",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "projectName": {
+        "type": "string",
+        "title": "Project Name",
+        "required": true,
+        "x-component": "Input",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "placeholder": "Enter project name"
+        }
+      },
+      "contacts": {
+        "type": "array",
+        "title": "Team Contacts",
+        "x-component": "ArrayCards",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "addText": "+ Add Contact"
+        },
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Name",
+              "required": true,
+              "x-component": "Input",
+              "x-decorator": "FormItem",
+              "x-component-props": {
+                "placeholder": "Contact name"
+              },
+              "x-validator": [
+                {
+                  "minLength": 2,
+                  "message": "Name must be at least 2 characters"
+                }
+              ]
+            },
+            "role": {
+              "type": "string",
+              "title": "Role",
+              "x-component": "Select",
+              "x-decorator": "FormItem",
+              "x-component-props": {
+                "placeholder": "Select role"
+              },
+              "x-data-source": [
+                { "label": "Developer", "value": "dev" },
+                { "label": "Designer", "value": "design" },
+                { "label": "PM", "value": "pm" },
+                { "label": "QA", "value": "qa" },
+                { "label": "Lead", "value": "lead" }
+              ]
+            },
+            "email": {
+              "type": "string",
+              "title": "Email",
+              "x-component": "Input",
+              "x-decorator": "FormItem",
+              "x-component-props": {
+                "placeholder": "email@example.com"
+              },
+              "x-validator": [
+                {
+                  "format": "email",
+                  "message": "Invalid email address"
+                }
+              ]
+            },
+            "isPrimary": {
+              "type": "boolean",
+              "title": "Primary Contact",
+              "x-component": "Switch",
+              "x-decorator": "FormItem"
+            }
+          }
+        }
+      },
+      "notes": {
+        "type": "string",
+        "title": "Notes",
+        "x-component": "Textarea",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "placeholder": "Additional notes...",
+          "rows": 2
+        }
+      }
+    }
+  }
+}

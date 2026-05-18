@@ -1,0 +1,133 @@
+{
+  "id": "registration",
+  "name": "Registration Form",
+  "description": "Full registration with validation, select, and date input",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "title": "Full Name",
+        "required": true,
+        "x-component": "Input",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "placeholder": "Enter your full name"
+        },
+        "x-validator": [
+          {
+            "minLength": 2,
+            "message": "Name must be at least 2 characters"
+          }
+        ]
+      },
+      "email": {
+        "type": "string",
+        "title": "Email",
+        "required": true,
+        "x-component": "Input",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "placeholder": "example@email.com"
+        },
+        "x-validator": [
+          {
+            "format": "email",
+            "message": "Invalid email address"
+          }
+        ]
+      },
+      "birthday": {
+        "type": "string",
+        "title": "Birthday",
+        "x-component": "DateInput",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "max": "2010-01-01"
+        }
+      },
+      "gender": {
+        "type": "string",
+        "title": "Gender",
+        "x-component": "RadioGroup",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "direction": "horizontal"
+        },
+        "x-data-source": [
+          {
+            "label": "Male",
+            "value": "male"
+          },
+          {
+            "label": "Female",
+            "value": "female"
+          },
+          {
+            "label": "Other",
+            "value": "other"
+          }
+        ]
+      },
+      "country": {
+        "type": "string",
+        "title": "Country",
+        "required": true,
+        "x-component": "Select",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "placeholder": "Select your country"
+        },
+        "x-data-source": [
+          {
+            "label": "United States",
+            "value": "us"
+          },
+          {
+            "label": "China",
+            "value": "cn"
+          },
+          {
+            "label": "Japan",
+            "value": "jp"
+          },
+          {
+            "label": "United Kingdom",
+            "value": "uk"
+          },
+          {
+            "label": "Singapore",
+            "value": "sg"
+          },
+          {
+            "label": "Germany",
+            "value": "de"
+          }
+        ]
+      },
+      "bio": {
+        "type": "string",
+        "title": "Bio",
+        "x-component": "Textarea",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "placeholder": "Tell us about yourself",
+          "rows": 3
+        },
+        "x-validator": [
+          {
+            "maxLength": 200,
+            "message": "Bio must be under 200 characters"
+          }
+        ]
+      },
+      "agreeTerms": {
+        "type": "boolean",
+        "title": "I agree to the terms of service",
+        "required": true,
+        "x-component": "Checkbox",
+        "x-decorator": "FormItem"
+      }
+    }
+  }
+}

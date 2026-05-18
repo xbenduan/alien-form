@@ -1,0 +1,74 @@
+{
+  "id": "array-table",
+  "name": "Array Table Demo",
+  "description": "Dynamic list with ArrayTable — compact row-based editing for structured data",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string",
+        "title": "Invoice Title",
+        "required": true,
+        "x-component": "Input",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "placeholder": "e.g. Monthly Invoice #001"
+        }
+      },
+      "lineItems": {
+        "type": "array",
+        "title": "Line Items",
+        "x-component": "ArrayTable",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "addText": "+ Add Line Item"
+        },
+        "items": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string",
+              "title": "Description",
+              "required": true,
+              "x-component": "Input",
+              "x-decorator": "FormItem",
+              "x-component-props": {
+                "placeholder": "Item description"
+              }
+            },
+            "quantity": {
+              "type": "number",
+              "title": "Qty",
+              "required": true,
+              "x-component": "Input",
+              "x-decorator": "FormItem",
+              "x-component-props": {
+                "type": "number",
+                "placeholder": "0",
+                "min": 1
+              }
+            },
+            "unitPrice": {
+              "type": "number",
+              "title": "Unit Price",
+              "required": true,
+              "x-component": "Input",
+              "x-decorator": "FormItem",
+              "x-component-props": {
+                "type": "number",
+                "placeholder": "0.00",
+                "step": "0.01"
+              }
+            }
+          }
+        }
+      },
+      "dueDate": {
+        "type": "string",
+        "title": "Due Date",
+        "x-component": "DateInput",
+        "x-decorator": "FormItem"
+      }
+    }
+  }
+}

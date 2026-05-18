@@ -1,0 +1,132 @@
+{
+  "id": "advanced",
+  "name": "Advanced - All Components",
+  "description": "Demonstrates Select (multi), ItemInput, Rating, Switch, DateInput, RadioGroup",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "skills": {
+        "type": "array",
+        "title": "Skills (multi-select)",
+        "x-component": "Select",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "multiple": true,
+          "placeholder": "Select skills"
+        },
+        "x-data-source": [
+          {
+            "label": "JavaScript",
+            "value": "js"
+          },
+          {
+            "label": "TypeScript",
+            "value": "ts"
+          },
+          {
+            "label": "React",
+            "value": "react"
+          },
+          {
+            "label": "Vue",
+            "value": "vue"
+          },
+          {
+            "label": "Node.js",
+            "value": "node"
+          },
+          {
+            "label": "Python",
+            "value": "python"
+          },
+          {
+            "label": "Go",
+            "value": "go"
+          },
+          {
+            "label": "Rust",
+            "value": "rust"
+          }
+        ]
+      },
+      "tags": {
+        "type": "array",
+        "title": "Tags (item input)",
+        "x-component": "ItemInput",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "placeholder": "Type and press Enter to add tags",
+          "maxItems": 5
+        }
+      },
+      "experience": {
+        "type": "number",
+        "title": "Experience Rating",
+        "x-component": "Rating",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "max": 5,
+          "size": "lg"
+        }
+      },
+      "startDate": {
+        "type": "string",
+        "title": "Start Date",
+        "x-component": "DateInput",
+        "x-decorator": "FormItem"
+      },
+      "newsletter": {
+        "type": "boolean",
+        "title": "Subscribe to Newsletter",
+        "x-component": "Switch",
+        "x-decorator": "FormItem"
+      },
+      "frequency": {
+        "type": "string",
+        "title": "Email Frequency",
+        "x-component": "RadioGroup",
+        "x-decorator": "FormItem",
+        "x-data-source": [
+          {
+            "label": "Daily",
+            "value": "daily"
+          },
+          {
+            "label": "Weekly",
+            "value": "weekly"
+          },
+          {
+            "label": "Monthly",
+            "value": "monthly"
+          }
+        ],
+        "x-reactions": {
+          "dependencies": {
+            "newsletter": "newsletter"
+          },
+          "when": "newsletter === true",
+          "fulfill": {
+            "state": {
+              "visible": true
+            }
+          },
+          "otherwise": {
+            "state": {
+              "visible": false
+            }
+          }
+        }
+      },
+      "notes": {
+        "type": "string",
+        "title": "Additional Notes",
+        "x-component": "Textarea",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "placeholder": "Any other info...",
+          "rows": 2
+        }
+      }
+    }
+  }
+}

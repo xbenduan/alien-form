@@ -1,0 +1,15 @@
+{
+  "name": "formily-bao",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @formily-bao/demo run dev",
+    "dev:docs": "pnpm --filter @formily-bao/docs run dev",
+    "build": "pnpm -r run build",
+    "package:source": "bash ./scripts/package-project.sh",
+    "test": "pnpm -r run test",
+    "test:reactive": "pnpm --filter @formily-bao/reactive run test"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

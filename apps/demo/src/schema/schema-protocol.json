@@ -1,0 +1,270 @@
+{
+  "id": "schema-protocol",
+  "name": "Schema Protocol",
+  "description": "Full Formily Schema protocol demo: x-reactions (active/passive), $ref/definitions, x-display, x-pattern, expression compilation, x-index ordering",
+  "schema": {
+    "type": "object",
+    "title": "Schema Protocol Demo",
+    "definitions": {
+      "address": {
+        "type": "object",
+        "properties": {
+          "street": {
+            "type": "string",
+            "title": "Street",
+            "x-component": "Input",
+            "x-decorator": "FormItem",
+            "x-component-props": { "placeholder": "Enter street address" }
+          },
+          "city": {
+            "type": "string",
+            "title": "City",
+            "x-component": "Input",
+            "x-decorator": "FormItem"
+          },
+          "zipCode": {
+            "type": "string",
+            "title": "Zip Code",
+            "x-component": "Input",
+            "x-decorator": "FormItem",
+            "x-validator": [{ "pattern": "^\\d{5,6}$", "message": "Invalid zip code" }]
+          }
+        }
+      }
+    },
+    "properties": {
+      "basicSection": {
+        "type": "void",
+        "title": "Basic Info",
+        "x-component": "FormSection",
+        "x-component-props": { "bordered": true, "collapsible": true },
+        "x-index": 0,
+        "properties": {
+          "grid1": {
+            "type": "void",
+            "x-component": "FormGrid",
+            "x-component-props": { "columns": 2 },
+            "properties": {
+              "name": {
+                "type": "string",
+                "title": "Full Name",
+                "required": true,
+                "x-component": "Input",
+                "x-decorator": "FormItem",
+                "x-component-props": { "placeholder": "Your full name" },
+                "x-index": 0
+              },
+              "email": {
+                "type": "string",
+                "title": "Email",
+                "required": true,
+                "x-component": "Input",
+                "x-decorator": "FormItem",
+                "x-validator": [{ "format": "email" }],
+                "x-component-props": { "placeholder": "email@example.com" },
+                "x-index": 1
+              }
+            }
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "x-component": "Select",
+            "x-decorator": "FormItem",
+            "enum": ["developer", "designer", "manager", "other"],
+            "x-index": 2
+          }
+        }
+      },
+
+      "conditionalSection": {
+        "type": "void",
+        "title": "Conditional Fields (x-reactions active mode)",
+        "x-component": "FormSection",
+        "x-component-props": { "bordered": true, "collapsible": true },
+        "x-index": 1,
+        "properties": {
+          "hasAddress": {
+            "type": "boolean",
+            "title": "Has Address?",
+            "x-component": "Switch",
+            "x-decorator": "FormItem",
+            "x-index": 0,
+            "x-reactions": {
+              "target": "conditionalSection.homeAddress",
+              "fulfill": {
+                "state": { "display": "visible" }
+              },
+              "otherwise": {
+                "state": { "display": "none" }
+              }
+            }
+          },
+          "homeAddress": {
+            "$ref": "#/definitions/address",
+            "title": "Home Address ($ref)",
+            "x-index": 1,
+            "x-display": "none"
+          },
+          "country": {
+            "type": "string",
+            "title": "Country",
+            "x-component": "Select",
+            "x-decorator": "FormItem",
+            "enum": [
+              { "label": "United States", "value": "us" },
+              { "label": "China", "value": "cn" },
+              { "label": "Japan", "value": "jp" },
+              { "label": "United Kingdom", "value": "uk" },
+              { "label": "Germany", "value": "de" }
+            ],
+            "x-index": 2
+          },
+          "phone": {
+            "type": "string",
+            "title": "Phone (reactive placeholder)",
+            "x-component": "Input",
+            "x-decorator": "FormItem",
+            "x-index": 3,
+            "x-reactions": [
+              {
+                "dependencies": { "country": "conditionalSection.country" },
+                "when": "{{$deps.country !== undefined && $deps.country !== ''}}",
+                "fulfill": {
+                  "schema": {
+                    "x-component-props": { "placeholder": "Enter phone for selected country" }
+                  }
+                },
+                "otherwise": {
+                  "schema": {
+                    "x-component-props": { "placeholder": "Select a country first" }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+
+      "patternSection": {
+        "type": "void",
+        "title": "Display & Pattern Modes",
+        "x-component": "FormSection",
+        "x-component-props": { "bordered": true, "collapsible": true },
+        "x-index": 2,
+        "properties": {
+          "mode": {
+            "type": "string",
+            "title": "Select Pattern",
+            "x-component": "Select",
+            "x-decorator": "FormItem",
+            "default": "editable",
+            "enum": [
+              { "label": "Editable", "value": "editable" },
+              { "label": "Read Only", "value": "readOnly" },
+              { "label": "Disabled", "value": "disabled" },
+              { "label": "Read Pretty", "value": "readPretty" }
+            ],
+            "x-index": 0,
+            "x-reactions": {
+              "target": "patternSection.demoField",
+              "fulfill": {
+                "state": { "pattern": "{{$self.value || 'editable'}}" }
+              }
+            }
+          },
+          "demoField": {
+            "type": "string",
+            "title": "Demo Field (pattern changes)",
+            "default": "Hello World",
+            "x-component": "Input",
+            "x-decorator": "FormItem",
+            "x-index": 1
+          },
+          "displayMode": {
+            "type": "string",
+            "title": "Display Mode",
+            "x-component": "Select",
+            "x-decorator": "FormItem",
+            "default": "visible",
+            "enum": [
+              { "label": "Visible", "value": "visible" },
+              { "label": "Hidden (keeps space)", "value": "hidden" },
+              { "label": "None (removed from DOM)", "value": "none" }
+            ],
+            "x-index": 2,
+            "x-reactions": {
+              "target": "patternSection.displayTarget",
+              "fulfill": {
+                "state": { "display": "{{$self.value || 'visible'}}" }
+              }
+            }
+          },
+          "displayTarget": {
+            "type": "string",
+            "title": "Display Target",
+            "default": "I can be hidden!",
+            "x-component": "Input",
+            "x-decorator": "FormItem",
+            "x-index": 3
+          }
+        }
+      },
+
+      "validationSection": {
+        "type": "void",
+        "title": "Advanced Validation (JSON Schema)",
+        "x-component": "FormSection",
+        "x-component-props": { "bordered": true, "collapsible": true },
+        "x-index": 3,
+        "properties": {
+          "age": {
+            "type": "number",
+            "title": "Age (min: 18, max: 100)",
+            "x-component": "Input",
+            "x-decorator": "FormItem",
+            "x-component-props": { "type": "number", "placeholder": "18-100" },
+            "x-validator": [
+              { "min": 18, "max": 100, "message": "Age must be between 18 and 100" }
+            ],
+            "x-index": 0
+          },
+          "score": {
+            "type": "number",
+            "title": "Score (multipleOf: 5)",
+            "x-component": "Input",
+            "x-decorator": "FormItem",
+            "x-component-props": { "type": "number", "placeholder": "Must be a multiple of 5" },
+            "x-validator": [
+              { "multipleOf": 5, "message": "Score must be a multiple of 5" }
+            ],
+            "x-index": 1
+          },
+          "website": {
+            "type": "string",
+            "title": "Website (format: url)",
+            "x-component": "Input",
+            "x-decorator": "FormItem",
+            "x-component-props": { "placeholder": "https://..." },
+            "x-validator": [
+              { "format": "url", "message": "Must be a valid URL" }
+            ],
+            "x-index": 2
+          },
+          "password": {
+            "type": "string",
+            "title": "Password (minLength: 8)",
+            "required": true,
+            "x-component": "Input",
+            "x-decorator": "FormItem",
+            "x-component-props": { "type": "password", "placeholder": "At least 8 characters" },
+            "x-validator": [
+              { "minLength": 8, "message": "Password must be at least 8 characters" }
+            ],
+            "x-index": 3
+          }
+        }
+      }
+    }
+  }
+}

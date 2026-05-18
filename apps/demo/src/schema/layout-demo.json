@@ -1,0 +1,179 @@
+{
+  "id": "layout-demo",
+  "name": "Layout Components Demo",
+  "description": "FormGrid, FormLayout, FormSection — structure forms with grids, sections, and collapsible groups",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "basicInfo": {
+        "type": "void",
+        "title": "Basic Information",
+        "description": "Personal details arranged in a 2-column grid",
+        "x-component": "FormSection",
+        "x-component-props": {
+          "bordered": true,
+          "collapsible": true
+        },
+        "properties": {
+          "basicGrid": {
+            "type": "void",
+            "x-component": "FormGrid",
+            "x-component-props": {
+              "columns": 2,
+              "gap": 4
+            },
+            "properties": {
+              "firstName": {
+                "type": "string",
+                "title": "First Name",
+                "required": true,
+                "x-component": "Input",
+                "x-decorator": "FormItem",
+                "x-component-props": {
+                  "placeholder": "John"
+                }
+              },
+              "lastName": {
+                "type": "string",
+                "title": "Last Name",
+                "required": true,
+                "x-component": "Input",
+                "x-decorator": "FormItem",
+                "x-component-props": {
+                  "placeholder": "Doe"
+                }
+              },
+              "email": {
+                "type": "string",
+                "title": "Email",
+                "required": true,
+                "x-component": "Input",
+                "x-decorator": "FormItem",
+                "x-component-props": {
+                  "placeholder": "john@example.com"
+                },
+                "x-validator": [{ "format": "email", "message": "Invalid email" }]
+              },
+              "phone": {
+                "type": "string",
+                "title": "Phone",
+                "x-component": "Input",
+                "x-decorator": "FormItem",
+                "x-component-props": {
+                  "placeholder": "+1 (555) 000-0000"
+                }
+              }
+            }
+          }
+        }
+      },
+      "preferences": {
+        "type": "void",
+        "title": "Preferences",
+        "description": "Communication and notification settings",
+        "x-component": "FormSection",
+        "x-component-props": {
+          "bordered": true,
+          "collapsible": true
+        },
+        "properties": {
+          "prefLayout": {
+            "type": "void",
+            "x-component": "FormLayout",
+            "x-component-props": {
+              "direction": "vertical",
+              "gap": 3
+            },
+            "properties": {
+              "language": {
+                "type": "string",
+                "title": "Language",
+                "x-component": "Select",
+                "x-decorator": "FormItem",
+                "x-component-props": {
+                  "placeholder": "Select language"
+                },
+                "x-data-source": [
+                  { "label": "English", "value": "en" },
+                  { "label": "Chinese", "value": "zh" },
+                  { "label": "Japanese", "value": "ja" },
+                  { "label": "Korean", "value": "ko" }
+                ]
+              },
+              "theme": {
+                "type": "string",
+                "title": "Theme",
+                "x-component": "RadioGroup",
+                "x-decorator": "FormItem",
+                "x-component-props": {
+                  "direction": "horizontal"
+                },
+                "x-data-source": [
+                  { "label": "Light", "value": "light" },
+                  { "label": "Dark", "value": "dark" },
+                  { "label": "System", "value": "system" }
+                ]
+              },
+              "notifications": {
+                "type": "boolean",
+                "title": "Enable Notifications",
+                "x-component": "Switch",
+                "x-decorator": "FormItem"
+              }
+            }
+          }
+        }
+      },
+      "addressSection": {
+        "type": "void",
+        "title": "Address",
+        "description": "3-column grid for address fields",
+        "x-component": "FormSection",
+        "x-component-props": {
+          "bordered": true,
+          "collapsible": true,
+          "defaultCollapsed": true
+        },
+        "properties": {
+          "addrGrid": {
+            "type": "void",
+            "x-component": "FormGrid",
+            "x-component-props": {
+              "columns": 3,
+              "gap": 3
+            },
+            "properties": {
+              "street": {
+                "type": "string",
+                "title": "Street",
+                "x-component": "Input",
+                "x-decorator": "FormItem",
+                "x-component-props": {
+                  "placeholder": "123 Main St"
+                }
+              },
+              "city": {
+                "type": "string",
+                "title": "City",
+                "x-component": "Input",
+                "x-decorator": "FormItem",
+                "x-component-props": {
+                  "placeholder": "New York"
+                }
+              },
+              "zip": {
+                "type": "string",
+                "title": "ZIP Code",
+                "x-component": "Input",
+                "x-decorator": "FormItem",
+                "x-component-props": {
+                  "placeholder": "10001"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "id": "login",
+  "name": "Login Form",
+  "description": "Basic login with username and password",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "username": {
+        "type": "string",
+        "title": "Username",
+        "required": true,
+        "x-component": "Input",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "placeholder": "Enter username"
+        }
+      },
+      "password": {
+        "type": "string",
+        "title": "Password",
+        "required": true,
+        "x-component": "Input",
+        "x-decorator": "FormItem",
+        "x-component-props": {
+          "type": "password",
+          "placeholder": "Enter password"
+        }
+      },
+      "remember": {
+        "type": "boolean",
+        "title": "Remember me",
+        "x-component": "Checkbox",
+        "x-decorator": "FormItem"
+      }
+    }
+  }
+}
