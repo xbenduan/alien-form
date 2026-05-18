@@ -1,6 +1,6 @@
 # 异步数据源
 
-使用 `x-async-data-source` 加载远程选项。由 `Form._setupSingleAsyncDataSource()` 实现。
+使用 `asyncDataSource` 加载远程选项。由 `Form._setupSingleAsyncDataSource()` 实现。
 
 ## 配置
 
@@ -23,8 +23,8 @@ interface AsyncDataSource {
 {
   "country": {
     "type": "string",
-    "x-component": "Select",
-    "x-async-data-source": { "service": "fetchCountries" }
+    "component": "Select",
+    "asyncDataSource": { "service": "fetchCountries" }
   }
 }
 ```
@@ -45,8 +45,8 @@ const form = createForm({
 ```json
 {
   "city": {
-    "x-component": "Select",
-    "x-async-data-source": {
+    "component": "Select",
+    "asyncDataSource": {
       "service": "fetchCities",
       "dependencies": ["country"]
     }
@@ -60,7 +60,7 @@ const form = createForm({
 
 ```json
 {
-  "x-async-data-source": {
+  "asyncDataSource": {
     "url": "/api/options",
     "method": "GET",
     "transformResponse": "toOptions"

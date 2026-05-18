@@ -1,132 +1,132 @@
 {
   "id": "registration",
-  "name": "Registration Form",
-  "description": "Full registration with validation, select, and date input",
+  "name": "注册表单",
+  "description": "完整注册表单，包含校验、选择器和日期输入",
   "schema": {
     "type": "object",
     "properties": {
       "name": {
         "type": "string",
-        "title": "Full Name",
+        "title": "姓名",
         "required": true,
-        "x-component": "Input",
-        "x-decorator": "FormItem",
-        "x-component-props": {
-          "placeholder": "Enter your full name"
+        "component": "Input",
+        "decorator": "FormItem",
+        "props": {
+          "placeholder": "请输入姓名"
         },
-        "x-validator": [
+        "validators": [
           {
             "minLength": 2,
-            "message": "Name must be at least 2 characters"
+            "message": "姓名至少 2 个字符"
           }
         ]
       },
       "email": {
         "type": "string",
-        "title": "Email",
+        "title": "邮箱",
         "required": true,
-        "x-component": "Input",
-        "x-decorator": "FormItem",
-        "x-component-props": {
+        "component": "Input",
+        "decorator": "FormItem",
+        "props": {
           "placeholder": "example@email.com"
         },
-        "x-validator": [
+        "validators": [
           {
             "format": "email",
-            "message": "Invalid email address"
+            "message": "邮箱格式不正确"
           }
         ]
       },
       "birthday": {
         "type": "string",
-        "title": "Birthday",
-        "x-component": "DateInput",
-        "x-decorator": "FormItem",
-        "x-component-props": {
+        "title": "生日",
+        "component": "DateInput",
+        "decorator": "FormItem",
+        "props": {
           "max": "2010-01-01"
         }
       },
       "gender": {
         "type": "string",
-        "title": "Gender",
-        "x-component": "RadioGroup",
-        "x-decorator": "FormItem",
-        "x-component-props": {
+        "title": "性别",
+        "component": "RadioGroup",
+        "decorator": "FormItem",
+        "props": {
           "direction": "horizontal"
         },
-        "x-data-source": [
+        "dataSource": [
           {
-            "label": "Male",
+            "label": "男",
             "value": "male"
           },
           {
-            "label": "Female",
+            "label": "女",
             "value": "female"
           },
           {
-            "label": "Other",
+            "label": "其他",
             "value": "other"
           }
         ]
       },
       "country": {
         "type": "string",
-        "title": "Country",
+        "title": "国家",
         "required": true,
-        "x-component": "Select",
-        "x-decorator": "FormItem",
-        "x-component-props": {
-          "placeholder": "Select your country"
+        "component": "Select",
+        "decorator": "FormItem",
+        "props": {
+          "placeholder": "请选择国家"
         },
-        "x-data-source": [
+        "dataSource": [
           {
-            "label": "United States",
+            "label": "美国",
             "value": "us"
           },
           {
-            "label": "China",
+            "label": "中国",
             "value": "cn"
           },
           {
-            "label": "Japan",
+            "label": "日本",
             "value": "jp"
           },
           {
-            "label": "United Kingdom",
+            "label": "英国",
             "value": "uk"
           },
           {
-            "label": "Singapore",
+            "label": "新加坡",
             "value": "sg"
           },
           {
-            "label": "Germany",
+            "label": "德国",
             "value": "de"
           }
         ]
       },
       "bio": {
         "type": "string",
-        "title": "Bio",
-        "x-component": "Textarea",
-        "x-decorator": "FormItem",
-        "x-component-props": {
-          "placeholder": "Tell us about yourself",
+        "title": "个人简介",
+        "component": "Textarea",
+        "decorator": "FormItem",
+        "props": {
+          "placeholder": "介绍一下你自己",
           "rows": 3
         },
-        "x-validator": [
+        "validators": [
           {
             "maxLength": 200,
-            "message": "Bio must be under 200 characters"
+            "message": "个人简介不能超过 200 个字符"
           }
         ]
       },
       "agreeTerms": {
         "type": "boolean",
-        "title": "I agree to the terms of service",
+        "title": "我同意服务条款",
         "required": true,
-        "x-component": "Checkbox",
-        "x-decorator": "FormItem"
+        "component": "Checkbox",
+        "decorator": "FormItem"
       }
     }
   }

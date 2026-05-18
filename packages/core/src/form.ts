@@ -1,6 +1,6 @@
 /**
  * @formily-bao/core — Form model implementation
- * Fully aligned with Formily Schema Protocol
+ * Enterprise schema protocol inspired by Formily
  */
 
 import { signal, effect, startBatch, endBatch } from 'alien-signals'
@@ -265,8 +265,8 @@ export class Form implements IForm {
     this._definitions = schema.definitions || {}
 
     if (schema.properties) {
-      // Sort by x-index before creating fields
-      const sortedProperties = sortByXIndex(schema.properties)
+      // Sort by order before creating fields
+      const sortedProperties = sortByOrder(schema.properties)
       this._createFieldsFromSchema('', sortedProperties, schema.required)
     }
     // Setup reactions after all fields created
@@ -385,10 +385,10 @@ export class Form implements IForm {
     properties: Record<string, IFieldSchema>,
     parentRequired?: boolean | string[]
   ): void {
-    // Sort entries by x-index
+    // Sort entries by order
     const sortedEntries = Object.entries(properties).sort(([, a], [, b]) => {
-      const ai = a['x-index'] ?? Infinity
-      const bi = b['x-index'] ?? Infinity
+      const ai = a.order ?? Infinity
+      const bi = b.order ?? Infinity
       return ai - bi
     })
 
@@ -424,13 +424,13 @@ export class Form implements IForm {
           this.createField(path, { ...schema, required: isRequired })
         }
       } else if (schema.type === 'object' && schema.properties) {
-        if (schema['x-component']) {
+        if (schema.component) {
           this.createField(path, { ...schema, required: isRequired })
         }
         this._createFieldsFromSchema(path, schema.properties, schema.required)
       } else if (schema.type === 'void') {
-        // Void nodes are layout containers — create them if they have x-component
-        if (schema['x-component']) {
+        // Void nodes are layout containers — create them if they have component
+        if (schema.component) {
           this.createField(path, { ...schema, required: false })
         }
         if (schema.properties) {
@@ -473,7 +473,7 @@ export class Form implements IForm {
     for (const [key, rawSchema] of Object.entries(properties)) {
       const path = prefix ? `${prefix}.${key}` : key
       const schema = this._resolveRef(rawSchema)
-      const reactions = schema['x-reactions']
+      const reactions = schema.reactions
 
       if (reactions) {
         const reactionList = Array.isArray(reactions) ? reactions : [reactions]
@@ -507,7 +507,7 @@ export class Form implements IForm {
   }
 
   /**
-   * Passive mode: the field with x-reactions reacts to its dependencies
+   * Passive mode: the field with reactions reacts to its dependencies
    * The field itself is the target
    */
   private _setupPassiveReaction(selfPath: string, reaction: Exclude<SchemaReaction, string>): void {
@@ -713,21 +713,21 @@ export class Form implements IForm {
       targetField.setState(resolvedState as Partial<FieldMutableState>)
     }
 
-    // Apply schema changes (x-component-props, x-decorator-props, title, etc.)
+    // Apply schema changes (props, decoratorProps, title, etc.)
     if (branch.schema) {
       const schemaUpdate = branch.schema
       const stateFromSchema: Partial<FieldMutableState> = {}
 
-      if ('x-component-props' in schemaUpdate) {
+      if ('props' in schemaUpdate) {
         stateFromSchema.componentProps = {
           ...targetField.componentProps,
-          ...schemaUpdate['x-component-props'],
+          ...schemaUpdate.props,
         }
       }
-      if ('x-decorator-props' in schemaUpdate) {
+      if ('decoratorProps' in schemaUpdate) {
         stateFromSchema.decoratorProps = {
           ...targetField.decoratorProps,
-          ...schemaUpdate['x-decorator-props'],
+          ...schemaUpdate.decoratorProps,
         }
       }
       if ('title' in schemaUpdate) {
@@ -736,23 +736,23 @@ export class Form implements IForm {
       if ('description' in schemaUpdate) {
         stateFromSchema.description = schemaUpdate.description
       }
-      if ('x-visible' in schemaUpdate) {
-        stateFromSchema.visible = schemaUpdate['x-visible']
+      if ('state' in schemaUpdate && 'visible' in schemaUpdate.state) {
+        stateFromSchema.visible = schemaUpdate.state?.visible
       }
-      if ('x-hidden' in schemaUpdate) {
-        stateFromSchema.hidden = schemaUpdate['x-hidden']
+      if ('state' in schemaUpdate && 'hidden' in schemaUpdate.state) {
+        stateFromSchema.hidden = schemaUpdate.state?.hidden
       }
-      if ('x-disabled' in schemaUpdate) {
-        stateFromSchema.disabled = schemaUpdate['x-disabled']
+      if ('state' in schemaUpdate && 'disabled' in schemaUpdate.state) {
+        stateFromSchema.disabled = schemaUpdate.state?.disabled
       }
-      if ('x-display' in schemaUpdate) {
-        stateFromSchema.display = schemaUpdate['x-display']
+      if ('state' in schemaUpdate && 'display' in schemaUpdate.state) {
+        stateFromSchema.display = schemaUpdate.state?.display
       }
-      if ('x-pattern' in schemaUpdate) {
-        stateFromSchema.pattern = schemaUpdate['x-pattern']
+      if ('state' in schemaUpdate && 'pattern' in schemaUpdate.state) {
+        stateFromSchema.pattern = schemaUpdate.state?.pattern
       }
-      if ('enum' in schemaUpdate || 'x-data-source' in schemaUpdate) {
-        const ds = schemaUpdate['x-data-source'] || schemaUpdate['enum']
+      if ('enum' in schemaUpdate || 'dataSource' in schemaUpdate) {
+        const ds = schemaUpdate.dataSource || schemaUpdate['enum']
         if (Array.isArray(ds)) {
           stateFromSchema.dataSource = ds.map((item: any) => {
             if (typeof item === 'string' || typeof item === 'number') {
@@ -765,11 +765,11 @@ export class Form implements IForm {
       if ('required' in schemaUpdate) {
         stateFromSchema.required = schemaUpdate.required
       }
-      if ('x-component' in schemaUpdate) {
-        stateFromSchema.component = [schemaUpdate['x-component'], schemaUpdate['x-component-props']]
+      if ('component' in schemaUpdate) {
+        stateFromSchema.component = [schemaUpdate.component, schemaUpdate.props]
       }
-      if ('x-decorator' in schemaUpdate) {
-        stateFromSchema.decorator = [schemaUpdate['x-decorator'], schemaUpdate['x-decorator-props']]
+      if ('decorator' in schemaUpdate) {
+        stateFromSchema.decorator = [schemaUpdate.decorator, schemaUpdate.decoratorProps]
       }
 
       if (Object.keys(stateFromSchema).length > 0) {
@@ -839,7 +839,7 @@ export class Form implements IForm {
     for (const [key, rawSchema] of Object.entries(properties)) {
       const path = prefix ? `${prefix}.${key}` : key
       const schema = this._resolveRef(rawSchema)
-      const asyncDs = schema['x-async-data-source']
+      const asyncDs = schema.asyncDataSource
 
       if (asyncDs) {
         this._setupSingleAsyncDataSource(path, asyncDs)
@@ -1001,13 +1001,13 @@ function resolveTemplateObject(obj: Record<string, any>, deps: Record<string, an
 }
 
 /**
- * Sort schema properties by x-index
+ * Sort schema properties by order
  */
-function sortByXIndex(properties: Record<string, IFieldSchema>): Record<string, IFieldSchema> {
+function sortByOrder(properties: Record<string, IFieldSchema>): Record<string, IFieldSchema> {
   const entries = Object.entries(properties)
   entries.sort(([, a], [, b]) => {
-    const ai = a['x-index'] ?? Infinity
-    const bi = b['x-index'] ?? Infinity
+    const ai = a.order ?? Infinity
+    const bi = b.order ?? Infinity
     return ai - bi
   })
   return Object.fromEntries(entries)

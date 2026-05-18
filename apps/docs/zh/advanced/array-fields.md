@@ -18,13 +18,13 @@
   "contacts": {
     "type": "array",
     "title": "联系人",
-    "x-component": "ArrayCards",
-    "x-component-props": { "title": "联系人" },
-    "x-validator": [{ "minItems": 1, "message": "至少添加一个联系人" }],
+    "component": "ArrayCards",
+    "props": { "title": "联系人" },
+    "validators": [{ "minItems": 1, "message": "至少添加一个联系人" }],
     "items": {
       "properties": {
-        "name": { "type": "string", "title": "姓名", "required": true, "x-component": "Input", "x-decorator": "FormItem" },
-        "phone": { "type": "string", "title": "电话", "x-component": "Input", "x-decorator": "FormItem" }
+        "name": { "type": "string", "title": "姓名", "required": true, "component": "Input", "decorator": "FormItem" },
+        "phone": { "type": "string", "title": "电话", "component": "Input", "decorator": "FormItem" }
       }
     }
   }

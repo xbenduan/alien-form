@@ -1,6 +1,6 @@
 /**
  * @formily-bao/react — React bindings
- * Fully aligned with Formily Schema Protocol
+ * Enterprise schema protocol inspired by Formily
  */
 
 import React, {
@@ -120,14 +120,19 @@ export const SchemaField: React.FC<SchemaFieldProps> = ({ schema }) => {
 
   const { form, components, decorators } = ctx
 
-  // Initialize or replace fields when schema/form changes
+  // Initialize or replace fields when schema/form changes.
+  // The first render happens before useEffect runs, so force a render after
+  // setSchema creates fields; otherwise default components stay empty until
+  // another UI interaction triggers a parent render.
+  const [, forceRender] = useState(0)
   useEffect(() => {
     form.setSchema(schema)
+    forceRender((v) => v + 1)
   }, [form, schema])
 
   if (!schema.properties) return null
 
-  // Sort by x-index
+  // Sort by order
   const sortedEntries = getSortedEntries(schema.properties)
 
   return React.createElement(
@@ -169,15 +174,15 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
 
   // Void nodes — layout containers
   if (schema.type === 'void' && schema.properties) {
-    const LayoutComponent = schema['x-component'] ? components[schema['x-component']] : null
+    const LayoutComponent = schema.component ? components[schema.component] : null
     const layoutProps = {
-      ...(schema['x-component-props'] || {}),
-      ...(schema['x-layout-props'] || {}),
+      ...(schema.props || {}),
+      ...(schema.layoutProps || {}),
       title: schema.title,
       description: schema.description,
     }
 
-    // Sort children by x-index
+    // Sort children by order
     const sortedChildren = getSortedEntries(schema.properties)
 
     const children = sortedChildren.map(([key, childSchema]) =>
@@ -199,7 +204,7 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
   }
 
   // Object nodes with children but no component
-  if (schema.type === 'object' && schema.properties && !schema['x-component']) {
+  if (schema.type === 'object' && schema.properties && !schema.component) {
     const sortedChildren = getSortedEntries(schema.properties)
     return React.createElement(
       React.Fragment,
@@ -425,7 +430,7 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
     return field.subscribe(() => forceRender((v) => v + 1))
   }, [field])
 
-  // Handle x-display
+  // Handle display
   if (field.display === 'none') return null
   if (field.display === 'hidden') {
     return React.createElement('div', { style: { display: 'none' } })
@@ -437,7 +442,7 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
   const Component = components[componentName]
   const Decorator = decorators[decoratorName]
 
-  // x-content: render content directly if specified
+  // content: render content directly if specified
   if (field.content !== null && field.content !== undefined) {
     const contentNode = typeof field.content === 'string'
       ? React.createElement('span', null, field.content)
@@ -539,8 +544,8 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
 
 function getSortedEntries(properties: Record<string, any>): [string, any][] {
   return Object.entries(properties).sort(([, a], [, b]) => {
-    const ai = a?.['x-index'] ?? Infinity
-    const bi = b?.['x-index'] ?? Infinity
+    const ai = a?.order ?? Infinity
+    const bi = b?.order ?? Infinity
     return ai - bi
   })
 }

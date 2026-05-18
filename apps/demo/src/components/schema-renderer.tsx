@@ -29,31 +29,30 @@ import type { SchemaItem } from '../useSchema'
 
 const categoryData: Record<string, Array<{ label: string; value: string }>> = {
   tech: [
-    { label: 'Frontend', value: 'frontend' },
-    { label: 'Backend', value: 'backend' },
-    { label: 'DevOps', value: 'devops' },
-    { label: 'AI/ML', value: 'ai' },
+    { label: '前端', value: 'frontend' },
+    { label: '后端', value: 'backend' },
+    { label: '运维', value: 'devops' },
+    { label: 'AI/机器学习', value: 'ai' },
   ],
   design: [
-    { label: 'UI Design', value: 'ui' },
-    { label: 'UX Research', value: 'ux' },
-    { label: 'Brand Design', value: 'brand' },
+    { label: 'UI 设计', value: 'ui' },
+    { label: '用户研究', value: 'ux' },
+    { label: '品牌设计', value: 'brand' },
   ],
   business: [
-    { label: 'Marketing', value: 'marketing' },
-    { label: 'Sales', value: 'sales' },
-    { label: 'Strategy', value: 'strategy' },
+    { label: '市场', value: 'marketing' },
+    { label: '销售', value: 'sales' },
+    { label: '战略', value: 'strategy' },
   ],
 }
 
 const asyncServices: FormConfig['services'] = {
   fetchCategories: async () => {
-    // Simulate network delay
     await new Promise((r) => setTimeout(r, 800))
     return [
-      { label: 'Technology', value: 'tech' },
-      { label: 'Design', value: 'design' },
-      { label: 'Business', value: 'business' },
+      { label: '技术', value: 'tech' },
+      { label: '设计', value: 'design' },
+      { label: '业务', value: 'business' },
     ]
   },
   fetchSubCategories: async (params) => {
@@ -73,11 +72,10 @@ const asyncTransformers: FormConfig['transformers'] = {
         value: c.cca2 || c.name?.common,
       }))
       .sort((a: any, b: any) => a.label.localeCompare(b.label))
-      .slice(0, 20) // Limit to 20 for demo
+      .slice(0, 20)
   },
 }
 
-// Register all components
 const components: ComponentMap = {
   Input: (props: any) => {
     const { value, onChange, loading, ...rest } = props
@@ -109,11 +107,9 @@ const components: ComponentMap = {
   ItemInput,
   RadioGroup,
   Rating,
-  // Layout components
   FormGrid,
   FormLayout,
   FormSection,
-  // Array components
   ArrayCards,
   ArrayTable,
 }
@@ -162,8 +158,8 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ schema }) => {
         <CardContent>
           <Tabs defaultValue="form">
             <TabsList className="mb-4">
-              <TabsTrigger value="form">Form Render</TabsTrigger>
-              <TabsTrigger value="json">Schema JSON</TabsTrigger>
+              <TabsTrigger value="form">表单预览</TabsTrigger>
+              <TabsTrigger value="json">Schema 结构</TabsTrigger>
             </TabsList>
             <TabsContent value="form">
               <FormProvider form={form} components={components} decorators={decorators}>
@@ -179,10 +175,10 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ schema }) => {
         </CardContent>
         <CardFooter className="flex gap-2 border-t pt-4">
           <Button onClick={handleSubmit} disabled={submitting}>
-            {submitting ? 'Submitting...' : 'Submit'}
+            {submitting ? '提交中...' : '提交'}
           </Button>
           <Button variant="outline" onClick={handleReset}>
-            Reset
+            重置
           </Button>
         </CardFooter>
       </Card>
@@ -191,7 +187,7 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ schema }) => {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              Submit Result
+              提交结果
               <span className={`inline-block h-2 w-2 rounded-full ${result.success ? 'bg-green-500' : 'bg-destructive'}`} />
             </CardTitle>
             <p className="text-xs text-muted-foreground">{result.timestamp}</p>

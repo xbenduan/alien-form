@@ -6,14 +6,14 @@ Layout components use `type: "void"` — they produce no form value and serve pu
 
 In `@formily-bao/react`, `SchemaFieldItem` detects `type === 'void'` and:
 
-1. Looks up the `x-component` in the registered components map
-2. Passes `x-component-props` and `x-layout-props` as props
-3. Renders children (sorted by `x-index`) inside the layout component
+1. Looks up the `component` in the registered components map
+2. Passes `props` and `layoutProps` as props
+3. Renders children (sorted by `order`) inside the layout component
 
 ```tsx
 // Simplified from react.tsx
 if (schema.type === 'void' && schema.properties) {
-  const LayoutComponent = components[schema['x-component']]
+  const LayoutComponent = components[schema['component']]
   const children = getSortedEntries(schema.properties).map(...)
   return <LayoutComponent {...layoutProps}>{children}</LayoutComponent>
 }
@@ -27,12 +27,12 @@ CSS Grid layout. Exported from `@formily-bao/ui`.
 {
   "grid": {
     "type": "void",
-    "x-component": "FormGrid",
-    "x-component-props": { "columns": 3, "gap": 16 },
+    "component": "FormGrid",
+    "props": { "columns": 3, "gap": 16 },
     "properties": {
-      "field1": { "type": "string", "x-component": "Input", "x-decorator": "FormItem" },
-      "field2": { "type": "string", "x-component": "Input", "x-decorator": "FormItem" },
-      "field3": { "type": "string", "x-component": "Input", "x-decorator": "FormItem" }
+      "field1": { "type": "string", "component": "Input", "decorator": "FormItem" },
+      "field2": { "type": "string", "component": "Input", "decorator": "FormItem" },
+      "field3": { "type": "string", "component": "Input", "decorator": "FormItem" }
     }
   }
 }
@@ -46,8 +46,8 @@ Flex-based layout.
 {
   "row": {
     "type": "void",
-    "x-component": "FormLayout",
-    "x-component-props": { "direction": "horizontal", "gap": 8 },
+    "component": "FormLayout",
+    "props": { "direction": "horizontal", "gap": 8 },
     "properties": { ... }
   }
 }
@@ -62,23 +62,23 @@ Bordered, collapsible section.
   "section": {
     "type": "void",
     "title": "Advanced Settings",
-    "x-component": "FormSection",
-    "x-component-props": { "bordered": true, "collapsible": true, "defaultCollapsed": true },
+    "component": "FormSection",
+    "props": { "bordered": true, "collapsible": true, "defaultCollapsed": true },
     "properties": { ... }
   }
 }
 ```
 
-## `x-index` Ordering
+## `order` Ordering
 
-Properties are sorted by `x-index` before rendering (handled by `getSortedEntries()` and `sortByXIndex()`):
+Properties are sorted by `order` before rendering (handled by `getSortedEntries()` and `sortByXIndex()`):
 
 ```json
 {
   "properties": {
-    "c": { "x-index": 2, "type": "string", "x-component": "Input" },
-    "a": { "x-index": 0, "type": "string", "x-component": "Input" },
-    "b": { "x-index": 1, "type": "string", "x-component": "Input" }
+    "c": { "order": 2, "type": "string", "component": "Input" },
+    "a": { "order": 0, "type": "string", "component": "Input" },
+    "b": { "order": 1, "type": "string", "component": "Input" }
   }
 }
 ```
@@ -94,15 +94,15 @@ Layouts can be freely nested:
   "section": {
     "type": "void",
     "title": "Personal Info",
-    "x-component": "FormSection",
+    "component": "FormSection",
     "properties": {
       "nameGrid": {
         "type": "void",
-        "x-component": "FormGrid",
-        "x-component-props": { "columns": 2 },
+        "component": "FormGrid",
+        "props": { "columns": 2 },
         "properties": {
-          "firstName": { "type": "string", "title": "First", "x-component": "Input", "x-decorator": "FormItem" },
-          "lastName": { "type": "string", "title": "Last", "x-component": "Input", "x-decorator": "FormItem" }
+          "firstName": { "type": "string", "title": "First", "component": "Input", "decorator": "FormItem" },
+          "lastName": { "type": "string", "title": "Last", "component": "Input", "decorator": "FormItem" }
         }
       }
     }

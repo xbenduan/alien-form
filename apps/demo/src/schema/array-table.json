@@ -1,48 +1,48 @@
 {
   "id": "array-table",
-  "name": "Array Table Demo",
-  "description": "Dynamic list with ArrayTable — compact row-based editing for structured data",
+  "name": "表格数组演示",
+  "description": "使用 ArrayTable 紧凑编辑结构化数据",
   "schema": {
     "type": "object",
     "properties": {
       "title": {
         "type": "string",
-        "title": "Invoice Title",
+        "title": "发票标题",
         "required": true,
-        "x-component": "Input",
-        "x-decorator": "FormItem",
-        "x-component-props": {
-          "placeholder": "e.g. Monthly Invoice #001"
+        "component": "Input",
+        "decorator": "FormItem",
+        "props": {
+          "placeholder": "例如：月度发票 #001"
         }
       },
       "lineItems": {
         "type": "array",
-        "title": "Line Items",
-        "x-component": "ArrayTable",
-        "x-decorator": "FormItem",
-        "x-component-props": {
-          "addText": "+ Add Line Item"
+        "title": "条目列表",
+        "component": "ArrayTable",
+        "decorator": "FormItem",
+        "props": {
+          "addText": "+ 添加条目"
         },
         "items": {
           "type": "object",
           "properties": {
             "description": {
               "type": "string",
-              "title": "Description",
+              "title": "描述",
               "required": true,
-              "x-component": "Input",
-              "x-decorator": "FormItem",
-              "x-component-props": {
-                "placeholder": "Item description"
+              "component": "Input",
+              "decorator": "FormItem",
+              "props": {
+                "placeholder": "条目描述"
               }
             },
             "quantity": {
               "type": "number",
-              "title": "Qty",
+              "title": "数量",
               "required": true,
-              "x-component": "Input",
-              "x-decorator": "FormItem",
-              "x-component-props": {
+              "component": "Input",
+              "decorator": "FormItem",
+              "props": {
                 "type": "number",
                 "placeholder": "0",
                 "min": 1
@@ -50,11 +50,11 @@
             },
             "unitPrice": {
               "type": "number",
-              "title": "Unit Price",
+              "title": "单价",
               "required": true,
-              "x-component": "Input",
-              "x-decorator": "FormItem",
-              "x-component-props": {
+              "component": "Input",
+              "decorator": "FormItem",
+              "props": {
                 "type": "number",
                 "placeholder": "0.00",
                 "step": "0.01"
@@ -65,9 +65,9 @@
       },
       "dueDate": {
         "type": "string",
-        "title": "Due Date",
-        "x-component": "DateInput",
-        "x-decorator": "FormItem"
+        "title": "截止日期",
+        "component": "DateInput",
+        "decorator": "FormItem"
       }
     }
   }

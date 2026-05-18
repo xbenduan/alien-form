@@ -5,17 +5,17 @@
 ## Void 字段处理
 
 `@formily-bao/react` 中的 `SchemaFieldItem` 检测到 `type === 'void'` 时：
-1. 在组件映射中查找 `x-component`
-2. 将 `x-component-props` 和 `x-layout-props` 作为 props 传入
-3. 按 `x-index` 排序渲染子节点
+1. 在组件映射中查找 `component`
+2. 将 `props` 和 `layoutProps` 作为 props 传入
+3. 按 `order` 排序渲染子节点
 
 ## FormGrid
 
 ```json
 {
   "type": "void",
-  "x-component": "FormGrid",
-  "x-component-props": { "columns": 3, "gap": 16 },
+  "component": "FormGrid",
+  "props": { "columns": 3, "gap": 16 },
   "properties": { ... }
 }
 ```
@@ -25,8 +25,8 @@
 ```json
 {
   "type": "void",
-  "x-component": "FormLayout",
-  "x-component-props": { "direction": "horizontal", "gap": 8 },
+  "component": "FormLayout",
+  "props": { "direction": "horizontal", "gap": 8 },
   "properties": { ... }
 }
 ```
@@ -37,21 +37,21 @@
 {
   "type": "void",
   "title": "高级设置",
-  "x-component": "FormSection",
-  "x-component-props": { "bordered": true, "collapsible": true, "defaultCollapsed": true },
+  "component": "FormSection",
+  "props": { "bordered": true, "collapsible": true, "defaultCollapsed": true },
   "properties": { ... }
 }
 ```
 
-## `x-index` 排序
+## `order` 排序
 
-属性在渲染前按 `x-index` 排序（由 `getSortedEntries()` 和 `sortByXIndex()` 处理）：
+属性在渲染前按 `order` 排序（由 `getSortedEntries()` 和 `sortByXIndex()` 处理）：
 
 ```json
 {
-  "c": { "x-index": 2 },
-  "a": { "x-index": 0 },
-  "b": { "x-index": 1 }
+  "c": { "order": 2 },
+  "a": { "order": 0 },
+  "b": { "order": 1 }
 }
 ```
 

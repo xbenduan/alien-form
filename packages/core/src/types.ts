@@ -229,7 +229,7 @@ export interface IField {
 }
 
 // ============================================================
-// IFieldSchema — JSON Schema with Formily x-* extensions
+// IFieldSchema — JSON Schema with FormBao schema protocol fields
 // ============================================================
 
 export interface IFieldSchema {
@@ -279,29 +279,29 @@ export interface IFieldSchema {
   readOnly?: boolean
   writeOnly?: boolean
 
-  // --- Formily x-* Extensions ---
-  'x-index'?: number
-  'x-pattern'?: FieldPatternTypes
-  'x-display'?: FieldDisplayTypes
-  'x-validator'?: Validator | Validator[]
-  'x-decorator'?: string
-  'x-decorator-props'?: Record<string, any>
-  'x-component'?: string
-  'x-component-props'?: Record<string, any>
-  'x-reactions'?: SchemaReactions
-  'x-content'?: any
-  'x-visible'?: boolean
-  'x-hidden'?: boolean
-  'x-disabled'?: boolean
-  'x-editable'?: boolean
-  'x-read-only'?: boolean
-  'x-read-pretty'?: boolean
-  'x-data'?: Record<string, any>
-
-  // --- FormBao extensions ---
-  'x-data-source'?: Array<{ label: string; value: any; [key: string]: any }>
-  'x-async-data-source'?: AsyncDataSource
-  'x-layout-props'?: LayoutProps
+  // --- FormBao Schema Protocol ---
+  order?: number
+  state?: Partial<Pick<FieldMutableState,
+    | 'visible'
+    | 'hidden'
+    | 'display'
+    | 'pattern'
+    | 'disabled'
+    | 'readOnly'
+    | 'readPretty'
+    | 'editable'
+  >>
+  validators?: Validator | Validator[]
+  decorator?: string
+  decoratorProps?: Record<string, any>
+  component?: string
+  props?: Record<string, any>
+  reactions?: SchemaReactions
+  content?: any
+  data?: Record<string, any>
+  dataSource?: Array<{ label: string; value: any; [key: string]: any }>
+  asyncDataSource?: AsyncDataSource
+  layoutProps?: LayoutProps
 }
 
 // ============================================================

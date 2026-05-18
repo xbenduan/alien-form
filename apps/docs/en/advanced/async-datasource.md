@@ -1,6 +1,6 @@
 # Async Data Source
 
-Load remote options using `x-async-data-source`. Implemented in `Form._setupSingleAsyncDataSource()`.
+Load remote options using `asyncDataSource`. Implemented in `Form._setupSingleAsyncDataSource()`.
 
 ## Configuration
 
@@ -25,9 +25,9 @@ interface AsyncDataSource {
   "country": {
     "type": "string",
     "title": "Country",
-    "x-component": "Select",
-    "x-decorator": "FormItem",
-    "x-async-data-source": {
+    "component": "Select",
+    "decorator": "FormItem",
+    "asyncDataSource": {
       "service": "fetchCountries"
     }
   }
@@ -51,8 +51,8 @@ const form = createForm({
 {
   "city": {
     "type": "string",
-    "x-component": "Select",
-    "x-async-data-source": {
+    "component": "Select",
+    "asyncDataSource": {
       "service": "fetchCities",
       "dependencies": ["country"]
     }
@@ -76,7 +76,7 @@ When `country` field value changes, the `effect()` re-runs and triggers `doFetch
 
 ```json
 {
-  "x-async-data-source": {
+  "asyncDataSource": {
     "url": "/api/options",
     "method": "GET",
     "headers": { "Authorization": "Bearer ..." },
@@ -108,7 +108,7 @@ Controls whether to fetch on initial render (default: `true`). Set to `false` to
 
 ```json
 {
-  "x-async-data-source": {
+  "asyncDataSource": {
     "service": "fetchCities",
     "dependencies": ["country"],
     "fetchOnMount": false

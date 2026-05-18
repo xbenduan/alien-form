@@ -14,7 +14,7 @@ export const SchemaList: React.FC<SchemaListProps> = ({ schemas, selectedId, onS
       <div className="border-b p-4">
         <h2 className="text-lg font-semibold">FormBao</h2>
         <p className="text-sm text-muted-foreground">
-          {schemas.length} schemas available
+          共 {schemas.length} 个示例
         </p>
       </div>
       <ScrollArea className="flex-1">
@@ -31,7 +31,7 @@ export const SchemaList: React.FC<SchemaListProps> = ({ schemas, selectedId, onS
               <div className="flex items-center justify-between">
                 <span className="font-medium text-sm">{schema.name}</span>
                 <Badge variant="outline" className="text-xs">
-                  {Object.keys(schema.schema.properties || {}).length} fields
+                  {Object.keys(schema.schema.properties || {}).length} 个字段
                 </Badge>
               </div>
               <p className="mt-1 text-xs text-muted-foreground line-clamp-2">

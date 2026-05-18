@@ -52,7 +52,7 @@ form.setSchema({
       type: 'string',
       title: 'Name',
       minLength: 2,
-      'x-component': 'Input',
+      'component': 'Input',
     },
   },
 })
@@ -66,7 +66,7 @@ await form.submit((values) => {
 
 - `setSchema` replaces the current field registry and rebuilds fields from the new schema.
 - Standard JSON Schema validation keywords such as `minimum`, `maximum`, `minLength`, `maxLength`, `pattern`, `format`, `minItems`, `maxItems`, `uniqueItems`, and `const` are supported by core validation.
-- `x-async-data-source` supports service-based loading and URL-based loading with method, headers, and body options.
+- `asyncDataSource` supports service-based loading and URL-based loading with method, headers, and body options.
 - Expression reactions currently execute JavaScript expressions and should only be used with trusted schemas.
 
 ## Testing

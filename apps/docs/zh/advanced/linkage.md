@@ -1,17 +1,17 @@
 # 字段联动
 
-FormBao 实现了完整的 Formily `x-reactions` 协议。Reactions 在 `setSchema()` 期间由 `Form._setupFieldReactions()` 设置，使用 Alien Signals 的 `effect()` 实现响应式。
+FormBao 实现了完整的 Formily `reactions` 协议。Reactions 在 `setSchema()` 期间由 `Form._setupFieldReactions()` 设置，使用 Alien Signals 的 `effect()` 实现响应式。
 
 ## 主动模式
 
-声明 `x-reactions` 的字段控制**目标**字段：
+声明 `reactions` 的字段控制**目标**字段：
 
 ```json
 {
   "isVip": {
     "type": "boolean",
-    "x-component": "Switch",
-    "x-reactions": {
+    "component": "Switch",
+    "reactions": {
       "target": "vipCode",
       "fulfill": {
         "state": { "display": "visible", "required": true }
@@ -26,16 +26,16 @@ FormBao 实现了完整的 Formily `x-reactions` 协议。Reactions 在 `setSche
 
 ## 被动模式
 
-带 `x-reactions` 的字段**响应其依赖**：
+带 `reactions` 的字段**响应其依赖**：
 
 ```json
 {
   "city": {
-    "x-reactions": {
+    "reactions": {
       "dependencies": { "country": "country" },
       "when": "{{$deps.country === 'cn'}}",
       "fulfill": {
-        "schema": { "x-component-props": { "placeholder": "选择中国城市" } }
+        "schema": { "props": { "placeholder": "选择中国城市" } }
       }
     }
   }
@@ -45,7 +45,7 @@ FormBao 实现了完整的 Formily `x-reactions` 协议。Reactions 在 `setSche
 ## 表达式字符串
 
 ```json
-{ "x-reactions": "{{$self.value = $values.firstName + ' ' + $values.lastName}}" }
+{ "reactions": "{{$self.value = $values.firstName + ' ' + $values.lastName}}" }
 ```
 
 ## 表达式作用域
@@ -71,7 +71,7 @@ FormBao 实现了完整的 Formily `x-reactions` 协议。Reactions 在 `setSche
 ### `schema` — 更新 Schema 属性
 
 ```json
-{ "schema": { "title": "新标题", "x-component-props": { "placeholder": "..." }, "enum": ["a", "b"] } }
+{ "schema": { "title": "新标题", "props": { "placeholder": "..." }, "enum": ["a", "b"] } }
 ```
 
 ### `run` — 执行 JavaScript
@@ -92,7 +92,7 @@ FormBao 实现了完整的 Formily `x-reactions` 协议。Reactions 在 `setSche
 
 ```json
 {
-  "x-reactions": [
+  "reactions": [
     { "target": "fieldA", "fulfill": { "state": { "visible": true } } },
     { "target": "fieldB", "fulfill": { "state": { "disabled": true } } }
   ]

@@ -1,17 +1,17 @@
 # Field Linkage
 
-FormBao implements the full Formily `x-reactions` protocol. Reactions are set up by `Form._setupFieldReactions()` during `setSchema()`, using Alien Signals `effect()` for reactivity.
+FormBao implements the full Formily `reactions` protocol. Reactions are set up by `Form._setupFieldReactions()` during `setSchema()`, using Alien Signals `effect()` for reactivity.
 
 ## Active Mode
 
-The field declaring `x-reactions` controls a **target** field:
+The field declaring `reactions` controls a **target** field:
 
 ```json
 {
   "isVip": {
     "type": "boolean",
-    "x-component": "Switch",
-    "x-reactions": {
+    "component": "Switch",
+    "reactions": {
       "target": "vipCode",
       "fulfill": {
         "state": { "display": "visible", "required": true }
@@ -32,22 +32,22 @@ Internally, `_setupActiveReaction()` creates an `effect()` that:
 
 ## Passive Mode
 
-The field with `x-reactions` **reacts to its dependencies**:
+The field with `reactions` **reacts to its dependencies**:
 
 ```json
 {
   "city": {
-    "x-reactions": {
+    "reactions": {
       "dependencies": { "country": "country" },
       "when": "{{$deps.country === 'cn'}}",
       "fulfill": {
         "schema": {
-          "x-component-props": { "placeholder": "Select Chinese city" }
+          "props": { "placeholder": "Select Chinese city" }
         }
       },
       "otherwise": {
         "schema": {
-          "x-component-props": { "placeholder": "Select city" }
+          "props": { "placeholder": "Select city" }
         }
       }
     }
@@ -62,7 +62,7 @@ The field with `x-reactions` **reacts to its dependencies**:
 A reaction can be a bare expression string:
 
 ```json
-{ "x-reactions": "{{$self.value = $values.firstName + ' ' + $values.lastName}}" }
+{ "reactions": "{{$self.value = $values.firstName + ' ' + $values.lastName}}" }
 ```
 
 This is handled by `_setupExpressionReaction()`.
@@ -117,11 +117,11 @@ Updates schema-derived properties:
 {
   "schema": {
     "title": "New Title",
-    "x-component-props": { "placeholder": "..." },
-    "x-decorator-props": { "style": {} },
+    "props": { "placeholder": "..." },
+    "decoratorProps": { "style": {} },
     "enum": ["a", "b", "c"],
-    "x-display": "hidden",
-    "x-pattern": "readOnly",
+    "state.display": "hidden",
+    "state.pattern": "readOnly",
     "required": true
   }
 }
@@ -149,7 +149,7 @@ Resolved by `_resolveFieldPath()`: strips the last segment from `selfPath` and a
 
 ```json
 {
-  "x-reactions": [
+  "reactions": [
     { "target": "fieldA", "fulfill": { "state": { "visible": true } } },
     { "target": "fieldB", "fulfill": { "state": { "disabled": true } } }
   ]

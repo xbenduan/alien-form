@@ -7,7 +7,7 @@ All components are exported from `@formily-bao/ui` and registered via `FormProvi
 ### Input
 
 ```json
-{ "x-component": "Input", "x-component-props": { "placeholder": "...", "type": "text" } }
+{ "component": "Input", "props": { "placeholder": "...", "type": "text" } }
 ```
 
 Supported `type`: `text`, `password`, `number`, `email`.
@@ -15,16 +15,16 @@ Supported `type`: `text`, `password`, `number`, `email`.
 ### Textarea
 
 ```json
-{ "x-component": "Textarea", "x-component-props": { "rows": 4 } }
+{ "component": "Textarea", "props": { "rows": 4 } }
 ```
 
 ### Select
 
-Options from `enum` or `x-data-source`:
+Options from `enum` or `dataSource`:
 
 ```json
 {
-  "x-component": "Select",
+  "component": "Select",
   "enum": [
     { "label": "Option A", "value": "a" },
     { "label": "Option B", "value": "b" }
@@ -35,31 +35,31 @@ Options from `enum` or `x-data-source`:
 ### Checkbox
 
 ```json
-{ "type": "boolean", "x-component": "Checkbox" }
+{ "type": "boolean", "component": "Checkbox" }
 ```
 
 ### Switch
 
 ```json
-{ "type": "boolean", "x-component": "Switch" }
+{ "type": "boolean", "component": "Switch" }
 ```
 
 ### RadioGroup
 
 ```json
-{ "x-component": "RadioGroup", "enum": ["small", "medium", "large"] }
+{ "component": "RadioGroup", "enum": ["small", "medium", "large"] }
 ```
 
 ### DateInput
 
 ```json
-{ "type": "date", "x-component": "DateInput" }
+{ "type": "date", "component": "DateInput" }
 ```
 
 ### Rating
 
 ```json
-{ "type": "number", "x-component": "Rating", "x-component-props": { "max": 5 } }
+{ "type": "number", "component": "Rating", "props": { "max": 5 } }
 ```
 
 ## Array Components
@@ -71,12 +71,12 @@ Card-based repeatable layout. Receives `field`, `rows`, `onAdd`, `onRemove`, `on
 ```json
 {
   "type": "array",
-  "x-component": "ArrayCards",
-  "x-component-props": { "title": "Contact" },
+  "component": "ArrayCards",
+  "props": { "title": "Contact" },
   "items": {
     "properties": {
-      "name": { "type": "string", "x-component": "Input", "x-decorator": "FormItem" },
-      "phone": { "type": "string", "x-component": "Input", "x-decorator": "FormItem" }
+      "name": { "type": "string", "component": "Input", "decorator": "FormItem" },
+      "phone": { "type": "string", "component": "Input", "decorator": "FormItem" }
     }
   }
 }
@@ -89,11 +89,11 @@ Table-based repeatable layout.
 ```json
 {
   "type": "array",
-  "x-component": "ArrayTable",
+  "component": "ArrayTable",
   "items": {
     "properties": {
-      "name": { "type": "string", "title": "Name", "x-component": "Input" },
-      "qty": { "type": "number", "title": "Qty", "x-component": "Input" }
+      "name": { "type": "string", "title": "Name", "component": "Input" },
+      "qty": { "type": "number", "title": "Qty", "component": "Input" }
     }
   }
 }
@@ -106,13 +106,13 @@ Layout components use `type: "void"` — they don't produce form values.
 ### FormGrid
 
 ```json
-{ "type": "void", "x-component": "FormGrid", "x-component-props": { "columns": 2, "gap": 16 } }
+{ "type": "void", "component": "FormGrid", "props": { "columns": 2, "gap": 16 } }
 ```
 
 ### FormLayout
 
 ```json
-{ "type": "void", "x-component": "FormLayout", "x-component-props": { "direction": "horizontal", "gap": 8 } }
+{ "type": "void", "component": "FormLayout", "props": { "direction": "horizontal", "gap": 8 } }
 ```
 
 ### FormSection
@@ -121,8 +121,8 @@ Layout components use `type: "void"` — they don't produce form values.
 {
   "type": "void",
   "title": "Section Title",
-  "x-component": "FormSection",
-  "x-component-props": { "bordered": true, "collapsible": true, "defaultCollapsed": false }
+  "component": "FormSection",
+  "props": { "bordered": true, "collapsible": true, "defaultCollapsed": false }
 }
 ```
 
@@ -133,7 +133,7 @@ Layout components use `type: "void"` — they don't produce form values.
 Standard field wrapper providing label, required indicator, errors, and description.
 
 ```json
-{ "x-decorator": "FormItem" }
+{ "decorator": "FormItem" }
 ```
 
 The `FieldRenderer` in `@formily-bao/react` passes these props to the decorator automatically:
@@ -160,6 +160,6 @@ Every component registered with FormBao receives:
   loading: boolean
   pattern: FieldPatternTypes
   dataSource?: Array<{ label: string; value: any }>
-  ...componentProps  // from x-component-props
+  ...componentProps  // from props
 }
 ```

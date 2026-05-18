@@ -1,33 +1,40 @@
 {
   "id": "schema-protocol",
-  "name": "Schema Protocol",
-  "description": "Full Formily Schema protocol demo: x-reactions (active/passive), $ref/definitions, x-display, x-pattern, expression compilation, x-index ordering",
+  "name": "Schema 协议",
+  "description": "完整演示 FormBao Schema 协议：reactions、$ref/definitions、state.display、state.pattern、表达式编译与 order 排序",
   "schema": {
     "type": "object",
-    "title": "Schema Protocol Demo",
+    "title": "Schema 协议演示",
     "definitions": {
       "address": {
         "type": "object",
         "properties": {
           "street": {
             "type": "string",
-            "title": "Street",
-            "x-component": "Input",
-            "x-decorator": "FormItem",
-            "x-component-props": { "placeholder": "Enter street address" }
+            "title": "街道",
+            "component": "Input",
+            "decorator": "FormItem",
+            "props": {
+              "placeholder": "请输入街道地址"
+            }
           },
           "city": {
             "type": "string",
-            "title": "City",
-            "x-component": "Input",
-            "x-decorator": "FormItem"
+            "title": "城市",
+            "component": "Input",
+            "decorator": "FormItem"
           },
           "zipCode": {
             "type": "string",
-            "title": "Zip Code",
-            "x-component": "Input",
-            "x-decorator": "FormItem",
-            "x-validator": [{ "pattern": "^\\d{5,6}$", "message": "Invalid zip code" }]
+            "title": "邮编",
+            "component": "Input",
+            "decorator": "FormItem",
+            "validators": [
+              {
+                "pattern": "^\\d{5,6}$",
+                "message": "邮编格式不正确"
+              }
+            ]
           }
         }
       }
@@ -35,109 +42,168 @@
     "properties": {
       "basicSection": {
         "type": "void",
-        "title": "Basic Info",
-        "x-component": "FormSection",
-        "x-component-props": { "bordered": true, "collapsible": true },
-        "x-index": 0,
+        "title": "基本信息",
+        "component": "FormSection",
+        "props": {
+          "bordered": true,
+          "collapsible": true
+        },
+        "order": 0,
         "properties": {
           "grid1": {
             "type": "void",
-            "x-component": "FormGrid",
-            "x-component-props": { "columns": 2 },
+            "component": "FormGrid",
+            "props": {
+              "columns": 2
+            },
             "properties": {
               "name": {
                 "type": "string",
-                "title": "Full Name",
+                "title": "姓名",
                 "required": true,
-                "x-component": "Input",
-                "x-decorator": "FormItem",
-                "x-component-props": { "placeholder": "Your full name" },
-                "x-index": 0
+                "component": "Input",
+                "decorator": "FormItem",
+                "props": {
+                  "placeholder": "请输入姓名"
+                },
+                "order": 0
               },
               "email": {
                 "type": "string",
-                "title": "Email",
+                "title": "邮箱",
                 "required": true,
-                "x-component": "Input",
-                "x-decorator": "FormItem",
-                "x-validator": [{ "format": "email" }],
-                "x-component-props": { "placeholder": "email@example.com" },
-                "x-index": 1
+                "component": "Input",
+                "decorator": "FormItem",
+                "validators": [
+                  {
+                    "format": "email"
+                  }
+                ],
+                "props": {
+                  "placeholder": "email@example.com"
+                },
+                "order": 1
               }
             }
           },
           "role": {
             "type": "string",
-            "title": "Role",
-            "x-component": "Select",
-            "x-decorator": "FormItem",
-            "enum": ["developer", "designer", "manager", "other"],
-            "x-index": 2
+            "title": "角色",
+            "component": "Select",
+            "decorator": "FormItem",
+            "enum": [
+              {
+                "label": "开发",
+                "value": "developer"
+              },
+              {
+                "label": "设计",
+                "value": "designer"
+              },
+              {
+                "label": "管理",
+                "value": "manager"
+              },
+              {
+                "label": "其他",
+                "value": "other"
+              }
+            ],
+            "order": 2
           }
         }
       },
-
       "conditionalSection": {
         "type": "void",
-        "title": "Conditional Fields (x-reactions active mode)",
-        "x-component": "FormSection",
-        "x-component-props": { "bordered": true, "collapsible": true },
-        "x-index": 1,
+        "title": "条件字段（reactions 主动模式）",
+        "component": "FormSection",
+        "props": {
+          "bordered": true,
+          "collapsible": true
+        },
+        "order": 1,
         "properties": {
           "hasAddress": {
             "type": "boolean",
-            "title": "Has Address?",
-            "x-component": "Switch",
-            "x-decorator": "FormItem",
-            "x-index": 0,
-            "x-reactions": {
+            "title": "是否有地址？",
+            "component": "Switch",
+            "decorator": "FormItem",
+            "order": 0,
+            "reactions": {
               "target": "conditionalSection.homeAddress",
               "fulfill": {
-                "state": { "display": "visible" }
+                "state": {
+                  "display": "visible"
+                }
               },
               "otherwise": {
-                "state": { "display": "none" }
+                "state": {
+                  "display": "none"
+                }
               }
             }
           },
           "homeAddress": {
             "$ref": "#/definitions/address",
-            "title": "Home Address ($ref)",
-            "x-index": 1,
-            "x-display": "none"
+            "title": "家庭地址（$ref）",
+            "order": 1,
+            "state": {
+              "display": "none"
+            }
           },
           "country": {
             "type": "string",
-            "title": "Country",
-            "x-component": "Select",
-            "x-decorator": "FormItem",
+            "title": "国家",
+            "component": "Select",
+            "decorator": "FormItem",
             "enum": [
-              { "label": "United States", "value": "us" },
-              { "label": "China", "value": "cn" },
-              { "label": "Japan", "value": "jp" },
-              { "label": "United Kingdom", "value": "uk" },
-              { "label": "Germany", "value": "de" }
+              {
+                "label": "美国",
+                "value": "us"
+              },
+              {
+                "label": "中国",
+                "value": "cn"
+              },
+              {
+                "label": "日本",
+                "value": "jp"
+              },
+              {
+                "label": "英国",
+                "value": "uk"
+              },
+              {
+                "label": "德国",
+                "value": "de"
+              }
             ],
-            "x-index": 2
+            "order": 2
           },
           "phone": {
             "type": "string",
-            "title": "Phone (reactive placeholder)",
-            "x-component": "Input",
-            "x-decorator": "FormItem",
-            "x-index": 3,
-            "x-reactions": [
+            "title": "手机号（响应式占位文案）",
+            "component": "Input",
+            "decorator": "FormItem",
+            "order": 3,
+            "reactions": [
               {
-                "dependencies": { "country": "conditionalSection.country" },
+                "dependencies": {
+                  "country": "conditionalSection.country"
+                },
                 "when": "{{$deps.country !== undefined && $deps.country !== ''}}",
                 "fulfill": {
                   "schema": {
-                    "x-component-props": { "placeholder": "Enter phone for selected country" }
+                    "props": {
+                      "placeholder": "请输入所选国家对应的手机号"
+                    }
                   }
                 },
                 "otherwise": {
                   "schema": {
-                    "x-component-props": { "placeholder": "Select a country first" }
+                    "props": {
+                      "placeholder": "请先选择国家"
+                    }
                   }
                 }
               }
@@ -145,123 +211,176 @@
           }
         }
       },
-
       "patternSection": {
         "type": "void",
-        "title": "Display & Pattern Modes",
-        "x-component": "FormSection",
-        "x-component-props": { "bordered": true, "collapsible": true },
-        "x-index": 2,
+        "title": "展示与模式切换",
+        "component": "FormSection",
+        "props": {
+          "bordered": true,
+          "collapsible": true
+        },
+        "order": 2,
         "properties": {
           "mode": {
             "type": "string",
-            "title": "Select Pattern",
-            "x-component": "Select",
-            "x-decorator": "FormItem",
+            "title": "选择 Pattern",
+            "component": "Select",
+            "decorator": "FormItem",
             "default": "editable",
             "enum": [
-              { "label": "Editable", "value": "editable" },
-              { "label": "Read Only", "value": "readOnly" },
-              { "label": "Disabled", "value": "disabled" },
-              { "label": "Read Pretty", "value": "readPretty" }
+              {
+                "label": "可编辑",
+                "value": "editable"
+              },
+              {
+                "label": "只读",
+                "value": "readOnly"
+              },
+              {
+                "label": "禁用",
+                "value": "disabled"
+              },
+              {
+                "label": "阅读态",
+                "value": "readPretty"
+              }
             ],
-            "x-index": 0,
-            "x-reactions": {
+            "order": 0,
+            "reactions": {
               "target": "patternSection.demoField",
               "fulfill": {
-                "state": { "pattern": "{{$self.value || 'editable'}}" }
+                "state": {
+                  "pattern": "{{$self.value || 'editable'}}"
+                }
               }
             }
           },
           "demoField": {
             "type": "string",
-            "title": "Demo Field (pattern changes)",
-            "default": "Hello World",
-            "x-component": "Input",
-            "x-decorator": "FormItem",
-            "x-index": 1
+            "title": "演示字段（随 pattern 变化）",
+            "default": "你好，世界",
+            "component": "Input",
+            "decorator": "FormItem",
+            "order": 1
           },
           "displayMode": {
             "type": "string",
-            "title": "Display Mode",
-            "x-component": "Select",
-            "x-decorator": "FormItem",
+            "title": "显示模式",
+            "component": "Select",
+            "decorator": "FormItem",
             "default": "visible",
             "enum": [
-              { "label": "Visible", "value": "visible" },
-              { "label": "Hidden (keeps space)", "value": "hidden" },
-              { "label": "None (removed from DOM)", "value": "none" }
+              {
+                "label": "显示",
+                "value": "visible"
+              },
+              {
+                "label": "隐藏（保留占位）",
+                "value": "hidden"
+              },
+              {
+                "label": "不显示（从 DOM 移除）",
+                "value": "none"
+              }
             ],
-            "x-index": 2,
-            "x-reactions": {
+            "order": 2,
+            "reactions": {
               "target": "patternSection.displayTarget",
               "fulfill": {
-                "state": { "display": "{{$self.value || 'visible'}}" }
+                "state": {
+                  "display": "{{$self.value || 'visible'}}"
+                }
               }
             }
           },
           "displayTarget": {
             "type": "string",
-            "title": "Display Target",
-            "default": "I can be hidden!",
-            "x-component": "Input",
-            "x-decorator": "FormItem",
-            "x-index": 3
+            "title": "显示目标",
+            "default": "我可以被隐藏！",
+            "component": "Input",
+            "decorator": "FormItem",
+            "order": 3
           }
         }
       },
-
       "validationSection": {
         "type": "void",
-        "title": "Advanced Validation (JSON Schema)",
-        "x-component": "FormSection",
-        "x-component-props": { "bordered": true, "collapsible": true },
-        "x-index": 3,
+        "title": "高级校验（JSON Schema）",
+        "component": "FormSection",
+        "props": {
+          "bordered": true,
+          "collapsible": true
+        },
+        "order": 3,
         "properties": {
           "age": {
             "type": "number",
-            "title": "Age (min: 18, max: 100)",
-            "x-component": "Input",
-            "x-decorator": "FormItem",
-            "x-component-props": { "type": "number", "placeholder": "18-100" },
-            "x-validator": [
-              { "min": 18, "max": 100, "message": "Age must be between 18 and 100" }
+            "title": "年龄（18 到 100）",
+            "component": "Input",
+            "decorator": "FormItem",
+            "props": {
+              "type": "number",
+              "placeholder": "18-100"
+            },
+            "validators": [
+              {
+                "min": 18,
+                "max": 100,
+                "message": "年龄必须在 18 到 100 之间"
+              }
             ],
-            "x-index": 0
+            "order": 0
           },
           "score": {
             "type": "number",
-            "title": "Score (multipleOf: 5)",
-            "x-component": "Input",
-            "x-decorator": "FormItem",
-            "x-component-props": { "type": "number", "placeholder": "Must be a multiple of 5" },
-            "x-validator": [
-              { "multipleOf": 5, "message": "Score must be a multiple of 5" }
+            "title": "分数（必须为 5 的倍数）",
+            "component": "Input",
+            "decorator": "FormItem",
+            "props": {
+              "type": "number",
+              "placeholder": "必须是 5 的倍数"
+            },
+            "validators": [
+              {
+                "multipleOf": 5,
+                "message": "分数必须是 5 的倍数"
+              }
             ],
-            "x-index": 1
+            "order": 1
           },
           "website": {
             "type": "string",
-            "title": "Website (format: url)",
-            "x-component": "Input",
-            "x-decorator": "FormItem",
-            "x-component-props": { "placeholder": "https://..." },
-            "x-validator": [
-              { "format": "url", "message": "Must be a valid URL" }
+            "title": "网站（URL 格式）",
+            "component": "Input",
+            "decorator": "FormItem",
+            "props": {
+              "placeholder": "https://..."
+            },
+            "validators": [
+              {
+                "format": "url",
+                "message": "请输入有效的 URL"
+              }
             ],
-            "x-index": 2
+            "order": 2
           },
           "password": {
             "type": "string",
-            "title": "Password (minLength: 8)",
+            "title": "密码（至少 8 位）",
             "required": true,
-            "x-component": "Input",
-            "x-decorator": "FormItem",
-            "x-component-props": { "type": "password", "placeholder": "At least 8 characters" },
-            "x-validator": [
-              { "minLength": 8, "message": "Password must be at least 8 characters" }
+            "component": "Input",
+            "decorator": "FormItem",
+            "props": {
+              "type": "password",
+              "placeholder": "至少 8 个字符"
+            },
+            "validators": [
+              {
+                "minLength": 8,
+                "message": "密码至少 8 个字符"
+              }
             ],
-            "x-index": 3
+            "order": 3
           }
         }
       }

@@ -1,6 +1,6 @@
 /**
  * @formily-bao/core — Field implementation using Alien Signals
- * Fully aligned with Formily Schema Protocol
+ * Enterprise schema protocol inspired by Formily
  */
 
 import { signal, effect, startBatch, endBatch } from 'alien-signals'
@@ -64,16 +64,16 @@ export class Field implements IField {
     this._value = signal(this.isArrayField ? (Array.isArray(defaultValue) ? defaultValue : []) : defaultValue)
 
     // Display: visible | hidden | none
-    const display: FieldDisplayTypes = schema['x-display'] ||
-      (schema['x-visible'] === false ? 'none' : schema['x-hidden'] === true ? 'hidden' : 'visible')
+    const display: FieldDisplayTypes = schema.state?.display ||
+      (schema.state?.visible === false ? 'none' : schema.state?.hidden === true ? 'hidden' : 'visible')
     this._display = signal<FieldDisplayTypes>(display)
 
     // Pattern: editable | readOnly | disabled | readPretty
-    const pattern: FieldPatternTypes = schema['x-pattern'] ||
-      (schema['x-read-pretty'] === true ? 'readPretty'
-        : schema['x-read-only'] === true || schema.readOnly === true ? 'readOnly'
-          : schema['x-disabled'] === true ? 'disabled'
-            : schema['x-editable'] === false ? 'readOnly' : 'editable')
+    const pattern: FieldPatternTypes = schema.state?.pattern ||
+      (schema.state?.readPretty === true ? 'readPretty'
+        : schema.state?.readOnly === true || schema.readOnly === true ? 'readOnly'
+          : schema.state?.disabled === true ? 'disabled'
+            : schema.state?.editable === false ? 'readOnly' : 'editable')
     this._pattern = signal<FieldPatternTypes>(pattern)
 
     this._required = signal(schema.required === true)
@@ -82,17 +82,17 @@ export class Field implements IField {
     this._validateStatus = signal<ValidateStatus>('')
     this._title = signal(schema.title || '')
     this._description = signal(schema.description || '')
-    this._component = signal(schema['x-component'] || 'Input')
-    this._componentProps = signal(schema['x-component-props'] || {})
-    this._decorator = signal(schema['x-decorator'] || 'FormItem')
-    this._decoratorProps = signal(schema['x-decorator-props'] || {})
-    this._dataSource = signal(normalizeDataSource(schema['x-data-source'] || schema.enum))
+    this._component = signal(schema.component || 'Input')
+    this._componentProps = signal(schema.props || {})
+    this._decorator = signal(schema.decorator || 'FormItem')
+    this._decoratorProps = signal(schema.decoratorProps || {})
+    this._dataSource = signal(normalizeDataSource(schema.dataSource || schema.enum))
     this._loading = signal(false)
-    this._data = signal(schema['x-data'] || {})
-    this._content = signal(schema['x-content'] || null)
+    this._data = signal(schema.data || {})
+    this._content = signal(schema.content || null)
     this._validators = normalizeValidators([
       ...schemaValidators(schema),
-      ...normalizeValidators(schema['x-validator']),
+      ...normalizeValidators(schema.validators),
     ])
     this._version = signal(0)
     this._arrayRows = signal(this.isArrayField ? (Array.isArray(defaultValue) ? defaultValue.length : 0) : 0)

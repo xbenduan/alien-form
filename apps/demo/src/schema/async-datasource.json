@@ -1,29 +1,29 @@
 {
   "id": "async-datasource",
-  "name": "Async DataSource Demo",
-  "description": "Demonstrates async data loading for Select — options fetched from remote API with dependency-driven refetch",
+  "name": "异步数据源演示",
+  "description": "演示 Select 的异步数据加载与依赖联动刷新",
   "schema": {
     "type": "object",
     "properties": {
       "infoSection": {
         "type": "void",
-        "title": "Async Select Examples",
-        "description": "The dropdowns below load their options from a remote API. The second dropdown depends on the first.",
-        "x-component": "FormSection",
-        "x-component-props": {
+        "title": "异步选择示例",
+        "description": "下面的下拉框会从远程接口加载选项，第二个下拉框依赖第一个的选择。",
+        "component": "FormSection",
+        "props": {
           "bordered": true
         },
         "properties": {
           "country": {
             "type": "string",
-            "title": "Country (Async)",
+            "title": "国家（异步）",
             "required": true,
-            "x-component": "Select",
-            "x-decorator": "FormItem",
-            "x-component-props": {
-              "placeholder": "Loading countries..."
+            "component": "Select",
+            "decorator": "FormItem",
+            "props": {
+              "placeholder": "国家加载中..."
             },
-            "x-async-data-source": {
+            "asyncDataSource": {
               "url": "https://restcountries.com/v3.1/region/asia?fields=name,cca2",
               "transformResponse": "parseCountries",
               "fetchOnMount": true
@@ -31,26 +31,26 @@
           },
           "category": {
             "type": "string",
-            "title": "Category (Static Async Simulation)",
-            "x-component": "Select",
-            "x-decorator": "FormItem",
-            "x-component-props": {
-              "placeholder": "Select category"
+            "title": "分类（本地异步模拟）",
+            "component": "Select",
+            "decorator": "FormItem",
+            "props": {
+              "placeholder": "请选择分类"
             },
-            "x-async-data-source": {
+            "asyncDataSource": {
               "service": "fetchCategories",
               "fetchOnMount": true
             }
           },
           "subCategory": {
             "type": "string",
-            "title": "Sub-Category (Depends on Category)",
-            "x-component": "Select",
-            "x-decorator": "FormItem",
-            "x-component-props": {
-              "placeholder": "Select sub-category (pick a category first)"
+            "title": "子分类（依赖分类）",
+            "component": "Select",
+            "decorator": "FormItem",
+            "props": {
+              "placeholder": "请选择子分类（请先选择分类）"
             },
-            "x-async-data-source": {
+            "asyncDataSource": {
               "service": "fetchSubCategories",
               "dependencies": {
                 "category": "category"
@@ -62,11 +62,11 @@
       },
       "note": {
         "type": "string",
-        "title": "Additional Notes",
-        "x-component": "Textarea",
-        "x-decorator": "FormItem",
-        "x-component-props": {
-          "placeholder": "Any additional notes...",
+        "title": "补充说明",
+        "component": "Textarea",
+        "decorator": "FormItem",
+        "props": {
+          "placeholder": "还有其他补充吗？",
           "rows": 3
         }
       }

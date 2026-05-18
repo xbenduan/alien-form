@@ -130,7 +130,7 @@ describe('@formily-bao/core', () => {
       properties: {
         choice: {
           type: 'string',
-          'x-async-data-source': {
+          asyncDataSource: {
             url: '/api/options',
             method: 'POST',
             headers: { 'X-Test': 'yes' },

@@ -1,65 +1,70 @@
 {
   "id": "layout-demo",
-  "name": "Layout Components Demo",
-  "description": "FormGrid, FormLayout, FormSection — structure forms with grids, sections, and collapsible groups",
+  "name": "布局组件演示",
+  "description": "使用 FormGrid、FormLayout、FormSection 组织表单布局",
   "schema": {
     "type": "object",
     "properties": {
       "basicInfo": {
         "type": "void",
-        "title": "Basic Information",
-        "description": "Personal details arranged in a 2-column grid",
-        "x-component": "FormSection",
-        "x-component-props": {
+        "title": "基本信息",
+        "description": "个人信息以两列网格排列",
+        "component": "FormSection",
+        "props": {
           "bordered": true,
           "collapsible": true
         },
         "properties": {
           "basicGrid": {
             "type": "void",
-            "x-component": "FormGrid",
-            "x-component-props": {
+            "component": "FormGrid",
+            "props": {
               "columns": 2,
               "gap": 4
             },
             "properties": {
               "firstName": {
                 "type": "string",
-                "title": "First Name",
+                "title": "名",
                 "required": true,
-                "x-component": "Input",
-                "x-decorator": "FormItem",
-                "x-component-props": {
-                  "placeholder": "John"
+                "component": "Input",
+                "decorator": "FormItem",
+                "props": {
+                  "placeholder": "张"
                 }
               },
               "lastName": {
                 "type": "string",
-                "title": "Last Name",
+                "title": "姓",
                 "required": true,
-                "x-component": "Input",
-                "x-decorator": "FormItem",
-                "x-component-props": {
-                  "placeholder": "Doe"
+                "component": "Input",
+                "decorator": "FormItem",
+                "props": {
+                  "placeholder": "三"
                 }
               },
               "email": {
                 "type": "string",
-                "title": "Email",
+                "title": "邮箱",
                 "required": true,
-                "x-component": "Input",
-                "x-decorator": "FormItem",
-                "x-component-props": {
+                "component": "Input",
+                "decorator": "FormItem",
+                "props": {
                   "placeholder": "john@example.com"
                 },
-                "x-validator": [{ "format": "email", "message": "Invalid email" }]
+                "validators": [
+                  {
+                    "format": "email",
+                    "message": "邮箱格式不正确"
+                  }
+                ]
               },
               "phone": {
                 "type": "string",
-                "title": "Phone",
-                "x-component": "Input",
-                "x-decorator": "FormItem",
-                "x-component-props": {
+                "title": "电话",
+                "component": "Input",
+                "decorator": "FormItem",
+                "props": {
                   "placeholder": "+1 (555) 000-0000"
                 }
               }
@@ -69,56 +74,77 @@
       },
       "preferences": {
         "type": "void",
-        "title": "Preferences",
-        "description": "Communication and notification settings",
-        "x-component": "FormSection",
-        "x-component-props": {
+        "title": "偏好设置",
+        "description": "沟通与通知设置",
+        "component": "FormSection",
+        "props": {
           "bordered": true,
           "collapsible": true
         },
         "properties": {
           "prefLayout": {
             "type": "void",
-            "x-component": "FormLayout",
-            "x-component-props": {
+            "component": "FormLayout",
+            "props": {
               "direction": "vertical",
               "gap": 3
             },
             "properties": {
               "language": {
                 "type": "string",
-                "title": "Language",
-                "x-component": "Select",
-                "x-decorator": "FormItem",
-                "x-component-props": {
-                  "placeholder": "Select language"
+                "title": "语言",
+                "component": "Select",
+                "decorator": "FormItem",
+                "props": {
+                  "placeholder": "请选择语言"
                 },
-                "x-data-source": [
-                  { "label": "English", "value": "en" },
-                  { "label": "Chinese", "value": "zh" },
-                  { "label": "Japanese", "value": "ja" },
-                  { "label": "Korean", "value": "ko" }
+                "dataSource": [
+                  {
+                    "label": "英文",
+                    "value": "en"
+                  },
+                  {
+                    "label": "中文",
+                    "value": "zh"
+                  },
+                  {
+                    "label": "日文",
+                    "value": "ja"
+                  },
+                  {
+                    "label": "韩文",
+                    "value": "ko"
+                  }
                 ]
               },
               "theme": {
                 "type": "string",
-                "title": "Theme",
-                "x-component": "RadioGroup",
-                "x-decorator": "FormItem",
-                "x-component-props": {
+                "title": "主题",
+                "component": "RadioGroup",
+                "decorator": "FormItem",
+                "props": {
                   "direction": "horizontal"
                 },
-                "x-data-source": [
-                  { "label": "Light", "value": "light" },
-                  { "label": "Dark", "value": "dark" },
-                  { "label": "System", "value": "system" }
+                "dataSource": [
+                  {
+                    "label": "浅色",
+                    "value": "light"
+                  },
+                  {
+                    "label": "深色",
+                    "value": "dark"
+                  },
+                  {
+                    "label": "跟随系统",
+                    "value": "system"
+                  }
                 ]
               },
               "notifications": {
                 "type": "boolean",
-                "title": "Enable Notifications",
-                "x-component": "Switch",
-                "x-decorator": "FormItem"
+                "title": "开启通知",
+                "component": "Switch",
+                "decorator": "FormItem"
               }
             }
           }
@@ -126,10 +152,10 @@
       },
       "addressSection": {
         "type": "void",
-        "title": "Address",
-        "description": "3-column grid for address fields",
-        "x-component": "FormSection",
-        "x-component-props": {
+        "title": "地址",
+        "description": "地址字段使用三列网格布局",
+        "component": "FormSection",
+        "props": {
           "bordered": true,
           "collapsible": true,
           "defaultCollapsed": true
@@ -137,36 +163,36 @@
         "properties": {
           "addrGrid": {
             "type": "void",
-            "x-component": "FormGrid",
-            "x-component-props": {
+            "component": "FormGrid",
+            "props": {
               "columns": 3,
               "gap": 3
             },
             "properties": {
               "street": {
                 "type": "string",
-                "title": "Street",
-                "x-component": "Input",
-                "x-decorator": "FormItem",
-                "x-component-props": {
-                  "placeholder": "123 Main St"
+                "title": "街道",
+                "component": "Input",
+                "decorator": "FormItem",
+                "props": {
+                  "placeholder": "世纪大道 100 号"
                 }
               },
               "city": {
                 "type": "string",
-                "title": "City",
-                "x-component": "Input",
-                "x-decorator": "FormItem",
-                "x-component-props": {
-                  "placeholder": "New York"
+                "title": "城市",
+                "component": "Input",
+                "decorator": "FormItem",
+                "props": {
+                  "placeholder": "上海"
                 }
               },
               "zip": {
                 "type": "string",
-                "title": "ZIP Code",
-                "x-component": "Input",
-                "x-decorator": "FormItem",
-                "x-component-props": {
+                "title": "邮编",
+                "component": "Input",
+                "decorator": "FormItem",
+                "props": {
                   "placeholder": "10001"
                 }
               }

@@ -1,94 +1,109 @@
 {
   "id": "array-cards",
-  "name": "Array Cards Demo",
-  "description": "Dynamic list with ArrayCards — add/remove/reorder contact entries",
+  "name": "卡片数组演示",
+  "description": "使用 ArrayCards 动态增删改联系人",
   "schema": {
     "type": "object",
     "properties": {
       "projectName": {
         "type": "string",
-        "title": "Project Name",
+        "title": "项目名称",
         "required": true,
-        "x-component": "Input",
-        "x-decorator": "FormItem",
-        "x-component-props": {
-          "placeholder": "Enter project name"
+        "component": "Input",
+        "decorator": "FormItem",
+        "props": {
+          "placeholder": "请输入项目名称"
         }
       },
       "contacts": {
         "type": "array",
-        "title": "Team Contacts",
-        "x-component": "ArrayCards",
-        "x-decorator": "FormItem",
-        "x-component-props": {
-          "addText": "+ Add Contact"
+        "title": "团队联系人",
+        "component": "ArrayCards",
+        "decorator": "FormItem",
+        "props": {
+          "addText": "+ 添加联系人"
         },
         "items": {
           "type": "object",
           "properties": {
             "name": {
               "type": "string",
-              "title": "Name",
+              "title": "姓名",
               "required": true,
-              "x-component": "Input",
-              "x-decorator": "FormItem",
-              "x-component-props": {
-                "placeholder": "Contact name"
+              "component": "Input",
+              "decorator": "FormItem",
+              "props": {
+                "placeholder": "联系人姓名"
               },
-              "x-validator": [
+              "validators": [
                 {
                   "minLength": 2,
-                  "message": "Name must be at least 2 characters"
+                  "message": "姓名至少 2 个字符"
                 }
               ]
             },
             "role": {
               "type": "string",
-              "title": "Role",
-              "x-component": "Select",
-              "x-decorator": "FormItem",
-              "x-component-props": {
-                "placeholder": "Select role"
+              "title": "角色",
+              "component": "Select",
+              "decorator": "FormItem",
+              "props": {
+                "placeholder": "请选择角色"
               },
-              "x-data-source": [
-                { "label": "Developer", "value": "dev" },
-                { "label": "Designer", "value": "design" },
-                { "label": "PM", "value": "pm" },
-                { "label": "QA", "value": "qa" },
-                { "label": "Lead", "value": "lead" }
+              "dataSource": [
+                {
+                  "label": "开发",
+                  "value": "dev"
+                },
+                {
+                  "label": "设计",
+                  "value": "design"
+                },
+                {
+                  "label": "产品经理",
+                  "value": "pm"
+                },
+                {
+                  "label": "测试",
+                  "value": "qa"
+                },
+                {
+                  "label": "负责人",
+                  "value": "lead"
+                }
               ]
             },
             "email": {
               "type": "string",
-              "title": "Email",
-              "x-component": "Input",
-              "x-decorator": "FormItem",
-              "x-component-props": {
+              "title": "邮箱",
+              "component": "Input",
+              "decorator": "FormItem",
+              "props": {
                 "placeholder": "email@example.com"
               },
-              "x-validator": [
+              "validators": [
                 {
                   "format": "email",
-                  "message": "Invalid email address"
+                  "message": "邮箱格式不正确"
                 }
               ]
             },
             "isPrimary": {
               "type": "boolean",
-              "title": "Primary Contact",
-              "x-component": "Switch",
-              "x-decorator": "FormItem"
+              "title": "主要联系人",
+              "component": "Switch",
+              "decorator": "FormItem"
             }
           }
         }
       },
       "notes": {
         "type": "string",
-        "title": "Notes",
-        "x-component": "Textarea",
-        "x-decorator": "FormItem",
-        "x-component-props": {
-          "placeholder": "Additional notes...",
+        "title": "备注",
+        "component": "Textarea",
+        "decorator": "FormItem",
+        "props": {
+          "placeholder": "补充备注...",
           "rows": 2
         }
       }

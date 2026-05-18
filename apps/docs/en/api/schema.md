@@ -1,6 +1,6 @@
 # Schema Specification
 
-FormBao fully implements the **Formily Schema Protocol** — a JSON Schema superset with `x-*` extensions for UI rendering, field linkage, and validation.
+FormBao provides an **enterprise Schema Protocol** inspired by Formily — a JSON Schema superset using natural fields such as `component`, `props`, `state`, and `reactions` for UI rendering, field linkage, and validation.
 
 ## Root Schema (`IFormSchema`)
 
@@ -67,45 +67,45 @@ interface IFieldSchema {
 }
 ```
 
-### `x-*` Extensions
+### FormBao Protocol Fields
 
 #### Component & Decorator
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `x-component` | `string` | Component name (e.g. `"Input"`, `"Select"`) |
-| `x-component-props` | `Record` | Props passed to the component |
-| `x-decorator` | `string` | Wrapper component (e.g. `"FormItem"`) |
-| `x-decorator-props` | `Record` | Props passed to the decorator |
-| `x-content` | `any` | Static content — bypasses component rendering |
+| `component` | `string` | Component name (e.g. `"Input"`, `"Select"`) |
+| `props` | `Record` | Props passed to the component |
+| `decorator` | `string` | Wrapper component (e.g. `"FormItem"`) |
+| `decoratorProps` | `Record` | Props passed to the decorator |
+| `content` | `any` | Static content — bypasses component rendering |
 
 #### Display & Pattern
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `x-display` | `'visible' \| 'hidden' \| 'none'` | Visibility control |
-| `x-pattern` | `'editable' \| 'readOnly' \| 'disabled' \| 'readPretty'` | Interaction mode |
-| `x-visible` | `boolean` | Shortcut: `false` → `x-display: 'none'` |
-| `x-hidden` | `boolean` | Shortcut: `true` → `x-display: 'hidden'` |
-| `x-disabled` | `boolean` | Shortcut: `true` → `x-pattern: 'disabled'` |
-| `x-editable` | `boolean` | Shortcut: `false` → `x-pattern: 'readOnly'` |
-| `x-read-only` | `boolean` | → `x-pattern: 'readOnly'` |
-| `x-read-pretty` | `boolean` | → `x-pattern: 'readPretty'` |
+| `state.display` | `'visible' \| 'hidden' \| 'none'` | Visibility control |
+| `state.pattern` | `'editable' \| 'readOnly' \| 'disabled' \| 'readPretty'` | Interaction mode |
+| `state.visible` | `boolean` | Shortcut: `false` → `state.display: 'none'` |
+| `state.hidden` | `boolean` | Shortcut: `true` → `state.display: 'hidden'` |
+| `state.disabled` | `boolean` | Shortcut: `true` → `state.pattern: 'disabled'` |
+| `state.editable` | `boolean` | Shortcut: `false` → `state.pattern: 'readOnly'` |
+| `state.readOnly` | `boolean` | → `state.pattern: 'readOnly'` |
+| `state.readPretty` | `boolean` | → `state.pattern: 'readPretty'` |
 
 ::: info Display vs Pattern
-`x-display` controls **whether** a field is rendered. `x-pattern` controls **how** a rendered field behaves. A field with `display: 'none'` is excluded from `form.values` and `form.validate()`.
+`state.display` controls **whether** a field is rendered. `state.pattern` controls **how** a rendered field behaves. A field with `display: 'none'` is excluded from `form.values` and `form.validate()`.
 :::
 
 #### Data & Ordering
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `x-index` | `number` | Controls render order (lower = earlier) |
-| `x-data` | `Record` | Arbitrary metadata |
-| `x-data-source` | `Array<{label, value}>` | Static options |
-| `x-async-data-source` | `AsyncDataSource` | Remote options |
-| `x-validator` | `Validator \| Validator[]` | Validation rules |
-| `x-reactions` | `SchemaReactions` | Field linkage |
+| `order` | `number` | Controls render order (lower = earlier) |
+| `data` | `Record` | Arbitrary metadata |
+| `dataSource` | `Array<{label, value}>` | Static options |
+| `asyncDataSource` | `AsyncDataSource` | Remote options |
+| `validators` | `Validator \| Validator[]` | Validation rules |
+| `reactions` | `SchemaReactions` | Field linkage |
 
 ## `$ref` and `definitions`
 
@@ -117,8 +117,8 @@ Reuse schema fragments:
     "address": {
       "type": "object",
       "properties": {
-        "street": { "type": "string", "x-component": "Input" },
-        "city": { "type": "string", "x-component": "Input" }
+        "street": { "type": "string", "component": "Input" },
+        "city": { "type": "string", "component": "Input" }
       }
     }
   },
@@ -167,7 +167,7 @@ The `format` field triggers `validateFormat()` in `field.ts`:
 ### Custom Validator Function
 
 ```ts
-'x-validator': [
+'validators': [
   async (value, field) => {
     if (await isUsernameTaken(value)) return 'Username already taken'
   }

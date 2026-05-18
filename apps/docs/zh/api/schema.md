@@ -1,6 +1,6 @@
 # Schema 协议
 
-FormBao 完整实现 **Formily Schema 协议** — 在 JSON Schema 基础上通过 `x-*` 属性扩展 UI 渲染、字段联动和验证。
+FormBao 提供基于 Formily 思想的 **企业级 Schema 协议** — 在 JSON Schema 基础上使用 `component`、`props`、`state`、`reactions` 等自然字段描述 UI 渲染、字段联动和验证。
 
 ## 根 Schema (`IFormSchema`)
 
@@ -25,44 +25,44 @@ interface IFormSchema {
 | `void` | 纯布局节点，不产生值 |
 | `date` / `datetime` | 日期字段 |
 
-## `x-*` 扩展
+## FormBao 协议字段
 
 ### 组件与装饰器
 
 | 属性 | 说明 |
 |------|------|
-| `x-component` | 组件名（如 `"Input"`） |
-| `x-component-props` | 传给组件的属性 |
-| `x-decorator` | 包装组件（如 `"FormItem"`） |
-| `x-decorator-props` | 传给装饰器的属性 |
-| `x-content` | 静态内容，跳过组件渲染 |
+| `component` | 组件名（如 `"Input"`） |
+| `props` | 传给组件的属性 |
+| `decorator` | 包装组件（如 `"FormItem"`） |
+| `decoratorProps` | 传给装饰器的属性 |
+| `content` | 静态内容，跳过组件渲染 |
 
 ### 显示与模式
 
 | 属性 | 说明 |
 |------|------|
-| `x-display` | `'visible'` / `'hidden'` / `'none'` |
-| `x-pattern` | `'editable'` / `'readOnly'` / `'disabled'` / `'readPretty'` |
-| `x-visible` | `false` → `display: 'none'` |
-| `x-hidden` | `true` → `display: 'hidden'` |
-| `x-disabled` | `true` → `pattern: 'disabled'` |
-| `x-read-only` | `true` → `pattern: 'readOnly'` |
-| `x-read-pretty` | `true` → `pattern: 'readPretty'` |
+| `state.display` | `'visible'` / `'hidden'` / `'none'` |
+| `state.pattern` | `'editable'` / `'readOnly'` / `'disabled'` / `'readPretty'` |
+| `state.visible` | `false` → `display: 'none'` |
+| `state.hidden` | `true` → `display: 'hidden'` |
+| `state.disabled` | `true` → `pattern: 'disabled'` |
+| `state.readOnly` | `true` → `pattern: 'readOnly'` |
+| `state.readPretty` | `true` → `pattern: 'readPretty'` |
 
 ::: info Display vs Pattern
-`x-display` 控制字段**是否**渲染。`x-pattern` 控制已渲染字段的**交互方式**。`display: 'none'` 的字段从 `form.values` 和验证中排除。
+`state.display` 控制字段**是否**渲染。`state.pattern` 控制已渲染字段的**交互方式**。`display: 'none'` 的字段从 `form.values` 和验证中排除。
 :::
 
 ### 数据与排序
 
 | 属性 | 说明 |
 |------|------|
-| `x-index` | 渲染顺序（越小越靠前） |
-| `x-data` | 任意元数据 |
-| `x-data-source` | 静态选项 |
-| `x-async-data-source` | 远程选项 |
-| `x-validator` | 验证规则 |
-| `x-reactions` | 字段联动 |
+| `order` | 渲染顺序（越小越靠前） |
+| `data` | 任意元数据 |
+| `dataSource` | 静态选项 |
+| `asyncDataSource` | 远程选项 |
+| `validators` | 验证规则 |
+| `reactions` | 字段联动 |
 
 ## `$ref` 和 `definitions`
 
@@ -72,8 +72,8 @@ interface IFormSchema {
     "address": {
       "type": "object",
       "properties": {
-        "street": { "type": "string", "x-component": "Input" },
-        "city": { "type": "string", "x-component": "Input" }
+        "street": { "type": "string", "component": "Input" },
+        "city": { "type": "string", "component": "Input" }
       }
     }
   },

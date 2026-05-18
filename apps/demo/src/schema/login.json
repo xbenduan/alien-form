@@ -1,36 +1,36 @@
 {
   "id": "login",
-  "name": "Login Form",
-  "description": "Basic login with username and password",
+  "name": "登录表单",
+  "description": "基础登录表单，包含用户名和密码",
   "schema": {
     "type": "object",
     "properties": {
       "username": {
         "type": "string",
-        "title": "Username",
+        "title": "用户名",
         "required": true,
-        "x-component": "Input",
-        "x-decorator": "FormItem",
-        "x-component-props": {
-          "placeholder": "Enter username"
+        "component": "Input",
+        "decorator": "FormItem",
+        "props": {
+          "placeholder": "请输入用户名"
         }
       },
       "password": {
         "type": "string",
-        "title": "Password",
+        "title": "密码",
         "required": true,
-        "x-component": "Input",
-        "x-decorator": "FormItem",
-        "x-component-props": {
+        "component": "Input",
+        "decorator": "FormItem",
+        "props": {
           "type": "password",
-          "placeholder": "Enter password"
+          "placeholder": "请输入密码"
         }
       },
       "remember": {
         "type": "boolean",
-        "title": "Remember me",
-        "x-component": "Checkbox",
-        "x-decorator": "FormItem"
+        "title": "记住我",
+        "component": "Checkbox",
+        "decorator": "FormItem"
       }
     }
   }

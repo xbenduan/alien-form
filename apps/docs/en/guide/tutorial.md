@@ -12,7 +12,7 @@ import { createForm } from '@formily-bao/core'
 const form = createForm({
   initialValues: { role: 'developer' },
   scope: {
-    // Custom expression helpers available in x-reactions
+    // Custom expression helpers available in reactions
     isDevRole: (role: string) => role === 'developer',
   },
 })
@@ -37,9 +37,9 @@ const form = createForm({
       "type": "string",
       "title": "Username",
       "required": true,
-      "x-component": "Input",
-      "x-decorator": "FormItem",
-      "x-validator": [
+      "component": "Input",
+      "decorator": "FormItem",
+      "validators": [
         { "minLength": 3, "message": "At least 3 characters" },
         { "pattern": "^[a-zA-Z0-9_]+$", "message": "Letters, numbers, underscore only" }
       ]
@@ -48,16 +48,16 @@ const form = createForm({
       "type": "string",
       "title": "Email",
       "required": true,
-      "x-component": "Input",
-      "x-decorator": "FormItem",
-      "x-component-props": { "type": "email" },
-      "x-validator": [{ "format": "email" }]
+      "component": "Input",
+      "decorator": "FormItem",
+      "props": { "type": "email" },
+      "validators": [{ "format": "email" }]
     },
     "role": {
       "type": "string",
       "title": "Role",
-      "x-component": "Select",
-      "x-decorator": "FormItem",
+      "component": "Select",
+      "decorator": "FormItem",
       "enum": [
         { "label": "Developer", "value": "developer" },
         { "label": "Designer", "value": "designer" },
@@ -67,19 +67,19 @@ const form = createForm({
     "bio": {
       "type": "string",
       "title": "Bio",
-      "x-component": "Textarea",
-      "x-decorator": "FormItem",
-      "x-reactions": {
+      "component": "Textarea",
+      "decorator": "FormItem",
+      "reactions": {
         "dependencies": { "role": "role" },
         "when": "{{$deps.role === 'developer'}}",
         "fulfill": {
           "schema": {
-            "x-component-props": { "placeholder": "Tell us about your tech stack..." }
+            "props": { "placeholder": "Tell us about your tech stack..." }
           }
         },
         "otherwise": {
           "schema": {
-            "x-component-props": { "placeholder": "Tell us about yourself..." }
+            "props": { "placeholder": "Tell us about yourself..." }
           }
         }
       }
@@ -111,10 +111,10 @@ function RegistrationForm() {
 `FormProvider` establishes a `FormContext` that `SchemaField` consumes. `SchemaField` calls `form.setSchema(schema)` on first render, which:
 
 1. Resolves `$ref` references via `_resolveRef()`
-2. Sorts properties by `x-index`
+2. Sorts properties by `order`
 3. Creates `Field` instances with `createField()`
-4. Sets up reactive effects for `x-reactions`
-5. Sets up async data source fetchers for `x-async-data-source`
+4. Sets up reactive effects for `reactions`
+5. Sets up async data source fetchers for `asyncDataSource`
 
 ## 4. Submit
 

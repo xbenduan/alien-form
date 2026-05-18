@@ -1,75 +1,75 @@
 {
   "id": "survey",
-  "name": "Survey Form",
-  "description": "A product satisfaction survey with various input types",
+  "name": "问卷表单",
+  "description": "包含多种输入类型的产品满意度调研",
   "schema": {
     "type": "object",
     "properties": {
       "productRating": {
         "type": "number",
-        "title": "How would you rate our product?",
+        "title": "你如何评价我们的产品？",
         "required": true,
-        "x-component": "Rating",
-        "x-decorator": "FormItem",
-        "x-component-props": {
+        "component": "Rating",
+        "decorator": "FormItem",
+        "props": {
           "max": 5,
           "size": "lg"
         }
       },
       "usedFeatures": {
         "type": "array",
-        "title": "Which features have you used?",
-        "x-component": "Select",
-        "x-decorator": "FormItem",
-        "x-component-props": {
+        "title": "你使用过哪些功能？",
+        "component": "Select",
+        "decorator": "FormItem",
+        "props": {
           "multiple": true,
-          "placeholder": "Select features"
+          "placeholder": "请选择功能"
         },
-        "x-data-source": [
+        "dataSource": [
           {
-            "label": "Schema Builder",
+            "label": "Schema 构建器",
             "value": "schema-builder"
           },
           {
-            "label": "Form Preview",
+            "label": "表单预览",
             "value": "preview"
           },
           {
-            "label": "Validation Engine",
+            "label": "校验引擎",
             "value": "validation"
           },
           {
-            "label": "Field Linkage",
+            "label": "字段联动",
             "value": "linkage"
           },
           {
-            "label": "Custom Components",
+            "label": "自定义组件",
             "value": "custom-components"
           }
         ]
       },
       "wouldRecommend": {
         "type": "boolean",
-        "title": "Would you recommend this product?",
-        "x-component": "Switch",
-        "x-decorator": "FormItem"
+        "title": "你愿意推荐这款产品吗？",
+        "component": "Switch",
+        "decorator": "FormItem"
       },
       "improvements": {
         "type": "array",
-        "title": "Suggested improvements",
-        "x-component": "ItemInput",
-        "x-decorator": "FormItem",
-        "x-component-props": {
-          "placeholder": "Type a suggestion and press Enter"
+        "title": "改进建议",
+        "component": "ItemInput",
+        "decorator": "FormItem",
+        "props": {
+          "placeholder": "输入建议后按 Enter"
         }
       },
       "feedback": {
         "type": "string",
-        "title": "Additional feedback",
-        "x-component": "Textarea",
-        "x-decorator": "FormItem",
-        "x-component-props": {
-          "placeholder": "Tell us more...",
+        "title": "补充反馈",
+        "component": "Textarea",
+        "decorator": "FormItem",
+        "props": {
+          "placeholder": "欢迎补充更多想法...",
           "rows": 4
         }
       }

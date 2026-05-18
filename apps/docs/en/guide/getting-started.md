@@ -24,15 +24,15 @@ const schema = {
       type: 'string',
       title: 'Username',
       required: true,
-      'x-component': 'Input',
-      'x-decorator': 'FormItem',
-      'x-validator': [{ minLength: 3, message: 'At least 3 characters' }],
+      'component': 'Input',
+      'decorator': 'FormItem',
+      'validators': [{ minLength: 3, message: 'At least 3 characters' }],
     },
     role: {
       type: 'string',
       title: 'Role',
-      'x-component': 'Select',
-      'x-decorator': 'FormItem',
+      'component': 'Select',
+      'decorator': 'FormItem',
       enum: [
         { label: 'Developer', value: 'developer' },
         { label: 'Designer', value: 'designer' },
@@ -55,7 +55,7 @@ function App() {
 
 1. **`createForm()`** creates a reactive form instance backed by Alien Signals.
 2. **`FormProvider`** establishes the React context with registered components/decorators.
-3. **`SchemaField`** calls `form.setSchema()` internally, which creates `Field` instances for each property and sets up `x-reactions` and `x-async-data-source` effects.
+3. **`SchemaField`** calls `form.setSchema()` internally, which creates `Field` instances for each property and sets up `reactions` and `asyncDataSource` effects.
 4. Each `Field` stores its state in signals (`_value`, `_display`, `_pattern`, `_errors`, etc.) — only subscribed components re-render on change.
 
 ## Architecture
@@ -68,7 +68,7 @@ JSON Schema (Formily Protocol)
 │        Form (form.ts)       │
 │  • createField()            │
 │  • setSchema() — resolves   │
-│    $ref, x-index, creates   │
+│    $ref, order, creates   │
 │    fields, sets up reactions │
 │  • Expression engine        │
 │  • Lifecycle registry       │

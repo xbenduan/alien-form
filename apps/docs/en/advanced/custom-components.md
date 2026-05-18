@@ -16,7 +16,7 @@ Every component receives these props from `FieldRenderer` in `@formily-bao/react
   loading: boolean         // field.loading
   pattern: string          // field.pattern
   dataSource?: Array<{label, value}>  // if field.dataSource.length > 0
-  ...field.componentProps  // from x-component-props
+  ...field.componentProps  // from props
 }
 ```
 
@@ -61,9 +61,9 @@ function ColorPicker({ value, onChange, disabled, presets = [] }) {
   "brandColor": {
     "type": "string",
     "title": "Brand Color",
-    "x-component": "ColorPicker",
-    "x-decorator": "FormItem",
-    "x-component-props": {
+    "component": "ColorPicker",
+    "decorator": "FormItem",
+    "props": {
       "presets": ["#ff0000", "#00ff00", "#0000ff"]
     }
   }
@@ -100,7 +100,7 @@ Decorators wrap the component with label, errors, and layout. They receive:
   validateStatus: string  // field.validateStatus
   pattern: string         // field.pattern
   children: ReactNode     // the rendered component
-  ...field.decoratorProps // from x-decorator-props
+  ...field.decoratorProps // from decoratorProps
 }
 ```
 

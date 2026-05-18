@@ -7,20 +7,20 @@
 ### Input
 
 ```json
-{ "x-component": "Input", "x-component-props": { "placeholder": "...", "type": "text" } }
+{ "component": "Input", "props": { "placeholder": "...", "type": "text" } }
 ```
 
 ### Textarea
 
 ```json
-{ "x-component": "Textarea", "x-component-props": { "rows": 4 } }
+{ "component": "Textarea", "props": { "rows": 4 } }
 ```
 
 ### Select
 
 ```json
 {
-  "x-component": "Select",
+  "component": "Select",
   "enum": [{ "label": "选项A", "value": "a" }, { "label": "选项B", "value": "b" }]
 }
 ```
@@ -28,26 +28,26 @@
 ### Checkbox / Switch
 
 ```json
-{ "type": "boolean", "x-component": "Checkbox" }
-{ "type": "boolean", "x-component": "Switch" }
+{ "type": "boolean", "component": "Checkbox" }
+{ "type": "boolean", "component": "Switch" }
 ```
 
 ### RadioGroup
 
 ```json
-{ "x-component": "RadioGroup", "enum": ["小", "中", "大"] }
+{ "component": "RadioGroup", "enum": ["小", "中", "大"] }
 ```
 
 ### DateInput
 
 ```json
-{ "type": "date", "x-component": "DateInput" }
+{ "type": "date", "component": "DateInput" }
 ```
 
 ### Rating
 
 ```json
-{ "type": "number", "x-component": "Rating", "x-component-props": { "max": 5 } }
+{ "type": "number", "component": "Rating", "props": { "max": 5 } }
 ```
 
 ## 数组组件
@@ -59,12 +59,12 @@
 ```json
 {
   "type": "array",
-  "x-component": "ArrayCards",
-  "x-component-props": { "title": "联系人" },
+  "component": "ArrayCards",
+  "props": { "title": "联系人" },
   "items": {
     "properties": {
-      "name": { "type": "string", "x-component": "Input", "x-decorator": "FormItem" },
-      "phone": { "type": "string", "x-component": "Input", "x-decorator": "FormItem" }
+      "name": { "type": "string", "component": "Input", "decorator": "FormItem" },
+      "phone": { "type": "string", "component": "Input", "decorator": "FormItem" }
     }
   }
 }
@@ -77,11 +77,11 @@
 ```json
 {
   "type": "array",
-  "x-component": "ArrayTable",
+  "component": "ArrayTable",
   "items": {
     "properties": {
-      "name": { "type": "string", "title": "姓名", "x-component": "Input" },
-      "qty": { "type": "number", "title": "数量", "x-component": "Input" }
+      "name": { "type": "string", "title": "姓名", "component": "Input" },
+      "qty": { "type": "number", "title": "数量", "component": "Input" }
     }
   }
 }
@@ -94,19 +94,19 @@
 ### FormGrid
 
 ```json
-{ "type": "void", "x-component": "FormGrid", "x-component-props": { "columns": 2, "gap": 16 } }
+{ "type": "void", "component": "FormGrid", "props": { "columns": 2, "gap": 16 } }
 ```
 
 ### FormLayout
 
 ```json
-{ "type": "void", "x-component": "FormLayout", "x-component-props": { "direction": "horizontal" } }
+{ "type": "void", "component": "FormLayout", "props": { "direction": "horizontal" } }
 ```
 
 ### FormSection
 
 ```json
-{ "type": "void", "title": "标题", "x-component": "FormSection", "x-component-props": { "bordered": true, "collapsible": true } }
+{ "type": "void", "title": "标题", "component": "FormSection", "props": { "bordered": true, "collapsible": true } }
 ```
 
 ## 装饰器

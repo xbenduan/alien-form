@@ -24,15 +24,15 @@ const schema = {
       type: 'string',
       title: '用户名',
       required: true,
-      'x-component': 'Input',
-      'x-decorator': 'FormItem',
-      'x-validator': [{ minLength: 3, message: '至少 3 个字符' }],
+      'component': 'Input',
+      'decorator': 'FormItem',
+      'validators': [{ minLength: 3, message: '至少 3 个字符' }],
     },
     role: {
       type: 'string',
       title: '角色',
-      'x-component': 'Select',
-      'x-decorator': 'FormItem',
+      'component': 'Select',
+      'decorator': 'FormItem',
       enum: [
         { label: '开发者', value: 'developer' },
         { label: '设计师', value: 'designer' },
@@ -55,7 +55,7 @@ function App() {
 
 1. **`createForm()`** 创建由 Alien Signals 支持的响应式表单实例
 2. **`FormProvider`** 建立 React Context，注册组件和装饰器
-3. **`SchemaField`** 内部调用 `form.setSchema()`，为每个属性创建 `Field` 实例并设置 `x-reactions` 和 `x-async-data-source` 效果
+3. **`SchemaField`** 内部调用 `form.setSchema()`，为每个属性创建 `Field` 实例并设置 `reactions` 和 `asyncDataSource` 效果
 4. 每个 `Field` 将状态存储在 signal 中（`_value`、`_display`、`_pattern`、`_errors` 等）— 仅订阅的组件会重新渲染
 
 ## 架构
@@ -68,7 +68,7 @@ JSON Schema (Formily 协议)
 │        Form (form.ts)       │
 │  • createField()            │
 │  • setSchema() — 解析 $ref、│
-│    x-index、创建字段、       │
+│    order、创建字段、       │
 │    设置 reactions            │
 │  • 表达式引擎               │
 │  • 生命周期注册             │

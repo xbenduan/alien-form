@@ -34,9 +34,9 @@ const form = createForm({
       "type": "string",
       "title": "用户名",
       "required": true,
-      "x-component": "Input",
-      "x-decorator": "FormItem",
-      "x-validator": [
+      "component": "Input",
+      "decorator": "FormItem",
+      "validators": [
         { "minLength": 3, "message": "至少 3 个字符" },
         { "pattern": "^[a-zA-Z0-9_]+$", "message": "仅限字母、数字、下划线" }
       ]
@@ -45,15 +45,15 @@ const form = createForm({
       "type": "string",
       "title": "邮箱",
       "required": true,
-      "x-component": "Input",
-      "x-decorator": "FormItem",
-      "x-validator": [{ "format": "email" }]
+      "component": "Input",
+      "decorator": "FormItem",
+      "validators": [{ "format": "email" }]
     },
     "role": {
       "type": "string",
       "title": "角色",
-      "x-component": "Select",
-      "x-decorator": "FormItem",
+      "component": "Select",
+      "decorator": "FormItem",
       "enum": [
         { "label": "开发者", "value": "developer" },
         { "label": "设计师", "value": "designer" },
@@ -63,19 +63,19 @@ const form = createForm({
     "bio": {
       "type": "string",
       "title": "简介",
-      "x-component": "Textarea",
-      "x-decorator": "FormItem",
-      "x-reactions": {
+      "component": "Textarea",
+      "decorator": "FormItem",
+      "reactions": {
         "dependencies": { "role": "role" },
         "when": "{{$deps.role === 'developer'}}",
         "fulfill": {
           "schema": {
-            "x-component-props": { "placeholder": "介绍你的技术栈..." }
+            "props": { "placeholder": "介绍你的技术栈..." }
           }
         },
         "otherwise": {
           "schema": {
-            "x-component-props": { "placeholder": "介绍一下自己..." }
+            "props": { "placeholder": "介绍一下自己..." }
           }
         }
       }
@@ -107,10 +107,10 @@ function RegistrationForm() {
 `SchemaField` 在首次渲染时调用 `form.setSchema(schema)`，依次：
 
 1. 通过 `_resolveRef()` 解析 `$ref` 引用
-2. 按 `x-index` 排序属性
+2. 按 `order` 排序属性
 3. 通过 `createField()` 创建 `Field` 实例
-4. 为 `x-reactions` 设置响应式 effect
-5. 为 `x-async-data-source` 设置异步获取器
+4. 为 `reactions` 设置响应式 effect
+5. 为 `asyncDataSource` 设置异步获取器
 
 ## 4. 提交
 

@@ -18,24 +18,24 @@ The `Field` class has built-in array support:
   "contacts": {
     "type": "array",
     "title": "Contacts",
-    "x-component": "ArrayCards",
-    "x-component-props": { "title": "Contact" },
-    "x-validator": [{ "minItems": 1, "message": "At least one contact required" }],
+    "component": "ArrayCards",
+    "props": { "title": "Contact" },
+    "validators": [{ "minItems": 1, "message": "At least one contact required" }],
     "items": {
       "properties": {
         "name": {
           "type": "string",
           "title": "Name",
           "required": true,
-          "x-component": "Input",
-          "x-decorator": "FormItem"
+          "component": "Input",
+          "decorator": "FormItem"
         },
         "phone": {
           "type": "string",
           "title": "Phone",
-          "x-component": "Input",
-          "x-decorator": "FormItem",
-          "x-validator": [{ "format": "phone" }]
+          "component": "Input",
+          "decorator": "FormItem",
+          "validators": [{ "format": "phone" }]
         }
       }
     }
