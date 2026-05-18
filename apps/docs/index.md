@@ -1,5 +1,5 @@
 ---
-layout: home
+pageType: home
 
 hero:
   name: FormBao
@@ -21,6 +21,6 @@ features:
     details: Browse guides, API references, and advanced topics under the /en/ path.
   - title: 中文文档
     details: 浏览快速开始、API 参考和进阶内容，统一位于 /zh/ 路径下。
-  - title: Locale Switching
-    details: Use the built-in VitePress locale switcher to move between English and Chinese documentation.
+  - title: Language Navigation
+    details: Switch between English and Chinese from the Rspress navigation bar or the homepage portal.
 ---

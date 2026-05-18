@@ -245,15 +245,7 @@ export interface IField {
 // IFieldSchema — JSON Schema with FormBao schema protocol fields
 // ============================================================
 
-export type DataSourceValuePolicy = 'preserve' | 'clear' | 'filter' | 'first'
-
-export interface DataSourcePolicy {
-  /**
-   * How to reconcile current value when dataSource changes and no longer contains it.
-   * preserve: keep value; clear: clear invalid value; filter: filter invalid array items; first: select first option.
-   */
-  value?: DataSourceValuePolicy
-}
+export type DataSourcePolicy = 'preserve' | 'clear' | 'filter' | 'first'
 
 export interface IFieldSchema {
   // --- JSON Schema Standard ---

@@ -25,7 +25,6 @@ export type {
   SchemaReactions,
   SchemaFormat,
   SchemaXValidate,
-  DataSourceValuePolicy,
   DataSourcePolicy,
   RuntimeRuleHandlerContext,
   RuntimeRuleHandler,

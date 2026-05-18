@@ -586,7 +586,7 @@ describe('@formily-bao/core', () => {
         },
         city: {
           type: 'string',
-          dataSourcePolicy: { value: 'clear' },
+          dataSourcePolicy: 'clear',
           dataSource: [{ label: '北京', value: 'beijing' }],
           'x-reaction': {
             dataSource: {
@@ -601,7 +601,7 @@ describe('@formily-bao/core', () => {
         },
         tags: {
           type: 'array',
-          dataSourcePolicy: { value: 'filter' },
+          dataSourcePolicy: 'filter',
           dataSource: [
             { label: 'A', value: 'a' },
             { label: 'B', value: 'b' },

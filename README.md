@@ -8,7 +8,7 @@ FormBao is a lightweight enterprise Schema Form engine inspired by Formily, but 
 - `@formily-bao/react`: React binding package for rendering schemas with custom component/decorator maps.
 - `@formily-bao/ui`: reusable React UI components used by the demo renderer.
 - `@formily-bao/demo`: Vite demo app for rendering example schemas.
-- `@formily-bao/docs`: VitePress documentation site.
+- `@formily-bao/docs`: Rspress documentation site.
 
 ## Requirements
 

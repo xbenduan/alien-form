@@ -176,9 +176,7 @@
         "props": {
           "placeholder": "请先选择分类"
         },
-        "dataSourcePolicy": {
-          "value": "clear"
-        },
+        "dataSourcePolicy": "clear",
         "description": "dataSource 变化后，如果当前值不在新选项中，会按 dataSourcePolicy.value 清空，避免展示值与候选项不匹配。",
         "x-reaction": {
           "dataSource": {

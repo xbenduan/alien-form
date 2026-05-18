@@ -92,7 +92,7 @@ export class Field implements IField {
     this._decorator = signal(schema.decorator || 'FormItem')
     this._decoratorProps = signal(schema.decoratorProps || {})
     this._dataSource = signal(normalizeDataSource(schema.dataSource || schema.enum))
-    this._dataSourcePolicy = schema.dataSourcePolicy || {}
+    this._dataSourcePolicy = schema.dataSourcePolicy || 'preserve'
     this._loading = signal(false)
     this._data = signal(schema.data || {})
     this._content = signal(schema.content || null)
@@ -212,7 +212,7 @@ export class Field implements IField {
   private _reconcileValueWithDataSource(): void {
     if (this._reconcilingDataSourceValue) return
 
-    const policy = this._dataSourcePolicy.value || 'preserve'
+    const policy = this._dataSourcePolicy || 'preserve'
     if (policy === 'preserve') return
 
     const dataSource = this._dataSource()

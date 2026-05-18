@@ -13,3 +13,7 @@ package-lock.json
 .pnpm-store
 
 **/cache
+**/doc_build
+
+
+**.py
