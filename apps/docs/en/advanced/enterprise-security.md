@@ -6,7 +6,7 @@ FormBao security boundary: Schema may describe structure, validation, and contro
 
 ```json
 {
-  "reactions": {
+  "x-reaction": {
     "visible": {
       "dependencies": { "type": "type" },
       "type": "expression",

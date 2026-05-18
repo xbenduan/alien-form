@@ -13,20 +13,20 @@ FormBao Schema is based on JSON Schema and adds UI, state, and reactive properti
 | `dataSource` | Static options |
 | `validators` | Validation rules |
 | `state` | Initial state such as `visible`, `display`, and `pattern` |
-| `reactions` | Field-owned property-level derivation rules |
+| `x-reaction` | Field-owned property-level derivation rules |
 | `order` | Field order |
 
 ## Reactions
 
-The key of `reactions` is the field property to write. The value is a rule or an array of rules.
+The key of `x-reaction` is the field property to write. The value is a rule or an array of rules.
 
 ```ts
-type SchemaReactionType = 'static' | 'expression' | 'match' | 'computed'
+type SchemaXRuleType = 'static' | 'expression' | 'match' | 'computed'
 ```
 
 ```json
 {
-  "reactions": {
+  "x-reaction": {
     "title": { "type": "static", "value": "企业名称" },
     "display": {
       "dependencies": { "type": "type" },

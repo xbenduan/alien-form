@@ -12,9 +12,12 @@ import type {
   IFormSchema,
   IFieldSchema,
   FormConfig,
-  SchemaReactions,
-  SchemaReactionRule,
+  SchemaXRule,
   SchemaReactionKey,
+  SchemaFormat,
+  SchemaXValidate,
+  Validator,
+  ValidatorRule,
   FieldMutableState,
 } from './types'
 
@@ -79,6 +82,8 @@ export class Form implements IForm {
   private _reactionDisposers: Array<() => void> = []
   private _reactionValueTriggers: Map<string, Set<() => void>> = new Map()
   private _actionCache: Map<string, string> = new Map()
+  private _fieldFormats: Map<string, SchemaFormat> = new Map()
+  private _formattingValuePaths: Set<string> = new Set()
   private _config: FormConfig
   private _scope: Record<string, any>
   private _lifecycle: LifecycleRegistry
@@ -109,7 +114,7 @@ export class Form implements IForm {
       if (this._isArrayChildPath(path)) continue
       // Skip void fields — they are layout containers
       if (field.component && isVoidField(path, this._schema)) continue
-      setDeepValue(result, path, field.value)
+      setDeepValue(result, path, this._formatFieldValue(path, field.value, 'output'))
     }
     return result
   }
@@ -146,8 +151,11 @@ export class Form implements IForm {
   // ============================================================
 
   createField(path: string, schema: IFieldSchema, initialValue?: any): IField {
-    const initVal = initialValue !== undefined ? initialValue : getDeepValue(this._initialValues, path)
-    const field = new Field(path, schema, initVal)
+    const rawInitVal = initialValue !== undefined ? initialValue : getDeepValue(this._initialValues, path)
+    const sourceInitVal = rawInitVal !== undefined ? rawInitVal : schema.default
+    const initVal = this._formatInitialValue(path, schema, sourceInitVal)
+    const fieldSchema = rawInitVal === undefined && schema.default !== undefined ? { ...schema, default: undefined } : schema
+    const field = new Field(path, fieldSchema, initVal)
     ;(field as Field)._setForm(this)
     this.fields.set(path, field)
     this._bumpVersion()
@@ -194,7 +202,7 @@ export class Form implements IForm {
     for (const [path, field] of this.fields) {
       const val = getDeepValue(values, path)
       if (val !== undefined) {
-        field.setValue(val)
+        field.setValue(this._formatFieldValue(path, val, 'input'))
       }
     }
     this._bumpVersion()
@@ -270,6 +278,7 @@ export class Form implements IForm {
     for (const dispose of this._reactionDisposers) dispose()
     this._reactionDisposers = []
     this._reactionValueTriggers.clear()
+    this._fieldFormats.clear()
     this.fields.clear()
     this._actionCache.clear()
 
@@ -472,7 +481,59 @@ export class Form implements IForm {
   }
 
   // ============================================================
-  // Reaction system
+  // X-format system
+  // ============================================================
+
+  private _formatInitialValue(path: string, schema: IFieldSchema, value: any): any {
+    const format = schema['x-format']
+    if (format) {
+      this._fieldFormats.set(path, format)
+    }
+    if (!format?.input || value === undefined) return value
+    return this._runXRuleListSync(undefined, 'input', format.input, this._buildValueScope(value), 'x-format', value)
+  }
+
+  private _formatFieldValue(path: string, value: any, direction: 'input' | 'output'): any {
+    if (this._formattingValuePaths.has(path)) return value
+    const format = this._fieldFormats.get(path)
+    const rules = format?.[direction]
+    if (!rules || value === undefined) return value
+    const field = this.fields.get(path)
+    this._formattingValuePaths.add(path)
+    try {
+      return this._runXRuleListSync(field, direction, rules, this._buildValueScope(value, field), 'x-format', value)
+    } finally {
+      this._formattingValuePaths.delete(path)
+    }
+  }
+
+  // ============================================================
+  // X-validate system
+  // ============================================================
+
+  async _runXValidate(field: IField, rules: SchemaXValidate, value: any): Promise<FieldError[]> {
+    const ruleList = Array.isArray(rules) ? rules : [rules]
+    const errors: FieldError[] = []
+    for (const rule of ruleList) {
+      const { deps, depsArray } = this._resolveDependencies(rule.dependencies, field.path)
+      const resolved = await this._resolveXRuleValue(
+        field,
+        'validate',
+        rule,
+        {
+          ...this._buildValueScope(value, field),
+          $deps: depsArray.length > 0 ? depsArray : deps,
+          $dependencies: deps,
+        },
+        'x-validate'
+      )
+      errors.push(...normalizeValidationErrors(resolved))
+    }
+    return errors
+  }
+
+  // ============================================================
+  // X-rule system
   // ============================================================
 
   private _setupReactions(schema: IFormSchema): void {
@@ -483,7 +544,7 @@ export class Form implements IForm {
   private _setupFieldReactions(prefix: string, properties: Record<string, IFieldSchema>): void {
     for (const [key, schema] of Object.entries(properties)) {
       const path = prefix ? `${prefix}.${key}` : key
-      const reactions = schema.reactions
+      const reactions = schema['x-reaction']
 
       if (reactions) {
         for (const [reactionKey, ruleOrRules] of Object.entries(reactions)) {
@@ -509,7 +570,7 @@ export class Form implements IForm {
     }
   }
 
-  private _setupPropertyReaction(selfPath: string, reactionKey: string, rule: SchemaReactionRule): void {
+  private _setupPropertyReaction(selfPath: string, reactionKey: string, rule: SchemaXRule): void {
     const runner = () => {
       const field = this.fields.get(selfPath)
       if (!field) return
@@ -531,7 +592,7 @@ export class Form implements IForm {
     }
   }
 
-  private _getReactionDependencyPaths(rule: SchemaReactionRule, selfPath: string): string[] {
+  private _getReactionDependencyPaths(rule: SchemaXRule, selfPath: string): string[] {
     const dependencies = rule.dependencies
     if (!dependencies) return [selfPath]
 
@@ -561,11 +622,11 @@ export class Form implements IForm {
   private _runPropertyReaction(
     field: IField,
     reactionKey: string,
-    rule: SchemaReactionRule,
+    rule: SchemaXRule,
     scope: Record<string, any>
   ): void {
     try {
-      const value = this._resolveReactionValue(field, reactionKey, rule, scope)
+      const value = this._resolveXRuleValue(field, reactionKey, rule, scope, 'x-reaction')
       if (isPromiseLike(value)) {
         void value
           .then((resolved) => {
@@ -582,11 +643,12 @@ export class Form implements IForm {
     }
   }
 
-  private _resolveReactionValue(
-    field: IField,
-    reactionKey: string,
-    rule: SchemaReactionRule,
-    scope: Record<string, any>
+  private _resolveXRuleValue(
+    field: IField | undefined,
+    key: string,
+    rule: SchemaXRule,
+    scope: Record<string, any>,
+    kind: 'x-reaction' | 'x-format' | 'x-validate'
   ): any {
     switch (rule.type) {
       case 'static':
@@ -596,35 +658,80 @@ export class Form implements IForm {
       case 'match': {
         const source = rule.source
           ? this._evalExpressionInScope(rule.source, scope)
-          : this._defaultMatchSource(scope)
-        const key = source === undefined || source === null ? 'default' : String(source)
-        return Object.prototype.hasOwnProperty.call(rule.match, key)
-          ? rule.match[key]
+          : kind === 'x-format' || kind === 'x-validate'
+            ? scope.$value
+            : this._defaultMatchSource(scope)
+        const matchKey = source === undefined || source === null ? 'default' : String(source)
+        return Object.prototype.hasOwnProperty.call(rule.match, matchKey)
+          ? rule.match[matchKey]
           : rule.match.default
       }
       case 'computed': {
-        const handler = this._config.reactionHandlers?.[rule.handler]
+        const handler = this._config.handlers?.[rule.handler]
         if (!handler) return undefined
-        field.setLoading(true)
+        const shouldSetLoading = kind === 'x-reaction' && !!field
+        if (shouldSetLoading) field?.setLoading(true)
         const result = handler({
-          field,
+          field: field as IField,
           form: this,
-          values: this.values,
+          values: this._rawValues(),
           deps: scope.$dependencies,
           dependencies: scope.$dependencies,
           scope,
-          key: reactionKey,
+          key,
           rule,
+          value: scope.$value,
+          kind,
         })
         if (isPromiseLike(result)) {
           return result.finally(() => {
-            field.setLoading(false)
+            if (shouldSetLoading) field?.setLoading(false)
           })
         }
-        field.setLoading(false)
+        if (shouldSetLoading) field?.setLoading(false)
         return result
       }
     }
+  }
+
+  private _runXRuleListSync(
+    field: IField | undefined,
+    key: string,
+    ruleOrRules: SchemaXRule | SchemaXRule[],
+    scope: Record<string, any>,
+    kind: 'x-reaction' | 'x-format' | 'x-validate',
+    fallback: any
+  ): any {
+    const rules = Array.isArray(ruleOrRules) ? ruleOrRules : [ruleOrRules]
+    let current = fallback
+    for (const rule of rules) {
+      const valueScope = { ...scope, $value: current }
+      const value = this._resolveXRuleValue(field, key, rule, valueScope, kind)
+      if (isPromiseLike(value)) {
+        console.warn(`[formily-bao] ${kind} "${key}" for "${field?.path || '<root>'}" returned a Promise in a synchronous phase`)
+        continue
+      }
+      if (value !== undefined) current = value
+    }
+    return current
+  }
+
+  private async _runXRuleListAsync(
+    field: IField | undefined,
+    key: string,
+    ruleOrRules: SchemaXRule | SchemaXRule[],
+    scope: Record<string, any>,
+    kind: 'x-reaction' | 'x-format' | 'x-validate',
+    fallback: any
+  ): Promise<any> {
+    const rules = Array.isArray(ruleOrRules) ? ruleOrRules : [ruleOrRules]
+    let current = fallback
+    for (const rule of rules) {
+      const valueScope = { ...scope, $value: current }
+      const value = await this._resolveXRuleValue(field, key, rule, valueScope, kind)
+      if (value !== undefined) current = value
+    }
+    return current
   }
 
   private _defaultMatchSource(scope: Record<string, any>): any {
@@ -711,7 +818,20 @@ export class Form implements IForm {
       $values: this.values,
       $deps: depsArray.length > 0 ? depsArray : deps,
       $dependencies: deps,
+      $value: selfField.value,
       // User custom scope
+      ...this._scope,
+    }
+  }
+
+  private _buildValueScope(value: any, field?: IField): Record<string, any> {
+    return {
+      $self: field,
+      $form: this,
+      $values: this._rawValues(),
+      $deps: {},
+      $dependencies: {},
+      $value: value,
       ...this._scope,
     }
   }
@@ -797,6 +917,17 @@ export class Form implements IForm {
     this._version(this._version() + 1)
   }
 
+  private _rawValues(): Record<string, any> {
+    const result: Record<string, any> = {}
+    for (const [path, field] of this.fields) {
+      if (!field.visible) continue
+      if (this._isArrayChildPath(path)) continue
+      if (field.component && isVoidField(path, this._schema)) continue
+      setDeepValue(result, path, field.value)
+    }
+    return result
+  }
+
   private _notifyValuesChange(): void {
     const vals = this.values
     for (const listener of this._valuesChangeListeners) {
@@ -869,6 +1000,87 @@ function normalizeDataSource(ds?: Array<any> | null): Array<{ label: string; val
     }
     return item as { label: string; value: any; [key: string]: any }
   })
+}
+
+function normalizeValidationErrors(result: any): FieldError[] {
+  if (result === undefined || result === null || result === true) return []
+  if (result === false) return [{ message: 'Invalid value', type: 'x-validate' }]
+  if (typeof result === 'string') return [{ message: result, type: 'x-validate' }]
+  const values = Array.isArray(result) ? result : [result]
+  const errors: FieldError[] = []
+  for (const item of values) {
+    if (item === undefined || item === null || item === true) continue
+    if (item === false) {
+      errors.push({ message: 'Invalid value', type: 'x-validate' })
+      continue
+    }
+    if (typeof item === 'string') {
+      errors.push({ message: item, type: 'x-validate' })
+      continue
+    }
+    if (typeof item === 'object') {
+      const rule = item as ValidatorRule
+      const fieldError = item as FieldError
+      if ('message' in fieldError && !isValidatorRule(rule)) {
+        errors.push({ message: fieldError.message, type: fieldError.type || 'x-validate' })
+        continue
+      }
+      const validatorErrors = runValidatorRule(rule, (item as any).value)
+      if (validatorErrors.length > 0) errors.push(...validatorErrors)
+      else if ('message' in fieldError) errors.push({ message: fieldError.message, type: fieldError.type || 'x-validate' })
+    }
+  }
+  return errors
+}
+
+function isValidatorRule(rule: ValidatorRule): boolean {
+  return !!rule && (
+    'required' in rule ||
+    'min' in rule ||
+    'max' in rule ||
+    'minLength' in rule ||
+    'maxLength' in rule ||
+    'pattern' in rule ||
+    'format' in rule ||
+    'exclusiveMinimum' in rule ||
+    'exclusiveMaximum' in rule ||
+    'multipleOf' in rule ||
+    'maxItems' in rule ||
+    'minItems' in rule ||
+    'uniqueItems' in rule ||
+    'const' in rule
+  )
+}
+
+function runValidatorRule(rule: ValidatorRule, value: any): FieldError[] {
+  const errors: FieldError[] = []
+  if (rule.required && isEmptyValue(value)) {
+    errors.push({ message: rule.message || 'Field is required', type: 'required' })
+  }
+  if (rule.min !== undefined && typeof value === 'number' && value < rule.min) {
+    errors.push({ message: rule.message || `Must be >= ${rule.min}`, type: 'min' })
+  }
+  if (rule.max !== undefined && typeof value === 'number' && value > rule.max) {
+    errors.push({ message: rule.message || `Must be <= ${rule.max}`, type: 'max' })
+  }
+  if (rule.minLength !== undefined && typeof value === 'string' && value.length < rule.minLength) {
+    errors.push({ message: rule.message || `Min length: ${rule.minLength}`, type: 'minLength' })
+  }
+  if (rule.maxLength !== undefined && typeof value === 'string' && value.length > rule.maxLength) {
+    errors.push({ message: rule.message || `Max length: ${rule.maxLength}`, type: 'maxLength' })
+  }
+  if (rule.pattern) {
+    const regex = typeof rule.pattern === 'string' ? new RegExp(rule.pattern) : rule.pattern
+    if (value && !regex.test(String(value))) errors.push({ message: rule.message || 'Invalid format', type: 'pattern' })
+  }
+  if (rule.const !== undefined && value !== rule.const) {
+    errors.push({ message: rule.message || `Must equal ${JSON.stringify(rule.const)}`, type: 'const' })
+  }
+  return errors
+}
+
+function isEmptyValue(value: any): boolean {
+  return value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0)
 }
 
 /**

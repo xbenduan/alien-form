@@ -1,0 +1,176 @@
+{
+  "id": "layout-and-collections",
+  "name": "布局与集合字段",
+  "description": "演示 FormSection、FormGrid、ArrayCards、ArrayTable，用于企业表单中的分组、栅格、联系人和明细录入。",
+  "category": "01 基础能力",
+  "order": 20,
+  "tags": [
+    "layout",
+    "array",
+    "object"
+  ],
+  "schema": {
+    "type": "object",
+    "title": "布局与集合字段演示",
+    "properties": {
+      "basicSection": {
+        "type": "void",
+        "title": "基础信息",
+        "component": "FormSection",
+        "props": {
+          "bordered": true,
+          "collapsible": true
+        },
+        "properties": {
+          "basicGrid": {
+            "type": "void",
+            "component": "FormGrid",
+            "props": {
+              "columns": 2,
+              "gap": 4
+            },
+            "properties": {
+              "projectName": {
+                "type": "string",
+                "title": "项目名称",
+                "required": true,
+                "component": "Input",
+                "decorator": "FormItem",
+                "props": {
+                  "placeholder": "请输入项目名称"
+                }
+              },
+              "projectType": {
+                "type": "string",
+                "title": "项目类型",
+                "default": "internal",
+                "component": "Select",
+                "decorator": "FormItem",
+                "dataSource": [
+                  {
+                    "label": "内部平台",
+                    "value": "internal"
+                  },
+                  {
+                    "label": "商业化",
+                    "value": "commercial"
+                  },
+                  {
+                    "label": "基础设施",
+                    "value": "infra"
+                  }
+                ]
+              },
+              "startDate": {
+                "type": "string",
+                "title": "开始日期",
+                "component": "DateInput",
+                "decorator": "FormItem"
+              },
+              "riskLevel": {
+                "type": "number",
+                "title": "风险评分",
+                "default": 3,
+                "component": "Rating",
+                "decorator": "FormItem",
+                "props": {
+                  "max": 5
+                }
+              }
+            }
+          }
+        }
+      },
+      "contacts": {
+        "type": "array",
+        "title": "项目联系人",
+        "component": "ArrayCards",
+        "decorator": "FormItem",
+        "props": {
+          "addText": "+ 添加联系人"
+        },
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "姓名",
+              "required": true,
+              "component": "Input",
+              "decorator": "FormItem"
+            },
+            "role": {
+              "type": "string",
+              "title": "角色",
+              "component": "Select",
+              "decorator": "FormItem",
+              "dataSource": [
+                {
+                  "label": "PM",
+                  "value": "pm"
+                },
+                {
+                  "label": "RD",
+                  "value": "rd"
+                },
+                {
+                  "label": "QA",
+                  "value": "qa"
+                },
+                {
+                  "label": "Design",
+                  "value": "design"
+                }
+              ]
+            },
+            "email": {
+              "type": "string",
+              "title": "邮箱",
+              "component": "Input",
+              "decorator": "FormItem",
+              "validators": [
+                {
+                  "format": "email",
+                  "message": "邮箱格式不正确"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "milestones": {
+        "type": "array",
+        "title": "里程碑明细",
+        "component": "ArrayTable",
+        "decorator": "FormItem",
+        "props": {
+          "addText": "+ 添加里程碑"
+        },
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "里程碑",
+              "required": true,
+              "component": "Input",
+              "decorator": "FormItem"
+            },
+            "date": {
+              "type": "string",
+              "title": "日期",
+              "component": "DateInput",
+              "decorator": "FormItem"
+            },
+            "done": {
+              "type": "boolean",
+              "title": "已完成",
+              "component": "Checkbox",
+              "decorator": "FormItem"
+            }
+          }
+        }
+      }
+    }
+  }
+}

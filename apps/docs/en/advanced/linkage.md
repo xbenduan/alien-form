@@ -1,6 +1,6 @@
 # Linkage Protocol
 
-FormBao `reactions` are **field-owned, property-level** derivation rules. A field declares how one of its own properties is computed from dependencies; it does not control another field.
+FormBao `x-reaction` are **field-owned, property-level** derivation rules. A field declares how one of its own properties is computed from dependencies; it does not control another field.
 
 ## Basic structure
 
@@ -8,7 +8,7 @@ FormBao `reactions` are **field-owned, property-level** derivation rules. A fiel
 {
   "type": "string",
   "title": "邮箱",
-  "reactions": {
+  "x-reaction": {
     "visible": {
       "dependencies": { "contactType": "contactType" },
       "type": "expression",
@@ -30,13 +30,13 @@ FormBao has exactly four built-in reaction rule types:
 - `static`：write a fixed value.
 - `expression`：evaluate a safe raw expression string.
 - `match`：map dependency values to outputs.
-- `computed`：call application-registered `reactionHandlers` for async data or complex computation.
+- `computed`：call application-registered `handlers` for async data or complex computation.
 
 ## Property-level derivation
 
 ```json
 {
-  "reactions": {
+  "x-reaction": {
     "display": {
       "dependencies": { "enabled": "enabled" },
       "type": "expression",
@@ -61,7 +61,7 @@ Core does not fetch URLs. Register application-level handlers for remote options
 
 ```ts
 const form = createForm({
-  reactionHandlers: {
+  handlers: {
     fetchCities: async ({ deps }) => api.getCities(deps.country),
   },
 })
@@ -69,7 +69,7 @@ const form = createForm({
 
 ```json
 {
-  "reactions": {
+  "x-reaction": {
     "dataSource": {
       "dependencies": { "country": "country" },
       "type": "computed",

@@ -7,7 +7,7 @@ import { createForm } from '@formily-bao/core'
 
 const form = createForm({
   initialValues: {},
-  reactionHandlers: {
+  handlers: {
     fetchUsers: async ({ deps }) => [{ label: 'Alice', value: 'alice' }],
   },
 })
@@ -21,12 +21,12 @@ const form = createForm({
 | `validateFirst` | `boolean` | Stop on first validation error |
 | `effects` | `(form) => void` | Form effect registration |
 | `scope` | `Record<string, any>` | Custom variables visible to safe expressions |
-| `reactionHandlers` | `Record<string, ReactionHandler>` | Handler registry for `computed` reactions |
+| `handlers` | `Record<string, RuntimeRuleHandler>` | Handler registry for `computed` x-reaction |
 
-## ReactionHandler
+## RuntimeRuleHandler
 
 ```ts
-type ReactionHandler = (context: {
+type RuntimeRuleHandler = (context: {
   field: IField
   form: IForm
   values: Record<string, any>
@@ -34,6 +34,6 @@ type ReactionHandler = (context: {
   dependencies: Record<string, any>
   scope: Record<string, any>
   key: string
-  rule: SchemaReactionRule
+  rule: SchemaXRule
 }) => any | Promise<any>
 ```

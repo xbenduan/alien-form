@@ -55,7 +55,7 @@ function App() {
 
 1. **`createForm()`** 创建由 Alien Signals 支持的响应式表单实例
 2. **`FormProvider`** 建立 React Context，注册组件和装饰器
-3. **`SchemaField`** 内部调用 `form.setSchema()`，为每个属性创建 `Field` 实例并设置 `reactions` 效果
+3. **`SchemaField`** 内部调用 `form.setSchema()`，为每个属性创建 `Field` 实例并设置 `x-reaction` 效果
 4. 每个 `Field` 将状态存储在 signal 中（`_value`、`_display`、`_pattern`、`_errors` 等）— 仅订阅的组件会重新渲染
 
 ## 架构
@@ -69,7 +69,7 @@ JSON Schema (Formily 协议)
 │  • createField()            │
 │  • setSchema() — 解析 $ref、│
 │    order、创建字段、       │
-│    设置 reactions            │
+│    设置 x-reaction            │
 │  • 表达式引擎               │
 │  • 生命周期注册             │
 └──────────────┬──────────────┘

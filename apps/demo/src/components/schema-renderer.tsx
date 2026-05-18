@@ -53,7 +53,7 @@ const categoryData: Record<string, Array<{ label: string; value: string }>> = {
   ],
 };
 
-const reactionHandlers: FormConfig["reactionHandlers"] = {
+const handlers: FormConfig["handlers"] = {
   fetchCountries: async () => {
     await new Promise((r) => setTimeout(r, 500));
     return [
@@ -78,6 +78,13 @@ const reactionHandlers: FormConfig["reactionHandlers"] = {
     const cat = deps.category;
     if (!cat) return [];
     return categoryData[cat] || [];
+  },
+  normalizeCode: ({ value }) => String(value ?? "").trim().toUpperCase(),
+  checkConfirmCode: async ({ value }) => {
+    await new Promise((r) => setTimeout(r, 300));
+    return String(value ?? "").trim().toUpperCase() === "OK"
+      ? []
+      : [{ message: "确认码必须是 OK", type: "x-validate" }];
   },
 };
 
@@ -161,7 +168,7 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ schema }) => {
   const form = useMemo(
     () =>
       createForm({
-        reactionHandlers,
+        handlers,
       }),
     [schema.id],
   );

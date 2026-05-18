@@ -79,7 +79,7 @@ export interface ValidatorRule {
 // Schema Reactions
 // ============================================================
 
-export type SchemaReactionType = 'static' | 'expression' | 'match' | 'computed'
+export type SchemaXRuleType = 'static' | 'expression' | 'match' | 'computed'
 
 export type SchemaReactionKey =
   | 'value'
@@ -100,20 +100,21 @@ export type SchemaReactionKey =
   | 'decorator'
   | 'dataSource'
 
-export interface ReactionHandlerContext {
+export interface RuntimeRuleHandlerContext {
   field: IField
   form: IForm
   values: Record<string, any>
   deps: Record<string, any>
   dependencies: Record<string, any>
   scope: Record<string, any>
-  key: SchemaReactionKey | string
-  rule: SchemaReactionRule
+  key: SchemaReactionKey | 'input' | 'output' | 'validate' | string
+  rule: SchemaXRule
+  value?: any
+  kind?: 'x-reaction' | 'x-format' | 'x-validate'
 }
 
-export type ReactionHandler = (context: ReactionHandlerContext) => any | Promise<any>
-
-export type SchemaReactionRule =
+export type RuntimeRuleHandler = (context: RuntimeRuleHandlerContext) => any | Promise<any>
+export type SchemaXRule =
   | {
       type: 'static'
       dependencies?: string[] | Record<string, string>
@@ -137,7 +138,14 @@ export type SchemaReactionRule =
       params?: Record<string, any>
     }
 
-export type SchemaReactions = Partial<Record<SchemaReactionKey | string, SchemaReactionRule | SchemaReactionRule[]>>
+export type SchemaRule = SchemaXRule
+export type SchemaRuleSet = SchemaXRule | SchemaXRule[]
+export type SchemaReactions = Partial<Record<SchemaReactionKey | string, SchemaRuleSet>>
+export interface SchemaFormat {
+  input?: SchemaRuleSet
+  output?: SchemaRuleSet
+}
+export type SchemaXValidate = SchemaRuleSet
 
 // ============================================================
 // Schema Enum
@@ -237,6 +245,16 @@ export interface IField {
 // IFieldSchema — JSON Schema with FormBao schema protocol fields
 // ============================================================
 
+export type DataSourceValuePolicy = 'preserve' | 'clear' | 'filter' | 'first'
+
+export interface DataSourcePolicy {
+  /**
+   * How to reconcile current value when dataSource changes and no longer contains it.
+   * preserve: keep value; clear: clear invalid value; filter: filter invalid array items; first: select first option.
+   */
+  value?: DataSourceValuePolicy
+}
+
 export interface IFieldSchema {
   // --- JSON Schema Standard ---
   type?: SchemaTypes
@@ -301,10 +319,16 @@ export interface IFieldSchema {
   decoratorProps?: Record<string, any>
   component?: string
   props?: Record<string, any>
-  reactions?: SchemaReactions
+  /** Dynamic field-property derivations. */
+  'x-reaction'?: SchemaReactions
+  /** Input/output value formatting rules. */
+  'x-format'?: SchemaFormat
+  /** Dynamic validation rule derivation. */
+  'x-validate'?: SchemaXValidate
   content?: any
   data?: Record<string, any>
   dataSource?: Array<{ label: string; value: any; [key: string]: any }>
+  dataSourcePolicy?: DataSourcePolicy
   layoutProps?: LayoutProps
 }
 
@@ -345,8 +369,8 @@ export interface FormConfig {
   effects?: (form: IForm) => void
   /** Custom expression scope variables */
   scope?: Record<string, any>
-  /** Registered computed handlers for schema reactions */
-  reactionHandlers?: Record<string, ReactionHandler>
+  /** Registered computed handlers for x-reaction, x-format and x-validate */
+  handlers?: Record<string, RuntimeRuleHandler>
 }
 
 // ============================================================

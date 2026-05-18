@@ -162,7 +162,7 @@ describe('@formily-bao/core', () => {
         name: {
           type: 'string',
           title: 'Name',
-          reactions: {
+          'x-reaction': {
             visible: {
               dependencies: { type: 'type' },
               type: 'expression',
@@ -214,14 +214,14 @@ describe('@formily-bao/core', () => {
       if (deps.country === 'cn') return [{ label: 'Beijing', value: 'beijing' }]
       return []
     })
-    const form = createForm({ reactionHandlers: { loadCities } })
+    const form = createForm({ handlers: { loadCities } })
     form.setSchema({
       type: 'object',
       properties: {
         country: { type: 'string' },
         city: {
           type: 'string',
-          reactions: {
+          'x-reaction': {
             dataSource: {
               dependencies: { country: 'country' },
               type: 'computed',
@@ -243,7 +243,7 @@ describe('@formily-bao/core', () => {
 
   it('supports static, expression, match and computed reaction types only', async () => {
     const form = createForm({
-      reactionHandlers: {
+      handlers: {
         buildOptions: async ({ deps }) => [{ label: String(deps.kind), value: deps.kind }],
       },
     })
@@ -253,7 +253,7 @@ describe('@formily-bao/core', () => {
         kind: { type: 'string', default: 'a' },
         field: {
           type: 'string',
-          reactions: {
+          'x-reaction': {
             title: { type: 'static', value: 'Static Title' },
             display: {
               dependencies: { kind: 'kind' },
@@ -299,7 +299,7 @@ describe('@formily-bao/core', () => {
         source: { type: 'string', default: 'x' },
         unsafeField: {
           type: 'string',
-          reactions: {
+          'x-reaction': {
             value: {
               dependencies: { source: 'source' },
               type: 'expression',
@@ -322,7 +322,7 @@ describe('@formily-bao/core', () => {
         first: {
           type: 'string',
           state: { visible: false },
-          reactions: {
+          'x-reaction': {
             visible: {
               dependencies: { source: 'source' },
               type: 'expression',
@@ -333,7 +333,7 @@ describe('@formily-bao/core', () => {
         second: {
           type: 'string',
           state: { visible: false },
-          reactions: {
+          'x-reaction': {
             visible: {
               dependencies: { source: 'source' },
               type: 'expression',
@@ -429,7 +429,7 @@ describe('@formily-bao/core', () => {
           component: 'Input',
           props: { placeholder: 'initial' },
           decorator: 'FormItem',
-          reactions: {
+          'x-reaction': {
             component: {
               dependencies: { mode: 'mode' },
               type: 'match',
@@ -471,4 +471,216 @@ describe('@formily-bao/core', () => {
     expect(derivedField?.componentProps).toEqual({ placeholder: 'editable mode', rows: 4 })
     expect(derivedField?.editable).toBe(true)
   })
+
+  it('formats input and output values with x-format', async () => {
+    const form = createForm({ initialValues: { amount: 1234 } })
+    form.setSchema({
+      type: 'object',
+      properties: {
+        amount: {
+          type: 'number',
+          'x-format': {
+            input: {
+              type: 'expression',
+              expression: '$value / 100',
+            },
+            output: {
+              type: 'expression',
+              expression: '$value * 100',
+            },
+          },
+        },
+      },
+    })
+
+    expect(form.getField('amount')?.value).toBe(12.34)
+    expect(form.values).toEqual({ amount: 1234 })
+
+    form.setValues({ amount: 2500 })
+    expect(form.getField('amount')?.value).toBe(25)
+    await expect(form.submit()).resolves.toEqual({ amount: 2500 })
+  })
+
+  it('uses current value as default match source for x-format', async () => {
+    const form = createForm()
+    form.setSchema({
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          default: 1,
+          'x-format': {
+            input: { type: 'match', match: { '1': 'enabled', '0': 'disabled', default: 'disabled' } },
+            output: { type: 'match', match: { enabled: 1, disabled: 0, default: 0 } },
+          },
+        },
+      },
+    })
+
+    expect(form.getField('status')?.value).toBe('enabled')
+    await expect(form.submit()).resolves.toEqual({ status: 1 })
+
+    form.getField('status')?.setValue('disabled')
+    await expect(form.submit()).resolves.toEqual({ status: 0 })
+  })
+
+  it('formats schema default values with x-format input', async () => {
+    const form = createForm()
+    form.setSchema({
+      type: 'object',
+      properties: {
+        amount: {
+          type: 'number',
+          default: 12345,
+          'x-format': {
+            input: {
+              type: 'expression',
+              expression: '$value / 100',
+            },
+            output: {
+              type: 'expression',
+              expression: '$value * 100',
+            },
+          },
+        },
+      },
+    })
+
+    expect(form.getField('amount')?.value).toBe(123.45)
+    expect(form.values).toEqual({ amount: 12345 })
+    await expect(form.submit()).resolves.toEqual({ amount: 12345 })
+  })
+
+  it('treats undefined x-validate expression result as passed', async () => {
+    const form = createForm()
+    form.setSchema({
+      type: 'object',
+      properties: {
+        username: {
+          type: 'string',
+          default: 'admin',
+          'x-validate': {
+            type: 'expression',
+            expression: "$value === 'admin' ? undefined : 'Username must be admin'",
+          },
+        },
+      },
+    })
+
+    await expect(form.validate()).resolves.toBe(true)
+    expect(form.errors).toEqual([])
+
+    form.getField('username')?.setValue('guest')
+    await expect(form.validate()).resolves.toBe(false)
+    expect(form.errors).toEqual([{ message: 'Username must be admin', type: 'x-validate' }])
+  })
+
+  it('reconciles value when dataSource changes by dataSourcePolicy', () => {
+    const form = createForm({ initialValues: { city: 'beijing', tags: ['a', 'x'] } })
+    form.setSchema({
+      type: 'object',
+      properties: {
+        country: {
+          type: 'string',
+          default: 'cn',
+        },
+        city: {
+          type: 'string',
+          dataSourcePolicy: { value: 'clear' },
+          dataSource: [{ label: '北京', value: 'beijing' }],
+          'x-reaction': {
+            dataSource: {
+              type: 'match',
+              dependencies: { country: 'country' },
+              match: {
+                cn: [{ label: '北京', value: 'beijing' }],
+                sg: [{ label: '新加坡', value: 'singapore' }],
+              },
+            },
+          },
+        },
+        tags: {
+          type: 'array',
+          dataSourcePolicy: { value: 'filter' },
+          dataSource: [
+            { label: 'A', value: 'a' },
+            { label: 'B', value: 'b' },
+          ],
+        },
+      },
+    })
+
+    expect(form.getField('city')?.value).toBe('beijing')
+    form.getField('country')?.setValue('sg')
+    expect(form.getField('city')?.value).toBeUndefined()
+
+    form.getField('tags')?.setDataSource([{ label: 'A', value: 'a' }])
+    expect(form.getField('tags')?.value).toEqual(['a'])
+  })
+
+  it('supports x-validate dependencies for cross-field validation', async () => {
+    const form = createForm()
+    form.setSchema({
+      type: 'object',
+      properties: {
+        password: {
+          type: 'string',
+          default: '123456',
+        },
+        confirmPassword: {
+          type: 'string',
+          default: '123456',
+          'x-validate': {
+            type: 'expression',
+            dependencies: { password: 'password' },
+            expression: '$value === $deps.password ? undefined : "Passwords do not match"',
+          },
+        },
+      },
+    })
+
+    await expect(form.validate()).resolves.toBe(true)
+    expect(form.errors).toEqual([])
+
+    form.getField('confirmPassword')?.setValue('654321')
+    await expect(form.validate()).resolves.toBe(false)
+    expect(form.errors).toEqual([{ message: 'Passwords do not match', type: 'x-validate' }])
+  })
+
+  it('supports computed x-format handlers and x-validate rules', async () => {
+    const normalizeCode = vi.fn(({ value }) => String(value || '').trim().toUpperCase())
+    const checkCode = vi.fn(async ({ value }) => {
+      if (value === 'OK') return []
+      return [{ message: 'Code must be OK', type: 'x-validate' }]
+    })
+    const form = createForm({
+      initialValues: { code: ' ok ' },
+      handlers: { normalizeCode, checkCode },
+    })
+    form.setSchema({
+      type: 'object',
+      properties: {
+        code: {
+          type: 'string',
+          'x-format': {
+            input: { type: 'computed', handler: 'normalizeCode' },
+            output: { type: 'computed', handler: 'normalizeCode' },
+          },
+          'x-validate': {
+            type: 'computed',
+            handler: 'checkCode',
+          },
+        },
+      },
+    })
+
+    expect(form.getField('code')?.value).toBe('OK')
+    await expect(form.validate()).resolves.toBe(true)
+    expect(checkCode).toHaveBeenCalledWith(expect.objectContaining({ value: 'OK', kind: 'x-validate' }))
+
+    form.getField('code')?.setValue('bad')
+    await expect(form.validate()).resolves.toBe(false)
+    expect(form.errors).toEqual([{ message: 'Code must be OK', type: 'x-validate' }])
+  })
+
 })

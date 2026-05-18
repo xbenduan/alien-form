@@ -6,7 +6,7 @@ This tutorial shows a minimal dynamic form: fields derive their own properties f
 
 ```ts
 const form = createForm({
-  reactionHandlers: {
+  handlers: {
     fetchCities: async ({ deps }) => {
       if (!deps.country) return []
       return api.fetchCities(deps.country)
@@ -34,7 +34,7 @@ const form = createForm({
       "type": "string",
       "title": "邮箱",
       "component": "Input",
-      "reactions": {
+      "x-reaction": {
         "visible": {
           "dependencies": { "contactType": "contactType" },
           "type": "expression",
@@ -51,7 +51,7 @@ const form = createForm({
     "city": {
       "type": "string",
       "component": "Select",
-      "reactions": {
+      "x-reaction": {
         "dataSource": {
           "dependencies": { "country": "country" },
           "type": "computed",

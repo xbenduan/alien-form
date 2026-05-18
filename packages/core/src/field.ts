@@ -13,6 +13,8 @@ import type {
   Validator,
   ValidatorRule,
   ValidatorFn,
+  SchemaXValidate,
+  DataSourcePolicy,
   FieldDisplayTypes,
   FieldPatternTypes,
 } from './types'
@@ -41,6 +43,9 @@ export class Field implements IField {
   readonly path: string
   readonly address: string
   private _validators: Validator[]
+  private _xValidate?: SchemaXValidate
+  private _dataSourcePolicy: DataSourcePolicy
+  private _reconcilingDataSourceValue = false
   private _listeners: Set<() => void> = new Set()
   private _version: ReturnType<typeof signal<number>>
 
@@ -87,6 +92,7 @@ export class Field implements IField {
     this._decorator = signal(schema.decorator || 'FormItem')
     this._decoratorProps = signal(schema.decoratorProps || {})
     this._dataSource = signal(normalizeDataSource(schema.dataSource || schema.enum))
+    this._dataSourcePolicy = schema.dataSourcePolicy || {}
     this._loading = signal(false)
     this._data = signal(schema.data || {})
     this._content = signal(schema.content || null)
@@ -94,6 +100,7 @@ export class Field implements IField {
       ...schemaValidators(schema),
       ...normalizeValidators(schema.validators),
     ])
+    this._xValidate = schema['x-validate']
     this._version = signal(0)
     this._arrayRows = signal(this.isArrayField ? (Array.isArray(defaultValue) ? defaultValue.length : 0) : 0)
   }
@@ -197,8 +204,49 @@ export class Field implements IField {
   }
 
   setDataSource(ds: Array<{ label: string; value: any; [key: string]: any }>): void {
-    this._dataSource(ds)
+    this._dataSource(normalizeDataSource(ds))
+    this._reconcileValueWithDataSource()
     this._bumpVersion()
+  }
+
+  private _reconcileValueWithDataSource(): void {
+    if (this._reconcilingDataSourceValue) return
+
+    const policy = this._dataSourcePolicy.value || 'preserve'
+    if (policy === 'preserve') return
+
+    const dataSource = this._dataSource()
+    if (dataSource.length === 0) return
+
+    const validValues = new Set(dataSource.map((item) => item.value))
+    const current = this.value
+
+    this._reconcilingDataSourceValue = true
+    try {
+      if (Array.isArray(current)) {
+        if (policy === 'filter' || policy === 'clear') {
+          const next = current.filter((item) => validValues.has(item))
+          if (!arrayShallowEqual(next, current)) {
+            this._value(next)
+            this._notifyValueChange()
+          }
+        }
+        return
+      }
+
+      if (current === undefined || current === null || current === '') return
+      if (validValues.has(current)) return
+
+      if (policy === 'clear' || policy === 'filter') {
+        this._value(undefined)
+        this._notifyValueChange()
+      } else if (policy === 'first') {
+        this._value(dataSource[0]?.value)
+        this._notifyValueChange()
+      }
+    } finally {
+      this._reconcilingDataSourceValue = false
+    }
   }
 
   setLoading(loading: boolean): void {
@@ -400,10 +448,15 @@ export class Field implements IField {
       }
     }
 
-    // Run validators
+    // Run static validators
     for (const validator of this._validators) {
       const errs = await runValidator(validator, val, this)
       if (errs) errors.push(...errs)
+    }
+
+    if (this._xValidate && this._form?._runXValidate) {
+      const dynamicErrors = await this._form._runXValidate(this, this._xValidate, val)
+      if (dynamicErrors.length > 0) errors.push(...dynamicErrors)
     }
 
     this._errors(errors)
@@ -480,6 +533,14 @@ function normalizeDataSource(
     }
     return item as { label: string; value: any }
   })
+}
+
+function arrayShallowEqual(a: any[], b: any[]): boolean {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false
+  }
+  return true
 }
 
 function normalizeValidators(v?: Validator | Validator[]): Validator[] {

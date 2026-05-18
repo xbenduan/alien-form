@@ -1,0 +1,114 @@
+{
+  "id": "basic-schema",
+  "name": "基础 Schema",
+  "description": "演示稳定协议字段：type、title、description、default、component、props、decorator、validators、dataSource、state、order。",
+  "category": "01 基础能力",
+  "order": 10,
+  "tags": [
+    "schema",
+    "component",
+    "validators"
+  ],
+  "schema": {
+    "type": "object",
+    "title": "基础 Schema 演示",
+    "properties": {
+      "title": {
+        "type": "string",
+        "title": "需求标题",
+        "description": "基础 Input + required 校验。",
+        "required": true,
+        "component": "Input",
+        "decorator": "FormItem",
+        "order": 10,
+        "props": {
+          "placeholder": "例如：企业 Schema 表单引擎"
+        },
+        "validators": [
+          {
+            "minLength": 4,
+            "message": "标题至少 4 个字符"
+          }
+        ]
+      },
+      "priority": {
+        "type": "string",
+        "title": "优先级",
+        "default": "p1",
+        "component": "RadioGroup",
+        "decorator": "FormItem",
+        "order": 20,
+        "dataSource": [
+          {
+            "label": "P0 紧急",
+            "value": "p0"
+          },
+          {
+            "label": "P1 高",
+            "value": "p1"
+          },
+          {
+            "label": "P2 普通",
+            "value": "p2"
+          }
+        ]
+      },
+      "owner": {
+        "type": "string",
+        "title": "负责人",
+        "component": "Input",
+        "decorator": "FormItem",
+        "order": 30,
+        "props": {
+          "placeholder": "请输入负责人"
+        },
+        "validators": [
+          {
+            "required": true,
+            "message": "负责人必填"
+          }
+        ]
+      },
+      "deadline": {
+        "type": "string",
+        "title": "期望完成时间",
+        "component": "DateInput",
+        "decorator": "FormItem",
+        "order": 40,
+        "props": {
+          "min": "2026-01-01"
+        }
+      },
+      "description": {
+        "type": "string",
+        "title": "需求说明",
+        "component": "Textarea",
+        "decorator": "FormItem",
+        "order": 50,
+        "props": {
+          "placeholder": "描述背景、目标和验收标准",
+          "rows": 4
+        }
+      },
+      "enabled": {
+        "type": "boolean",
+        "title": "启用需求",
+        "default": true,
+        "component": "Switch",
+        "decorator": "FormItem",
+        "order": 60
+      },
+      "readonlyNote": {
+        "type": "string",
+        "title": "只读提示",
+        "default": "state.pattern=readPretty 可用于展示态字段",
+        "component": "Input",
+        "decorator": "FormItem",
+        "order": 70,
+        "state": {
+          "pattern": "readPretty"
+        }
+      }
+    }
+  }
+}

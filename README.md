@@ -4,7 +4,7 @@ FormBao is a lightweight enterprise Schema Form engine inspired by Formily, but 
 
 ## Packages
 
-- `@formily-bao/core`: headless form model, schema parser, validation, safe property-level reactions, and computed handler integration.
+- `@formily-bao/core`: headless form model, schema parser, validation, safe property-level x-reaction, and computed handler integration.
 - `@formily-bao/react`: React binding package for rendering schemas with custom component/decorator maps.
 - `@formily-bao/ui`: reusable React UI components used by the demo renderer.
 - `@formily-bao/demo`: Vite demo app for rendering example schemas.
@@ -39,7 +39,7 @@ import { createForm } from '@formily-bao/core'
 
 const form = createForm({
   initialValues: { type: 'person' },
-  reactionHandlers: {
+  handlers: {
     fetchCities: async ({ deps }) => [{ label: String(deps.country), value: deps.country }],
   },
 })
@@ -59,7 +59,7 @@ form.setSchema({
       type: 'string',
       title: '名称',
       component: 'Input',
-      reactions: {
+      x-reaction: {
         title: {
           dependencies: { type: 'type' },
           type: 'expression',
@@ -82,7 +82,7 @@ form.setSchema({
 
 ## Reaction Protocol
 
-`reactions` are field-owned property-level derivation rules. The schema key is the property to write, and the rule describes how to derive that property.
+`x-reaction` are field-owned property-level derivation rules. The schema key is the property to write, and the rule describes how to derive that property.
 
 Supported built-in rule types are exactly:
 
@@ -91,13 +91,13 @@ Supported built-in rule types are exactly:
 - `match`
 - `computed`
 
-Core intentionally does not support cross-field control, branch/action layers, arbitrary script execution, or built-in URL fetching. Async data loading should be implemented by application-owned `reactionHandlers` and referenced from `computed` rules.
+Core intentionally does not support cross-field control, branch/action layers, arbitrary script execution, or built-in URL fetching. Async data loading should be implemented by application-owned `handlers` and referenced from `computed` rules.
 
 ## Notes
 
 - `setSchema` replaces the current field registry and rebuilds fields from the new schema.
 - Standard JSON Schema validation keywords such as `minimum`, `maximum`, `minLength`, `maxLength`, `pattern`, `format`, `minItems`, `maxItems`, `uniqueItems`, and `const` are supported by core validation.
-- Expression reactions use raw expression strings, for example `$deps.type === 'company'`, not double-brace templates.
+- Expression x-reaction use raw expression strings, for example `$deps.type === 'company'`, not double-brace templates.
 - Remote schemas should keep business effects in registered handlers rather than embedding imperative logic in schema.
 
 ## Testing

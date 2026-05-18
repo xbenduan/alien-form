@@ -1,0 +1,103 @@
+{
+  "id": "x-format",
+  "name": "x-format 格式化",
+  "description": "演示输入态与提交态转换：初始化/default/setValues 进入组件前执行 input，submit/form.values 输出前执行 output。",
+  "category": "02 动态协议",
+  "order": 40,
+  "tags": [
+    "x-format",
+    "input",
+    "output"
+  ],
+  "schema": {
+    "type": "object",
+    "title": "x-format 格式化演示",
+    "properties": {
+      "amount": {
+        "type": "number",
+        "title": "金额（页面展示元，提交输出分）",
+        "default": 12345,
+        "component": "Input",
+        "decorator": "FormItem",
+        "props": {
+          "type": "number",
+          "placeholder": "例如：123.45"
+        },
+        "description": "default 为 12345 分，页面展示 123.45；提交时还原为 12345。",
+        "x-format": {
+          "input": {
+            "type": "expression",
+            "expression": "$value / 100"
+          },
+          "output": {
+            "type": "expression",
+            "expression": "Number($value) * 100"
+          }
+        },
+        "validators": [
+          {
+            "required": true,
+            "message": "请输入金额"
+          }
+        ]
+      },
+      "code": {
+        "type": "string",
+        "title": "编码（trim + uppercase）",
+        "default": " bao-001 ",
+        "component": "Input",
+        "decorator": "FormItem",
+        "props": {
+          "placeholder": "输入会自动标准化"
+        },
+        "description": "computed handler 用于复杂格式化，核心只负责调用已注册 handler。",
+        "x-format": {
+          "input": {
+            "type": "computed",
+            "handler": "normalizeCode"
+          },
+          "output": {
+            "type": "computed",
+            "handler": "normalizeCode"
+          }
+        }
+      },
+      "status": {
+        "type": "string",
+        "title": "状态映射",
+        "default": 1,
+        "component": "Select",
+        "decorator": "FormItem",
+        "description": "match 可把接口枚举值转换为组件枚举值，提交时再转换回接口值。",
+        "dataSource": [
+          {
+            "label": "启用",
+            "value": "enabled"
+          },
+          {
+            "label": "禁用",
+            "value": "disabled"
+          }
+        ],
+        "x-format": {
+          "input": {
+            "type": "match",
+            "match": {
+              "1": "enabled",
+              "0": "disabled",
+              "default": "disabled"
+            }
+          },
+          "output": {
+            "type": "match",
+            "match": {
+              "enabled": 1,
+              "disabled": 0,
+              "default": 0
+            }
+          }
+        }
+      }
+    }
+  }
+}

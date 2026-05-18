@@ -1,12 +1,12 @@
 # Async Options
 
-FormBao core does not fetch URLs and does not expose a standalone async data source field. Async options are handled by `computed` reactions calling application-registered `reactionHandlers`.
+FormBao core does not fetch URLs and does not expose a standalone async data source field. Async options are handled by `computed` x-reaction calling application-registered `handlers`.
 
 ## Register handlers
 
 ```ts
 const form = createForm({
-  reactionHandlers: {
+  handlers: {
     fetchCountries: async () => [
       { label: '中国', value: 'cn' },
       { label: '新加坡', value: 'sg' },
@@ -29,7 +29,7 @@ const form = createForm({
       "type": "string",
       "title": "国家",
       "component": "Select",
-      "reactions": {
+      "x-reaction": {
         "dataSource": {
           "type": "computed",
           "handler": "fetchCountries"
@@ -40,7 +40,7 @@ const form = createForm({
       "type": "string",
       "title": "城市",
       "component": "Select",
-      "reactions": {
+      "x-reaction": {
         "dataSource": {
           "dependencies": { "country": "country" },
           "type": "computed",

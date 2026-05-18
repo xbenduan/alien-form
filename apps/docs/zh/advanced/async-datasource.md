@@ -1,12 +1,12 @@
 # 异步选项
 
-FormBao core 不内置 URL 获取，也不提供独立的异步数据源字段。异步选项统一通过 `computed` reaction 调用应用层注册的 `reactionHandlers`。
+FormBao core 不内置 URL 获取，也不提供独立的异步数据源字段。异步选项统一通过 `computed` reaction 调用应用层注册的 `handlers`。
 
 ## 注册 handler
 
 ```ts
 const form = createForm({
-  reactionHandlers: {
+  handlers: {
     fetchCountries: async () => [
       { label: '中国', value: 'cn' },
       { label: '新加坡', value: 'sg' },
@@ -29,7 +29,7 @@ const form = createForm({
       "type": "string",
       "title": "国家",
       "component": "Select",
-      "reactions": {
+      "x-reaction": {
         "dataSource": {
           "type": "computed",
           "handler": "fetchCountries"
@@ -40,7 +40,7 @@ const form = createForm({
       "type": "string",
       "title": "城市",
       "component": "Select",
-      "reactions": {
+      "x-reaction": {
         "dataSource": {
           "dependencies": { "country": "country" },
           "type": "computed",
