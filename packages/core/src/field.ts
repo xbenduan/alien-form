@@ -27,6 +27,7 @@ export interface FieldHost {
   fields: Map<string, IField>
   getField(path: string): IField | undefined
   createField(path: string, schema: IFieldSchema, initialValue?: any): IField
+  _createFieldTree?(path: string, schema: IFieldSchema, initialValue?: any, parentRequired?: boolean | string[]): void
   _rebuildReactions?(): void
   _notifyFieldChange?(path: string, field: IField): void
   _notifyFieldValueChange?(path: string, field: IField): void
@@ -446,12 +447,15 @@ export class Field implements IField {
         const childPath = `${this.path}.${index}.${key}`
         let childField = this._form.getField(childPath)
         if (!childField) {
-          childField = this._form.createField(
-            childPath,
-            { ...(this._itemSchema.properties[key] as IFieldSchema) },
-            rowValue[key]
-          )
+          const childSchema = { ...(this._itemSchema.properties[key] as IFieldSchema) }
+          if (this._form._createFieldTree) {
+            this._form._createFieldTree(childPath, childSchema, rowValue[key], this._itemSchema.required)
+            childField = this._form.getField(childPath)
+          } else {
+            childField = this._form.createField(childPath, childSchema, rowValue[key])
+          }
         }
+        if (!childField) continue
         childField.setValue(rowValue[key])
       }
     }
@@ -476,7 +480,11 @@ export class Field implements IField {
       const fieldPath = `${this.path}.${index}.${key}`
       const initVal = initialValues ? initialValues[key] : undefined
       const schema = { ...childSchema as IFieldSchema }
-      this._form.createField(fieldPath, schema, initVal)
+      if (this._form._createFieldTree) {
+        this._form._createFieldTree(fieldPath, schema, initVal, this._itemSchema.required)
+      } else {
+        this._form.createField(fieldPath, schema, initVal)
+      }
     }
   }
 

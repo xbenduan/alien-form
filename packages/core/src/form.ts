@@ -459,7 +459,8 @@ export class Form implements IForm {
   private _createFieldsFromSchema(
     prefix: string,
     properties: Record<string, IFieldSchema>,
-    parentRequired?: boolean | string[]
+    parentRequired?: boolean | string[],
+    scopeValue?: Record<string, any>
   ): void {
     // Sort entries by order
     const sortedEntries = Object.entries(properties).sort(([, a], [, b]) => {
@@ -470,52 +471,66 @@ export class Form implements IForm {
 
     for (const [key, rawSchema] of sortedEntries) {
       const path = prefix ? `${prefix}.${key}` : key
-
-      // Resolve $ref
-      const schema = this._resolveRef(rawSchema)
-
-      // Resolve required from parent
-      const isRequired = schema.required === true ||
-        (Array.isArray(parentRequired) && parentRequired.includes(key))
-
-      if (schema.type === 'array' && schema.items) {
-        const itemSchema = Array.isArray(schema.items) ? schema.items[0] : schema.items
-        if (itemSchema && typeof itemSchema === 'object' && (itemSchema as IFieldSchema).properties) {
-          // Array field — create the array field itself
-          const field = this.createField(path, { ...schema, required: isRequired })
-          // Initialize rows from initial values
-          const initialArr = getDeepValue(this._initialValues, path)
-          if (Array.isArray(initialArr)) {
-            const itemProps = (itemSchema as IFieldSchema).properties!
-            for (let i = 0; i < initialArr.length; i++) {
-              for (const [childKey, childSchema] of Object.entries(itemProps)) {
-                const childPath = `${path}.${i}.${childKey}`
-                const childInitVal = initialArr[i]?.[childKey]
-                this.createField(childPath, this._resolveRef(childSchema as IFieldSchema), childInitVal)
-              }
-            }
-          }
-        } else {
-          // Simple array (e.g., array of strings)
-          this.createField(path, { ...schema, required: isRequired })
-        }
-      } else if (schema.type === 'object' && schema.properties) {
-        if (schema.component) {
-          this.createField(path, { ...schema, required: isRequired })
-        }
-        this._createFieldsFromSchema(path, schema.properties, schema.required)
-      } else if (schema.type === 'void') {
-        // Void nodes are layout containers — create them if they have component
-        if (schema.component) {
-          this.createField(path, { ...schema, required: false })
-        }
-        if (schema.properties) {
-          this._createFieldsFromSchema(path, schema.properties, schema.required)
-        }
-      } else {
-        this.createField(path, { ...schema, required: isRequired })
-      }
+      const initialValue =
+        scopeValue && typeof scopeValue === 'object' ? scopeValue[key] : getDeepValue(this._initialValues, path)
+      this._createFieldTree(path, rawSchema, initialValue, parentRequired)
     }
+  }
+
+  _createFieldTree(
+    path: string,
+    rawSchema: IFieldSchema,
+    initialValue?: any,
+    parentRequired?: boolean | string[]
+  ): void {
+    const schema = this._resolveRef(rawSchema)
+    const key = path.split('.').pop() || path
+    const isRequired = schema.required === true ||
+      (Array.isArray(parentRequired) && parentRequired.includes(key))
+
+    if (schema.type === 'array' && schema.items) {
+      const itemSchema = Array.isArray(schema.items) ? schema.items[0] : schema.items
+      this.createField(path, { ...schema, required: isRequired }, initialValue)
+      if (itemSchema && typeof itemSchema === 'object' && (itemSchema as IFieldSchema).properties && Array.isArray(initialValue)) {
+        const itemProperties = (itemSchema as IFieldSchema).properties!
+        const sortedEntries = Object.entries(itemProperties).sort(([, a], [, b]) => {
+          const ai = a.order ?? Infinity
+          const bi = b.order ?? Infinity
+          return ai - bi
+        })
+        for (let i = 0; i < initialValue.length; i++) {
+          for (const [childKey, childSchema] of sortedEntries) {
+            this._createFieldTree(
+              `${path}.${i}.${childKey}`,
+              childSchema as IFieldSchema,
+              initialValue[i]?.[childKey],
+              (itemSchema as IFieldSchema).required
+            )
+          }
+        }
+      }
+      return
+    }
+
+    if (schema.type === 'object' && schema.properties) {
+      if (schema.component) {
+        this.createField(path, { ...schema, required: isRequired }, initialValue)
+      }
+      this._createFieldsFromSchema(path, schema.properties, schema.required, initialValue)
+      return
+    }
+
+    if (schema.type === 'void') {
+      if (schema.component) {
+        this.createField(path, { ...schema, required: false }, initialValue)
+      }
+      if (schema.properties) {
+        this._createFieldsFromSchema(path, schema.properties, schema.required, initialValue)
+      }
+      return
+    }
+
+    this.createField(path, { ...schema, required: isRequired }, initialValue)
   }
 
   // ============================================================

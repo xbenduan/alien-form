@@ -296,21 +296,17 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
     if (itemSchema?.properties) {
       const sortedProps = getSortedEntries(itemSchema.properties)
       for (const [childKey, childSchema] of sortedProps) {
-        const childPath = `${fullPath}.${index}.${childKey}`
-        const childField = form.getField(childPath)
-        if (childField) {
-          rowFields.push(
-            <FieldRenderer
-              key={childKey}
-              field={childField}
-              schema={childSchema}
-              components={components}
-              decorators={decorators}
-              form={form}
-              fullPath={childPath}
-            />,
-          )
-        }
+        rowFields.push(
+          <SchemaFieldItem
+            key={childKey}
+            path={childKey}
+            schema={childSchema}
+            components={components}
+            decorators={decorators}
+            form={form}
+            parentPath={`${fullPath}.${index}`}
+          />,
+        )
       }
     }
     return rowFields

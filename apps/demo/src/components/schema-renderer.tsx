@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { createForm } from "@alien-form/core";
 import { FormProvider, SchemaField } from "@alien-form/react";
-import type { FormConfig } from "@alien-form/core";
+import type { FormConfig, IForm } from "@alien-form/core";
 import type { ComponentMap, DecoratorMap } from "@alien-form/react";
 import {
   Card,
@@ -32,16 +32,27 @@ import {
 } from "@alien-form/ui";
 import type { SchemaItem } from "../useSchema";
 import { SkuTable } from "./sku-table";
+import { ImageInput } from "./image-input";
 
 const SKU_MATRIX_DEMO_ID = "07-spec-sku-matrix";
+const SKU_MATRIX_SPECS_PATH = "specs";
+const SKU_MATRIX_SKUS_PATH = "skus";
 
 interface SpecDraft {
   name?: string;
-  values?: string[];
+  supportsImage?: boolean;
+  values?: Array<{
+    label?: string;
+    image?: string;
+  }>;
 }
 
 interface SkuDraft {
   skuKey?: string;
+  groupKey?: string;
+  groupSpecName?: string;
+  groupSpecValue?: string;
+  groupSpecImage?: string;
   specSummary?: string;
   price?: number;
   stock?: number;
@@ -52,45 +63,133 @@ interface SkuDraft {
 }
 
 function createSkuDemoInitialValues() {
+  const specs: SpecDraft[] = [
+      {
+        name: "颜色",
+        supportsImage: true,
+        values: [
+          {
+            label: "曜石黑",
+            image:
+              "https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=close-up%20studio%20product%20photo%20of%20a%20premium%20smartphone%20back%20panel%20in%20obsidian%20black%2C%20minimal%20background%2C%20soft%20lighting%2C%20realistic%20material%20texture&image_size=square_hd",
+          },
+          {
+            label: "月光白",
+            image:
+              "https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=close-up%20studio%20product%20photo%20of%20a%20premium%20smartphone%20back%20panel%20in%20moonlight%20white%2C%20minimal%20background%2C%20soft%20lighting%2C%20realistic%20material%20texture&image_size=square_hd",
+          },
+        ],
+      },
+      {
+        name: "内存",
+        supportsImage: false,
+        values: [{ label: "128G" }, { label: "256G" }],
+      },
+      {
+        name: "运行内存",
+        supportsImage: false,
+        values: [{ label: "8G" }, { label: "12G" }],
+      },
+    ];
+
+  const skus = buildCartesianSpecRows(normalizeSpecs(specs), []);
+
   return {
-    specs: [
-      { name: "颜色", values: ["曜石黑", "月光白"] },
-      { name: "内存", values: ["128G", "256G"] },
-      { name: "运行内存", values: ["8G", "12G"] },
-    ],
-    skus: [],
+    specs,
+    skus,
   };
 }
 
-function normalizeSpecs(rawSpecs: unknown): Array<{ name: string; values: string[] }> {
+function enforceSingleImageSpec(rawSpecs: unknown): { specs: SpecDraft[]; changed: boolean } {
+  if (!Array.isArray(rawSpecs)) return { specs: [], changed: false };
+
+  const specs = rawSpecs.map((spec) => ({
+    ...((spec as SpecDraft) ?? {}),
+    values: Array.isArray((spec as SpecDraft)?.values)
+      ? [...((spec as SpecDraft).values ?? [])]
+      : [],
+  }));
+
+  const enabledIndexes = specs
+    .map((spec, index) => (spec.supportsImage ? index : -1))
+    .filter((index) => index >= 0);
+
+  if (enabledIndexes.length <= 1) {
+    return { specs, changed: false };
+  }
+
+  const winnerIndex = enabledIndexes[enabledIndexes.length - 1];
+  const nextSpecs = specs.map((spec, index) => ({
+    ...spec,
+    supportsImage: index === winnerIndex,
+  }));
+
+  return { specs: nextSpecs, changed: true };
+}
+
+function normalizeSpecs(rawSpecs: unknown): Array<{
+  name: string;
+  supportsImage: boolean;
+  values: Array<{ label: string; image?: string }>;
+}> {
   if (!Array.isArray(rawSpecs)) return [];
   return rawSpecs
     .map((spec) => {
       const name = String((spec as SpecDraft)?.name ?? "").trim();
+      const supportsImage = Boolean((spec as SpecDraft)?.supportsImage);
       const values = Array.isArray((spec as SpecDraft)?.values)
         ? (spec as SpecDraft).values!
-            .map((value) => String(value).trim())
-            .filter(Boolean)
-            .filter((value, index, array) => array.indexOf(value) === index)
+            .map((value) => ({
+              label: String(value?.label ?? "").trim(),
+              image: String(value?.image ?? "").trim(),
+            }))
+            .filter((value) => value.label)
+            .filter(
+              (value, index, array) =>
+                array.findIndex((item) => item.label === value.label) === index,
+            )
         : [];
-      return { name, values };
+      return { name, supportsImage, values };
     })
     .filter((spec) => spec.name && spec.values.length > 0);
 }
 
 function buildCartesianSpecRows(
-  specs: Array<{ name: string; values: string[] }>,
+  specs: Array<{
+    name: string;
+    supportsImage: boolean;
+    values: Array<{ label: string; image?: string }>;
+  }>,
   previousRows: SkuDraft[],
 ): SkuDraft[] {
   if (specs.length === 0) return [];
 
-  const combinations = specs.reduce<Array<Array<{ name: string; value: string }>>>(
+  const groupSpec = specs.find((spec) => spec.supportsImage);
+
+  const combinations = specs.reduce<
+    Array<Array<{ name: string; label: string; image?: string; supportsImage: boolean }>>
+  >(
     (accumulator, spec) => {
       if (accumulator.length === 0) {
-        return spec.values.map((value) => [{ name: spec.name, value }]);
+        return spec.values.map((value) => [
+          {
+            name: spec.name,
+            label: value.label,
+            image: value.image,
+            supportsImage: spec.supportsImage,
+          },
+        ]);
       }
       return accumulator.flatMap((combination) =>
-        spec.values.map((value) => [...combination, { name: spec.name, value }]),
+        spec.values.map((value) => [
+          ...combination,
+          {
+            name: spec.name,
+            label: value.label,
+            image: value.image,
+            supportsImage: spec.supportsImage,
+          },
+        ]),
       );
     },
     [],
@@ -104,13 +203,25 @@ function buildCartesianSpecRows(
 
   return combinations.map((combination) => {
     const skuKey = combination
-      .map((item) => `${item.name}=${item.value}`)
+      .map((item) => `${item.name}=${item.label}`)
       .join("|");
-    const specSummary = combination.map((item) => `${item.name}: ${item.value}`).join(" / ");
     const previous = previousMap.get(skuKey);
+    const groupedItem = groupSpec
+      ? combination.find((item) => item.name === groupSpec.name)
+      : undefined;
+    const salesSpecItems = groupedItem
+      ? combination.filter((item) => item.name !== groupSpec?.name)
+      : combination;
+    const specSummary = salesSpecItems.length
+      ? salesSpecItems.map((item) => `${item.name}: ${item.label}`).join(" / ")
+      : "默认销售配置";
 
     return {
       skuKey,
+      groupKey: groupedItem?.label ?? "",
+      groupSpecName: groupedItem?.name ?? "",
+      groupSpecValue: groupedItem?.label ?? "",
+      groupSpecImage: groupedItem?.image ?? "",
       specSummary,
       price: previous?.price,
       stock: previous?.stock ?? 0,
@@ -124,6 +235,44 @@ function buildCartesianSpecRows(
 
 function areSkuRowsEqual(a: SkuDraft[], b: SkuDraft[]): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function attachSkuMatrixEffects(form: IForm) {
+  let syncingSkuMatrix = false;
+
+  const syncSkuMatrix = () => {
+    if (syncingSkuMatrix) return;
+
+    const rawSpecs = form.getField(SKU_MATRIX_SPECS_PATH)?.value;
+    const imageControlled = enforceSingleImageSpec(rawSpecs);
+
+    if (imageControlled.changed) {
+      syncingSkuMatrix = true;
+      form.setValues({
+        specs: imageControlled.specs,
+      });
+      syncingSkuMatrix = false;
+      return;
+    }
+
+    const specs = normalizeSpecs(imageControlled.specs);
+    const currentSkus = Array.isArray(form.getField(SKU_MATRIX_SKUS_PATH)?.value)
+      ? (form.getField(SKU_MATRIX_SKUS_PATH)?.value as SkuDraft[])
+      : [];
+    const nextSkus = buildCartesianSpecRows(specs, currentSkus);
+
+    if (areSkuRowsEqual(currentSkus, nextSkus)) return;
+
+    syncingSkuMatrix = true;
+    form.setValues({
+      skus: nextSkus,
+    });
+    syncingSkuMatrix = false;
+  };
+
+  form.onFieldChange(SKU_MATRIX_SPECS_PATH, () => {
+    syncSkuMatrix();
+  });
 }
 
 // --- Computed reaction handlers (for demo) ---
@@ -237,6 +386,7 @@ const components: ComponentMap = {
   Checkbox,
   Switch,
   DateInput,
+  ImageInput,
   ItemInput,
   RadioGroup,
   Rating,
@@ -259,8 +409,6 @@ interface SchemaRendererProps {
 export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ schema }) => {
   const [result, setResult] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
-  const syncingSkuMatrixRef = useRef(false);
-  const skuSyncTimerRef = useRef<number | null>(null);
 
   const form = useMemo(
     () =>
@@ -268,46 +416,15 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ schema }) => {
         handlers,
         initialValues:
           schema.id === SKU_MATRIX_DEMO_ID ? createSkuDemoInitialValues() : undefined,
+        effects:
+          schema.id === SKU_MATRIX_DEMO_ID
+            ? (formInstance) => {
+                attachSkuMatrixEffects(formInstance);
+              }
+            : undefined,
       }),
     [schema.id],
   );
-
-  useEffect(() => {
-    if (schema.id !== SKU_MATRIX_DEMO_ID) return;
-
-    const syncSkuMatrix = () => {
-      if (syncingSkuMatrixRef.current) return;
-
-      const specs = normalizeSpecs(form.getField("specs")?.value);
-      const currentSkus = Array.isArray(form.getField("skus")?.value)
-        ? (form.getField("skus")?.value as SkuDraft[])
-        : [];
-      const nextSkus = buildCartesianSpecRows(specs, currentSkus);
-
-      if (areSkuRowsEqual(currentSkus, nextSkus)) return;
-
-      syncingSkuMatrixRef.current = true;
-      form.setValues({ skus: nextSkus });
-      syncingSkuMatrixRef.current = false;
-    };
-
-    const dispose = form.onValuesChange(() => {
-      syncSkuMatrix();
-    });
-
-    skuSyncTimerRef.current = window.setTimeout(() => {
-      syncSkuMatrix();
-    }, 0);
-
-    return () => {
-      dispose();
-      if (skuSyncTimerRef.current !== null) {
-        window.clearTimeout(skuSyncTimerRef.current);
-        skuSyncTimerRef.current = null;
-      }
-      syncingSkuMatrixRef.current = false;
-    };
-  }, [form, schema.id]);
 
   const handleSubmit = useCallback(async () => {
     setSubmitting(true);

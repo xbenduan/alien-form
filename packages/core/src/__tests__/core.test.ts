@@ -118,6 +118,63 @@ describe('@alien-form/core', () => {
     expect(form.getField('users.1.name')?.value).toBe('right')
   })
 
+  it('initializes nested array fields inside array rows from initialValues', () => {
+    const form = createForm({
+      initialValues: {
+        specs: [
+          {
+            name: '颜色',
+            values: [
+              { label: '曜石黑', image: 'black.png' },
+              { label: '月光白', image: 'white.png' },
+            ],
+          },
+        ],
+      },
+    })
+
+    form.setSchema({
+      type: 'object',
+      properties: {
+        specs: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              values: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    label: { type: 'string' },
+                    image: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    })
+
+    expect(form.getField('specs.0.name')?.value).toBe('颜色')
+    expect(form.getField('specs.0.values')).toBeTruthy()
+    expect(form.getField('specs.0.values.0.label')?.value).toBe('曜石黑')
+    expect(form.getField('specs.0.values.1.image')?.value).toBe('white.png')
+    expect(form.values).toEqual({
+      specs: [
+        {
+          name: '颜色',
+          values: [
+            { label: '曜石黑', image: 'black.png' },
+            { label: '月光白', image: 'white.png' },
+          ],
+        },
+      ],
+    })
+  })
+
   it('notifies field, values and validation lifecycle changes', async () => {
     const events: string[] = []
     const form = createForm({
