@@ -12,7 +12,7 @@ const form = createForm({
     province: 'zhejiang'
   },
   scope: {
-    isEmpty: (value: unknown) => value == null || value === ''
+    readonlyMode: 'readonly'
   },
   handlers: {
     async loadCities(ctx) {
@@ -95,25 +95,27 @@ form.setValues(detail)
 
 ## scope
 
-`scope` 会合并进表达式规则运行时作用域。它适用于放置安全的纯函数、枚举表、常量和业务无关工具。
+`scope` 会合并进表达式规则运行时作用域。它适合放置枚举表、常量和只读上下文数据；函数调用不属于 `expression`，需要放到 `computed` handler 中。
 
 ```ts
 const form = createForm({
   scope: {
-    isAdult: (age: number) => age >= 18
+    adultAge: 18
   }
 })
 ```
 
-在 schema 表达式里可以直接使用：
+在 schema 表达式里可以直接读取这些数据：
 
 ```ts
 {
   type: 'expression',
   dependencies: { age: 'age' },
-  expression: 'isAdult($deps.age) ? "visible" : "none"'
+  expression: '$deps.age >= adultAge ? "visible" : "none"'
 }
 ```
+
+`expression` 使用受限解释器执行：支持字面量、变量读取、属性/索引访问、对象/数组字面量、算术/比较/逻辑运算和三元表达式；不支持函数调用、赋值、语句、`new`、`eval`、`Function`、`constructor`、`prototype` 或 `__proto__`。
 
 内置作用域变量包括：
 
@@ -233,14 +235,14 @@ const form = createForm({
 - `form.reset()`：会触发值变化和 reaction 重放。
 - 在 `onValuesChange()` 中调用 `setValues()`：需要条件判断，避免循环。
 
-### registerLifecycle
+### onLifecycle
 
-运行时 `Form` 类已实现 `registerLifecycle(event, path, handler)`，但当前没有声明在 `IForm` 接口中。如需使用，可以临时断言：
+`form.onLifecycle(event, path, handler)` 用于订阅字段生命周期事件，已经是 `IForm` 的公开 API。
 
 ```ts
 createForm({
   effects(form) {
-    ;(form as any).registerLifecycle?.('onFieldValidateFailed', '*', (field) => {
+    form.onLifecycle('onFieldValidateFailed', '*', (field) => {
       console.log('validate failed', field.path)
     })
   }

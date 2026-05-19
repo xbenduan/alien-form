@@ -36,7 +36,7 @@ Key rules to remember:
 - the dependency field is named `dependencies`, not `deps`
 - `expression` rules use the `expression` field
 - `match` rules use the `match` field
-- expressions are plain JavaScript expression strings and do not support `{{ ... }}`
+- `expression` uses a restricted expression grammar. It does not support `{{ ... }}` templates or function calls; use `computed` for complex logic
 
 ## Supported Rule Types
 
@@ -109,7 +109,7 @@ If `dependencies` is omitted, the reaction watches the current field itself.
 
 ## Runtime Context
 
-Inside expressions and `computed` handlers, you can use:
+Both `expression` and `computed` handlers can read the following context, but only `computed` handlers may call functions, run async logic, or produce side effects:
 
 - `$self`
 - `$form`
@@ -166,7 +166,7 @@ This example matches the real schema style used by the demo. When `contactType` 
         "quantity": "quantity",
         "unitPrice": "unitPrice"
       },
-      "expression": "Number($deps.quantity || 0) * Number($deps.unitPrice || 0)"
+      "expression": "($deps.quantity || 0) * ($deps.unitPrice || 0)"
     }
   }
 }

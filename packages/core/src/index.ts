@@ -3,8 +3,8 @@
  */
 
 // Form & Field
-export { createForm, Form } from './form'
-export { Field } from './field'
+export { createForm, Form } from './form/index'
+export { Field } from './field/index'
 
 // Types
 export type {
@@ -28,6 +28,8 @@ export type {
   DataSourcePolicy,
   RuntimeRuleHandlerContext,
   RuntimeRuleHandler,
+  FormLifecycleEvent,
+  FormLifecycleHandler,
   SchemaTypes,
   FieldPatternTypes,
   FieldDisplayTypes,

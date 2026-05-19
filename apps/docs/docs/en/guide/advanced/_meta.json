@@ -1,4 +1,6 @@
 [
+  { "type": "file", "name": "custom-components", "label": "Custom Components" },
+  { "type": "file", "name": "layout-components", "label": "Layout Components" },
   { "type": "file", "name": "x-reaction", "label": "x-reaction" },
   { "type": "file", "name": "x-format", "label": "x-format" },
   { "type": "file", "name": "x-validate", "label": "x-validate" }

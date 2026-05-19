@@ -1,0 +1,304 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AlienForm Schema",
+  "description": "AlienForm 表单协议的 JSON Schema，提供编辑器自动补全和中文悬浮提示。",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "object",
+      "markdownDescription": "根节点类型必须为 `object`"
+    },
+    "title": {
+      "type": "string",
+      "markdownDescription": "表单标题"
+    },
+    "description": {
+      "type": "string",
+      "markdownDescription": "表单描述"
+    },
+    "required": {
+      "anyOf": [
+        { "type": "boolean" },
+        { "type": "array", "items": { "type": "string" } }
+      ],
+      "markdownDescription": "是否必填，或者必填字段名称的数组"
+    },
+    "properties": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/IFieldSchema"
+      },
+      "markdownDescription": "子字段集合"
+    },
+    "definitions": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/IFieldSchema"
+      },
+      "markdownDescription": "根级可复用定义，只能在根 `IFormSchema` 上定义，配合 `$ref` 使用"
+    }
+  },
+  "required": ["type"],
+  "definitions": {
+    "IFieldSchema": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["string", "number", "boolean", "object", "array", "void", "date", "datetime"],
+          "markdownDescription": "字段类型，支持基础类型、`object`、`array` 以及布局专用的 `void` 类型"
+        },
+        "title": {
+          "type": "string",
+          "markdownDescription": "字段标题"
+        },
+        "description": {
+          "type": "string",
+          "markdownDescription": "字段描述"
+        },
+        "default": {
+          "markdownDescription": "字段默认值"
+        },
+        "required": {
+          "anyOf": [
+            { "type": "boolean" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "markdownDescription": "是否必填。若为 `object` 可指定必填的子字段数组"
+        },
+        "const": {
+          "markdownDescription": "常量校验值"
+        },
+        "minimum": {
+          "type": "number",
+          "markdownDescription": "数值类型的最小值"
+        },
+        "maximum": {
+          "type": "number",
+          "markdownDescription": "数值类型的最大值"
+        },
+        "exclusiveMinimum": {
+          "type": "number",
+          "markdownDescription": "数值类型的排他最小值"
+        },
+        "exclusiveMaximum": {
+          "type": "number",
+          "markdownDescription": "数值类型的排他最大值"
+        },
+        "multipleOf": {
+          "type": "number",
+          "markdownDescription": "数值必须是该值的倍数"
+        },
+        "minLength": {
+          "type": "number",
+          "markdownDescription": "字符串的最小长度"
+        },
+        "maxLength": {
+          "type": "number",
+          "markdownDescription": "字符串的最大长度"
+        },
+        "pattern": {
+          "type": "string",
+          "markdownDescription": "正则表达式校验规则"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["email", "url", "phone", "number", "integer", "idcard", "ip", "ipv6", "zip"],
+          "markdownDescription": "预置的格式校验规则"
+        },
+        "maxItems": {
+          "type": "number",
+          "markdownDescription": "数组的最大元素个数"
+        },
+        "minItems": {
+          "type": "number",
+          "markdownDescription": "数组的最小元素个数"
+        },
+        "uniqueItems": {
+          "type": "boolean",
+          "markdownDescription": "数组元素是否必须唯一"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/IFieldSchema"
+          },
+          "markdownDescription": "对象子属性定义（适用于 `type: 'object'`）"
+        },
+        "items": {
+          "anyOf": [
+            { "$ref": "#/definitions/IFieldSchema" },
+            { "type": "array", "items": { "$ref": "#/definitions/IFieldSchema" } }
+          ],
+          "markdownDescription": "数组项结构定义（适用于 `type: 'array'`）"
+        },
+        "$ref": {
+          "type": "string",
+          "markdownDescription": "本地 definitions 引用，仅支持根级路径如 `#/definitions/Name`"
+        },
+        "order": {
+          "type": "number",
+          "markdownDescription": "字段排序号"
+        },
+        "state": {
+          "type": "object",
+          "properties": {
+            "display": {
+              "type": "string",
+              "enum": ["visible", "hidden", "none"],
+              "markdownDescription": "初始显示态"
+            },
+            "pattern": {
+              "type": "string",
+              "enum": ["editable", "readOnly", "disabled", "readPretty"],
+              "markdownDescription": "初始交互态"
+            },
+            "disabled": { "type": "boolean" },
+            "readOnly": { "type": "boolean" },
+            "readPretty": { "type": "boolean" },
+            "editable": { "type": "boolean" }
+          },
+          "markdownDescription": "初始显示态与交互态配置"
+        },
+        "validators": {
+          "markdownDescription": "静态校验规则"
+        },
+        "decorator": {
+          "type": "string",
+          "markdownDescription": "包装器组件（Decorator）注册键名，例如 `FormItem`"
+        },
+        "decoratorProps": {
+          "type": "object",
+          "markdownDescription": "传递给包装器组件的属性 (Props)"
+        },
+        "component": {
+          "type": "string",
+          "markdownDescription": "UI 组件（Component）注册键名，例如 `Input`, `Select`"
+        },
+        "props": {
+          "type": "object",
+          "markdownDescription": "传递给 UI 组件的属性 (Props)"
+        },
+        "x-reaction": {
+          "$ref": "#/definitions/SchemaReactions",
+          "markdownDescription": "动态字段联动规则（状态衍生、属性联动）"
+        },
+        "x-format": {
+          "$ref": "#/definitions/SchemaFormat",
+          "markdownDescription": "输入/输出值转换规则"
+        },
+        "x-validate": {
+          "$ref": "#/definitions/SchemaRuleSet",
+          "markdownDescription": "动态校验规则"
+        },
+        "content": {
+          "markdownDescription": "布局型节点的内容"
+        },
+        "data": {
+          "type": "object",
+          "markdownDescription": "自定义附加数据"
+        },
+        "dataSource": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string" },
+              "value": {}
+            },
+            "required": ["label", "value"],
+            "additionalProperties": true
+          },
+          "markdownDescription": "选项列表（数据源）"
+        },
+        "dataSourcePolicy": {
+          "type": "string",
+          "enum": ["preserve", "clear", "filter", "first"],
+          "markdownDescription": "数据源变化时的值处理策略"
+        }
+      }
+    },
+    "SchemaReactions": {
+      "type": "object",
+      "properties": {
+        "value": { "$ref": "#/definitions/SchemaRuleSet" },
+        "display": { "$ref": "#/definitions/SchemaRuleSet" },
+        "visible": { "$ref": "#/definitions/SchemaRuleSet" },
+        "hidden": { "$ref": "#/definitions/SchemaRuleSet" },
+        "pattern": { "$ref": "#/definitions/SchemaRuleSet" },
+        "disabled": { "$ref": "#/definitions/SchemaRuleSet" },
+        "readOnly": { "$ref": "#/definitions/SchemaRuleSet" },
+        "readPretty": { "$ref": "#/definitions/SchemaRuleSet" },
+        "editable": { "$ref": "#/definitions/SchemaRuleSet" },
+        "required": { "$ref": "#/definitions/SchemaRuleSet" },
+        "title": { "$ref": "#/definitions/SchemaRuleSet" },
+        "description": { "$ref": "#/definitions/SchemaRuleSet" },
+        "props": { "$ref": "#/definitions/SchemaRuleSet" },
+        "decoratorProps": { "$ref": "#/definitions/SchemaRuleSet" },
+        "component": { "$ref": "#/definitions/SchemaRuleSet" },
+        "decorator": { "$ref": "#/definitions/SchemaRuleSet" },
+        "dataSource": { "$ref": "#/definitions/SchemaRuleSet" }
+      },
+      "additionalProperties": {
+        "$ref": "#/definitions/SchemaRuleSet"
+      },
+      "markdownDescription": "动态字段联动。常见键包括 `value`, `display`, `pattern`, `props`, `component` 等属性名称。"
+    },
+    "SchemaFormat": {
+      "type": "object",
+      "properties": {
+        "input": { "$ref": "#/definitions/SchemaRuleSet" },
+        "output": { "$ref": "#/definitions/SchemaRuleSet" }
+      },
+      "markdownDescription": "输入/输出格式化规则"
+    },
+    "SchemaRuleSet": {
+      "anyOf": [
+        { "$ref": "#/definitions/SchemaXRule" },
+        { "type": "array", "items": { "$ref": "#/definitions/SchemaXRule" } }
+      ]
+    },
+    "SchemaXRule": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["static", "expression", "match", "computed"],
+          "markdownDescription": "规则类型"
+        },
+        "dependencies": {
+          "anyOf": [
+            { "type": "array", "items": { "type": "string" } },
+            { "type": "object", "additionalProperties": { "type": "string" } }
+          ],
+          "markdownDescription": "规则依赖的其他字段路径"
+        },
+        "value": {
+          "markdownDescription": "静态规则的取值 (仅 `type: 'static'` 有效)"
+        },
+        "expression": {
+          "type": "string",
+          "markdownDescription": "表达式字符串，可访问 `$deps`, `$self`, `$values` 等上下文 (仅 `type: 'expression'` 有效)"
+        },
+        "source": {
+          "type": "string",
+          "markdownDescription": "用于 `match` 匹配的数据源，默认为第一个依赖项的值 (仅 `type: 'match'` 有效)"
+        },
+        "match": {
+          "type": "object",
+          "markdownDescription": "匹配映射字典 (仅 `type: 'match'` 有效)"
+        },
+        "handler": {
+          "type": "string",
+          "markdownDescription": "执行自定义逻辑的 computed 函数注册名称 (仅 `type: 'computed'` 有效)"
+        },
+        "params": {
+          "type": "object",
+          "markdownDescription": "传递给 computed 函数的参数 (仅 `type: 'computed'` 有效)"
+        }
+      },
+      "required": ["type"]
+    }
+  }
+}

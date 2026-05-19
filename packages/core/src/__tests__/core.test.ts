@@ -51,6 +51,78 @@ describe('@alien-form/core', () => {
     await expect(form.validate()).resolves.toBe(true)
   })
 
+
+  it('coalesces bulk value notifications', () => {
+    const form = createForm()
+    form.setSchema({
+      type: 'object',
+      properties: {
+        first: { type: 'string' },
+        second: { type: 'string' },
+      },
+    })
+
+    const valuesListener = vi.fn()
+    const fieldListener = vi.fn()
+    const formSubscriber = vi.fn()
+    const firstSubscriber = vi.fn()
+
+    form.onValuesChange(valuesListener)
+    form.onFieldChange('*', fieldListener)
+    form.subscribe(formSubscriber)
+    form.getField('first')?.subscribe(firstSubscriber)
+
+    valuesListener.mockClear()
+    fieldListener.mockClear()
+    formSubscriber.mockClear()
+    firstSubscriber.mockClear()
+
+    form.setValues({ first: 'A', second: 'B' })
+
+    expect(valuesListener).toHaveBeenCalledTimes(1)
+    expect(fieldListener).toHaveBeenCalledTimes(2)
+    expect(formSubscriber).toHaveBeenCalledTimes(1)
+    expect(firstSubscriber).toHaveBeenCalledTimes(1)
+  })
+
+  it('stops cyclic reactions and reports runtime error', () => {
+    const errors: any[] = []
+    const form = createForm({ onError: (error) => errors.push(error) })
+    form.setSchema({
+      type: 'object',
+      properties: {
+        a: {
+          type: 'number',
+          default: 0,
+          'x-reaction': {
+            value: {
+              dependencies: { b: 'b' },
+              type: 'expression',
+              expression: '($deps.b || 0) + 1',
+            },
+          },
+        },
+        b: {
+          type: 'number',
+          default: 0,
+          'x-reaction': {
+            value: {
+              dependencies: { a: 'a' },
+              type: 'expression',
+              expression: '($deps.a || 0) + 1',
+            },
+          },
+        },
+      },
+    })
+
+    form.getField('a')?.setValue(1)
+
+    expect(errors.some((error) => error.scope === 'reaction' && /cycle detected/.test(error.message))).toBe(true)
+    expect(form.getField('a')?.value).toBeLessThan(100)
+    expect(form.getField('b')?.value).toBeLessThan(100)
+  })
+
   it('uses dynamic array values for validation and submission', async () => {
     const form = createForm()
     form.setSchema({
@@ -80,6 +152,63 @@ describe('@alien-form/core', () => {
 
     users?.remove(0)
     await expect(form.validate()).resolves.toBe(false)
+  })
+
+
+  it('handles core boundary cases for paths, arrays, and state updates', () => {
+    const form = createForm({
+      initialValues: {
+        users: [
+          { name: 'first' },
+          { name: 'second' },
+        ],
+      },
+    })
+    form.setSchema({
+      type: 'object',
+      properties: {
+        users: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+            },
+          },
+        },
+        choice: {
+          type: 'string',
+          default: 'stale',
+          dataSourcePolicy: 'first',
+        },
+      },
+    })
+
+    expect(form.values).toEqual({
+      users: [{ name: 'first' }, { name: 'second' }],
+      choice: 'stale',
+    })
+
+    form.getArrayField('users')?.moveDown(-1)
+    form.getArrayField('users')?.moveUp(99)
+    expect(form.values.users).toEqual([{ name: 'first' }, { name: 'second' }])
+
+    form.setValues({ users: [{ name: 'only' }] })
+    expect(form.getField('users.1.name')).toBeUndefined()
+    expect(form.values.users).toEqual([{ name: 'only' }])
+
+    form.reset()
+    expect(form.getField('users.0.name')?.value).toBe('first')
+    expect(form.getField('users.1.name')?.value).toBe('second')
+    expect(form.values.users).toEqual([{ name: 'first' }, { name: 'second' }])
+
+    form.setFieldState('choice', (state) => {
+      state.dataSource = [{ label: 'Fresh', value: 'fresh' }]
+    })
+    expect(form.getField('choice')?.value).toBe('fresh')
+
+    form.setValues(null as any)
+    expect(form.values.users).toEqual([{ name: 'first' }, { name: 'second' }])
   })
 
   it('syncs array child fields when setValues replaces array length', () => {
@@ -218,10 +347,10 @@ describe('@alien-form/core', () => {
       effects: (instance) => {
         instance.onFieldChange('name', () => events.push('field-change'))
         instance.onValuesChange(() => events.push('values-change'))
-        ;(instance as any).registerLifecycle('onFieldValueChange', 'name', () => events.push('value-lifecycle'))
-        ;(instance as any).registerLifecycle('onFieldValidateStart', 'name', () => events.push('validate-start'))
-        ;(instance as any).registerLifecycle('onFieldValidateSuccess', 'name', () => events.push('validate-success'))
-        ;(instance as any).registerLifecycle('onFieldValidateEnd', 'name', () => events.push('validate-end'))
+        instance.onLifecycle('onFieldValueChange', 'name', () => events.push('value-lifecycle'))
+        instance.onLifecycle('onFieldValidateStart', 'name', () => events.push('validate-start'))
+        instance.onLifecycle('onFieldValidateSuccess', 'name', () => events.push('validate-success'))
+        instance.onLifecycle('onFieldValidateEnd', 'name', () => events.push('validate-end'))
       },
     })
     form.setSchema(basicSchema)
@@ -431,26 +560,88 @@ describe('@alien-form/core', () => {
     expect(field?.componentProps).toEqual({ placeholder: 'Other' })
   })
 
-  it('rejects unsafe expressions without run escape hatches', () => {
-    const form = createForm()
+  it('evaluates expression rules with a restricted interpreter', () => {
+    const form = createForm({
+      initialValues: { mode: 'readonly', amount: 12.5 },
+      scope: { externalMode: 'readonly' },
+    })
     form.setSchema({
       type: 'object',
       properties: {
-        source: { type: 'string', default: 'x' },
-        unsafeField: {
+        mode: { type: 'string' },
+        amount: {
+          type: 'number',
+          'x-format': {
+            output: {
+              type: 'expression',
+              expression: '($value || 0) * 100',
+            },
+          },
+        },
+        derivedField: {
           type: 'string',
           'x-reaction': {
             value: {
-              dependencies: { source: 'source' },
+              dependencies: { mode: 'mode' },
               type: 'expression',
-              expression: 'globalThis.process',
+              expression: "$deps.mode === externalMode ? 'locked' : 'open'",
+            },
+            props: {
+              dependencies: { mode: 'mode' },
+              type: 'expression',
+              expression: "{ placeholder: $deps.mode === 'readonly' ? 'readonly mode' : 'editable mode', rows: 4 }",
+            },
+            disabled: {
+              dependencies: { mode: 'mode' },
+              type: 'expression',
+              expression: "!($deps.mode !== 'readonly')",
             },
           },
         },
       },
     })
 
-    expect(form.getField('unsafeField')?.value).toBeUndefined()
+    expect(form.getField('derivedField')?.value).toBe('locked')
+    expect(form.getField('derivedField')?.componentProps).toEqual({ placeholder: 'readonly mode', rows: 4 })
+    expect(form.getField('derivedField')?.disabled).toBe(true)
+    expect(form.values.amount).toBe(1250)
+  })
+
+  it('rejects unsafe expressions and function calls without run escape hatches', () => {
+    const rejectedExpressions = [
+      'globalThis.process',
+      'Number($value)',
+      'isAdult($deps.age)',
+      '$value.trim()',
+      'new Date()',
+      '$value = 1',
+      'function () { return 1 }',
+      '() => 1',
+      '$deps.__proto__',
+      '$deps.constructor',
+    ]
+
+    for (const expression of rejectedExpressions) {
+      const form = createForm()
+      form.setSchema({
+        type: 'object',
+        properties: {
+          source: { type: 'string', default: 'x' },
+          unsafeField: {
+            type: 'string',
+            'x-reaction': {
+              value: {
+                dependencies: { source: 'source' },
+                type: 'expression',
+                expression,
+              },
+            },
+          },
+        },
+      })
+
+      expect(form.getField('unsafeField')?.value).toBeUndefined()
+    }
   })
 
   it('keeps field-owned reactions independent across dependencies', () => {

@@ -156,14 +156,14 @@ const form = createForm({
 | `reset()` | 会触发字段值变化和 reaction 重放，避免在无保护的值变化监听里调用 |
 | `setValues()` | 可用，但不要在 `onValuesChange()` 中无条件调用，否则可能形成循环 |
 
-## 生命周期注册：registerLifecycle
+## 生命周期订阅：onLifecycle
 
-当前 `Form` 实例上存在 `registerLifecycle(event, path, handler)`，用于注册字段生命周期回调。它已经在运行时实现，但还没有出现在 `IForm` 类型接口里，因此从 TypeScript 视角使用时需要类型扩展或临时断言。
+`onLifecycle(event, path, handler)` 是公开的字段生命周期订阅 API，已经声明在 `IForm` 中。它适合在 `effects` 中注册字段初始化、值变化、校验阶段等回调。
 
 ```ts
 createForm({
   effects(form) {
-    ;(form as any).registerLifecycle?.('onFieldInit', '*', (field, form) => {
+    form.onLifecycle('onFieldInit', '*', (field, form) => {
       console.log('field init', field.path)
     })
   }

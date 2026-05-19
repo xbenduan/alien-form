@@ -2,7 +2,6 @@ import * as React from 'react'
 import { cn } from '../lib/utils'
 
 export interface ArrayCardsProps {
-  field?: any
   rows?: React.ReactNode[][]
   onAdd?: (initialValues?: Record<string, any>) => void
   onRemove?: (index: number) => void
@@ -17,7 +16,6 @@ export interface ArrayCardsProps {
 
 const ArrayCards = React.forwardRef<HTMLDivElement, ArrayCardsProps>(
   ({
-    field,
     rows = [],
     onAdd,
     onRemove,

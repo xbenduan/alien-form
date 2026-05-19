@@ -12,7 +12,7 @@ const form = createForm({
     province: 'zhejiang'
   },
   scope: {
-    isEmpty: (value: unknown) => value == null || value === ''
+    readonlyMode: 'readonly'
   },
   handlers: {
     async loadCities(ctx) {
@@ -95,25 +95,27 @@ form.setValues(detail)
 
 ## scope
 
-`scope` is merged into the runtime scope used by expression rules. It is suitable for safe pure functions, enums, constants, and business-independent utilities.
+`scope` is merged into the runtime scope used by expression rules. It is suitable for enums, constants, and readonly contextual data. Function calls do not belong in `expression`; put them in `computed` handlers.
 
 ```ts
 const form = createForm({
   scope: {
-    isAdult: (age: number) => age >= 18
+    adultAge: 18
   }
 })
 ```
 
-Then use it from schema expressions:
+Then read it from schema expressions:
 
 ```ts
 {
   type: 'expression',
   dependencies: { age: 'age' },
-  expression: 'isAdult($deps.age) ? "visible" : "none"'
+  expression: '$deps.age >= adultAge ? "visible" : "none"'
 }
 ```
+
+`expression` is executed by a restricted interpreter. It supports literals, variable reads, property/index access, object/array literals, arithmetic/comparison/logical operators, and ternary expressions. It does not support function calls, assignments, statements, `new`, `eval`, `Function`, `constructor`, `prototype`, or `__proto__`.
 
 Built-in scope variables:
 
@@ -233,14 +235,14 @@ Available but use with caution:
 - `form.reset()`: emits value changes and replays reactions.
 - Calling `setValues()` inside `onValuesChange()`: guard it with conditions to avoid loops.
 
-### registerLifecycle
+### onLifecycle
 
-The runtime `Form` class already implements `registerLifecycle(event, path, handler)`, but it is not currently declared on the `IForm` interface. If needed, use a temporary cast:
+`form.onLifecycle(event, path, handler)` subscribes to field lifecycle events and is now part of the public `IForm` API.
 
 ```ts
 createForm({
   effects(form) {
-    ;(form as any).registerLifecycle?.('onFieldValidateFailed', '*', (field) => {
+    form.onLifecycle('onFieldValidateFailed', '*', (field) => {
       console.log('validate failed', field.path)
     })
   }

@@ -1,4 +1,6 @@
 [
+  { "type": "file", "name": "custom-components", "label": "自定义组件" },
+  { "type": "file", "name": "layout-components", "label": "布局组件" },
   { "type": "file", "name": "x-reaction", "label": "x-reaction" },
   { "type": "file", "name": "x-format", "label": "x-format" },
   { "type": "file", "name": "x-validate", "label": "x-validate" }

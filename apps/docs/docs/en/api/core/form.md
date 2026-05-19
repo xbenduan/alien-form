@@ -156,14 +156,14 @@ const form = createForm({
 | `reset()` | replays value changes and reactions; avoid calling it unguarded from value-change listeners |
 | `setValues()` | useful, but do not call it unconditionally inside `onValuesChange()` or you may create a loop |
 
-## Lifecycle Registration: registerLifecycle
+## Lifecycle Subscription: onLifecycle
 
-The runtime currently implements `registerLifecycle(event, path, handler)` on `Form`, but it is not yet declared on the `IForm` interface. From TypeScript, use module augmentation or a temporary cast if needed.
+`onLifecycle(event, path, handler)` is the public field lifecycle subscription API and is declared on `IForm`. It is suitable for registering field initialization, value-change, and validation-stage callbacks inside `effects`.
 
 ```ts
 createForm({
   effects(form) {
-    ;(form as any).registerLifecycle?.('onFieldInit', '*', (field, form) => {
+    form.onLifecycle('onFieldInit', '*', (field, form) => {
       console.log('field init', field.path)
     })
   }

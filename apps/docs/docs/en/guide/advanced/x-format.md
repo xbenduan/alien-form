@@ -21,7 +21,7 @@ In the current implementation, `x-format` has only two entry points: `input` and
     },
     "output": {
       "type": "expression",
-      "expression": "Number($value) * 100"
+      "expression": "($value || 0) * 100"
     }
   }
 }
@@ -76,7 +76,7 @@ This example comes directly from the project demo: the backend stores cents whil
     },
     "output": {
       "type": "expression",
-      "expression": "Number($value) * 100"
+      "expression": "($value || 0) * 100"
     }
   }
 }

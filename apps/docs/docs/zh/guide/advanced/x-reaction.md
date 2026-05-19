@@ -36,7 +36,7 @@
 - 依赖字段名叫 `dependencies`，不是 `deps`。
 - `expression` 规则使用 `expression` 字段。
 - `match` 规则使用 `match` 字段。
-- 表达式直接写 JavaScript 表达式字符串，不支持 `{{ ... }}` 模板语法。
+- `expression` 使用受限表达式语法，不支持 `{{ ... }}` 模板语法，也不支持函数调用；复杂逻辑请使用 `computed`。
 
 ## 支持的规则类型
 
@@ -109,7 +109,7 @@
 
 ## 运行时上下文
 
-在表达式和 `computed` handler 中，你可以使用以下上下文：
+在 `expression` 和 `computed` handler 中，都可以读取以下上下文；但只有 `computed` handler 可以调用函数、执行异步逻辑或产生副作用：
 
 - `$self`：当前字段实例
 - `$form`：当前表单实例
@@ -166,7 +166,7 @@
         "quantity": "quantity",
         "unitPrice": "unitPrice"
       },
-      "expression": "Number($deps.quantity || 0) * Number($deps.unitPrice || 0)"
+      "expression": "($deps.quantity || 0) * ($deps.unitPrice || 0)"
     }
   }
 }

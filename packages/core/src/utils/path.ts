@@ -5,10 +5,13 @@
  * denote array indices. These helpers operate on that convention.
  */
 
-import type { IFieldSchema, IFormSchema } from './types'
+import type { IFieldSchema, IFormSchema } from '../types'
 
-export function getDeepValue(obj: Record<string, any>, path: string): any {
-  const keys = path.split('.')
+export function getDeepValue(obj: Record<string, any> | null | undefined, path: string): any {
+  if (obj === undefined || obj === null) return undefined
+  if (!path) return obj
+
+  const keys = path.split('.').filter(Boolean)
   let current: any = obj
   for (const key of keys) {
     if (current === undefined || current === null) return undefined
@@ -18,12 +21,17 @@ export function getDeepValue(obj: Record<string, any>, path: string): any {
 }
 
 export function setDeepValue(obj: Record<string, any>, path: string, value: any): void {
-  const keys = path.split('.')
-  let current = obj
+  if (!path) return
+
+  const keys = path.split('.').filter(Boolean)
+  if (keys.length === 0) return
+
+  let current: any = obj
   for (let i = 0; i < keys.length - 1; i++) {
     const key = keys[i]
-    if (!(key in current) || typeof current[key] !== 'object') {
-      const nextKey = keys[i + 1]
+    const nextKey = keys[i + 1]
+    const currentValue = current[key]
+    if (currentValue === undefined || currentValue === null || typeof currentValue !== 'object') {
       current[key] = /^\d+$/.test(nextKey) ? [] : {}
     }
     current = current[key]
@@ -31,9 +39,6 @@ export function setDeepValue(obj: Record<string, any>, path: string, value: any)
   current[keys[keys.length - 1]] = value
 }
 
-export function isPromiseLike(value: any): value is Promise<any> {
-  return !!value && typeof value.then === 'function'
-}
 
 /** Sort schema properties by `order` (ascending; missing means last). */
 export function sortByOrder(

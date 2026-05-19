@@ -2,7 +2,6 @@ import * as React from 'react'
 import { cn } from '../lib/utils'
 
 export interface ArrayTableProps {
-  field?: any
   rows?: React.ReactNode[][]
   onAdd?: (initialValues?: Record<string, any>) => void
   onRemove?: (index: number) => void
@@ -17,7 +16,6 @@ export interface ArrayTableProps {
 
 const ArrayTable = React.forwardRef<HTMLDivElement, ArrayTableProps>(
   ({
-    field,
     rows = [],
     onAdd,
     onRemove,

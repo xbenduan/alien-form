@@ -149,7 +149,7 @@
               "quantity": "quantity",
               "unitPrice": "unitPrice"
             },
-            "expression": "Number($deps.quantity || 0) * Number($deps.unitPrice || 0)"
+            "expression": "($deps.quantity || 0) * ($deps.unitPrice || 0)"
           }
         }
       },

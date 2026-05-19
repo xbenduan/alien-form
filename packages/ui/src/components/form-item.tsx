@@ -8,13 +8,12 @@ export interface FormItemProps {
   errors?: Array<{ message: string }>
   warnings?: Array<{ message: string }>
   description?: string
-  validateStatus?: string
   children?: React.ReactNode
   className?: string
 }
 
 const FormItem = React.forwardRef<HTMLDivElement, FormItemProps>(
-  ({ label, required, errors = [], warnings = [], description, validateStatus, children, className }, ref) => {
+  ({ label, required, errors = [], warnings = [], description, children, className }, ref) => {
     const hasError = errors.length > 0
     const hasWarning = warnings.length > 0
 

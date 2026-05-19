@@ -9,4 +9,4 @@ By following these patterns, your code will be:
 - More performant (leveraging the core model rather than React re-renders).
 - Fully aligned with AlienForm's architectural philosophy.
 
-Please read through the specific patterns in the sidebar to learn how to handle permissions, reactions, asynchronous data, edit initialization, composite field modeling, and more advanced enterprise scenarios such as spec and SKU sales matrices.
+Please read through the specific patterns in the sidebar to learn how to handle permissions, mode switching, asynchronous data, edit initialization, composite field modeling, and more advanced enterprise scenarios such as spec and SKU sales matrices.

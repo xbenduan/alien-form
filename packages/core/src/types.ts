@@ -45,6 +45,25 @@ export interface FieldError {
   type?: string
 }
 
+
+// ============================================================
+// Lifecycle Types
+// ============================================================
+
+export type FormLifecycleEvent =
+  | 'onFieldInit'
+  | 'onFieldMount'
+  | 'onFieldUnmount'
+  | 'onFieldValueChange'
+  | 'onFieldInputValueChange'
+  | 'onFieldInitialValueChange'
+  | 'onFieldValidateStart'
+  | 'onFieldValidateEnd'
+  | 'onFieldValidateFailed'
+  | 'onFieldValidateSuccess'
+
+export type FormLifecycleHandler = (field: IField, form: IForm) => void
+
 // ============================================================
 // Validator Types
 // ============================================================
@@ -318,7 +337,7 @@ export interface FormConfig {
   initialValues?: Record<string, any>
   validateFirst?: boolean
   effects?: (form: IForm) => void
-  /** Custom expression scope variables */
+  /** Custom constants/data injected into expression and rule runtime scope. Functions belong in computed handlers. */
   scope?: Record<string, any>
   /** Registered computed handlers for x-reaction, x-format and x-validate */
   handlers?: Record<string, RuntimeRuleHandler>
@@ -379,8 +398,9 @@ export interface IForm {
   getArrayField(path: string): IField | undefined
   removeArrayItem(arrayPath: string, index: number): void
 
-  // Lifecycle
+  // Subscriptions
   onFieldChange(path: string, listener: (field: IField) => void): () => void
   onValuesChange(listener: (values: Record<string, any>) => void): () => void
   onError(listener: (error: FormError) => void): () => void
+  onLifecycle(event: FormLifecycleEvent, path: string, handler: FormLifecycleHandler): () => void
 }

@@ -138,9 +138,11 @@ const loadOptions: RuntimeRuleHandler = async (ctx) => {
 
 - `RuntimeRuleHandler`
 - `RuntimeRuleHandlerContext`
+- `FormLifecycleEvent`
+- `FormLifecycleHandler`
 
 ## 注意事项
 
 - `createForm` 返回类型是 `IForm`，文档中的公开 API 以 `IForm` 为准。
 - `Form` 和 `Field` 类可以导入，但业务代码通常不需要直接实例化。
-- 部分运行时能力，例如 `registerLifecycle`，当前实现存在于 `Form` 类上，但尚未声明在 `IForm` 类型里；如果业务需要稳定使用，建议后续补齐类型定义。
+- 字段生命周期订阅的公开 API 是 `onLifecycle`。

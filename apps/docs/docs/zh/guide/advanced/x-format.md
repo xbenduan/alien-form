@@ -21,7 +21,7 @@
     },
     "output": {
       "type": "expression",
-      "expression": "Number($value) * 100"
+      "expression": "($value || 0) * 100"
     }
   }
 }
@@ -76,7 +76,7 @@
     },
     "output": {
       "type": "expression",
-      "expression": "Number($value) * 100"
+      "expression": "($value || 0) * 100"
     }
   }
 }
