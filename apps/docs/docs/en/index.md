@@ -6,28 +6,28 @@ titleSuffix: Schema-Driven Form Engine
 hero:
   name: AlienForm
   text: Schema-Driven Form Engine
-  tagline: A bilingual documentation site aligned with the real source code across core, react, ui, and demo-backed protocol examples.
+  tagline: A reactive form solution built around a headless core, React bindings, and a JSON-schema-inspired protocol.
   image:
     src: /logo.svg
     alt: AlienForm
   actions:
     - theme: brand
-      text: Getting Started
-      link: /guide/getting-started
+      text: Guide
+      link: /guide/introduction
     - theme: alt
-      text: View API
-      link: /api/core
+      text: API Reference
+      link: /api/core/form
     - theme: alt
-      text: 中文文档
+      text: 中文框架
       link: /zh/
 
 features:
-  - title: Real Package Layers
-    details: The docs follow the actual exports of @alien-form/core, @alien-form/react, and @alien-form/ui instead of describing a hypothetical architecture.
-  - title: Runtime Protocols
-    details: x-reaction, x-format, x-validate, dataSourcePolicy, and $ref are documented according to the current implementation and runtime behavior.
-  - title: Demo Driven
-    details: Examples are adapted from apps/demo so every important API section has a concrete schema to compare with the running project.
-  - title: Bilingual Structure
-    details: English and Chinese pages share the same information architecture, which makes API lookup and translation maintenance much easier.
+  - title: Guide First
+    details: The guide explains why AlienForm exists, how the architecture is layered, and how the schema protocol maps to runtime behavior.
+  - title: API As Reference
+    details: The API section is organized by runtime objects and protocol surfaces, following a reference-manual style instead of tutorial prose.
+  - title: Schema As The Center
+    details: Form, Field, React bindings, and UI components all revolve around the same schema model and field state pipeline.
+  - title: English First Rewrite
+    details: This documentation pass rewrites the English content first and keeps the Chinese structure ready for the next translation phase.
 ---

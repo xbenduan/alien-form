@@ -1,0 +1,5 @@
+[
+  { "type": "file", "name": "form", "label": "Form" },
+  { "type": "file", "name": "field", "label": "Field" },
+  { "type": "file", "name": "form-config", "label": "FormConfig" }
+]

@@ -1,17 +1,12 @@
 [
   {
-    "text": "guide",
-    "link": "/guide/getting-started",
+    "text": "Guide",
+    "link": "/guide/introduction",
     "activeMatch": "^/guide/"
   },
   {
-    "text": "api",
-    "link": "/api/core",
+    "text": "API",
+    "link": "/api/core/form",
     "activeMatch": "^/api/"
-  },
-  {
-    "text": "advanced",
-    "link": "/advanced/linkage",
-    "activeMatch": "^/advanced/"
   }
 ]

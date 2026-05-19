@@ -1,17 +1,8 @@
 [
-  {
-    "type": "file",
-    "name": "getting-started",
-    "label": "gettingStarted"
-  },
-  {
-    "type": "file",
-    "name": "tutorial",
-    "label": "tutorial"
-  },
-  {
-    "type": "file",
-    "name": "protocol",
-    "label": "protocolDesign"
-  }
+  { "type": "file", "name": "introduction", "label": "介绍" },
+  { "type": "file", "name": "getting-started", "label": "快速开始" },
+  { "type": "file", "name": "architecture", "label": "架构" },
+  { "type": "file", "name": "schema-protocol", "label": "Schema 协议" },
+  { "type": "file", "name": "reactions", "label": "联动" },
+  { "type": "file", "name": "array-fields", "label": "数组字段" }
 ]

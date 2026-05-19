@@ -1,22 +1,6 @@
 [
-  {
-    "type": "file",
-    "name": "core",
-    "label": "core"
-  },
-  {
-    "type": "file",
-    "name": "react",
-    "label": "react"
-  },
-  {
-    "type": "file",
-    "name": "schema",
-    "label": "schema"
-  },
-  {
-    "type": "file",
-    "name": "components",
-    "label": "components"
-  }
+  { "type": "dir", "name": "core", "label": "Core" },
+  { "type": "dir", "name": "react", "label": "React" },
+  { "type": "dir", "name": "shared", "label": "Shared" },
+  { "type": "dir", "name": "ui", "label": "UI" }
 ]

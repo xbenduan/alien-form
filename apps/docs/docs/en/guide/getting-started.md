@@ -1,25 +1,19 @@
 # Getting Started
 
-This page only covers functionality that is implemented and exported in the current repository: `@alien-form/core`, `@alien-form/react`, and `@alien-form/ui`.
-
 ## Installation
 
 ```bash
 pnpm add @alien-form/core @alien-form/react @alien-form/ui
 ```
 
-## Minimal Working Example
-
-`FieldRenderer` passes a unified field contract into your components: `value`, `onChange`, `disabled`, `readOnly`, `readPretty`, `loading`, and `pattern`. Native text inputs such as `Input` and `Textarea` still emit DOM events, so you usually add a thin adapter layer.
+## Minimal Setup
 
 ```tsx
 import { createForm } from '@alien-form/core'
 import { FormProvider, SchemaField } from '@alien-form/react'
-import { Button, Input, Select, FormItem } from '@alien-form/ui'
+import { Input, FormItem } from '@alien-form/ui'
 
-const form = createForm({
-  initialValues: { role: 'developer' },
-})
+const form = createForm()
 
 const components = {
   Input: ({ value, onChange, ...rest }: any) => (
@@ -29,7 +23,6 @@ const components = {
       {...rest}
     />
   ),
-  Select,
 }
 
 const decorators = { FormItem }
@@ -37,24 +30,14 @@ const decorators = { FormItem }
 const schema = {
   type: 'object',
   properties: {
-    username: {
+    name: {
       type: 'string',
-      title: 'Username',
-      required: true,
+      title: 'Name',
       component: 'Input',
       decorator: 'FormItem',
-      validators: [{ minLength: 3, message: 'At least 3 characters' }],
-      props: { placeholder: 'Enter a username' },
-    },
-    role: {
-      type: 'string',
-      title: 'Role',
-      component: 'Select',
-      decorator: 'FormItem',
-      dataSource: [
-        { label: 'Developer', value: 'developer' },
-        { label: 'Designer', value: 'designer' },
-      ],
+      props: {
+        placeholder: 'Enter a name',
+      },
     },
   },
 }
@@ -63,7 +46,6 @@ export function App() {
   return (
     <FormProvider form={form} components={components} decorators={decorators}>
       <SchemaField schema={schema} />
-      <Button onClick={() => form.submit(console.log)}>Submit</Button>
     </FormProvider>
   )
 }
@@ -71,23 +53,13 @@ export function App() {
 
 ## Runtime Flow
 
-1. `createForm()` creates the `Form` instance and wires `effects`, `handlers`, and `onError`.
-2. `FormProvider` exposes `form`, `components`, and `decorators` through React context.
-3. `SchemaField` calls `form.setSchema(schema)` inside `useEffect`, rebuilding the field registry and reactions.
-4. `FieldRenderer` and `ArrayFieldRenderer` read field state and pass the normalized props into UI components.
-5. `form.submit()` runs `validate()` first, then returns `form.values`, applying `x-format.output` on the way out.
+1. `createForm()` creates a `Form` instance.
+2. `FormProvider` places the form model and component registries into React context.
+3. `SchemaField` calls `form.setSchema(schema)` and renders the field tree.
+4. Each field component receives normalized field props from the renderer.
 
-## Package Responsibilities
+## Important Notes
 
-| Package | Current responsibility |
-| --- | --- |
-| `@alien-form/core` | `Form`, `Field`, schema protocol, expressions, validation, array operations |
-| `@alien-form/react` | `FormProvider`, `SchemaField`, `useForm`, `useField`, `useFormState`, `useArrayField` |
-| `@alien-form/ui` | Default widgets such as `Input`, `Select`, `Checkbox`, `ArrayCards`, `FormGrid`, and `FormSection` |
-
-## Where To Go Next
-
-- Model layer: [Core API](../api/core)
-- Rendering layer: [React API](../api/react)
-- Protocol fields: [Schema API](../api/schema)
-- Component registration: [Components API](../api/components)
+- Native text inputs need an adapter because the renderer passes `onChange(value)` while DOM inputs emit events.
+- `value ?? ''` is recommended for text-like inputs to avoid React controlled/uncontrolled warnings.
+- The schema should use component and decorator identifiers that match the keys registered in `components` and `decorators`.

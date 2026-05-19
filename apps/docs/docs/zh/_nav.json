@@ -1,17 +1,12 @@
 [
   {
-    "text": "guide",
-    "link": "/guide/getting-started",
+    "text": "指南",
+    "link": "/guide/introduction",
     "activeMatch": "^/zh/guide/"
   },
   {
-    "text": "api",
-    "link": "/api/core",
+    "text": "API",
+    "link": "/api/core/form",
     "activeMatch": "^/zh/api/"
-  },
-  {
-    "text": "advanced",
-    "link": "/advanced/linkage",
-    "activeMatch": "^/zh/advanced/"
   }
 ]

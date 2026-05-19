@@ -1,0 +1,5 @@
+[
+  { "type": "file", "name": "form-provider", "label": "FormProvider" },
+  { "type": "file", "name": "schema-field", "label": "SchemaField" },
+  { "type": "file", "name": "hooks", "label": "Hooks" }
+]
