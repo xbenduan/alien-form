@@ -1,0 +1,5 @@
+[
+  { "type": "file", "name": "x-reaction", "label": "x-reaction" },
+  { "type": "file", "name": "x-format", "label": "x-format" },
+  { "type": "file", "name": "x-validate", "label": "x-validate" }
+]

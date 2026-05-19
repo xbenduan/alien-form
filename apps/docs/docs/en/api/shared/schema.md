@@ -2,37 +2,251 @@
 
 ## Description
 
-The schema protocol is the shared language between the core model and the React renderer. It describes structure, UI registration keys, validation, formatting, and reactions.
+The schema protocol is the shared language between `@alien-form/core` and `@alien-form/react`. AlienForm does not currently expose a `Schema` class. The runtime consumes plain JSON objects directly.
 
-## Constructor Shape
+There are two real entry points:
 
-AlienForm currently uses plain JSON objects rather than a `Schema` class. The effective constructor surface is the root schema object passed to `form.setSchema(schema)` or `<SchemaField schema={schema} />`.
+- `form.setSchema(schema)`
+- `<SchemaField schema={schema} />`
 
-## Core Attributes
+## Root Shape
 
-| Attribute | Description |
+```ts
+interface IFormSchema {
+  type: 'object'
+  properties?: Record<string, IFieldSchema>
+  definitions?: Record<string, IFieldSchema>
+}
+```
+
+## IFieldSchema Composition
+
+`IFieldSchema` can be understood as three layers combined together:
+
+- JSON Schema subset: `type`, `default`, `required`, `enum`, `minimum`, and so on
+- UI projection fields: `component`, `props`, `decorator`, `decoratorProps`
+- dynamic protocol fields: `x-reaction`, `x-format`, `x-validate`
+
+## Primitive Types
+
+Supported field types:
+
+- `string`
+- `number`
+- `boolean`
+- `object`
+- `array`
+- `void`
+- `date`
+- `datetime`
+
+## Standard Fields
+
+| Field | Description |
 | --- | --- |
-| `type` | field schema type |
+| `type` | field type |
 | `title` | field title |
 | `description` | field description |
 | `default` | default value |
-| `properties` | child schema map |
-| `items` | array item schema |
-| `component` | field component key |
-| `decorator` | field decorator key |
+| `required` | whether required |
+| `enum` | enum values |
+| `minimum` / `maximum` | numeric range |
+| `minLength` / `maxLength` | string length range |
+| `pattern` | regex rule |
+| `format` | format rule |
+| `properties` | object child fields |
+| `items` | array item definition |
+| `definitions` | root reusable definitions |
+| `$ref` | local definitions reference |
+
+## Runtime Extension Fields
+
+| Field | Description |
+| --- | --- |
+| `state` | initial display and interaction state |
+| `validators` | static validation rules |
+| `component` | component registry key |
 | `props` | component props |
+| `decorator` | decorator registry key |
 | `decoratorProps` | decorator props |
-| `validators` | static validator list |
-| `state` | initial display and pattern state |
 | `dataSource` | option list |
-| `x-reaction` | runtime reaction rules |
-| `x-format` | input/output formatting rules |
+| `dataSourcePolicy` | value handling policy when the option list changes |
+| `x-reaction` | field-property linkage |
+| `x-format` | input/output value conversion |
 | `x-validate` | dynamic validation rules |
-| `definitions` | root reusable schema definitions |
-| `$ref` | local reference to `#/definitions/Name` |
+| `content` | layout node content |
+| `data` | custom metadata |
+| `layoutProps` | layout component props |
 
-## Behavior Notes
+## Node Behavior
 
-- `enum` and `dataSource` both become `field.dataSource`.
-- `$ref` is local-only and root-definition-only.
-- `void` nodes are layout nodes and do not contribute values to `form.values`.
+### object
+
+- with `component`: creates a field instance and still recurses into child properties
+- without `component`: acts only as a structural container and does not create a standalone field
+
+### void
+
+- acts as a layout node
+- does not participate in `form.values`
+- can still carry component, title, description, and layout props
+
+### array
+
+- when `items` is an object structure, the runtime creates the array field plus row child fields
+- otherwise it behaves as a simple array field
+
+## definitions / $ref
+
+### Supported Scope
+
+The current implementation only supports:
+
+```json
+{ "$ref": "#/definitions/Name" }
+```
+
+Not supported:
+
+- remote references
+- arbitrary JSON Pointer
+- non-root definitions paths
+
+### Merge Rule
+
+After `$ref` expansion, local fields override referenced fields.
+
+## state
+
+`state` is normalized into only two runtime concepts:
+
+- `display`: `visible | hidden | none`
+- `pattern`: `editable | readOnly | disabled | readPretty`
+
+## dataSource
+
+`dataSource` is normalized into a consistent option structure. `enum` also ends up as `field.dataSource`.
+
+## dataSourcePolicy
+
+Supported policies:
+
+- `preserve`
+- `clear`
+- `filter`
+- `first`
+
+These control what happens to the current value when the option list changes.
+
+## x-reaction
+
+The real shape is:
+
+```json
+{
+  "x-reaction": {
+    "display": {
+      "type": "match",
+      "dependencies": {
+        "kind": "kind"
+      },
+      "match": {
+        "email": "visible",
+        "default": "none"
+      }
+    }
+  }
+}
+```
+
+### Supported Rule Types
+
+- `static`
+- `expression`
+- `match`
+- `computed`
+
+### Supported Target Keys
+
+- `value`
+- `display`
+- `visible`
+- `hidden`
+- `pattern`
+- `disabled`
+- `readOnly`
+- `readPretty`
+- `editable`
+- `required`
+- `title`
+- `description`
+- `props`
+- `decoratorProps`
+- `component`
+- `decorator`
+- `dataSource`
+
+## x-format
+
+The shape is always:
+
+```json
+{
+  "x-format": {
+    "input": { ...rule },
+    "output": { ...rule }
+  }
+}
+```
+
+### Actual Timing
+
+- `input`: field creation, `form.setValues()`
+- `output`: reading `form.values`, calling `form.submit()`
+
+### Important Note
+
+`x-format.input` does not automatically run on every user keystroke.
+
+## x-validate
+
+`x-validate` is a single rule or an array of rules:
+
+```json
+{
+  "x-validate": {
+    "type": "expression",
+    "expression": "$value ? undefined : 'Required'"
+  }
+}
+```
+
+### Execution Order
+
+Field validation runs in this order:
+
+1. skip if `display === 'none'`
+2. `required`
+3. `validators`
+4. `x-validate`
+
+## form.values Boundary
+
+`form.values` is the filtered and output-formatted result, not the raw value snapshot.
+
+It excludes:
+
+- fields with `display === 'none'`
+- `void` nodes
+- array child field paths
+
+and applies `x-format.output` before returning the result.
+
+## Recommended Reading Order
+
+To understand the actual runtime behavior in detail, continue with:
+
+- [Schema Protocol](/guide/schema-protocol)
+- [x-reaction](/guide/advanced/x-reaction)
+- [x-format](/guide/advanced/x-format)
+- [x-validate](/guide/advanced/x-validate)
