@@ -23,7 +23,7 @@ interface IFormSchema {
 
 `IFieldSchema` 可以理解为三层信息的组合：
 
-- JSON Schema 子集：`type`、`default`、`required`、`enum`、`minimum` 等
+- JSON Schema 子集：`type`、`default`、`required`、`minimum` 等
 - UI 投影字段：`component`、`props`、`decorator`、`decoratorProps`
 - 动态协议字段：`x-reaction`、`x-format`、`x-validate`
 
@@ -49,14 +49,13 @@ interface IFormSchema {
 | `description` | 描述 |
 | `default` | 默认值 |
 | `required` | 是否必填 |
-| `enum` | 枚举值 |
 | `minimum` / `maximum` | 数值范围 |
 | `minLength` / `maxLength` | 字符串长度范围 |
 | `pattern` | 正则规则 |
 | `format` | 格式规则 |
 | `properties` | 对象子属性 |
 | `items` | 数组项定义 |
-| `definitions` | 根级可复用定义 |
+| `definitions` | 根级可复用定义，仅允许出现在根 `IFormSchema` |
 | `$ref` | 本地 definitions 引用 |
 
 ## 运行时扩展字段
@@ -76,7 +75,6 @@ interface IFormSchema {
 | `x-validate` | 动态校验规则 |
 | `content` | 布局型节点内容 |
 | `data` | 自定义附加数据 |
-| `layoutProps` | 布局组件 props |
 
 ## 节点行为
 
@@ -106,6 +104,8 @@ interface IFormSchema {
 { "$ref": "#/definitions/Name" }
 ```
 
+并且 `definitions` 只能定义在根 `IFormSchema` 上，不能定义在任意字段节点里。
+
 不支持：
 
 - 远程引用
@@ -118,14 +118,14 @@ interface IFormSchema {
 
 ## state
 
-`state` 最终只会映射到两个运行时概念：
+`state` 只保留两个主入口：
 
 - `display`: `visible | hidden | none`
 - `pattern`: `editable | readOnly | disabled | readPretty`
 
 ## dataSource
 
-`dataSource` 会被标准化为统一选项结构。`enum` 最终也会映射为 `field.dataSource`。
+`dataSource` 会被标准化为统一选项结构，是当前 schema 协议里唯一的选项源入口。
 
 ## dataSourcePolicy
 

@@ -148,17 +148,6 @@ export interface SchemaFormat {
 export type SchemaXValidate = SchemaRuleSet
 
 // ============================================================
-// Schema Enum
-// ============================================================
-
-export type SchemaEnum = Array<
-  | string
-  | number
-  | { label: any; value: any; [key: string]: any }
-  | { key: any; title: any; [key: string]: any }
->
-
-// ============================================================
 // Field Mutable State
 // ============================================================
 
@@ -254,7 +243,6 @@ export interface IFieldSchema {
   description?: string
   default?: any
   required?: boolean | string[]
-  enum?: SchemaEnum
   const?: any
 
   // Numeric validators
@@ -275,30 +263,16 @@ export interface IFieldSchema {
   minItems?: number
   uniqueItems?: boolean
 
-  // Object validators
-  maxProperties?: number
-  minProperties?: number
-
   // Structural
   properties?: Record<string, IFieldSchema>
   items?: IFieldSchema | IFieldSchema[]
-  additionalItems?: IFieldSchema
-  patternProperties?: Record<string, IFieldSchema>
-  additionalProperties?: IFieldSchema
 
-  // $ref and definitions
-  definitions?: Record<string, IFieldSchema>
+  // $ref only supports root-level definitions on IFormSchema
   $ref?: string
-
-  // Read/Write
-  readOnly?: boolean
-  writeOnly?: boolean
 
   // --- AlienForm Schema Protocol ---
   order?: number
   state?: Partial<Pick<FieldMutableState,
-    | 'visible'
-    | 'hidden'
     | 'display'
     | 'pattern'
     | 'disabled'
@@ -321,21 +295,6 @@ export interface IFieldSchema {
   data?: Record<string, any>
   dataSource?: Array<{ label: string; value: any; [key: string]: any }>
   dataSourcePolicy?: DataSourcePolicy
-  layoutProps?: LayoutProps
-}
-
-// ============================================================
-// Layout Props
-// ============================================================
-
-export interface LayoutProps {
-  columns?: number
-  span?: number
-  gap?: number
-  direction?: 'horizontal' | 'vertical'
-  bordered?: boolean
-  collapsible?: boolean
-  defaultCollapsed?: boolean
 }
 
 // ============================================================

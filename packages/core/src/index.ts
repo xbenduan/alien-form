@@ -32,12 +32,10 @@ export type {
   FieldPatternTypes,
   FieldDisplayTypes,
   ValidatorFormats,
-  SchemaEnum,
   Validator,
   ValidatorFn,
   ValidatorRule,
   FormConfig,
-  LayoutProps,
   FormError,
   FormErrorScope,
 } from './types'

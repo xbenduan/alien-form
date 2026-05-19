@@ -367,7 +367,7 @@ describe('@alien-form/core', () => {
         source: { type: 'string', default: 'off' },
         first: {
           type: 'string',
-          state: { visible: false },
+          state: { display: 'none' },
           'x-reaction': {
             visible: {
               dependencies: { source: 'source' },
@@ -378,7 +378,7 @@ describe('@alien-form/core', () => {
         },
         second: {
           type: 'string',
-          state: { visible: false },
+          state: { display: 'none' },
           'x-reaction': {
             visible: {
               dependencies: { source: 'source' },
@@ -418,7 +418,7 @@ describe('@alien-form/core', () => {
           type: 'string',
           title: 'Hidden by visible',
           required: true,
-          state: { visible: false },
+          state: { display: 'none' },
         },
         hiddenByDisplay: {
           type: 'string',
@@ -428,7 +428,7 @@ describe('@alien-form/core', () => {
         },
         hiddenField: {
           type: 'string',
-          state: { hidden: true },
+          state: { display: 'hidden' },
         },
         disabledField: {
           type: 'string',
@@ -836,7 +836,7 @@ describe('@alien-form/core', () => {
               },
               companyName: {
                 type: 'string',
-                state: { visible: false },
+                state: { display: 'none' },
                 'x-reaction': {
                   visible: {
                     dependencies: { type: '.type' },

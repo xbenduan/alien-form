@@ -2,5 +2,7 @@
   { "type": "file", "name": "introduction", "label": "介绍" },
   { "type": "file", "name": "permissions", "label": "权限与可见性" },
   { "type": "file", "name": "imperative-logic", "label": "命令式逻辑" },
-  { "type": "file", "name": "async-data", "label": "异步数据获取" }
+  { "type": "file", "name": "async-data", "label": "异步数据获取" },
+  { "type": "file", "name": "edit-initialization", "label": "编辑态初始化" },
+  { "type": "file", "name": "composite-fields", "label": "复杂组件建模" }
 ]

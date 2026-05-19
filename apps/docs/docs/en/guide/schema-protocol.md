@@ -63,7 +63,6 @@ AlienForm supports a practical subset of JSON Schema:
 - `description`
 - `default`
 - `required`
-- `enum`
 - `minimum`
 - `maximum`
 - `minLength`
@@ -72,7 +71,7 @@ AlienForm supports a practical subset of JSON Schema:
 - `format`
 - `properties`
 - `items`
-- `definitions`
+- `definitions` (root only)
 - `$ref`
 
 These fields are not preserved as-is forever. They are translated into field state, validators, and runtime structure.
@@ -94,7 +93,6 @@ Compared with plain JSON Schema, AlienForm adds:
 - `x-validate`
 - `content`
 - `data`
-- `layoutProps`
 
 The most important categories are:
 
@@ -179,15 +177,15 @@ So many schema fields become runtime field state rather than staying as raw conf
 
 ## The Real Meaning of state
 
-`state` is not a separate runtime system. It is just a shorthand for initial field state.
+`state` is not an independent subsystem. It is the canonical entry for initial field state.
 
-Display state always collapses into:
+Display state values are:
 
 - `visible`
 - `hidden`
 - `none`
 
-Interaction state always collapses into:
+Interaction state values are:
 
 - `editable`
 - `readOnly`
@@ -196,8 +194,8 @@ Interaction state always collapses into:
 
 In other words:
 
-- `visible/hidden/display` are normalized into `display`
-- `readOnly/readPretty/disabled/editable/pattern` are normalized into `pattern`
+- `display` owns visibility: `visible | hidden | none`
+- `pattern` owns interaction mode: `editable | readOnly | disabled | readPretty`
 
 ## The Real Role of component and decorator
 
@@ -220,9 +218,9 @@ At runtime, AlienForm does this:
 
 So schema describes component identity, not component implementation.
 
-## dataSource and enum
+## dataSource
 
-Both `enum` and `dataSource` end up as `field.dataSource`.
+`dataSource` is the only option-source entry in the current schema protocol.
 
 Before reaching the field model, the option list is normalized:
 
@@ -260,6 +258,8 @@ Only this shape is supported:
 ```json
 { "$ref": "#/definitions/Name" }
 ```
+
+And `definitions` can only be declared on the root `IFormSchema`; declaring it inside field nodes has no effect.
 
 Not supported:
 

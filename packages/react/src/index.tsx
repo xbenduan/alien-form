@@ -184,9 +184,8 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
   // Void nodes — layout containers
   if (schema.type === 'void' && schema.properties) {
     const LayoutComponent = schema.component ? components[schema.component] : null
-    const layoutProps = {
+    const componentProps = {
       ...(schema.props || {}),
-      ...(schema.layoutProps || {}),
       title: schema.title,
       description: schema.description,
     }
@@ -205,7 +204,7 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
     ))
 
     if (LayoutComponent) {
-      return <LayoutComponent {...layoutProps}>{children}</LayoutComponent>
+      return <LayoutComponent {...componentProps}>{children}</LayoutComponent>
     }
     return <>{children}</>
   }

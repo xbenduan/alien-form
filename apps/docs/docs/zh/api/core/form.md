@@ -30,6 +30,7 @@ const form = createForm()
 | --- | --- |
 | `setSchema(schema)` | 根据 schema 重建字段注册表和联动规则 |
 | `getField(path)` | 根据路径获取字段实例 |
+| `setInitialValues(values)` | 更新表单的初始值快照，供 `reset()` 使用 |
 | `setValues(values)` | 将值批量写入现有的字段中 |
 | `validate()` | 校验所有可见字段 |
 | `submit(onSubmit?)` | 校验表单并返回输出值 |
@@ -41,5 +42,6 @@ const form = createForm()
 ## 注意事项
 
 - `setSchema()` 在重建之前会清除旧的字段和联动规则。
+- `setInitialValues()` 只更新初始值基线，不会自动改写当前字段值；编辑态回填通常需要与 `setValues()` 配合使用。
 - `values` 是一个派生状态，而不是一个可变的内部状态容器。
 - 当校验失败时，`submit()` 会抛出异常，并将错误信息字符串附加到抛出的错误对象上。

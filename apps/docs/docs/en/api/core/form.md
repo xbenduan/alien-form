@@ -30,6 +30,7 @@ const form = createForm()
 | --- | --- |
 | `setSchema(schema)` | rebuild field registry and reactions from schema |
 | `getField(path)` | return a field by path |
+| `setInitialValues(values)` | update the initial snapshot used by `reset()` |
 | `setValues(values)` | batch-write values into existing fields |
 | `validate()` | validate visible fields |
 | `submit(onSubmit?)` | validate and return output values |
@@ -41,5 +42,6 @@ const form = createForm()
 ## Notes
 
 - `setSchema()` clears old fields and reactions before rebuilding.
+- `setInitialValues()` only updates the reset baseline; it does not rewrite current field values by itself, so edit hydration usually pairs it with `setValues()`.
 - `values` is derived, not a mutable state bag.
 - `submit()` throws when validation fails and attaches message strings to the thrown error.

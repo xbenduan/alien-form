@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { createForm } from "@alien-form/core";
 import { FormProvider, SchemaField } from "@alien-form/react";
 import type { FormConfig } from "@alien-form/core";
@@ -31,6 +31,100 @@ import {
   ArrayTable,
 } from "@alien-form/ui";
 import type { SchemaItem } from "../useSchema";
+import { SkuTable } from "./sku-table";
+
+const SKU_MATRIX_DEMO_ID = "07-spec-sku-matrix";
+
+interface SpecDraft {
+  name?: string;
+  values?: string[];
+}
+
+interface SkuDraft {
+  skuKey?: string;
+  specSummary?: string;
+  price?: number;
+  stock?: number;
+  startDate?: string;
+  endDate?: string;
+  accessories?: string[];
+  enabled?: boolean;
+}
+
+function createSkuDemoInitialValues() {
+  return {
+    specs: [
+      { name: "颜色", values: ["曜石黑", "月光白"] },
+      { name: "内存", values: ["128G", "256G"] },
+      { name: "运行内存", values: ["8G", "12G"] },
+    ],
+    skus: [],
+  };
+}
+
+function normalizeSpecs(rawSpecs: unknown): Array<{ name: string; values: string[] }> {
+  if (!Array.isArray(rawSpecs)) return [];
+  return rawSpecs
+    .map((spec) => {
+      const name = String((spec as SpecDraft)?.name ?? "").trim();
+      const values = Array.isArray((spec as SpecDraft)?.values)
+        ? (spec as SpecDraft).values!
+            .map((value) => String(value).trim())
+            .filter(Boolean)
+            .filter((value, index, array) => array.indexOf(value) === index)
+        : [];
+      return { name, values };
+    })
+    .filter((spec) => spec.name && spec.values.length > 0);
+}
+
+function buildCartesianSpecRows(
+  specs: Array<{ name: string; values: string[] }>,
+  previousRows: SkuDraft[],
+): SkuDraft[] {
+  if (specs.length === 0) return [];
+
+  const combinations = specs.reduce<Array<Array<{ name: string; value: string }>>>(
+    (accumulator, spec) => {
+      if (accumulator.length === 0) {
+        return spec.values.map((value) => [{ name: spec.name, value }]);
+      }
+      return accumulator.flatMap((combination) =>
+        spec.values.map((value) => [...combination, { name: spec.name, value }]),
+      );
+    },
+    [],
+  );
+
+  const previousMap = new Map(
+    previousRows
+      .filter((row) => row?.skuKey)
+      .map((row) => [row.skuKey as string, row]),
+  );
+
+  return combinations.map((combination) => {
+    const skuKey = combination
+      .map((item) => `${item.name}=${item.value}`)
+      .join("|");
+    const specSummary = combination.map((item) => `${item.name}: ${item.value}`).join(" / ");
+    const previous = previousMap.get(skuKey);
+
+    return {
+      skuKey,
+      specSummary,
+      price: previous?.price,
+      stock: previous?.stock ?? 0,
+      startDate: previous?.startDate ?? "",
+      endDate: previous?.endDate ?? "",
+      accessories: Array.isArray(previous?.accessories) ? previous?.accessories : [],
+      enabled: previous?.enabled ?? true,
+    };
+  });
+}
+
+function areSkuRowsEqual(a: SkuDraft[], b: SkuDraft[]): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
 
 // --- Computed reaction handlers (for demo) ---
 
@@ -151,6 +245,7 @@ const components: ComponentMap = {
   FormSection,
   ArrayCards,
   ArrayTable,
+  SkuTable,
 };
 
 const decorators: DecoratorMap = {
@@ -164,14 +259,55 @@ interface SchemaRendererProps {
 export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ schema }) => {
   const [result, setResult] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
+  const syncingSkuMatrixRef = useRef(false);
+  const skuSyncTimerRef = useRef<number | null>(null);
 
   const form = useMemo(
     () =>
       createForm({
         handlers,
+        initialValues:
+          schema.id === SKU_MATRIX_DEMO_ID ? createSkuDemoInitialValues() : undefined,
       }),
     [schema.id],
   );
+
+  useEffect(() => {
+    if (schema.id !== SKU_MATRIX_DEMO_ID) return;
+
+    const syncSkuMatrix = () => {
+      if (syncingSkuMatrixRef.current) return;
+
+      const specs = normalizeSpecs(form.getField("specs")?.value);
+      const currentSkus = Array.isArray(form.getField("skus")?.value)
+        ? (form.getField("skus")?.value as SkuDraft[])
+        : [];
+      const nextSkus = buildCartesianSpecRows(specs, currentSkus);
+
+      if (areSkuRowsEqual(currentSkus, nextSkus)) return;
+
+      syncingSkuMatrixRef.current = true;
+      form.setValues({ skus: nextSkus });
+      syncingSkuMatrixRef.current = false;
+    };
+
+    const dispose = form.onValuesChange(() => {
+      syncSkuMatrix();
+    });
+
+    skuSyncTimerRef.current = window.setTimeout(() => {
+      syncSkuMatrix();
+    }, 0);
+
+    return () => {
+      dispose();
+      if (skuSyncTimerRef.current !== null) {
+        window.clearTimeout(skuSyncTimerRef.current);
+        skuSyncTimerRef.current = null;
+      }
+      syncingSkuMatrixRef.current = false;
+    };
+  }, [form, schema.id]);
 
   const handleSubmit = useCallback(async () => {
     setSubmitting(true);

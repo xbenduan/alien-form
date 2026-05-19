@@ -23,7 +23,7 @@ interface IFormSchema {
 
 `IFieldSchema` can be understood as three layers combined together:
 
-- JSON Schema subset: `type`, `default`, `required`, `enum`, `minimum`, and so on
+- JSON Schema subset: `type`, `default`, `required`, `minimum`, and so on
 - UI projection fields: `component`, `props`, `decorator`, `decoratorProps`
 - dynamic protocol fields: `x-reaction`, `x-format`, `x-validate`
 
@@ -49,14 +49,13 @@ Supported field types:
 | `description` | field description |
 | `default` | default value |
 | `required` | whether required |
-| `enum` | enum values |
 | `minimum` / `maximum` | numeric range |
 | `minLength` / `maxLength` | string length range |
 | `pattern` | regex rule |
 | `format` | format rule |
 | `properties` | object child fields |
 | `items` | array item definition |
-| `definitions` | root reusable definitions |
+| `definitions` | root reusable definitions, allowed only on the root `IFormSchema` |
 | `$ref` | local definitions reference |
 
 ## Runtime Extension Fields
@@ -76,7 +75,6 @@ Supported field types:
 | `x-validate` | dynamic validation rules |
 | `content` | layout node content |
 | `data` | custom metadata |
-| `layoutProps` | layout component props |
 
 ## Node Behavior
 
@@ -106,6 +104,8 @@ The current implementation only supports:
 { "$ref": "#/definitions/Name" }
 ```
 
+And `definitions` can only be declared on the root `IFormSchema`, not on arbitrary field nodes.
+
 Not supported:
 
 - remote references
@@ -118,14 +118,14 @@ After `$ref` expansion, local fields override referenced fields.
 
 ## state
 
-`state` is normalized into only two runtime concepts:
+`state` keeps only two canonical entries:
 
 - `display`: `visible | hidden | none`
 - `pattern`: `editable | readOnly | disabled | readPretty`
 
 ## dataSource
 
-`dataSource` is normalized into a consistent option structure. `enum` also ends up as `field.dataSource`.
+`dataSource` is normalized into a consistent option structure and is the only option-source entry in the current schema protocol.
 
 ## dataSourcePolicy
 

@@ -88,15 +88,14 @@ export class Field implements IField {
 
     this._value = signal(this.isArrayField ? (Array.isArray(defaultValue) ? defaultValue : []) : defaultValue)
 
-    // Display: visible | hidden | none
-    const display: FieldDisplayTypes = schema.state?.display ||
-      (schema.state?.visible === false ? 'none' : schema.state?.hidden === true ? 'hidden' : 'visible')
+    // Display is defined explicitly through state.display.
+    const display: FieldDisplayTypes = schema.state?.display || 'visible'
     this._display = signal<FieldDisplayTypes>(display)
 
     // Pattern: editable | readOnly | disabled | readPretty
     const pattern: FieldPatternTypes = schema.state?.pattern ||
       (schema.state?.readPretty === true ? 'readPretty'
-        : schema.state?.readOnly === true || schema.readOnly === true ? 'readOnly'
+        : schema.state?.readOnly === true ? 'readOnly'
           : schema.state?.disabled === true ? 'disabled'
             : schema.state?.editable === false ? 'readOnly' : 'editable')
     this._pattern = signal<FieldPatternTypes>(pattern)
@@ -111,7 +110,7 @@ export class Field implements IField {
     this._componentProps = signal(schema.props || {})
     this._decorator = signal(schema.decorator || 'FormItem')
     this._decoratorProps = signal(schema.decoratorProps || {})
-    this._dataSource = signal(normalizeDataSource(schema.dataSource || schema.enum))
+    this._dataSource = signal(normalizeDataSource(schema.dataSource))
     this._dataSourcePolicy = schema.dataSourcePolicy || 'preserve'
     this._loading = signal(false)
     this._data = signal(schema.data || {})
@@ -610,7 +609,7 @@ function normalizeDataSource(
     if (typeof item === 'string' || typeof item === 'number') {
       return { label: String(item), value: item }
     }
-    // Support { key, title } format (Formily SchemaEnum)
+    // Support legacy { key, title } option objects.
     if (item && 'key' in item && 'title' in item && !('label' in item)) {
       return { label: String(item.title), value: item.key, ...item }
     }
