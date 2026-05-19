@@ -1,5 +1,5 @@
 /**
- * @formily-bao/react — React bindings
+ * @alien-form/react — React bindings
  * Enterprise schema protocol inspired by Formily
  */
 
@@ -13,7 +13,7 @@ import {
   Fragment,
 } from 'react'
 import type React from 'react'
-import type { IForm, IField, IFormSchema } from '@formily-bao/core'
+import type { IForm, IField, IFormSchema } from '@alien-form/core'
 
 export type ComponentMap = Record<string, React.ComponentType<any>>
 export type DecoratorMap = Record<string, React.ComponentType<any>>

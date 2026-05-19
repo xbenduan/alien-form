@@ -1,10 +1,10 @@
 # Custom Components
 
-Extend FormBao with custom field components and decorators.
+Extend AlienForm with custom field components and decorators.
 
 ## Component Contract
 
-Every component receives these props from `FieldRenderer` in `@formily-bao/react`:
+Every component receives these props from `FieldRenderer` in `@alien-form/react`:
 
 ```ts
 {
@@ -123,7 +123,7 @@ function InlineDecorator({ children, label, required, errors }) {
 Custom components can access the full field instance:
 
 ```tsx
-import { useField } from '@formily-bao/react'
+import { useField } from '@alien-form/react'
 
 function SmartInput(props) {
   const field = useField()

@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback } from "react";
-import { createForm } from "@formily-bao/core";
-import { FormProvider, SchemaField } from "@formily-bao/react";
-import type { FormConfig } from "@formily-bao/core";
-import type { ComponentMap, DecoratorMap } from "@formily-bao/react";
+import { createForm } from "@alien-form/core";
+import { FormProvider, SchemaField } from "@alien-form/react";
+import type { FormConfig } from "@alien-form/core";
+import type { ComponentMap, DecoratorMap } from "@alien-form/react";
 import {
   Card,
   CardHeader,
@@ -29,7 +29,7 @@ import {
   FormSection,
   ArrayCards,
   ArrayTable,
-} from "@formily-bao/ui";
+} from "@alien-form/ui";
 import type { SchemaItem } from "../useSchema";
 
 // --- Computed reaction handlers (for demo) ---

@@ -1,6 +1,6 @@
 # Protocol Design
 
-FormBao is inspired by Schema Form ideas but does not aim for Formily compatibility. The enterprise protocol prioritizes auditability, governance, and a simpler mental model.
+AlienForm is inspired by Schema Form ideas but does not aim for Formily compatibility. The enterprise protocol prioritizes auditability, governance, and a simpler mental model.
 
 ## Principles
 
@@ -28,4 +28,4 @@ FormBao is inspired by Schema Form ideas but does not aim for Formily compatibil
 
 ## Why no two-layer protocol
 
-A two-layer protocol mixes conditions, branches, actions, and controlled fields, making audits harder. FormBao keeps the main protocol single-layered: `x-reaction[key] = rule`, where the key is the derived field property.
+A two-layer protocol mixes conditions, branches, actions, and controlled fields, making audits harder. AlienForm keeps the main protocol single-layered: `x-reaction[key] = rule`, where the key is the derived field property.

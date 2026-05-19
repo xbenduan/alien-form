@@ -1,13 +1,13 @@
 {
-  "name": "formily-bao",
+  "name": "alien-form",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @formily-bao/demo run dev",
-    "dev:docs": "pnpm --filter @formily-bao/docs run dev",
+    "dev": "pnpm --filter @alien-form/demo run dev",
+    "dev:docs": "pnpm --filter @alien-form/docs run dev",
     "build": "pnpm -r run build",
     "package:source": "bash ./scripts/package-project.sh",
     "test": "pnpm -r run test",
-    "test:core": "pnpm --filter @formily-bao/core run test"
+    "test:core": "pnpm --filter @alien-form/core run test"
   },
   "devDependencies": {
     "typescript": "^5.4.0"

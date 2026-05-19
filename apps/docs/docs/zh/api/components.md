@@ -1,6 +1,6 @@
 # Components API
 
-所有 UI 组件都从 `@formily-bao/ui` 导出，但真正接入 FormBao 时，必须先理解 React 层给组件传的协议 props，而不是只看组件自己的 props。
+所有 UI 组件都从 `@alien-form/ui` 导出，但真正接入 AlienForm 时，必须先理解 React 层给组件传的协议 props，而不是只看组件自己的 props。
 
 ## 先看统一组件契约
 
@@ -307,4 +307,4 @@ const components = {
 这个例子很好地说明了两件事：
 
 - 组件不需要自己理解联动协议，它只消费 `pattern`、`readPretty`、`props` 等最终结果。
-- 真正的联动逻辑发生在 `@formily-bao/core`，UI 组件保持纯展示。
+- 真正的联动逻辑发生在 `@alien-form/core`，UI 组件保持纯展示。

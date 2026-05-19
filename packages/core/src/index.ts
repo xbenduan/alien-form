@@ -1,5 +1,5 @@
 /**
- * @formily-bao/core — Main entry point
+ * @alien-form/core — Main entry point
  */
 
 // Form & Field

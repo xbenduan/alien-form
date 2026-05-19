@@ -1,6 +1,6 @@
 # Linkage Protocol
 
-FormBao `x-reaction` are **field-owned, property-level** derivation rules. A field declares how one of its own properties is computed from dependencies; it does not control another field.
+AlienForm `x-reaction` are **field-owned, property-level** derivation rules. A field declares how one of its own properties is computed from dependencies; it does not control another field.
 
 ## Basic structure
 
@@ -25,7 +25,7 @@ FormBao `x-reaction` are **field-owned, property-level** derivation rules. A fie
 
 ## Built-in types
 
-FormBao has exactly four built-in reaction rule types:
+AlienForm has exactly four built-in reaction rule types:
 
 - `static`：write a fixed value.
 - `expression`：evaluate a safe raw expression string.

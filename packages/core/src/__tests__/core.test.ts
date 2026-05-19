@@ -31,7 +31,7 @@ function createDeferred<T>() {
   return { promise, resolve, reject }
 }
 
-describe('@formily-bao/core', () => {
+describe('@alien-form/core', () => {
   it('creates fields from schema and returns form values', () => {
     const form = createForm({ initialValues: { name: 'Bao', age: 20 } })
     form.setSchema(basicSchema)
@@ -161,7 +161,7 @@ describe('@formily-bao/core', () => {
     expect(form.values).toEqual({ newField: 'new' })
   })
 
-  it('initializes FormBao protocol fields and sorts by order', () => {
+  it('initializes AlienForm protocol fields and sorts by order', () => {
     const form = createForm()
     form.setSchema({
       type: 'object',

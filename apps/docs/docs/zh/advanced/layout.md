@@ -4,7 +4,7 @@
 
 ## Void 字段处理
 
-`@formily-bao/react` 中的 `SchemaFieldItem` 检测到 `type === 'void'` 时：
+`@alien-form/react` 中的 `SchemaFieldItem` 检测到 `type === 'void'` 时：
 1. 在组件映射中查找 `component`
 2. 将 `props` 和 `layoutProps` 作为 props 传入
 3. 按 `order` 排序渲染子节点

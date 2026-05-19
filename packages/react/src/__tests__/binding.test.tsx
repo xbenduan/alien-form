@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import React from 'react'
 import { render, fireEvent, cleanup, act } from '@testing-library/react'
-import { createForm } from '@formily-bao/core'
+import { createForm } from '@alien-form/core'
 import { FormProvider, SchemaField, useForm, useFormState } from '../index'
 
 afterEach(() => {

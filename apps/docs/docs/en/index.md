@@ -2,12 +2,12 @@
 pageType: home
 
 hero:
-  name: FormBao
+  name: AlienForm
   text: Schema-Driven Form Engine
   tagline: Bilingual docs aligned with the real source code across core, react, ui, and demo-backed protocol examples
   image:
     src: /logo.svg
-    alt: FormBao
+    alt: AlienForm
   actions:
     - theme: brand
       text: Getting Started
@@ -25,13 +25,13 @@ features:
     details: Examples come from `apps/demo` and are embedded into the related API pages so the behavior stays grounded.
 ---
 
-# FormBao
+# AlienForm
 
-FormBao is an enterprise-oriented schema form engine made of three runtime packages:
+AlienForm is an enterprise-oriented schema form engine made of three runtime packages:
 
-- `@formily-bao/core`: form model, field state, expression evaluation, and dynamic protocol execution.
-- `@formily-bao/react`: React context, schema renderer, and hooks.
-- `@formily-bao/ui`: default UI widgets and layout containers.
+- `@alien-form/core`: form model, field state, expression evaluation, and dynamic protocol execution.
+- `@alien-form/react`: React context, schema renderer, and hooks.
+- `@alien-form/ui`: default UI widgets and layout containers.
 
 ## What These Docs Emphasize
 

@@ -1,6 +1,6 @@
 # Enterprise Security
 
-FormBao security boundary: Schema may describe structure, validation, and controlled derivation, but it must not carry arbitrary execution capability.
+AlienForm security boundary: Schema may describe structure, validation, and controlled derivation, but it must not carry arbitrary execution capability.
 
 ## Reaction security model
 

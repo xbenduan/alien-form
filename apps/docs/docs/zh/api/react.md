@@ -1,6 +1,6 @@
 # React API
 
-`@formily-bao/react` 是当前仓库的 React 绑定层，负责把 `Form` / `Field` 模型接进 React Context，并将 Schema 渲染成组件树。
+`@alien-form/react` 是当前仓库的 React 绑定层，负责把 `Form` / `Field` 模型接进 React Context，并将 Schema 渲染成组件树。
 
 ## 导出总览
 

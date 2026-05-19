@@ -1,6 +1,6 @@
 # Core API
 
-`@formily-bao/core` currently exports two runtime entry points plus a set of types: `createForm`, `Form`, `Field`, and types such as `IForm`, `IField`, `IFormSchema`, `IFieldSchema`, `RuntimeRuleHandler`, and more.
+`@alien-form/core` currently exports two runtime entry points plus a set of types: `createForm`, `Form`, `Field`, and types such as `IForm`, `IField`, `IFormSchema`, `IFieldSchema`, `RuntimeRuleHandler`, and more.
 
 ## Export Overview
 
@@ -16,7 +16,7 @@
 ## createForm
 
 ```ts
-import { createForm } from '@formily-bao/core'
+import { createForm } from '@alien-form/core'
 
 const form = createForm({
   initialValues: { contactType: 'email' },

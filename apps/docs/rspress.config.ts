@@ -7,21 +7,21 @@ export default defineConfig({
     {
       lang: 'en',
       label: 'English',
-      title: 'FormBao',
+      title: 'AlienForm',
       description: 'Schema-driven form engine powered by Alien Signals',
     },
     {
       lang: 'zh',
       label: '中文',
-      title: 'FormBao',
+      title: 'AlienForm',
       description: '基于 Alien Signals 的 Schema 驱动表单引擎',
     },
   ],
-  title: 'FormBao',
+  title: 'AlienForm',
   description: 'Schema-driven form engine powered by Alien Signals',
   icon: '/logo.svg',
   logo: '/logo.svg',
-  logoText: 'FormBao',
+  logoText: 'AlienForm',
   themeConfig: {
     socialLinks: [
       {
@@ -31,7 +31,7 @@ export default defineConfig({
       },
     ],
     footer: {
-      message: 'Released under the MIT License.<br />Copyright 2024-present FormBao Contributors',
+      message: 'Released under the MIT License.<br />Copyright 2024-present AlienForm Contributors',
     },
     search: true,
     localeRedirect: 'never',

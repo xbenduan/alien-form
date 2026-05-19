@@ -1,5 +1,5 @@
 /**
- * @formily-bao/core — Path utilities
+ * @alien-form/core — Path utilities
  *
  * The flat field model uses `.` as the path separator and numeric segments to
  * denote array indices. These helpers operate on that convention.

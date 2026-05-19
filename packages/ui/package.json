@@ -1,7 +1,7 @@
 {
-  "name": "@formily-bao/ui",
+  "name": "@alien-form/ui",
   "version": "1.0.0",
-  "description": "Shadcn-based UI components for FormBao",
+  "description": "Shadcn-based UI components for AlienForm",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {

@@ -1,5 +1,5 @@
 /**
- * @formily-bao/core — Field types and interfaces
+ * @alien-form/core — Field types and interfaces
  * Enterprise schema protocol inspired by Formily
  */
 
@@ -242,7 +242,7 @@ export interface IField {
 }
 
 // ============================================================
-// IFieldSchema — JSON Schema with FormBao schema protocol fields
+// IFieldSchema — JSON Schema with AlienForm schema protocol fields
 // ============================================================
 
 export type DataSourcePolicy = 'preserve' | 'clear' | 'filter' | 'first'
@@ -294,7 +294,7 @@ export interface IFieldSchema {
   readOnly?: boolean
   writeOnly?: boolean
 
-  // --- FormBao Schema Protocol ---
+  // --- AlienForm Schema Protocol ---
   order?: number
   state?: Partial<Pick<FieldMutableState,
     | 'visible'

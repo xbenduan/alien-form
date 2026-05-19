@@ -37,7 +37,7 @@
       "nickname": {
         "type": "string",
         "title": "昵称",
-        "default": "FormBao",
+        "default": "AlienForm",
         "component": "Input",
         "decorator": "FormItem",
         "x-reaction": {

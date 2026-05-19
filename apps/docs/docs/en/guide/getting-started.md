@@ -1,11 +1,11 @@
 # Getting Started
 
-This page only covers functionality that is implemented and exported in the current repository: `@formily-bao/core`, `@formily-bao/react`, and `@formily-bao/ui`.
+This page only covers functionality that is implemented and exported in the current repository: `@alien-form/core`, `@alien-form/react`, and `@alien-form/ui`.
 
 ## Installation
 
 ```bash
-pnpm add @formily-bao/core @formily-bao/react @formily-bao/ui
+pnpm add @alien-form/core @alien-form/react @alien-form/ui
 ```
 
 ## Minimal Working Example
@@ -13,9 +13,9 @@ pnpm add @formily-bao/core @formily-bao/react @formily-bao/ui
 `FieldRenderer` passes a unified field contract into your components: `value`, `onChange`, `disabled`, `readOnly`, `readPretty`, `loading`, and `pattern`. Native text inputs such as `Input` and `Textarea` still emit DOM events, so you usually add a thin adapter layer.
 
 ```tsx
-import { createForm } from '@formily-bao/core'
-import { FormProvider, SchemaField } from '@formily-bao/react'
-import { Button, Input, Select, FormItem } from '@formily-bao/ui'
+import { createForm } from '@alien-form/core'
+import { FormProvider, SchemaField } from '@alien-form/react'
+import { Button, Input, Select, FormItem } from '@alien-form/ui'
 
 const form = createForm({
   initialValues: { role: 'developer' },
@@ -81,9 +81,9 @@ export function App() {
 
 | Package | Current responsibility |
 | --- | --- |
-| `@formily-bao/core` | `Form`, `Field`, schema protocol, expressions, validation, array operations |
-| `@formily-bao/react` | `FormProvider`, `SchemaField`, `useForm`, `useField`, `useFormState`, `useArrayField` |
-| `@formily-bao/ui` | Default widgets such as `Input`, `Select`, `Checkbox`, `ArrayCards`, `FormGrid`, and `FormSection` |
+| `@alien-form/core` | `Form`, `Field`, schema protocol, expressions, validation, array operations |
+| `@alien-form/react` | `FormProvider`, `SchemaField`, `useForm`, `useField`, `useFormState`, `useArrayField` |
+| `@alien-form/ui` | Default widgets such as `Input`, `Select`, `Checkbox`, `ArrayCards`, `FormGrid`, and `FormSection` |
 
 ## Where To Go Next
 

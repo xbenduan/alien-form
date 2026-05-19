@@ -1,6 +1,6 @@
 # 异步选项
 
-FormBao core 不内置 URL 获取，也不提供独立的异步数据源字段。异步选项统一通过 `computed` reaction 调用应用层注册的 `handlers`。
+AlienForm core 不内置 URL 获取，也不提供独立的异步数据源字段。异步选项统一通过 `computed` reaction 调用应用层注册的 `handlers`。
 
 ## 注册 handler
 

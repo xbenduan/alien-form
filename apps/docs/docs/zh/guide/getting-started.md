@@ -1,11 +1,11 @@
 # 快速开始
 
-本页只覆盖当前仓库里已经实现并公开导出的能力：`@formily-bao/core`、`@formily-bao/react`、`@formily-bao/ui`。
+本页只覆盖当前仓库里已经实现并公开导出的能力：`@alien-form/core`、`@alien-form/react`、`@alien-form/ui`。
 
 ## 安装
 
 ```bash
-pnpm add @formily-bao/core @formily-bao/react @formily-bao/ui
+pnpm add @alien-form/core @alien-form/react @alien-form/ui
 ```
 
 ## 最小可运行示例
@@ -13,9 +13,9 @@ pnpm add @formily-bao/core @formily-bao/react @formily-bao/ui
 `FieldRenderer` 传给组件的是统一协议：`value`、`onChange`、`disabled`、`readOnly`、`readPretty`、`loading`、`pattern`。但像 `Input`、`Textarea` 这种原生输入组件接收的是 DOM 事件，因此你通常需要做一层适配。
 
 ```tsx
-import { createForm } from '@formily-bao/core'
-import { FormProvider, SchemaField } from '@formily-bao/react'
-import { Button, Input, Select, FormItem } from '@formily-bao/ui'
+import { createForm } from '@alien-form/core'
+import { FormProvider, SchemaField } from '@alien-form/react'
+import { Button, Input, Select, FormItem } from '@alien-form/ui'
 
 const form = createForm({
   initialValues: { role: 'developer' },
@@ -81,9 +81,9 @@ export function App() {
 
 | 包名 | 当前职责 |
 | --- | --- |
-| `@formily-bao/core` | `Form`、`Field`、Schema 协议、表达式、校验、数组操作 |
-| `@formily-bao/react` | `FormProvider`、`SchemaField`、`useForm`、`useField`、`useFormState`、`useArrayField` |
-| `@formily-bao/ui` | `Input`、`Select`、`Checkbox`、`ArrayCards`、`FormGrid`、`FormSection` 等默认组件 |
+| `@alien-form/core` | `Form`、`Field`、Schema 协议、表达式、校验、数组操作 |
+| `@alien-form/react` | `FormProvider`、`SchemaField`、`useForm`、`useField`、`useFormState`、`useArrayField` |
+| `@alien-form/ui` | `Input`、`Select`、`Checkbox`、`ArrayCards`、`FormGrid`、`FormSection` 等默认组件 |
 
 ## 从哪里继续看
 

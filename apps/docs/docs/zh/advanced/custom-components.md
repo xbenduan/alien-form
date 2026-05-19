@@ -1,10 +1,10 @@
 # 自定义组件
 
-通过自定义字段组件和装饰器扩展 FormBao。
+通过自定义字段组件和装饰器扩展 AlienForm。
 
 ## 组件契约
 
-`@formily-bao/react` 中 `FieldRenderer` 传入的属性：
+`@alien-form/react` 中 `FieldRenderer` 传入的属性：
 
 ```ts
 {
@@ -81,7 +81,7 @@ function InlineDecorator({ children, label, required, errors }) {
 ## 使用 FieldContext
 
 ```tsx
-import { useField } from '@formily-bao/react'
+import { useField } from '@alien-form/react'
 
 function SmartInput(props) {
   const field = useField()

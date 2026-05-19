@@ -1,6 +1,6 @@
 # Async Options
 
-FormBao core does not fetch URLs and does not expose a standalone async data source field. Async options are handled by `computed` x-reaction calling application-registered `handlers`.
+AlienForm core does not fetch URLs and does not expose a standalone async data source field. Async options are handled by `computed` x-reaction calling application-registered `handlers`.
 
 ## Register handlers
 

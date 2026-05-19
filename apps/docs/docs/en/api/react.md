@@ -1,6 +1,6 @@
 # React API
 
-`@formily-bao/react` is the React binding layer for the current repository. It connects `Form` / `Field` models into React context and renders schema definitions into component trees.
+`@alien-form/react` is the React binding layer for the current repository. It connects `Form` / `Field` models into React context and renders schema definitions into component trees.
 
 ## Export Overview
 

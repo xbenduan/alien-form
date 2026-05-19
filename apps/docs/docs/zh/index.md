@@ -2,12 +2,12 @@
 pageType: home
 
 hero:
-  name: FormBao
+  name: AlienForm
   text: Schema 驱动表单引擎
   tagline: 以真实源码为准的双语文档，覆盖 core、react、ui 与完整协议示例
   image:
     src: /logo.svg
-    alt: FormBao
+    alt: AlienForm
   actions:
     - theme: brand
       text: 快速开始
@@ -25,13 +25,13 @@ features:
     details: 示例直接来自 apps/demo 中的 schema 场景，并拆分到对应 API 页面，便于边读边对照运行效果。
 ---
 
-# FormBao
+# AlienForm
 
-FormBao 是面向企业场景的 Schema Form 引擎，当前仓库由三个运行时包组成：
+AlienForm 是面向企业场景的 Schema Form 引擎，当前仓库由三个运行时包组成：
 
-- `@formily-bao/core`：表单模型、字段状态、表达式与动态协议执行。
-- `@formily-bao/react`：React Context、Schema 渲染器、hooks。
-- `@formily-bao/ui`：默认 UI 组件与布局容器。
+- `@alien-form/core`：表单模型、字段状态、表达式与动态协议执行。
+- `@alien-form/react`：React Context、Schema 渲染器、hooks。
+- `@alien-form/ui`：默认 UI 组件与布局容器。
 
 ## 你会在这里看到什么
 

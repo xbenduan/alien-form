@@ -1,5 +1,5 @@
 /**
- * @formily-bao/core — Expression safety filter
+ * @alien-form/core — Expression safety filter
  *
  * Schema-driven `expression` rules are executed via `new Function(...)` against
  * a curated scope. Schemas are assumed to come from a trusted distribution

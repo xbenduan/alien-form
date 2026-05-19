@@ -1,6 +1,6 @@
 # Schema API
 
-FormBao 的 Schema 基于 JSON Schema，但当前实现只支持仓库里真的消费到的那部分协议。理解这页时，请始终把 Schema 当成“驱动 `Form.createField()` 和 React 渲染层的配置对象”，而不是完整的 JSON Schema 解释器。
+AlienForm 的 Schema 基于 JSON Schema，但当前实现只支持仓库里真的消费到的那部分协议。理解这页时，请始终把 Schema 当成“驱动 `Form.createField()` 和 React 渲染层的配置对象”，而不是完整的 JSON Schema 解释器。
 
 ## 根 Schema
 
@@ -23,7 +23,7 @@ interface IFormSchema {
 
 ## 字段 Schema
 
-`IFieldSchema` 由两部分组成：JSON Schema 子集 + FormBao 扩展协议。
+`IFieldSchema` 由两部分组成：JSON Schema 子集 + AlienForm 扩展协议。
 
 ### 当前支持的标准字段
 
@@ -42,7 +42,7 @@ interface IFormSchema {
 | `definitions` / `$ref` | 局部定义与引用 |
 | `readOnly` | 会参与 pattern 推导 |
 
-### FormBao 扩展字段
+### AlienForm 扩展字段
 
 | 字段 | 当前行为 |
 | --- | --- |

@@ -1,5 +1,5 @@
 /**
- * @formily-bao/core — Static validator runner & x-validate result normalizer
+ * @alien-form/core — Static validator runner & x-validate result normalizer
  *
  * Used by Form.validate (delegated through Field) for both the schema-derived
  * rules (min/max/length/pattern/...) and the post-processing of x-validate

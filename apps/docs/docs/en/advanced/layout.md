@@ -4,7 +4,7 @@ Layout components use `type: "void"` — they produce no form value and serve pu
 
 ## Void Field Handling
 
-In `@formily-bao/react`, `SchemaFieldItem` detects `type === 'void'` and:
+In `@alien-form/react`, `SchemaFieldItem` detects `type === 'void'` and:
 
 1. Looks up the `component` in the registered components map
 2. Passes `props` and `layoutProps` as props
@@ -21,7 +21,7 @@ if (schema.type === 'void' && schema.properties) {
 
 ## FormGrid
 
-CSS Grid layout. Exported from `@formily-bao/ui`.
+CSS Grid layout. Exported from `@alien-form/ui`.
 
 ```json
 {

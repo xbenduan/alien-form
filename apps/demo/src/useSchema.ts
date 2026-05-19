@@ -1,4 +1,4 @@
-import type { IFormSchema } from '@formily-bao/core'
+import type { IFormSchema } from '@alien-form/core'
 
 export interface SchemaItem {
   id: string

@@ -72,7 +72,7 @@ const { field, items, push, remove, moveUp, moveDown } = useArrayField('contacts
 
 ## ArrayFieldRenderer
 
-The `@formily-bao/react` `ArrayFieldRenderer` component:
+The `@alien-form/react` `ArrayFieldRenderer` component:
 
 1. Subscribes to both the field and the form
 2. Checks `field.display` for visibility

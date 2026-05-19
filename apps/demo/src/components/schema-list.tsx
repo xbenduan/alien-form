@@ -1,5 +1,5 @@
 import React from 'react'
-import { ScrollArea, Badge, cn } from '@formily-bao/ui'
+import { ScrollArea, Badge, cn } from '@alien-form/ui'
 import type { SchemaItem } from '../useSchema'
 
 interface SchemaListProps {
@@ -21,7 +21,7 @@ export const SchemaList: React.FC<SchemaListProps> = ({ schemas, selectedId, onS
   return (
     <div className="flex h-full flex-col">
       <div className="border-b p-4">
-        <h2 className="text-lg font-semibold">FormBao Demo</h2>
+        <h2 className="text-lg font-semibold">AlienForm Demo</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           企业级 Schema 协议学习路径，共 {schemas.length} 个示例
         </p>

@@ -1,6 +1,6 @@
 # Schema API
 
-FormBao schema is based on JSON Schema, but the current implementation only supports the subset that the repository actually consumes. Think of schema here as the config object that drives `Form.createField()` and the React rendering layer, not as a full JSON Schema interpreter.
+AlienForm schema is based on JSON Schema, but the current implementation only supports the subset that the repository actually consumes. Think of schema here as the config object that drives `Form.createField()` and the React rendering layer, not as a full JSON Schema interpreter.
 
 ## Root Schema
 
@@ -23,7 +23,7 @@ interface IFormSchema {
 
 ## Field Schema
 
-`IFieldSchema` combines a JSON Schema subset with FormBao protocol extensions.
+`IFieldSchema` combines a JSON Schema subset with AlienForm protocol extensions.
 
 ### Supported Standard Fields
 
@@ -42,7 +42,7 @@ interface IFormSchema {
 | `definitions` / `$ref` | Local definitions and references |
 | `readOnly` | Participates in pattern derivation |
 
-### FormBao Extension Fields
+### AlienForm Extension Fields
 
 | Field | Current behavior |
 | --- | --- |

@@ -14,13 +14,13 @@ importers:
 
   apps/demo:
     dependencies:
-      '@formily-bao/core':
+      '@alien-form/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@formily-bao/react':
+      '@alien-form/react':
         specifier: workspace:*
         version: link:../../packages/react
-      '@formily-bao/ui':
+      '@alien-form/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       react:
@@ -78,11 +78,10 @@ importers:
         version: 2.1.9(happy-dom@15.11.7)
 
   packages/react:
-    dependencies:
-      '@formily-bao/core':
+    devDependencies:
+      '@alien-form/core':
         specifier: workspace:*
         version: link:../core
-    devDependencies:
       '@testing-library/dom':
         specifier: ^10.0.0
         version: 10.4.1

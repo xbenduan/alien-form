@@ -1,5 +1,5 @@
 {
-  "name": "@formily-bao/core",
+  "name": "@alien-form/core",
   "version": "1.0.0",
   "description": "Alien Signals powered form engine with React binding and schema support",
   "main": "src/index.ts",

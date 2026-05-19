@@ -1,6 +1,6 @@
 # Core API
 
-`@formily-bao/core` 当前只导出两个运行时实体和一组类型：`createForm`、`Form`、`Field` 以及 `IForm`、`IField`、`IFormSchema`、`IFieldSchema`、`RuntimeRuleHandler` 等类型定义。
+`@alien-form/core` 当前只导出两个运行时实体和一组类型：`createForm`、`Form`、`Field` 以及 `IForm`、`IField`、`IFormSchema`、`IFieldSchema`、`RuntimeRuleHandler` 等类型定义。
 
 ## 导出总览
 
@@ -16,7 +16,7 @@
 ## createForm
 
 ```ts
-import { createForm } from '@formily-bao/core'
+import { createForm } from '@alien-form/core'
 
 const form = createForm({
   initialValues: { contactType: 'email' },

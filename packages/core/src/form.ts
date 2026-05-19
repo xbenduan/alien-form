@@ -1,5 +1,5 @@
 /**
- * @formily-bao/core — Form model implementation
+ * @alien-form/core — Form model implementation
  * Enterprise schema protocol inspired by Formily
  */
 
@@ -360,14 +360,14 @@ export class Form implements IForm {
     if (this._errorListeners.size === 0) {
       // Fall back to console so silent failures remain debuggable when no
       // listener is attached. Hosts that subscribe take full ownership.
-      console.warn(`[formily-bao] [${error.scope}${error.key ? ":" + error.key : ""}] ${error.path || "<form>"}: ${error.message}`, error.cause ?? "")
+      console.warn(`[alien-form] [${error.scope}${error.key ? ":" + error.key : ""}] ${error.path || "<form>"}: ${error.message}`, error.cause ?? "")
       return
     }
     for (const listener of this._errorListeners) {
       try {
         listener(error)
       } catch (err) {
-        console.error("[formily-bao] onError listener threw:", err)
+        console.error("[alien-form] onError listener threw:", err)
       }
     }
   }
@@ -796,7 +796,7 @@ export class Form implements IForm {
         // silently return Promise objects as the formatted value, producing
         // values like "[object Promise]". Make this a hard, attributable error.
         const path = field?.path || '<root>'
-        const msg = `[formily-bao] ${kind} "${key}" for "${path}" returned a Promise in a synchronous phase. ` +
+        const msg = `[alien-form] ${kind} "${key}" for "${path}" returned a Promise in a synchronous phase. ` +
           (kind === 'x-format'
             ? 'x-format handlers must be synchronous — move async work to x-reaction (computed) where Promises are awaited.'
             : 'This phase does not await Promises; the rule was skipped.')

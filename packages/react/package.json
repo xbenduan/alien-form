@@ -1,18 +1,19 @@
 {
-  "name": "@formily-bao/react",
+  "name": "@alien-form/react",
   "version": "1.0.0",
-  "description": "React bindings for Formily Bao core",
+  "description": "React bindings for AlienForm core",
   "main": "src/index.tsx",
   "types": "src/index.tsx",
   "scripts": {
-    "build": "tsup src/index.tsx --format esm,cjs --dts --external react --external react-dom --external @formily-bao/core",
+    "build": "tsup src/index.tsx --format esm,cjs --dts --external react --external react-dom --external @alien-form/core",
     "test": "vitest run"
   },
   "peerDependencies": {
-    "@formily-bao/core": "workspace:*",
+    "@alien-form/core": "workspace:*",
     "react": "^18.0.0 || ^19.0.0"
   },
   "devDependencies": {
+    "@alien-form/core": "workspace:*",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
     "@types/react": "^18.3.0",

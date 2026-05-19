@@ -1,5 +1,5 @@
 /**
- * @formily-bao/core — Field implementation using Alien Signals
+ * @alien-form/core — Field implementation using Alien Signals
  * Enterprise schema protocol inspired by Formily
  */
 

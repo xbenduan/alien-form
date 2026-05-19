@@ -1,6 +1,6 @@
 # Components API
 
-All UI components are exported from `@formily-bao/ui`, but when you integrate them with FormBao, the most important thing is the field contract passed by the React layer, not just each component's local props.
+All UI components are exported from `@alien-form/ui`, but when you integrate them with AlienForm, the most important thing is the field contract passed by the React layer, not just each component's local props.
 
 ## Start With The Shared Contract
 
@@ -307,4 +307,4 @@ This fragment comes from `apps/demo/src/schema/06-state-and-display.json`:
 This example shows two important design points:
 
 - Components do not need to understand the linkage protocol; they only consume the final `pattern`, `readPretty`, and `props`.
-- The actual dynamic logic lives in `@formily-bao/core`, while UI components stay presentational.
+- The actual dynamic logic lives in `@alien-form/core`, while UI components stay presentational.
