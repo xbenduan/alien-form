@@ -1,10 +1,12 @@
 ---
 pageType: home
+title: AlienForm
+titleSuffix: Schema-Driven Form Engine
 
 hero:
   name: AlienForm
   text: Schema-Driven Form Engine
-  tagline: Bilingual docs aligned with the real source code across core, react, ui, and demo-backed protocol examples
+  tagline: A bilingual documentation site aligned with the real source code across core, react, ui, and demo-backed protocol examples.
   image:
     src: /logo.svg
     alt: AlienForm
@@ -13,39 +15,19 @@ hero:
       text: Getting Started
       link: /guide/getting-started
     - theme: alt
+      text: View API
+      link: /api/core
+    - theme: alt
       text: 中文文档
       link: /zh/
 
 features:
-  - title: Core / React / UI Layers
-    details: The docs follow the real package exports and split the runtime into headless core, React bindings, and UI components.
-  - title: Protocols Match Implementation
-    details: `x-reaction`, `x-format`, `x-validate`, and `dataSourcePolicy` are documented from the current codebase instead of an idealized design.
-  - title: Demo In Every API Page
-    details: Examples come from `apps/demo` and are embedded into the related API pages so the behavior stays grounded.
+  - title: Real Package Layers
+    details: The docs follow the actual exports of @alien-form/core, @alien-form/react, and @alien-form/ui instead of describing a hypothetical architecture.
+  - title: Runtime Protocols
+    details: x-reaction, x-format, x-validate, dataSourcePolicy, and $ref are documented according to the current implementation and runtime behavior.
+  - title: Demo Driven
+    details: Examples are adapted from apps/demo so every important API section has a concrete schema to compare with the running project.
+  - title: Bilingual Structure
+    details: English and Chinese pages share the same information architecture, which makes API lookup and translation maintenance much easier.
 ---
-
-# AlienForm
-
-AlienForm is an enterprise-oriented schema form engine made of three runtime packages:
-
-- `@alien-form/core`: form model, field state, expression evaluation, and dynamic protocol execution.
-- `@alien-form/react`: React context, schema renderer, and hooks.
-- `@alien-form/ui`: default UI widgets and layout containers.
-
-## What These Docs Emphasize
-
-- Real exports only: every API page is based on what `packages/*/src/index.*` currently exports.
-- Real runtime behavior: for example, `SchemaField` calls `form.setSchema()`, `useField()` subscribes to field changes, and `form.values` applies `x-format.output`.
-- Real demos: snippets are adapted from `apps/demo` instead of being invented in isolation.
-
-## Quick Links
-
-- [Getting Started](./guide/getting-started)
-- [Core API](./api/core)
-- [React API](./api/react)
-- [Schema API](./api/schema)
-- [Components API](./api/components)
-- [Linkage](./advanced/linkage)
-- [Array Fields](./advanced/array-fields)
-- [Async Data Source](./advanced/async-datasource)
