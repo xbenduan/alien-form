@@ -104,7 +104,7 @@ function enforceSingleImageSpec(rawSpecs: unknown): { specs: SpecDraft[]; change
   if (!Array.isArray(rawSpecs)) return { specs: [], changed: false };
 
   const specs = rawSpecs.map((spec) => ({
-    ...((spec as SpecDraft) ?? {}),
+    ...(spec as SpecDraft),
     values: Array.isArray((spec as SpecDraft)?.values)
       ? [...((spec as SpecDraft).values ?? [])]
       : [],
@@ -333,7 +333,7 @@ const handlers: FormConfig["handlers"] = {
 
 const components: ComponentMap = {
   Input: (props: any) => {
-    const { value, onChange, loading, ...rest } = props;
+    const { value, onChange, ...rest } = props;
     return (
       <Input
         value={value ?? ""}
@@ -343,7 +343,7 @@ const components: ComponentMap = {
     );
   },
   Textarea: (props: any) => {
-    const { value, onChange, loading, ...rest } = props;
+    const { value, onChange, ...rest } = props;
     return (
       <Textarea
         value={value ?? ""}

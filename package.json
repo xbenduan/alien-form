@@ -7,9 +7,15 @@
     "build": "pnpm -r run build",
     "package:source": "bash ./scripts/package-project.sh",
     "test": "pnpm -r run test",
-    "test:core": "pnpm --filter @alien-form/core run test"
+    "test:core": "pnpm --filter @alien-form/core run test",
+    "lint": "oxlint --deny-warnings",
+    "lint:core": "oxlint packages/core/src --deny-warnings",
+    "format": "oxfmt . --write",
+    "format:check": "oxfmt . --check"
   },
   "devDependencies": {
+    "oxfmt": "^0.51.0",
+    "oxlint": "^1.66.0",
     "typescript": "^5.4.0"
   }
 }

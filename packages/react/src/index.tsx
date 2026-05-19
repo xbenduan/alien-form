@@ -185,7 +185,7 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
   if (schema.type === 'void' && schema.properties) {
     const LayoutComponent = schema.component ? components[schema.component] : null
     const componentProps = {
-      ...(schema.props || {}),
+      ...schema.props,
       title: schema.title,
       description: schema.description,
     }

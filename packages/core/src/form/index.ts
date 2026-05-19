@@ -613,7 +613,8 @@ export class Form implements IForm {
     const nextSeen = new Set(seen);
     nextSeen.add(refPath);
     // Merge: schema props override $ref props (local overrides)
-    const { $ref, ...localProps } = schema;
+    const localProps = { ...schema };
+    delete localProps.$ref;
     return { ...this._resolveRef(resolved, nextSeen), ...localProps };
   }
 
