@@ -134,9 +134,12 @@
 ```ts
 const form = createForm({
   handlers: {
-    normalizeCode: ({ value }) => String(value ?? '').trim().toUpperCase(),
+    normalizeCode: ({ value }) =>
+      String(value ?? "")
+        .trim()
+        .toUpperCase(),
   },
-})
+});
 ```
 
 ## 管道行为

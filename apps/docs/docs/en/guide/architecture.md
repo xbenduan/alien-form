@@ -38,11 +38,11 @@ The UI layer provides optional components such as `Input`, `Select`, `FormItem`,
 
 ## Main Runtime Objects
 
-| Object | Role |
-| --- | --- |
-| `Form` | owns the field registry and top-level state |
-| `Field` | stores state for a single path |
-| `SchemaField` | renders a schema tree through React |
+| Object         | Role                                             |
+| -------------- | ------------------------------------------------ |
+| `Form`         | owns the field registry and top-level state      |
+| `Field`        | stores state for a single path                   |
+| `SchemaField`  | renders a schema tree through React              |
 | `FormProvider` | connects form and component registries to the UI |
 
 ## Design Direction

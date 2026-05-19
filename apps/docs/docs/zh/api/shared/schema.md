@@ -13,9 +13,9 @@ Schema 的真实入口有两个：
 
 ```ts
 interface IFormSchema {
-  type: 'object'
-  properties?: Record<string, IFieldSchema>
-  definitions?: Record<string, IFieldSchema>
+  type: "object";
+  properties?: Record<string, IFieldSchema>;
+  definitions?: Record<string, IFieldSchema>;
 }
 ```
 
@@ -42,39 +42,39 @@ interface IFormSchema {
 
 ## 标准字段
 
-| 字段 | 说明 |
-| --- | --- |
-| `type` | 字段类型 |
-| `title` | 标题 |
-| `description` | 描述 |
-| `default` | 默认值 |
-| `required` | 是否必填 |
-| `minimum` / `maximum` | 数值范围 |
-| `minLength` / `maxLength` | 字符串长度范围 |
-| `pattern` | 正则规则 |
-| `format` | 格式规则 |
-| `properties` | 对象子属性 |
-| `items` | 数组项定义 |
-| `definitions` | 根级可复用定义，仅允许出现在根 `IFormSchema` |
-| `$ref` | 本地 definitions 引用 |
+| 字段                      | 说明                                         |
+| ------------------------- | -------------------------------------------- |
+| `type`                    | 字段类型                                     |
+| `title`                   | 标题                                         |
+| `description`             | 描述                                         |
+| `default`                 | 默认值                                       |
+| `required`                | 是否必填                                     |
+| `minimum` / `maximum`     | 数值范围                                     |
+| `minLength` / `maxLength` | 字符串长度范围                               |
+| `pattern`                 | 正则规则                                     |
+| `format`                  | 格式规则                                     |
+| `properties`              | 对象子属性                                   |
+| `items`                   | 数组项定义                                   |
+| `definitions`             | 根级可复用定义，仅允许出现在根 `IFormSchema` |
+| `$ref`                    | 本地 definitions 引用                        |
 
 ## 运行时扩展字段
 
-| 字段 | 说明 |
-| --- | --- |
-| `state` | 初始显示态与交互态 |
-| `validators` | 静态校验规则 |
-| `component` | 组件注册键名 |
-| `props` | 组件 props |
-| `decorator` | 包装器注册键名 |
-| `decoratorProps` | 包装器 props |
-| `dataSource` | 选项列表 |
+| 字段               | 说明                     |
+| ------------------ | ------------------------ |
+| `state`            | 初始显示态与交互态       |
+| `validators`       | 静态校验规则             |
+| `component`        | 组件注册键名             |
+| `props`            | 组件 props               |
+| `decorator`        | 包装器注册键名           |
+| `decoratorProps`   | 包装器 props             |
+| `dataSource`       | 选项列表                 |
 | `dataSourcePolicy` | 数据源变化时的值处理策略 |
-| `x-reaction` | 字段属性联动 |
-| `x-format` | 输入态 / 输出态值转换 |
-| `x-validate` | 动态校验规则 |
-| `content` | 布局型节点内容 |
-| `data` | 自定义附加数据 |
+| `x-reaction`       | 字段属性联动             |
+| `x-format`         | 输入态 / 输出态值转换    |
+| `x-validate`       | 动态校验规则             |
+| `content`          | 布局型节点内容           |
+| `data`             | 自定义附加数据           |
 
 ## 节点行为
 

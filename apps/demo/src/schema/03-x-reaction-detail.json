@@ -4,12 +4,7 @@
   "description": "集中演示 property-level x-reaction：联动渲染、联动状态、联动计算、异步加载 dataSource。",
   "category": "02 动态协议",
   "order": 30,
-  "tags": [
-    "x-reaction",
-    "linkage",
-    "async",
-    "computed"
-  ],
+  "tags": ["x-reaction", "linkage", "async", "computed"],
   "schema": {
     "type": "object",
     "title": "x-reaction 详解",

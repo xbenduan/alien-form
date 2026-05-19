@@ -14,12 +14,12 @@
 
 ## Props
 
-| Prop | Description |
-| --- | --- |
-| `form` | required `IForm` instance |
-| `components` | optional field component registry |
-| `decorators` | optional decorator registry |
-| `children` | subtree rendered within the provider |
+| Prop         | Description                          |
+| ------------ | ------------------------------------ |
+| `form`       | required `IForm` instance            |
+| `components` | optional field component registry    |
+| `decorators` | optional decorator registry          |
+| `children`   | subtree rendered within the provider |
 
 ## Notes
 

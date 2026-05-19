@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+
 - `form.onError(listener)` and `FormConfig.onError` to subscribe to non-fatal
   runtime errors from reactions, x-format, x-validate, and `$ref` resolution.
   Falls back to `console.warn` when no listener is attached.
@@ -14,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - Core test for the `onError` channel.
 
 ### Changed
+
 - **Array remove**: `Field.remove(index)` now drops the target row and renames
   the path of every subsequent row in place via `_renamePath`. This preserves
   Field instance identity, subscriptions, and validation errors across
@@ -37,5 +39,6 @@ All notable changes to this project will be documented in this file.
   `React.createElement` chains).
 
 ### Notes
+
 - Schema sources are assumed trusted; the existing expression denylist remains
   as defense-in-depth, not a sandbox.

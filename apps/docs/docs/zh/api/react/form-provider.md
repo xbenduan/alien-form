@@ -14,12 +14,12 @@
 
 ## Props 说明
 
-| 属性名 | 描述 |
-| --- | --- |
-| `form` | 必填，`IForm` 实例 |
-| `components` | 可选，字段组件注册表 |
-| `decorators` | 可选，包装器注册表 |
-| `children` | 在 Provider 内部渲染的子树 |
+| 属性名       | 描述                       |
+| ------------ | -------------------------- |
+| `form`       | 必填，`IForm` 实例         |
+| `components` | 可选，字段组件注册表       |
+| `decorators` | 可选，包装器注册表         |
+| `children`   | 在 Provider 内部渲染的子树 |
 
 ## 注意事项
 

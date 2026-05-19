@@ -79,9 +79,9 @@ So a layout component usually looks like:
 
 ```tsx
 interface FormLayoutProps {
-  title?: string
-  description?: string
-  children?: React.ReactNode
+  title?: string;
+  description?: string;
+  children?: React.ReactNode;
 }
 ```
 

@@ -4,12 +4,7 @@
   "description": "演示“规格定义 -> 笛卡尔积 -> 销售配置表格”的企业级建模方式。规格是上游字段树，SKU 表是下游数组字段，价格、库存、售卖时间和配件清单都落在真实字段路径上。",
   "category": "03 企业范式",
   "order": 70,
-  "tags": [
-    "sku",
-    "spec",
-    "array-table",
-    "cartesian"
-  ],
+  "tags": ["sku", "spec", "array-table", "cartesian"],
   "schema": {
     "type": "object",
     "properties": {

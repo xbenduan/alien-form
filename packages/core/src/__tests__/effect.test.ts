@@ -1,7 +1,7 @@
-import { signal, effect } from 'alien-signals';
-import { test, expect } from 'vitest';
+import { signal, effect } from "alien-signals";
+import { test, expect } from "vitest";
 
-test('alien-signals effect', () => {
+test("alien-signals effect", () => {
   const version = signal(0);
   let renders = 0;
   effect(() => {

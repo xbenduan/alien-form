@@ -1,22 +1,22 @@
-import React from 'react'
-import { ScrollArea, Badge, cn } from '@alien-form/ui'
-import type { SchemaItem } from '../useSchema'
+import React from "react";
+import { ScrollArea, Badge, cn } from "@alien-form/ui";
+import type { SchemaItem } from "../useSchema";
 
 interface SchemaListProps {
-  schemas: SchemaItem[]
-  selectedId: string
-  onSelect: (id: string) => void
+  schemas: SchemaItem[];
+  selectedId: string;
+  onSelect: (id: string) => void;
 }
 
 export const SchemaList: React.FC<SchemaListProps> = ({ schemas, selectedId, onSelect }) => {
   const groups = schemas.reduce<Record<string, SchemaItem[]>>((acc, schema) => {
-    const category = schema.category || '未分类'
+    const category = schema.category || "未分类";
     if (!acc[category]) {
-      acc[category] = []
+      acc[category] = [];
     }
-    acc[category].push(schema)
-    return acc
-  }, {})
+    acc[category].push(schema);
+    return acc;
+  }, {});
 
   return (
     <div className="flex h-full flex-col">
@@ -39,8 +39,8 @@ export const SchemaList: React.FC<SchemaListProps> = ({ schemas, selectedId, onS
                     key={schema.id}
                     onClick={() => onSelect(schema.id)}
                     className={cn(
-                      'w-full rounded-lg p-3 text-left transition-colors hover:bg-accent',
-                      selectedId === schema.id && 'bg-accent'
+                      "w-full rounded-lg p-3 text-left transition-colors hover:bg-accent",
+                      selectedId === schema.id && "bg-accent",
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -69,5 +69,5 @@ export const SchemaList: React.FC<SchemaListProps> = ({ schemas, selectedId, onS
         </div>
       </ScrollArea>
     </div>
-  )
-}
+  );
+};

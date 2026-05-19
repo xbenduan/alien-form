@@ -26,22 +26,22 @@
 
 ```tsx
 // ❌ 不推荐：页面先挂出空表单，再异步回填
-const form = useMemo(() => createForm(), [])
+const form = useMemo(() => createForm(), []);
 
 useEffect(() => {
   fetch(`/api/users/${id}`)
     .then((res) => res.json())
     .then((detail) => {
-      form.setInitialValues(detail)
-      form.setValues(detail)
-    })
-}, [id, form])
+      form.setInitialValues(detail);
+      form.setValues(detail);
+    });
+}, [id, form]);
 
 return (
   <FormProvider form={form} components={components} decorators={decorators}>
     <SchemaField schema={schema} />
   </FormProvider>
-)
+);
 ```
 
 这样做的问题是：
@@ -63,37 +63,37 @@ return (
 
 ```tsx
 function UserEditPage({ id }: { id: string }) {
-  const [loading, setLoading] = useState(true)
-  const [detail, setDetail] = useState<any>(null)
+  const [loading, setLoading] = useState(true);
+  const [detail, setDetail] = useState<any>(null);
 
   useEffect(() => {
-    let disposed = false
+    let disposed = false;
 
     async function load() {
-      setLoading(true)
-      const response = await fetch(`/api/users/${id}`)
-      const data = await response.json()
+      setLoading(true);
+      const response = await fetch(`/api/users/${id}`);
+      const data = await response.json();
       if (!disposed) {
-        setDetail(data)
-        setLoading(false)
+        setDetail(data);
+        setLoading(false);
       }
     }
 
-    load()
+    load();
     return () => {
-      disposed = true
-    }
-  }, [id])
+      disposed = true;
+    };
+  }, [id]);
 
   if (loading) {
-    return <PageLoading />
+    return <PageLoading />;
   }
 
   if (!detail) {
-    return <Empty description="详情不存在" />
+    return <Empty description="详情不存在" />;
   }
 
-  return <UserEditForm detail={detail} />
+  return <UserEditForm detail={detail} />;
 }
 ```
 
@@ -107,13 +107,13 @@ function UserEditForm({ detail }: { detail: any }) {
         initialValues: detail,
       }),
     [detail],
-  )
+  );
 
   return (
     <FormProvider form={form} components={components} decorators={decorators}>
       <SchemaField schema={schema} />
     </FormProvider>
-  )
+  );
 }
 ```
 
@@ -132,10 +132,10 @@ function UserEditForm({ detail }: { detail: any }) {
 
 ```tsx
 useEffect(() => {
-  if (!detail) return
-  form.setInitialValues(detail)
-  form.setValues(detail)
-}, [detail, form])
+  if (!detail) return;
+  form.setInitialValues(detail);
+  form.setValues(detail);
+}, [detail, form]);
 ```
 
 这两个方法的职责不同：

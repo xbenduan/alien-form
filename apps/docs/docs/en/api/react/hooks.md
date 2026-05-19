@@ -27,5 +27,5 @@ Returns a rendering-friendly snapshot:
 Wraps an array field with a convenience interface:
 
 ```ts
-const { field, items, push, remove, moveUp, moveDown } = useArrayField('users')
+const { field, items, push, remove, moveUp, moveDown } = useArrayField("users");
 ```

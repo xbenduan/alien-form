@@ -6,28 +6,28 @@
 
 ## 核心属性
 
-| 属性名 | 描述 |
-| --- | --- |
-| `path` | 字段的点分隔路径（dot-path） |
-| `value` | 当前值 |
-| `display` | 显示状态，值为 `visible`、`hidden` 或 `none` |
-| `pattern` | 交互模式，值为 `editable`、`readOnly`、`disabled` 或 `readPretty` |
-| `component` | 注册的组件标识符（key） |
-| `componentProps` | 传递给组件的 props 集合 |
-| `decorator` | 注册的包装器标识符（key） |
-| `dataSource` | 规范化后的选项列表数据源 |
-| `errors` | 校验错误信息 |
-| `validateStatus` | 字段的校验状态 |
+| 属性名           | 描述                                                              |
+| ---------------- | ----------------------------------------------------------------- |
+| `path`           | 字段的点分隔路径（dot-path）                                      |
+| `value`          | 当前值                                                            |
+| `display`        | 显示状态，值为 `visible`、`hidden` 或 `none`                      |
+| `pattern`        | 交互模式，值为 `editable`、`readOnly`、`disabled` 或 `readPretty` |
+| `component`      | 注册的组件标识符（key）                                           |
+| `componentProps` | 传递给组件的 props 集合                                           |
+| `decorator`      | 注册的包装器标识符（key）                                         |
+| `dataSource`     | 规范化后的选项列表数据源                                          |
+| `errors`         | 校验错误信息                                                      |
+| `validateStatus` | 字段的校验状态                                                    |
 
 ## 核心方法
 
-| 方法名 | 描述 |
-| --- | --- |
-| `setValue(value)` | 更新字段的值 |
-| `setState(partial)` | 批量更新字段状态 |
-| `validate()` | 执行静态和动态的校验规则 |
-| `reset()` | 恢复为初始值 |
-| `subscribe(listener)` | 订阅字段级别的更新 |
+| 方法名                | 描述                     |
+| --------------------- | ------------------------ |
+| `setValue(value)`     | 更新字段的值             |
+| `setState(partial)`   | 批量更新字段状态         |
+| `validate()`          | 执行静态和动态的校验规则 |
+| `reset()`             | 恢复为初始值             |
+| `subscribe(listener)` | 订阅字段级别的更新       |
 
 ## 数组方法
 

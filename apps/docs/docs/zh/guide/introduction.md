@@ -31,11 +31,11 @@ AlienForm 通过一组精简的运行时概念来解决这些问题：
 
 ## 包结构映射
 
-| 包名 | 职责 |
-| --- | --- |
-| `@alien-form/core` | 表单模型、字段模型、校验、联动、Schema 设置 |
-| `@alien-form/react` | React 上下文、Hooks、Schema 渲染 |
-| `@alien-form/ui` | 默认组件、布局容器、数组渲染器 |
+| 包名                | 职责                                        |
+| ------------------- | ------------------------------------------- |
+| `@alien-form/core`  | 表单模型、字段模型、校验、联动、Schema 设置 |
+| `@alien-form/react` | React 上下文、Hooks、Schema 渲染            |
+| `@alien-form/ui`    | 默认组件、布局容器、数组渲染器              |
 
 ## 推荐阅读顺序
 

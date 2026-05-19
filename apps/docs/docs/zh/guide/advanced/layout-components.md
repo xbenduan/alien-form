@@ -79,9 +79,9 @@ React 渲染层会把它当成布局容器处理，而不是普通字段。
 
 ```tsx
 interface FormLayoutProps {
-  title?: string
-  description?: string
-  children?: React.ReactNode
+  title?: string;
+  description?: string;
+  children?: React.ReactNode;
 }
 ```
 

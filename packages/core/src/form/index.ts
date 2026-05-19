@@ -33,12 +33,7 @@ import type {
   FormLifecycleHandler,
 } from "../types";
 
-import {
-  getDeepValue,
-  setDeepValue,
-  sortByOrder,
-  isVoidField,
-} from "../utils/path";
+import { getDeepValue, setDeepValue, sortByOrder, isVoidField } from "../utils/path";
 import { normalizeValidationErrors } from "../field/validation";
 import { isPromiseLike } from "../utils/type";
 
@@ -53,10 +48,8 @@ export class Form implements IForm {
   private _initialValues: Record<string, any>;
   private _submitting: ReturnType<typeof signal<boolean>>;
   private _version: ReturnType<typeof signal<number>>;
-  private _fieldChangeListeners: Map<string, Set<(field: IField) => void>> =
-    new Map();
-  private _valuesChangeListeners: Set<(values: Record<string, any>) => void> =
-    new Set();
+  private _fieldChangeListeners: Map<string, Set<(field: IField) => void>> = new Map();
+  private _valuesChangeListeners: Set<(values: Record<string, any>) => void> = new Set();
   private _errorListeners: Set<(error: FormError) => void> = new Set();
   private _schema: IFormSchema | null = null;
   private _reactionDisposers: Array<() => void> = [];
@@ -81,9 +74,7 @@ export class Form implements IForm {
 
   constructor(config: FormConfig = {}) {
     this._config = config;
-    this._initialValues = config.initialValues
-      ? { ...config.initialValues }
-      : {};
+    this._initialValues = config.initialValues ? { ...config.initialValues } : {};
     this._submitting = signal(false);
     this._version = signal(0);
     this._scope = config.scope || {};
@@ -129,11 +120,7 @@ export class Form implements IForm {
       if (this._isArrayChildPath(path)) continue;
       // Skip void fields — they are layout containers
       if (field.component && isVoidField(path, this._schema)) continue;
-      setDeepValue(
-        result,
-        path,
-        this._formatFieldValue(path, field.value, "output"),
-      );
+      setDeepValue(result, path, this._formatFieldValue(path, field.value, "output"));
     }
     this._valuesCache = result;
     return result;
@@ -172,11 +159,8 @@ export class Form implements IForm {
 
   createField(path: string, schema: IFieldSchema, initialValue?: any): IField {
     const rawInitVal =
-      initialValue !== undefined
-        ? initialValue
-        : getDeepValue(this._initialValues, path);
-    const sourceInitVal =
-      rawInitVal !== undefined ? rawInitVal : schema.default;
+      initialValue !== undefined ? initialValue : getDeepValue(this._initialValues, path);
+    const sourceInitVal = rawInitVal !== undefined ? rawInitVal : schema.default;
     const initVal = this._formatInitialValue(path, schema, sourceInitVal);
     const fieldSchema =
       rawInitVal === undefined && schema.default !== undefined
@@ -197,10 +181,7 @@ export class Form implements IForm {
     return this.fields.get(path);
   }
 
-  setFieldState(
-    path: string,
-    setter: (state: Partial<FieldMutableState>) => void,
-  ): void {
+  setFieldState(path: string, setter: (state: Partial<FieldMutableState>) => void): void {
     const field = this.fields.get(path);
     if (!field) return;
     const state: Partial<FieldMutableState> = {};
@@ -233,12 +214,10 @@ export class Form implements IForm {
     this._notifications.beginBatch();
     startBatch();
     try {
-      const entries = Array.from(this.fields.entries()).sort(
-        ([pathA, fieldA], [pathB, fieldB]) => {
-          if (fieldA.isArrayField !== fieldB.isArrayField) return fieldA.isArrayField ? -1 : 1;
-          return pathA.length - pathB.length;
-        },
-      );
+      const entries = Array.from(this.fields.entries()).sort(([pathA, fieldA], [pathB, fieldB]) => {
+        if (fieldA.isArrayField !== fieldB.isArrayField) return fieldA.isArrayField ? -1 : 1;
+        return pathA.length - pathB.length;
+      });
       for (const [path, field] of entries) {
         if (this._isArrayChildPath(path)) continue;
         const val = getDeepValue(values, path);
@@ -296,9 +275,7 @@ export class Form implements IForm {
     return results.every((errs) => errs.length === 0);
   }
 
-  async submit<T = any>(
-    onSubmit?: (values: Record<string, any>) => T | Promise<T>,
-  ): Promise<T> {
+  async submit<T = any>(onSubmit?: (values: Record<string, any>) => T | Promise<T>): Promise<T> {
     this._submitting(true);
     try {
       const isValid = await this.validate();
@@ -408,11 +385,7 @@ export class Form implements IForm {
   }
 
   // Lifecycle registration (used in effects)
-  onLifecycle(
-    event: FormLifecycleEvent,
-    path: string,
-    handler: FormLifecycleHandler,
-  ): () => void {
+  onLifecycle(event: FormLifecycleEvent, path: string, handler: FormLifecycleHandler): () => void {
     return this._lifecycle.on(event, path, handler);
   }
 
@@ -497,13 +470,10 @@ export class Form implements IForm {
     const schema = this._resolveRef(rawSchema);
     const key = path.split(".").pop() || path;
     const isRequired =
-      schema.required === true ||
-      (Array.isArray(parentRequired) && parentRequired.includes(key));
+      schema.required === true || (Array.isArray(parentRequired) && parentRequired.includes(key));
 
     if (schema.type === "array" && schema.items) {
-      const itemSchema = Array.isArray(schema.items)
-        ? schema.items[0]
-        : schema.items;
+      const itemSchema = Array.isArray(schema.items) ? schema.items[0] : schema.items;
       this.createField(path, { ...schema, required: isRequired }, initialValue);
       if (
         itemSchema &&
@@ -512,13 +482,11 @@ export class Form implements IForm {
         Array.isArray(initialValue)
       ) {
         const itemProperties = (itemSchema as IFieldSchema).properties!;
-        const sortedEntries = Object.entries(itemProperties).sort(
-          ([, a], [, b]) => {
-            const ai = a.order ?? Infinity;
-            const bi = b.order ?? Infinity;
-            return ai - bi;
-          },
-        );
+        const sortedEntries = Object.entries(itemProperties).sort(([, a], [, b]) => {
+          const ai = a.order ?? Infinity;
+          const bi = b.order ?? Infinity;
+          return ai - bi;
+        });
         for (let i = 0; i < initialValue.length; i++) {
           for (const [childKey, childSchema] of sortedEntries) {
             this._createFieldTree(
@@ -529,17 +497,9 @@ export class Form implements IForm {
             );
           }
         }
-      } else if (
-        itemSchema &&
-        typeof itemSchema === "object" &&
-        Array.isArray(initialValue)
-      ) {
+      } else if (itemSchema && typeof itemSchema === "object" && Array.isArray(initialValue)) {
         for (let i = 0; i < initialValue.length; i++) {
-          this._createFieldTree(
-            `${path}.${i}`,
-            itemSchema as IFieldSchema,
-            initialValue[i],
-          );
+          this._createFieldTree(`${path}.${i}`, itemSchema as IFieldSchema, initialValue[i]);
         }
       }
       return;
@@ -547,18 +507,9 @@ export class Form implements IForm {
 
     if (schema.type === "object" && schema.properties) {
       if (schema.component) {
-        this.createField(
-          path,
-          { ...schema, required: isRequired },
-          initialValue,
-        );
+        this.createField(path, { ...schema, required: isRequired }, initialValue);
       }
-      this._createFieldsFromSchema(
-        path,
-        schema.properties,
-        schema.required,
-        initialValue,
-      );
+      this._createFieldsFromSchema(path, schema.properties, schema.required, initialValue);
       return;
     }
 
@@ -567,12 +518,7 @@ export class Form implements IForm {
         this.createField(path, { ...schema, required: false }, initialValue);
       }
       if (schema.properties) {
-        this._createFieldsFromSchema(
-          path,
-          schema.properties,
-          schema.required,
-          initialValue,
-        );
+        this._createFieldsFromSchema(path, schema.properties, schema.required, initialValue);
       }
       return;
     }
@@ -584,10 +530,7 @@ export class Form implements IForm {
   // $ref and definitions resolution
   // ============================================================
 
-  private _resolveRef(
-    schema: IFieldSchema,
-    seen: Set<string> = new Set(),
-  ): IFieldSchema {
+  private _resolveRef(schema: IFieldSchema, seen: Set<string> = new Set()): IFieldSchema {
     if (!schema.$ref) return schema;
     // $ref format: "#/definitions/Name"
     const refPath = schema.$ref.replace(/^#\/definitions\//, "");
@@ -622,11 +565,7 @@ export class Form implements IForm {
   // X-format system
   // ============================================================
 
-  private _formatInitialValue(
-    path: string,
-    schema: IFieldSchema,
-    value: any,
-  ): any {
+  private _formatInitialValue(path: string, schema: IFieldSchema, value: any): any {
     const format = schema["x-format"];
     if (format) {
       this._fieldFormats.set(path, format);
@@ -643,11 +582,7 @@ export class Form implements IForm {
     );
   }
 
-  private _formatFieldValue(
-    path: string,
-    value: any,
-    direction: "input" | "output",
-  ): any {
+  private _formatFieldValue(path: string, value: any, direction: "input" | "output"): any {
     if (this._formattingValuePaths.has(path)) return value;
     const format = this._fieldFormats.get(path);
     const rules = format?.[direction];
@@ -673,11 +608,7 @@ export class Form implements IForm {
   // X-validate system
   // ============================================================
 
-  async _runXValidate(
-    field: IField,
-    rules: SchemaXValidate,
-    value: any,
-  ): Promise<FieldError[]> {
+  async _runXValidate(field: IField, rules: SchemaXValidate, value: any): Promise<FieldError[]> {
     const ruleList = Array.isArray(rules) ? rules : [rules];
     const errors: FieldError[] = [];
     for (const rule of ruleList) {
@@ -718,10 +649,7 @@ export class Form implements IForm {
     this._setupReactions(this._schema);
   }
 
-  private _setupFieldReactions(
-    prefix: string,
-    properties: Record<string, IFieldSchema>,
-  ): void {
+  private _setupFieldReactions(prefix: string, properties: Record<string, IFieldSchema>): void {
     for (const [key, schema] of Object.entries(properties)) {
       const path = prefix ? `${prefix}.${key}` : key;
       const reactions = schema["x-reaction"];
@@ -729,9 +657,7 @@ export class Form implements IForm {
       if (reactions) {
         for (const [reactionKey, ruleOrRules] of Object.entries(reactions)) {
           if (!ruleOrRules) continue;
-          const rules = Array.isArray(ruleOrRules)
-            ? ruleOrRules
-            : [ruleOrRules];
+          const rules = Array.isArray(ruleOrRules) ? ruleOrRules : [ruleOrRules];
           for (const rule of rules) {
             if (!rule) continue;
             this._setupPropertyReaction(path, reactionKey, rule);
@@ -744,9 +670,7 @@ export class Form implements IForm {
         this._setupFieldReactions(path, schema.properties);
       }
       if (schema.items) {
-        const itemSchema = Array.isArray(schema.items)
-          ? schema.items[0]
-          : schema.items;
+        const itemSchema = Array.isArray(schema.items) ? schema.items[0] : schema.items;
         if (
           itemSchema &&
           typeof itemSchema === "object" &&
@@ -758,21 +682,14 @@ export class Form implements IForm {
               ? arrayField.value.length
               : 0;
           for (let index = 0; index < rowCount; index++) {
-            this._setupFieldReactions(
-              `${path}.${index}`,
-              (itemSchema as IFieldSchema).properties!,
-            );
+            this._setupFieldReactions(`${path}.${index}`, (itemSchema as IFieldSchema).properties!);
           }
         }
       }
     }
   }
 
-  private _setupPropertyReaction(
-    selfPath: string,
-    reactionKey: string,
-    rule: SchemaXRule,
-  ): void {
+  private _setupPropertyReaction(selfPath: string, reactionKey: string, rule: SchemaXRule): void {
     const runnerId = `${selfPath}:${reactionKey}:${this._reactionRunnerSeq++}`;
     const runner = () => {
       this._runReactionRunner(runnerId, selfPath, reactionKey, () => {
@@ -784,12 +701,7 @@ export class Form implements IForm {
           rule.dependencies,
           selfPath,
         );
-        const scope = buildReactionScope(
-          this._ruleRuntime,
-          field,
-          deps,
-          depsArray,
-        );
+        const scope = buildReactionScope(this._ruleRuntime, field, deps, depsArray);
         void this._runPropertyReaction(field, reactionKey, rule, scope);
       });
     };
@@ -808,25 +720,15 @@ export class Form implements IForm {
     }
   }
 
-  private _getReactionDependencyPaths(
-    rule: SchemaXRule,
-    selfPath: string,
-  ): string[] {
+  private _getReactionDependencyPaths(rule: SchemaXRule, selfPath: string): string[] {
     const dependencies = rule.dependencies;
     if (!dependencies) return [selfPath];
 
-    const rawPaths = Array.isArray(dependencies)
-      ? dependencies
-      : Object.values(dependencies);
-    return Array.from(
-      new Set(rawPaths.map((path) => resolveFieldPath(path, selfPath))),
-    );
+    const rawPaths = Array.isArray(dependencies) ? dependencies : Object.values(dependencies);
+    return Array.from(new Set(rawPaths.map((path) => resolveFieldPath(path, selfPath))));
   }
 
-  private _registerReactionValueTrigger(
-    path: string,
-    runner: () => void,
-  ): void {
+  private _registerReactionValueTrigger(path: string, runner: () => void): void {
     if (!this._reactionValueTriggers.has(path)) {
       this._reactionValueTriggers.set(path, new Set());
     }
@@ -845,12 +747,7 @@ export class Form implements IForm {
     }
   }
 
-  private _runReactionRunner(
-    id: string,
-    path: string,
-    key: string,
-    runner: () => void,
-  ): void {
+  private _runReactionRunner(id: string, path: string, key: string, runner: () => void): void {
     const nextCount = (this._reactionRunCounts.get(id) || 0) + 1;
     if (nextCount > MAX_REACTION_RUNS_PER_FLUSH) {
       this._emitError({
@@ -890,22 +787,16 @@ export class Form implements IForm {
         "x-reaction",
       );
       if (isPromiseLike(value)) {
-        const versionKey = this._getAsyncReactionVersionKey(
-          field.path,
-          reactionKey,
-        );
-        const currentVersion =
-          (this._asyncReactionVersions.get(versionKey) || 0) + 1;
+        const versionKey = this._getAsyncReactionVersionKey(field.path, reactionKey);
+        const currentVersion = (this._asyncReactionVersions.get(versionKey) || 0) + 1;
         this._asyncReactionVersions.set(versionKey, currentVersion);
         void value
           .then((resolved) => {
-            if (this._asyncReactionVersions.get(versionKey) !== currentVersion)
-              return;
+            if (this._asyncReactionVersions.get(versionKey) !== currentVersion) return;
             applyReactionValue(this._ruleRuntime, field, reactionKey, resolved);
           })
           .catch((err) => {
-            if (this._asyncReactionVersions.get(versionKey) !== currentVersion)
-              return;
+            if (this._asyncReactionVersions.get(versionKey) !== currentVersion) return;
             this._emitError({
               scope: "reaction",
               path: field.path,
@@ -957,10 +848,7 @@ export class Form implements IForm {
     this._fieldLoadingCounts.clear();
   }
 
-  private _getAsyncReactionVersionKey(
-    path: string,
-    reactionKey: string,
-  ): string {
+  private _getAsyncReactionVersionKey(path: string, reactionKey: string): string {
     return `${path}:${reactionKey}`;
   }
 

@@ -4,11 +4,7 @@
   "description": "演示稳定协议字段：type、title、description、default、component、props、decorator、validators、dataSource、state、order。",
   "category": "01 基础能力",
   "order": 10,
-  "tags": [
-    "schema",
-    "component",
-    "validators"
-  ],
+  "tags": ["schema", "component", "validators"],
   "schema": {
     "type": "object",
     "title": "基础 Schema 演示",

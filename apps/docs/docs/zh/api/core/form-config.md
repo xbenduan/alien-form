@@ -5,54 +5,54 @@
 `FormConfig` 是传递给 `createForm(config)` 的配置对象。它用于设置初始值、表达式作用域、`computed` handler、运行时错误监听和表单 effects。
 
 ```ts
-import { createForm } from '@alien-form/core'
+import { createForm } from "@alien-form/core";
 
 const form = createForm({
   initialValues: {
-    province: 'zhejiang'
+    province: "zhejiang",
   },
   scope: {
-    readonlyMode: 'readonly'
+    readonlyMode: "readonly",
   },
   handlers: {
     async loadCities(ctx) {
-      return fetchCities(ctx.deps.province)
-    }
+      return fetchCities(ctx.deps.province);
+    },
   },
   effects(form) {
     form.onValuesChange((values) => {
-      console.log(values)
-    })
+      console.log(values);
+    });
   },
   onError(error) {
-    console.warn(error)
-  }
-})
+    console.warn(error);
+  },
+});
 ```
 
 ## 签名
 
 ```ts
 interface FormConfig {
-  initialValues?: Record<string, any>
-  validateFirst?: boolean
-  effects?: (form: IForm) => void
-  scope?: Record<string, any>
-  handlers?: Record<string, RuntimeRuleHandler>
-  onError?: (error: FormError) => void
+  initialValues?: Record<string, any>;
+  validateFirst?: boolean;
+  effects?: (form: IForm) => void;
+  scope?: Record<string, any>;
+  handlers?: Record<string, RuntimeRuleHandler>;
+  onError?: (error: FormError) => void;
 }
 ```
 
 ## options 说明
 
-| 选项 | 类型 | 说明 |
-| --- | --- | --- |
-| `initialValues` | `Record<string, any>` | 字段初始值。字段创建时会按路径读取对应初始值 |
-| `validateFirst` | `boolean` | 类型中保留的配置项；当前校验实现没有完整启用短路逻辑 |
-| `effects` | `(form: IForm) => void` | 表单构造阶段执行的副作用注册函数 |
-| `scope` | `Record<string, any>` | 注入表达式和规则运行时作用域的自定义变量 |
-| `handlers` | `Record<string, RuntimeRuleHandler>` | `computed` 规则调用的业务处理函数注册表 |
-| `onError` | `(error: FormError) => void` | 非致命运行时错误监听器 |
+| 选项            | 类型                                 | 说明                                                 |
+| --------------- | ------------------------------------ | ---------------------------------------------------- |
+| `initialValues` | `Record<string, any>`                | 字段初始值。字段创建时会按路径读取对应初始值         |
+| `validateFirst` | `boolean`                            | 类型中保留的配置项；当前校验实现没有完整启用短路逻辑 |
+| `effects`       | `(form: IForm) => void`              | 表单构造阶段执行的副作用注册函数                     |
+| `scope`         | `Record<string, any>`                | 注入表达式和规则运行时作用域的自定义变量             |
+| `handlers`      | `Record<string, RuntimeRuleHandler>` | `computed` 规则调用的业务处理函数注册表              |
+| `onError`       | `(error: FormError) => void`         | 非致命运行时错误监听器                               |
 
 ## initialValues
 
@@ -62,35 +62,35 @@ interface FormConfig {
 const form = createForm({
   initialValues: {
     user: {
-      name: 'Alice'
-    }
-  }
-})
+      name: "Alice",
+    },
+  },
+});
 
 form.setSchema({
-  type: 'object',
+  type: "object",
   properties: {
     user: {
-      type: 'object',
+      type: "object",
       properties: {
         name: {
-          type: 'string',
-          component: 'Input'
-        }
-      }
-    }
-  }
-})
+          type: "string",
+          component: "Input",
+        },
+      },
+    },
+  },
+});
 
-form.getField('user.name')?.value
+form.getField("user.name")?.value;
 // 'Alice'
 ```
 
 注意：`setInitialValues()` 只更新 reset 基线，不会自动写入当前值。如果是编辑态回填，通常需要：
 
 ```ts
-form.setInitialValues(detail)
-form.setValues(detail)
+form.setInitialValues(detail);
+form.setValues(detail);
 ```
 
 ## scope
@@ -100,9 +100,9 @@ form.setValues(detail)
 ```ts
 const form = createForm({
   scope: {
-    adultAge: 18
-  }
-})
+    adultAge: 18,
+  },
+});
 ```
 
 在 schema 表达式里可以直接读取这些数据：
@@ -119,14 +119,14 @@ const form = createForm({
 
 内置作用域变量包括：
 
-| 变量 | 说明 |
-| --- | --- |
-| `$self` | 当前字段实例；在部分值格式化场景里可能为 `undefined` |
-| `$form` | 当前表单实例 |
-| `$values` | 当前值对象；reaction 中为输出值，format/validate 中为内部原始值 |
-| `$deps` | 根据 `dependencies` 解析出的依赖值；数组依赖时为数组，对象依赖时为对象 |
-| `$dependencies` | 根据 `dependencies` 解析出的对象形式依赖值 |
-| `$value` | 当前字段值或当前格式化链路中的值 |
+| 变量            | 说明                                                                   |
+| --------------- | ---------------------------------------------------------------------- |
+| `$self`         | 当前字段实例；在部分值格式化场景里可能为 `undefined`                   |
+| `$form`         | 当前表单实例                                                           |
+| `$values`       | 当前值对象；reaction 中为输出值，format/validate 中为内部原始值        |
+| `$deps`         | 根据 `dependencies` 解析出的依赖值；数组依赖时为数组，对象依赖时为对象 |
+| `$dependencies` | 根据 `dependencies` 解析出的对象形式依赖值                             |
+| `$value`        | 当前字段值或当前格式化链路中的值                                       |
 
 ## handlers
 
@@ -136,10 +136,10 @@ const form = createForm({
 const form = createForm({
   handlers: {
     async loadCities(ctx) {
-      return requestCities(ctx.deps.province)
-    }
-  }
-})
+      return requestCities(ctx.deps.province);
+    },
+  },
+});
 ```
 
 schema 中引用：
@@ -162,40 +162,40 @@ schema 中引用：
 
 ```ts
 interface RuntimeRuleHandlerContext {
-  field: IField
-  form: IForm
-  values: Record<string, any>
-  deps: Record<string, any>
-  dependencies: Record<string, any>
-  scope: Record<string, any>
-  key: SchemaReactionKey | 'input' | 'output' | 'validate' | string
-  rule: SchemaXRule
-  value?: any
-  kind?: 'x-reaction' | 'x-format' | 'x-validate'
+  field: IField;
+  form: IForm;
+  values: Record<string, any>;
+  deps: Record<string, any>;
+  dependencies: Record<string, any>;
+  scope: Record<string, any>;
+  key: SchemaReactionKey | "input" | "output" | "validate" | string;
+  rule: SchemaXRule;
+  value?: any;
+  kind?: "x-reaction" | "x-format" | "x-validate";
 }
 ```
 
-| 字段 | 说明 |
-| --- | --- |
-| `field` | 当前规则所属字段 |
-| `form` | 当前表单实例，可以读取字段、值、错误等 |
-| `values` | 当前内部原始值快照，不会执行 `x-format.output` |
-| `deps` | 依赖值对象；等同于 `dependencies` |
-| `dependencies` | 根据 `rule.dependencies` 解析后的依赖值对象 |
-| `scope` | 完整表达式作用域，包含内置变量和自定义 `scope` |
-| `key` | 当前规则作用的键；reaction 中是目标属性，format 中是 `input/output`，validate 中是 `validate` |
-| `rule` | 当前规则对象，可读取 `rule.params` |
-| `value` | 当前字段值或格式化链路中的当前值 |
-| `kind` | 当前规则来源：`x-reaction`、`x-format` 或 `x-validate` |
+| 字段           | 说明                                                                                          |
+| -------------- | --------------------------------------------------------------------------------------------- |
+| `field`        | 当前规则所属字段                                                                              |
+| `form`         | 当前表单实例，可以读取字段、值、错误等                                                        |
+| `values`       | 当前内部原始值快照，不会执行 `x-format.output`                                                |
+| `deps`         | 依赖值对象；等同于 `dependencies`                                                             |
+| `dependencies` | 根据 `rule.dependencies` 解析后的依赖值对象                                                   |
+| `scope`        | 完整表达式作用域，包含内置变量和自定义 `scope`                                                |
+| `key`          | 当前规则作用的键；reaction 中是目标属性，format 中是 `input/output`，validate 中是 `validate` |
+| `rule`         | 当前规则对象，可读取 `rule.params`                                                            |
+| `value`        | 当前字段值或格式化链路中的当前值                                                              |
+| `kind`         | 当前规则来源：`x-reaction`、`x-format` 或 `x-validate`                                        |
 
 ### handler 返回值约定
 
-| 使用位置 | 返回值 | 是否可异步 | 说明 |
-| --- | --- | --- | --- |
-| `x-reaction` | 目标属性值 | 可以 | Promise 会被等待，并自动维护字段 `loading` |
-| `x-format.input` | 转换后的输入值 | 不建议 / 当前会报错 | 格式化链路是同步链路，不能返回 Promise |
-| `x-format.output` | 转换后的输出值 | 不建议 / 当前会报错 | `form.values` 是同步 getter，不能返回 Promise |
-| `x-validate` | 错误信息、错误数组或空值 | 可以 | 返回值会被标准化为 `FieldError[]` |
+| 使用位置          | 返回值                   | 是否可异步          | 说明                                          |
+| ----------------- | ------------------------ | ------------------- | --------------------------------------------- |
+| `x-reaction`      | 目标属性值               | 可以                | Promise 会被等待，并自动维护字段 `loading`    |
+| `x-format.input`  | 转换后的输入值           | 不建议 / 当前会报错 | 格式化链路是同步链路，不能返回 Promise        |
+| `x-format.output` | 转换后的输出值           | 不建议 / 当前会报错 | `form.values` 是同步 getter，不能返回 Promise |
+| `x-validate`      | 错误信息、错误数组或空值 | 可以                | 返回值会被标准化为 `FieldError[]`             |
 
 ## effects
 
@@ -205,14 +205,14 @@ interface RuntimeRuleHandlerContext {
 const form = createForm({
   effects(form) {
     form.onValuesChange((values) => {
-      console.log('values changed', values)
-    })
+      console.log("values changed", values);
+    });
 
-    form.onFieldChange('*', (field) => {
-      console.log('field changed', field.path)
-    })
-  }
-})
+    form.onFieldChange("*", (field) => {
+      console.log("field changed", field.path);
+    });
+  },
+});
 ```
 
 ### effects 可调用的方法
@@ -242,11 +242,11 @@ const form = createForm({
 ```ts
 createForm({
   effects(form) {
-    form.onLifecycle('onFieldValidateFailed', '*', (field) => {
-      console.log('validate failed', field.path)
-    })
-  }
-})
+    form.onLifecycle("onFieldValidateFailed", "*", (field) => {
+      console.log("validate failed", field.path);
+    });
+  },
+});
 ```
 
 支持事件：
@@ -268,11 +268,11 @@ createForm({
 
 ```ts
 interface FormError {
-  scope: FormErrorScope
-  path: string
-  key?: string
-  message: string
-  cause?: unknown
+  scope: FormErrorScope;
+  path: string;
+  key?: string;
+  message: string;
+  cause?: unknown;
 }
 ```
 

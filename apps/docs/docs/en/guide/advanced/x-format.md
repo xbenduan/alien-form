@@ -134,9 +134,12 @@ In `x-format`, `match` uses the current `$value` as the default match source, so
 ```ts
 const form = createForm({
   handlers: {
-    normalizeCode: ({ value }) => String(value ?? '').trim().toUpperCase(),
+    normalizeCode: ({ value }) =>
+      String(value ?? "")
+        .trim()
+        .toUpperCase(),
   },
-})
+});
 ```
 
 ## Pipeline Behavior

@@ -3,8 +3,8 @@
  */
 
 // Form & Field
-export { createForm, Form } from './form/index'
-export { Field } from './field/index'
+export { createForm, Form } from "./form/index";
+export { Field } from "./field/index";
 
 // Types
 export type {
@@ -40,4 +40,4 @@ export type {
   FormConfig,
   FormError,
   FormErrorScope,
-} from './types'
+} from "./types";

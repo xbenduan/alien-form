@@ -2,27 +2,27 @@
   "name": "@alien-form/react",
   "version": "1.0.0",
   "description": "React bindings for AlienForm core",
+  "license": "MIT",
   "main": "src/index.tsx",
   "types": "src/index.tsx",
   "scripts": {
     "build": "tsup src/index.tsx --format esm,cjs --dts --external react --external react-dom --external @alien-form/core",
     "test": "vitest run"
   },
+  "devDependencies": {
+    "@alien-form/core": "workspace:*",
+    "@testing-library/react": "^16.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "happy-dom": "^15.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^2.1.9"
+  },
   "peerDependencies": {
     "@alien-form/core": "workspace:*",
     "react": "^18.0.0 || ^19.0.0"
-  },
-  "devDependencies": {
-    "@alien-form/core": "workspace:*",
-    "tsup": "^8.0.0",
-    "typescript": "^5.4.0",
-    "@types/react": "^18.3.0",
-    "@types/react-dom": "^18.3.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "vitest": "^2.1.9",
-    "@testing-library/react": "^16.0.0",
-    "happy-dom": "^15.0.0"
-  },
-  "license": "MIT"
+  }
 }

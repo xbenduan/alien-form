@@ -1,11 +1,5 @@
 {
-  "ignorePatterns": [
-    "node_modules",
-    "dist",
-    ".rspress",
-    ".vite",
-    "coverage"
-  ],
+  "ignorePatterns": ["node_modules", "dist", ".rspress", ".vite", "coverage"],
   "rules": {
     "no-console": "off"
   }

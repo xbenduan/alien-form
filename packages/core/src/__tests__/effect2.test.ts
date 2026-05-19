@@ -1,7 +1,7 @@
-import { signal, effect } from 'alien-signals';
-import { test, expect } from 'vitest';
+import { signal, effect } from "alien-signals";
+import { test, expect } from "vitest";
 
-test('alien-signals effect on update', async () => {
+test("alien-signals effect on update", async () => {
   const version = signal(0);
   let renders = 0;
   effect(() => {

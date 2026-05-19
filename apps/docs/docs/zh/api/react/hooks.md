@@ -27,5 +27,5 @@
 对数组字段进行封装，提供一个便捷的接口：
 
 ```ts
-const { field, items, push, remove, moveUp, moveDown } = useArrayField('users')
+const { field, items, push, remove, moveUp, moveDown } = useArrayField("users");
 ```

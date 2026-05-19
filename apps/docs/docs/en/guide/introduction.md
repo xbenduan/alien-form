@@ -31,11 +31,11 @@ This rewrite intentionally follows a reference-driven style similar to the offic
 
 ## Package Map
 
-| Package | Responsibility |
-| --- | --- |
-| `@alien-form/core` | form model, field model, validation, reactions, schema setup |
-| `@alien-form/react` | React context, hooks, schema rendering |
-| `@alien-form/ui` | default widgets, layout containers, array renderers |
+| Package             | Responsibility                                               |
+| ------------------- | ------------------------------------------------------------ |
+| `@alien-form/core`  | form model, field model, validation, reactions, schema setup |
+| `@alien-form/react` | React context, hooks, schema rendering                       |
+| `@alien-form/ui`    | default widgets, layout containers, array renderers          |
 
 ## Recommended Reading Order
 

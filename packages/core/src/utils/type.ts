@@ -1,5 +1,5 @@
 /** Shared runtime type predicates. */
 
 export function isPromiseLike<T = any>(value: any): value is Promise<T> {
-  return !!value && typeof value.then === 'function'
+  return !!value && typeof value.then === "function";
 }

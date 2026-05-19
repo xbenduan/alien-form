@@ -19,9 +19,9 @@ The root type is always `object`:
 
 ```ts
 interface IFormSchema {
-  type: 'object'
-  properties?: Record<string, IFieldSchema>
-  definitions?: Record<string, IFieldSchema>
+  type: "object";
+  properties?: Record<string, IFieldSchema>;
+  definitions?: Record<string, IFieldSchema>;
 }
 ```
 

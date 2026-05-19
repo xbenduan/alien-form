@@ -34,8 +34,7 @@ const SkuFieldCell: React.FC<{ field: IField }> = ({ field }) => {
   }
 
   const disabled = field.disabled || field.readOnly || field.readPretty;
-  const commonClassName =
-    "min-w-[120px] border-0 bg-transparent shadow-none focus-visible:ring-0";
+  const commonClassName = "min-w-[120px] border-0 bg-transparent shadow-none focus-visible:ring-0";
 
   if (field.readPretty) {
     return <div className="min-h-9 py-2 text-sm">{formatCellValue(field.value)}</div>;
@@ -190,38 +189,46 @@ export const SkuTable: React.FC<SkuTableProps> = ({
       ) : hasImageGrouping ? (
         <div className="space-y-4">
           {Array.from(
-            rowGroups.reduce<
-              Map<
-                string,
-                {
-                  key: string;
-                  groupSpecName: string;
-                  groupSpecValue: string;
-                  groupSpecImage: string;
-                  rows: IField[][];
+            rowGroups
+              .reduce<
+                Map<
+                  string,
+                  {
+                    key: string;
+                    groupSpecName: string;
+                    groupSpecValue: string;
+                    groupSpecImage: string;
+                    rows: IField[][];
+                  }
+                >
+              >((groups, rowFields) => {
+                const groupSpecName = String(getRowField(rowFields, "groupSpecName")?.value ?? "");
+                const groupSpecValue = String(
+                  getRowField(rowFields, "groupSpecValue")?.value ?? "",
+                );
+                const groupSpecImage = String(
+                  getRowField(rowFields, "groupSpecImage")?.value ?? "",
+                );
+                const groupKey = String(
+                  getRowField(rowFields, "groupKey")?.value ?? groupSpecValue,
+                );
+                const existing = groups.get(groupKey);
+
+                if (existing) {
+                  existing.rows.push(rowFields);
+                } else {
+                  groups.set(groupKey, {
+                    key: groupKey,
+                    groupSpecName,
+                    groupSpecValue,
+                    groupSpecImage,
+                    rows: [rowFields],
+                  });
                 }
-              >
-            >((groups, rowFields) => {
-              const groupSpecName = String(getRowField(rowFields, "groupSpecName")?.value ?? "");
-              const groupSpecValue = String(getRowField(rowFields, "groupSpecValue")?.value ?? "");
-              const groupSpecImage = String(getRowField(rowFields, "groupSpecImage")?.value ?? "");
-              const groupKey = String(getRowField(rowFields, "groupKey")?.value ?? groupSpecValue);
-              const existing = groups.get(groupKey);
 
-              if (existing) {
-                existing.rows.push(rowFields);
-              } else {
-                groups.set(groupKey, {
-                  key: groupKey,
-                  groupSpecName,
-                  groupSpecValue,
-                  groupSpecImage,
-                  rows: [rowFields],
-                });
-              }
-
-              return groups;
-            }, new Map()).values(),
+                return groups;
+              }, new Map())
+              .values(),
           ).map((group) => (
             <div key={group.key} className="rounded-xl border bg-card shadow-sm">
               <div className="flex items-center gap-4 border-b px-4 py-4">
@@ -237,7 +244,9 @@ export const SkuTable: React.FC<SkuTableProps> = ({
                   )}
                 </div>
                 <div>
-                  <div className="text-sm text-muted-foreground">{group.groupSpecName || "图片规格"}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {group.groupSpecName || "图片规格"}
+                  </div>
                   <div className="text-lg font-semibold">{group.groupSpecValue}</div>
                   <div className="mt-1 text-xs text-muted-foreground">
                     其余销售配置按该规格值分组管理。

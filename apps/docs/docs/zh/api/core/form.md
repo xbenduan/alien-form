@@ -7,13 +7,13 @@
 通常你不会直接 `new Form()`，而是通过 `createForm(options)` 创建。
 
 ```ts
-import { createForm } from '@alien-form/core'
+import { createForm } from "@alien-form/core";
 
 const form = createForm({
   initialValues: {
-    username: 'alien'
-  }
-})
+    username: "alien",
+  },
+});
 ```
 
 ## createForm
@@ -21,7 +21,7 @@ const form = createForm({
 ### 签名
 
 ```ts
-function createForm(config?: FormConfig): IForm
+function createForm(config?: FormConfig): IForm;
 ```
 
 `createForm` 返回一个 `IForm` 实例。返回值不是普通数据对象，而是一个可持续读写的表单模型。
@@ -29,25 +29,25 @@ function createForm(config?: FormConfig): IForm
 ### 最小示例
 
 ```ts
-import { createForm } from '@alien-form/core'
+import { createForm } from "@alien-form/core";
 
-const form = createForm()
+const form = createForm();
 
 form.setSchema({
-  type: 'object',
+  type: "object",
   properties: {
     username: {
-      type: 'string',
-      title: '用户名',
-      component: 'Input',
-      required: true
-    }
-  }
-})
+      type: "string",
+      title: "用户名",
+      component: "Input",
+      required: true,
+    },
+  },
+});
 
-form.setValues({ username: 'alien' })
+form.setValues({ username: "alien" });
 
-console.log(form.values)
+console.log(form.values);
 // { username: 'alien' }
 ```
 
@@ -55,62 +55,62 @@ console.log(form.values)
 
 ### 核心属性
 
-| 属性名 | 类型 | 描述 |
-| --- | --- | --- |
-| `fields` | `Map<string, IField>` | 已注册的字段实例集合，key 是字段路径 |
-| `values` | `Record<string, any>` | 输出值；会排除不可见字段、void 字段、数组子字段，并应用 `x-format.output` |
-| `initialValues` | `Record<string, any>` | 初始值快照，供 `reset()` 使用 |
-| `valid` | `boolean` | 当前可见字段是否都没有错误 |
-| `invalid` | `boolean` | `valid` 的反义值 |
-| `submitting` | `boolean` | `submit()` 执行期间为 `true` |
-| `errors` | `FieldError[]` | 所有可见字段的扁平化错误列表 |
+| 属性名          | 类型                  | 描述                                                                      |
+| --------------- | --------------------- | ------------------------------------------------------------------------- |
+| `fields`        | `Map<string, IField>` | 已注册的字段实例集合，key 是字段路径                                      |
+| `values`        | `Record<string, any>` | 输出值；会排除不可见字段、void 字段、数组子字段，并应用 `x-format.output` |
+| `initialValues` | `Record<string, any>` | 初始值快照，供 `reset()` 使用                                             |
+| `valid`         | `boolean`             | 当前可见字段是否都没有错误                                                |
+| `invalid`       | `boolean`             | `valid` 的反义值                                                          |
+| `submitting`    | `boolean`             | `submit()` 执行期间为 `true`                                              |
+| `errors`        | `FieldError[]`        | 所有可见字段的扁平化错误列表                                              |
 
 ### 字段创建与访问
 
-| 方法 | 签名 | 说明 |
-| --- | --- | --- |
-| `createField` | `(path: string, schema: IFieldSchema, initialValue?: any) => IField` | 手动创建字段，一般由 `setSchema()` 内部调用 |
-| `getField` | `(path: string) => IField \| undefined` | 根据路径读取字段实例 |
-| `setFieldState` | `(path: string, setter: (state: Partial<FieldMutableState>) => void) => void` | 以回调方式修改字段状态 |
+| 方法            | 签名                                                                          | 说明                                        |
+| --------------- | ----------------------------------------------------------------------------- | ------------------------------------------- |
+| `createField`   | `(path: string, schema: IFieldSchema, initialValue?: any) => IField`          | 手动创建字段，一般由 `setSchema()` 内部调用 |
+| `getField`      | `(path: string) => IField \| undefined`                                       | 根据路径读取字段实例                        |
+| `setFieldState` | `(path: string, setter: (state: Partial<FieldMutableState>) => void) => void` | 以回调方式修改字段状态                      |
 
 ### 值操作
 
-| 方法 | 签名 | 说明 |
-| --- | --- | --- |
-| `setValues` | `(values: Record<string, any>) => void` | 将值批量写入已有字段；会应用 `x-format.input` |
-| `setInitialValues` | `(values: Record<string, any>) => void` | 更新初始值基线；不会自动改写当前字段值 |
-| `reset` | `() => void` | 将字段恢复到初始值，并重新运行 reaction |
+| 方法               | 签名                                    | 说明                                          |
+| ------------------ | --------------------------------------- | --------------------------------------------- |
+| `setValues`        | `(values: Record<string, any>) => void` | 将值批量写入已有字段；会应用 `x-format.input` |
+| `setInitialValues` | `(values: Record<string, any>) => void` | 更新初始值基线；不会自动改写当前字段值        |
+| `reset`            | `() => void`                            | 将字段恢复到初始值，并重新运行 reaction       |
 
 ### 校验与提交
 
-| 方法 | 签名 | 说明 |
-| --- | --- | --- |
-| `validate` | `() => Promise<boolean>` | 校验所有可见字段，全部通过返回 `true` |
-| `submit` | `<T = any>(onSubmit?: (values: Record<string, any>) => T \| Promise<T>) => Promise<T>` | 先校验，再调用提交回调；未传回调时返回 `form.values` |
+| 方法       | 签名                                                                                   | 说明                                                 |
+| ---------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `validate` | `() => Promise<boolean>`                                                               | 校验所有可见字段，全部通过返回 `true`                |
+| `submit`   | `<T = any>(onSubmit?: (values: Record<string, any>) => T \| Promise<T>) => Promise<T>` | 先校验，再调用提交回调；未传回调时返回 `form.values` |
 
 ### Schema 操作
 
-| 方法 | 签名 | 说明 |
-| --- | --- | --- |
+| 方法        | 签名                            | 说明                                          |
+| ----------- | ------------------------------- | --------------------------------------------- |
 | `setSchema` | `(schema: IFormSchema) => void` | 根据 schema 重建字段树、格式化规则和 reaction |
 
 ### 数组字段操作
 
-| 方法 | 签名 | 说明 |
-| --- | --- | --- |
-| `getArrayField` | `(path: string) => IField \| undefined` | 获取数组字段；非数组字段返回 `undefined` |
-| `removeArrayItem` | `(arrayPath: string, index: number) => void` | 删除数组字段指定行 |
+| 方法              | 签名                                         | 说明                                     |
+| ----------------- | -------------------------------------------- | ---------------------------------------- |
+| `getArrayField`   | `(path: string) => IField \| undefined`      | 获取数组字段；非数组字段返回 `undefined` |
+| `removeArrayItem` | `(arrayPath: string, index: number) => void` | 删除数组字段指定行                       |
 
 数组字段本身还提供 `push()`、`remove()`、`moveUp()`、`moveDown()`，详见 [Field](./field)。
 
 ### 订阅与副作用
 
-| 方法 | 签名 | 说明 |
-| --- | --- | --- |
-| `subscribe` | `(listener: () => void) => () => void` | 订阅表单级更新，返回取消订阅函数 |
-| `onFieldChange` | `(path: string, listener: (field: IField) => void) => () => void` | 订阅字段状态变化，支持 `'*'` 通配 |
-| `onValuesChange` | `(listener: (values: Record<string, any>) => void) => () => void` | 订阅输出值变化 |
-| `onError` | `(listener: (error: FormError) => void) => () => void` | 订阅非致命运行时错误 |
+| 方法             | 签名                                                              | 说明                              |
+| ---------------- | ----------------------------------------------------------------- | --------------------------------- |
+| `subscribe`      | `(listener: () => void) => () => void`                            | 订阅表单级更新，返回取消订阅函数  |
+| `onFieldChange`  | `(path: string, listener: (field: IField) => void) => () => void` | 订阅字段状态变化，支持 `'*'` 通配 |
+| `onValuesChange` | `(listener: (values: Record<string, any>) => void) => () => void` | 订阅输出值变化                    |
+| `onError`        | `(listener: (error: FormError) => void) => () => void`            | 订阅非致命运行时错误              |
 
 ## effects 里可以调用什么
 
@@ -120,41 +120,41 @@ console.log(form.values)
 const form = createForm({
   effects(form) {
     const disposeValue = form.onValuesChange((values) => {
-      console.log('values changed', values)
-    })
+      console.log("values changed", values);
+    });
 
-    const disposeField = form.onFieldChange('username', (field) => {
-      console.log('username changed', field.value)
-    })
+    const disposeField = form.onFieldChange("username", (field) => {
+      console.log("username changed", field.value);
+    });
 
     const disposeError = form.onError((error) => {
-      console.warn(error.scope, error.path, error.message)
-    })
-  }
-})
+      console.warn(error.scope, error.path, error.message);
+    });
+  },
+});
 ```
 
 ### effects 中推荐使用
 
-| 方法 | 用途 |
-| --- | --- |
-| `onValuesChange()` | 监听输出值变化，用于埋点、调试、联动外部状态 |
-| `onFieldChange()` | 监听某个字段或所有字段状态变化 |
-| `onError()` | 统一收集 reaction、format、validate、ref 解析等运行时错误 |
-| `getField()` | 在回调中读取字段实例 |
-| `setFieldState()` | 在回调中做少量命令式状态修正 |
-| `setValues()` | 在初始化后或外部数据到达时批量回填 |
-| `validate()` | 在外部流程中主动触发表单校验 |
-| `submit()` | 在外部提交动作中复用表单校验和输出值逻辑 |
+| 方法               | 用途                                                      |
+| ------------------ | --------------------------------------------------------- |
+| `onValuesChange()` | 监听输出值变化，用于埋点、调试、联动外部状态              |
+| `onFieldChange()`  | 监听某个字段或所有字段状态变化                            |
+| `onError()`        | 统一收集 reaction、format、validate、ref 解析等运行时错误 |
+| `getField()`       | 在回调中读取字段实例                                      |
+| `setFieldState()`  | 在回调中做少量命令式状态修正                              |
+| `setValues()`      | 在初始化后或外部数据到达时批量回填                        |
+| `validate()`       | 在外部流程中主动触发表单校验                              |
+| `submit()`         | 在外部提交动作中复用表单校验和输出值逻辑                  |
 
 ### effects 中谨慎使用
 
-| 方法 | 原因 |
-| --- | --- |
-| `setSchema()` | 会清空并重建字段和 reaction；不要在频繁变化的订阅回调里调用 |
-| `createField()` | 通常应由 schema 驱动；手动创建字段容易绕开协议结构 |
-| `reset()` | 会触发字段值变化和 reaction 重放，避免在无保护的值变化监听里调用 |
-| `setValues()` | 可用，但不要在 `onValuesChange()` 中无条件调用，否则可能形成循环 |
+| 方法            | 原因                                                             |
+| --------------- | ---------------------------------------------------------------- |
+| `setSchema()`   | 会清空并重建字段和 reaction；不要在频繁变化的订阅回调里调用      |
+| `createField()` | 通常应由 schema 驱动；手动创建字段容易绕开协议结构               |
+| `reset()`       | 会触发字段值变化和 reaction 重放，避免在无保护的值变化监听里调用 |
+| `setValues()`   | 可用，但不要在 `onValuesChange()` 中无条件调用，否则可能形成循环 |
 
 ## 生命周期订阅：onLifecycle
 
@@ -163,27 +163,27 @@ const form = createForm({
 ```ts
 createForm({
   effects(form) {
-    form.onLifecycle('onFieldInit', '*', (field, form) => {
-      console.log('field init', field.path)
-    })
-  }
-})
+    form.onLifecycle("onFieldInit", "*", (field, form) => {
+      console.log("field init", field.path);
+    });
+  },
+});
 ```
 
 支持的事件：
 
-| 事件 | 触发时机 |
-| --- | --- |
-| `onFieldInit` | 字段创建后 |
-| `onFieldMount` | 预留事件；当前 core 不主动触发 |
-| `onFieldUnmount` | 预留事件；当前 core 不主动触发 |
-| `onFieldValueChange` | 字段值变化时 |
-| `onFieldInputValueChange` | 当前与 `onFieldValueChange` 同时触发 |
-| `onFieldInitialValueChange` | 预留事件；当前 core 不主动触发 |
-| `onFieldValidateStart` | 字段开始校验前 |
-| `onFieldValidateEnd` | 字段校验结束后 |
-| `onFieldValidateFailed` | 字段校验失败时 |
-| `onFieldValidateSuccess` | 字段校验成功时 |
+| 事件                        | 触发时机                             |
+| --------------------------- | ------------------------------------ |
+| `onFieldInit`               | 字段创建后                           |
+| `onFieldMount`              | 预留事件；当前 core 不主动触发       |
+| `onFieldUnmount`            | 预留事件；当前 core 不主动触发       |
+| `onFieldValueChange`        | 字段值变化时                         |
+| `onFieldInputValueChange`   | 当前与 `onFieldValueChange` 同时触发 |
+| `onFieldInitialValueChange` | 预留事件；当前 core 不主动触发       |
+| `onFieldValidateStart`      | 字段开始校验前                       |
+| `onFieldValidateEnd`        | 字段校验结束后                       |
+| `onFieldValidateFailed`     | 字段校验失败时                       |
+| `onFieldValidateSuccess`    | 字段校验成功时                       |
 
 `path` 支持精确字段路径，也支持 `'*'` 监听所有字段。
 

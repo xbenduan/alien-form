@@ -5,54 +5,54 @@
 `FormConfig` is the configuration object passed to `createForm(config)`. It configures initial values, expression scope, `computed` handlers, runtime error handling, and form effects.
 
 ```ts
-import { createForm } from '@alien-form/core'
+import { createForm } from "@alien-form/core";
 
 const form = createForm({
   initialValues: {
-    province: 'zhejiang'
+    province: "zhejiang",
   },
   scope: {
-    readonlyMode: 'readonly'
+    readonlyMode: "readonly",
   },
   handlers: {
     async loadCities(ctx) {
-      return fetchCities(ctx.deps.province)
-    }
+      return fetchCities(ctx.deps.province);
+    },
   },
   effects(form) {
     form.onValuesChange((values) => {
-      console.log(values)
-    })
+      console.log(values);
+    });
   },
   onError(error) {
-    console.warn(error)
-  }
-})
+    console.warn(error);
+  },
+});
 ```
 
 ## Signature
 
 ```ts
 interface FormConfig {
-  initialValues?: Record<string, any>
-  validateFirst?: boolean
-  effects?: (form: IForm) => void
-  scope?: Record<string, any>
-  handlers?: Record<string, RuntimeRuleHandler>
-  onError?: (error: FormError) => void
+  initialValues?: Record<string, any>;
+  validateFirst?: boolean;
+  effects?: (form: IForm) => void;
+  scope?: Record<string, any>;
+  handlers?: Record<string, RuntimeRuleHandler>;
+  onError?: (error: FormError) => void;
 }
 ```
 
 ## Options
 
-| Option | Type | Description |
-| --- | --- | --- |
-| `initialValues` | `Record<string, any>` | initial field values, read by path when fields are created |
-| `validateFirst` | `boolean` | reserved in types; the current validation implementation does not fully enforce short-circuit behavior |
-| `effects` | `(form: IForm) => void` | setup hook executed during form construction |
-| `scope` | `Record<string, any>` | custom variables injected into expression and rule runtime scope |
-| `handlers` | `Record<string, RuntimeRuleHandler>` | registry for business handlers called by `computed` rules |
-| `onError` | `(error: FormError) => void` | listener for non-fatal runtime errors |
+| Option          | Type                                 | Description                                                                                            |
+| --------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `initialValues` | `Record<string, any>`                | initial field values, read by path when fields are created                                             |
+| `validateFirst` | `boolean`                            | reserved in types; the current validation implementation does not fully enforce short-circuit behavior |
+| `effects`       | `(form: IForm) => void`              | setup hook executed during form construction                                                           |
+| `scope`         | `Record<string, any>`                | custom variables injected into expression and rule runtime scope                                       |
+| `handlers`      | `Record<string, RuntimeRuleHandler>` | registry for business handlers called by `computed` rules                                              |
+| `onError`       | `(error: FormError) => void`         | listener for non-fatal runtime errors                                                                  |
 
 ## initialValues
 
@@ -62,35 +62,35 @@ interface FormConfig {
 const form = createForm({
   initialValues: {
     user: {
-      name: 'Alice'
-    }
-  }
-})
+      name: "Alice",
+    },
+  },
+});
 
 form.setSchema({
-  type: 'object',
+  type: "object",
   properties: {
     user: {
-      type: 'object',
+      type: "object",
       properties: {
         name: {
-          type: 'string',
-          component: 'Input'
-        }
-      }
-    }
-  }
-})
+          type: "string",
+          component: "Input",
+        },
+      },
+    },
+  },
+});
 
-form.getField('user.name')?.value
+form.getField("user.name")?.value;
 // 'Alice'
 ```
 
 Note: `setInitialValues()` only updates the reset baseline. It does not write into current field values. For edit hydration, usually call both:
 
 ```ts
-form.setInitialValues(detail)
-form.setValues(detail)
+form.setInitialValues(detail);
+form.setValues(detail);
 ```
 
 ## scope
@@ -100,9 +100,9 @@ form.setValues(detail)
 ```ts
 const form = createForm({
   scope: {
-    adultAge: 18
-  }
-})
+    adultAge: 18,
+  },
+});
 ```
 
 Then read it from schema expressions:
@@ -119,14 +119,14 @@ Then read it from schema expressions:
 
 Built-in scope variables:
 
-| Variable | Description |
-| --- | --- |
-| `$self` | current field instance; may be `undefined` in some value-formatting phases |
-| `$form` | current form instance |
-| `$values` | current values object; output values in reactions, raw internal values in format/validate |
-| `$deps` | dependency values resolved from `dependencies`; array for array dependencies, object for object dependencies |
-| `$dependencies` | object-form dependency values resolved from `dependencies` |
-| `$value` | current field value or current value in a formatting chain |
+| Variable        | Description                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------ |
+| `$self`         | current field instance; may be `undefined` in some value-formatting phases                                   |
+| `$form`         | current form instance                                                                                        |
+| `$values`       | current values object; output values in reactions, raw internal values in format/validate                    |
+| `$deps`         | dependency values resolved from `dependencies`; array for array dependencies, object for object dependencies |
+| `$dependencies` | object-form dependency values resolved from `dependencies`                                                   |
+| `$value`        | current field value or current value in a formatting chain                                                   |
 
 ## handlers
 
@@ -136,10 +136,10 @@ Built-in scope variables:
 const form = createForm({
   handlers: {
     async loadCities(ctx) {
-      return requestCities(ctx.deps.province)
-    }
-  }
-})
+      return requestCities(ctx.deps.province);
+    },
+  },
+});
 ```
 
 Reference it from schema:
@@ -162,40 +162,40 @@ Reference it from schema:
 
 ```ts
 interface RuntimeRuleHandlerContext {
-  field: IField
-  form: IForm
-  values: Record<string, any>
-  deps: Record<string, any>
-  dependencies: Record<string, any>
-  scope: Record<string, any>
-  key: SchemaReactionKey | 'input' | 'output' | 'validate' | string
-  rule: SchemaXRule
-  value?: any
-  kind?: 'x-reaction' | 'x-format' | 'x-validate'
+  field: IField;
+  form: IForm;
+  values: Record<string, any>;
+  deps: Record<string, any>;
+  dependencies: Record<string, any>;
+  scope: Record<string, any>;
+  key: SchemaReactionKey | "input" | "output" | "validate" | string;
+  rule: SchemaXRule;
+  value?: any;
+  kind?: "x-reaction" | "x-format" | "x-validate";
 }
 ```
 
-| Field | Description |
-| --- | --- |
-| `field` | field that owns the current rule |
-| `form` | current form instance, useful for reading fields, values, and errors |
-| `values` | current raw internal value snapshot; does not run `x-format.output` |
-| `deps` | dependency value object; same as `dependencies` |
-| `dependencies` | dependency values resolved from `rule.dependencies` |
-| `scope` | full expression scope including built-ins and custom `scope` |
-| `key` | target key of the current rule; reaction target, `input/output` for format, or `validate` for validation |
-| `rule` | current rule object; use `rule.params` for custom parameters |
-| `value` | current field value or current value in a formatting chain |
-| `kind` | source of the rule: `x-reaction`, `x-format`, or `x-validate` |
+| Field          | Description                                                                                              |
+| -------------- | -------------------------------------------------------------------------------------------------------- |
+| `field`        | field that owns the current rule                                                                         |
+| `form`         | current form instance, useful for reading fields, values, and errors                                     |
+| `values`       | current raw internal value snapshot; does not run `x-format.output`                                      |
+| `deps`         | dependency value object; same as `dependencies`                                                          |
+| `dependencies` | dependency values resolved from `rule.dependencies`                                                      |
+| `scope`        | full expression scope including built-ins and custom `scope`                                             |
+| `key`          | target key of the current rule; reaction target, `input/output` for format, or `validate` for validation |
+| `rule`         | current rule object; use `rule.params` for custom parameters                                             |
+| `value`        | current field value or current value in a formatting chain                                               |
+| `kind`         | source of the rule: `x-reaction`, `x-format`, or `x-validate`                                            |
 
 ### Handler Return Contract
 
-| Location | Return value | Async | Notes |
-| --- | --- | --- | --- |
-| `x-reaction` | target property value | yes | Promise results are awaited and field `loading` is maintained automatically |
-| `x-format.input` | converted input value | no / currently errors | formatting is synchronous, so returning a Promise is invalid |
-| `x-format.output` | converted output value | no / currently errors | `form.values` is a synchronous getter, so returning a Promise is invalid |
-| `x-validate` | error message, error array, or empty value | yes | return value is normalized into `FieldError[]` |
+| Location          | Return value                               | Async                 | Notes                                                                       |
+| ----------------- | ------------------------------------------ | --------------------- | --------------------------------------------------------------------------- |
+| `x-reaction`      | target property value                      | yes                   | Promise results are awaited and field `loading` is maintained automatically |
+| `x-format.input`  | converted input value                      | no / currently errors | formatting is synchronous, so returning a Promise is invalid                |
+| `x-format.output` | converted output value                     | no / currently errors | `form.values` is a synchronous getter, so returning a Promise is invalid    |
+| `x-validate`      | error message, error array, or empty value | yes                   | return value is normalized into `FieldError[]`                              |
 
 ## effects
 
@@ -205,14 +205,14 @@ interface RuntimeRuleHandlerContext {
 const form = createForm({
   effects(form) {
     form.onValuesChange((values) => {
-      console.log('values changed', values)
-    })
+      console.log("values changed", values);
+    });
 
-    form.onFieldChange('*', (field) => {
-      console.log('field changed', field.path)
-    })
-  }
-})
+    form.onFieldChange("*", (field) => {
+      console.log("field changed", field.path);
+    });
+  },
+});
 ```
 
 ### Methods Available in effects
@@ -242,11 +242,11 @@ Available but use with caution:
 ```ts
 createForm({
   effects(form) {
-    form.onLifecycle('onFieldValidateFailed', '*', (field) => {
-      console.log('validate failed', field.path)
-    })
-  }
-})
+    form.onLifecycle("onFieldValidateFailed", "*", (field) => {
+      console.log("validate failed", field.path);
+    });
+  },
+});
 ```
 
 Supported events:
@@ -268,11 +268,11 @@ When non-fatal runtime errors occur in reactions, formatting, validation, `$ref`
 
 ```ts
 interface FormError {
-  scope: FormErrorScope
-  path: string
-  key?: string
-  message: string
-  cause?: unknown
+  scope: FormErrorScope;
+  path: string;
+  key?: string;
+  message: string;
+  cause?: unknown;
 }
 ```
 

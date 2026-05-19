@@ -13,13 +13,13 @@ The easiest wrong turn is to wrap everything into a single mega component:
 
 ```ts
 type ProductSpecValue = {
-  specs: Array<any>
-  skus: Array<any>
-}
+  specs: Array<any>;
+  skus: Array<any>;
+};
 
 interface ProductSpecEditorProps {
-  value?: ProductSpecValue
-  onChange?: (value: ProductSpecValue) => void
+  value?: ProductSpecValue;
+  onChange?: (value: ProductSpecValue) => void;
 }
 ```
 
@@ -172,30 +172,30 @@ For example:
 const form = createForm({
   initialValues: createInitialValues(),
   effects(form) {
-    let syncing = false
+    let syncing = false;
 
     const syncSkuMatrix = () => {
-      if (syncing) return
+      if (syncing) return;
 
-      const rawSpecs = form.getField("specs")?.value
-      const normalizedSpecs = normalizeSpecs(rawSpecs)
+      const rawSpecs = form.getField("specs")?.value;
+      const normalizedSpecs = normalizeSpecs(rawSpecs);
       const currentSkus = Array.isArray(form.getField("skus")?.value)
         ? form.getField("skus")!.value
-        : []
-      const nextSkus = buildCartesianSpecRows(normalizedSpecs, currentSkus)
+        : [];
+      const nextSkus = buildCartesianSpecRows(normalizedSpecs, currentSkus);
 
-      if (JSON.stringify(currentSkus) === JSON.stringify(nextSkus)) return
+      if (JSON.stringify(currentSkus) === JSON.stringify(nextSkus)) return;
 
-      syncing = true
-      form.setValues({ skus: nextSkus })
-      syncing = false
-    }
+      syncing = true;
+      form.setValues({ skus: nextSkus });
+      syncing = false;
+    };
 
     form.onFieldChange("specs", () => {
-      syncSkuMatrix()
-    })
+      syncSkuMatrix();
+    });
   },
-})
+});
 ```
 
 ## Why not `x-reaction`
@@ -225,7 +225,7 @@ For example:
 
 ```ts
 function buildSkuKey(combination: Array<{ name: string; label: string }>) {
-  return combination.map((item) => `${item.name}=${item.label}`).join("|")
+  return combination.map((item) => `${item.name}=${item.label}`).join("|");
 }
 ```
 

@@ -110,11 +110,11 @@
 const form = createForm({
   handlers: {
     checkConfirmCode: async ({ value }) => {
-      await new Promise((resolve) => setTimeout(resolve, 200))
-      return value === 'OK' ? undefined : '确认码必须为 OK'
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      return value === "OK" ? undefined : "确认码必须为 OK";
     },
   },
-})
+});
 ```
 
 这说明当前项目里，真正复杂的动态校验应该放到 `handlers` 中，而不是把函数直接塞进 Schema。

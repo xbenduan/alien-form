@@ -64,33 +64,33 @@ interface SkuDraft {
 
 function createSkuDemoInitialValues() {
   const specs: SpecDraft[] = [
-      {
-        name: "颜色",
-        supportsImage: true,
-        values: [
-          {
-            label: "曜石黑",
-            image:
-              "https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=close-up%20studio%20product%20photo%20of%20a%20premium%20smartphone%20back%20panel%20in%20obsidian%20black%2C%20minimal%20background%2C%20soft%20lighting%2C%20realistic%20material%20texture&image_size=square_hd",
-          },
-          {
-            label: "月光白",
-            image:
-              "https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=close-up%20studio%20product%20photo%20of%20a%20premium%20smartphone%20back%20panel%20in%20moonlight%20white%2C%20minimal%20background%2C%20soft%20lighting%2C%20realistic%20material%20texture&image_size=square_hd",
-          },
-        ],
-      },
-      {
-        name: "内存",
-        supportsImage: false,
-        values: [{ label: "128G" }, { label: "256G" }],
-      },
-      {
-        name: "运行内存",
-        supportsImage: false,
-        values: [{ label: "8G" }, { label: "12G" }],
-      },
-    ];
+    {
+      name: "颜色",
+      supportsImage: true,
+      values: [
+        {
+          label: "曜石黑",
+          image:
+            "https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=close-up%20studio%20product%20photo%20of%20a%20premium%20smartphone%20back%20panel%20in%20obsidian%20black%2C%20minimal%20background%2C%20soft%20lighting%2C%20realistic%20material%20texture&image_size=square_hd",
+        },
+        {
+          label: "月光白",
+          image:
+            "https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=close-up%20studio%20product%20photo%20of%20a%20premium%20smartphone%20back%20panel%20in%20moonlight%20white%2C%20minimal%20background%2C%20soft%20lighting%2C%20realistic%20material%20texture&image_size=square_hd",
+        },
+      ],
+    },
+    {
+      name: "内存",
+      supportsImage: false,
+      values: [{ label: "128G" }, { label: "256G" }],
+    },
+    {
+      name: "运行内存",
+      supportsImage: false,
+      values: [{ label: "8G" }, { label: "12G" }],
+    },
+  ];
 
   const skus = buildCartesianSpecRows(normalizeSpecs(specs), []);
 
@@ -138,8 +138,8 @@ function normalizeSpecs(rawSpecs: unknown): Array<{
       const name = String((spec as SpecDraft)?.name ?? "").trim();
       const supportsImage = Boolean((spec as SpecDraft)?.supportsImage);
       const values = Array.isArray((spec as SpecDraft)?.values)
-        ? (spec as SpecDraft).values!
-            .map((value) => ({
+        ? (spec as SpecDraft)
+            .values!.map((value) => ({
               label: String(value?.label ?? "").trim(),
               image: String(value?.image ?? "").trim(),
             }))
@@ -168,43 +168,36 @@ function buildCartesianSpecRows(
 
   const combinations = specs.reduce<
     Array<Array<{ name: string; label: string; image?: string; supportsImage: boolean }>>
-  >(
-    (accumulator, spec) => {
-      if (accumulator.length === 0) {
-        return spec.values.map((value) => [
-          {
-            name: spec.name,
-            label: value.label,
-            image: value.image,
-            supportsImage: spec.supportsImage,
-          },
-        ]);
-      }
-      return accumulator.flatMap((combination) =>
-        spec.values.map((value) => [
-          ...combination,
-          {
-            name: spec.name,
-            label: value.label,
-            image: value.image,
-            supportsImage: spec.supportsImage,
-          },
-        ]),
-      );
-    },
-    [],
-  );
+  >((accumulator, spec) => {
+    if (accumulator.length === 0) {
+      return spec.values.map((value) => [
+        {
+          name: spec.name,
+          label: value.label,
+          image: value.image,
+          supportsImage: spec.supportsImage,
+        },
+      ]);
+    }
+    return accumulator.flatMap((combination) =>
+      spec.values.map((value) => [
+        ...combination,
+        {
+          name: spec.name,
+          label: value.label,
+          image: value.image,
+          supportsImage: spec.supportsImage,
+        },
+      ]),
+    );
+  }, []);
 
   const previousMap = new Map(
-    previousRows
-      .filter((row) => row?.skuKey)
-      .map((row) => [row.skuKey as string, row]),
+    previousRows.filter((row) => row?.skuKey).map((row) => [row.skuKey as string, row]),
   );
 
   return combinations.map((combination) => {
-    const skuKey = combination
-      .map((item) => `${item.name}=${item.label}`)
-      .join("|");
+    const skuKey = combination.map((item) => `${item.name}=${item.label}`).join("|");
     const previous = previousMap.get(skuKey);
     const groupedItem = groupSpec
       ? combination.find((item) => item.name === groupSpec.name)
@@ -322,10 +315,15 @@ const handlers: FormConfig["handlers"] = {
     if (!cat) return [];
     return categoryData[cat] || [];
   },
-  normalizeCode: ({ value }) => String(value ?? "").trim().toUpperCase(),
+  normalizeCode: ({ value }) =>
+    String(value ?? "")
+      .trim()
+      .toUpperCase(),
   checkConfirmCode: async ({ value }) => {
     await new Promise((r) => setTimeout(r, 300));
-    return String(value ?? "").trim().toUpperCase() === "OK"
+    return String(value ?? "")
+      .trim()
+      .toUpperCase() === "OK"
       ? []
       : [{ message: "确认码必须是 OK", type: "x-validate" }];
   },
@@ -334,22 +332,12 @@ const handlers: FormConfig["handlers"] = {
 const components: ComponentMap = {
   Input: (props: any) => {
     const { value, onChange, ...rest } = props;
-    return (
-      <Input
-        value={value ?? ""}
-        onChange={(e: any) => onChange(e.target.value)}
-        {...rest}
-      />
-    );
+    return <Input value={value ?? ""} onChange={(e: any) => onChange(e.target.value)} {...rest} />;
   },
   Textarea: (props: any) => {
     const { value, onChange, ...rest } = props;
     return (
-      <Textarea
-        value={value ?? ""}
-        onChange={(e: any) => onChange(e.target.value)}
-        {...rest}
-      />
+      <Textarea value={value ?? ""} onChange={(e: any) => onChange(e.target.value)} {...rest} />
     );
   },
   Select: (props: any) => {
@@ -414,8 +402,7 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ schema }) => {
     () =>
       createForm({
         handlers,
-        initialValues:
-          schema.id === SKU_MATRIX_DEMO_ID ? createSkuDemoInitialValues() : undefined,
+        initialValues: schema.id === SKU_MATRIX_DEMO_ID ? createSkuDemoInitialValues() : undefined,
         effects:
           schema.id === SKU_MATRIX_DEMO_ID
             ? (formInstance) => {
@@ -461,11 +448,7 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ schema }) => {
               <TabsTrigger value="json">Schema 结构</TabsTrigger>
             </TabsList>
             <TabsContent value="form">
-              <FormProvider
-                form={form}
-                components={components}
-                decorators={decorators}
-              >
+              <FormProvider form={form} components={components} decorators={decorators}>
                 <SchemaField schema={schema.schema} />
               </FormProvider>
             </TabsContent>

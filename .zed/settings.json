@@ -1,32 +1,10 @@
 {
   "lsp": {
-    "oxlint": {
-      "binary": {
-        "path": "./node_modules/.bin/oxlint",
-        "arguments": ["--lsp"]
-      },
-      "settings": {
-        "configPath": "./.oxlintrc.json"
-      }
-    },
-    "oxfmt": {
-      "binary": {
-        "path": "./node_modules/.bin/oxfmt",
-        "arguments": ["--lsp"]
-      }
-    }
+    "oxfmt": {},
+    "oxlint": {}
   },
   "languages": {
     "JavaScript": {
-      "formatter": {
-        "external": {
-          "command": "./node_modules/.bin/oxfmt",
-          "arguments": ["--stdin-filepath", "{buffer_path}"]
-        }
-      },
-      "format_on_save": "on"
-    },
-    "JSX": {
       "formatter": {
         "external": {
           "command": "./node_modules/.bin/oxfmt",

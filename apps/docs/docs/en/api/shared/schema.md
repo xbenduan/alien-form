@@ -13,9 +13,9 @@ There are two real entry points:
 
 ```ts
 interface IFormSchema {
-  type: 'object'
-  properties?: Record<string, IFieldSchema>
-  definitions?: Record<string, IFieldSchema>
+  type: "object";
+  properties?: Record<string, IFieldSchema>;
+  definitions?: Record<string, IFieldSchema>;
 }
 ```
 
@@ -42,39 +42,39 @@ Supported field types:
 
 ## Standard Fields
 
-| Field | Description |
-| --- | --- |
-| `type` | field type |
-| `title` | field title |
-| `description` | field description |
-| `default` | default value |
-| `required` | whether required |
-| `minimum` / `maximum` | numeric range |
-| `minLength` / `maxLength` | string length range |
-| `pattern` | regex rule |
-| `format` | format rule |
-| `properties` | object child fields |
-| `items` | array item definition |
-| `definitions` | root reusable definitions, allowed only on the root `IFormSchema` |
-| `$ref` | local definitions reference |
+| Field                     | Description                                                       |
+| ------------------------- | ----------------------------------------------------------------- |
+| `type`                    | field type                                                        |
+| `title`                   | field title                                                       |
+| `description`             | field description                                                 |
+| `default`                 | default value                                                     |
+| `required`                | whether required                                                  |
+| `minimum` / `maximum`     | numeric range                                                     |
+| `minLength` / `maxLength` | string length range                                               |
+| `pattern`                 | regex rule                                                        |
+| `format`                  | format rule                                                       |
+| `properties`              | object child fields                                               |
+| `items`                   | array item definition                                             |
+| `definitions`             | root reusable definitions, allowed only on the root `IFormSchema` |
+| `$ref`                    | local definitions reference                                       |
 
 ## Runtime Extension Fields
 
-| Field | Description |
-| --- | --- |
-| `state` | initial display and interaction state |
-| `validators` | static validation rules |
-| `component` | component registry key |
-| `props` | component props |
-| `decorator` | decorator registry key |
-| `decoratorProps` | decorator props |
-| `dataSource` | option list |
+| Field              | Description                                        |
+| ------------------ | -------------------------------------------------- |
+| `state`            | initial display and interaction state              |
+| `validators`       | static validation rules                            |
+| `component`        | component registry key                             |
+| `props`            | component props                                    |
+| `decorator`        | decorator registry key                             |
+| `decoratorProps`   | decorator props                                    |
+| `dataSource`       | option list                                        |
 | `dataSourcePolicy` | value handling policy when the option list changes |
-| `x-reaction` | field-property linkage |
-| `x-format` | input/output value conversion |
-| `x-validate` | dynamic validation rules |
-| `content` | layout node content |
-| `data` | custom metadata |
+| `x-reaction`       | field-property linkage                             |
+| `x-format`         | input/output value conversion                      |
+| `x-validate`       | dynamic validation rules                           |
+| `content`          | layout node content                                |
+| `data`             | custom metadata                                    |
 
 ## Node Behavior
 

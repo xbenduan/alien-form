@@ -11,7 +11,11 @@ Do not use React conditional rendering to swap entire schemas based on permissio
 ```tsx
 // ❌ BAD: Mixing React logic with schema structure
 <FormProvider form={form}>
-  {hasPermission ? <SchemaField schema={schemaWithSecretField} /> : <SchemaField schema={normalSchema} />}
+  {hasPermission ? (
+    <SchemaField schema={schemaWithSecretField} />
+  ) : (
+    <SchemaField schema={normalSchema} />
+  )}
 </FormProvider>
 ```
 
@@ -24,19 +28,19 @@ Customize the decorator (e.g., `FormItem`) directly. By wrapping the standard `F
 Create a custom wrapper component that checks permissions before rendering the underlying `FormItem`.
 
 ```tsx
-import { FormItem } from '@alien-form/ui'
-import { useAuth } from '@/hooks/useAuth' // Assume you have a custom auth hook
+import { FormItem } from "@alien-form/ui";
+import { useAuth } from "@/hooks/useAuth"; // Assume you have a custom auth hook
 
 export function AuthFormItem(props: any) {
-  const auth = useAuth()
-  const { code, ...restProps } = props
-  
+  const auth = useAuth();
+  const { code, ...restProps } = props;
+
   // If the field requires a permission code and the user lacks it, render nothing.
   if (code && !auth.hasPermission(code)) {
-    return null
+    return null;
   }
-  
-  return <FormItem {...restProps} />
+
+  return <FormItem {...restProps} />;
 }
 ```
 
@@ -46,23 +50,23 @@ Register your custom component in the `<FormProvider>` and pass the `code` param
 
 ```tsx
 // 1. Register the customized FormItem
-const decorators = { FormItem: AuthFormItem }
+const decorators = { FormItem: AuthFormItem };
 
 // 2. Define the schema with `code` injected via decoratorProps
 const schema = {
-  type: 'object',
+  type: "object",
   properties: {
     secretData: {
-      type: 'string',
-      title: 'Secret Data',
-      component: 'Input',
-      decorator: 'FormItem',
+      type: "string",
+      title: "Secret Data",
+      component: "Input",
+      decorator: "FormItem",
       decoratorProps: {
-        code: 'view_secret_data' // The permission code
-      }
-    }
-  }
-}
+        code: "view_secret_data", // The permission code
+      },
+    },
+  },
+};
 
 // 3. Render
 export function App() {
@@ -70,11 +74,12 @@ export function App() {
     <FormProvider form={form} decorators={decorators} components={components}>
       <SchemaField schema={schema} />
     </FormProvider>
-  )
+  );
 }
 ```
 
 ### Why do it this way?
+
 - **Decoupling**: Permission logic is decoupled from the core business schema structure.
 - **Clean Schemas**: You don't need to write long, repetitive `x-reaction` visibility rules for every secure field.
 - **React Ecosystem Integration**: Authentication logic naturally lives in the UI rendering layer, making it easy to consume React Context, Hooks, or Redux/Zustand stores directly.

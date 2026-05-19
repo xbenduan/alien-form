@@ -42,12 +42,12 @@
 
 当前实现只支持四种规则类型：
 
-| 类型 | 用途 |
-| --- | --- |
-| `static` | 直接返回一个固定值 |
-| `expression` | 通过表达式计算新值 |
-| `match` | 基于依赖值做分支映射 |
-| `computed` | 调用 `createForm({ handlers })` 中注册的 handler |
+| 类型         | 用途                                             |
+| ------------ | ------------------------------------------------ |
+| `static`     | 直接返回一个固定值                               |
+| `expression` | 通过表达式计算新值                               |
+| `match`      | 基于依赖值做分支映射                             |
+| `computed`   | 调用 `createForm({ handlers })` 中注册的 handler |
 
 ## 支持的目标属性
 
@@ -196,13 +196,13 @@
 const form = createForm({
   handlers: {
     fetchSubCategories: async ({ deps }) => {
-      if (!deps.category) return []
-      const response = await fetch(`/api/sub-categories?category=${deps.category}`)
-      const data = await response.json()
-      return data.map((item) => ({ label: item.name, value: item.code }))
+      if (!deps.category) return [];
+      const response = await fetch(`/api/sub-categories?category=${deps.category}`);
+      const data = await response.json();
+      return data.map((item) => ({ label: item.name, value: item.code }));
     },
   },
-})
+});
 ```
 
 ## 异步行为

@@ -38,11 +38,11 @@ UI 层提供了可选的组件，如 `Input`、`Select`、`FormItem`、`FormGrid
 
 ## 主要的运行时对象
 
-| 对象 | 角色 |
-| --- | --- |
-| `Form` | 拥有字段注册表和顶层状态 |
-| `Field` | 存储单个路径的状态 |
-| `SchemaField` | 通过 React 渲染 Schema 树 |
+| 对象           | 角色                        |
+| -------------- | --------------------------- |
+| `Form`         | 拥有字段注册表和顶层状态    |
+| `Field`        | 存储单个路径的状态          |
+| `SchemaField`  | 通过 React 渲染 Schema 树   |
 | `FormProvider` | 将表单和组件注册表连接到 UI |
 
 ## 设计方向

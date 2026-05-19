@@ -36,11 +36,11 @@ const components = {
   FormLayout,
   FormGrid,
   FormSection,
-}
+};
 
 const decorators = {
   FormItem,
-}
+};
 ```
 
 ## Contract of Normal Field Components
@@ -61,10 +61,10 @@ So a custom field component should usually look like this:
 
 ```tsx
 interface ImageInputProps {
-  value?: string
-  onChange?: (value: string) => void
-  placeholder?: string
-  disabled?: boolean
+  value?: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
 }
 ```
 
@@ -105,11 +105,11 @@ This is usually not recommended:
 ```tsx
 interface ProductEditorProps {
   value?: {
-    name: string
-    price: number
-    stock: number
-  }
-  onChange?: (value: any) => void
+    name: string;
+    price: number;
+    stock: number;
+  };
+  onChange?: (value: any) => void;
 }
 ```
 

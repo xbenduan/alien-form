@@ -129,20 +129,10 @@ export class ArrayFieldController {
     startBatch();
     try {
       for (let index = 0; index < normalizedRows.length; index++) {
-        this.upsertRowValue(
-          host,
-          itemSchema,
-          index,
-          normalizedRows[index],
-          currentRows,
-        );
+        this.upsertRowValue(host, itemSchema, index, normalizedRows[index], currentRows);
       }
 
-      for (
-        let index = currentRows - 1;
-        index >= normalizedRows.length;
-        index--
-      ) {
+      for (let index = currentRows - 1; index >= normalizedRows.length; index--) {
         this.deleteRowFields(host, index);
       }
 
@@ -204,12 +194,7 @@ export class ArrayFieldController {
     }
 
     const itemPath = `${this.options.path}.${index}`;
-    const itemField = this.ensureField(
-      host,
-      itemPath,
-      { ...itemSchema },
-      rowValue,
-    );
+    const itemField = this.ensureField(host, itemPath, { ...itemSchema }, rowValue);
     itemField?.setValue(rowValue);
   }
 
@@ -251,13 +236,7 @@ export class ArrayFieldController {
   ): IField | undefined {
     const existing = host.getField(path);
     if (existing) return existing;
-    this.createFieldTreeOrField(
-      host,
-      path,
-      schema,
-      initialValue,
-      parentRequired,
-    );
+    this.createFieldTreeOrField(host, path, schema, initialValue, parentRequired);
     return host.getField(path);
   }
 

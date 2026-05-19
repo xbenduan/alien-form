@@ -21,19 +21,19 @@
 
 ```tsx
 // ❌ 不推荐：在旧 form 上不断修补状态
-const form = useMemo(() => createForm(), [])
+const form = useMemo(() => createForm(), []);
 
 useEffect(() => {
   form.setFieldState("name", (state) => {
-    state.pattern = mode === "readonly" ? "readOnly" : "editable"
-  })
+    state.pattern = mode === "readonly" ? "readOnly" : "editable";
+  });
   form.setFieldState("description", (state) => {
     state.componentProps = {
       ...state.componentProps,
       placeholder: mode === "readonly" ? "当前为只读模式" : "请输入内容",
-    }
-  })
-}, [mode, form])
+    };
+  });
+}, [mode, form]);
 ```
 
 这样做的问题是：
@@ -60,8 +60,8 @@ const form = useMemo(
       scope: { mode },
       initialValues,
     }),
-  [mode]
-)
+  [mode],
+);
 ```
 
 这条范式的含义是：
@@ -82,14 +82,14 @@ function UserPage({ mode }: { mode: "create" | "edit" | "readonly" }) {
         scope: { mode },
         initialValues: getInitialValues(mode),
       }),
-    [mode]
-  )
+    [mode],
+  );
 
   return (
     <FormProvider form={form} components={components} decorators={decorators}>
       <SchemaField schema={schema} />
     </FormProvider>
-  )
+  );
 }
 ```
 
@@ -173,14 +173,14 @@ function UserForm({ mode, detail }: { mode: "edit" | "readonly"; detail: any }) 
         scope: { mode },
         initialValues: detail,
       }),
-    [mode, detail]
-  )
+    [mode, detail],
+  );
 
   return (
     <FormProvider form={form} components={components} decorators={decorators}>
       <SchemaField schema={schema} />
     </FormProvider>
-  )
+  );
 }
 ```
 

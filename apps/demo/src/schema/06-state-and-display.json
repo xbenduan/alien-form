@@ -4,11 +4,7 @@
   "description": "演示 display、pattern、disabled、readOnly、readPretty、props、decoratorProps 等可变状态，便于沉淀企业级展示范式。",
   "category": "03 企业范式",
   "order": 60,
-  "tags": [
-    "state",
-    "pattern",
-    "props"
-  ],
+  "tags": ["state", "pattern", "props"],
   "schema": {
     "type": "object",
     "title": "字段状态与展示模式",

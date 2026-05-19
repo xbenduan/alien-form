@@ -23,8 +23,8 @@
       "title": "国家",
       "component": "Select",
       "dataSource": [
-        {"label": "美国", "value": "us"},
-        {"label": "中国", "value": "cn"}
+        { "label": "美国", "value": "us" },
+        { "label": "中国", "value": "cn" }
       ]
     },
     "state": {
@@ -52,17 +52,18 @@ const form = createForm({
   handlers: {
     fetchStates: async ({ deps }) => {
       if (!deps.country) return [];
-      
-      const response = await fetch(`/api/states?country=${deps.country}`)
-      const data = await response.json()
-      
-      return data.map(item => ({ label: item.name, value: item.code }))
-    }
-  }
-})
+
+      const response = await fetch(`/api/states?country=${deps.country}`);
+      const data = await response.json();
+
+      return data.map((item) => ({ label: item.name, value: item.code }));
+    },
+  },
+});
 ```
 
 ### 为什么这样做？
+
 - 数据获取逻辑与 UI 组件干净地分离开了。
 - 每当依赖项（`country`）发生变化时，`dataSource` 都会被自动更新。
 - 当核心模型更新了 `dataSource` 后，React 层会自动重新渲染该 `Select` 组件。

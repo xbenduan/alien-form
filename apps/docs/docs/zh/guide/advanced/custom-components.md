@@ -36,11 +36,11 @@ const components = {
   FormLayout,
   FormGrid,
   FormSection,
-}
+};
 
 const decorators = {
   FormItem,
-}
+};
 ```
 
 ## 普通字段组件契约
@@ -61,10 +61,10 @@ const decorators = {
 
 ```tsx
 interface ImageInputProps {
-  value?: string
-  onChange?: (value: string) => void
-  placeholder?: string
-  disabled?: boolean
+  value?: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
 }
 ```
 
@@ -105,11 +105,11 @@ interface ImageInputProps {
 ```tsx
 interface ProductEditorProps {
   value?: {
-    name: string
-    price: number
-    stock: number
-  }
-  onChange?: (value: any) => void
+    name: string;
+    price: number;
+    stock: number;
+  };
+  onChange?: (value: any) => void;
 }
 ```
 

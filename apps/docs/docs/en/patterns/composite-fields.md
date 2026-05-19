@@ -12,14 +12,14 @@ It is tempting to design it as one object-valued component:
 
 ```ts
 type UserCardValue = {
-  name: string
-  age: number
-  city: string
-}
+  name: string;
+  age: number;
+  city: string;
+};
 
 interface UserCardProps {
-  value?: UserCardValue
-  onChange?: (value: UserCardValue) => void
+  value?: UserCardValue;
+  onChange?: (value: UserCardValue) => void;
 }
 ```
 
@@ -33,7 +33,7 @@ function UserCard({ value, onChange }: UserCardProps) {
   return (
     <>
       <input
-        value={value?.name ?? ''}
+        value={value?.name ?? ""}
         onChange={(e) => onChange?.({ ...value, name: e.target.value } as UserCardValue)}
       />
       <input
@@ -41,11 +41,11 @@ function UserCard({ value, onChange }: UserCardProps) {
         onChange={(e) => onChange?.({ ...value, age: Number(e.target.value) } as UserCardValue)}
       />
       <input
-        value={value?.city ?? ''}
+        value={value?.city ?? ""}
         onChange={(e) => onChange?.({ ...value, city: e.target.value } as UserCardValue)}
       />
     </>
-  )
+  );
 }
 ```
 
@@ -162,15 +162,17 @@ function ProfileCard(props: { title?: string; children?: React.ReactNode }) {
       {props.title && <h3 className="text-base font-semibold">{props.title}</h3>}
       {props.children}
     </section>
-  )
+  );
 }
 ```
 
 Then use it as a `void` layout component in schema, instead of making it consume:
 
 ```ts
-value: { name, age, city }
-onChange: (next) => {}
+value: {
+  (name, age, city);
+}
+onChange: (next) => {};
 ```
 
 ## When an object-valued component is actually reasonable

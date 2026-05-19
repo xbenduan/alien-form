@@ -4,11 +4,7 @@
   "description": "演示当前实现支持的根级 definitions + #/definitions/Name 本地引用：复用字段定义与 void 区块定义，并在引用处覆盖标题和描述。",
   "category": "01 基础能力",
   "order": 25,
-  "tags": [
-    "$ref",
-    "definitions",
-    "reuse"
-  ],
+  "tags": ["$ref", "definitions", "reuse"],
   "schema": {
     "type": "object",
     "title": "$ref 本地复用演示",

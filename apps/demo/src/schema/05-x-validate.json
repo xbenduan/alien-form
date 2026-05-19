@@ -4,11 +4,7 @@
   "description": "演示动态校验结果协议：undefined/null/true 表示通过，false/string/object/array 表示错误。",
   "category": "02 动态协议",
   "order": 50,
-  "tags": [
-    "x-validate",
-    "expression",
-    "computed"
-  ],
+  "tags": ["x-validate", "expression", "computed"],
   "schema": {
     "type": "object",
     "title": "x-validate 动态校验演示",

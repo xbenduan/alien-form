@@ -13,13 +13,13 @@
 
 ```ts
 type ProductSpecValue = {
-  specs: Array<any>
-  skus: Array<any>
-}
+  specs: Array<any>;
+  skus: Array<any>;
+};
 
 interface ProductSpecEditorProps {
-  value?: ProductSpecValue
-  onChange?: (value: ProductSpecValue) => void
+  value?: ProductSpecValue;
+  onChange?: (value: ProductSpecValue) => void;
 }
 ```
 
@@ -172,30 +172,30 @@ SKU 表格虽然视觉上很复杂，但底层仍然应该是 `array<object>`：
 const form = createForm({
   initialValues: createInitialValues(),
   effects(form) {
-    let syncing = false
+    let syncing = false;
 
     const syncSkuMatrix = () => {
-      if (syncing) return
+      if (syncing) return;
 
-      const rawSpecs = form.getField("specs")?.value
-      const normalizedSpecs = normalizeSpecs(rawSpecs)
+      const rawSpecs = form.getField("specs")?.value;
+      const normalizedSpecs = normalizeSpecs(rawSpecs);
       const currentSkus = Array.isArray(form.getField("skus")?.value)
         ? form.getField("skus")!.value
-        : []
-      const nextSkus = buildCartesianSpecRows(normalizedSpecs, currentSkus)
+        : [];
+      const nextSkus = buildCartesianSpecRows(normalizedSpecs, currentSkus);
 
-      if (JSON.stringify(currentSkus) === JSON.stringify(nextSkus)) return
+      if (JSON.stringify(currentSkus) === JSON.stringify(nextSkus)) return;
 
-      syncing = true
-      form.setValues({ skus: nextSkus })
-      syncing = false
-    }
+      syncing = true;
+      form.setValues({ skus: nextSkus });
+      syncing = false;
+    };
 
     form.onFieldChange("specs", () => {
-      syncSkuMatrix()
-    })
+      syncSkuMatrix();
+    });
   },
-})
+});
 ```
 
 ## 为什么不用 `x-reaction`
@@ -225,7 +225,7 @@ const form = createForm({
 
 ```ts
 function buildSkuKey(combination: Array<{ name: string; label: string }>) {
-  return combination.map((item) => `${item.name}=${item.label}`).join("|")
+  return combination.map((item) => `${item.name}=${item.label}`).join("|");
 }
 ```
 

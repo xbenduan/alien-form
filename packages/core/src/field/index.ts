@@ -48,11 +48,7 @@ export interface FieldHost {
   _notifyFieldValidateEnd?(path: string, field: IField): void;
   _notifyFieldValidateFailed?(path: string, field: IField): void;
   _notifyFieldValidateSuccess?(path: string, field: IField): void;
-  _runXValidate?(
-    field: IField,
-    rules: SchemaXValidate,
-    value: any,
-  ): Promise<FieldError[]>;
+  _runXValidate?(field: IField, rules: SchemaXValidate, value: any): Promise<FieldError[]>;
 }
 
 export class Field implements IField {
@@ -71,9 +67,7 @@ export class Field implements IField {
   private _componentProps: ReturnType<typeof signal<Record<string, any>>>;
   private _decorator: ReturnType<typeof signal<string>>;
   private _decoratorProps: ReturnType<typeof signal<Record<string, any>>>;
-  private _dataSource: ReturnType<
-    typeof signal<Array<{ label: string; value: any }>>
-  >;
+  private _dataSource: ReturnType<typeof signal<Array<{ label: string; value: any }>>>;
   private _loading: ReturnType<typeof signal<boolean>>;
   private _data: ReturnType<typeof signal<Record<string, any>>>;
   private _content: ReturnType<typeof signal<any>>;
@@ -105,16 +99,11 @@ export class Field implements IField {
     this.isArrayField = isArrayFieldSchema(schema);
     this._itemSchema = getArrayItemSchema(schema);
 
-    const defaultValue =
-      initialValue !== undefined ? initialValue : schema.default;
+    const defaultValue = initialValue !== undefined ? initialValue : schema.default;
     this._initialValue = defaultValue;
 
     this._value = signal(
-      this.isArrayField
-        ? Array.isArray(defaultValue)
-          ? defaultValue
-          : []
-        : defaultValue,
+      this.isArrayField ? (Array.isArray(defaultValue) ? defaultValue : []) : defaultValue,
     );
 
     // Display is defined explicitly through state.display.
@@ -157,11 +146,7 @@ export class Field implements IField {
     this._xValidate = schema["x-validate"];
     this._version = signal(0);
     this._arrayRows = signal(
-      this.isArrayField
-        ? Array.isArray(defaultValue)
-          ? defaultValue.length
-          : 0
-        : 0,
+      this.isArrayField ? (Array.isArray(defaultValue) ? defaultValue.length : 0) : 0,
     );
     this._arrayController = this.isArrayField
       ? new ArrayFieldController({
@@ -296,9 +281,7 @@ export class Field implements IField {
     this._bumpVersion();
   }
 
-  setDataSource(
-    ds: Array<{ label: string; value: any; [key: string]: any }>,
-  ): void {
+  setDataSource(ds: Array<{ label: string; value: any; [key: string]: any }>): void {
     this._dataSource(normalizeDataSource(ds));
     this._reconcileValueWithDataSource();
     this._bumpVersion();
@@ -435,12 +418,7 @@ export class Field implements IField {
     }
     this._bumpVersion();
     endBatch();
-    if (
-      "value" in state ||
-      "visible" in state ||
-      "hidden" in state ||
-      "display" in state
-    ) {
+    if ("value" in state || "visible" in state || "hidden" in state || "display" in state) {
       this._notifyValueChange();
     } else {
       this._notifyFieldChange();
@@ -516,11 +494,7 @@ export class Field implements IField {
     }
 
     if (this._xValidate && this._form?._runXValidate) {
-      const dynamicErrors = await this._form._runXValidate(
-        this,
-        this._xValidate,
-        val,
-      );
+      const dynamicErrors = await this._form._runXValidate(this, this._xValidate, val);
       if (dynamicErrors.length > 0) errors.push(...dynamicErrors);
     }
 

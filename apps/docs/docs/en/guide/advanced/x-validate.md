@@ -110,11 +110,11 @@ This is a strong fit for:
 const form = createForm({
   handlers: {
     checkConfirmCode: async ({ value }) => {
-      await new Promise((resolve) => setTimeout(resolve, 200))
-      return value === 'OK' ? undefined : 'Confirmation code must be OK'
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      return value === "OK" ? undefined : "Confirmation code must be OK";
     },
   },
-})
+});
 ```
 
 This shows the correct pattern in the current project: advanced dynamic validation should live in `handlers`, not as inline runtime functions embedded in the schema.

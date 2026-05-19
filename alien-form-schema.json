@@ -18,10 +18,7 @@
       "markdownDescription": "表单描述"
     },
     "required": {
-      "anyOf": [
-        { "type": "boolean" },
-        { "type": "array", "items": { "type": "string" } }
-      ],
+      "anyOf": [{ "type": "boolean" }, { "type": "array", "items": { "type": "string" } }],
       "markdownDescription": "是否必填，或者必填字段名称的数组"
     },
     "properties": {
@@ -61,10 +58,7 @@
           "markdownDescription": "字段默认值"
         },
         "required": {
-          "anyOf": [
-            { "type": "boolean" },
-            { "type": "array", "items": { "type": "string" } }
-          ],
+          "anyOf": [{ "type": "boolean" }, { "type": "array", "items": { "type": "string" } }],
           "markdownDescription": "是否必填。若为 `object` 可指定必填的子字段数组"
         },
         "const": {

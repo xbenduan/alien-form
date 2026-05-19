@@ -7,15 +7,15 @@ The `@alien-form/core` entry point exports runtime factories, model classes, and
 ## Runtime Exports
 
 ```ts
-export { createForm, Form } from './form'
-export { Field } from './field'
+export { createForm, Form } from "./form";
+export { Field } from "./field";
 ```
 
-| Export | Kind | Description |
-| --- | --- | --- |
-| `createForm` | function | recommended entry for creating a form model |
-| `Form` | class | form model implementation; usually does not need to be instantiated directly |
-| `Field` | class | field model implementation; usually created by `form.setSchema()` |
+| Export       | Kind     | Description                                                                  |
+| ------------ | -------- | ---------------------------------------------------------------------------- |
+| `createForm` | function | recommended entry for creating a form model                                  |
+| `Form`       | class    | form model implementation; usually does not need to be instantiated directly |
+| `Field`      | class    | field model implementation; usually created by `form.setSchema()`            |
 
 ## Type Exports
 
@@ -51,7 +51,7 @@ export type {
   FormConfig,
   FormError,
   FormErrorScope,
-} from './types'
+} from "./types";
 ```
 
 ## Common Imports
@@ -59,36 +59,36 @@ export type {
 ### Create a form
 
 ```ts
-import { createForm } from '@alien-form/core'
+import { createForm } from "@alien-form/core";
 
-const form = createForm()
+const form = createForm();
 ```
 
 ### Type a form model
 
 ```ts
-import type { IForm, FormConfig } from '@alien-form/core'
+import type { IForm, FormConfig } from "@alien-form/core";
 
 const config: FormConfig = {
-  initialValues: {}
-}
+  initialValues: {},
+};
 
 const useFormModel = (form: IForm) => {
-  return form.values
-}
+  return form.values;
+};
 ```
 
 ### Type a handler
 
 ```ts
-import type { RuntimeRuleHandler } from '@alien-form/core'
+import type { RuntimeRuleHandler } from "@alien-form/core";
 
 const loadOptions: RuntimeRuleHandler = async (ctx) => {
   return [
-    { label: 'A', value: 'a' },
-    { label: 'B', value: 'b' }
-  ]
-}
+    { label: "A", value: "a" },
+    { label: "B", value: "b" },
+  ];
+};
 ```
 
 ## Export Groups

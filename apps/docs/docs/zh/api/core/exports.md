@@ -7,15 +7,15 @@
 ## 运行时导出
 
 ```ts
-export { createForm, Form } from './form'
-export { Field } from './field'
+export { createForm, Form } from "./form";
+export { Field } from "./field";
 ```
 
-| 导出项 | 类型 | 说明 |
-| --- | --- | --- |
-| `createForm` | function | 创建表单模型的推荐入口 |
-| `Form` | class | 表单模型实现类；通常不需要直接 new |
-| `Field` | class | 字段模型实现类；通常由 `form.setSchema()` 创建 |
+| 导出项       | 类型     | 说明                                           |
+| ------------ | -------- | ---------------------------------------------- |
+| `createForm` | function | 创建表单模型的推荐入口                         |
+| `Form`       | class    | 表单模型实现类；通常不需要直接 new             |
+| `Field`      | class    | 字段模型实现类；通常由 `form.setSchema()` 创建 |
 
 ## 类型导出
 
@@ -51,7 +51,7 @@ export type {
   FormConfig,
   FormError,
   FormErrorScope,
-} from './types'
+} from "./types";
 ```
 
 ## 常用导入方式
@@ -59,36 +59,36 @@ export type {
 ### 创建表单
 
 ```ts
-import { createForm } from '@alien-form/core'
+import { createForm } from "@alien-form/core";
 
-const form = createForm()
+const form = createForm();
 ```
 
 ### 标注表单类型
 
 ```ts
-import type { IForm, FormConfig } from '@alien-form/core'
+import type { IForm, FormConfig } from "@alien-form/core";
 
 const config: FormConfig = {
-  initialValues: {}
-}
+  initialValues: {},
+};
 
 const useFormModel = (form: IForm) => {
-  return form.values
-}
+  return form.values;
+};
 ```
 
 ### 标注 handler 类型
 
 ```ts
-import type { RuntimeRuleHandler } from '@alien-form/core'
+import type { RuntimeRuleHandler } from "@alien-form/core";
 
 const loadOptions: RuntimeRuleHandler = async (ctx) => {
   return [
-    { label: 'A', value: 'a' },
-    { label: 'B', value: 'b' }
-  ]
-}
+    { label: "A", value: "a" },
+    { label: "B", value: "b" },
+  ];
+};
 ```
 
 ## 导出项分组

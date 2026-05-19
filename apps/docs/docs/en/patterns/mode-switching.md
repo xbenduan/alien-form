@@ -21,19 +21,19 @@ For example, watching `mode` in React and mutating an existing form over and ove
 
 ```tsx
 // ❌ Not recommended: continuously patch the old form instance
-const form = useMemo(() => createForm(), [])
+const form = useMemo(() => createForm(), []);
 
 useEffect(() => {
   form.setFieldState("name", (state) => {
-    state.pattern = mode === "readonly" ? "readOnly" : "editable"
-  })
+    state.pattern = mode === "readonly" ? "readOnly" : "editable";
+  });
   form.setFieldState("description", (state) => {
     state.componentProps = {
       ...state.componentProps,
       placeholder: mode === "readonly" ? "Readonly mode" : "Please enter content",
-    }
-  })
-}, [mode, form])
+    };
+  });
+}, [mode, form]);
 ```
 
 Problems with this approach:
@@ -60,8 +60,8 @@ const form = useMemo(
       scope: { mode },
       initialValues,
     }),
-  [mode]
-)
+  [mode],
+);
 ```
 
 This pattern means:
@@ -82,14 +82,14 @@ function UserPage({ mode }: { mode: "create" | "edit" | "readonly" }) {
         scope: { mode },
         initialValues: getInitialValues(mode),
       }),
-    [mode]
-  )
+    [mode],
+  );
 
   return (
     <FormProvider form={form} components={components} decorators={decorators}>
       <SchemaField schema={schema} />
     </FormProvider>
-  )
+  );
 }
 ```
 
@@ -173,14 +173,14 @@ function UserForm({ mode, detail }: { mode: "edit" | "readonly"; detail: any }) 
         scope: { mode },
         initialValues: detail,
       }),
-    [mode, detail]
-  )
+    [mode, detail],
+  );
 
   return (
     <FormProvider form={form} components={components} decorators={decorators}>
       <SchemaField schema={schema} />
     </FormProvider>
-  )
+  );
 }
 ```
 

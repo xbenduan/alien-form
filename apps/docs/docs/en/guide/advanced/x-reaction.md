@@ -42,12 +42,12 @@ Key rules to remember:
 
 The current implementation only supports four rule types:
 
-| Type | Purpose |
-| --- | --- |
-| `static` | return a fixed value |
-| `expression` | compute a value from an expression |
-| `match` | map a dependency value to a branch result |
-| `computed` | call a handler registered in `createForm({ handlers })` |
+| Type         | Purpose                                                 |
+| ------------ | ------------------------------------------------------- |
+| `static`     | return a fixed value                                    |
+| `expression` | compute a value from an expression                      |
+| `match`      | map a dependency value to a branch result               |
+| `computed`   | call a handler registered in `createForm({ handlers })` |
 
 ## Supported Target Keys
 
@@ -196,13 +196,13 @@ The handler must be registered in `createForm({ handlers })`:
 const form = createForm({
   handlers: {
     fetchSubCategories: async ({ deps }) => {
-      if (!deps.category) return []
-      const response = await fetch(`/api/sub-categories?category=${deps.category}`)
-      const data = await response.json()
-      return data.map((item) => ({ label: item.name, value: item.code }))
+      if (!deps.category) return [];
+      const response = await fetch(`/api/sub-categories?category=${deps.category}`);
+      const data = await response.json();
+      return data.map((item) => ({ label: item.name, value: item.code }));
     },
   },
-})
+});
 ```
 
 ## Async Behavior

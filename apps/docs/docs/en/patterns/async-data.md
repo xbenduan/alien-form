@@ -23,8 +23,8 @@ Use a `computed` reaction to fetch data and assign it to the field's `dataSource
       "title": "Country",
       "component": "Select",
       "dataSource": [
-        {"label": "USA", "value": "us"},
-        {"label": "China", "value": "cn"}
+        { "label": "USA", "value": "us" },
+        { "label": "China", "value": "cn" }
       ]
     },
     "state": {
@@ -52,17 +52,18 @@ const form = createForm({
   handlers: {
     fetchStates: async ({ deps }) => {
       if (!deps.country) return [];
-      
-      const response = await fetch(`/api/states?country=${deps.country}`)
-      const data = await response.json()
-      
-      return data.map(item => ({ label: item.name, value: item.code }))
-    }
-  }
-})
+
+      const response = await fetch(`/api/states?country=${deps.country}`);
+      const data = await response.json();
+
+      return data.map((item) => ({ label: item.name, value: item.code }));
+    },
+  },
+});
 ```
 
 ### Why do it this way?
+
 - Data fetching logic is cleanly separated from the UI components.
 - The `dataSource` is automatically updated whenever the dependency (`country`) changes.
 - The React layer automatically re-renders the `Select` component when its `dataSource` is updated by the core model.

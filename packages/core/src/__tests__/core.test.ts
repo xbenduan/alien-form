@@ -1,283 +1,282 @@
-import { describe, expect, it, vi } from 'vitest'
-import { createForm } from '../index'
-import type { IFormSchema } from '../types'
+import { describe, expect, it, vi } from "vitest";
+import { createForm } from "../index";
+import type { IFormSchema } from "../types";
 
 const basicSchema: IFormSchema = {
-  type: 'object',
-  required: ['name'],
+  type: "object",
+  required: ["name"],
   properties: {
-    name: { type: 'string', title: 'Name', minLength: 2 },
-    age: { type: 'number', minimum: 18 },
+    name: { type: "string", title: "Name", minLength: 2 },
+    age: { type: "number", minimum: 18 },
   },
-}
+};
 
 async function waitFor(predicate: () => boolean, timeout = 1000): Promise<void> {
-  const started = Date.now()
+  const started = Date.now();
   while (!predicate()) {
     if (Date.now() - started > timeout) {
-      throw new Error('Timed out waiting for condition')
+      throw new Error("Timed out waiting for condition");
     }
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    await new Promise((resolve) => setTimeout(resolve, 10));
   }
 }
 
 function createDeferred<T>() {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
   const promise = new Promise<T>((res, rej) => {
-    resolve = res
-    reject = rej
-  })
-  return { promise, resolve, reject }
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
 }
 
-describe('@alien-form/core', () => {
-  it('creates fields from schema and returns form values', () => {
-    const form = createForm({ initialValues: { name: 'Bao', age: 20 } })
-    form.setSchema(basicSchema)
+describe("@alien-form/core", () => {
+  it("creates fields from schema and returns form values", () => {
+    const form = createForm({ initialValues: { name: "Bao", age: 20 } });
+    form.setSchema(basicSchema);
 
-    expect(form.getField('name')?.value).toBe('Bao')
-    expect(form.values).toEqual({ name: 'Bao', age: 20 })
-  })
+    expect(form.getField("name")?.value).toBe("Bao");
+    expect(form.values).toEqual({ name: "Bao", age: 20 });
+  });
 
-  it('validates JSON Schema keywords together with required fields', async () => {
-    const form = createForm({ initialValues: { name: 'A', age: 16 } })
-    form.setSchema(basicSchema)
+  it("validates JSON Schema keywords together with required fields", async () => {
+    const form = createForm({ initialValues: { name: "A", age: 16 } });
+    form.setSchema(basicSchema);
 
-    await expect(form.validate()).resolves.toBe(false)
-    expect(form.errors.map((error) => error.type)).toEqual(expect.arrayContaining(['minLength', 'min']))
+    await expect(form.validate()).resolves.toBe(false);
+    expect(form.errors.map((error) => error.type)).toEqual(
+      expect.arrayContaining(["minLength", "min"]),
+    );
 
-    form.setValues({ name: 'Bao', age: 20 })
-    await expect(form.validate()).resolves.toBe(true)
-  })
+    form.setValues({ name: "Bao", age: 20 });
+    await expect(form.validate()).resolves.toBe(true);
+  });
 
-
-  it('coalesces bulk value notifications', () => {
-    const form = createForm()
+  it("coalesces bulk value notifications", () => {
+    const form = createForm();
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
-        first: { type: 'string' },
-        second: { type: 'string' },
+        first: { type: "string" },
+        second: { type: "string" },
       },
-    })
+    });
 
-    const valuesListener = vi.fn()
-    const fieldListener = vi.fn()
-    const formSubscriber = vi.fn()
-    const firstSubscriber = vi.fn()
+    const valuesListener = vi.fn();
+    const fieldListener = vi.fn();
+    const formSubscriber = vi.fn();
+    const firstSubscriber = vi.fn();
 
-    form.onValuesChange(valuesListener)
-    form.onFieldChange('*', fieldListener)
-    form.subscribe(formSubscriber)
-    form.getField('first')?.subscribe(firstSubscriber)
+    form.onValuesChange(valuesListener);
+    form.onFieldChange("*", fieldListener);
+    form.subscribe(formSubscriber);
+    form.getField("first")?.subscribe(firstSubscriber);
 
-    valuesListener.mockClear()
-    fieldListener.mockClear()
-    formSubscriber.mockClear()
-    firstSubscriber.mockClear()
+    valuesListener.mockClear();
+    fieldListener.mockClear();
+    formSubscriber.mockClear();
+    firstSubscriber.mockClear();
 
-    form.setValues({ first: 'A', second: 'B' })
+    form.setValues({ first: "A", second: "B" });
 
-    expect(valuesListener).toHaveBeenCalledTimes(1)
-    expect(fieldListener).toHaveBeenCalledTimes(2)
-    expect(formSubscriber).toHaveBeenCalledTimes(1)
-    expect(firstSubscriber).toHaveBeenCalledTimes(1)
-  })
+    expect(valuesListener).toHaveBeenCalledTimes(1);
+    expect(fieldListener).toHaveBeenCalledTimes(2);
+    expect(formSubscriber).toHaveBeenCalledTimes(1);
+    expect(firstSubscriber).toHaveBeenCalledTimes(1);
+  });
 
-  it('stops cyclic reactions and reports runtime error', () => {
-    const errors: any[] = []
-    const form = createForm({ onError: (error) => errors.push(error) })
+  it("stops cyclic reactions and reports runtime error", () => {
+    const errors: any[] = [];
+    const form = createForm({ onError: (error) => errors.push(error) });
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
         a: {
-          type: 'number',
+          type: "number",
           default: 0,
-          'x-reaction': {
+          "x-reaction": {
             value: {
-              dependencies: { b: 'b' },
-              type: 'expression',
-              expression: '($deps.b || 0) + 1',
+              dependencies: { b: "b" },
+              type: "expression",
+              expression: "($deps.b || 0) + 1",
             },
           },
         },
         b: {
-          type: 'number',
+          type: "number",
           default: 0,
-          'x-reaction': {
+          "x-reaction": {
             value: {
-              dependencies: { a: 'a' },
-              type: 'expression',
-              expression: '($deps.a || 0) + 1',
+              dependencies: { a: "a" },
+              type: "expression",
+              expression: "($deps.a || 0) + 1",
             },
           },
         },
       },
-    })
+    });
 
-    form.getField('a')?.setValue(1)
+    form.getField("a")?.setValue(1);
 
-    expect(errors.some((error) => error.scope === 'reaction' && /cycle detected/.test(error.message))).toBe(true)
-    expect(form.getField('a')?.value).toBeLessThan(100)
-    expect(form.getField('b')?.value).toBeLessThan(100)
-  })
+    expect(
+      errors.some((error) => error.scope === "reaction" && /cycle detected/.test(error.message)),
+    ).toBe(true);
+    expect(form.getField("a")?.value).toBeLessThan(100);
+    expect(form.getField("b")?.value).toBeLessThan(100);
+  });
 
-  it('uses dynamic array values for validation and submission', async () => {
-    const form = createForm()
+  it("uses dynamic array values for validation and submission", async () => {
+    const form = createForm();
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
         users: {
-          type: 'array',
-          title: 'Users',
+          type: "array",
+          title: "Users",
           minItems: 1,
           items: {
-            type: 'object',
+            type: "object",
             properties: {
-              name: { type: 'string', required: true },
+              name: { type: "string", required: true },
             },
           },
         },
       },
-    })
+    });
 
-    const users = form.getArrayField('users')
-    expect(users).toBeTruthy()
-    await expect(form.validate()).resolves.toBe(false)
+    const users = form.getArrayField("users");
+    expect(users).toBeTruthy();
+    await expect(form.validate()).resolves.toBe(false);
 
-    users?.push({ name: 'Bao' })
-    await expect(form.validate()).resolves.toBe(true)
-    expect(form.values).toEqual({ users: [{ name: 'Bao' }] })
+    users?.push({ name: "Bao" });
+    await expect(form.validate()).resolves.toBe(true);
+    expect(form.values).toEqual({ users: [{ name: "Bao" }] });
 
-    users?.remove(0)
-    await expect(form.validate()).resolves.toBe(false)
-  })
+    users?.remove(0);
+    await expect(form.validate()).resolves.toBe(false);
+  });
 
-
-  it('handles core boundary cases for paths, arrays, and state updates', () => {
+  it("handles core boundary cases for paths, arrays, and state updates", () => {
     const form = createForm({
       initialValues: {
-        users: [
-          { name: 'first' },
-          { name: 'second' },
-        ],
+        users: [{ name: "first" }, { name: "second" }],
       },
-    })
+    });
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
         users: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
-              name: { type: 'string' },
+              name: { type: "string" },
             },
           },
         },
         choice: {
-          type: 'string',
-          default: 'stale',
-          dataSourcePolicy: 'first',
+          type: "string",
+          default: "stale",
+          dataSourcePolicy: "first",
         },
       },
-    })
+    });
 
     expect(form.values).toEqual({
-      users: [{ name: 'first' }, { name: 'second' }],
-      choice: 'stale',
-    })
+      users: [{ name: "first" }, { name: "second" }],
+      choice: "stale",
+    });
 
-    form.getArrayField('users')?.moveDown(-1)
-    form.getArrayField('users')?.moveUp(99)
-    expect(form.values.users).toEqual([{ name: 'first' }, { name: 'second' }])
+    form.getArrayField("users")?.moveDown(-1);
+    form.getArrayField("users")?.moveUp(99);
+    expect(form.values.users).toEqual([{ name: "first" }, { name: "second" }]);
 
-    form.setValues({ users: [{ name: 'only' }] })
-    expect(form.getField('users.1.name')).toBeUndefined()
-    expect(form.values.users).toEqual([{ name: 'only' }])
+    form.setValues({ users: [{ name: "only" }] });
+    expect(form.getField("users.1.name")).toBeUndefined();
+    expect(form.values.users).toEqual([{ name: "only" }]);
 
-    form.reset()
-    expect(form.getField('users.0.name')?.value).toBe('first')
-    expect(form.getField('users.1.name')?.value).toBe('second')
-    expect(form.values.users).toEqual([{ name: 'first' }, { name: 'second' }])
+    form.reset();
+    expect(form.getField("users.0.name")?.value).toBe("first");
+    expect(form.getField("users.1.name")?.value).toBe("second");
+    expect(form.values.users).toEqual([{ name: "first" }, { name: "second" }]);
 
-    form.setFieldState('choice', (state) => {
-      state.dataSource = [{ label: 'Fresh', value: 'fresh' }]
-    })
-    expect(form.getField('choice')?.value).toBe('fresh')
+    form.setFieldState("choice", (state) => {
+      state.dataSource = [{ label: "Fresh", value: "fresh" }];
+    });
+    expect(form.getField("choice")?.value).toBe("fresh");
 
-    form.setValues(null as any)
-    expect(form.values.users).toEqual([{ name: 'first' }, { name: 'second' }])
-  })
+    form.setValues(null as any);
+    expect(form.values.users).toEqual([{ name: "first" }, { name: "second" }]);
+  });
 
-  it('syncs array child fields when setValues replaces array length', () => {
-    const form = createForm()
+  it("syncs array child fields when setValues replaces array length", () => {
+    const form = createForm();
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
         users: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
-              name: { type: 'string' },
+              name: { type: "string" },
             },
           },
         },
       },
-    })
+    });
 
-    form.getArrayField('users')?.push({ name: 'first' })
-    form.getArrayField('users')?.push({ name: 'second' })
-
-    form.setValues({
-      users: [{ name: 'only' }],
-    })
-
-    expect(form.values).toEqual({ users: [{ name: 'only' }] })
-    expect(form.getField('users.0.name')?.value).toBe('only')
-    expect(form.getField('users.1.name')).toBeUndefined()
+    form.getArrayField("users")?.push({ name: "first" });
+    form.getArrayField("users")?.push({ name: "second" });
 
     form.setValues({
-      users: [{ name: 'left' }, { name: 'right' }],
-    })
+      users: [{ name: "only" }],
+    });
 
-    expect(form.values).toEqual({ users: [{ name: 'left' }, { name: 'right' }] })
-    expect(form.getField('users.1.name')?.value).toBe('right')
-  })
+    expect(form.values).toEqual({ users: [{ name: "only" }] });
+    expect(form.getField("users.0.name")?.value).toBe("only");
+    expect(form.getField("users.1.name")).toBeUndefined();
 
-  it('initializes nested array fields inside array rows from initialValues', () => {
+    form.setValues({
+      users: [{ name: "left" }, { name: "right" }],
+    });
+
+    expect(form.values).toEqual({ users: [{ name: "left" }, { name: "right" }] });
+    expect(form.getField("users.1.name")?.value).toBe("right");
+  });
+
+  it("initializes nested array fields inside array rows from initialValues", () => {
     const form = createForm({
       initialValues: {
         specs: [
           {
-            name: '颜色',
+            name: "颜色",
             values: [
-              { label: '曜石黑', image: 'black.png' },
-              { label: '月光白', image: 'white.png' },
+              { label: "曜石黑", image: "black.png" },
+              { label: "月光白", image: "white.png" },
             ],
           },
         ],
       },
-    })
+    });
 
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
         specs: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
-              name: { type: 'string' },
+              name: { type: "string" },
               values: {
-                type: 'array',
+                type: "array",
                 items: {
-                  type: 'object',
+                  type: "object",
                   properties: {
-                    label: { type: 'string' },
-                    image: { type: 'string' },
+                    label: { type: "string" },
+                    image: { type: "string" },
                   },
                 },
               },
@@ -285,847 +284,867 @@ describe('@alien-form/core', () => {
           },
         },
       },
-    })
+    });
 
-    expect(form.getField('specs.0.name')?.value).toBe('颜色')
-    expect(form.getField('specs.0.values')).toBeTruthy()
-    expect(form.getField('specs.0.values.0.label')?.value).toBe('曜石黑')
-    expect(form.getField('specs.0.values.1.image')?.value).toBe('white.png')
+    expect(form.getField("specs.0.name")?.value).toBe("颜色");
+    expect(form.getField("specs.0.values")).toBeTruthy();
+    expect(form.getField("specs.0.values.0.label")?.value).toBe("曜石黑");
+    expect(form.getField("specs.0.values.1.image")?.value).toBe("white.png");
     expect(form.values).toEqual({
       specs: [
         {
-          name: '颜色',
+          name: "颜色",
           values: [
-            { label: '曜石黑', image: 'black.png' },
-            { label: '月光白', image: 'white.png' },
+            { label: "曜石黑", image: "black.png" },
+            { label: "月光白", image: "white.png" },
           ],
         },
       ],
-    })
-  })
+    });
+  });
 
-  it('initializes and updates simple array item fields', () => {
+  it("initializes and updates simple array item fields", () => {
     const form = createForm({
       initialValues: {
-        tags: ['red', 'blue'],
+        tags: ["red", "blue"],
       },
-    })
+    });
 
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
         tags: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'string',
+            type: "string",
           },
         },
       },
-    })
+    });
 
-    expect(form.getArrayField('tags')).toBeTruthy()
-    expect(form.getField('tags.0')?.value).toBe('red')
-    expect(form.getField('tags.1')?.value).toBe('blue')
-    expect(form.values).toEqual({ tags: ['red', 'blue'] })
+    expect(form.getArrayField("tags")).toBeTruthy();
+    expect(form.getField("tags.0")?.value).toBe("red");
+    expect(form.getField("tags.1")?.value).toBe("blue");
+    expect(form.values).toEqual({ tags: ["red", "blue"] });
 
     form.setValues({
-      tags: ['green'],
-    })
+      tags: ["green"],
+    });
 
-    expect(form.getField('tags.0')?.value).toBe('green')
-    expect(form.getField('tags.1')).toBeUndefined()
-    expect(form.values).toEqual({ tags: ['green'] })
+    expect(form.getField("tags.0")?.value).toBe("green");
+    expect(form.getField("tags.1")).toBeUndefined();
+    expect(form.values).toEqual({ tags: ["green"] });
 
-    form.getArrayField('tags')?.push('yellow')
-    expect(form.getField('tags.1')?.value).toBe('yellow')
-    expect(form.values).toEqual({ tags: ['green', 'yellow'] })
-  })
+    form.getArrayField("tags")?.push("yellow");
+    expect(form.getField("tags.1")?.value).toBe("yellow");
+    expect(form.values).toEqual({ tags: ["green", "yellow"] });
+  });
 
-  it('notifies field, values and validation lifecycle changes', async () => {
-    const events: string[] = []
+  it("notifies field, values and validation lifecycle changes", async () => {
+    const events: string[] = [];
     const form = createForm({
       effects: (instance) => {
-        instance.onFieldChange('name', () => events.push('field-change'))
-        instance.onValuesChange(() => events.push('values-change'))
-        instance.onLifecycle('onFieldValueChange', 'name', () => events.push('value-lifecycle'))
-        instance.onLifecycle('onFieldValidateStart', 'name', () => events.push('validate-start'))
-        instance.onLifecycle('onFieldValidateSuccess', 'name', () => events.push('validate-success'))
-        instance.onLifecycle('onFieldValidateEnd', 'name', () => events.push('validate-end'))
+        instance.onFieldChange("name", () => events.push("field-change"));
+        instance.onValuesChange(() => events.push("values-change"));
+        instance.onLifecycle("onFieldValueChange", "name", () => events.push("value-lifecycle"));
+        instance.onLifecycle("onFieldValidateStart", "name", () => events.push("validate-start"));
+        instance.onLifecycle("onFieldValidateSuccess", "name", () =>
+          events.push("validate-success"),
+        );
+        instance.onLifecycle("onFieldValidateEnd", "name", () => events.push("validate-end"));
       },
-    })
-    form.setSchema(basicSchema)
+    });
+    form.setSchema(basicSchema);
 
-    form.getField('name')?.setValue('Bao')
-    await form.validate()
+    form.getField("name")?.setValue("Bao");
+    await form.validate();
 
-    expect(events).toEqual(expect.arrayContaining([
-      'field-change',
-      'values-change',
-      'value-lifecycle',
-      'validate-start',
-      'validate-success',
-      'validate-end',
-    ]))
-  })
+    expect(events).toEqual(
+      expect.arrayContaining([
+        "field-change",
+        "values-change",
+        "value-lifecycle",
+        "validate-start",
+        "validate-success",
+        "validate-end",
+      ]),
+    );
+  });
 
-  it('replaces fields when setSchema is called again', () => {
-    const form = createForm({ initialValues: { oldField: 'old', newField: 'new' } })
+  it("replaces fields when setSchema is called again", () => {
+    const form = createForm({ initialValues: { oldField: "old", newField: "new" } });
     form.setSchema({
-      type: 'object',
-      properties: { oldField: { type: 'string' } },
-    })
-    expect(form.values).toEqual({ oldField: 'old' })
+      type: "object",
+      properties: { oldField: { type: "string" } },
+    });
+    expect(form.values).toEqual({ oldField: "old" });
 
     form.setSchema({
-      type: 'object',
-      properties: { newField: { type: 'string' } },
-    })
-    expect(form.getField('oldField')).toBeUndefined()
-    expect(form.values).toEqual({ newField: 'new' })
-  })
+      type: "object",
+      properties: { newField: { type: "string" } },
+    });
+    expect(form.getField("oldField")).toBeUndefined();
+    expect(form.values).toEqual({ newField: "new" });
+  });
 
-  it('initializes AlienForm protocol fields and sorts by order', () => {
-    const form = createForm()
+  it("initializes AlienForm protocol fields and sorts by order", () => {
+    const form = createForm();
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
         second: {
-          type: 'string',
-          title: 'Second',
+          type: "string",
+          title: "Second",
           order: 2,
-          component: 'Select',
-          props: { placeholder: 'pick one' },
-          decorator: 'FormItem',
-          decoratorProps: { tooltip: 'help' },
-          dataSource: [{ label: 'A', value: 'a' }],
-          data: { tracking: 'second' },
-          state: { display: 'hidden', pattern: 'disabled' },
+          component: "Select",
+          props: { placeholder: "pick one" },
+          decorator: "FormItem",
+          decoratorProps: { tooltip: "help" },
+          dataSource: [{ label: "A", value: "a" }],
+          data: { tracking: "second" },
+          state: { display: "hidden", pattern: "disabled" },
         },
         first: {
-          type: 'string',
-          title: 'First',
+          type: "string",
+          title: "First",
           order: 1,
           state: { readPretty: true },
         },
       },
-    })
+    });
 
-    expect(Array.from(form.fields.keys())).toEqual(['first', 'second'])
-    const second = form.getField('second')
-    expect(second?.component).toBe('Select')
-    expect(second?.componentProps).toEqual({ placeholder: 'pick one' })
-    expect(second?.decoratorProps).toEqual({ tooltip: 'help' })
-    expect(second?.dataSource).toEqual([{ label: 'A', value: 'a' }])
-    expect(second?.data).toEqual({ tracking: 'second' })
-    expect(second?.display).toBe('hidden')
-    expect(second?.disabled).toBe(true)
-    expect(form.getField('first')?.readPretty).toBe(true)
-  })
+    expect(Array.from(form.fields.keys())).toEqual(["first", "second"]);
+    const second = form.getField("second");
+    expect(second?.component).toBe("Select");
+    expect(second?.componentProps).toEqual({ placeholder: "pick one" });
+    expect(second?.decoratorProps).toEqual({ tooltip: "help" });
+    expect(second?.dataSource).toEqual([{ label: "A", value: "a" }]);
+    expect(second?.data).toEqual({ tracking: "second" });
+    expect(second?.display).toBe("hidden");
+    expect(second?.disabled).toBe(true);
+    expect(form.getField("first")?.readPretty).toBe(true);
+  });
 
-  it('derives field attributes through property-level expression reactions', () => {
-    const form = createForm()
+  it("derives field attributes through property-level expression reactions", () => {
+    const form = createForm();
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
-        type: { type: 'string', default: 'person' },
+        type: { type: "string", default: "person" },
         name: {
-          type: 'string',
-          title: 'Name',
-          'x-reaction': {
+          type: "string",
+          title: "Name",
+          "x-reaction": {
             visible: {
-              dependencies: { type: 'type' },
-              type: 'expression',
+              dependencies: { type: "type" },
+              type: "expression",
               expression: "$deps.type === 'company'",
             },
             title: {
-              dependencies: { type: 'type' },
-              type: 'expression',
+              dependencies: { type: "type" },
+              type: "expression",
               expression: "$deps.type === 'company' ? 'Company Name' : 'Person Name'",
             },
             props: {
-              dependencies: { type: 'type' },
-              type: 'match',
-              source: '$deps.type',
+              dependencies: { type: "type" },
+              type: "match",
+              source: "$deps.type",
               match: {
-                company: { placeholder: 'Company' },
-                default: { placeholder: 'Person' },
+                company: { placeholder: "Company" },
+                default: { placeholder: "Person" },
               },
             },
             dataSource: {
-              dependencies: { type: 'type' },
-              type: 'match',
-              source: '$deps.type',
+              dependencies: { type: "type" },
+              type: "match",
+              source: "$deps.type",
               match: {
-                company: [{ label: 'Company', value: 'company' }],
-                default: [{ label: 'Person', value: 'person' }],
+                company: [{ label: "Company", value: "company" }],
+                default: [{ label: "Person", value: "person" }],
               },
             },
           },
         },
       },
-    })
+    });
 
-    const name = form.getField('name')
-    expect(name?.visible).toBe(false)
-    expect(name?.title).toBe('Person Name')
-    expect(name?.componentProps).toEqual({ placeholder: 'Person' })
-    expect(name?.dataSource).toEqual([{ label: 'Person', value: 'person' }])
+    const name = form.getField("name");
+    expect(name?.visible).toBe(false);
+    expect(name?.title).toBe("Person Name");
+    expect(name?.componentProps).toEqual({ placeholder: "Person" });
+    expect(name?.dataSource).toEqual([{ label: "Person", value: "person" }]);
 
-    form.getField('type')?.setValue('company')
-    expect(name?.visible).toBe(true)
-    expect(name?.title).toBe('Company Name')
-    expect(name?.componentProps).toEqual({ placeholder: 'Company' })
-    expect(name?.dataSource).toEqual([{ label: 'Company', value: 'company' }])
-  })
+    form.getField("type")?.setValue("company");
+    expect(name?.visible).toBe(true);
+    expect(name?.title).toBe("Company Name");
+    expect(name?.componentProps).toEqual({ placeholder: "Company" });
+    expect(name?.dataSource).toEqual([{ label: "Company", value: "company" }]);
+  });
 
-  it('loads dataSource through computed reaction handlers', async () => {
+  it("loads dataSource through computed reaction handlers", async () => {
     const loadCities = vi.fn(async ({ deps }) => {
-      if (deps.country === 'cn') return [{ label: 'Beijing', value: 'beijing' }]
-      return []
-    })
-    const form = createForm({ handlers: { loadCities } })
+      if (deps.country === "cn") return [{ label: "Beijing", value: "beijing" }];
+      return [];
+    });
+    const form = createForm({ handlers: { loadCities } });
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
-        country: { type: 'string' },
+        country: { type: "string" },
         city: {
-          type: 'string',
-          'x-reaction': {
+          type: "string",
+          "x-reaction": {
             dataSource: {
-              dependencies: { country: 'country' },
-              type: 'computed',
-              handler: 'loadCities',
+              dependencies: { country: "country" },
+              type: "computed",
+              handler: "loadCities",
             },
           },
         },
       },
-    })
+    });
 
-    const city = form.getField('city')
-    expect(city?.dataSource).toEqual([])
+    const city = form.getField("city");
+    expect(city?.dataSource).toEqual([]);
 
-    form.getField('country')?.setValue('cn')
-    await waitFor(() => (city?.dataSource.length || 0) > 0)
-    expect(loadCities).toHaveBeenCalledWith(expect.objectContaining({ deps: { country: 'cn' } }))
-    expect(city?.dataSource).toEqual([{ label: 'Beijing', value: 'beijing' }])
-  })
+    form.getField("country")?.setValue("cn");
+    await waitFor(() => (city?.dataSource.length || 0) > 0);
+    expect(loadCities).toHaveBeenCalledWith(expect.objectContaining({ deps: { country: "cn" } }));
+    expect(city?.dataSource).toEqual([{ label: "Beijing", value: "beijing" }]);
+  });
 
-  it('supports static, expression, match and computed reaction types only', async () => {
+  it("supports static, expression, match and computed reaction types only", async () => {
     const form = createForm({
       handlers: {
         buildOptions: async ({ deps }) => [{ label: String(deps.kind), value: deps.kind }],
       },
-    })
+    });
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
-        kind: { type: 'string', default: 'a' },
+        kind: { type: "string", default: "a" },
         field: {
-          type: 'string',
-          'x-reaction': {
-            title: { type: 'static', value: 'Static Title' },
+          type: "string",
+          "x-reaction": {
+            title: { type: "static", value: "Static Title" },
             display: {
-              dependencies: { kind: 'kind' },
-              type: 'expression',
+              dependencies: { kind: "kind" },
+              type: "expression",
               expression: "$deps.kind === 'hidden' ? 'none' : 'visible'",
             },
             props: {
-              dependencies: { kind: 'kind' },
-              type: 'match',
-              source: '$deps.kind',
+              dependencies: { kind: "kind" },
+              type: "match",
+              source: "$deps.kind",
               match: {
-                a: { placeholder: 'A' },
-                default: { placeholder: 'Other' },
+                a: { placeholder: "A" },
+                default: { placeholder: "Other" },
               },
             },
             dataSource: {
-              dependencies: { kind: 'kind' },
-              type: 'computed',
-              handler: 'buildOptions',
+              dependencies: { kind: "kind" },
+              type: "computed",
+              handler: "buildOptions",
             },
           },
         },
       },
-    })
+    });
 
-    const field = form.getField('field')
-    await waitFor(() => (field?.dataSource.length || 0) > 0)
-    expect(field?.title).toBe('Static Title')
-    expect(field?.display).toBe('visible')
-    expect(field?.componentProps).toEqual({ placeholder: 'A' })
-    expect(field?.dataSource).toEqual([{ label: 'a', value: 'a' }])
+    const field = form.getField("field");
+    await waitFor(() => (field?.dataSource.length || 0) > 0);
+    expect(field?.title).toBe("Static Title");
+    expect(field?.display).toBe("visible");
+    expect(field?.componentProps).toEqual({ placeholder: "A" });
+    expect(field?.dataSource).toEqual([{ label: "a", value: "a" }]);
 
-    form.getField('kind')?.setValue('hidden')
-    expect(field?.display).toBe('none')
-    expect(field?.componentProps).toEqual({ placeholder: 'Other' })
-  })
+    form.getField("kind")?.setValue("hidden");
+    expect(field?.display).toBe("none");
+    expect(field?.componentProps).toEqual({ placeholder: "Other" });
+  });
 
-  it('evaluates expression rules with a restricted interpreter', () => {
+  it("evaluates expression rules with a restricted interpreter", () => {
     const form = createForm({
-      initialValues: { mode: 'readonly', amount: 12.5 },
-      scope: { externalMode: 'readonly' },
-    })
+      initialValues: { mode: "readonly", amount: 12.5 },
+      scope: { externalMode: "readonly" },
+    });
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
-        mode: { type: 'string' },
+        mode: { type: "string" },
         amount: {
-          type: 'number',
-          'x-format': {
+          type: "number",
+          "x-format": {
             output: {
-              type: 'expression',
-              expression: '($value || 0) * 100',
+              type: "expression",
+              expression: "($value || 0) * 100",
             },
           },
         },
         derivedField: {
-          type: 'string',
-          'x-reaction': {
+          type: "string",
+          "x-reaction": {
             value: {
-              dependencies: { mode: 'mode' },
-              type: 'expression',
+              dependencies: { mode: "mode" },
+              type: "expression",
               expression: "$deps.mode === externalMode ? 'locked' : 'open'",
             },
             props: {
-              dependencies: { mode: 'mode' },
-              type: 'expression',
-              expression: "{ placeholder: $deps.mode === 'readonly' ? 'readonly mode' : 'editable mode', rows: 4 }",
+              dependencies: { mode: "mode" },
+              type: "expression",
+              expression:
+                "{ placeholder: $deps.mode === 'readonly' ? 'readonly mode' : 'editable mode', rows: 4 }",
             },
             disabled: {
-              dependencies: { mode: 'mode' },
-              type: 'expression',
+              dependencies: { mode: "mode" },
+              type: "expression",
               expression: "!($deps.mode !== 'readonly')",
             },
           },
         },
       },
-    })
+    });
 
-    expect(form.getField('derivedField')?.value).toBe('locked')
-    expect(form.getField('derivedField')?.componentProps).toEqual({ placeholder: 'readonly mode', rows: 4 })
-    expect(form.getField('derivedField')?.disabled).toBe(true)
-    expect(form.values.amount).toBe(1250)
-  })
+    expect(form.getField("derivedField")?.value).toBe("locked");
+    expect(form.getField("derivedField")?.componentProps).toEqual({
+      placeholder: "readonly mode",
+      rows: 4,
+    });
+    expect(form.getField("derivedField")?.disabled).toBe(true);
+    expect(form.values.amount).toBe(1250);
+  });
 
-  it('rejects unsafe expressions and function calls without run escape hatches', () => {
+  it("rejects unsafe expressions and function calls without run escape hatches", () => {
     const rejectedExpressions = [
-      'globalThis.process',
-      'Number($value)',
-      'isAdult($deps.age)',
-      '$value.trim()',
-      'new Date()',
-      '$value = 1',
-      'function () { return 1 }',
-      '() => 1',
-      '$deps.__proto__',
-      '$deps.constructor',
-    ]
+      "globalThis.process",
+      "Number($value)",
+      "isAdult($deps.age)",
+      "$value.trim()",
+      "new Date()",
+      "$value = 1",
+      "function () { return 1 }",
+      "() => 1",
+      "$deps.__proto__",
+      "$deps.constructor",
+    ];
 
     for (const expression of rejectedExpressions) {
-      const form = createForm()
+      const form = createForm();
       form.setSchema({
-        type: 'object',
+        type: "object",
         properties: {
-          source: { type: 'string', default: 'x' },
+          source: { type: "string", default: "x" },
           unsafeField: {
-            type: 'string',
-            'x-reaction': {
+            type: "string",
+            "x-reaction": {
               value: {
-                dependencies: { source: 'source' },
-                type: 'expression',
+                dependencies: { source: "source" },
+                type: "expression",
                 expression,
               },
             },
           },
         },
-      })
+      });
 
-      expect(form.getField('unsafeField')?.value).toBeUndefined()
+      expect(form.getField("unsafeField")?.value).toBeUndefined();
     }
-  })
+  });
 
-  it('keeps field-owned reactions independent across dependencies', () => {
-    const form = createForm()
+  it("keeps field-owned reactions independent across dependencies", () => {
+    const form = createForm();
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
-        source: { type: 'string', default: 'off' },
+        source: { type: "string", default: "off" },
         first: {
-          type: 'string',
-          state: { display: 'none' },
-          'x-reaction': {
+          type: "string",
+          state: { display: "none" },
+          "x-reaction": {
             visible: {
-              dependencies: { source: 'source' },
-              type: 'expression',
+              dependencies: { source: "source" },
+              type: "expression",
               expression: "$deps.source === 'on'",
             },
           },
         },
         second: {
-          type: 'string',
-          state: { display: 'none' },
-          'x-reaction': {
+          type: "string",
+          state: { display: "none" },
+          "x-reaction": {
             visible: {
-              dependencies: { source: 'source' },
-              type: 'expression',
+              dependencies: { source: "source" },
+              type: "expression",
               expression: "$deps.source === 'on'",
             },
           },
         },
       },
-    })
+    });
 
-    expect(form.getField('first')?.visible).toBe(false)
-    expect(form.getField('second')?.visible).toBe(false)
+    expect(form.getField("first")?.visible).toBe(false);
+    expect(form.getField("second")?.visible).toBe(false);
 
-    form.getField('source')?.setValue('on')
-    expect(form.getField('first')?.visible).toBe(true)
-    expect(form.getField('second')?.visible).toBe(true)
-  })
+    form.getField("source")?.setValue("on");
+    expect(form.getField("first")?.visible).toBe(true);
+    expect(form.getField("second")?.visible).toBe(true);
+  });
 
-  it('initializes all state shortcuts and excludes display none fields from values and validation', async () => {
+  it("initializes all state shortcuts and excludes display none fields from values and validation", async () => {
     const form = createForm({
       initialValues: {
-        hiddenByVisible: '',
-        hiddenByDisplay: '',
-        hiddenField: 'kept-in-runtime',
-        disabledField: 'disabled',
-        readOnlyField: 'readonly',
-        readPrettyField: 'pretty',
-        nonEditableField: 'locked',
+        hiddenByVisible: "",
+        hiddenByDisplay: "",
+        hiddenField: "kept-in-runtime",
+        disabledField: "disabled",
+        readOnlyField: "readonly",
+        readPrettyField: "pretty",
+        nonEditableField: "locked",
       },
-    })
+    });
 
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
         hiddenByVisible: {
-          type: 'string',
-          title: 'Hidden by visible',
+          type: "string",
+          title: "Hidden by visible",
           required: true,
-          state: { display: 'none' },
+          state: { display: "none" },
         },
         hiddenByDisplay: {
-          type: 'string',
-          title: 'Hidden by display',
+          type: "string",
+          title: "Hidden by display",
           required: true,
-          state: { display: 'none' },
+          state: { display: "none" },
         },
         hiddenField: {
-          type: 'string',
-          state: { display: 'hidden' },
+          type: "string",
+          state: { display: "hidden" },
         },
         disabledField: {
-          type: 'string',
+          type: "string",
           state: { disabled: true },
         },
         readOnlyField: {
-          type: 'string',
+          type: "string",
           state: { readOnly: true },
         },
         readPrettyField: {
-          type: 'string',
+          type: "string",
           state: { readPretty: true },
         },
         nonEditableField: {
-          type: 'string',
+          type: "string",
           state: { editable: false },
         },
       },
-    })
+    });
 
-    expect(form.getField('hiddenByVisible')?.display).toBe('none')
-    expect(form.getField('hiddenByDisplay')?.visible).toBe(false)
-    expect(form.getField('hiddenField')?.display).toBe('hidden')
-    expect(form.getField('hiddenField')?.hidden).toBe(true)
-    expect(form.getField('disabledField')?.disabled).toBe(true)
-    expect(form.getField('readOnlyField')?.readOnly).toBe(true)
-    expect(form.getField('readPrettyField')?.readPretty).toBe(true)
-    expect(form.getField('nonEditableField')?.readOnly).toBe(true)
+    expect(form.getField("hiddenByVisible")?.display).toBe("none");
+    expect(form.getField("hiddenByDisplay")?.visible).toBe(false);
+    expect(form.getField("hiddenField")?.display).toBe("hidden");
+    expect(form.getField("hiddenField")?.hidden).toBe(true);
+    expect(form.getField("disabledField")?.disabled).toBe(true);
+    expect(form.getField("readOnlyField")?.readOnly).toBe(true);
+    expect(form.getField("readPrettyField")?.readPretty).toBe(true);
+    expect(form.getField("nonEditableField")?.readOnly).toBe(true);
 
-    expect(form.values).not.toHaveProperty('hiddenByVisible')
-    expect(form.values).not.toHaveProperty('hiddenByDisplay')
-    expect(form.values).toHaveProperty('hiddenField', 'kept-in-runtime')
-    await expect(form.validate()).resolves.toBe(true)
-  })
+    expect(form.values).not.toHaveProperty("hiddenByVisible");
+    expect(form.values).not.toHaveProperty("hiddenByDisplay");
+    expect(form.values).toHaveProperty("hiddenField", "kept-in-runtime");
+    await expect(form.validate()).resolves.toBe(true);
+  });
 
-  it('updates decorator, component and props through property reactions', () => {
-    const form = createForm()
+  it("updates decorator, component and props through property reactions", () => {
+    const form = createForm();
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
-        mode: { type: 'string', default: 'readonly' },
+        mode: { type: "string", default: "readonly" },
         derivedField: {
-          type: 'string',
-          component: 'Input',
-          props: { placeholder: 'initial' },
-          decorator: 'FormItem',
-          'x-reaction': {
+          type: "string",
+          component: "Input",
+          props: { placeholder: "initial" },
+          decorator: "FormItem",
+          "x-reaction": {
             component: {
-              dependencies: { mode: 'mode' },
-              type: 'match',
-              source: '$deps.mode',
-              match: { readonly: 'Textarea', default: 'Input' },
+              dependencies: { mode: "mode" },
+              type: "match",
+              source: "$deps.mode",
+              match: { readonly: "Textarea", default: "Input" },
             },
             props: {
-              dependencies: { mode: 'mode' },
-              type: 'match',
-              source: '$deps.mode',
+              dependencies: { mode: "mode" },
+              type: "match",
+              source: "$deps.mode",
               match: {
-                readonly: { rows: 4, placeholder: 'readonly mode' },
-                default: { placeholder: 'editable mode' },
+                readonly: { rows: 4, placeholder: "readonly mode" },
+                default: { placeholder: "editable mode" },
               },
             },
             decoratorProps: {
-              type: 'static',
-              value: { tooltip: 'dynamic help' },
+              type: "static",
+              value: { tooltip: "dynamic help" },
             },
             pattern: {
-              dependencies: { mode: 'mode' },
-              type: 'match',
-              source: '$deps.mode',
-              match: { readonly: 'readOnly', default: 'editable' },
+              dependencies: { mode: "mode" },
+              type: "match",
+              source: "$deps.mode",
+              match: { readonly: "readOnly", default: "editable" },
             },
           },
         },
       },
-    })
+    });
 
-    const derivedField = form.getField('derivedField')
-    expect(derivedField?.component).toBe('Textarea')
-    expect(derivedField?.componentProps).toEqual({ placeholder: 'readonly mode', rows: 4 })
-    expect(derivedField?.decoratorProps).toEqual({ tooltip: 'dynamic help' })
-    expect(derivedField?.readOnly).toBe(true)
+    const derivedField = form.getField("derivedField");
+    expect(derivedField?.component).toBe("Textarea");
+    expect(derivedField?.componentProps).toEqual({ placeholder: "readonly mode", rows: 4 });
+    expect(derivedField?.decoratorProps).toEqual({ tooltip: "dynamic help" });
+    expect(derivedField?.readOnly).toBe(true);
 
-    form.getField('mode')?.setValue('editable')
-    expect(derivedField?.component).toBe('Input')
-    expect(derivedField?.componentProps).toEqual({ placeholder: 'editable mode', rows: 4 })
-    expect(derivedField?.editable).toBe(true)
-  })
+    form.getField("mode")?.setValue("editable");
+    expect(derivedField?.component).toBe("Input");
+    expect(derivedField?.componentProps).toEqual({ placeholder: "editable mode", rows: 4 });
+    expect(derivedField?.editable).toBe(true);
+  });
 
-  it('formats input and output values with x-format', async () => {
-    const form = createForm({ initialValues: { amount: 1234 } })
+  it("formats input and output values with x-format", async () => {
+    const form = createForm({ initialValues: { amount: 1234 } });
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
         amount: {
-          type: 'number',
-          'x-format': {
+          type: "number",
+          "x-format": {
             input: {
-              type: 'expression',
-              expression: '$value / 100',
+              type: "expression",
+              expression: "$value / 100",
             },
             output: {
-              type: 'expression',
-              expression: '$value * 100',
+              type: "expression",
+              expression: "$value * 100",
             },
           },
         },
       },
-    })
+    });
 
-    expect(form.getField('amount')?.value).toBe(12.34)
-    expect(form.values).toEqual({ amount: 1234 })
+    expect(form.getField("amount")?.value).toBe(12.34);
+    expect(form.values).toEqual({ amount: 1234 });
 
-    form.setValues({ amount: 2500 })
-    expect(form.getField('amount')?.value).toBe(25)
-    await expect(form.submit()).resolves.toEqual({ amount: 2500 })
-  })
+    form.setValues({ amount: 2500 });
+    expect(form.getField("amount")?.value).toBe(25);
+    await expect(form.submit()).resolves.toEqual({ amount: 2500 });
+  });
 
-  it('uses current value as default match source for x-format', async () => {
-    const form = createForm()
+  it("uses current value as default match source for x-format", async () => {
+    const form = createForm();
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
         status: {
-          type: 'string',
+          type: "string",
           default: 1,
-          'x-format': {
-            input: { type: 'match', match: { '1': 'enabled', '0': 'disabled', default: 'disabled' } },
-            output: { type: 'match', match: { enabled: 1, disabled: 0, default: 0 } },
+          "x-format": {
+            input: {
+              type: "match",
+              match: { "1": "enabled", "0": "disabled", default: "disabled" },
+            },
+            output: { type: "match", match: { enabled: 1, disabled: 0, default: 0 } },
           },
         },
       },
-    })
+    });
 
-    expect(form.getField('status')?.value).toBe('enabled')
-    await expect(form.submit()).resolves.toEqual({ status: 1 })
+    expect(form.getField("status")?.value).toBe("enabled");
+    await expect(form.submit()).resolves.toEqual({ status: 1 });
 
-    form.getField('status')?.setValue('disabled')
-    await expect(form.submit()).resolves.toEqual({ status: 0 })
-  })
+    form.getField("status")?.setValue("disabled");
+    await expect(form.submit()).resolves.toEqual({ status: 0 });
+  });
 
-  it('formats schema default values with x-format input', async () => {
-    const form = createForm()
+  it("formats schema default values with x-format input", async () => {
+    const form = createForm();
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
         amount: {
-          type: 'number',
+          type: "number",
           default: 12345,
-          'x-format': {
+          "x-format": {
             input: {
-              type: 'expression',
-              expression: '$value / 100',
+              type: "expression",
+              expression: "$value / 100",
             },
             output: {
-              type: 'expression',
-              expression: '$value * 100',
+              type: "expression",
+              expression: "$value * 100",
             },
           },
         },
       },
-    })
+    });
 
-    expect(form.getField('amount')?.value).toBe(123.45)
-    expect(form.values).toEqual({ amount: 12345 })
-    await expect(form.submit()).resolves.toEqual({ amount: 12345 })
-  })
+    expect(form.getField("amount")?.value).toBe(123.45);
+    expect(form.values).toEqual({ amount: 12345 });
+    await expect(form.submit()).resolves.toEqual({ amount: 12345 });
+  });
 
-  it('treats undefined x-validate expression result as passed', async () => {
-    const form = createForm()
+  it("treats undefined x-validate expression result as passed", async () => {
+    const form = createForm();
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
         username: {
-          type: 'string',
-          default: 'admin',
-          'x-validate': {
-            type: 'expression',
+          type: "string",
+          default: "admin",
+          "x-validate": {
+            type: "expression",
             expression: "$value === 'admin' ? undefined : 'Username must be admin'",
           },
         },
       },
-    })
+    });
 
-    await expect(form.validate()).resolves.toBe(true)
-    expect(form.errors).toEqual([])
+    await expect(form.validate()).resolves.toBe(true);
+    expect(form.errors).toEqual([]);
 
-    form.getField('username')?.setValue('guest')
-    await expect(form.validate()).resolves.toBe(false)
-    expect(form.errors).toEqual([{ message: 'Username must be admin', type: 'x-validate' }])
-  })
+    form.getField("username")?.setValue("guest");
+    await expect(form.validate()).resolves.toBe(false);
+    expect(form.errors).toEqual([{ message: "Username must be admin", type: "x-validate" }]);
+  });
 
-  it('reconciles value when dataSource changes by dataSourcePolicy', () => {
-    const form = createForm({ initialValues: { city: 'beijing', tags: ['a', 'x'] } })
+  it("reconciles value when dataSource changes by dataSourcePolicy", () => {
+    const form = createForm({ initialValues: { city: "beijing", tags: ["a", "x"] } });
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
         country: {
-          type: 'string',
-          default: 'cn',
+          type: "string",
+          default: "cn",
         },
         city: {
-          type: 'string',
-          dataSourcePolicy: 'clear',
-          dataSource: [{ label: '北京', value: 'beijing' }],
-          'x-reaction': {
+          type: "string",
+          dataSourcePolicy: "clear",
+          dataSource: [{ label: "北京", value: "beijing" }],
+          "x-reaction": {
             dataSource: {
-              type: 'match',
-              dependencies: { country: 'country' },
+              type: "match",
+              dependencies: { country: "country" },
               match: {
-                cn: [{ label: '北京', value: 'beijing' }],
-                sg: [{ label: '新加坡', value: 'singapore' }],
+                cn: [{ label: "北京", value: "beijing" }],
+                sg: [{ label: "新加坡", value: "singapore" }],
               },
             },
           },
         },
         tags: {
-          type: 'array',
-          dataSourcePolicy: 'filter',
+          type: "array",
+          dataSourcePolicy: "filter",
           dataSource: [
-            { label: 'A', value: 'a' },
-            { label: 'B', value: 'b' },
+            { label: "A", value: "a" },
+            { label: "B", value: "b" },
           ],
         },
       },
-    })
+    });
 
-    expect(form.getField('city')?.value).toBe('beijing')
-    form.getField('country')?.setValue('sg')
-    expect(form.getField('city')?.value).toBeUndefined()
+    expect(form.getField("city")?.value).toBe("beijing");
+    form.getField("country")?.setValue("sg");
+    expect(form.getField("city")?.value).toBeUndefined();
 
-    form.getField('tags')?.setDataSource([{ label: 'A', value: 'a' }])
-    expect(form.getField('tags')?.value).toEqual(['a'])
-  })
+    form.getField("tags")?.setDataSource([{ label: "A", value: "a" }]);
+    expect(form.getField("tags")?.value).toEqual(["a"]);
+  });
 
-  it('supports x-validate dependencies for cross-field validation', async () => {
-    const form = createForm()
+  it("supports x-validate dependencies for cross-field validation", async () => {
+    const form = createForm();
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
         password: {
-          type: 'string',
-          default: '123456',
+          type: "string",
+          default: "123456",
         },
         confirmPassword: {
-          type: 'string',
-          default: '123456',
-          'x-validate': {
-            type: 'expression',
-            dependencies: { password: 'password' },
+          type: "string",
+          default: "123456",
+          "x-validate": {
+            type: "expression",
+            dependencies: { password: "password" },
             expression: '$value === $deps.password ? undefined : "Passwords do not match"',
           },
         },
       },
-    })
+    });
 
-    await expect(form.validate()).resolves.toBe(true)
-    expect(form.errors).toEqual([])
+    await expect(form.validate()).resolves.toBe(true);
+    expect(form.errors).toEqual([]);
 
-    form.getField('confirmPassword')?.setValue('654321')
-    await expect(form.validate()).resolves.toBe(false)
-    expect(form.errors).toEqual([{ message: 'Passwords do not match', type: 'x-validate' }])
-  })
+    form.getField("confirmPassword")?.setValue("654321");
+    await expect(form.validate()).resolves.toBe(false);
+    expect(form.errors).toEqual([{ message: "Passwords do not match", type: "x-validate" }]);
+  });
 
-  it('moves array rows by row identity instead of swapping only values', () => {
-    const form = createForm()
+  it("moves array rows by row identity instead of swapping only values", () => {
+    const form = createForm();
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
         users: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
-              name: { type: 'string' },
+              name: { type: "string" },
             },
           },
         },
       },
-    })
+    });
 
-    const users = form.getArrayField('users')
-    users?.push({ name: 'first' })
-    users?.push({ name: 'second' })
+    const users = form.getArrayField("users");
+    users?.push({ name: "first" });
+    users?.push({ name: "second" });
 
-    const row0Before = form.getField('users.0.name')!
-    const row1Before = form.getField('users.1.name')!
-    row1Before.setErrors([{ message: 'row-1-error' }])
+    const row0Before = form.getField("users.0.name")!;
+    const row1Before = form.getField("users.1.name")!;
+    row1Before.setErrors([{ message: "row-1-error" }]);
 
-    users?.moveUp(1)
+    users?.moveUp(1);
 
-    expect(form.getField('users.0.name')).toBe(row1Before)
-    expect(form.getField('users.1.name')).toBe(row0Before)
-    expect(form.getField('users.0.name')?.errors).toEqual([{ message: 'row-1-error' }])
-    expect(form.values).toEqual({ users: [{ name: 'second' }, { name: 'first' }] })
-  })
+    expect(form.getField("users.0.name")).toBe(row1Before);
+    expect(form.getField("users.1.name")).toBe(row0Before);
+    expect(form.getField("users.0.name")?.errors).toEqual([{ message: "row-1-error" }]);
+    expect(form.values).toEqual({ users: [{ name: "second" }, { name: "first" }] });
+  });
 
-  it('supports computed x-format handlers and x-validate rules', async () => {
-    const normalizeCode = vi.fn(({ value }) => String(value || '').trim().toUpperCase())
+  it("supports computed x-format handlers and x-validate rules", async () => {
+    const normalizeCode = vi.fn(({ value }) =>
+      String(value || "")
+        .trim()
+        .toUpperCase(),
+    );
     const checkCode = vi.fn(async ({ value }) => {
-      if (value === 'OK') return []
-      return [{ message: 'Code must be OK', type: 'x-validate' }]
-    })
+      if (value === "OK") return [];
+      return [{ message: "Code must be OK", type: "x-validate" }];
+    });
     const form = createForm({
-      initialValues: { code: ' ok ' },
+      initialValues: { code: " ok " },
       handlers: { normalizeCode, checkCode },
-    })
+    });
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
         code: {
-          type: 'string',
-          'x-format': {
-            input: { type: 'computed', handler: 'normalizeCode' },
-            output: { type: 'computed', handler: 'normalizeCode' },
+          type: "string",
+          "x-format": {
+            input: { type: "computed", handler: "normalizeCode" },
+            output: { type: "computed", handler: "normalizeCode" },
           },
-          'x-validate': {
-            type: 'computed',
-            handler: 'checkCode',
+          "x-validate": {
+            type: "computed",
+            handler: "checkCode",
           },
         },
       },
-    })
+    });
 
-    expect(form.getField('code')?.value).toBe('OK')
-    await expect(form.validate()).resolves.toBe(true)
-    expect(checkCode).toHaveBeenCalledWith(expect.objectContaining({ value: 'OK', kind: 'x-validate' }))
+    expect(form.getField("code")?.value).toBe("OK");
+    await expect(form.validate()).resolves.toBe(true);
+    expect(checkCode).toHaveBeenCalledWith(
+      expect.objectContaining({ value: "OK", kind: "x-validate" }),
+    );
 
-    form.getField('code')?.setValue('bad')
-    await expect(form.validate()).resolves.toBe(false)
-    expect(form.errors).toEqual([{ message: 'Code must be OK', type: 'x-validate' }])
-  })
+    form.getField("code")?.setValue("bad");
+    await expect(form.validate()).resolves.toBe(false);
+    expect(form.errors).toEqual([{ message: "Code must be OK", type: "x-validate" }]);
+  });
 
-  it('routes runtime errors through onError listeners', () => {
-    const errors: any[] = []
+  it("routes runtime errors through onError listeners", () => {
+    const errors: any[] = [];
     const form = createForm({
       onError: (e) => errors.push(e),
-    })
+    });
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
         a: {
-          type: 'string',
-          'x-reaction': {
+          type: "string",
+          "x-reaction": {
             // unsupported reaction key — should emit a reaction error
-            mystery: { type: 'static', value: true } as any,
+            mystery: { type: "static", value: true } as any,
           } as any,
         },
       },
-    })
-    expect(errors.length).toBeGreaterThan(0)
-    expect(errors.some((e) => e.scope === 'reaction' && e.path === 'a')).toBe(true)
-  })
+    });
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors.some((e) => e.scope === "reaction" && e.path === "a")).toBe(true);
+  });
 
-  it('keeps only the latest async reaction result', async () => {
-    const pending = new Map<string, ReturnType<typeof createDeferred<Array<{ label: string; value: string }>>>>()
+  it("keeps only the latest async reaction result", async () => {
+    const pending = new Map<
+      string,
+      ReturnType<typeof createDeferred<Array<{ label: string; value: string }>>>
+    >();
     const loadCities = vi.fn(({ deps }) => {
-      const deferred = createDeferred<Array<{ label: string; value: string }>>()
-      pending.set(String(deps.country), deferred)
-      return deferred.promise
-    })
-    const form = createForm({ handlers: { loadCities } })
+      const deferred = createDeferred<Array<{ label: string; value: string }>>();
+      pending.set(String(deps.country), deferred);
+      return deferred.promise;
+    });
+    const form = createForm({ handlers: { loadCities } });
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
-        country: { type: 'string' },
+        country: { type: "string" },
         city: {
-          type: 'string',
-          'x-reaction': {
+          type: "string",
+          "x-reaction": {
             dataSource: {
-              dependencies: { country: 'country' },
-              type: 'computed',
-              handler: 'loadCities',
+              dependencies: { country: "country" },
+              type: "computed",
+              handler: "loadCities",
             },
           },
         },
       },
-    })
+    });
 
-    form.getField('country')?.setValue('cn')
-    form.getField('country')?.setValue('sg')
+    form.getField("country")?.setValue("cn");
+    form.getField("country")?.setValue("sg");
 
-    pending.get('sg')?.resolve([{ label: 'Singapore', value: 'sg' }])
-    await waitFor(() => form.getField('city')?.dataSource[0]?.value === 'sg')
+    pending.get("sg")?.resolve([{ label: "Singapore", value: "sg" }]);
+    await waitFor(() => form.getField("city")?.dataSource[0]?.value === "sg");
 
-    pending.get('cn')?.resolve([{ label: 'Beijing', value: 'cn' }])
-    await new Promise((resolve) => setTimeout(resolve, 0))
+    pending.get("cn")?.resolve([{ label: "Beijing", value: "cn" }]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(form.getField('city')?.dataSource).toEqual([{ label: 'Singapore', value: 'sg' }])
-  })
+    expect(form.getField("city")?.dataSource).toEqual([{ label: "Singapore", value: "sg" }]);
+  });
 
-  it('installs x-reaction for array item fields using indexed paths', () => {
-    const form = createForm()
+  it("installs x-reaction for array item fields using indexed paths", () => {
+    const form = createForm();
     form.setSchema({
-      type: 'object',
+      type: "object",
       properties: {
         users: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
               type: {
-                type: 'string',
-                default: 'person',
+                type: "string",
+                default: "person",
               },
               companyName: {
-                type: 'string',
-                state: { display: 'none' },
-                'x-reaction': {
+                type: "string",
+                state: { display: "none" },
+                "x-reaction": {
                   visible: {
-                    dependencies: { type: '.type' },
-                    type: 'expression',
+                    dependencies: { type: ".type" },
+                    type: "expression",
                     expression: "$deps.type === 'company'",
                   },
                 },
@@ -1134,15 +1153,14 @@ describe('@alien-form/core', () => {
           },
         },
       },
-    })
+    });
 
-    form.getArrayField('users')?.push()
+    form.getArrayField("users")?.push();
 
-    const companyName = form.getField('users.0.companyName')
-    expect(companyName?.visible).toBe(false)
+    const companyName = form.getField("users.0.companyName");
+    expect(companyName?.visible).toBe(false);
 
-    form.getField('users.0.type')?.setValue('company')
-    expect(companyName?.visible).toBe(true)
-  })
-
-})
+    form.getField("users.0.type")?.setValue("company");
+    expect(companyName?.visible).toBe(true);
+  });
+});

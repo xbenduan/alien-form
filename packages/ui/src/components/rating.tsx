@@ -1,34 +1,38 @@
-import * as React from 'react'
-import { cn } from '../lib/utils'
+import * as React from "react";
+import { cn } from "../lib/utils";
 
 export interface RatingProps {
-  value?: number
-  onChange?: (value: number) => void
-  max?: number
-  disabled?: boolean
-  size?: 'sm' | 'md' | 'lg'
-  className?: string
+  value?: number;
+  onChange?: (value: number) => void;
+  max?: number;
+  disabled?: boolean;
+  size?: "sm" | "md" | "lg";
+  className?: string;
 }
 
 const Rating = React.forwardRef<HTMLDivElement, RatingProps>(
-  ({ value = 0, onChange, max = 5, disabled, size = 'md', className }, ref) => {
-    const [hoverValue, setHoverValue] = React.useState(0)
+  ({ value = 0, onChange, max = 5, disabled, size = "md", className }, ref) => {
+    const [hoverValue, setHoverValue] = React.useState(0);
 
     const sizeClass = {
-      sm: 'h-4 w-4',
-      md: 'h-5 w-5',
-      lg: 'h-6 w-6',
-    }[size]
+      sm: "h-4 w-4",
+      md: "h-5 w-5",
+      lg: "h-6 w-6",
+    }[size];
 
     return (
       <div
         ref={ref}
-        className={cn('inline-flex gap-0.5', disabled && 'opacity-50 pointer-events-none', className)}
+        className={cn(
+          "inline-flex gap-0.5",
+          disabled && "opacity-50 pointer-events-none",
+          className,
+        )}
         onMouseLeave={() => setHoverValue(0)}
       >
         {Array.from({ length: max }, (_, i) => {
-          const starValue = i + 1
-          const isFilled = starValue <= (hoverValue || value)
+          const starValue = i + 1;
+          const isFilled = starValue <= (hoverValue || value);
           return (
             <button
               key={i}
@@ -37,13 +41,13 @@ const Rating = React.forwardRef<HTMLDivElement, RatingProps>(
               onClick={() => onChange?.(starValue === value ? 0 : starValue)}
               onMouseEnter={() => setHoverValue(starValue)}
               className={cn(
-                'cursor-pointer transition-colors focus-visible:outline-none',
-                'disabled:cursor-not-allowed'
+                "cursor-pointer transition-colors focus-visible:outline-none",
+                "disabled:cursor-not-allowed",
               )}
             >
               <svg
-                className={cn(sizeClass, 'transition-colors')}
-                fill={isFilled ? 'currentColor' : 'none'}
+                className={cn(sizeClass, "transition-colors")}
+                fill={isFilled ? "currentColor" : "none"}
                 viewBox="0 0 24 24"
                 stroke="currentColor"
                 strokeWidth={isFilled ? 0 : 1.5}
@@ -55,12 +59,12 @@ const Rating = React.forwardRef<HTMLDivElement, RatingProps>(
                 />
               </svg>
             </button>
-          )
+          );
         })}
       </div>
-    )
-  }
-)
-Rating.displayName = 'Rating'
+    );
+  },
+);
+Rating.displayName = "Rating";
 
-export { Rating }
+export { Rating };

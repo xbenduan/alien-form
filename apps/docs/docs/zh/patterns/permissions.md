@@ -11,7 +11,11 @@
 ```tsx
 // ❌ 错误示范：将 React 逻辑与 Schema 结构混合在一起，或维护多份 Schema
 <FormProvider form={form}>
-  {hasPermission ? <SchemaField schema={schemaWithSecretField} /> : <SchemaField schema={normalSchema} />}
+  {hasPermission ? (
+    <SchemaField schema={schemaWithSecretField} />
+  ) : (
+    <SchemaField schema={normalSchema} />
+  )}
 </FormProvider>
 ```
 
@@ -24,19 +28,19 @@
 创建一个自定义包装组件，在渲染底层 `FormItem` 之前检查权限。
 
 ```tsx
-import { FormItem } from '@alien-form/ui'
-import { useAuth } from '@/hooks/useAuth' // 假设你有一个全局的鉴权 Hook
+import { FormItem } from "@alien-form/ui";
+import { useAuth } from "@/hooks/useAuth"; // 假设你有一个全局的鉴权 Hook
 
 export function AuthFormItem(props: any) {
-  const auth = useAuth()
-  const { code, ...restProps } = props
-  
+  const auth = useAuth();
+  const { code, ...restProps } = props;
+
   // 如果该字段配置了权限 code，且当前用户没有该权限，则直接返回 null 不渲染
   if (code && !auth.hasPermission(code)) {
-    return null
+    return null;
   }
-  
-  return <FormItem {...restProps} />
+
+  return <FormItem {...restProps} />;
 }
 ```
 
@@ -46,23 +50,23 @@ export function AuthFormItem(props: any) {
 
 ```tsx
 // 1. 注册自定义的 FormItem
-const decorators = { FormItem: AuthFormItem }
+const decorators = { FormItem: AuthFormItem };
 
 // 2. 在 Schema 中通过 decoratorProps 注入权限 code
 const schema = {
-  type: 'object',
+  type: "object",
   properties: {
     secretData: {
-      type: 'string',
-      title: '机密数据',
-      component: 'Input',
-      decorator: 'FormItem',
+      type: "string",
+      title: "机密数据",
+      component: "Input",
+      decorator: "FormItem",
       decoratorProps: {
-        code: 'view_secret_data' // 权限点标识
-      }
-    }
-  }
-}
+        code: "view_secret_data", // 权限点标识
+      },
+    },
+  },
+};
 
 // 3. 渲染表单
 export function App() {
@@ -70,11 +74,12 @@ export function App() {
     <FormProvider form={form} decorators={decorators} components={components}>
       <SchemaField schema={schema} />
     </FormProvider>
-  )
+  );
 }
 ```
 
 ### 为什么这样做？
+
 - **极致解耦**：权限逻辑与核心业务的 Schema 结构完全解耦。
 - **Schema 更纯粹**：你不需要在每一个需要鉴权的字段上编写冗长的 `x-reaction` 可见性规则。
 - **融入 React 生态**：鉴权逻辑被集中收敛在 UI 渲染层（包装器组件）中，这使得它能够非常自然地消费 React Context、Hooks 或是类似 Zustand/Redux 的全局状态。

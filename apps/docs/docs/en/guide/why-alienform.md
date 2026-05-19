@@ -29,13 +29,13 @@ AlienForm focuses on a different set of questions:
 
 So the relationship between AlienForm and Formily is not replacement or imitation. They operate in the same problem space, but with different product priorities.
 
-| Concern | Mature general-purpose Schema Form | AlienForm's choice |
-| --- | --- | --- |
-| Goal | Cover a broad range of form modeling and rendering needs | Prioritize protocol clarity, auditability, and governance boundaries |
-| Protocol design | Provide rich expressive power | Reduce concept count and control dynamic entry points |
-| Business side effects | Can be integrated through multiple mechanisms | Explicitly route them through registered business handlers |
-| AI collaboration | AI can generate configuration, but extra constraints are needed | Lower generation cost through constrained and explainable protocol design |
-| Enterprise governance | Relies on team conventions and engineering practices | Moves governance concerns into protocol and runtime boundaries |
+| Concern               | Mature general-purpose Schema Form                              | AlienForm's choice                                                        |
+| --------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Goal                  | Cover a broad range of form modeling and rendering needs        | Prioritize protocol clarity, auditability, and governance boundaries      |
+| Protocol design       | Provide rich expressive power                                   | Reduce concept count and control dynamic entry points                     |
+| Business side effects | Can be integrated through multiple mechanisms                   | Explicitly route them through registered business handlers                |
+| AI collaboration      | AI can generate configuration, but extra constraints are needed | Lower generation cost through constrained and explainable protocol design |
+| Enterprise governance | Relies on team conventions and engineering practices            | Moves governance concerns into protocol and runtime boundaries            |
 
 This is not a value judgment. It is a different set of trade-offs for a different set of scenarios. AlienForm aims to give enterprise developers lower cognitive load and higher maintenance certainty in form-heavy systems.
 
@@ -107,10 +107,10 @@ AlienForm keeps this boundary explicit: core defines when a handler is called, w
 createForm({
   handlers: {
     async loadCitiesByProvince(ctx) {
-      return requestCities(ctx.values.province)
-    }
-  }
-})
+      return requestCities(ctx.values.province);
+    },
+  },
+});
 ```
 
 The schema references the handler by name, without embedding request details:

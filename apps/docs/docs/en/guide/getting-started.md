@@ -9,45 +9,41 @@ pnpm add @alien-form/core @alien-form/react @alien-form/ui
 ## Minimal Setup
 
 ```tsx
-import { createForm } from '@alien-form/core'
-import { FormProvider, SchemaField } from '@alien-form/react'
-import { Input, FormItem } from '@alien-form/ui'
+import { createForm } from "@alien-form/core";
+import { FormProvider, SchemaField } from "@alien-form/react";
+import { Input, FormItem } from "@alien-form/ui";
 
-const form = createForm()
+const form = createForm();
 
 const components = {
   Input: ({ value, onChange, ...rest }: any) => (
-    <Input
-      value={value ?? ''}
-      onChange={(event) => onChange(event.target.value)}
-      {...rest}
-    />
+    <Input value={value ?? ""} onChange={(event) => onChange(event.target.value)} {...rest} />
   ),
-}
+};
 
-const decorators = { FormItem }
+const decorators = { FormItem };
 
 const schema = {
-  type: 'object',
+  type: "object",
   properties: {
     name: {
-      type: 'string',
-      title: 'Name',
-      component: 'Input',
-      decorator: 'FormItem',
+      type: "string",
+      title: "Name",
+      component: "Input",
+      decorator: "FormItem",
       props: {
-        placeholder: 'Enter a name',
+        placeholder: "Enter a name",
       },
     },
   },
-}
+};
 
 export function App() {
   return (
     <FormProvider form={form} components={components} decorators={decorators}>
       <SchemaField schema={schema} />
     </FormProvider>
-  )
+  );
 }
 ```
 

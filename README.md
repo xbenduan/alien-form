@@ -163,13 +163,13 @@ AlienForm 明确区分了三个阶段：
 
 各包职责可以简单理解为：
 
-| 包/应用 | 作用 |
-| --- | --- |
-| `packages/core` | Form、Field、字段树、联动、表达式、安全控制、校验、数组操作 |
-| `packages/react` | `FormProvider`、`SchemaField`、hooks、schema 递归渲染 |
-| `packages/ui` | 默认组件与布局组件 |
-| `apps/demo` | 协议能力展示、组件映射、handlers 示例 |
-| `apps/docs` | 面向使用者的文档与 API 说明 |
+| 包/应用          | 作用                                                        |
+| ---------------- | ----------------------------------------------------------- |
+| `packages/core`  | Form、Field、字段树、联动、表达式、安全控制、校验、数组操作 |
+| `packages/react` | `FormProvider`、`SchemaField`、hooks、schema 递归渲染       |
+| `packages/ui`    | 默认组件与布局组件                                          |
+| `apps/demo`      | 协议能力展示、组件映射、handlers 示例                       |
+| `apps/docs`      | 面向使用者的文档与 API 说明                                 |
 
 ## 从零开始，怎么理解这个项目
 

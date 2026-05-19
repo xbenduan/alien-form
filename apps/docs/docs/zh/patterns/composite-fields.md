@@ -12,14 +12,14 @@
 
 ```ts
 type UserCardValue = {
-  name: string
-  age: number
-  city: string
-}
+  name: string;
+  age: number;
+  city: string;
+};
 
 interface UserCardProps {
-  value?: UserCardValue
-  onChange?: (value: UserCardValue) => void
+  value?: UserCardValue;
+  onChange?: (value: UserCardValue) => void;
 }
 ```
 
@@ -33,7 +33,7 @@ function UserCard({ value, onChange }: UserCardProps) {
   return (
     <>
       <input
-        value={value?.name ?? ''}
+        value={value?.name ?? ""}
         onChange={(e) => onChange?.({ ...value, name: e.target.value } as UserCardValue)}
       />
       <input
@@ -41,11 +41,11 @@ function UserCard({ value, onChange }: UserCardProps) {
         onChange={(e) => onChange?.({ ...value, age: Number(e.target.value) } as UserCardValue)}
       />
       <input
-        value={value?.city ?? ''}
+        value={value?.city ?? ""}
         onChange={(e) => onChange?.({ ...value, city: e.target.value } as UserCardValue)}
       />
     </>
-  )
+  );
 }
 ```
 
@@ -162,15 +162,17 @@ function ProfileCard(props: { title?: string; children?: React.ReactNode }) {
       {props.title && <h3 className="text-base font-semibold">{props.title}</h3>}
       {props.children}
     </section>
-  )
+  );
 }
 ```
 
 然后在 schema 里把它当成 `void` 布局组件来承载子字段，而不是让它直接消费：
 
 ```ts
-value: { name, age, city }
-onChange: (next) => {}
+value: {
+  (name, age, city);
+}
+onChange: (next) => {};
 ```
 
 ## 什么时候对象值组件才合理
