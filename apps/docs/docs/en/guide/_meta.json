@@ -1,5 +1,6 @@
 [
   { "type": "file", "name": "introduction", "label": "Introduction" },
+  { "type": "file", "name": "why-alienform", "label": "Why AlienForm" },
   { "type": "file", "name": "learning-path", "label": "Learning Path" },
   { "type": "file", "name": "getting-started", "label": "Getting Started" },
   { "type": "file", "name": "architecture", "label": "Architecture" },

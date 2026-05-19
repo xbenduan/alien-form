@@ -21,7 +21,38 @@ function Input(props: any) {
   )
 }
 
-const components = { Input }
+function ArrayView(props: any) {
+  const { field, rows = [], onAdd, onRemove, readPretty } = props
+  return (
+    <div data-testid={`array-${field?.path ?? 'unknown'}`}>
+      {rows.map((rowFields: React.ReactNode[], index: number) => (
+        <div key={index} data-testid={`row-${field?.path ?? 'unknown'}-${index}`}>
+          {rowFields}
+          {!readPretty && (
+            <button
+              type="button"
+              data-testid={`remove-${field?.path ?? 'unknown'}-${index}`}
+              onClick={() => onRemove?.(index)}
+            >
+              remove
+            </button>
+          )}
+        </div>
+      ))}
+      {!readPretty && (
+        <button
+          type="button"
+          data-testid={`add-${field?.path ?? 'unknown'}`}
+          onClick={() => onAdd?.()}
+        >
+          add
+        </button>
+      )}
+    </div>
+  )
+}
+
+const components = { Input, ArrayView }
 
 function buildNameSchema() {
   return {
@@ -269,5 +300,140 @@ describe('react bindings', () => {
 
     expect((getByTestId('name') as HTMLInputElement).value).toBe('persisted')
     expect(form.values.name).toBe('persisted')
+  })
+
+  it('renders nested array fields from initialValues', () => {
+    const form = createForm({
+      initialValues: {
+        specs: [
+          {
+            name: '颜色',
+            values: [
+              { label: '曜石黑', image: 'black.png' },
+              { label: '月光白', image: 'white.png' },
+            ],
+          },
+        ],
+      },
+    })
+
+    const schema = {
+      type: 'object' as const,
+      properties: {
+        specs: {
+          type: 'array' as const,
+          component: 'ArrayView',
+          items: {
+            type: 'object' as const,
+            properties: {
+              name: {
+                type: 'string' as const,
+                component: 'Input',
+                props: { 'data-testid': 'spec-name' },
+              },
+              values: {
+                type: 'array' as const,
+                component: 'ArrayView',
+                items: {
+                  type: 'object' as const,
+                  properties: {
+                    label: {
+                      type: 'string' as const,
+                      component: 'Input',
+                    },
+                    image: {
+                      type: 'string' as const,
+                      component: 'Input',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    }
+
+    const { getByDisplayValue, getByTestId } = render(
+      <FormProvider form={form} components={components}>
+        <SchemaField schema={schema} />
+      </FormProvider>,
+    )
+
+    expect(getByTestId('array-specs.0.values')).toBeTruthy()
+    expect(getByDisplayValue('颜色')).toBeTruthy()
+    expect(getByDisplayValue('曜石黑')).toBeTruthy()
+    expect(getByDisplayValue('月光白')).toBeTruthy()
+    expect(form.getField('specs.0.values.0.label')?.value).toBe('曜石黑')
+    expect(form.getField('specs.0.values.1.image')?.value).toBe('white.png')
+  })
+
+  it('supports adding nested array rows through react bindings', () => {
+    const form = createForm({
+      initialValues: {
+        specs: [
+          {
+            name: '颜色',
+            values: [],
+          },
+        ],
+      },
+    })
+
+    const schema = {
+      type: 'object' as const,
+      properties: {
+        specs: {
+          type: 'array' as const,
+          component: 'ArrayView',
+          items: {
+            type: 'object' as const,
+            properties: {
+              name: {
+                type: 'string' as const,
+                component: 'Input',
+              },
+              values: {
+                type: 'array' as const,
+                component: 'ArrayView',
+                items: {
+                  type: 'object' as const,
+                  properties: {
+                    label: {
+                      type: 'string' as const,
+                      component: 'Input',
+                      props: { 'data-testid': 'nested-label' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    }
+
+    const { getByTestId } = render(
+      <FormProvider form={form} components={components}>
+        <SchemaField schema={schema} />
+      </FormProvider>,
+    )
+
+    act(() => {
+      fireEvent.click(getByTestId('add-specs.0.values'))
+    })
+
+    const nestedInput = getByTestId('nested-label') as HTMLInputElement
+    fireEvent.change(nestedInput, { target: { value: '曜石黑' } })
+
+    expect(form.getField('specs.0.values.0.label')).toBeTruthy()
+    expect(form.values).toEqual({
+      specs: [
+        {
+          name: '颜色',
+          values: [{ label: '曜石黑' }],
+        },
+      ],
+    })
   })
 })

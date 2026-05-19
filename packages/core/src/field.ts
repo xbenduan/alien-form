@@ -80,8 +80,9 @@ export class Field implements IField {
     this.path = path
     this.address = path // In flat model, address equals path
 
-    // Determine if this is an array field
-    this.isArrayField = schema.type === 'array' && !!(schema.items && typeof schema.items === 'object' && !Array.isArray(schema.items) && (schema.items as IFieldSchema).properties)
+    // Treat any homogeneous array schema as an array field so object arrays and
+    // primitive arrays share the same child-field lifecycle.
+    this.isArrayField = schema.type === 'array' && !!(schema.items && typeof schema.items === 'object' && !Array.isArray(schema.items))
     this._itemSchema = (schema.items && !Array.isArray(schema.items)) ? schema.items as IFieldSchema : null
 
     const defaultValue = initialValue !== undefined ? initialValue : schema.default
@@ -135,20 +136,27 @@ export class Field implements IField {
   // ============================================================
 
   get value() {
-    if (this.isArrayField && this._form && this._itemSchema?.properties) {
-      // Dynamically collect values from child fields
+    if (this.isArrayField && this._form && this._itemSchema) {
+      // Dynamically collect values from child fields for both object arrays and
+      // simple arrays like string[].
       const rowCount = this._arrayRows()
-      const result: Record<string, any>[] = []
+      const result: any[] = []
       for (let i = 0; i < rowCount; i++) {
-        const row: Record<string, any> = {}
-        for (const key of Object.keys(this._itemSchema.properties)) {
-          const childPath = `${this.path}.${i}.${key}`
-          const childField = this._form.getField(childPath)
-          if (childField) {
-            row[key] = childField.value
+        if (this._itemSchema.properties) {
+          const row: Record<string, any> = {}
+          for (const key of Object.keys(this._itemSchema.properties)) {
+            const childPath = `${this.path}.${i}.${key}`
+            const childField = this._form.getField(childPath)
+            if (childField) {
+              row[key] = childField.value
+            }
           }
+          result.push(row)
+          continue
         }
-        result.push(row)
+
+        const itemField = this._form.getField(`${this.path}.${i}`)
+        result.push(itemField ? itemField.value : undefined)
       }
       return result
     }
@@ -196,6 +204,9 @@ export class Field implements IField {
           const field = this._form.getField(fieldPath)
           if (field) rowFields.push(field)
         }
+      } else {
+        const field = this._form.getField(`${this.path}.${i}`)
+        if (field) rowFields.push(field)
       }
       items.push(rowFields)
     }
@@ -207,7 +218,7 @@ export class Field implements IField {
   // ============================================================
 
   setValue(value: any): void {
-    if (this.isArrayField && this._form && this._itemSchema?.properties) {
+    if (this.isArrayField && this._form && this._itemSchema) {
       this._setArrayValue(Array.isArray(value) ? value : [])
       return
     }
@@ -363,8 +374,8 @@ export class Field implements IField {
   // Array field operations
   // ============================================================
 
-  push(initialValues?: Record<string, any>): void {
-    if (!this.isArrayField || !this._form || !this._itemSchema?.properties) return
+  push(initialValues?: any): void {
+    if (!this.isArrayField || !this._form || !this._itemSchema) return
 
     const currentRows = this._arrayRows()
     const newIndex = currentRows
@@ -378,7 +389,7 @@ export class Field implements IField {
   }
 
   remove(index: number): void {
-    if (!this.isArrayField || !this._form || !this._itemSchema?.properties) return
+    if (!this.isArrayField || !this._form || !this._itemSchema) return
 
     const currentRows = this._arrayRows()
     if (index < 0 || index >= currentRows) return
@@ -417,7 +428,7 @@ export class Field implements IField {
   }
 
   private _swapRows(indexA: number, indexB: number): void {
-    if (!this._form || !this._itemSchema?.properties) return
+    if (!this._form || !this._itemSchema) return
 
     if (indexA === indexB) return
 
@@ -431,33 +442,50 @@ export class Field implements IField {
     this._notifyValueChange()
   }
 
-  private _setArrayValue(value: Record<string, any>[]): void {
-    if (!this._form || !this._itemSchema?.properties) return
+  private _setArrayValue(value: any[]): void {
+    if (!this._form || !this._itemSchema) return
 
     const normalizedRows = Array.isArray(value) ? value : []
     const currentRows = this._arrayRows()
     startBatch()
 
     for (let index = 0; index < normalizedRows.length; index++) {
-      const rowValue = normalizedRows[index] || {}
+      const rowValue = normalizedRows[index]
       if (index >= currentRows) {
         this._createRowFields(index, rowValue)
       }
-      for (const key of Object.keys(this._itemSchema.properties)) {
-        const childPath = `${this.path}.${index}.${key}`
-        let childField = this._form.getField(childPath)
-        if (!childField) {
-          const childSchema = { ...(this._itemSchema.properties[key] as IFieldSchema) }
-          if (this._form._createFieldTree) {
-            this._form._createFieldTree(childPath, childSchema, rowValue[key], this._itemSchema.required)
-            childField = this._form.getField(childPath)
-          } else {
-            childField = this._form.createField(childPath, childSchema, rowValue[key])
+      if (this._itemSchema.properties) {
+        const safeRowValue = rowValue || {}
+        for (const key of Object.keys(this._itemSchema.properties)) {
+          const childPath = `${this.path}.${index}.${key}`
+          let childField = this._form.getField(childPath)
+          if (!childField) {
+            const childSchema = { ...(this._itemSchema.properties[key] as IFieldSchema) }
+            if (this._form._createFieldTree) {
+              this._form._createFieldTree(childPath, childSchema, safeRowValue[key], this._itemSchema.required)
+              childField = this._form.getField(childPath)
+            } else {
+              childField = this._form.createField(childPath, childSchema, safeRowValue[key])
+            }
           }
+          if (!childField) continue
+          childField.setValue(safeRowValue[key])
         }
-        if (!childField) continue
-        childField.setValue(rowValue[key])
+        continue
       }
+
+      const itemPath = `${this.path}.${index}`
+      let itemField = this._form.getField(itemPath)
+      if (!itemField) {
+        if (this._form._createFieldTree) {
+          this._form._createFieldTree(itemPath, { ...this._itemSchema }, rowValue)
+          itemField = this._form.getField(itemPath)
+        } else {
+          itemField = this._form.createField(itemPath, { ...this._itemSchema }, rowValue)
+        }
+      }
+      if (!itemField) continue
+      itemField.setValue(rowValue)
     }
 
     for (let index = currentRows - 1; index >= normalizedRows.length; index--) {
@@ -474,17 +502,27 @@ export class Field implements IField {
     this._notifyValueChange()
   }
 
-  private _createRowFields(index: number, initialValues?: Record<string, any>): void {
-    if (!this._form || !this._itemSchema?.properties) return
-    for (const [key, childSchema] of Object.entries(this._itemSchema.properties)) {
-      const fieldPath = `${this.path}.${index}.${key}`
-      const initVal = initialValues ? initialValues[key] : undefined
-      const schema = { ...childSchema as IFieldSchema }
-      if (this._form._createFieldTree) {
-        this._form._createFieldTree(fieldPath, schema, initVal, this._itemSchema.required)
-      } else {
-        this._form.createField(fieldPath, schema, initVal)
+  private _createRowFields(index: number, initialValues?: any): void {
+    if (!this._form || !this._itemSchema) return
+    if (this._itemSchema.properties) {
+      for (const [key, childSchema] of Object.entries(this._itemSchema.properties)) {
+        const fieldPath = `${this.path}.${index}.${key}`
+        const initVal = initialValues ? initialValues[key] : undefined
+        const schema = { ...childSchema as IFieldSchema }
+        if (this._form._createFieldTree) {
+          this._form._createFieldTree(fieldPath, schema, initVal, this._itemSchema.required)
+        } else {
+          this._form.createField(fieldPath, schema, initVal)
+        }
       }
+      return
+    }
+
+    const fieldPath = `${this.path}.${index}`
+    if (this._form._createFieldTree) {
+      this._form._createFieldTree(fieldPath, { ...this._itemSchema }, initialValues)
+    } else {
+      this._form.createField(fieldPath, { ...this._itemSchema }, initialValues)
     }
   }
 

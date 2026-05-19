@@ -508,6 +508,14 @@ export class Form implements IForm {
             )
           }
         }
+      } else if (itemSchema && typeof itemSchema === 'object' && Array.isArray(initialValue)) {
+        for (let i = 0; i < initialValue.length; i++) {
+          this._createFieldTree(
+            `${path}.${i}`,
+            itemSchema as IFieldSchema,
+            initialValue[i]
+          )
+        }
       }
       return
     }

@@ -221,7 +221,7 @@ export interface IField {
   // Array field methods
   isArrayField: boolean
   arrayItems: IField[][]
-  push(initialValues?: Record<string, any>): void
+  push(initialValues?: any): void
   remove(index: number): void
   moveUp(index: number): void
   moveDown(index: number): void

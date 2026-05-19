@@ -4,5 +4,6 @@
   { "type": "file", "name": "imperative-logic", "label": "Imperative Logic" },
   { "type": "file", "name": "async-data", "label": "Async Data Fetching" },
   { "type": "file", "name": "edit-initialization", "label": "Edit Initialization" },
-  { "type": "file", "name": "composite-fields", "label": "Composite Field Modeling" }
+  { "type": "file", "name": "composite-fields", "label": "Composite Field Modeling" },
+  { "type": "file", "name": "spec-sku-matrix", "label": "Spec and SKU Sales Matrix" }
 ]

@@ -175,6 +175,43 @@ describe('@alien-form/core', () => {
     })
   })
 
+  it('initializes and updates simple array item fields', () => {
+    const form = createForm({
+      initialValues: {
+        tags: ['red', 'blue'],
+      },
+    })
+
+    form.setSchema({
+      type: 'object',
+      properties: {
+        tags: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+        },
+      },
+    })
+
+    expect(form.getArrayField('tags')).toBeTruthy()
+    expect(form.getField('tags.0')?.value).toBe('red')
+    expect(form.getField('tags.1')?.value).toBe('blue')
+    expect(form.values).toEqual({ tags: ['red', 'blue'] })
+
+    form.setValues({
+      tags: ['green'],
+    })
+
+    expect(form.getField('tags.0')?.value).toBe('green')
+    expect(form.getField('tags.1')).toBeUndefined()
+    expect(form.values).toEqual({ tags: ['green'] })
+
+    form.getArrayField('tags')?.push('yellow')
+    expect(form.getField('tags.1')?.value).toBe('yellow')
+    expect(form.values).toEqual({ tags: ['green', 'yellow'] })
+  })
+
   it('notifies field, values and validation lifecycle changes', async () => {
     const events: string[] = []
     const form = createForm({
