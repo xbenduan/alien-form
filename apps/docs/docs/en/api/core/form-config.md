@@ -2,7 +2,7 @@
 
 ## Description
 
-`FormConfig` is the configuration object passed to `createForm(config)`. It configures initial values, expression scope, `computed` handlers, runtime error handling, and form effects.
+`FormConfig` is the configuration object passed to `createForm(config)`. It configures initial values, expression scope, `computed` handlers, runtime error handling, and the signals-style form side-effect entry.
 
 ```ts
 import { createForm } from "@alien-form/core";
@@ -19,8 +19,8 @@ const form = createForm({
       return fetchCities(ctx.deps.province);
     },
   },
-  effects(form) {
-    form.onValuesChange((values) => {
+  setup(form) {
+    return form.watchValues((values) => {
       console.log(values);
     });
   },
@@ -36,7 +36,7 @@ const form = createForm({
 interface FormConfig {
   initialValues?: Record<string, any>;
   validateFirst?: boolean;
-  effects?: (form: IForm) => void;
+  setup?: (form: IForm) => void | (() => void);
   scope?: Record<string, any>;
   handlers?: Record<string, RuntimeRuleHandler>;
   onError?: (error: FormError) => void;
@@ -49,7 +49,7 @@ interface FormConfig {
 | --------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------ |
 | `initialValues` | `Record<string, any>`                | initial field values, read by path when fields are created                                             |
 | `validateFirst` | `boolean`                            | reserved in types; the current validation implementation does not fully enforce short-circuit behavior |
-| `effects`       | `(form: IForm) => void`              | setup hook executed during form construction                                                           |
+| `setup`         | `(form: IForm) => void \| (() => void)` | setup hook executed during form construction and may return a disposer                                 |
 | `scope`         | `Record<string, any>`                | custom variables injected into expression and rule runtime scope                                       |
 | `handlers`      | `Record<string, RuntimeRuleHandler>` | registry for business handlers called by `computed` rules                                              |
 | `onError`       | `(error: FormError) => void`         | listener for non-fatal runtime errors                                                                  |
@@ -197,30 +197,37 @@ interface RuntimeRuleHandlerContext {
 | `x-format.output` | converted output value                     | no / currently errors | `form.values` is a synchronous getter, so returning a Promise is invalid    |
 | `x-validate`      | error message, error array, or empty value | yes                   | return value is normalized into `FieldError[]`                              |
 
-## effects
+## setup
 
-`effects` runs synchronously during `Form` construction and receives the current `form` instance. It is suitable for registering subscriptions, error listeners, and lifecycle callbacks.
+`setup` runs synchronously during `Form` construction and receives the current `form` instance. It is suitable for registering `watch`, `effect`, error listeners, and cleanup logic released by `form.destroy()`.
 
 ```ts
 const form = createForm({
-  effects(form) {
-    form.onValuesChange((values) => {
+  setup(form) {
+    const stopValues = form.watchValues((values) => {
       console.log("values changed", values);
     });
 
-    form.onFieldChange("*", (field) => {
-      console.log("field changed", field.path);
+    const stopName = form.watchFieldValue("name", (value) => {
+      console.log("name changed", value);
     });
+
+    return () => {
+      stopValues();
+      stopName();
+    };
   },
 });
 ```
 
-### Methods Available in effects
+### Methods Available in setup
 
 Commonly used:
 
-- `form.onValuesChange(listener)`
-- `form.onFieldChange(path, listener)`
+- `form.effect(runner)`
+- `form.watch(selector, listener, options?)`
+- `form.watchFieldValue(path, listener, options?)`
+- `form.watchValues(listener, options?)`
 - `form.onError(listener)`
 - `form.getField(path)`
 - `form.setFieldState(path, setter)`
@@ -233,34 +240,34 @@ Available but use with caution:
 - `form.setSchema(schema)`: rebuilds the field tree.
 - `form.createField(path, schema, value)`: usually avoid bypassing schema-driven creation.
 - `form.reset()`: emits value changes and replays reactions.
-- Calling `setValues()` inside `onValuesChange()`: guard it with conditions to avoid loops.
+- Calling `setValues()` inside `watchValues()` or `effect()`: guard it with conditions to avoid loops.
 
-### onLifecycle
+### Signals-style side effects
 
-`form.onLifecycle(event, path, handler)` subscribes to field lifecycle events and is now part of the public `IForm` API.
+Prefer these entry points:
+
+- `form.effect(runner)`: when you only care about dependency reads and reruns.
+- `form.watch(selector, listener, options?)`: when you need a selector with previous value and custom equality.
+- `form.watchFieldValue(path, listener, options?)`: when you want to observe a field's aggregate value, especially for object/array fields.
+
+For example:
 
 ```ts
 createForm({
-  effects(form) {
-    form.onLifecycle("onFieldValidateFailed", "*", (field) => {
-      console.log("validate failed", field.path);
-    });
+  setup(form) {
+    return form.watch(
+      (instance) => instance.getField("specs")?.value,
+      (nextSpecs, prevSpecs) => {
+        console.log("specs changed", nextSpecs, prevSpecs);
+      },
+      {
+        immediate: true,
+        equals: (prev, next) => JSON.stringify(prev) === JSON.stringify(next),
+      },
+    );
   },
 });
 ```
-
-Supported events:
-
-- `onFieldInit`
-- `onFieldMount`, reserved; core does not actively emit it yet
-- `onFieldUnmount`, reserved; core does not actively emit it yet
-- `onFieldValueChange`
-- `onFieldInputValueChange`
-- `onFieldInitialValueChange`, reserved; core does not actively emit it yet
-- `onFieldValidateStart`
-- `onFieldValidateEnd`
-- `onFieldValidateFailed`
-- `onFieldValidateSuccess`
 
 ## onError
 

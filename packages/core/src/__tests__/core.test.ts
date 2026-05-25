@@ -53,7 +53,7 @@ describe("@alien-form/core", () => {
     await expect(form.validate()).resolves.toBe(true);
   });
 
-  it("coalesces bulk value notifications", () => {
+  it("coalesces bulk value notifications for watch APIs", () => {
     const form = createForm();
     form.setSchema({
       type: "object",
@@ -68,8 +68,8 @@ describe("@alien-form/core", () => {
     const formSubscriber = vi.fn();
     const firstSubscriber = vi.fn();
 
-    form.onValuesChange(valuesListener);
-    form.onFieldChange("*", fieldListener);
+    form.watchValues(valuesListener);
+    form.watchFieldValue("first", fieldListener);
     form.subscribe(formSubscriber);
     form.getField("first")?.subscribe(firstSubscriber);
 
@@ -81,7 +81,7 @@ describe("@alien-form/core", () => {
     form.setValues({ first: "A", second: "B" });
 
     expect(valuesListener).toHaveBeenCalledTimes(1);
-    expect(fieldListener).toHaveBeenCalledTimes(2);
+    expect(fieldListener).toHaveBeenCalledTimes(1);
     expect(formSubscriber).toHaveBeenCalledTimes(1);
     expect(firstSubscriber).toHaveBeenCalledTimes(1);
   });
@@ -340,33 +340,27 @@ describe("@alien-form/core", () => {
     expect(form.values).toEqual({ tags: ["green", "yellow"] });
   });
 
-  it("notifies field, values and validation lifecycle changes", async () => {
+  it("registers watch/effect hooks from setup", () => {
     const events: string[] = [];
     const form = createForm({
-      effects: (instance) => {
-        instance.onFieldChange("name", () => events.push("field-change"));
-        instance.onValuesChange(() => events.push("values-change"));
-        instance.onLifecycle("onFieldValueChange", "name", () => events.push("value-lifecycle"));
-        instance.onLifecycle("onFieldValidateStart", "name", () => events.push("validate-start"));
-        instance.onLifecycle("onFieldValidateSuccess", "name", () =>
-          events.push("validate-success"),
-        );
-        instance.onLifecycle("onFieldValidateEnd", "name", () => events.push("validate-end"));
+      setup: (instance) => {
+        instance.watchFieldValue("name", () => events.push("field-watch"));
+        instance.watchValues(() => events.push("values-watch"));
+        return instance.effect(() => {
+          instance.getField("name")?.value;
+          events.push("effect");
+        });
       },
     });
     form.setSchema(basicSchema);
 
     form.getField("name")?.setValue("Bao");
-    await form.validate();
 
     expect(events).toEqual(
       expect.arrayContaining([
-        "field-change",
-        "values-change",
-        "value-lifecycle",
-        "validate-start",
-        "validate-success",
-        "validate-end",
+        "field-watch",
+        "values-watch",
+        "effect",
       ]),
     );
   });

@@ -203,10 +203,6 @@ function areSkuRowsEqual(a: SkuDraft[], b: SkuDraft[]): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-function isSkuMatrixSpecField(path: string): boolean {
-  return path === SKU_MATRIX_SPECS_PATH || path.startsWith(`${SKU_MATRIX_SPECS_PATH}.`);
-}
-
 function attachSkuMatrixEffects(form: IForm) {
   let syncingSkuMatrix = false;
 
@@ -240,10 +236,16 @@ function attachSkuMatrixEffects(form: IForm) {
     syncingSkuMatrix = false;
   };
 
-  form.onFieldChange("*", (field) => {
-    if (!isSkuMatrixSpecField(field.path)) return;
-    syncSkuMatrix();
-  });
+  return form.watchFieldValue(
+    SKU_MATRIX_SPECS_PATH,
+    () => {
+      syncSkuMatrix();
+    },
+    {
+      immediate: true,
+      equals: (prev, next) => JSON.stringify(prev) === JSON.stringify(next),
+    },
+  );
 }
 
 // --- Computed reaction handlers (for demo) ---
@@ -307,23 +309,40 @@ const handlers: FormConfig["handlers"] = {
   },
 };
 
+function sanitizeComponentProps(props: Record<string, any>) {
+  const { readPretty: _readPretty, pattern: _pattern, loading: _loading, ...rest } = props;
+  void _readPretty;
+  void _pattern;
+  void _loading;
+  return rest;
+}
+
 const components: ComponentMap = {
   Input: (props: any) => {
     const { value, onChange, ...rest } = props;
-    return <Input value={value ?? ""} onChange={(e: any) => onChange(e.target.value)} {...rest} />;
+    return (
+      <Input
+        value={value ?? ""}
+        onChange={(e: any) => onChange(e.target.value)}
+        {...sanitizeComponentProps(rest)}
+      />
+    );
   },
   Textarea: (props: any) => {
     const { value, onChange, ...rest } = props;
     return (
-      <Textarea value={value ?? ""} onChange={(e: any) => onChange(e.target.value)} {...rest} />
+      <Textarea
+        value={value ?? ""}
+        onChange={(e: any) => onChange(e.target.value)}
+        {...sanitizeComponentProps(rest)}
+      />
     );
   },
   Select: (props: any) => {
-    const { loading, ...rest } = props;
     return (
       <div className="relative">
-        <Select {...rest} />
-        {loading && (
+        <Select {...sanitizeComponentProps(props)} />
+        {props.loading && (
           <div className="absolute right-8 top-1/2 -translate-y-1/2">
             <svg
               className="animate-spin h-4 w-4 text-muted-foreground"
@@ -381,12 +400,11 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ schema }) => {
       createForm({
         handlers,
         initialValues: schema.id === SKU_MATRIX_DEMO_ID ? createSkuDemoInitialValues() : undefined,
-        effects:
-          schema.id === SKU_MATRIX_DEMO_ID
-            ? (formInstance) => {
-                attachSkuMatrixEffects(formInstance);
-              }
-            : undefined,
+        setup: (instance) => {
+          if (schema.id === SKU_MATRIX_DEMO_ID) {
+            attachSkuMatrixEffects(instance);
+          }
+        },
       }),
     [schema.id],
   );

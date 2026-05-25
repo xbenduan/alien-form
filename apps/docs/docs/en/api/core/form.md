@@ -2,7 +2,7 @@
 
 ## Description
 
-`Form` is the top-level runtime model in `@alien-form/core`. It owns the field registry, schema setup, values, submission state, validation entry points, array field operations, and subscriptions.
+`Form` is the top-level runtime model in `@alien-form/core`. It owns the field registry, schema setup, values, submission state, validation entry points, array field operations, and signals-style side-effect capabilities.
 
 In most cases, you create it with `createForm(options)` instead of calling `new Form()` directly.
 
@@ -87,6 +87,7 @@ console.log(form.values);
 | ---------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `validate` | `() => Promise<boolean>`                                                               | validate all visible fields and return `true` when all pass                                     |
 | `submit`   | `<T = any>(onSubmit?: (values: Record<string, any>) => T \| Promise<T>) => Promise<T>` | validate first, then call the submit callback; returns `form.values` when no callback is passed |
+| `destroy`  | `() => void`                                                                           | dispose effects/watchers registered from `setup`                                                |
 
 ### Schema Operations
 
@@ -105,41 +106,51 @@ Array fields themselves also provide `push()`, `remove()`, `moveUp()`, and `move
 
 ### Subscriptions and Effects
 
-| Method           | Signature                                                         | Description                                               |
-| ---------------- | ----------------------------------------------------------------- | --------------------------------------------------------- |
-| `subscribe`      | `(listener: () => void) => () => void`                            | subscribe to form-level updates and return a disposer     |
-| `onFieldChange`  | `(path: string, listener: (field: IField) => void) => () => void` | subscribe to field state changes; supports `'*'` wildcard |
-| `onValuesChange` | `(listener: (values: Record<string, any>) => void) => () => void` | subscribe to output-value changes                         |
-| `onError`        | `(listener: (error: FormError) => void) => () => void`            | subscribe to non-fatal runtime errors                     |
+| Method            | Signature                                            | Description                                     |
+| ----------------- | ---------------------------------------------------- | ----------------------------------------------- |
+| `subscribe`       | `(listener: () => void) => () => void`               | low-level version subscription for bridges      |
+| `effect`          | `(runner: (form: IForm) => void) => () => void`      | run an effect based on dependency reads         |
+| `watch`           | `(selector, listener, options?) => () => void`       | watch any selector result                       |
+| `watchFieldValue` | `(path, listener, options?) => () => void`           | watch a single field or aggregate field value   |
+| `watchValues`     | `(listener, options?) => () => void`                 | watch output-value object changes               |
+| `onError`         | `(listener: (error: FormError) => void) => () => void` | subscribe to non-fatal runtime errors         |
 
-## What Can Be Called Inside effects
+## What Can Be Called Inside setup
 
-The `effects` callback receives the same `form` instance returned by `createForm()`, so it can technically call all public methods listed above. In practice, use `effects` mainly for subscriptions and lifecycle registration, not for large imperative business workflows.
+The `setup` callback receives the same `form` instance returned by `createForm()`, so it can technically call all public methods listed above. In practice, use `setup` mainly for `watch/effect` registration and small bridge logic, not for large imperative business workflows.
 
 ```ts
 const form = createForm({
-  effects(form) {
-    const disposeValue = form.onValuesChange((values) => {
+  setup(form) {
+    const disposeValue = form.watchValues((values) => {
       console.log("values changed", values);
     });
 
-    const disposeField = form.onFieldChange("username", (field) => {
-      console.log("username changed", field.value);
+    const disposeField = form.watchFieldValue("username", (value) => {
+      console.log("username changed", value);
     });
 
     const disposeError = form.onError((error) => {
       console.warn(error.scope, error.path, error.message);
     });
+
+    return () => {
+      disposeValue();
+      disposeField();
+      disposeError();
+    };
   },
 });
 ```
 
-### Recommended in effects
+### Recommended in setup
 
 | Method             | Usage                                                                             |
 | ------------------ | --------------------------------------------------------------------------------- |
-| `onValuesChange()` | listen to output value changes for telemetry, debugging, or external state sync   |
-| `onFieldChange()`  | listen to one field or all field state changes                                    |
+| `effect()`         | use when you only care about dependency reads and reruns                          |
+| `watchValues()`    | listen to output value changes for telemetry, debugging, or external state sync   |
+| `watchFieldValue()`| listen to one field or an aggregate field value                                   |
+| `watch()`          | listen to any selector result                                                     |
 | `onError()`        | collect runtime errors from reactions, formatting, validation, and ref resolution |
 | `getField()`       | read field instances inside callbacks                                             |
 | `setFieldState()`  | apply small imperative field state corrections inside callbacks                   |
@@ -147,45 +158,35 @@ const form = createForm({
 | `validate()`       | trigger validation from an external flow                                          |
 | `submit()`         | reuse form validation and output-value logic from an external submit action       |
 
-### Use with caution in effects
+### Use with caution in setup
 
 | Method          | Reason                                                                                               |
 | --------------- | ---------------------------------------------------------------------------------------------------- |
 | `setSchema()`   | clears and rebuilds fields and reactions; avoid calling it inside frequently triggered subscriptions |
 | `createField()` | schema-driven creation is preferred; manual fields can bypass protocol structure                     |
 | `reset()`       | replays value changes and reactions; avoid calling it unguarded from value-change listeners          |
-| `setValues()`   | useful, but do not call it unconditionally inside `onValuesChange()` or you may create a loop        |
+| `setValues()`   | useful, but do not call it unconditionally inside `watchValues()` / `effect()` or you may create a loop |
 
-## Lifecycle Subscription: onLifecycle
+## Preferred side-effect model
 
-`onLifecycle(event, path, handler)` is the public field lifecycle subscription API and is declared on `IForm`. It is suitable for registering field initialization, value-change, and validation-stage callbacks inside `effects`.
+Prefer `effect/watch/watchFieldValue/watchValues` instead of organizing derivation around path events.
 
 ```ts
 createForm({
-  effects(form) {
-    form.onLifecycle("onFieldInit", "*", (field, form) => {
-      console.log("field init", field.path);
-    });
+  setup(form) {
+    return form.watch(
+      (instance) => instance.getField("profile")?.value,
+      (nextProfile, prevProfile) => {
+        console.log("profile changed", nextProfile, prevProfile);
+      },
+      {
+        immediate: true,
+        equals: (prev, next) => JSON.stringify(prev) === JSON.stringify(next),
+      },
+    );
   },
 });
 ```
-
-Supported events:
-
-| Event                       | Trigger                                              |
-| --------------------------- | ---------------------------------------------------- |
-| `onFieldInit`               | after a field is created                             |
-| `onFieldMount`              | reserved; core does not actively emit it yet         |
-| `onFieldUnmount`            | reserved; core does not actively emit it yet         |
-| `onFieldValueChange`        | when a field value changes                           |
-| `onFieldInputValueChange`   | currently emitted together with `onFieldValueChange` |
-| `onFieldInitialValueChange` | reserved; core does not actively emit it yet         |
-| `onFieldValidateStart`      | before field validation starts                       |
-| `onFieldValidateEnd`        | after field validation ends                          |
-| `onFieldValidateFailed`     | when field validation fails                          |
-| `onFieldValidateSuccess`    | when field validation succeeds                       |
-
-`path` supports exact field paths and the `'*'` wildcard.
 
 ## Output Value Boundary
 
@@ -205,4 +206,4 @@ Inside a `computed` handler, `context.values` is the current raw internal value 
 - `setValues()` only writes to fields that already exist. If no schema has been set, it will not create fields.
 - `values` is derived. Do not mutate `form.values.xxx` directly.
 - `submit()` throws when validation fails and attaches an array of messages to `error.messages`.
-- `onFieldChange('*', listener)` can observe all field changes, but be careful with callback cost in large forms.
+- When `watchValues()` or `effect()` writes values back into the form, keep the callback convergent to avoid loops.

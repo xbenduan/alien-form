@@ -163,15 +163,15 @@ This logic does not belong in schema expressions, and it does not belong in Reac
 
 Prefer:
 
-- `createForm({ effects })`
-- listening through `onFieldChange("specs", ...)`
+- `createForm({ setup })`
+- listening through `watchFieldValue("specs", ...)`
 
 For example:
 
 ```ts
 const form = createForm({
   initialValues: createInitialValues(),
-  effects(form) {
+  setup(form) {
     let syncing = false;
 
     const syncSkuMatrix = () => {
@@ -191,9 +191,16 @@ const form = createForm({
       syncing = false;
     };
 
-    form.onFieldChange("specs", () => {
-      syncSkuMatrix();
-    });
+    return form.watchFieldValue(
+      "specs",
+      () => {
+        syncSkuMatrix();
+      },
+      {
+        immediate: true,
+        equals: (prev, next) => JSON.stringify(prev) === JSON.stringify(next),
+      },
+    );
   },
 });
 ```
@@ -272,7 +279,7 @@ It should not:
   - defines `specs`
   - defines `skus`
   - defines each sales field
-- form effects:
+- form setup:
   - listen to `specs`
   - normalize spec values
   - enforce a single image spec

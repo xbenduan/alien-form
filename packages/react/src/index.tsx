@@ -93,6 +93,13 @@ export const FormProvider: React.FC<FormProviderProps> = ({
   children,
 }) => {
   const value = useMemo(() => ({ form, components, decorators }), [form, components, decorators]);
+
+  useEffect(() => {
+    return () => {
+      form.destroy();
+    };
+  }, [form]);
+
   return <FormContext.Provider value={value}>{children}</FormContext.Provider>;
 };
 

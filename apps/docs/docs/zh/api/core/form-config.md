@@ -2,7 +2,7 @@
 
 ## 描述
 
-`FormConfig` 是传递给 `createForm(config)` 的配置对象。它用于设置初始值、表达式作用域、`computed` handler、运行时错误监听和表单 effects。
+`FormConfig` 是传递给 `createForm(config)` 的配置对象。它用于设置初始值、表达式作用域、`computed` handler、运行时错误监听，以及基于 signals 的表单副作用入口。
 
 ```ts
 import { createForm } from "@alien-form/core";
@@ -19,8 +19,8 @@ const form = createForm({
       return fetchCities(ctx.deps.province);
     },
   },
-  effects(form) {
-    form.onValuesChange((values) => {
+  setup(form) {
+    return form.watchValues((values) => {
       console.log(values);
     });
   },
@@ -36,7 +36,7 @@ const form = createForm({
 interface FormConfig {
   initialValues?: Record<string, any>;
   validateFirst?: boolean;
-  effects?: (form: IForm) => void;
+  setup?: (form: IForm) => void | (() => void);
   scope?: Record<string, any>;
   handlers?: Record<string, RuntimeRuleHandler>;
   onError?: (error: FormError) => void;
@@ -49,7 +49,7 @@ interface FormConfig {
 | --------------- | ------------------------------------ | ---------------------------------------------------- |
 | `initialValues` | `Record<string, any>`                | 字段初始值。字段创建时会按路径读取对应初始值         |
 | `validateFirst` | `boolean`                            | 类型中保留的配置项；当前校验实现没有完整启用短路逻辑 |
-| `effects`       | `(form: IForm) => void`              | 表单构造阶段执行的副作用注册函数                     |
+| `setup`         | `(form: IForm) => void \| (() => void)` | 表单构造阶段执行的副作用注册函数，可返回清理函数     |
 | `scope`         | `Record<string, any>`                | 注入表达式和规则运行时作用域的自定义变量             |
 | `handlers`      | `Record<string, RuntimeRuleHandler>` | `computed` 规则调用的业务处理函数注册表              |
 | `onError`       | `(error: FormError) => void`         | 非致命运行时错误监听器                               |
@@ -197,30 +197,37 @@ interface RuntimeRuleHandlerContext {
 | `x-format.output` | 转换后的输出值           | 不建议 / 当前会报错 | `form.values` 是同步 getter，不能返回 Promise |
 | `x-validate`      | 错误信息、错误数组或空值 | 可以                | 返回值会被标准化为 `FieldError[]`             |
 
-## effects
+## setup
 
-`effects` 在 `Form` 构造阶段同步执行，接收当前 `form` 实例。它适合注册订阅、错误监听和生命周期回调。
+`setup` 在 `Form` 构造阶段同步执行，接收当前 `form` 实例。它适合注册 `watch`、`effect`、错误监听，以及需要在 `form.destroy()` 时释放的清理逻辑。
 
 ```ts
 const form = createForm({
-  effects(form) {
-    form.onValuesChange((values) => {
+  setup(form) {
+    const stopValues = form.watchValues((values) => {
       console.log("values changed", values);
     });
 
-    form.onFieldChange("*", (field) => {
-      console.log("field changed", field.path);
+    const stopName = form.watchFieldValue("name", (value) => {
+      console.log("name changed", value);
     });
+
+    return () => {
+      stopValues();
+      stopName();
+    };
   },
 });
 ```
 
-### effects 可调用的方法
+### setup 可调用的方法
 
 常用：
 
-- `form.onValuesChange(listener)`
-- `form.onFieldChange(path, listener)`
+- `form.effect(runner)`
+- `form.watch(selector, listener, options?)`
+- `form.watchFieldValue(path, listener, options?)`
+- `form.watchValues(listener, options?)`
 - `form.onError(listener)`
 - `form.getField(path)`
 - `form.setFieldState(path, setter)`
@@ -233,34 +240,34 @@ const form = createForm({
 - `form.setSchema(schema)`：会重建字段树。
 - `form.createField(path, schema, value)`：通常不建议绕过 schema 手动创建。
 - `form.reset()`：会触发值变化和 reaction 重放。
-- 在 `onValuesChange()` 中调用 `setValues()`：需要条件判断，避免循环。
+- 在 `watchValues()` 或 `effect()` 中调用 `setValues()`：需要条件判断，避免循环。
 
-### onLifecycle
+### signals 风格副作用
 
-`form.onLifecycle(event, path, handler)` 用于订阅字段生命周期事件，已经是 `IForm` 的公开 API。
+推荐优先使用三类入口：
+
+- `form.effect(runner)`：只关心依赖读取，不关心前后值比较。
+- `form.watch(selector, listener, options?)`：关心 selector 的前后值变化。
+- `form.watchFieldValue(path, listener, options?)`：监听某个字段的聚合值，适合数组/对象字段。
+
+例如：
 
 ```ts
 createForm({
-  effects(form) {
-    form.onLifecycle("onFieldValidateFailed", "*", (field) => {
-      console.log("validate failed", field.path);
-    });
+  setup(form) {
+    return form.watch(
+      (instance) => instance.getField("specs")?.value,
+      (nextSpecs, prevSpecs) => {
+        console.log("specs changed", nextSpecs, prevSpecs);
+      },
+      {
+        immediate: true,
+        equals: (prev, next) => JSON.stringify(prev) === JSON.stringify(next),
+      },
+    );
   },
 });
 ```
-
-支持事件：
-
-- `onFieldInit`
-- `onFieldMount`，预留，当前 core 不主动触发
-- `onFieldUnmount`，预留，当前 core 不主动触发
-- `onFieldValueChange`
-- `onFieldInputValueChange`
-- `onFieldInitialValueChange`，预留，当前 core 不主动触发
-- `onFieldValidateStart`
-- `onFieldValidateEnd`
-- `onFieldValidateFailed`
-- `onFieldValidateSuccess`
 
 ## onError
 

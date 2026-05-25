@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import React from "react";
 import { render, fireEvent, cleanup, act } from "@testing-library/react";
 import { createForm } from "@alien-form/core";
@@ -202,6 +202,25 @@ describe("react bindings", () => {
     form.setSchema({ type: "object", properties: { b: { type: "string", component: "Input" } } });
     expect(form.getField("a")).toBeUndefined();
     expect(form.getField("b")).toBeTruthy();
+  });
+
+  it("destroys form on FormProvider unmount", () => {
+    const form = createForm();
+    const destroySpy = vi.spyOn(form, "destroy");
+    const schema = buildNameSchema();
+    form.setSchema(schema);
+
+    const view = render(
+      <FormProvider form={form} components={components}>
+        <SchemaField schema={schema} />
+      </FormProvider>,
+    );
+
+    expect(destroySpy).not.toHaveBeenCalled();
+
+    view.unmount();
+
+    expect(destroySpy).toHaveBeenCalledTimes(1);
   });
 
   it("does not rerender array container on unrelated field changes", () => {
