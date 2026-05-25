@@ -109,10 +109,7 @@ Array fields themselves also provide `push()`, `remove()`, `moveUp()`, and `move
 | Method            | Signature                                            | Description                                     |
 | ----------------- | ---------------------------------------------------- | ----------------------------------------------- |
 | `subscribe`       | `(listener: () => void) => () => void`               | low-level version subscription for bridges      |
-| `effect`          | `(runner: (form: IForm) => void) => () => void`      | run an effect based on dependency reads         |
-| `watch`           | `(selector, listener, options?) => () => void`       | watch any selector result                       |
-| `watchFieldValue` | `(path, listener, options?) => () => void`           | watch a single field or aggregate field value   |
-| `watchValues`     | `(listener, options?) => () => void`                 | watch output-value object changes               |
+| `effect`          | `(runner) => () => void` or `(selector, listener, options?) => () => void` | run effects with `alien-signals` dependency tracking |
 | `onError`         | `(listener: (error: FormError) => void) => () => void` | subscribe to non-fatal runtime errors         |
 
 ## What Can Be Called Inside setup
@@ -122,20 +119,23 @@ The `setup` callback receives the same `form` instance returned by `createForm()
 ```ts
 const form = createForm({
   setup(form) {
-    const disposeValue = form.watchValues((values) => {
+    const disposeValues = form.effect((instance) => instance.values, (values) => {
       console.log("values changed", values);
     });
 
-    const disposeField = form.watchFieldValue("username", (value) => {
-      console.log("username changed", value);
-    });
+    const disposeField = form.effect(
+      (instance) => instance.getField("username")?.value,
+      (value) => {
+        console.log("username changed", value);
+      },
+    );
 
     const disposeError = form.onError((error) => {
       console.warn(error.scope, error.path, error.message);
     });
 
     return () => {
-      disposeValue();
+      disposeValues();
       disposeField();
       disposeError();
     };
@@ -148,9 +148,7 @@ const form = createForm({
 | Method             | Usage                                                                             |
 | ------------------ | --------------------------------------------------------------------------------- |
 | `effect()`         | use when you only care about dependency reads and reruns                          |
-| `watchValues()`    | listen to output value changes for telemetry, debugging, or external state sync   |
-| `watchFieldValue()`| listen to one field or an aggregate field value                                   |
-| `watch()`          | listen to any selector result                                                     |
+| `effect(selector, listener)` | watch any selector result, with previous value and custom equality support |
 | `onError()`        | collect runtime errors from reactions, formatting, validation, and ref resolution |
 | `getField()`       | read field instances inside callbacks                                             |
 | `setFieldState()`  | apply small imperative field state corrections inside callbacks                   |
@@ -165,16 +163,16 @@ const form = createForm({
 | `setSchema()`   | clears and rebuilds fields and reactions; avoid calling it inside frequently triggered subscriptions |
 | `createField()` | schema-driven creation is preferred; manual fields can bypass protocol structure                     |
 | `reset()`       | replays value changes and reactions; avoid calling it unguarded from value-change listeners          |
-| `setValues()`   | useful, but do not call it unconditionally inside `watchValues()` / `effect()` or you may create a loop |
+| `setValues()`   | useful, but do not call it unconditionally inside `effect()` or you may create a loop |
 
 ## Preferred side-effect model
 
-Prefer `effect/watch/watchFieldValue/watchValues` instead of organizing derivation around path events.
+Prefer `effect` instead of organizing derivation around path events.
 
 ```ts
 createForm({
   setup(form) {
-    return form.watch(
+    return form.effect(
       (instance) => instance.getField("profile")?.value,
       (nextProfile, prevProfile) => {
         console.log("profile changed", nextProfile, prevProfile);
@@ -206,4 +204,4 @@ Inside a `computed` handler, `context.values` is the current raw internal value 
 - `setValues()` only writes to fields that already exist. If no schema has been set, it will not create fields.
 - `values` is derived. Do not mutate `form.values.xxx` directly.
 - `submit()` throws when validation fails and attaches an array of messages to `error.messages`.
-- When `watchValues()` or `effect()` writes values back into the form, keep the callback convergent to avoid loops.
+- When `effect()` writes values back into the form, keep the callback convergent to avoid loops.

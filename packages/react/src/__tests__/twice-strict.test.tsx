@@ -2,7 +2,7 @@ import { StrictMode } from "react";
 import { render, fireEvent, act } from "@testing-library/react";
 import { createForm } from "@alien-form/core";
 import { FormProvider, SchemaField } from "../index";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 
 const components = {
   Input: (props: any) => {
@@ -82,5 +82,41 @@ describe("Twice to take effect bug in StrictMode", () => {
     });
 
     expect(getByTestId("rows-count").textContent).toBe("2");
+  });
+
+  it("keeps setup selector effects alive across StrictMode effect replay", () => {
+    const listener = vi.fn();
+    const schema = {
+      type: "object" as const,
+      properties: {
+        name: { type: "string", component: "Input" },
+      },
+    };
+    const form = createForm({
+      setup: (instance) => {
+        return instance.effect((current) => current.getField("name")?.value, listener);
+      },
+    });
+
+    const { getByTestId } = render(
+      <StrictMode>
+        <FormProvider form={form} components={components}>
+          <SchemaField schema={schema} />
+        </FormProvider>
+      </StrictMode>,
+    );
+
+    act(() => {
+      fireEvent.change(getByTestId("input"), { target: { value: "Bao" } });
+    });
+
+    expect(listener).toHaveBeenCalledWith(
+      "Bao",
+      undefined,
+      expect.objectContaining({
+        form,
+        stop: expect.any(Function),
+      }),
+    );
   });
 });

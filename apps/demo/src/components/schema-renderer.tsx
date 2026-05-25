@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { createForm } from "@alien-form/core";
 import { FormProvider, SchemaField } from "@alien-form/react";
-import type { FormConfig, IForm } from "@alien-form/core";
+import type { IForm } from "@alien-form/core";
 import type { ComponentMap, DecoratorMap } from "@alien-form/react";
 import {
   Card,
@@ -14,9 +14,9 @@ import {
   TabsTrigger,
   TabsContent,
   Button,
-  Input,
-  Textarea,
-  Select,
+  SchemaInput,
+  SchemaTextarea,
+  SchemaSelect,
   Checkbox,
   Switch,
   DateInput,
@@ -31,6 +31,15 @@ import {
   ArrayTable,
 } from "@alien-form/ui";
 import type { SchemaItem } from "../useSchema";
+import { schemaRendererHandlers } from "../mock/schema-renderer";
+import {
+  areSkuRowsEqual,
+  buildCartesianSpecRows,
+  createSkuDemoInitialValues,
+  enforceSingleImageSpec,
+  normalizeSpecs,
+  type SkuDraft,
+} from "../utils/sku-matrix";
 import { SkuTable } from "./sku-table";
 import { ImageInput } from "./image-input";
 
@@ -38,336 +47,40 @@ const SKU_MATRIX_DEMO_ID = "07-spec-sku-matrix";
 const SKU_MATRIX_SPECS_PATH = "specs";
 const SKU_MATRIX_SKUS_PATH = "skus";
 
-interface SpecDraft {
-  name?: string;
-  supportsImage?: boolean;
-  values?: Array<{
-    label?: string;
-    image?: string;
-  }>;
-}
+function syncSkuMatrix(form: IForm, syncingState: { current: boolean }) {
+  if (syncingState.current) return;
 
-interface SkuDraft {
-  skuKey?: string;
-  groupKey?: string;
-  groupSpecName?: string;
-  groupSpecValue?: string;
-  groupSpecImage?: string;
-  specSummary?: string;
-  price?: number;
-  stock?: number;
-  startDate?: string;
-  endDate?: string;
-  accessories?: string[];
-  enabled?: boolean;
-}
+  const rawSpecs = form.getField(SKU_MATRIX_SPECS_PATH)?.value;
+  const imageControlled = enforceSingleImageSpec(rawSpecs);
 
-function createSkuDemoInitialValues() {
-  const specs: SpecDraft[] = [];
-
-  const skus = buildCartesianSpecRows(normalizeSpecs(specs), []);
-
-  return {
-    specs,
-    skus,
-  };
-}
-
-function enforceSingleImageSpec(rawSpecs: unknown): { specs: SpecDraft[]; changed: boolean } {
-  if (!Array.isArray(rawSpecs)) return { specs: [], changed: false };
-
-  const specs = rawSpecs.map((spec) => ({
-    ...(spec as SpecDraft),
-    values: Array.isArray((spec as SpecDraft)?.values)
-      ? [...((spec as SpecDraft).values ?? [])]
-      : [],
-  }));
-
-  const enabledIndexes = specs
-    .map((spec, index) => (spec.supportsImage ? index : -1))
-    .filter((index) => index >= 0);
-
-  if (enabledIndexes.length <= 1) {
-    return { specs, changed: false };
+  if (imageControlled.changed) {
+    syncingState.current = true;
+    form.setValues({
+      specs: imageControlled.specs,
+    });
+    syncingState.current = false;
+    return;
   }
 
-  const winnerIndex = enabledIndexes[enabledIndexes.length - 1];
-  const nextSpecs = specs.map((spec, index) => ({
-    ...spec,
-    supportsImage: index === winnerIndex,
-  }));
+  const specs = normalizeSpecs(imageControlled.specs);
+  const currentSkus = Array.isArray(form.getField(SKU_MATRIX_SKUS_PATH)?.value)
+    ? (form.getField(SKU_MATRIX_SKUS_PATH)?.value as SkuDraft[])
+    : [];
+  const nextSkus = buildCartesianSpecRows(specs, currentSkus);
 
-  return { specs: nextSpecs, changed: true };
-}
+  if (areSkuRowsEqual(currentSkus, nextSkus)) return;
 
-function normalizeSpecs(rawSpecs: unknown): Array<{
-  name: string;
-  supportsImage: boolean;
-  values: Array<{ label: string; image?: string }>;
-}> {
-  if (!Array.isArray(rawSpecs)) return [];
-  return rawSpecs
-    .map((spec) => {
-      const name = String((spec as SpecDraft)?.name ?? "").trim();
-      const supportsImage = Boolean((spec as SpecDraft)?.supportsImage);
-      const values = Array.isArray((spec as SpecDraft)?.values)
-        ? (spec as SpecDraft)
-            .values!.map((value) => ({
-              label: String(value?.label ?? "").trim(),
-              image: String(value?.image ?? "").trim(),
-            }))
-            .filter((value) => value.label)
-            .filter(
-              (value, index, array) =>
-                array.findIndex((item) => item.label === value.label) === index,
-            )
-        : [];
-      return { name, supportsImage, values };
-    })
-    .filter((spec) => spec.name && spec.values.length > 0);
-}
-
-function buildCartesianSpecRows(
-  specs: Array<{
-    name: string;
-    supportsImage: boolean;
-    values: Array<{ label: string; image?: string }>;
-  }>,
-  previousRows: SkuDraft[],
-): SkuDraft[] {
-  if (specs.length === 0) return [];
-
-  const groupSpec = specs.find((spec) => spec.supportsImage);
-
-  const combinations = specs.reduce<
-    Array<Array<{ name: string; label: string; image?: string; supportsImage: boolean }>>
-  >((accumulator, spec) => {
-    if (accumulator.length === 0) {
-      return spec.values.map((value) => [
-        {
-          name: spec.name,
-          label: value.label,
-          image: value.image,
-          supportsImage: spec.supportsImage,
-        },
-      ]);
-    }
-    return accumulator.flatMap((combination) =>
-      spec.values.map((value) => [
-        ...combination,
-        {
-          name: spec.name,
-          label: value.label,
-          image: value.image,
-          supportsImage: spec.supportsImage,
-        },
-      ]),
-    );
-  }, []);
-
-  const previousMap = new Map(
-    previousRows.filter((row) => row?.skuKey).map((row) => [row.skuKey as string, row]),
-  );
-
-  return combinations.map((combination) => {
-    const skuKey = combination.map((item) => `${item.name}=${item.label}`).join("|");
-    const previous = previousMap.get(skuKey);
-    const groupedItem = groupSpec
-      ? combination.find((item) => item.name === groupSpec.name)
-      : undefined;
-    const salesSpecItems = groupedItem
-      ? combination.filter((item) => item.name !== groupSpec?.name)
-      : combination;
-    const specSummary = salesSpecItems.length
-      ? salesSpecItems.map((item) => `${item.name}: ${item.label}`).join(" / ")
-      : "默认销售配置";
-
-    return {
-      skuKey,
-      groupKey: groupedItem?.label ?? "",
-      groupSpecName: groupedItem?.name ?? "",
-      groupSpecValue: groupedItem?.label ?? "",
-      groupSpecImage: groupedItem?.image ?? "",
-      specSummary,
-      price: previous?.price,
-      stock: previous?.stock ?? 0,
-      startDate: previous?.startDate ?? "",
-      endDate: previous?.endDate ?? "",
-      accessories: Array.isArray(previous?.accessories) ? previous?.accessories : [],
-      enabled: previous?.enabled ?? true,
-    };
+  syncingState.current = true;
+  form.setValues({
+    skus: nextSkus,
   });
-}
-
-function areSkuRowsEqual(a: SkuDraft[], b: SkuDraft[]): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
-function attachSkuMatrixEffects(form: IForm) {
-  let syncingSkuMatrix = false;
-
-  const syncSkuMatrix = () => {
-    if (syncingSkuMatrix) return;
-
-    const rawSpecs = form.getField(SKU_MATRIX_SPECS_PATH)?.value;
-    const imageControlled = enforceSingleImageSpec(rawSpecs);
-
-    if (imageControlled.changed) {
-      syncingSkuMatrix = true;
-      form.setValues({
-        specs: imageControlled.specs,
-      });
-      syncingSkuMatrix = false;
-      return;
-    }
-
-    const specs = normalizeSpecs(imageControlled.specs);
-    const currentSkus = Array.isArray(form.getField(SKU_MATRIX_SKUS_PATH)?.value)
-      ? (form.getField(SKU_MATRIX_SKUS_PATH)?.value as SkuDraft[])
-      : [];
-    const nextSkus = buildCartesianSpecRows(specs, currentSkus);
-
-    if (areSkuRowsEqual(currentSkus, nextSkus)) return;
-
-    syncingSkuMatrix = true;
-    form.setValues({
-      skus: nextSkus,
-    });
-    syncingSkuMatrix = false;
-  };
-
-  return form.watchFieldValue(
-    SKU_MATRIX_SPECS_PATH,
-    () => {
-      syncSkuMatrix();
-    },
-    {
-      immediate: true,
-      equals: (prev, next) => JSON.stringify(prev) === JSON.stringify(next),
-    },
-  );
-}
-
-// --- Computed reaction handlers (for demo) ---
-
-const categoryData: Record<string, Array<{ label: string; value: string }>> = {
-  tech: [
-    { label: "前端", value: "frontend" },
-    { label: "后端", value: "backend" },
-    { label: "运维", value: "devops" },
-    { label: "AI/机器学习", value: "ai" },
-  ],
-  design: [
-    { label: "UI 设计", value: "ui" },
-    { label: "用户研究", value: "ux" },
-    { label: "品牌设计", value: "brand" },
-  ],
-  business: [
-    { label: "市场", value: "marketing" },
-    { label: "销售", value: "sales" },
-    { label: "战略", value: "strategy" },
-  ],
-};
-
-const handlers: FormConfig["handlers"] = {
-  fetchCountries: async () => {
-    await new Promise((r) => setTimeout(r, 500));
-    return [
-      { label: "中国", value: "cn" },
-      { label: "新加坡", value: "sg" },
-      { label: "日本", value: "jp" },
-      { label: "美国", value: "us" },
-      { label: "英国", value: "uk" },
-      { label: "德国", value: "de" },
-    ];
-  },
-  fetchCategories: async () => {
-    await new Promise((r) => setTimeout(r, 500));
-    return [
-      { label: "技术", value: "tech" },
-      { label: "设计", value: "design" },
-      { label: "业务", value: "business" },
-    ];
-  },
-  fetchSubCategories: async ({ deps }) => {
-    await new Promise((r) => setTimeout(r, 400));
-    const cat = deps.category;
-    if (!cat) return [];
-    return categoryData[cat] || [];
-  },
-  normalizeCode: ({ value }) =>
-    String(value ?? "")
-      .trim()
-      .toUpperCase(),
-  checkConfirmCode: async ({ value }) => {
-    await new Promise((r) => setTimeout(r, 300));
-    return String(value ?? "")
-      .trim()
-      .toUpperCase() === "OK"
-      ? []
-      : [{ message: "确认码必须是 OK", type: "x-validate" }];
-  },
-};
-
-function sanitizeComponentProps(props: Record<string, any>) {
-  const { readPretty: _readPretty, pattern: _pattern, loading: _loading, ...rest } = props;
-  void _readPretty;
-  void _pattern;
-  void _loading;
-  return rest;
+  syncingState.current = false;
 }
 
 const components: ComponentMap = {
-  Input: (props: any) => {
-    const { value, onChange, ...rest } = props;
-    return (
-      <Input
-        value={value ?? ""}
-        onChange={(e: any) => onChange(e.target.value)}
-        {...sanitizeComponentProps(rest)}
-      />
-    );
-  },
-  Textarea: (props: any) => {
-    const { value, onChange, ...rest } = props;
-    return (
-      <Textarea
-        value={value ?? ""}
-        onChange={(e: any) => onChange(e.target.value)}
-        {...sanitizeComponentProps(rest)}
-      />
-    );
-  },
-  Select: (props: any) => {
-    return (
-      <div className="relative">
-        <Select {...sanitizeComponentProps(props)} />
-        {props.loading && (
-          <div className="absolute right-8 top-1/2 -translate-y-1/2">
-            <svg
-              className="animate-spin h-4 w-4 text-muted-foreground"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
-            </svg>
-          </div>
-        )}
-      </div>
-    );
-  },
+  Input: SchemaInput,
+  Textarea: SchemaTextarea,
+  Select: SchemaSelect,
   Checkbox,
   Switch,
   DateInput,
@@ -398,13 +111,24 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ schema }) => {
   const form = useMemo(
     () =>
       createForm({
-        handlers,
+        handlers: schemaRendererHandlers,
         initialValues: schema.id === SKU_MATRIX_DEMO_ID ? createSkuDemoInitialValues() : undefined,
-        setup: (instance) => {
-          if (schema.id === SKU_MATRIX_DEMO_ID) {
-            attachSkuMatrixEffects(instance);
-          }
-        },
+        setup:
+          schema.id === SKU_MATRIX_DEMO_ID
+            ? (instance) => {
+                const syncingState = { current: false };
+                return instance.effect(
+                  (current) => current.getField(SKU_MATRIX_SPECS_PATH)?.value,
+                  () => {
+                    syncSkuMatrix(instance, syncingState);
+                  },
+                  {
+                    immediate: true,
+                    equals: (prev, next) => JSON.stringify(prev) === JSON.stringify(next),
+                  },
+                );
+              }
+            : undefined,
       }),
     [schema.id],
   );

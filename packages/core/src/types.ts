@@ -46,24 +46,6 @@ export interface FieldError {
 }
 
 // ============================================================
-// Lifecycle Types
-// ============================================================
-
-export type FormLifecycleEvent =
-  | "onFieldInit"
-  | "onFieldMount"
-  | "onFieldUnmount"
-  | "onFieldValueChange"
-  | "onFieldInputValueChange"
-  | "onFieldInitialValueChange"
-  | "onFieldValidateStart"
-  | "onFieldValidateEnd"
-  | "onFieldValidateFailed"
-  | "onFieldValidateSuccess";
-
-export type FormLifecycleHandler = (field: IField, form: IForm) => void;
-
-// ============================================================
 // Validator Types
 // ============================================================
 
@@ -247,11 +229,6 @@ export interface IField {
   // Subscriptions
   subscribe(listener: () => void): () => void;
   effect(runner: (field: IField) => void): () => void;
-  watch<T>(
-    selector: (field: IField) => T,
-    listener: (value: T, prevValue: T | undefined) => void,
-    options?: WatchOptions<T>,
-  ): () => void;
 }
 
 // ============================================================
@@ -339,7 +316,6 @@ export interface IFormSchema {
 export interface FormConfig {
   initialValues?: Record<string, any>;
   validateFirst?: boolean;
-  effects?: (form: IForm) => void;
   setup?: (form: IForm) => void | (() => void);
   /** Custom constants/data injected into expression and rule runtime scope. Functions belong in computed handlers. */
   scope?: Record<string, any>;
@@ -375,12 +351,12 @@ export interface FormError {
 // IForm Interface
 // ============================================================
 
-export interface WatchOptions<T> {
+export interface EffectOptions<T> {
   immediate?: boolean;
   equals?: (prev: T, next: T) => boolean;
 }
 
-export interface WatchContext {
+export interface EffectContext {
   form: IForm;
   stop: () => void;
 }
@@ -414,29 +390,13 @@ export interface IForm {
   removeArrayItem(arrayPath: string, index: number): void;
 
   // Signals-style effects
-  effect(runner: (form: IForm) => void): () => void;
-  watch<T>(
+  effect(runner: (form: IForm, ctx: EffectContext) => void | (() => void)): () => void;
+  effect<T>(
     selector: (form: IForm) => T,
-    listener: (value: T, prevValue: T | undefined, ctx: WatchContext) => void,
-    options?: WatchOptions<T>,
-  ): () => void;
-  watchFieldValue<T = any>(
-    path: string,
-    listener: (value: T, prevValue: T | undefined, ctx: WatchContext) => void,
-    options?: WatchOptions<T>,
-  ): () => void;
-  watchValues(
-    listener: (
-      values: Record<string, any>,
-      prevValues: Record<string, any> | undefined,
-      ctx: WatchContext,
-    ) => void,
-    options?: WatchOptions<Record<string, any>>,
+    listener: (value: T, prevValue: T | undefined, ctx: EffectContext) => void,
+    options?: EffectOptions<T>,
   ): () => void;
 
   // Subscriptions
-  onFieldChange(path: string, listener: (field: IField) => void): () => void;
-  onValuesChange(listener: (values: Record<string, any>) => void): () => void;
   onError(listener: (error: FormError) => void): () => void;
-  onLifecycle(event: FormLifecycleEvent, path: string, handler: FormLifecycleHandler): () => void;
 }

@@ -164,7 +164,7 @@ SKU 表格虽然视觉上很复杂，但底层仍然应该是 `array<object>`：
 推荐放在：
 
 - `createForm({ setup })`
-- 通过 `watchFieldValue("specs", ...)` 监听规格变化
+- 通过 `effect((form) => form.getField("specs")?.value, ...)` 监听规格变化
 
 例如：
 
@@ -191,8 +191,8 @@ const form = createForm({
       syncing = false;
     };
 
-    return form.watchFieldValue(
-      "specs",
+    return form.effect(
+      (instance) => instance.getField("specs")?.value,
       () => {
         syncSkuMatrix();
       },

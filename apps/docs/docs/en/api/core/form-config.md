@@ -20,7 +20,7 @@ const form = createForm({
     },
   },
   setup(form) {
-    return form.watchValues((values) => {
+    return form.effect((instance) => instance.values, (values) => {
       console.log(values);
     });
   },
@@ -199,18 +199,21 @@ interface RuntimeRuleHandlerContext {
 
 ## setup
 
-`setup` runs synchronously during `Form` construction and receives the current `form` instance. It is suitable for registering `watch`, `effect`, error listeners, and cleanup logic released by `form.destroy()`.
+`setup` runs synchronously during `Form` construction and receives the current `form` instance. It is suitable for registering `effect`, error listeners, and cleanup logic released by `form.destroy()`.
 
 ```ts
 const form = createForm({
   setup(form) {
-    const stopValues = form.watchValues((values) => {
+    const stopValues = form.effect((instance) => instance.values, (values) => {
       console.log("values changed", values);
     });
 
-    const stopName = form.watchFieldValue("name", (value) => {
-      console.log("name changed", value);
-    });
+    const stopName = form.effect(
+      (instance) => instance.getField("name")?.value,
+      (value) => {
+        console.log("name changed", value);
+      },
+    );
 
     return () => {
       stopValues();
@@ -225,9 +228,7 @@ const form = createForm({
 Commonly used:
 
 - `form.effect(runner)`
-- `form.watch(selector, listener, options?)`
-- `form.watchFieldValue(path, listener, options?)`
-- `form.watchValues(listener, options?)`
+- `form.effect(selector, listener, options?)`
 - `form.onError(listener)`
 - `form.getField(path)`
 - `form.setFieldState(path, setter)`
@@ -240,22 +241,21 @@ Available but use with caution:
 - `form.setSchema(schema)`: rebuilds the field tree.
 - `form.createField(path, schema, value)`: usually avoid bypassing schema-driven creation.
 - `form.reset()`: emits value changes and replays reactions.
-- Calling `setValues()` inside `watchValues()` or `effect()`: guard it with conditions to avoid loops.
+- Calling `setValues()` inside `effect()`: guard it with conditions to avoid loops.
 
 ### Signals-style side effects
 
-Prefer these entry points:
+Use `form.effect` consistently:
 
-- `form.effect(runner)`: when you only care about dependency reads and reruns.
-- `form.watch(selector, listener, options?)`: when you need a selector with previous value and custom equality.
-- `form.watchFieldValue(path, listener, options?)`: when you want to observe a field's aggregate value, especially for object/array fields.
+- `form.effect(runner)`: aligns with `alien-signals.effect` and reruns based on dependency reads.
+- `form.effect(selector, listener, options?)`: observes selector changes with previous value and custom equality support.
 
 For example:
 
 ```ts
 createForm({
   setup(form) {
-    return form.watch(
+    return form.effect(
       (instance) => instance.getField("specs")?.value,
       (nextSpecs, prevSpecs) => {
         console.log("specs changed", nextSpecs, prevSpecs);

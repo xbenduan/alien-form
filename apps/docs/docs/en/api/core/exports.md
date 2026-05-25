@@ -138,11 +138,11 @@ const loadOptions: RuntimeRuleHandler = async (ctx) => {
 
 - `RuntimeRuleHandler`
 - `RuntimeRuleHandlerContext`
-- `FormLifecycleEvent`
-- `FormLifecycleHandler`
+- `EffectOptions`
+- `EffectContext`
 
 ## Notes
 
 - `createForm` returns `IForm`; the public API in docs follows `IForm`.
 - `Form` and `Field` classes can be imported, but business code usually does not instantiate them directly.
-- The public API for field lifecycle subscription is `onLifecycle`.
+- Form linkage uses `setup` + `form.effect`; field lifecycle subscription APIs are no longer exposed.

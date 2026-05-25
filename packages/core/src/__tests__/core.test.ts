@@ -53,7 +53,7 @@ describe("@alien-form/core", () => {
     await expect(form.validate()).resolves.toBe(true);
   });
 
-  it("coalesces bulk value notifications for watch APIs", () => {
+  it("coalesces bulk value notifications for effect selectors", () => {
     const form = createForm();
     form.setSchema({
       type: "object",
@@ -68,8 +68,8 @@ describe("@alien-form/core", () => {
     const formSubscriber = vi.fn();
     const firstSubscriber = vi.fn();
 
-    form.watchValues(valuesListener);
-    form.watchFieldValue("first", fieldListener);
+    form.effect((instance) => instance.values, valuesListener);
+    form.effect((instance) => instance.getField("first")?.value, fieldListener);
     form.subscribe(formSubscriber);
     form.getField("first")?.subscribe(firstSubscriber);
 
@@ -340,12 +340,14 @@ describe("@alien-form/core", () => {
     expect(form.values).toEqual({ tags: ["green", "yellow"] });
   });
 
-  it("registers watch/effect hooks from setup", () => {
+  it("registers schema-aware effects from setup", () => {
     const events: string[] = [];
     const form = createForm({
       setup: (instance) => {
-        instance.watchFieldValue("name", () => events.push("field-watch"));
-        instance.watchValues(() => events.push("values-watch"));
+        instance.effect((current) => current.getField("name")?.value, () =>
+          events.push("field-effect"),
+        );
+        instance.effect((current) => current.values, () => events.push("values-effect"));
         return instance.effect(() => {
           instance.getField("name")?.value;
           events.push("effect");
@@ -358,8 +360,8 @@ describe("@alien-form/core", () => {
 
     expect(events).toEqual(
       expect.arrayContaining([
-        "field-watch",
-        "values-watch",
+        "field-effect",
+        "values-effect",
         "effect",
       ]),
     );
@@ -440,7 +442,7 @@ describe("@alien-form/core", () => {
     dispose();
   });
 
-  it("supports watchFieldValue and exposes previous value for aggregate fields", () => {
+  it("supports selector effects and exposes previous value for aggregate fields", () => {
     const form = createForm({
       initialValues: {
         specs: [
@@ -476,7 +478,7 @@ describe("@alien-form/core", () => {
     });
 
     const listener = vi.fn();
-    form.watchFieldValue("specs", listener, {
+    form.effect((instance) => instance.getField("specs")?.value, listener, {
       equals: (prev, next) => JSON.stringify(prev) === JSON.stringify(next),
     });
 
@@ -497,13 +499,13 @@ describe("@alien-form/core", () => {
     ]);
   });
 
-  it("supports watch with immediate, custom equals, and stop", () => {
+  it("supports selector effect with immediate, custom equals, and stop", () => {
     const form = createForm({ initialValues: { name: "Bao", age: 20 } });
     form.setSchema(basicSchema);
 
     const calls: Array<{ next: Record<string, any>; prev: Record<string, any> | undefined }> = [];
 
-    form.watch(
+    form.effect(
       (instance) => instance.values,
       (next, prev, ctx) => {
         calls.push({ next, prev });
@@ -529,7 +531,7 @@ describe("@alien-form/core", () => {
     ]);
   });
 
-  it("stops watchValues and effect after destroy", () => {
+  it("stops selector effects and effects after destroy", () => {
     const form = createForm({ initialValues: { name: "Bao", age: 20 } });
     form.setSchema(basicSchema);
 
@@ -539,7 +541,7 @@ describe("@alien-form/core", () => {
     form.effect((instance) => {
       effectListener(instance.getField("name")?.value);
     });
-    form.watchValues(valuesListener, { immediate: true });
+    form.effect((instance) => instance.values, valuesListener, { immediate: true });
 
     form.destroy();
     form.getField("name")?.setValue("AfterDestroy");

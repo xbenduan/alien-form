@@ -164,7 +164,7 @@ This logic does not belong in schema expressions, and it does not belong in Reac
 Prefer:
 
 - `createForm({ setup })`
-- listening through `watchFieldValue("specs", ...)`
+- listening through `effect((form) => form.getField("specs")?.value, ...)`
 
 For example:
 
@@ -191,8 +191,8 @@ const form = createForm({
       syncing = false;
     };
 
-    return form.watchFieldValue(
-      "specs",
+    return form.effect(
+      (instance) => instance.getField("specs")?.value,
       () => {
         syncSkuMatrix();
       },

@@ -15,6 +15,12 @@ export { ScrollArea, ScrollBar } from "./components/scroll-area";
 // Form Components
 export { Input } from "./components/input";
 export { Textarea } from "./components/textarea";
+export { SchemaInput, SchemaTextarea, SchemaSelect } from "./components/schema-field-adapters";
+export type {
+  SchemaInputProps,
+  SchemaTextareaProps,
+  SchemaSelectProps,
+} from "./components/schema-field-adapters";
 export { Label } from "./components/label";
 export { Badge } from "./components/badge";
 export { Select } from "./components/select";

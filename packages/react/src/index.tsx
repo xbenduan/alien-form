@@ -83,6 +83,7 @@ interface FormProviderProps {
   form: IForm;
   components?: ComponentMap;
   decorators?: DecoratorMap;
+  destroyOnUnmount?: boolean;
   children?: React.ReactNode;
 }
 
@@ -90,15 +91,17 @@ export const FormProvider: React.FC<FormProviderProps> = ({
   form,
   components = {},
   decorators = {},
+  destroyOnUnmount = false,
   children,
 }) => {
   const value = useMemo(() => ({ form, components, decorators }), [form, components, decorators]);
 
   useEffect(() => {
+    if (!destroyOnUnmount) return;
     return () => {
       form.destroy();
     };
-  }, [form]);
+  }, [form, destroyOnUnmount]);
 
   return <FormContext.Provider value={value}>{children}</FormContext.Provider>;
 };

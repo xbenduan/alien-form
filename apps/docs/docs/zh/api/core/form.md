@@ -109,10 +109,7 @@ console.log(form.values);
 | 方法              | 签名                                                                 | 说明                                 |
 | ----------------- | -------------------------------------------------------------------- | ------------------------------------ |
 | `subscribe`       | `(listener: () => void) => () => void`                               | 低层版本订阅，适合 bridge 层         |
-| `effect`          | `(runner: (form: IForm) => void) => () => void`                      | 基于依赖读取执行副作用               |
-| `watch`           | `(selector, listener, options?) => () => void`                       | 监听 selector 结果变化               |
-| `watchFieldValue` | `(path, listener, options?) => () => void`                           | 监听单个字段或聚合字段值变化         |
-| `watchValues`     | `(listener, options?) => () => void`                                 | 监听输出值对象变化                   |
+| `effect`          | `(runner) => () => void` 或 `(selector, listener, options?) => () => void` | 基于 `alien-signals` 依赖读取执行副作用 |
 | `onError`         | `(listener: (error: FormError) => void) => () => void`               | 订阅非致命运行时错误                 |
 
 ## setup 里可以调用什么
@@ -122,20 +119,23 @@ console.log(form.values);
 ```ts
 const form = createForm({
   setup(form) {
-    const disposeValue = form.watchValues((values) => {
+    const disposeValues = form.effect((instance) => instance.values, (values) => {
       console.log("values changed", values);
     });
 
-    const disposeField = form.watchFieldValue("username", (value) => {
-      console.log("username changed", value);
-    });
+    const disposeField = form.effect(
+      (instance) => instance.getField("username")?.value,
+      (value) => {
+        console.log("username changed", value);
+      },
+    );
 
     const disposeError = form.onError((error) => {
       console.warn(error.scope, error.path, error.message);
     });
 
     return () => {
-      disposeValue();
+      disposeValues();
       disposeField();
       disposeError();
     };
@@ -148,9 +148,7 @@ const form = createForm({
 | 方法               | 用途                                                      |
 | ------------------ | --------------------------------------------------------- |
 | `effect()`         | 当你只关心依赖读取与重跑时使用                            |
-| `watchValues()`    | 监听输出值变化，用于埋点、调试、联动外部状态              |
-| `watchFieldValue()`| 监听某个字段或聚合字段值变化                              |
-| `watch()`          | 监听任意 selector 结果变化                                |
+| `effect(selector, listener)` | 监听任意 selector 结果变化，支持前后值与自定义相等判断 |
 | `onError()`        | 统一收集 reaction、format、validate、ref 解析等运行时错误 |
 | `getField()`       | 在回调中读取字段实例                                      |
 | `setFieldState()`  | 在回调中做少量命令式状态修正                              |
@@ -165,16 +163,16 @@ const form = createForm({
 | `setSchema()`   | 会清空并重建字段和 reaction；不要在频繁变化的订阅回调里调用      |
 | `createField()` | 通常应由 schema 驱动；手动创建字段容易绕开协议结构               |
 | `reset()`       | 会触发字段值变化和 reaction 重放，避免在无保护的值变化监听里调用 |
-| `setValues()`   | 可用，但不要在 `watchValues()` / `effect()` 中无条件调用，否则可能形成循环 |
+| `setValues()`   | 可用，但不要在 `effect()` 中无条件调用，否则可能形成循环 |
 
 ## 推荐副作用模式
 
-推荐优先使用 `effect/watch/watchFieldValue/watchValues`，而不是围绕路径事件组织联动逻辑。
+推荐优先使用 `effect`，而不是围绕路径事件组织联动逻辑。
 
 ```ts
 createForm({
   setup(form) {
-    return form.watch(
+    return form.effect(
       (instance) => instance.getField("profile")?.value,
       (nextProfile, prevProfile) => {
         console.log("profile changed", nextProfile, prevProfile);
@@ -206,4 +204,4 @@ createForm({
 - `setValues()` 只会写入当前已经存在的字段；如果 schema 还没有设置，写入不会产生字段。
 - `values` 是派生状态，不要尝试直接修改 `form.values.xxx`。
 - `submit()` 校验失败时会抛出异常，并把错误信息数组挂在 `error.messages` 上。
-- `watchValues()` 和 `effect()` 内如果会反写字段，需要自行保证回调收敛，避免循环。
+- `effect()` 内如果会反写字段，需要自行保证回调收敛，避免循环。

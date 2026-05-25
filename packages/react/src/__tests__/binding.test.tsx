@@ -204,7 +204,7 @@ describe("react bindings", () => {
     expect(form.getField("b")).toBeTruthy();
   });
 
-  it("destroys form on FormProvider unmount", () => {
+  it("does not destroy an external form on FormProvider unmount by default", () => {
     const form = createForm();
     const destroySpy = vi.spyOn(form, "destroy");
     const schema = buildNameSchema();
@@ -212,6 +212,25 @@ describe("react bindings", () => {
 
     const view = render(
       <FormProvider form={form} components={components}>
+        <SchemaField schema={schema} />
+      </FormProvider>,
+    );
+
+    expect(destroySpy).not.toHaveBeenCalled();
+
+    view.unmount();
+
+    expect(destroySpy).not.toHaveBeenCalled();
+  });
+
+  it("destroys form on FormProvider unmount when destroyOnUnmount is true", () => {
+    const form = createForm();
+    const destroySpy = vi.spyOn(form, "destroy");
+    const schema = buildNameSchema();
+    form.setSchema(schema);
+
+    const view = render(
+      <FormProvider form={form} components={components} destroyOnUnmount>
         <SchemaField schema={schema} />
       </FormProvider>,
     );

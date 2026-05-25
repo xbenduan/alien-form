@@ -10,8 +10,6 @@ import type { IField } from "../types";
 export interface NotificationSchedulerHost {
   runReactionTriggers(path: string): void;
   commitVersionChange(): void;
-  emitFieldChange(path: string, field: IField): void;
-  emitValuesChange(): void;
   beforeFlush?(): void;
   afterFlush?(): void;
 }
@@ -88,24 +86,16 @@ export class NotificationScheduler {
           this.host.runReactionTriggers(path);
         }
 
-        const fieldChanges = Array.from(this._pendingFieldChanges.entries());
+        const fieldChangeCount = this._pendingFieldChanges.size;
         this._pendingFieldChanges.clear();
         const shouldNotifyValues = this._pendingValueChange;
         const shouldBumpVersion =
-          this._pendingVersionChange || fieldChanges.length > 0 || shouldNotifyValues;
+          this._pendingVersionChange || fieldChangeCount > 0 || shouldNotifyValues;
         this._pendingValueChange = false;
         this._pendingVersionChange = false;
 
         if (shouldBumpVersion) {
           this.host.commitVersionChange();
-        }
-
-        for (const [path, field] of fieldChanges) {
-          this.host.emitFieldChange(path, field);
-        }
-
-        if (shouldNotifyValues) {
-          this.host.emitValuesChange();
         }
       }
     } finally {

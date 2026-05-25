@@ -28,8 +28,6 @@ export type {
   DataSourcePolicy,
   RuntimeRuleHandlerContext,
   RuntimeRuleHandler,
-  FormLifecycleEvent,
-  FormLifecycleHandler,
   SchemaTypes,
   FieldPatternTypes,
   FieldDisplayTypes,
@@ -40,6 +38,6 @@ export type {
   FormConfig,
   FormError,
   FormErrorScope,
-  WatchOptions,
-  WatchContext,
+  EffectOptions,
+  EffectContext,
 } from "./types";

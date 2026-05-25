@@ -6,7 +6,6 @@
 import { signal, effect, startBatch, endBatch } from "alien-signals";
 import { Field } from "../field/index";
 import { NotificationScheduler } from "./notification";
-import { LifecycleRegistry } from "./lifecycle";
 import {
   applyReactionValue,
   buildReactionScope,
@@ -29,10 +28,8 @@ import type {
   SchemaXValidate,
   FieldMutableState,
   FormError,
-  FormLifecycleEvent,
-  FormLifecycleHandler,
-  WatchOptions,
-  WatchContext,
+  EffectOptions,
+  EffectContext,
 } from "../types";
 
 import { getDeepValue, setDeepValue, sortByOrder, isVoidField } from "../utils/path";
@@ -50,8 +47,6 @@ export class Form implements IForm {
   private _initialValues: Record<string, any>;
   private _submitting: ReturnType<typeof signal<boolean>>;
   private _version: ReturnType<typeof signal<number>>;
-  private _fieldChangeListeners: Map<string, Set<(field: IField) => void>> = new Map();
-  private _valuesChangeListeners: Set<(values: Record<string, any>) => void> = new Set();
   private _errorListeners: Set<(error: FormError) => void> = new Set();
   private _schema: IFormSchema | null = null;
   private _reactionDisposers: Array<() => void> = [];
@@ -62,7 +57,6 @@ export class Form implements IForm {
   private _formattingValuePaths: Set<string> = new Set();
   private _config: FormConfig;
   private _scope: Record<string, any>;
-  private _lifecycle: LifecycleRegistry;
   private _definitions: Record<string, IFieldSchema> = {};
   private _valuesCache: Record<string, any> | null = null;
   private _rawValuesCache: Record<string, any> | null = null;
@@ -74,6 +68,7 @@ export class Form implements IForm {
   private _reactionRunDepth = 0;
   private _reactionRunnerSeq = 0;
   private _effectDisposers: Set<() => void> = new Set();
+  private _fieldRegistryVersion: ReturnType<typeof signal<number>>;
   private _destroyed = false;
 
   constructor(config: FormConfig = {}) {
@@ -81,8 +76,8 @@ export class Form implements IForm {
     this._initialValues = config.initialValues ? { ...config.initialValues } : {};
     this._submitting = signal(false);
     this._version = signal(0);
+    this._fieldRegistryVersion = signal(0);
     this._scope = config.scope || {};
-    this._lifecycle = new LifecycleRegistry(this);
     this._ruleRuntime = {
       form: this,
       scope: this._scope,
@@ -98,16 +93,10 @@ export class Form implements IForm {
       beforeFlush: () => this._reactionRunCounts.clear(),
       afterFlush: () => this._reactionRunCounts.clear(),
       commitVersionChange: () => this._commitVersionChange(),
-      emitFieldChange: (path, field) => this._emitFieldChange(path, field),
-      emitValuesChange: () => this._emitValuesChange(),
     });
 
     if (config.onError) {
       this._errorListeners.add(config.onError);
-    }
-
-    if (config.effects) {
-      config.effects(this);
     }
 
     if (config.setup) {
@@ -123,6 +112,8 @@ export class Form implements IForm {
   // ============================================================
 
   get values(): Record<string, any> {
+    this._fieldRegistryVersion();
+    this._version();
     if (this._valuesCache !== null) return this._valuesCache;
     const result: Record<string, any> = {};
     for (const [path, field] of this.fields) {
@@ -180,15 +171,14 @@ export class Form implements IForm {
     const field = new Field(path, fieldSchema, initVal);
     (field as Field)._setForm(this);
     this.fields.set(path, field);
+    this._bumpFieldRegistryVersion();
     this._bumpVersion();
-
-    // Emit onFieldInit lifecycle
-    this._emitLifecycle("onFieldInit", path, field);
 
     return field;
   }
 
   getField(path: string): IField | undefined {
+    this._fieldRegistryVersion();
     return this.fields.get(path);
   }
 
@@ -319,8 +309,6 @@ export class Form implements IForm {
 
     this._effectDisposers.clear();
     this._disposeReactions();
-    this._fieldChangeListeners.clear();
-    this._valuesChangeListeners.clear();
     this._errorListeners.clear();
   }
 
@@ -336,19 +324,40 @@ export class Form implements IForm {
     return dispose;
   }
 
-  effect(runner: (form: IForm) => void): () => void {
-    const dispose = this.subscribe(() => {
-      if (this._destroyed) return;
-      runner(this);
-    });
-    return this._trackDispose(dispose);
-  }
-
-  watch<T>(
+  effect(runner: (form: IForm, ctx: EffectContext) => void | (() => void)): () => void;
+  effect<T>(
     selector: (form: IForm) => T,
-    listener: (value: T, prevValue: T | undefined, ctx: WatchContext) => void,
-    options?: WatchOptions<T>,
+    listener: (value: T, prevValue: T | undefined, ctx: EffectContext) => void,
+    options?: EffectOptions<T>,
+  ): () => void;
+  effect<T>(
+    runnerOrSelector:
+      | ((form: IForm, ctx: EffectContext) => void | (() => void))
+      | ((form: IForm) => T),
+    listener?: (value: T, prevValue: T | undefined, ctx: EffectContext) => void,
+    options?: EffectOptions<T>,
   ): () => void {
+    if (!listener) {
+      let stopped = false;
+      let effectDispose: (() => void) | null = null;
+      const stop = () => {
+        if (stopped) return;
+        stopped = true;
+        if (effectDispose) effectDispose();
+        this._effectDisposers.delete(stop);
+      };
+      const ctx: EffectContext = { form: this, stop };
+      effectDispose = effect(() => {
+        if (this._destroyed || stopped) return;
+        return (runnerOrSelector as (form: IForm, ctx: EffectContext) => void | (() => void))(
+          this,
+          ctx,
+        );
+      });
+      this._effectDisposers.add(stop);
+      return stop;
+    }
+
     const equals = options?.equals ?? Object.is;
     const immediate = options?.immediate ?? false;
     let initialized = false;
@@ -365,15 +374,15 @@ export class Form implements IForm {
       this._effectDisposers.delete(stop);
     };
 
-    const ctx: WatchContext = {
+    const ctx: EffectContext = {
       form: this,
       stop,
     };
 
-    effectDispose = this.subscribe(() => {
+    effectDispose = effect(() => {
       if (this._destroyed || stopped) return;
 
-      const nextValue = selector(this);
+      const nextValue = (runnerOrSelector as (form: IForm) => T)(this);
 
       if (!initialized) {
         initialized = true;
@@ -396,25 +405,6 @@ export class Form implements IForm {
     return stop;
   }
 
-  watchFieldValue<T = any>(
-    path: string,
-    listener: (value: T, prevValue: T | undefined, ctx: WatchContext) => void,
-    options?: WatchOptions<T>,
-  ): () => void {
-    return this.watch((form) => form.getField(path)?.value as T, listener, options);
-  }
-
-  watchValues(
-    listener: (
-      values: Record<string, any>,
-      prevValues: Record<string, any> | undefined,
-      ctx: WatchContext,
-    ) => void,
-    options?: WatchOptions<Record<string, any>>,
-  ): () => void {
-    return this.watch((form) => form.values, listener, options);
-  }
-
   // ============================================================
   // Schema
   // ============================================================
@@ -427,6 +417,7 @@ export class Form implements IForm {
       this._disposeReactions();
       this._fieldFormats.clear();
       this.fields.clear();
+      this._bumpFieldRegistryVersion();
       this._actionCache.clear();
 
       // Resolve $ref and definitions
@@ -444,27 +435,6 @@ export class Form implements IForm {
       endBatch();
       this._notifications.endBatch();
     }
-  }
-
-  // ============================================================
-  // Lifecycle hooks — used by FormConfig.effects
-  // ============================================================
-
-  onFieldChange(path: string, listener: (field: IField) => void): () => void {
-    if (!this._fieldChangeListeners.has(path)) {
-      this._fieldChangeListeners.set(path, new Set());
-    }
-    this._fieldChangeListeners.get(path)!.add(listener);
-    return () => {
-      this._fieldChangeListeners.get(path)?.delete(listener);
-    };
-  }
-
-  onValuesChange(listener: (values: Record<string, any>) => void): () => void {
-    this._valuesChangeListeners.add(listener);
-    return () => {
-      this._valuesChangeListeners.delete(listener);
-    };
   }
 
   onError(listener: (error: FormError) => void): () => void {
@@ -493,24 +463,12 @@ export class Form implements IForm {
     }
   }
 
-  // Lifecycle registration (used in effects)
-  onLifecycle(event: FormLifecycleEvent, path: string, handler: FormLifecycleHandler): () => void {
-    return this._lifecycle.on(event, path, handler);
-  }
-
-  // Emit a lifecycle event for a field
-  _emitLifecycle(event: FormLifecycleEvent, path: string, field: IField): void {
-    this._lifecycle.emit(event, path, field);
-  }
-
   _notifyFieldChange(path: string, field: IField): void {
     this._notifications.queueFieldChange(path, field);
     this._notifications.flush();
   }
 
   _notifyFieldValueChange(path: string, field: IField): void {
-    this._emitLifecycle("onFieldValueChange", path, field);
-    this._emitLifecycle("onFieldInputValueChange", path, field);
     this._notifications.queueReactionTrigger(path);
     this._notifications.queueFieldChange(path, field);
     this._notifications.queueValueChange();
@@ -518,19 +476,23 @@ export class Form implements IForm {
   }
 
   _notifyFieldValidateStart(path: string, field: IField): void {
-    this._emitLifecycle("onFieldValidateStart", path, field);
+    void path;
+    void field;
   }
 
   _notifyFieldValidateEnd(path: string, field: IField): void {
-    this._emitLifecycle("onFieldValidateEnd", path, field);
+    void path;
+    void field;
   }
 
   _notifyFieldValidateFailed(path: string, field: IField): void {
-    this._emitLifecycle("onFieldValidateFailed", path, field);
+    void path;
+    void field;
   }
 
   _notifyFieldValidateSuccess(path: string, field: IField): void {
-    this._emitLifecycle("onFieldValidateSuccess", path, field);
+    void path;
+    void field;
   }
 
   // ============================================================
@@ -948,6 +910,12 @@ export class Form implements IForm {
     this._version(this._version() + 1);
   }
 
+  private _bumpFieldRegistryVersion(): void {
+    this._valuesCache = null;
+    this._rawValuesCache = null;
+    this._fieldRegistryVersion(this._fieldRegistryVersion() + 1);
+  }
+
   private _disposeReactions(): void {
     for (const dispose of this._reactionDisposers) dispose();
     this._reactionDisposers = [];
@@ -1004,24 +972,6 @@ export class Form implements IForm {
     }
     this._rawValuesCache = result;
     return result;
-  }
-
-  private _emitFieldChange(path: string, field: IField): void {
-    const handlers = this._fieldChangeListeners.get(path);
-    if (handlers) {
-      for (const handler of handlers) handler(field);
-    }
-    const wildcardHandlers = this._fieldChangeListeners.get("*");
-    if (wildcardHandlers) {
-      for (const handler of wildcardHandlers) handler(field);
-    }
-  }
-
-  private _emitValuesChange(): void {
-    const vals = this.values;
-    for (const listener of this._valuesChangeListeners) {
-      listener(vals);
-    }
   }
 }
 

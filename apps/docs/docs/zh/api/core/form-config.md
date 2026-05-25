@@ -20,7 +20,7 @@ const form = createForm({
     },
   },
   setup(form) {
-    return form.watchValues((values) => {
+    return form.effect((instance) => instance.values, (values) => {
       console.log(values);
     });
   },
@@ -199,18 +199,21 @@ interface RuntimeRuleHandlerContext {
 
 ## setup
 
-`setup` 在 `Form` 构造阶段同步执行，接收当前 `form` 实例。它适合注册 `watch`、`effect`、错误监听，以及需要在 `form.destroy()` 时释放的清理逻辑。
+`setup` 在 `Form` 构造阶段同步执行，接收当前 `form` 实例。它适合注册 `effect`、错误监听，以及需要在 `form.destroy()` 时释放的清理逻辑。
 
 ```ts
 const form = createForm({
   setup(form) {
-    const stopValues = form.watchValues((values) => {
+    const stopValues = form.effect((instance) => instance.values, (values) => {
       console.log("values changed", values);
     });
 
-    const stopName = form.watchFieldValue("name", (value) => {
-      console.log("name changed", value);
-    });
+    const stopName = form.effect(
+      (instance) => instance.getField("name")?.value,
+      (value) => {
+        console.log("name changed", value);
+      },
+    );
 
     return () => {
       stopValues();
@@ -225,9 +228,7 @@ const form = createForm({
 常用：
 
 - `form.effect(runner)`
-- `form.watch(selector, listener, options?)`
-- `form.watchFieldValue(path, listener, options?)`
-- `form.watchValues(listener, options?)`
+- `form.effect(selector, listener, options?)`
 - `form.onError(listener)`
 - `form.getField(path)`
 - `form.setFieldState(path, setter)`
@@ -240,22 +241,21 @@ const form = createForm({
 - `form.setSchema(schema)`：会重建字段树。
 - `form.createField(path, schema, value)`：通常不建议绕过 schema 手动创建。
 - `form.reset()`：会触发值变化和 reaction 重放。
-- 在 `watchValues()` 或 `effect()` 中调用 `setValues()`：需要条件判断，避免循环。
+- 在 `effect()` 中调用 `setValues()`：需要条件判断，避免循环。
 
 ### signals 风格副作用
 
-推荐优先使用三类入口：
+推荐统一使用 `form.effect`：
 
-- `form.effect(runner)`：只关心依赖读取，不关心前后值比较。
-- `form.watch(selector, listener, options?)`：关心 selector 的前后值变化。
-- `form.watchFieldValue(path, listener, options?)`：监听某个字段的聚合值，适合数组/对象字段。
+- `form.effect(runner)`：对齐 `alien-signals.effect`，按依赖读取重跑。
+- `form.effect(selector, listener, options?)`：监听 selector 的前后值变化。
 
 例如：
 
 ```ts
 createForm({
   setup(form) {
-    return form.watch(
+    return form.effect(
       (instance) => instance.getField("specs")?.value,
       (nextSpecs, prevSpecs) => {
         console.log("specs changed", nextSpecs, prevSpecs);
