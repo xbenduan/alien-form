@@ -63,34 +63,7 @@ interface SkuDraft {
 }
 
 function createSkuDemoInitialValues() {
-  const specs: SpecDraft[] = [
-    {
-      name: "颜色",
-      supportsImage: true,
-      values: [
-        {
-          label: "曜石黑",
-          image:
-            "https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=close-up%20studio%20product%20photo%20of%20a%20premium%20smartphone%20back%20panel%20in%20obsidian%20black%2C%20minimal%20background%2C%20soft%20lighting%2C%20realistic%20material%20texture&image_size=square_hd",
-        },
-        {
-          label: "月光白",
-          image:
-            "https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=close-up%20studio%20product%20photo%20of%20a%20premium%20smartphone%20back%20panel%20in%20moonlight%20white%2C%20minimal%20background%2C%20soft%20lighting%2C%20realistic%20material%20texture&image_size=square_hd",
-        },
-      ],
-    },
-    {
-      name: "内存",
-      supportsImage: false,
-      values: [{ label: "128G" }, { label: "256G" }],
-    },
-    {
-      name: "运行内存",
-      supportsImage: false,
-      values: [{ label: "8G" }, { label: "12G" }],
-    },
-  ];
+  const specs: SpecDraft[] = [];
 
   const skus = buildCartesianSpecRows(normalizeSpecs(specs), []);
 
@@ -230,6 +203,10 @@ function areSkuRowsEqual(a: SkuDraft[], b: SkuDraft[]): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+function isSkuMatrixSpecField(path: string): boolean {
+  return path === SKU_MATRIX_SPECS_PATH || path.startsWith(`${SKU_MATRIX_SPECS_PATH}.`);
+}
+
 function attachSkuMatrixEffects(form: IForm) {
   let syncingSkuMatrix = false;
 
@@ -263,7 +240,8 @@ function attachSkuMatrixEffects(form: IForm) {
     syncingSkuMatrix = false;
   };
 
-  form.onFieldChange(SKU_MATRIX_SPECS_PATH, () => {
+  form.onFieldChange("*", (field) => {
+    if (!isSkuMatrixSpecField(field.path)) return;
     syncSkuMatrix();
   });
 }

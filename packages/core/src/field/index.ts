@@ -15,6 +15,7 @@ import type {
   DataSourcePolicy,
   FieldDisplayTypes,
   FieldPatternTypes,
+  WatchOptions,
 } from "../types";
 import {
   isEmptyValue,
@@ -534,6 +535,41 @@ export class Field implements IField {
       this._listeners.delete(listener);
       dispose();
     };
+  }
+
+  effect(runner: (field: IField) => void): () => void {
+    return effect(() => {
+      runner(this);
+    });
+  }
+
+  watch<T>(
+    selector: (field: IField) => T,
+    listener: (value: T, prevValue: T | undefined) => void,
+    options?: WatchOptions<T>,
+  ): () => void {
+    const equals = options?.equals ?? Object.is;
+    const immediate = options?.immediate ?? false;
+    let initialized = false;
+    let previousValue: T | undefined;
+
+    return effect(() => {
+      const nextValue = selector(this);
+      if (!initialized) {
+        initialized = true;
+        if (immediate) {
+          listener(nextValue, previousValue);
+        }
+        previousValue = nextValue;
+        return;
+      }
+
+      if (equals(previousValue as T, nextValue)) return;
+
+      const lastValue = previousValue;
+      previousValue = nextValue;
+      listener(nextValue, lastValue);
+    });
   }
 
   // Internal — auto-subscribe effect that reads version

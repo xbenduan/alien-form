@@ -246,6 +246,12 @@ export interface IField {
 
   // Subscriptions
   subscribe(listener: () => void): () => void;
+  effect(runner: (field: IField) => void): () => void;
+  watch<T>(
+    selector: (field: IField) => T,
+    listener: (value: T, prevValue: T | undefined) => void,
+    options?: WatchOptions<T>,
+  ): () => void;
 }
 
 // ============================================================
@@ -334,6 +340,7 @@ export interface FormConfig {
   initialValues?: Record<string, any>;
   validateFirst?: boolean;
   effects?: (form: IForm) => void;
+  setup?: (form: IForm) => void | (() => void);
   /** Custom constants/data injected into expression and rule runtime scope. Functions belong in computed handlers. */
   scope?: Record<string, any>;
   /** Registered computed handlers for x-reaction, x-format and x-validate */
@@ -368,6 +375,16 @@ export interface FormError {
 // IForm Interface
 // ============================================================
 
+export interface WatchOptions<T> {
+  immediate?: boolean;
+  equals?: (prev: T, next: T) => boolean;
+}
+
+export interface WatchContext {
+  form: IForm;
+  stop: () => void;
+}
+
 export interface IForm {
   fields: Map<string, IField>;
   values: Record<string, any>;
@@ -386,6 +403,7 @@ export interface IForm {
   reset(): void;
   validate(): Promise<boolean>;
   submit<T = any>(onSubmit?: (values: Record<string, any>) => T | Promise<T>): Promise<T>;
+  destroy(): void;
   subscribe(listener: () => void): () => void;
 
   // Schema
@@ -394,6 +412,27 @@ export interface IForm {
   // Array operations
   getArrayField(path: string): IField | undefined;
   removeArrayItem(arrayPath: string, index: number): void;
+
+  // Signals-style effects
+  effect(runner: (form: IForm) => void): () => void;
+  watch<T>(
+    selector: (form: IForm) => T,
+    listener: (value: T, prevValue: T | undefined, ctx: WatchContext) => void,
+    options?: WatchOptions<T>,
+  ): () => void;
+  watchFieldValue<T = any>(
+    path: string,
+    listener: (value: T, prevValue: T | undefined, ctx: WatchContext) => void,
+    options?: WatchOptions<T>,
+  ): () => void;
+  watchValues(
+    listener: (
+      values: Record<string, any>,
+      prevValues: Record<string, any> | undefined,
+      ctx: WatchContext,
+    ) => void,
+    options?: WatchOptions<Record<string, any>>,
+  ): () => void;
 
   // Subscriptions
   onFieldChange(path: string, listener: (field: IField) => void): () => void;

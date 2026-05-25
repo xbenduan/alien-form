@@ -371,6 +371,197 @@ describe("@alien-form/core", () => {
     );
   });
 
+  it("runs setup disposer on destroy", () => {
+    const setupCalls: string[] = [];
+    const form = createForm({
+      setup: () => {
+        setupCalls.push("setup");
+        return () => {
+          setupCalls.push("dispose");
+        };
+      },
+    });
+
+    expect(setupCalls).toEqual(["setup"]);
+
+    form.destroy();
+    form.destroy();
+
+    expect(setupCalls).toEqual(["setup", "dispose"]);
+  });
+
+  it("tracks aggregate parent values through form.effect", () => {
+    const form = createForm({
+      initialValues: {
+        specs: [
+          {
+            name: "颜色",
+            values: [{ label: "曜石黑", image: "black.png" }],
+          },
+        ],
+      },
+    });
+    form.setSchema({
+      type: "object",
+      properties: {
+        specs: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              values: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    label: { type: "string" },
+                    image: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const snapshots: Array<Array<{ name: string; values: Array<{ label: string; image: string }> }>> =
+      [];
+
+    const dispose = form.effect((instance) => {
+      const specs = instance.getField("specs")?.value ?? [];
+      snapshots.push(JSON.parse(JSON.stringify(specs)));
+    });
+
+    form.getField("specs.0.values.0.label")?.setValue("月光白");
+
+    expect(snapshots.at(-1)).toEqual([
+      {
+        name: "颜色",
+        values: [{ label: "月光白", image: "black.png" }],
+      },
+    ]);
+
+    dispose();
+  });
+
+  it("supports watchFieldValue and exposes previous value for aggregate fields", () => {
+    const form = createForm({
+      initialValues: {
+        specs: [
+          {
+            name: "颜色",
+            values: [{ label: "曜石黑" }],
+          },
+        ],
+      },
+    });
+    form.setSchema({
+      type: "object",
+      properties: {
+        specs: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              values: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    label: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const listener = vi.fn();
+    form.watchFieldValue("specs", listener, {
+      equals: (prev, next) => JSON.stringify(prev) === JSON.stringify(next),
+    });
+
+    form.getField("specs.0.values.0.label")?.setValue("月光白");
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener.mock.calls[0]?.[0]).toEqual([
+      {
+        name: "颜色",
+        values: [{ label: "月光白" }],
+      },
+    ]);
+    expect(listener.mock.calls[0]?.[1]).toEqual([
+      {
+        name: "颜色",
+        values: [{ label: "曜石黑" }],
+      },
+    ]);
+  });
+
+  it("supports watch with immediate, custom equals, and stop", () => {
+    const form = createForm({ initialValues: { name: "Bao", age: 20 } });
+    form.setSchema(basicSchema);
+
+    const calls: Array<{ next: Record<string, any>; prev: Record<string, any> | undefined }> = [];
+
+    form.watch(
+      (instance) => instance.values,
+      (next, prev, ctx) => {
+        calls.push({ next, prev });
+        if (next.name === "Stop") {
+          ctx.stop();
+        }
+      },
+      {
+        immediate: true,
+        equals: (prev, next) => prev.name === next.name,
+      },
+    );
+
+    form.getField("age")?.setValue(21);
+    form.getField("name")?.setValue("Bao2");
+    form.getField("name")?.setValue("Stop");
+    form.getField("name")?.setValue("Ignored");
+
+    expect(calls).toEqual([
+      { next: { name: "Bao", age: 20 }, prev: undefined },
+      { next: { name: "B" + "ao2", age: 21 }, prev: { name: "Bao", age: 20 } },
+      { next: { name: "Stop", age: 21 }, prev: { name: "Bao2", age: 21 } },
+    ]);
+  });
+
+  it("stops watchValues and effect after destroy", () => {
+    const form = createForm({ initialValues: { name: "Bao", age: 20 } });
+    form.setSchema(basicSchema);
+
+    const effectListener = vi.fn();
+    const valuesListener = vi.fn();
+
+    form.effect((instance) => {
+      effectListener(instance.getField("name")?.value);
+    });
+    form.watchValues(valuesListener, { immediate: true });
+
+    form.destroy();
+    form.getField("name")?.setValue("AfterDestroy");
+
+    expect(effectListener).toHaveBeenCalledTimes(1);
+    expect(valuesListener).toHaveBeenCalledTimes(1);
+    expect(valuesListener.mock.calls[0]?.[0]).toEqual({ name: "Bao", age: 20 });
+    expect(valuesListener.mock.calls[0]?.[1]).toBeUndefined();
+    expect(valuesListener.mock.calls[0]?.[2]).toEqual(
+      expect.objectContaining({
+        form,
+        stop: expect.any(Function),
+      }),
+    );
+  });
+
   it("replaces fields when setSchema is called again", () => {
     const form = createForm({ initialValues: { oldField: "old", newField: "new" } });
     form.setSchema({

@@ -40,4 +40,6 @@ export type {
   FormConfig,
   FormError,
   FormErrorScope,
+  WatchOptions,
+  WatchContext,
 } from "./types";

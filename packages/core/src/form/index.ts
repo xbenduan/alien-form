@@ -31,6 +31,8 @@ import type {
   FormError,
   FormLifecycleEvent,
   FormLifecycleHandler,
+  WatchOptions,
+  WatchContext,
 } from "../types";
 
 import { getDeepValue, setDeepValue, sortByOrder, isVoidField } from "../utils/path";
@@ -71,6 +73,8 @@ export class Form implements IForm {
   private _reactionRunCounts: Map<string, number> = new Map();
   private _reactionRunDepth = 0;
   private _reactionRunnerSeq = 0;
+  private _effectDisposers: Set<() => void> = new Set();
+  private _destroyed = false;
 
   constructor(config: FormConfig = {}) {
     this._config = config;
@@ -104,6 +108,13 @@ export class Form implements IForm {
 
     if (config.effects) {
       config.effects(this);
+    }
+
+    if (config.setup) {
+      const dispose = config.setup(this);
+      if (typeof dispose === "function") {
+        this._trackDispose(dispose);
+      }
     }
   }
 
@@ -294,6 +305,25 @@ export class Form implements IForm {
     }
   }
 
+  destroy(): void {
+    if (this._destroyed) return;
+    this._destroyed = true;
+
+    for (const dispose of Array.from(this._effectDisposers)) {
+      try {
+        dispose();
+      } catch (err) {
+        console.error("[alien-form] destroy disposer threw:", err);
+      }
+    }
+
+    this._effectDisposers.clear();
+    this._disposeReactions();
+    this._fieldChangeListeners.clear();
+    this._valuesChangeListeners.clear();
+    this._errorListeners.clear();
+  }
+
   // ============================================================
   // Subscription
   // ============================================================
@@ -304,6 +334,85 @@ export class Form implements IForm {
       listener();
     });
     return dispose;
+  }
+
+  effect(runner: (form: IForm) => void): () => void {
+    const dispose = this.subscribe(() => {
+      if (this._destroyed) return;
+      runner(this);
+    });
+    return this._trackDispose(dispose);
+  }
+
+  watch<T>(
+    selector: (form: IForm) => T,
+    listener: (value: T, prevValue: T | undefined, ctx: WatchContext) => void,
+    options?: WatchOptions<T>,
+  ): () => void {
+    const equals = options?.equals ?? Object.is;
+    const immediate = options?.immediate ?? false;
+    let initialized = false;
+    let stopped = false;
+    let previousValue: T | undefined;
+    let effectDispose: (() => void) | null = null;
+
+    const stop = () => {
+      if (stopped) return;
+      stopped = true;
+      if (effectDispose) {
+        effectDispose();
+      }
+      this._effectDisposers.delete(stop);
+    };
+
+    const ctx: WatchContext = {
+      form: this,
+      stop,
+    };
+
+    effectDispose = this.subscribe(() => {
+      if (this._destroyed || stopped) return;
+
+      const nextValue = selector(this);
+
+      if (!initialized) {
+        initialized = true;
+        if (immediate) {
+          listener(nextValue, previousValue, ctx);
+          if (stopped) return;
+        }
+        previousValue = nextValue;
+        return;
+      }
+
+      if (equals(previousValue as T, nextValue)) return;
+
+      const lastValue = previousValue;
+      previousValue = nextValue;
+      listener(nextValue, lastValue, ctx);
+    });
+
+    this._effectDisposers.add(stop);
+    return stop;
+  }
+
+  watchFieldValue<T = any>(
+    path: string,
+    listener: (value: T, prevValue: T | undefined, ctx: WatchContext) => void,
+    options?: WatchOptions<T>,
+  ): () => void {
+    return this.watch((form) => form.getField(path)?.value as T, listener, options);
+  }
+
+  watchValues(
+    listener: (
+      values: Record<string, any>,
+      prevValues: Record<string, any> | undefined,
+      ctx: WatchContext,
+    ) => void,
+    options?: WatchOptions<Record<string, any>>,
+  ): () => void {
+    return this.watch((form) => form.values, listener, options);
   }
 
   // ============================================================
@@ -846,6 +955,20 @@ export class Form implements IForm {
     this._reactionRunners = [];
     this._asyncReactionVersions.clear();
     this._fieldLoadingCounts.clear();
+  }
+
+  private _trackDispose(dispose: () => void): () => void {
+    let disposed = false;
+
+    const trackedDispose = () => {
+      if (disposed) return;
+      disposed = true;
+      this._effectDisposers.delete(trackedDispose);
+      dispose();
+    };
+
+    this._effectDisposers.add(trackedDispose);
+    return trackedDispose;
   }
 
   private _getAsyncReactionVersionKey(path: string, reactionKey: string): string {
