@@ -676,13 +676,14 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
   const arrayValue = Array.isArray(field.value) ? field.value : [];
   const itemSchema = schema.items;
 
-  // Build rows of rendered child fields
+  // Build rows of rendered child fields with named fields map
   const rows = arrayValue.map((_: any, index: number) => {
-    const rowFields: React.ReactNode[] = [];
+    const children: React.ReactNode[] = [];
+    const fieldMap: Record<string, React.ReactNode> = {};
     if (itemSchema?.properties) {
       const sortedProps = getSortedEntries(itemSchema.properties);
       for (const [childKey, childSchema] of sortedProps) {
-        rowFields.push(
+        const node = (
           <SchemaFieldItem
             key={childKey}
             path={childKey}
@@ -691,11 +692,13 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
             decorators={decorators}
             form={form}
             parentPath={`${fullPath}.${index}`}
-          />,
+          />
         );
+        children.push(node);
+        fieldMap[childKey] = node;
       }
     }
-    return rowFields;
+    return { children, fields: fieldMap };
   });
 
   const arrayProps = {
@@ -733,9 +736,9 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
   // Fallback: simple list rendering
   const fallback = (
     <div className="space-y-3">
-      {rows.map((rowFields, index) => (
+      {rows.map((row, index) => (
         <div key={index} className="flex items-start gap-2 p-3 border rounded-lg">
-          <div className="flex-1 space-y-2">{rowFields}</div>
+          <div className="flex-1 space-y-2">{row.children}</div>
           {!field.readPretty && (
             <button
               type="button"
