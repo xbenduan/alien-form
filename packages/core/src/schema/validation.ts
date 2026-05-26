@@ -7,6 +7,7 @@
 import type {
   FieldError,
   IFieldSchema,
+  SchemaValidate,
   Validator,
   ValidatorFormats,
   ValidatorRule,
@@ -42,21 +43,30 @@ export function normalizeValidators(v?: Validator | Validator[]): Validator[] {
   return [v];
 }
 
+/**
+ * Convert `schema.validate` (SchemaValidate) into a ValidatorRule[].
+ * This is the single entry point for built-in static constraints.
+ */
 export function schemaValidators(schema: IFieldSchema): ValidatorRule[] {
+  const v = schema.validate;
+  if (!v) return [];
+
   const rule: ValidatorRule = {};
-  if (schema.minimum !== undefined) rule.min = schema.minimum;
-  if (schema.maximum !== undefined) rule.max = schema.maximum;
-  if (schema.exclusiveMinimum !== undefined) rule.exclusiveMinimum = schema.exclusiveMinimum;
-  if (schema.exclusiveMaximum !== undefined) rule.exclusiveMaximum = schema.exclusiveMaximum;
-  if (schema.multipleOf !== undefined) rule.multipleOf = schema.multipleOf;
-  if (schema.minLength !== undefined) rule.minLength = schema.minLength;
-  if (schema.maxLength !== undefined) rule.maxLength = schema.maxLength;
-  if (schema.pattern !== undefined) rule.pattern = schema.pattern;
-  if (schema.format !== undefined) rule.format = schema.format;
-  if (schema.minItems !== undefined) rule.minItems = schema.minItems;
-  if (schema.maxItems !== undefined) rule.maxItems = schema.maxItems;
-  if (schema.uniqueItems !== undefined) rule.uniqueItems = schema.uniqueItems;
-  if (schema.const !== undefined) rule.const = schema.const;
+  if (v.required !== undefined) rule.required = v.required;
+  if (v.minimum !== undefined) rule.min = v.minimum;
+  if (v.maximum !== undefined) rule.max = v.maximum;
+  if (v.exclusiveMinimum !== undefined) rule.exclusiveMinimum = v.exclusiveMinimum;
+  if (v.exclusiveMaximum !== undefined) rule.exclusiveMaximum = v.exclusiveMaximum;
+  if (v.multipleOf !== undefined) rule.multipleOf = v.multipleOf;
+  if (v.minLength !== undefined) rule.minLength = v.minLength;
+  if (v.maxLength !== undefined) rule.maxLength = v.maxLength;
+  if (v.pattern !== undefined) rule.pattern = v.pattern;
+  if (v.format !== undefined) rule.format = v.format;
+  if (v.minItems !== undefined) rule.minItems = v.minItems;
+  if (v.maxItems !== undefined) rule.maxItems = v.maxItems;
+  if (v.uniqueItems !== undefined) rule.uniqueItems = v.uniqueItems;
+  if (v.const !== undefined) rule.const = v.const;
+  if (v.message !== undefined) rule.message = v.message;
   return Object.keys(rule).length > 0 ? [rule] : [];
 }
 

@@ -124,11 +124,15 @@ export function createFieldInternals(
             ? "readOnly"
             : "editable");
 
+  // Resolve required: schema.required (top-level) OR schema.validate.required
+  const required =
+    schema.required === true || schema.validate?.required === true;
+
   const signals: FieldSignals = {
     value: signal(isArrayField ? (Array.isArray(defaultValue) ? defaultValue : []) : defaultValue),
     display: signal<FieldDisplayTypes>(display),
     pattern: signal<FieldPatternTypes>(pattern),
-    required: signal(schema.required === true),
+    required: signal(required),
     errors: signal<FieldError[]>([]),
     warnings: signal<FieldError[]>([]),
     validateStatus: signal<ValidateStatus>(""),

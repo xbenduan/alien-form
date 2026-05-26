@@ -76,6 +76,33 @@ export interface ValidatorRule {
 }
 
 // ============================================================
+// Schema Validate — static constraint declaration
+// ============================================================
+
+/**
+ * `validate` is the built-in static constraint object on IFieldSchema.
+ * It collects all pre-defined validation rules in a single declarative block.
+ * For dynamic/custom validation, use `x-validate` instead.
+ */
+export interface SchemaValidate {
+  required?: boolean;
+  minimum?: number;
+  maximum?: number;
+  exclusiveMinimum?: number;
+  exclusiveMaximum?: number;
+  multipleOf?: number;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  format?: ValidatorFormats;
+  minItems?: number;
+  maxItems?: number;
+  uniqueItems?: boolean;
+  const?: any;
+  message?: string;
+}
+
+// ============================================================
 // Schema Reactions
 // ============================================================
 
@@ -232,54 +259,32 @@ export interface IField {
 }
 
 // ============================================================
-// IFieldSchema — JSON Schema with AlienForm schema protocol fields
+// IFieldSchema — AlienForm DSL schema protocol
 // ============================================================
 
 export type DataSourcePolicy = "preserve" | "clear" | "filter" | "first";
 
 export interface IFieldSchema {
-  // --- JSON Schema Standard ---
+  // --- Structure ---
   type?: SchemaTypes;
   title?: string;
   description?: string;
   default?: any;
-  required?: boolean | string[];
-  const?: any;
-
-  // Numeric validators
-  minimum?: number;
-  maximum?: number;
-  exclusiveMinimum?: number;
-  exclusiveMaximum?: number;
-  multipleOf?: number;
-
-  // String validators
-  minLength?: number;
-  maxLength?: number;
-  pattern?: string;
-  format?: ValidatorFormats;
-
-  // Array validators
-  maxItems?: number;
-  minItems?: number;
-  uniqueItems?: boolean;
-
-  // Structural
   properties?: Record<string, IFieldSchema>;
   items?: IFieldSchema | IFieldSchema[];
-
-  // $ref only supports root-level definitions on IFormSchema
   $ref?: string;
 
   // --- AlienForm Schema Protocol ---
   order?: number;
+  required?: boolean | string[];
   state?: Partial<
     Pick<
       FieldMutableState,
       "display" | "pattern" | "disabled" | "readOnly" | "readPretty" | "editable"
     >
   >;
-  validators?: Validator | Validator[];
+  /** Built-in static validation constraints. */
+  validate?: SchemaValidate;
   decorator?: string;
   decoratorProps?: Record<string, any>;
   component?: string;
@@ -288,7 +293,7 @@ export interface IFieldSchema {
   "x-reaction"?: SchemaReactions;
   /** Input/output value formatting rules. */
   "x-format"?: SchemaFormat;
-  /** Dynamic validation rule derivation. */
+  /** Dynamic validation rule derivation (custom/async/reactive). */
   "x-validate"?: SchemaXValidate;
   content?: any;
   data?: Record<string, any>;
@@ -339,9 +344,9 @@ export type FormErrorScope =
 
 export interface FormError {
   scope: FormErrorScope;
-  /** Field path that owns the rule, or '' for form-level errors. */
+  /** Field path that owns the rule, or \'\' for form-level errors. */
   path: string;
-  /** Optional reaction key (e.g. 'visible', 'title') or rule kind. */
+  /** Optional reaction key (e.g. \'visible\', \'title\') or rule kind. */
   key?: string;
   message: string;
   cause?: unknown;
