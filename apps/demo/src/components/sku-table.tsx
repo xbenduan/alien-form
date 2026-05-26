@@ -14,8 +14,6 @@ interface SkuTableProps {
   onMoveUp?: (index: number) => void;
   onMoveDown?: (index: number) => void;
   disabled?: boolean;
-  readOnly?: boolean;
-  readPretty?: boolean;
 }
 
 function getRowField(rowFields: IField[], name: string): IField | undefined {
