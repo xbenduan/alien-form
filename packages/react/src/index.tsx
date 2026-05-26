@@ -573,13 +573,13 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
         description: field.description,
       };
       const decoratorProps = {
-        ...field.decoratorProps,
         label: field.title,
         required: field.required,
         errors: field.errors,
         warnings: field.warnings,
         description: field.description,
         validateStatus: field.validateStatus,
+        ...field.decoratorProps,
       };
       const rendered = <ObjectComponent {...objectProps}>{children}</ObjectComponent>;
       return (
@@ -717,13 +717,13 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
   };
 
   const decoratorProps = {
-    ...field.decoratorProps,
     label: field.title,
     required: field.required,
     errors: field.errors,
     warnings: field.warnings,
     description: field.description,
     validateStatus: field.validateStatus,
+    ...field.decoratorProps,
   };
 
   if (ArrayComponent) {
@@ -796,7 +796,6 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({ field, components, decora
   const Decorator = decorators[field.decorator];
 
   const decoratorProps = {
-    ...field.decoratorProps,
     label: field.title,
     required: field.required,
     errors: field.errors,
@@ -804,6 +803,7 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({ field, components, decora
     description: field.description,
     validateStatus: field.validateStatus,
     pattern: field.pattern,
+    ...field.decoratorProps,
   };
 
   // content: render content directly if specified
