@@ -3,7 +3,7 @@
 AlienForm\'s Schema is a DSL that core compiles into a field tree and runtime rules. It combines three aspects:
 
 - **Static structure**: field paths, nesting, array items
-- **Runtime projection**: component, decorator, initial state, data source
+- **Runtime projection**: component, decorator, display/disabled, data source
 - **Dynamic rules**: `x-reaction`, `x-format`, `x-validate`
 
 > AlienForm Schema is NOT JSON Schema. It serves AlienForm\'s runtime exclusively and does not pursue compatibility with any external standard.
@@ -48,7 +48,8 @@ Process: clear old fields → cache `definitions` → sort by `order` → recurs
 | `props` | `Record<string, any>` | Component props | → `field.componentProps` |
 | `decorator` | `string` | Decorator registry key | → `field.decorator` |
 | `decoratorProps` | `Record<string, any>` | Decorator props | → `field.decoratorProps` |
-| `state` | `Partial<{display, pattern, ...}>` | Initial state declaration | → `field.display` + `field.pattern` |
+| `display` | `FieldDisplayTypes` | Display mode: `visible` \| `hidden` \| `none` | Default `visible` |
+| `disabled` | `boolean` | Whether field is disabled | Default `false` |
 | `validate` | `SchemaValidate` | Built-in static constraints (see below) | → validation pipeline step 1 |
 | `dataSource` | `Array<{label, value, ...}>` | Static options | → `field.dataSource` |
 | `dataSourcePolicy` | `"preserve" \| "clear" \| "filter" \| "first"` | Value reconciliation on dataSource change | → value reconciliation |

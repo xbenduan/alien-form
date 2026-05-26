@@ -48,7 +48,8 @@ interface IFormSchema {
 | `props` | `Record<string, any>` | 传给组件的 props | → `field.componentProps` |
 | `decorator` | `string` | 装饰器注册键名 | → `field.decorator` |
 | `decoratorProps` | `Record<string, any>` | 传给装饰器的 props | → `field.decoratorProps` |
-| `state` | `Partial<{display, pattern, disabled, readOnly, readPretty, editable}>` | 字段初始状态声明 | → `field.display` + `field.pattern` |
+| `display` | `FieldDisplayTypes` | 字段显示模式：`visible` \| `hidden` \| `none` | 默认 `visible` |
+| `disabled` | `boolean` | 是否禁用 | 默认 `false` |
 | `validate` | `SchemaValidate` | 内置静态校验约束（详见下方） | → 校验管线第 1 步 |
 | `dataSource` | `Array<{label, value, ...}>` | 静态选项源 | → `field.dataSource` |
 | `dataSourcePolicy` | `"preserve" \| "clear" \| "filter" \| "first"` | 数据源变化时如何处理当前值 | → 值调和策略 |
@@ -120,20 +121,16 @@ interface IFormSchema {
 
 ---
 
-## `state` 字段详解
+## `display` / `disabled`
 
-`state` 是字段初始状态的声明入口：
+字段的初始显示和交互状态直接在 schema 顶层声明：
 
-| 属性 | 类型 | 映射 |
+| 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `display` | `"visible" \| "hidden" \| "none"` | → `field.display`。`none` 从 `form.values` 和校验中排除 |
-| `pattern` | `"editable" \| "readOnly" \| "disabled" \| "readPretty"` | → `field.pattern` |
-| `disabled` | `boolean` | `true` → `pattern: "disabled"` |
-| `readOnly` | `boolean` | `true` → `pattern: "readOnly"` |
-| `readPretty` | `boolean` | `true` → `pattern: "readPretty"` |
-| `editable` | `boolean` | `false` → `pattern: "readOnly"` |
+| `display` | `"visible" \| "hidden" \| "none"` | `none` 不渲染且从 `form.values` 和校验中排除；`hidden` 不渲染但保留值 |
+| `disabled` | `boolean` | `true` 时字段只读不可编辑 |
 
-优先级：`pattern` > `readPretty` > `readOnly` > `disabled` > `editable`。
+动态控制通过 `x-reaction` 修改 `display` / `disabled`。
 
 ---
 
