@@ -27,12 +27,7 @@
 }
 ```
 
-二者都使用和 `x-reaction` 相同的规则模型，也就是：
-
-- `static`
-- `expression`
-- `match`
-- `computed`
+二者都使用和 `x-reaction` 相同的规则模型（`static` / `expression` / `match` / `computed`），详见 [Schema 协议 — 规则模型](../schema-protocol#规则模型schemarule)。
 
 ## 执行时机
 

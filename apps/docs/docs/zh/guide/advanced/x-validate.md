@@ -18,12 +18,7 @@
 }
 ```
 
-它支持的规则类型同样只有四种：
-
-- `static`
-- `expression`
-- `match`
-- `computed`
+规则类型同为 `static` / `expression` / `match` / `computed`，详见 [Schema 协议 — 规则模型](../schema-protocol#规则模型schemarule)。
 
 ## 执行时机
 
@@ -121,24 +116,7 @@ const form = createForm({
 
 ## handler 上下文
 
-`computed` 类型的校验 handler 接收的是上下文对象，而不是裸值。可用字段包括：
-
-- `field`
-- `form`
-- `values`
-- `deps`
-- `dependencies`
-- `scope`
-- `key`
-- `rule`
-- `value`
-- `kind`
-
-其中：
-
-- `values` 是原始值快照，不是经过 `x-format.output` 处理后的提交值
-- `deps` 是依赖值
-- `kind` 在这里是 `x-validate`
+`computed` handler 接收上下文对象（字段详见 [Schema 协议 — 表达式上下文](../schema-protocol#表达式上下文)），额外注意：`values` 是原始值快照（非 `x-format.output` 后的提交值），`kind` 为 `"x-validate"`。
 
 ## 规则数组行为
 

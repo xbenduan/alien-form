@@ -38,16 +38,9 @@
 - `match` 规则使用 `match` 字段。
 - `expression` 使用受限表达式语法，不支持 `{{ ... }}` 模板语法，也不支持函数调用；复杂逻辑请使用 `computed`。
 
-## 支持的规则类型
+## 规则类型
 
-当前实现只支持四种规则类型：
-
-| 类型         | 用途                                             |
-| ------------ | ------------------------------------------------ |
-| `static`     | 直接返回一个固定值                               |
-| `expression` | 通过表达式计算新值                               |
-| `match`      | 基于依赖值做分支映射                             |
-| `computed`   | 调用 `createForm({ handlers })` 中注册的 handler |
+支持 `static` / `expression` / `match` / `computed` 四种类型，详见 [Schema 协议 — 规则模型](../schema-protocol#规则模型schemarule)。
 
 ## 支持的目标属性
 
@@ -109,15 +102,7 @@
 
 ## 运行时上下文
 
-在 `expression` 和 `computed` handler 中，都可以读取以下上下文；但只有 `computed` handler 可以调用函数、执行异步逻辑或产生副作用：
-
-- `$self`：当前字段实例
-- `$form`：当前表单实例
-- `$values`：当前原始值快照
-- `$deps`：依赖值
-- `$dependencies`：依赖值对象
-- `$value`：当前值
-- `createForm({ scope })` 中注入的自定义变量
+表达式上下文变量详见 [Schema 协议 — 表达式上下文](../schema-protocol#表达式上下文)。`expression` 只能读取变量；`computed` handler 可以调用函数、执行异步逻辑。
 
 ## 典型用法
 
