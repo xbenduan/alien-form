@@ -30,7 +30,7 @@ interface IFormSchema {
 
 | 字段 | 类型 | 说明 | 运行时映射 |
 | --- | --- | --- | --- |
-| `type` | `SchemaTypes` | 字段类型：`string` \| `number` \| `boolean` \| `object` \| `array` \| `void` \| `date` \| `datetime` | 决定节点行为（值节点 / 布局节点 / 数组节点） |
+| `type` | `SchemaTypes` | 字段类型：`string` \| `number` \| `boolean` \| `object` \| `array` \| `void` | 决定节点行为（值节点 / 布局节点 / 数组节点） |
 | `title` | `string` | 字段标题 | → `field.title` |
 | `description` | `string` | 字段描述 | → `field.description` |
 | `default` | `any` | 默认值，优先级低于 `initialValues` | → `field.initialValue`（经 `x-format.input` 后） |

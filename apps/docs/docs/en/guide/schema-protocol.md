@@ -30,7 +30,7 @@ Process: clear old fields → cache `definitions` → sort by `order` → recurs
 
 | Field | Type | Description | Runtime Mapping |
 | --- | --- | --- | --- |
-| `type` | `SchemaTypes` | Field type: `string` \| `number` \| `boolean` \| `object` \| `array` \| `void` \| `date` \| `datetime` | Determines node behavior |
+| `type` | `SchemaTypes` | Field type: `string` \| `number` \| `boolean` \| `object` \| `array` \| `void` | Determines node behavior |
 | `title` | `string` | Field title | → `field.title` |
 | `description` | `string` | Field description | → `field.description` |
 | `default` | `any` | Default value (lower priority than `initialValues`) | → `field.initialValue` |
