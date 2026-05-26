@@ -49,6 +49,14 @@ export function runStaticValidate(validate: SchemaValidate | undefined, value: a
     errors.push({ message: msg || "Field is required", type: "required" });
   }
 
+  // Array length constraints (check before empty-bail since empty arrays should fail minItems)
+  if (validate.minItems !== undefined && Array.isArray(value) && value.length < validate.minItems) {
+    errors.push({ message: msg || `Minimum ${validate.minItems} items`, type: "minItems" });
+  }
+  if (validate.maxItems !== undefined && Array.isArray(value) && value.length > validate.maxItems) {
+    errors.push({ message: msg || `Maximum ${validate.maxItems} items`, type: "maxItems" });
+  }
+
   // Skip further checks if value is empty (unless required already caught it)
   if (isEmptyValue(value)) return errors;
 
@@ -104,13 +112,7 @@ export function runStaticValidate(validate: SchemaValidate | undefined, value: a
     if (formatError) errors.push(formatError);
   }
 
-  // Array constraints
-  if (validate.minItems !== undefined && Array.isArray(value) && value.length < validate.minItems) {
-    errors.push({ message: msg || `Minimum ${validate.minItems} items`, type: "minItems" });
-  }
-  if (validate.maxItems !== undefined && Array.isArray(value) && value.length > validate.maxItems) {
-    errors.push({ message: msg || `Maximum ${validate.maxItems} items`, type: "maxItems" });
-  }
+  // Array constraints (minItems/maxItems already checked above)
   if (validate.uniqueItems && Array.isArray(value)) {
     const unique = new Set(value.map((item: any) => JSON.stringify(item)));
     if (unique.size !== value.length) {

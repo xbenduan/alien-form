@@ -101,19 +101,14 @@ function reconcileValueWithDataSource(field: IField, internals: FieldInternals):
   }
 }
 
-// ─── Display / Pattern shorthand resolution ──────────────────────────────────
+// ─── Display shorthand resolution ──────────────────────────────────────────
 
-/** Maps FieldMutableState shorthand keys to their canonical display value. */
+/** Maps FieldMutableState display key. */
 function resolveDisplay(
   state: Partial<FieldMutableState>,
   current: FieldDisplayTypes,
 ): FieldDisplayTypes | undefined {
   if ("display" in state) return state.display!;
-  if ("visible" in state) return state.visible ? "visible" : "none";
-  if ("hidden" in state) {
-    if (state.hidden) return "hidden";
-    return current === "hidden" ? "visible" : undefined;
-  }
   return undefined;
 }
 
@@ -189,9 +184,9 @@ export function createFieldMethods(field: IField, internals: FieldInternals): Fi
       bumpFieldVersion(internals);
       notifyFieldValueChange(field, internals);
     },
-    setPattern(pattern) {
-      if (internals.signals.pattern() === pattern) return;
-      internals.signals.pattern(pattern);
+    setDisabled(value) {
+      if (internals.signals.disabled() === value) return;
+      internals.signals.disabled(value);
       bumpFieldVersion(internals);
       notifyFieldChange(field, internals);
     },
@@ -297,8 +292,7 @@ export function createFieldMethods(field: IField, internals: FieldInternals): Fi
       if (!changed) return;
 
       // Determine notification type
-      const hasValueLikeChange =
-        "value" in state || "visible" in state || "hidden" in state || "display" in state;
+      const hasValueLikeChange = "value" in state || "display" in state;
       if (hasValueLikeChange) {
         notifyFieldValueChange(field, internals);
       } else {

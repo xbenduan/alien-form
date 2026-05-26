@@ -52,8 +52,6 @@ export interface FieldMeta {
   componentProps: Record<string, any>;
   decorator: string;
   decoratorProps: Record<string, any>;
-  data: Record<string, any>;
-  content: any;
 }
 
 export interface FieldSignals {
@@ -76,7 +74,6 @@ export interface FieldSignals {
 
 export interface FieldInternals {
   path: string;
-  address: string;
   schema: IFieldSchema;
   signals: FieldSignals;
   initialValue: any;
@@ -132,14 +129,11 @@ export function createFieldInternals(
       componentProps: schema.props || {},
       decorator: schema.decorator || "FormItem",
       decoratorProps: schema.decoratorProps || {},
-      data: schema.data || {},
-      content: schema.content || null,
     }),
   };
 
   const internals: FieldInternals = {
     path,
-    address: path,
     schema,
     signals,
     initialValue: defaultValue,
@@ -157,7 +151,6 @@ export function createFieldInternals(
       },
       renamePath(newPath: string) {
         internals.path = newPath;
-        internals.address = newPath;
       },
     },
   };

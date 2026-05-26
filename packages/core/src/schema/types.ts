@@ -7,10 +7,6 @@
 // Basic Types
 // ============================================================
 
-export type FieldValue = any;
-
-export type FieldState = "active" | "inactive";
-
 export type ValidateStatus = "success" | "error" | "warning" | "validating" | "";
 
 export type SchemaTypes =
@@ -72,13 +68,9 @@ export interface SchemaValidate {
 // Schema Reactions
 // ============================================================
 
-export type SchemaXRuleType = "static" | "expression" | "match" | "computed";
-
 export type SchemaReactionKey =
   | "value"
   | "display"
-  | "visible"
-  | "hidden"
   | "disabled"
   | "required"
   | "title"
@@ -127,7 +119,6 @@ export type SchemaXRule =
       params?: Record<string, any>;
     };
 
-export type SchemaRule = SchemaXRule;
 export type SchemaRuleSet = SchemaXRule | SchemaXRule[];
 export type SchemaReactions = Partial<Record<SchemaReactionKey | string, SchemaRuleSet>>;
 export interface SchemaFormat {
@@ -142,8 +133,6 @@ export type SchemaXValidate = SchemaRuleSet;
 
 export interface FieldMutableState {
   value: any;
-  visible: boolean;
-  hidden: boolean;
   display: FieldDisplayTypes;
   disabled: boolean;
   required: boolean;
@@ -163,7 +152,6 @@ export interface FieldMutableState {
 
 export interface IField {
   path: string;
-  address: string;
   title: string;
   description: string;
   value: any;
@@ -182,8 +170,6 @@ export interface IField {
   decoratorProps: Record<string, any>;
   dataSource: Array<{ label: string; value: any; [key: string]: any }>;
   loading: boolean;
-  data: Record<string, any>;
-  content: any;
 
   // Methods
   setValue(value: any): void;
@@ -195,6 +181,7 @@ export interface IField {
   setDataSource(ds: Array<{ label: string; value: any; [key: string]: any }>): void;
   setLoading(loading: boolean): void;
   setDisplay(display: FieldDisplayTypes): void;
+  setDisabled(value: boolean): void;
   setComponent(component: string, props?: Record<string, any>): void;
   setDecorator(decorator: string, props?: Record<string, any>): void;
 
@@ -244,8 +231,6 @@ export interface IFieldSchema {
   "x-format"?: SchemaFormat;
   /** Dynamic validation rule derivation (custom/async/reactive). */
   "x-validate"?: SchemaXValidate;
-  content?: any;
-  data?: Record<string, any>;
   dataSource?: Array<{ label: string; value: any; [key: string]: any }>;
   dataSourcePolicy?: DataSourcePolicy;
 }

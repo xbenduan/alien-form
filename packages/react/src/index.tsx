@@ -730,12 +730,11 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
       {rows.map((rowChildren, index) => (
         <div key={index} className="flex items-start gap-2 p-3 border rounded-lg">
           <div className="flex-1 space-y-2">{rowChildren}</div>
-          {!field.readPretty && (
+          {!field.disabled && (
             <button
               type="button"
               className="text-destructive text-xs mt-2"
               onClick={() => field.remove(index)}
-              disabled={field.disabled || field.readOnly}
             >
               Remove
             </button>
@@ -747,7 +746,6 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
           type="button"
           className="text-primary text-sm"
           onClick={() => field.push()}
-          disabled={field.disabled}
         >
           + Add Item
         </button>
@@ -793,18 +791,6 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({ field, components, decora
     validateStatus: field.validateStatus,
     ...field.decoratorProps,
   };
-
-  // content: render content directly if specified
-  if (field.content !== null && field.content !== undefined) {
-    const contentNode =
-      typeof field.content === "string" ? <span>{field.content}</span> : field.content;
-
-    return (
-      <FieldContext.Provider value={field}>
-        {Decorator ? <Decorator {...decoratorProps}>{contentNode}</Decorator> : contentNode}
-      </FieldContext.Provider>
-    );
-  }
 
   if (!Component) {
     return (

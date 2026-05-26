@@ -241,12 +241,6 @@ export function applyReactionValue(
     case "display":
       field.setDisplay(value);
       break;
-    case "visible":
-      field.setState({ visible: value });
-      break;
-    case "hidden":
-      field.setState({ hidden: value });
-      break;
     case "disabled":
       field.setDisabled(Boolean(value));
       break;
