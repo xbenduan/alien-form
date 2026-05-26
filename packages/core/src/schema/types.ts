@@ -20,8 +20,6 @@ export type SchemaTypes =
   | "object"
   | "array"
   | "void"
-  | "date"
-  | "datetime"
   | (string & {});
 
 export type FieldPatternTypes = "editable" | "readOnly" | "disabled" | "readPretty";
