@@ -1,10 +1,8 @@
 [
-  { "type": "file", "name": "getting-started", "label": "快速开始" },
   { "type": "file", "name": "introduction", "label": "介绍" },
+  { "type": "file", "name": "getting-started", "label": "快速开始" },
   { "type": "file", "name": "architecture", "label": "架构" },
-  { "type": "file", "name": "learning-path", "label": "如何学习" },
-  { "type": "file", "name": "why-alienform", "label": "为什么选择 AlienForm" },
   { "type": "file", "name": "schema-protocol", "label": "Schema 协议" },
   { "type": "file", "name": "array-fields", "label": "数组字段" },
-  { "type": "dir", "name": "advanced", "label": "进阶指南" }
+  { "type": "dir", "name": "advanced", "label": "进阶" }
 ]

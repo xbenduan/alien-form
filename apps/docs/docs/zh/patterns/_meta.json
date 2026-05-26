@@ -1,5 +1,4 @@
 [
-  { "type": "file", "name": "introduction", "label": "介绍" },
   { "type": "file", "name": "edit-initialization", "label": "编辑态初始化" },
   { "type": "file", "name": "mode-switching", "label": "形态切换" },
   { "type": "file", "name": "permissions", "label": "权限与可见性" },

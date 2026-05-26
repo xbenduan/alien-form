@@ -11,7 +11,7 @@
   },
   {
     "text": "开发范式",
-    "link": "/patterns/introduction",
+    "link": "/patterns/edit-initialization",
     "activeMatch": "^/zh/patterns/"
   }
 ]
