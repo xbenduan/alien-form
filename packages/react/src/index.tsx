@@ -517,21 +517,81 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
     };
 
     const sortedChildren = getSortedEntries(schema.properties);
-    const children = sortedChildren.map(([key, childSchema]) => (
-      <SchemaFieldItem
-        key={key}
-        path={key}
-        schema={childSchema}
-        components={components}
-        decorators={decorators}
-        form={form}
-        parentPath={fullPath}
-      />
-    ));
+    const fieldMap: Record<string, React.ReactNode> = {};
+    const children = sortedChildren.map(([key, childSchema]) => {
+      const node = (
+        <SchemaFieldItem
+          key={key}
+          path={key}
+          schema={childSchema}
+          components={components}
+          decorators={decorators}
+          form={form}
+          parentPath={fullPath}
+        />
+      );
+      fieldMap[key] = node;
+      return node;
+    });
 
     if (LayoutComponent) {
-      return <LayoutComponent {...componentProps}>{children}</LayoutComponent>;
+      return (
+        <LayoutComponent {...componentProps} fields={fieldMap}>
+          {children}
+        </LayoutComponent>
+      );
     }
+    return <>{children}</>;
+  }
+
+  // Object nodes with component — higher-order components (pass fields map)
+  if (schema.type === "object" && schema.properties && schema.component) {
+    if (!field) return null;
+    const ObjectComponent = components[schema.component];
+    const Decorator = decorators[schema.decorator || ""];
+    const sortedChildren = getSortedEntries(schema.properties);
+    const fieldMap: Record<string, React.ReactNode> = {};
+    const children = sortedChildren.map(([key, childSchema]) => {
+      const node = (
+        <SchemaFieldItem
+          key={key}
+          path={key}
+          schema={childSchema}
+          components={components}
+          decorators={decorators}
+          form={form}
+          parentPath={fullPath}
+        />
+      );
+      fieldMap[key] = node;
+      return node;
+    });
+
+    if (ObjectComponent) {
+      const objectProps = {
+        ...field.componentProps,
+        field,
+        fields: fieldMap,
+        title: field.title,
+        description: field.description,
+      };
+      const decoratorProps = {
+        ...field.decoratorProps,
+        label: field.title,
+        required: field.required,
+        errors: field.errors,
+        warnings: field.warnings,
+        description: field.description,
+        validateStatus: field.validateStatus,
+      };
+      const rendered = <ObjectComponent {...objectProps}>{children}</ObjectComponent>;
+      return (
+        <FieldContext.Provider value={field}>
+          {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
+        </FieldContext.Provider>
+      );
+    }
+
     return <>{children}</>;
   }
 

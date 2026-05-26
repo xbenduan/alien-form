@@ -4,6 +4,7 @@ import { Checkbox, DateInput, Input, ItemInput, Select, Switch } from "@alien-fo
 
 interface SkuTableProps {
   field?: IField;
+  fields?: Record<string, React.ReactNode>;
   emptyText?: string;
   helperText?: string;
   className?: string;
@@ -11,7 +12,7 @@ interface SkuTableProps {
 
 function formatCellValue(value: unknown): string {
   if (value === undefined || value === null || value === "") return "-";
-  if (Array.isArray(value)) return value.join("、");
+  if (Array.isArray(value)) return value.join("\u3001");
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
 }
@@ -120,7 +121,8 @@ const SkuFieldCell: React.FC<{ field: IField }> = ({ field }) => {
 
 export const SkuTable: React.FC<SkuTableProps> = ({
   field,
-  emptyText = "请先配置规格值，系统会自动生成 SKU 组合。",
+  fields,
+  emptyText = "\u8bf7\u5148\u914d\u7f6e\u89c4\u683c\u503c\uff0c\u7cfb\u7edf\u4f1a\u81ea\u52a8\u751f\u6210 SKU \u7ec4\u5408\u3002",
   helperText,
   className,
 }) => {
@@ -240,16 +242,16 @@ export const SkuTable: React.FC<SkuTableProps> = ({
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <span className="text-xs text-muted-foreground">无图片</span>
+                    <span className="text-xs text-muted-foreground">\u65e0\u56fe\u7247</span>
                   )}
                 </div>
                 <div>
                   <div className="text-sm text-muted-foreground">
-                    {group.groupSpecName || "图片规格"}
+                    {group.groupSpecName || "\u56fe\u7247\u89c4\u683c"}
                   </div>
                   <div className="text-lg font-semibold">{group.groupSpecValue}</div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    其余销售配置按该规格值分组管理。
+                    \u5176\u4f59\u9500\u552e\u914d\u7f6e\u6309\u8be5\u89c4\u683c\u503c\u5206\u7ec4\u7ba1\u7406\u3002
                   </div>
                 </div>
               </div>
