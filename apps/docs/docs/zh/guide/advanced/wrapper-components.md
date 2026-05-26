@@ -66,11 +66,13 @@ void 节点 + component + properties（含值节点）= 包装组件
 }
 ```
 
-这里 `profile` 和 `grid` 都是包装组件节点：
-- 它们自身不出现在 `form.values` 中
-- `name` 和 `age` 的值直接挂在路径 `profile.grid.name`、`profile.grid.age` 上（如果 `profile` 和 `grid` 是透明 object 则路径会打平）
+`profile` 和 `grid` 都是 `void` 包装组件节点，**路径透明**：
 
-> `void` 节点是**路径透明**的：子字段的路径直接继承 void 的父路径前缀，void 自身的 key 不参与路径拼接。例如上面的 `name` 路径就是 `name`，不是 `profile.grid.name`。
+- 子字段路径：`name`、`age`（不是 `profile.grid.name`）
+- `form.values`：`{ name: "...", age: ... }`
+- `profile` 和 `grid` 的 key 不参与路径拼接，只做视觉容器
+
+多层 void 嵌套也是透明的——无论嵌套多深，值字段的路径始终直接挂在最近的非 void 祖先下。
 
 ## 包装组件接收的 Props
 

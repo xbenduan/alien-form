@@ -66,11 +66,13 @@ void node + component + properties (containing value nodes) = Wrapper Component
 }
 ```
 
-Both `profile` and `grid` are wrapper component nodes:
-- They do not appear in `form.values`
-- `name` and `age` values live at their respective paths
+`profile` and `grid` are both `void` wrapper nodes, **path-transparent**:
 
-> `void` nodes are **path-transparent**: children inherit the parent path prefix of the void node; the void node's own key does not participate in path construction. In the example above, `name`'s path is just `name`, not `profile.grid.name`.
+- Child paths: `name`, `age` (not `profile.grid.name`)
+- `form.values`: `{ name: "...", age: ... }`
+- `profile` and `grid` keys do not participate in path construction — they only serve as visual containers
+
+Multi-level void nesting is also transparent — no matter how deep, value field paths always attach directly under the nearest non-void ancestor.
 
 ## Props Received by Wrapper Components
 
