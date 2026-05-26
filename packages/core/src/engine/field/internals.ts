@@ -107,18 +107,8 @@ export function createFieldInternals(
 
   // Compute initial state
   const defaultValue = initialValue !== undefined ? initialValue : schema.default;
-  const display: FieldDisplayTypes = schema.state?.display || "visible";
-  const pattern: FieldPatternTypes =
-    schema.state?.pattern ||
-    (schema.state?.readPretty === true
-      ? "readPretty"
-      : schema.state?.readOnly === true
-        ? "readOnly"
-        : schema.state?.disabled === true
-          ? "disabled"
-          : schema.state?.editable === false
-            ? "readOnly"
-            : "editable");
+  const display: FieldDisplayTypes = schema.display || "visible";
+  const pattern: FieldPatternTypes = schema.disabled ? "disabled" : "editable";
 
   // Resolve required: schema.required (top-level) OR schema.validate.required
   const required =

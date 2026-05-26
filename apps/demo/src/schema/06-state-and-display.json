@@ -4,7 +4,11 @@
   "description": "演示 display、pattern、disabled、readOnly、readPretty、props、decoratorProps 等可变状态，便于沉淀企业级展示范式。",
   "category": "03 企业范式",
   "order": 60,
-  "tags": ["state", "pattern", "props"],
+  "tags": [
+    "state",
+    "pattern",
+    "props"
+  ],
   "schema": {
     "type": "object",
     "title": "字段状态与展示模式",
@@ -87,9 +91,6 @@
         "props": {
           "rows": 3
         },
-        "state": {
-          "display": "none"
-        },
         "x-reaction": {
           "display": {
             "type": "match",
@@ -105,7 +106,8 @@
             "type": "static",
             "value": "secure 模式下敏感字段由外层权限/装饰器范式控制，不建议写成 schema 内权限协议。"
           }
-        }
+        },
+        "display": "none"
       },
       "submitButtonHint": {
         "type": "string",
@@ -113,9 +115,6 @@
         "default": "x-reaction 可以动态更新 props/decoratorProps/title/description 等 UI 属性",
         "component": "Input",
         "decorator": "FormItem",
-        "state": {
-          "pattern": "readPretty"
-        },
         "x-reaction": {
           "description": {
             "type": "expression",
@@ -124,7 +123,8 @@
             },
             "expression": "'当前模式：' + $deps.mode"
           }
-        }
+        },
+        "disabled": true
       }
     }
   }

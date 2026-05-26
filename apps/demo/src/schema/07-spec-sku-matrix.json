@@ -19,13 +19,11 @@
         "default": "这个示例刻意没有把“规格 + 销售矩阵”做成一个 value(object)+onChange(object) 的超级组件。上半部分 specs 是规格定义，下半部分 skus 是派生出来的真实数组字段。规格支持图片时，会自动成为主分组规格，SKU 表会按它的规格值和图片做分组，并尽量保留你已填写的销售配置。",
         "component": "Textarea",
         "decorator": "FormItem",
-        "state": {
-          "pattern": "readPretty"
-        },
         "props": {
           "rows": 4
         },
-        "order": 5
+        "order": 5,
+        "disabled": true
       },
       "specs": {
         "type": "array",
@@ -116,69 +114,57 @@
             "skuKey": {
               "type": "string",
               "title": "SKU Key",
-              "state": {
-                "display": "none"
-              },
               "order": 5,
               "decoratorProps": {
                 "label": ""
-              }
+              },
+              "display": "none"
             },
             "groupKey": {
               "type": "string",
               "title": "分组键",
-              "state": {
-                "display": "none"
-              },
               "order": 6,
               "decoratorProps": {
                 "label": ""
-              }
+              },
+              "display": "none"
             },
             "groupSpecName": {
               "type": "string",
               "title": "分组规格名",
-              "state": {
-                "display": "none"
-              },
               "order": 7,
               "decoratorProps": {
                 "label": ""
-              }
+              },
+              "display": "none"
             },
             "groupSpecValue": {
               "type": "string",
               "title": "分组规格值",
-              "state": {
-                "display": "none"
-              },
               "order": 8,
               "decoratorProps": {
                 "label": ""
-              }
+              },
+              "display": "none"
             },
             "groupSpecImage": {
               "type": "string",
               "title": "分组规格图片",
-              "state": {
-                "display": "none"
-              },
               "order": 9,
               "decoratorProps": {
                 "label": ""
-              }
+              },
+              "display": "none"
             },
             "specSummary": {
               "type": "string",
               "title": "销售规格",
               "component": "Input",
-              "state": {
-                "pattern": "readPretty"
-              },
               "order": 10,
               "decoratorProps": {
                 "label": ""
-              }
+              },
+              "disabled": true
             },
             "price": {
               "type": "number",

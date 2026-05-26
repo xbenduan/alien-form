@@ -245,12 +245,8 @@ export interface IFieldSchema {
   // --- AlienForm Schema Protocol ---
   order?: number;
   required?: boolean | string[];
-  state?: Partial<
-    Pick<
-      FieldMutableState,
-      "display" | "pattern" | "disabled" | "readOnly" | "readPretty" | "editable"
-    >
-  >;
+  display?: FieldDisplayTypes;
+  disabled?: boolean;
   /** Built-in static validation constraints. */
   validate?: SchemaValidate;
   decorator?: string;
