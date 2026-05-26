@@ -15,7 +15,6 @@ export type {
   FieldMutableState,
   ValidateStatus,
   FieldDisplayTypes,
-  FieldPatternTypes,
   FormConfig,
   FormError,
   EffectOptions,

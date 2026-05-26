@@ -48,7 +48,6 @@ export type {
   EffectContext,
   ValidateStatus,
   FieldDisplayTypes,
-  FieldPatternTypes,
   RuntimeRuleHandler,
   RuntimeRuleHandlerContext,
   DataSourcePolicy,
@@ -198,13 +197,9 @@ export function useField(path?: string): IField | null {
 export interface FieldState {
   value: any;
   display: string;
-  pattern: string;
   visible: boolean;
   hidden: boolean;
   disabled: boolean;
-  readOnly: boolean;
-  readPretty: boolean;
-  editable: boolean;
   required: boolean;
   errors: FieldError[];
   warnings: FieldError[];
@@ -224,13 +219,9 @@ export function useFieldState(path?: string): FieldState | null {
   return {
     value: field.value,
     display: field.display,
-    pattern: field.pattern,
     visible: field.visible,
     hidden: field.hidden,
     disabled: field.disabled,
-    readOnly: field.readOnly,
-    readPretty: field.readPretty,
-    editable: field.editable,
     required: field.required,
     errors: field.errors,
     warnings: field.warnings,
@@ -712,8 +703,6 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
     onMoveUp: (index: number) => field.moveUp(index),
     onMoveDown: (index: number) => field.moveDown(index),
     disabled: field.disabled,
-    readOnly: field.readOnly,
-    readPretty: field.readPretty,
   };
 
   const decoratorProps = {
@@ -753,12 +742,12 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
           )}
         </div>
       ))}
-      {!field.readPretty && (
+      {!field.disabled && (
         <button
           type="button"
           className="text-primary text-sm"
           onClick={() => field.push()}
-          disabled={field.disabled || field.readOnly}
+          disabled={field.disabled}
         >
           + Add Item
         </button>
@@ -802,7 +791,6 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({ field, components, decora
     warnings: field.warnings,
     description: field.description,
     validateStatus: field.validateStatus,
-    pattern: field.pattern,
     ...field.decoratorProps,
   };
 
@@ -830,28 +818,11 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({ field, components, decora
     value: field.value,
     onChange: (val: any) => field.setValue(val),
     disabled: field.disabled,
-    readOnly: field.readOnly,
-    readPretty: field.readPretty,
     loading: field.loading,
-    pattern: field.pattern,
   };
 
   if (field.dataSource.length > 0) {
     componentProps.dataSource = field.dataSource;
-  }
-
-  // readPretty mode: prefer a registered ReadPretty variant
-  if (field.readPretty) {
-    const PreviewComponent =
-      components[`${field.component}.ReadPretty`] || components[`ReadPretty.${field.component}`];
-    if (PreviewComponent) {
-      const rendered = <PreviewComponent {...componentProps} />;
-      return (
-        <FieldContext.Provider value={field}>
-          {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
-        </FieldContext.Provider>
-      );
-    }
   }
 
   const rendered = <Component {...componentProps} />;
