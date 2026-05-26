@@ -1,6 +1,6 @@
 [
   { "type": "file", "name": "custom-components", "label": "Custom Components" },
-  { "type": "file", "name": "wrapper-components", "label": "Wrapper Components" },
+  { "type": "file", "name": "higher-order-components", "label": "Higher-Order Components" },
   { "type": "file", "name": "x-reaction", "label": "x-reaction" },
   { "type": "file", "name": "x-format", "label": "x-format" },
   { "type": "file", "name": "x-validate", "label": "x-validate" }
