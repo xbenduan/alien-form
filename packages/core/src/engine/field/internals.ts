@@ -3,7 +3,6 @@ import type {
   DataSourcePolicy,
   FieldDisplayTypes,
   FieldError,
-  FieldPatternTypes,
   IField,
   IFieldSchema,
   SchemaValidate,
@@ -60,7 +59,7 @@ export interface FieldMeta {
 export interface FieldSignals {
   value: SignalValue<any>;
   display: SignalValue<FieldDisplayTypes>;
-  pattern: SignalValue<FieldPatternTypes>;
+  disabled: SignalValue<boolean>;
   required: SignalValue<boolean>;
   errors: SignalValue<FieldError[]>;
   warnings: SignalValue<FieldError[]>;
@@ -108,7 +107,7 @@ export function createFieldInternals(
   // Compute initial state
   const defaultValue = initialValue !== undefined ? initialValue : schema.default;
   const display: FieldDisplayTypes = schema.display || "visible";
-  const pattern: FieldPatternTypes = schema.disabled ? "disabled" : "editable";
+  const disabled: boolean = schema.disabled === true;
 
   // Resolve required: schema.required (top-level) OR schema.validate.required
   const required =
@@ -117,7 +116,7 @@ export function createFieldInternals(
   const signals: FieldSignals = {
     value: signal(isArrayField ? (Array.isArray(defaultValue) ? defaultValue : []) : defaultValue),
     display: signal<FieldDisplayTypes>(display),
-    pattern: signal<FieldPatternTypes>(pattern),
+    disabled: signal<boolean>(disabled),
     required: signal(required),
     errors: signal<FieldError[]>([]),
     warnings: signal<FieldError[]>([]),

@@ -247,20 +247,8 @@ export function applyReactionValue(
     case "hidden":
       field.setState({ hidden: value });
       break;
-    case "pattern":
-      field.setPattern(value);
-      break;
     case "disabled":
-      field.setState({ disabled: value });
-      break;
-    case "readOnly":
-      field.setState({ readOnly: value });
-      break;
-    case "readPretty":
-      field.setState({ readPretty: value });
-      break;
-    case "editable":
-      field.setState({ editable: value });
+      field.setDisabled(Boolean(value));
       break;
     case "required":
       field.setState({ required: value });

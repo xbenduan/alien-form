@@ -3,7 +3,6 @@ import type {
   FieldDisplayTypes,
   FieldError,
   FieldMutableState,
-  FieldPatternTypes,
   IField,
 } from "../../schema/types";
 import { arrayShallowEqual } from "../../utils";
@@ -118,27 +117,7 @@ function resolveDisplay(
   return undefined;
 }
 
-/** Maps FieldMutableState shorthand keys to their canonical pattern value. */
-function resolvePattern(
-  state: Partial<FieldMutableState>,
-  current: FieldPatternTypes,
-): FieldPatternTypes | undefined {
-  if ("pattern" in state) return state.pattern!;
-  if ("disabled" in state) {
-    if (state.disabled) return "disabled";
-    return current === "disabled" ? "editable" : undefined;
-  }
-  if ("readOnly" in state) {
-    if (state.readOnly) return "readOnly";
-    return current === "readOnly" ? "editable" : undefined;
-  }
-  if ("readPretty" in state) {
-    if (state.readPretty) return "readPretty";
-    return current === "readPretty" ? "editable" : undefined;
-  }
-  if ("editable" in state) return state.editable ? "editable" : "readOnly";
-  return undefined;
-}
+
 
 // ─── Method bundle interface ─────────────────────────────────────────────────
 
@@ -149,7 +128,7 @@ export interface FieldMethodBundle {
   setDataSource(ds: Array<{ label: string; value: any; [key: string]: any }>): void;
   setLoading(loading: boolean): void;
   setDisplay(display: FieldDisplayTypes): void;
-  setPattern(pattern: FieldPatternTypes): void;
+  setDisabled(value: boolean): void;
   setComponent(component: string, props?: Record<string, any>): void;
   setDecorator(decorator: string, props?: Record<string, any>): void;
   setState(state: Partial<FieldMutableState>): void;
@@ -256,10 +235,9 @@ export function createFieldMethods(field: IField, internals: FieldInternals): Fi
           changed = true;
         }
 
-        // ── Pattern (disabled/readOnly/readPretty/editable/pattern all map to one signal) ──
-        const nextPattern = resolvePattern(state, s.pattern());
-        if (nextPattern !== undefined && s.pattern() !== nextPattern) {
-          s.pattern(nextPattern);
+        // ── Disabled ──
+        if ("disabled" in state && s.disabled() !== Boolean(state.disabled)) {
+          s.disabled(Boolean(state.disabled));
           changed = true;
         }
 

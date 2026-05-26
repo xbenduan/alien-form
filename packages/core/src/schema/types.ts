@@ -22,8 +22,6 @@ export type SchemaTypes =
   | "void"
   | (string & {});
 
-export type FieldPatternTypes = "editable" | "readOnly" | "disabled" | "readPretty";
-
 export type FieldDisplayTypes = "visible" | "hidden" | "none";
 
 export type ValidatorFormats =
@@ -81,11 +79,7 @@ export type SchemaReactionKey =
   | "display"
   | "visible"
   | "hidden"
-  | "pattern"
   | "disabled"
-  | "readOnly"
-  | "readPretty"
-  | "editable"
   | "required"
   | "title"
   | "description"
@@ -151,11 +145,7 @@ export interface FieldMutableState {
   visible: boolean;
   hidden: boolean;
   display: FieldDisplayTypes;
-  pattern: FieldPatternTypes;
   disabled: boolean;
-  readOnly: boolean;
-  readPretty: boolean;
-  editable: boolean;
   required: boolean;
   title: string;
   description: string;
@@ -179,13 +169,9 @@ export interface IField {
   value: any;
   initialValue: any;
   display: FieldDisplayTypes;
-  pattern: FieldPatternTypes;
   visible: boolean;
   hidden: boolean;
   disabled: boolean;
-  readOnly: boolean;
-  readPretty: boolean;
-  editable: boolean;
   required: boolean;
   errors: FieldError[];
   warnings: FieldError[];
@@ -209,7 +195,6 @@ export interface IField {
   setDataSource(ds: Array<{ label: string; value: any; [key: string]: any }>): void;
   setLoading(loading: boolean): void;
   setDisplay(display: FieldDisplayTypes): void;
-  setPattern(pattern: FieldPatternTypes): void;
   setComponent(component: string, props?: Record<string, any>): void;
   setDecorator(decorator: string, props?: Record<string, any>): void;
 
