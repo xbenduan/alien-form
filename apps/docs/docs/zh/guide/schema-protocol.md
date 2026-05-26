@@ -50,14 +50,13 @@ interface IFormSchema {
 | `decoratorProps` | `Record<string, any>` | 传给装饰器的 props | → `field.decoratorProps` |
 | `state` | `Partial<{display, pattern, disabled, readOnly, readPretty, editable}>` | 字段初始状态声明 | → `field.display` + `field.pattern` |
 | `validate` | `SchemaValidate` | 内置静态校验约束（详见下方） | → 校验管线第 1 步 |
-| `validators` | `Validator \| Validator[]` | 自定义同步/异步校验函数或规则对象 | → 校验管线第 2 步 |
 | `dataSource` | `Array<{label, value, ...}>` | 静态选项源 | → `field.dataSource` |
 | `dataSourcePolicy` | `"preserve" \| "clear" \| "filter" \| "first"` | 数据源变化时如何处理当前值 | → 值调和策略 |
 | `content` | `any` | 字段内容槽 | → `field.content` |
 | `data` | `Record<string, any>` | 字段私有数据槽 | → `field.data` |
 | `x-reaction` | `SchemaReactions` | 动态字段属性派生规则（详见 [x-reaction](./advanced/x-reaction)） | → 响应式 effect |
 | `x-format` | `{input?, output?}` | 值输入/输出转换（详见 [x-format](./advanced/x-format)） | → 字段创建时 + `form.values` 读取时 |
-| `x-validate` | `SchemaRuleSet` | 动态校验规则（详见 [x-validate](./advanced/x-validate)） | → 校验管线第 3 步 |
+| `x-validate` | `SchemaRuleSet` | 动态校验规则（详见 [x-validate](./advanced/x-validate)） | → 校验管线第 2 步 |
 
 ---
 
@@ -106,17 +105,18 @@ interface IFormSchema {
 | 能力 | 有限闭合集 | 无限扩展（expression / match / computed） |
 | 依赖 | 无 | 可声明 `dependencies` 订阅其他字段 |
 | 异步 | 不支持 | 支持（computed handler） |
-| 执行时机 | 校验管线第 1 步 | 校验管线第 3 步 |
+| 执行时机 | 校验管线第 1 步 | 校验管线第 2 步 |
 
 ---
 
-## 校验管线执行顺序
+## 校验管线
 
-1. **`validate`** — 内置静态约束
-2. **`validators`** — 用户自定义校验函数/规则对象
-3. **`x-validate`** — 动态规则（走 SchemaXRule 响应式调度）
+校验只有两层，职责清晰：
 
-三层按序执行，任一层产生错误即追加到 `field.errors`。
+1. **`validate`** — 内置静态约束（纯声明式对象，同步执行）
+2. **`x-validate`** — 动态规则（SchemaXRule 模型，支持依赖/异步/表达式）
+
+两层按序执行，任一层产生错误即追加到 `field.errors`。
 
 ---
 

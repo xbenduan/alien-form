@@ -34,14 +34,12 @@
 
 ## 校验管线
 
-字段校验的顺序是固定的：
+字段校验只有两层：
 
-1. 如果字段 `display === 'none'`，直接跳过。
-2. 执行 `validate` — 内置静态约束（`required`、`minLength`、`pattern` 等）。
-3. 执行 `validators` — 用户自定义校验函数/规则对象。
-4. 执行 `x-validate` — 动态规则。
+1. **`validate`** — 内置静态约束（`required`、`minLength`、`pattern` 等）。
+2. **`x-validate`** — 动态规则（expression / match / computed）。
 
-因此，`x-validate` 是在内置约束之后执行的动态补充层。
+如果字段 `display === 'none'`，直接跳过整个校验。
 
 ## 典型用法
 

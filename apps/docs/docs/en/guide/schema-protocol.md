@@ -50,14 +50,13 @@ Process: clear old fields → cache `definitions` → sort by `order` → recurs
 | `decoratorProps` | `Record<string, any>` | Decorator props | → `field.decoratorProps` |
 | `state` | `Partial<{display, pattern, ...}>` | Initial state declaration | → `field.display` + `field.pattern` |
 | `validate` | `SchemaValidate` | Built-in static constraints (see below) | → validation pipeline step 1 |
-| `validators` | `Validator \| Validator[]` | Custom sync/async validator functions | → validation pipeline step 2 |
 | `dataSource` | `Array<{label, value, ...}>` | Static options | → `field.dataSource` |
 | `dataSourcePolicy` | `"preserve" \| "clear" \| "filter" \| "first"` | Value reconciliation on dataSource change | → value reconciliation |
 | `content` | `any` | Content slot | → `field.content` |
 | `data` | `Record<string, any>` | Private data slot | → `field.data` |
 | `x-reaction` | `SchemaReactions` | Dynamic property derivation rules | → reactive effects |
 | `x-format` | `{input?, output?}` | Value input/output transforms | → on create + form.values read |
-| `x-validate` | `SchemaRuleSet` | Dynamic validation rules | → validation pipeline step 3 |
+| `x-validate` | `SchemaRuleSet` | Dynamic validation rules | → validation pipeline step 2 |
 
 ---
 
@@ -106,15 +105,16 @@ Process: clear old fields → cache `definitions` → sort by `order` → recurs
 | Capability | Finite closed set | Unlimited (expression / match / computed) |
 | Dependencies | None | Can declare `dependencies` |
 | Async | No | Yes (computed handler) |
-| Execution | Pipeline step 1 | Pipeline step 3 |
+| Execution | Pipeline step 1 | Pipeline step 2 |
 
 ---
 
 ## Validation Pipeline
 
-1. **`validate`** — built-in static constraints
-2. **`validators`** — custom validator functions/rule objects
-3. **`x-validate`** — dynamic rules (SchemaXRule reactive scheduling)
+Validation has exactly two layers with clear responsibilities:
+
+1. **`validate`** — built-in static constraints (declarative object, synchronous)
+2. **`x-validate`** — dynamic rules (SchemaXRule model, supports dependencies/async/expressions)
 
 Executed in order; errors from any step append to `field.errors`.
 

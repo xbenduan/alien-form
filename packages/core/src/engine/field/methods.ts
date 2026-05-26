@@ -8,7 +8,7 @@ import type {
 } from "../../schema/types";
 import { arrayShallowEqual } from "../../utils";
 import type { FieldInternals, FieldMeta } from "./internals";
-import { isEmptyValue, normalizeDataSource, runValidator } from "./validation";
+import { isEmptyValue, normalizeDataSource, runStaticValidate } from "./validation";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -356,16 +356,16 @@ export function createFieldMethods(field: IField, internals: FieldInternals): Fi
       const errors: FieldError[] = [];
       const value = readFieldValue(field, internals);
 
-      if (internals.signals.required() && isEmptyValue(value)) {
+      // Step 1: Run static validate constraints (includes required check)
+      const staticErrors = runStaticValidate(internals.validate, value);
+      if (staticErrors.length > 0) errors.push(...staticErrors);
+
+      // If no required error from validate, check top-level required signal
+      if (internals.signals.required() && !internals.validate?.required && isEmptyValue(value)) {
         errors.push({
           message: `${internals.signals.meta().title || internals.path} is required`,
           type: "required",
         });
-      }
-
-      for (const validator of internals.validators) {
-        const validationErrors = await runValidator(validator, value, field);
-        if (validationErrors) errors.push(...validationErrors);
       }
 
       if (internals.xValidate && internals.form?._runXValidate) {

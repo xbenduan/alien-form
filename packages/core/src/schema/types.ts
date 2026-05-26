@@ -46,36 +46,6 @@ export interface FieldError {
 }
 
 // ============================================================
-// Validator Types
-// ============================================================
-
-export interface ValidatorFn {
-  (value: any, field: IField): string | undefined | Promise<string | undefined>;
-}
-
-export type Validator = ValidatorFn | ValidatorRule | ValidatorRule[];
-
-export interface ValidatorRule {
-  required?: boolean;
-  min?: number;
-  max?: number;
-  minLength?: number;
-  maxLength?: number;
-  pattern?: RegExp | string;
-  format?: ValidatorFormats;
-  message?: string;
-  validator?: ValidatorFn;
-  // JSON Schema standard validators
-  exclusiveMinimum?: number;
-  exclusiveMaximum?: number;
-  multipleOf?: number;
-  maxItems?: number;
-  minItems?: number;
-  uniqueItems?: boolean;
-  const?: any;
-}
-
-// ============================================================
 // Schema Validate — static constraint declaration
 // ============================================================
 
@@ -344,7 +314,7 @@ export type FormErrorScope =
 
 export interface FormError {
   scope: FormErrorScope;
-  /** Field path that owns the rule, or \'\' for form-level errors. */
+  /** Field path that owns the rule, or \'\'  for form-level errors. */
   path: string;
   /** Optional reaction key (e.g. \'visible\', \'title\') or rule kind. */
   key?: string;

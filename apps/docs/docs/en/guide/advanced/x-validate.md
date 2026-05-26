@@ -34,14 +34,12 @@ For realtime validation during typing, the UI layer must trigger validation expl
 
 ## Validation Pipeline
 
-The validation flow for a field is fixed:
+Field validation has exactly two layers:
 
-1. If `display === 'none'`, the field is skipped.
-2. Run `validate` — built-in static constraints (`required`, `minLength`, `pattern`, etc.).
-3. Run `validators` — custom validator functions/rule objects.
-4. Run `x-validate` — dynamic rules.
+1. **`validate`** — built-in static constraints (`required`, `minLength`, `pattern`, etc.).
+2. **`x-validate`** — dynamic rules (expression / match / computed).
 
-`x-validate` is a dynamic extension layer executed after built-in constraints.
+Fields with `display === 'none'` skip validation entirely.
 
 ## Typical Patterns
 

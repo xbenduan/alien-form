@@ -6,12 +6,12 @@ import type {
   FieldPatternTypes,
   IField,
   IFieldSchema,
+  SchemaValidate,
   SchemaXValidate,
   ValidateStatus,
-  Validator,
 } from "../../schema/types";
 import { createArrayFieldController, type ArrayFieldController } from "./array-controller";
-import { normalizeDataSource, normalizeValidators, schemaValidators } from "./validation";
+import { normalizeDataSource } from "./validation";
 import { getArrayItemSchema, isArrayFieldSchema } from "../../schema/normalize";
 
 // ─── Symbol ──────────────────────────────────────────────────────────────────
@@ -45,12 +45,6 @@ export interface FieldHost {
 }
 
 // ─── Signals bundle ──────────────────────────────────────────────────────────
-//
-// Signals are split into two groups:
-// 1. Hot signals — frequently read/written at runtime (value, display, pattern, etc.)
-// 2. Cold meta — a single signal holding rarely-changing metadata as a frozen object
-//
-// This reduces per-field memory overhead from ~20 signals to ~12 signals + 1 meta object.
 
 export interface FieldMeta {
   title: string;
@@ -87,7 +81,9 @@ export interface FieldInternals {
   schema: IFieldSchema;
   signals: FieldSignals;
   initialValue: any;
-  validators: Validator[];
+  /** Static validation constraints from schema.validate */
+  validate: SchemaValidate | undefined;
+  /** Dynamic validation rules from schema["x-validate"] */
   xValidate?: SchemaXValidate;
   dataSourcePolicy: string;
   isArrayField: boolean;
@@ -158,10 +154,7 @@ export function createFieldInternals(
     schema,
     signals,
     initialValue: defaultValue,
-    validators: normalizeValidators([
-      ...schemaValidators(schema),
-      ...normalizeValidators(schema.validators),
-    ]),
+    validate: schema.validate,
     xValidate: schema["x-validate"],
     dataSourcePolicy: schema.dataSourcePolicy || "preserve",
     isArrayField,
