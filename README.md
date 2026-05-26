@@ -89,7 +89,7 @@ AlienForm 的解法是把这些复杂度主动拆开：
 
 | Package | 说明 |
 | --- | --- |
-| `@alien-form/core` | 无头表单内核，负责 `Form`、`Field`、字段树、联动、校验、数组与运行时协议 |
+| `@alien-form/core` | 无头表单内核，负责 `createForm`、`IForm`/`IField` 契约、字段树、联动、校验、数组与运行时协议 |
 | `@alien-form/react` | React 绑定层，提供 `FormProvider`、`SchemaField` 和常用 hooks |
 | `@alien-form/ui` | 默认 UI 组件集，供 demo 和快速集成使用 |
 
@@ -143,8 +143,7 @@ pnpm test:core
 
 ```tsx
 import React from "react";
-import { createForm } from "@alien-form/core";
-import { FormProvider, SchemaField } from "@alien-form/react";
+import { createForm, FormProvider, SchemaField } from "@alien-form/react";
 
 const form = createForm({
   initialValues: {
@@ -233,6 +232,7 @@ export function App() {
 - `SchemaField` 根据 schema 递归渲染字段树
 - `components` / `decorators` 负责把统一协议映射到具体 UI
 - `setup + effect` 负责不适合写进 schema 的复杂副作用
+- React 项目通常只需要依赖 `@alien-form/react`；它已经重导出了 `createForm` 和常用 core 类型
 
 ## 设计原则
 
@@ -337,10 +337,10 @@ AlienForm 当前统一使用 `setup + form.effect(...)` 描述外部桥接与复
 优先阅读：
 
 - `packages/react/src/index.tsx`
-- `packages/core/src/form/index.ts`
-- `packages/core/src/field/index.ts`
-- `packages/core/src/types.ts`
-- `packages/core/src/runtime/reaction.ts`
+- `packages/core/src/engine/form/index.ts`
+- `packages/core/src/engine/field/index.ts`
+- `packages/core/src/schema/types.ts`
+- `packages/core/src/engine/runtime/reaction.ts`
 
 ### 5. 最后用测试确认行为边界
 
@@ -391,9 +391,9 @@ pnpm format:check    # 检查代码格式
 
 如果你准备开始改代码，下面是最有效的入口：
 
-- 想改协议定义：先看 `packages/core/src/types.ts`
-- 想改联动或 effect 行为：先看 `packages/core/src/form/index.ts`
-- 想改数组字段树：先看 `packages/core/src/field/index.ts`
+- 想改协议定义：先看 `packages/core/src/schema/types.ts`
+- 想改联动或 effect 行为：先看 `packages/core/src/engine/form/index.ts`
+- 想改数组字段树：先看 `packages/core/src/engine/field/index.ts`
 - 想改 React 渲染：先看 `packages/react/src/index.tsx`
 - 想改默认 UI：先看 `packages/ui/src/components`
 - 想补 demo 场景：先看 `apps/demo/src/schema`

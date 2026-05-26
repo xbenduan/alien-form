@@ -2,9 +2,9 @@
 
 ## Description
 
-`Form` is the top-level runtime model in `@alien-form/core`. It owns the field registry, schema setup, values, submission state, validation entry points, array field operations, and signals-style side-effect capabilities.
+This page documents the `IForm` runtime object returned by `createForm()`.
 
-In most cases, you create it with `createForm(options)` instead of calling `new Form()` directly.
+`@alien-form/core` no longer exposes `Form` as a public class export. Application code should create form instances through the factory and treat `IForm` as the stable public contract.
 
 ```ts
 import { createForm } from "@alien-form/core";
@@ -24,7 +24,7 @@ const form = createForm({
 function createForm(config?: FormConfig): IForm;
 ```
 
-`createForm` returns an `IForm` instance. The return value is not a plain data object, but a long-lived form model that can be read, written, validated, submitted, and subscribed to.
+`createForm` returns a long-lived headless form runtime. It is not a plain data snapshot; it can be read, written, validated, submitted, and subscribed to.
 
 ### Minimal Example
 
@@ -48,126 +48,110 @@ form.setSchema({
 form.setValues({ username: "alien" });
 
 console.log(form.values);
-// { username: 'alien' }
+// { username: "alien" }
 ```
 
-## Available Members Returned by createForm
+## Core Properties
 
-### Core Properties
+| Property | Type | Description |
+| --- | --- | --- |
+| `fields` | `Map<string, IField>` | registered field instances keyed by field path |
+| `values` | `Record<string, any>` | output value snapshot after visibility filtering, array normalization, and `x-format.output` |
+| `initialValues` | `Record<string, any>` | reset baseline used by `reset()` |
+| `valid` | `boolean` | whether all visible fields currently pass validation |
+| `invalid` | `boolean` | inverse of `valid` |
+| `submitting` | `boolean` | `true` while `submit()` is running |
+| `errors` | `FieldError[]` | flattened visible-field errors |
 
-| Property        | Type                  | Description                                                                                                  |
-| --------------- | --------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `fields`        | `Map<string, IField>` | registered field instances keyed by field path                                                               |
-| `values`        | `Record<string, any>` | output values; excludes invisible fields, void fields, and array child paths, then applies `x-format.output` |
-| `initialValues` | `Record<string, any>` | initial snapshot used by `reset()`                                                                           |
-| `valid`         | `boolean`             | whether all visible fields currently have no errors                                                          |
-| `invalid`       | `boolean`             | inverse of `valid`                                                                                           |
-| `submitting`    | `boolean`             | `true` while `submit()` is running                                                                           |
-| `errors`        | `FieldError[]`        | flattened errors from visible fields                                                                         |
+## Main Methods
 
-### Field Creation and Access
+### Field access and state updates
 
-| Method          | Signature                                                                     | Description                                                         |
-| --------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `createField`   | `(path: string, schema: IFieldSchema, initialValue?: any) => IField`          | manually create a field; usually called internally by `setSchema()` |
-| `getField`      | `(path: string) => IField \| undefined`                                       | read a field instance by path                                       |
-| `setFieldState` | `(path: string, setter: (state: Partial<FieldMutableState>) => void) => void` | update field state with a state setter callback                     |
+| Method | Signature | Description |
+| --- | --- | --- |
+| `createField` | `(path: string, schema: IFieldSchema, initialValue?: any) => IField` | manually create a field, mostly for low-level use or tests |
+| `getField` | `(path: string) => IField \| undefined` | read a field instance by path |
+| `setFieldState` | `(path: string, setter: (state: Partial<FieldMutableState>) => void) => void` | imperatively adjust field state |
 
-### Value Operations
+### Values and schema
 
-| Method             | Signature                               | Description                                                       |
-| ------------------ | --------------------------------------- | ----------------------------------------------------------------- |
-| `setValues`        | `(values: Record<string, any>) => void` | batch-write values into existing fields; applies `x-format.input` |
-| `setInitialValues` | `(values: Record<string, any>) => void` | update the reset baseline; does not rewrite current field values  |
-| `reset`            | `() => void`                            | restore fields to initial values and replay reactions             |
+| Method | Signature | Description |
+| --- | --- | --- |
+| `setValues` | `(values: Record<string, any>) => void` | batch-write values into registered fields and apply `x-format.input` |
+| `setInitialValues` | `(values: Record<string, any>) => void` | update the reset baseline |
+| `reset` | `() => void` | restore current fields to their initial values and replay related derivations |
+| `setSchema` | `(schema: IFormSchema) => void` | rebuild the field tree, rules, and derivation graph from schema |
 
-### Validation and Submission
+### Validation and submission
 
-| Method     | Signature                                                                              | Description                                                                                     |
-| ---------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `validate` | `() => Promise<boolean>`                                                               | validate all visible fields and return `true` when all pass                                     |
-| `submit`   | `<T = any>(onSubmit?: (values: Record<string, any>) => T \| Promise<T>) => Promise<T>` | validate first, then call the submit callback; returns `form.values` when no callback is passed |
-| `destroy`  | `() => void`                                                                           | dispose effects/watchers registered from `setup`                                                |
+| Method | Signature | Description |
+| --- | --- | --- |
+| `validate` | `() => Promise<boolean>` | validate all visible fields and return `true` when all pass |
+| `submit` | `<T = any>(onSubmit?: (values: Record<string, any>) => T \| Promise<T>) => Promise<T>` | validate first, then run the submit callback; returns `form.values` when no callback is passed |
+| `destroy` | `() => void` | release cleanup registered from `setup`, plus runtime effect/error subscriptions |
 
-### Schema Operations
+### Arrays and subscriptions
 
-| Method      | Signature                       | Description                                                     |
-| ----------- | ------------------------------- | --------------------------------------------------------------- |
-| `setSchema` | `(schema: IFormSchema) => void` | rebuild field tree, formatting rules, and reactions from schema |
+| Method | Signature | Description |
+| --- | --- | --- |
+| `getArrayField` | `(path: string) => IField \| undefined` | get an array field instance |
+| `removeArrayItem` | `(arrayPath: string, index: number) => void` | remove a row from an array field |
+| `subscribe` | `(listener: () => void) => () => void` | low-level subscription API for bridge layers |
+| `effect` | `(runner) => () => void` or `(selector, listener, options?) => () => void` | register reactive side effects based on dependency reads |
+| `onError` | `(listener: (error: FormError) => void) => () => void` | subscribe to non-fatal runtime errors |
 
-### Array Field Operations
+Array fields themselves also expose `push()`, `remove()`, `moveUp()`, and `moveDown()`. See [Field](./field).
 
-| Method            | Signature                                    | Description                                                |
-| ----------------- | -------------------------------------------- | ---------------------------------------------------------- |
-| `getArrayField`   | `(path: string) => IField \| undefined`      | return an array field; non-array fields return `undefined` |
-| `removeArrayItem` | `(arrayPath: string, index: number) => void` | remove a row from an array field                           |
+## Using form inside setup
 
-Array fields themselves also provide `push()`, `remove()`, `moveUp()`, and `moveDown()`. See [Field](./field).
-
-### Subscriptions and Effects
-
-| Method            | Signature                                            | Description                                     |
-| ----------------- | ---------------------------------------------------- | ----------------------------------------------- |
-| `subscribe`       | `(listener: () => void) => () => void`               | low-level version subscription for bridges      |
-| `effect`          | `(runner) => () => void` or `(selector, listener, options?) => () => void` | run effects with `alien-signals` dependency tracking |
-| `onError`         | `(listener: (error: FormError) => void) => () => void` | subscribe to non-fatal runtime errors         |
-
-## What Can Be Called Inside setup
-
-The `setup` callback receives the same `form` instance returned by `createForm()`, so it can technically call all public methods listed above. In practice, use `setup` mainly for `watch/effect` registration and small bridge logic, not for large imperative business workflows.
+`setup` receives the same `IForm` instance. Use it as the place to register derivation rules, bridge external systems, and centralize cleanup, not as a large imperative workflow container.
 
 ```ts
 const form = createForm({
   setup(form) {
-    const disposeValues = form.effect((instance) => instance.values, (values) => {
+    const stopValues = form.effect((instance) => instance.values, (values) => {
       console.log("values changed", values);
     });
 
-    const disposeField = form.effect(
+    const stopName = form.effect(
       (instance) => instance.getField("username")?.value,
       (value) => {
         console.log("username changed", value);
       },
     );
 
-    const disposeError = form.onError((error) => {
+    const stopError = form.onError((error) => {
       console.warn(error.scope, error.path, error.message);
     });
 
     return () => {
-      disposeValues();
-      disposeField();
-      disposeError();
+      stopValues();
+      stopName();
+      stopError();
     };
   },
 });
 ```
 
-### Recommended in setup
+### Recommended
 
-| Method             | Usage                                                                             |
-| ------------------ | --------------------------------------------------------------------------------- |
-| `effect()`         | use when you only care about dependency reads and reruns                          |
-| `effect(selector, listener)` | watch any selector result, with previous value and custom equality support |
-| `onError()`        | collect runtime errors from reactions, formatting, validation, and ref resolution |
-| `getField()`       | read field instances inside callbacks                                             |
-| `setFieldState()`  | apply small imperative field state corrections inside callbacks                   |
-| `setValues()`      | hydrate values after initialization or after external data arrives                |
-| `validate()`       | trigger validation from an external flow                                          |
-| `submit()`         | reuse form validation and output-value logic from an external submit action       |
+- `form.effect(runner)`: rerun based on dependency reads
+- `form.effect(selector, listener, options?)`: observe selector value changes
+- `form.onError(listener)`: collect non-fatal errors from reactions, formatting, validation, and `$ref` resolution
+- `form.getField(path)`: read field instances inside callbacks
+- `form.setFieldState(path, setter)`: apply small imperative state corrections
+- `form.setValues(values)`: hydrate external data
 
-### Use with caution in setup
+### Use with caution
 
-| Method          | Reason                                                                                               |
-| --------------- | ---------------------------------------------------------------------------------------------------- |
-| `setSchema()`   | clears and rebuilds fields and reactions; avoid calling it inside frequently triggered subscriptions |
-| `createField()` | schema-driven creation is preferred; manual fields can bypass protocol structure                     |
-| `reset()`       | replays value changes and reactions; avoid calling it unguarded from value-change listeners          |
-| `setValues()`   | useful, but do not call it unconditionally inside `effect()` or you may create a loop |
+- `form.setSchema(schema)`: clears and rebuilds the previous field tree
+- `form.createField(path, schema, value)`: can bypass schema protocol boundaries
+- `form.reset()`: replays value changes and related effects
+- unconditional `setValues()` inside `effect()`: can create loops
 
-## Preferred side-effect model
+## Preferred Side-Effect Model
 
-Prefer `effect` instead of organizing derivation around path events.
+AlienForm standardizes on `setup + form.effect(...)` for complex derivation instead of path-event style APIs.
 
 ```ts
 createForm({
@@ -188,20 +172,20 @@ createForm({
 
 ## Output Value Boundary
 
-`form.values` is not a plain copy of all raw field values. It applies these rules:
+`form.values` is not a plain copy of raw field values. It:
 
-1. Skip fields with `display === 'none'`.
-2. Skip `void` layout nodes.
-3. Skip array child paths; array fields output the row array instead.
-4. Apply `x-format.output` before returning values.
+1. skips fields with `display === "none"`.
+2. skips `void` layout nodes.
+3. skips array child paths and lets array fields emit the row array.
+4. applies `x-format.output` before returning values.
 
-Inside a `computed` handler, `context.values` is the current raw internal value snapshot. Reading `form.values` returns the output-formatted value object.
+Inside a `computed` handler, `context.values` is the raw internal value snapshot. Reading `form.values` gives you the output-formatted value object.
 
 ## Notes
 
-- `setSchema()` clears old fields, reactions, and formatting rules before rebuilding.
-- `setInitialValues()` only updates the reset baseline; it does not rewrite current field values by itself, so edit hydration usually pairs it with `setValues()`.
-- `setValues()` only writes to fields that already exist. If no schema has been set, it will not create fields.
-- `values` is derived. Do not mutate `form.values.xxx` directly.
-- `submit()` throws when validation fails and attaches an array of messages to `error.messages`.
-- When `effect()` writes values back into the form, keep the callback convergent to avoid loops.
+- `setSchema()` rebuilds fields, rules, and derivation state from scratch.
+- `setInitialValues()` only updates the reset baseline; edit hydration usually pairs it with `setValues()`.
+- `setValues()` only writes into already registered fields; it does not create fields before schema exists.
+- `values` is derived state, so do not mutate `form.values.xxx` directly.
+- `submit()` throws on validation failure and attaches the message array to `error.messages`.
+- If an `effect()` writes values back into the form, keep the callback convergent to avoid loops.

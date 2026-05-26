@@ -1,5 +1,5 @@
 import React from "react";
-import type { IField } from "@alien-form/core";
+import type { IField } from "@alien-form/react";
 import { Checkbox, DateInput, Input, ItemInput, Select, Switch } from "@alien-form/ui";
 
 interface SkuTableProps {

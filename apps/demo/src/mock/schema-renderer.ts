@@ -1,4 +1,4 @@
-import type { FormConfig } from "@alien-form/core";
+import type { FormConfig } from "@alien-form/react";
 
 type SelectOption = {
   label: string;

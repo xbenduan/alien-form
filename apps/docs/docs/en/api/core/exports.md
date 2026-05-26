@@ -2,20 +2,19 @@
 
 ## Description
 
-The `@alien-form/core` entry point exports runtime factories, model classes, and public types. Business code usually only needs `createForm`. React projects usually use core indirectly through `@alien-form/react`.
+`@alien-form/core` now exposes a single runtime factory, `createForm`, plus the public types that application code actually depends on.
+
+If you are building a React app, you will usually import `createForm`, `IForm`, and related types from `@alien-form/react`; the React package re-exports them for convenience.
 
 ## Runtime Exports
 
 ```ts
-export { createForm, Form } from "./form";
-export { Field } from "./field";
+export { createForm } from "./engine/form/index";
 ```
 
-| Export       | Kind     | Description                                                                  |
-| ------------ | -------- | ---------------------------------------------------------------------------- |
-| `createForm` | function | recommended entry for creating a form model                                  |
-| `Form`       | class    | form model implementation; usually does not need to be instantiated directly |
-| `Field`      | class    | field model implementation; usually created by `form.setSchema()`            |
+| Export | Kind | Description |
+| --- | --- | --- |
+| `createForm` | function | creates a form runtime instance with return type `IForm` |
 
 ## Type Exports
 
@@ -26,32 +25,22 @@ export type {
   IFormSchema,
   IFieldSchema,
   FieldError,
-  FieldValue,
-  FieldState,
-  ValidateStatus,
   FieldMutableState,
-  SchemaXRuleType,
-  SchemaReactionKey,
-  SchemaXRule,
-  SchemaRule,
-  SchemaRuleSet,
-  SchemaReactions,
-  SchemaFormat,
-  SchemaXValidate,
-  DataSourcePolicy,
-  RuntimeRuleHandlerContext,
-  RuntimeRuleHandler,
-  SchemaTypes,
-  FieldPatternTypes,
+  ValidateStatus,
   FieldDisplayTypes,
-  ValidatorFormats,
+  FieldPatternTypes,
   Validator,
   ValidatorFn,
   ValidatorRule,
   FormConfig,
   FormError,
-  FormErrorScope,
-} from "./types";
+  EffectOptions,
+  EffectContext,
+  RuntimeRuleHandler,
+  RuntimeRuleHandlerContext,
+  DataSourcePolicy,
+  SchemaTypes,
+} from "./schema/types";
 ```
 
 ## Common Imports
@@ -93,56 +82,38 @@ const loadOptions: RuntimeRuleHandler = async (ctx) => {
 
 ## Export Groups
 
-### Form model
+### Runtime and config
 
 - `createForm`
-- `Form`
 - `IForm`
 - `FormConfig`
 - `FormError`
-- `FormErrorScope`
-
-### Field model
-
-- `Field`
-- `IField`
-- `FieldError`
-- `FieldValue`
-- `FieldState`
-- `FieldMutableState`
-- `ValidateStatus`
-
-### Schema protocol
-
-- `IFormSchema`
-- `IFieldSchema`
-- `SchemaTypes`
-- `SchemaXRuleType`
-- `SchemaReactionKey`
-- `SchemaXRule`
-- `SchemaRule`
-- `SchemaRuleSet`
-- `SchemaReactions`
-- `SchemaFormat`
-- `SchemaXValidate`
-- `DataSourcePolicy`
-
-### Validation types
-
-- `ValidatorFormats`
-- `Validator`
-- `ValidatorFn`
-- `ValidatorRule`
-
-### Runtime extension
-
-- `RuntimeRuleHandler`
-- `RuntimeRuleHandlerContext`
 - `EffectOptions`
 - `EffectContext`
 
+### Fields and state
+
+- `IField`
+- `IFormSchema`
+- `IFieldSchema`
+- `FieldError`
+- `FieldMutableState`
+- `ValidateStatus`
+- `FieldDisplayTypes`
+- `FieldPatternTypes`
+
+### Validation and rule extension
+
+- `Validator`
+- `ValidatorFn`
+- `ValidatorRule`
+- `RuntimeRuleHandler`
+- `RuntimeRuleHandlerContext`
+- `DataSourcePolicy`
+- `SchemaTypes`
+
 ## Notes
 
-- `createForm` returns `IForm`; the public API in docs follows `IForm`.
-- `Form` and `Field` classes can be imported, but business code usually does not instantiate them directly.
-- Form linkage uses `setup` + `form.effect`; field lifecycle subscription APIs are no longer exposed.
+- `Form` and `Field` classes are no longer part of the public runtime export surface; treat `IForm` and `IField` as the supported model contracts.
+- `createForm` returns a long-lived runtime object, not a disposable config snapshot.
+- Form linkage is standardized on `setup + form.effect(...)` instead of event-style `onXxx` APIs.

@@ -1,4 +1,4 @@
-import type { IFormSchema } from "@alien-form/core";
+import type { IFormSchema } from "@alien-form/react";
 
 export interface SchemaItem {
   id: string;

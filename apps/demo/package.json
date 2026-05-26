@@ -9,7 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@alien-form/core": "workspace:*",
     "@alien-form/react": "workspace:*",
     "@alien-form/ui": "workspace:*",
     "react": "^18.3.1",

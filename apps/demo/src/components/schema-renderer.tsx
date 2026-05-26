@@ -1,8 +1,6 @@
 import React, { useState, useMemo, useCallback } from "react";
-import { createForm } from "@alien-form/core";
-import { FormProvider, SchemaField } from "@alien-form/react";
-import type { IForm } from "@alien-form/core";
-import type { ComponentMap, DecoratorMap } from "@alien-form/react";
+import { createForm, FormProvider, SchemaField } from "@alien-form/react";
+import type { IForm, ComponentMap, DecoratorMap } from "@alien-form/react";
 import {
   Card,
   CardHeader,

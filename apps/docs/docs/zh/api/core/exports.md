@@ -2,20 +2,19 @@
 
 ## 描述
 
-`@alien-form/core` 的入口文件导出了运行时工厂、模型类和所有公共类型。业务侧通常只需要直接使用 `createForm`，React 项目则通常通过 `@alien-form/react` 间接使用 core。
+`@alien-form/core` 当前只公开一个运行时工厂 `createForm`，以及业务侧真正需要依赖的公共类型。
+
+如果你在 React 项目中使用 AlienForm，通常直接从 `@alien-form/react` 导入 `createForm`、`IForm` 等能力即可；`react` 包已经做了重导出。
 
 ## 运行时导出
 
 ```ts
-export { createForm, Form } from "./form";
-export { Field } from "./field";
+export { createForm } from "./engine/form/index";
 ```
 
-| 导出项       | 类型     | 说明                                           |
-| ------------ | -------- | ---------------------------------------------- |
-| `createForm` | function | 创建表单模型的推荐入口                         |
-| `Form`       | class    | 表单模型实现类；通常不需要直接 new             |
-| `Field`      | class    | 字段模型实现类；通常由 `form.setSchema()` 创建 |
+| 导出项 | 类型 | 说明 |
+| --- | --- | --- |
+| `createForm` | function | 创建表单运行时实例，返回值类型为 `IForm` |
 
 ## 类型导出
 
@@ -26,32 +25,22 @@ export type {
   IFormSchema,
   IFieldSchema,
   FieldError,
-  FieldValue,
-  FieldState,
-  ValidateStatus,
   FieldMutableState,
-  SchemaXRuleType,
-  SchemaReactionKey,
-  SchemaXRule,
-  SchemaRule,
-  SchemaRuleSet,
-  SchemaReactions,
-  SchemaFormat,
-  SchemaXValidate,
-  DataSourcePolicy,
-  RuntimeRuleHandlerContext,
-  RuntimeRuleHandler,
-  SchemaTypes,
-  FieldPatternTypes,
+  ValidateStatus,
   FieldDisplayTypes,
-  ValidatorFormats,
+  FieldPatternTypes,
   Validator,
   ValidatorFn,
   ValidatorRule,
   FormConfig,
   FormError,
-  FormErrorScope,
-} from "./types";
+  EffectOptions,
+  EffectContext,
+  RuntimeRuleHandler,
+  RuntimeRuleHandlerContext,
+  DataSourcePolicy,
+  SchemaTypes,
+} from "./schema/types";
 ```
 
 ## 常用导入方式
@@ -93,56 +82,38 @@ const loadOptions: RuntimeRuleHandler = async (ctx) => {
 
 ## 导出项分组
 
-### 表单模型
+### 运行时与配置
 
 - `createForm`
-- `Form`
 - `IForm`
 - `FormConfig`
 - `FormError`
-- `FormErrorScope`
-
-### 字段模型
-
-- `Field`
-- `IField`
-- `FieldError`
-- `FieldValue`
-- `FieldState`
-- `FieldMutableState`
-- `ValidateStatus`
-
-### Schema 协议
-
-- `IFormSchema`
-- `IFieldSchema`
-- `SchemaTypes`
-- `SchemaXRuleType`
-- `SchemaReactionKey`
-- `SchemaXRule`
-- `SchemaRule`
-- `SchemaRuleSet`
-- `SchemaReactions`
-- `SchemaFormat`
-- `SchemaXValidate`
-- `DataSourcePolicy`
-
-### 校验类型
-
-- `ValidatorFormats`
-- `Validator`
-- `ValidatorFn`
-- `ValidatorRule`
-
-### 运行时扩展
-
-- `RuntimeRuleHandler`
-- `RuntimeRuleHandlerContext`
 - `EffectOptions`
 - `EffectContext`
 
+### 字段与状态
+
+- `IField`
+- `IFormSchema`
+- `IFieldSchema`
+- `FieldError`
+- `FieldMutableState`
+- `ValidateStatus`
+- `FieldDisplayTypes`
+- `FieldPatternTypes`
+
+### 校验与规则扩展
+
+- `Validator`
+- `ValidatorFn`
+- `ValidatorRule`
+- `RuntimeRuleHandler`
+- `RuntimeRuleHandlerContext`
+- `DataSourcePolicy`
+- `SchemaTypes`
+
 ## 注意事项
 
-- `createForm` 返回类型是 `IForm`，文档中的公开 API 以 `IForm` 为准。
-- `Form` 和 `Field` 类可以导入，但业务代码通常不需要直接实例化。
-- 表单联动统一使用 `setup` + `form.effect`；不再暴露字段生命周期订阅 API。
+- `Form`、`Field` 类不再属于公开运行时导出面；文档中的模型能力以 `IForm`、`IField` 为准。
+- `createForm` 返回的是长期存活的运行时对象，不是一次性的配置快照。
+- 表单联动统一使用 `setup + form.effect(...)`；不再推荐围绕事件式 `onXxx` API 组织逻辑。
