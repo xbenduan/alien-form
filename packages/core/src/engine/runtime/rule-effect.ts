@@ -1,4 +1,4 @@
-import { effect, getActiveSub, setActiveSub } from "alien-signals";
+import { effect } from "alien-signals";
 import { getFormInternals } from "../form/internals";
 import type { InternalForm } from "../form/methods";
 import type { IField, IFieldSchema, IForm, IFormSchema, SchemaXRule } from "../../schema/types";
@@ -12,6 +12,10 @@ import {
   type RuleRuntimeHost,
 } from "./reaction";
 
+/**
+ * Maximum times a single value-reaction can fire per microtask.
+ * Prevents infinite loops from misconfigured reaction graphs.
+ */
 const MAX_REACTION_RUNS_PER_TICK = 20;
 
 interface ReactionEntry {
@@ -20,6 +24,8 @@ interface ReactionEntry {
   reactionKey: string;
   rule: SchemaXRule;
 }
+
+// ─── Public API ──────────────────────────────────────────────────────────────
 
 export function installSchemaRuleEffects(form: IForm): void {
   const internals = getFormInternals(form);
@@ -31,7 +37,6 @@ export function installSchemaRuleEffects(form: IForm): void {
     syncRuleEffects(form, internals.schema);
   });
 
-  // Track the installer effect for cleanup
   internals.installedRuleEffects.set("__installer__", installerDispose);
 }
 
@@ -45,12 +50,14 @@ export function disposeSchemaRuleEffects(form: IForm): void {
   internals.fieldLoadingCounts.clear();
 }
 
+// ─── Sync installed effects with current schema ──────────────────────────────
+
 function syncRuleEffects(form: IForm, schema: IFormSchema): void {
   const internals = getFormInternals(form);
   const entries = collectReactionEntries(form, schema);
   reportStaticReactionCycles(form, entries);
   const nextKeys = new Set(entries.map((entry) => entry.effectKey));
-  nextKeys.add("__installer__"); // Keep the installer
+  nextKeys.add("__installer__");
 
   for (const entry of entries) {
     if (internals.installedRuleEffects.has(entry.effectKey)) continue;
@@ -66,70 +73,74 @@ function syncRuleEffects(form: IForm, schema: IFormSchema): void {
   }
 }
 
+// ─── Static cycle detection (graph-based, compile-time warning) ──────────────
+
 function reportStaticReactionCycles(form: IForm, entries: ReactionEntry[]): void {
-  const valueEntries = entries.filter((entry) => entry.reactionKey === "value");
+  const valueEntries = entries.filter((e) => e.reactionKey === "value");
   if (valueEntries.length === 0) return;
 
   const effectKeysByPath = new Map<string, string[]>();
-  valueEntries.forEach((entry) => {
+  for (const entry of valueEntries) {
     const current = effectKeysByPath.get(entry.path) || [];
     current.push(entry.effectKey);
     effectKeysByPath.set(entry.path, current);
-  });
+  }
 
+  // Build dependency graph: effectKey -> effectKeys it depends on
   const graph = new Map<string, string[]>();
   const labels = new Map<string, string>();
 
-  valueEntries.forEach((entry) => {
+  for (const entry of valueEntries) {
     labels.set(entry.effectKey, `${entry.path}.value`);
     graph.set(
       entry.effectKey,
-      resolveDependencyPaths(entry.rule, entry.path).flatMap((dependencyPath) =>
-        effectKeysByPath.get(dependencyPath) || [],
+      resolveDependencyPaths(entry.rule, entry.path).flatMap(
+        (depPath) => effectKeysByPath.get(depPath) || [],
       ),
     );
-  });
+  }
 
+  // DFS cycle detection
   const visiting = new Set<string>();
   const visited = new Set<string>();
   const reported = new Set<string>();
 
-  const walk = (effectKey: string, stack: string[]) => {
-    if (visiting.has(effectKey)) {
-      const cycleStart = stack.indexOf(effectKey);
-      const cycleKeys = [...stack.slice(cycleStart), effectKey];
-      const signature = cycleKeys.join("->");
-      if (reported.has(signature)) return;
-      reported.add(signature);
-      (form as InternalForm)._emitError({
-        scope: "reaction",
-        path: labels.get(effectKey)?.replace(/\.value$/, "") || "",
-        key: "value",
-        message: `reaction cycle detected: ${cycleKeys
-          .map((key) => `"${labels.get(key) || key}"`)
-          .join(" -> ")}`,
-      });
+  const walk = (key: string, stack: string[]) => {
+    if (visiting.has(key)) {
+      const cycleStart = stack.indexOf(key);
+      const cycleKeys = [...stack.slice(cycleStart), key];
+      const sig = cycleKeys.join("->");
+      if (!reported.has(sig)) {
+        reported.add(sig);
+        (form as InternalForm)._emitError({
+          scope: "reaction",
+          path: labels.get(key)?.replace(/\.value$/, "") || "",
+          key: "value",
+          message: `reaction cycle detected: ${cycleKeys.map((k) => `"${labels.get(k) || k}"`).join(" -> ")}`,
+        });
+      }
       return;
     }
-    if (visited.has(effectKey)) return;
-
-    visiting.add(effectKey);
-    graph.get(effectKey)?.forEach((nextKey) => walk(nextKey, [...stack, effectKey]));
-    visiting.delete(effectKey);
-    visited.add(effectKey);
+    if (visited.has(key)) return;
+    visiting.add(key);
+    graph.get(key)?.forEach((next) => walk(next, [...stack, key]));
+    visiting.delete(key);
+    visited.add(key);
   };
 
-  Array.from(graph.keys()).forEach((effectKey) => walk(effectKey, []));
+  for (const key of graph.keys()) walk(key, []);
 }
 
 function resolveDependencyPaths(rule: SchemaXRule, selfPath: string): string[] {
   const { dependencies } = rule;
   if (!dependencies) return [];
   if (Array.isArray(dependencies)) {
-    return dependencies.map((dependencyPath) => resolveFieldPath(dependencyPath, selfPath));
+    return dependencies.map((p) => resolveFieldPath(p, selfPath));
   }
-  return Object.values(dependencies).map((dependencyPath) => resolveFieldPath(dependencyPath, selfPath));
+  return Object.values(dependencies).map((p) => resolveFieldPath(p, selfPath));
 }
+
+// ─── Reaction entry collection ───────────────────────────────────────────────
 
 function collectReactionEntries(form: IForm, schema: IFormSchema): ReactionEntry[] {
   if (!schema.properties) return [];
@@ -143,29 +154,16 @@ function collectFieldReactionEntries(
 ): ReactionEntry[] {
   return Object.entries(properties).flatMap(([key, schema]) => {
     const path = prefix ? `${prefix}.${key}` : key;
-    const ownEntries = Object.entries(schema["x-reaction"] || {}).flatMap(([reactionKey, ruleOrRules]) => {
-      if (!ruleOrRules) return [];
-      const rules = Array.isArray(ruleOrRules) ? ruleOrRules : [ruleOrRules];
-      return rules.map((rule, index) => ({
-        effectKey: `${path}:${reactionKey}:${index}`,
-        path,
-        reactionKey,
-        rule,
-      }));
-    });
+    const ownEntries = collectSingleSchemaReactionEntries(path, schema);
 
     const objectEntries = schema.properties
       ? collectFieldReactionEntries(form, path, schema.properties)
       : [];
 
-    if (!schema.items) {
-      return [...ownEntries, ...objectEntries];
-    }
+    if (!schema.items) return [...ownEntries, ...objectEntries];
 
     const itemSchema = Array.isArray(schema.items) ? schema.items[0] : schema.items;
-    if (!itemSchema || typeof itemSchema !== "object") {
-      return [...ownEntries, ...objectEntries];
-    }
+    if (!itemSchema || typeof itemSchema !== "object") return [...ownEntries, ...objectEntries];
 
     const rowCount = getArrayRowCount(form.getField(path));
     const arrayItemEntries = Array.from({ length: rowCount }).flatMap((_, index) => {
@@ -193,88 +191,79 @@ function collectSingleSchemaReactionEntries(path: string, schema: IFieldSchema):
   });
 }
 
+// ─── Individual effect installation ──────────────────────────────────────────
+
 function installRuleEffect(form: IForm, entry: ReactionEntry): () => void {
   const host = createRuleRuntimeHost(form);
-  const previous = getActiveSub();
-  setActiveSub(undefined);
-  try {
-    return effect(() => {
-      const internals = getFormInternals(form);
-      internals.fieldRegistryVersion();
-      if (internals.destroyed) return;
 
-      const field = form.getField(entry.path);
-      if (!field) return;
+  // NOTE: We create the effect at top level. The effect callback itself reads
+  // reactive dependencies (field values via resolveDependencies), so
+  // alien-signals will track those correctly. No need to manipulate
+  // getActiveSub/setActiveSub — the effect is installed from a non-reactive
+  // context (the syncRuleEffects function runs inside the installer effect's
+  // callback which already provides a tracking scope).
+  return effect(() => {
+    const internals = getFormInternals(form);
+    internals.fieldRegistryVersion();
+    if (internals.destroyed) return;
 
-      trackImplicitSelfDependency(field, entry.reactionKey, entry.rule);
-      const { deps, depsArray } = resolveDependencies(host, entry.rule.dependencies, entry.path);
-      const scope = buildReactionScope(host, field, deps, depsArray);
+    const field = form.getField(entry.path);
+    if (!field) return;
 
-      runReactionWithGuard(form, entry, field, () => {
-        try {
-          const result = resolveXRuleValue(
-            host,
-            field,
-            entry.reactionKey,
-            entry.rule,
-            scope,
-            "x-reaction",
-          );
+    trackImplicitSelfDependency(field, entry.reactionKey, entry.rule);
+    const { deps, depsArray } = resolveDependencies(host, entry.rule.dependencies, entry.path);
+    const scope = buildReactionScope(host, field, deps, depsArray);
 
-          if (!isPromiseLike(result)) {
-            applyReactionValue(host, field, entry.reactionKey, result);
-            return;
-          }
+    runReactionWithGuard(form, entry, field, () => {
+      try {
+        const result = resolveXRuleValue(host, field, entry.reactionKey, entry.rule, scope, "x-reaction");
 
-          const versionKey = `${entry.path}:${entry.reactionKey}`;
-          const currentVersion = (internals.asyncReactionVersions.get(versionKey) || 0) + 1;
-          internals.asyncReactionVersions.set(versionKey, currentVersion);
-          void result
-            .then((resolved) => {
-              const nextInternals = getFormInternals(form);
-              if (nextInternals.asyncReactionVersions.get(versionKey) !== currentVersion) return;
-              applyReactionValue(host, field, entry.reactionKey, resolved);
-            })
-            .catch((error) => {
-              const nextInternals = getFormInternals(form);
-              if (nextInternals.asyncReactionVersions.get(versionKey) !== currentVersion) return;
-              host.emitError({
-                scope: "reaction",
-                path: field.path,
-                key: entry.reactionKey,
-                message: error instanceof Error ? error.message : String(error),
-                cause: error,
-              });
-            });
-        } catch (error) {
-          host.emitError({
-            scope: "reaction",
-            path: field.path,
-            key: entry.reactionKey,
-            message: error instanceof Error ? error.message : String(error),
-            cause: error,
-          });
+        if (!isPromiseLike(result)) {
+          applyReactionValue(host, field, entry.reactionKey, result);
+          return;
         }
-      });
+
+        // Async reaction: version-stamp to discard stale results
+        const versionKey = `${entry.path}:${entry.reactionKey}`;
+        const currentVersion = (internals.asyncReactionVersions.get(versionKey) || 0) + 1;
+        internals.asyncReactionVersions.set(versionKey, currentVersion);
+        void result
+          .then((resolved) => {
+            if (getFormInternals(form).asyncReactionVersions.get(versionKey) !== currentVersion) return;
+            applyReactionValue(host, field, entry.reactionKey, resolved);
+          })
+          .catch((error) => {
+            if (getFormInternals(form).asyncReactionVersions.get(versionKey) !== currentVersion) return;
+            host.emitError({
+              scope: "reaction",
+              path: field.path,
+              key: entry.reactionKey,
+              message: error instanceof Error ? error.message : String(error),
+              cause: error,
+            });
+          });
+      } catch (error) {
+        host.emitError({
+          scope: "reaction",
+          path: field.path,
+          key: entry.reactionKey,
+          message: error instanceof Error ? error.message : String(error),
+          cause: error,
+        });
+      }
     });
-  } finally {
-    setActiveSub(previous);
-  }
+  });
 }
+
+// ─── Runtime host factory ────────────────────────────────────────────────────
 
 function createRuleRuntimeHost(form: IForm): RuleRuntimeHost {
   const internalForm = form as InternalForm;
   return {
     form,
-    get scope() {
-      return getFormInternals(form).scope;
-    },
-    get handlers() {
-      return getFormInternals(form).config.handlers;
-    },
-    get fields() {
-      return getFormInternals(form).fields;
-    },
+    get scope() { return getFormInternals(form).scope; },
+    get handlers() { return getFormInternals(form).config.handlers; },
+    get fields() { return getFormInternals(form).fields; },
     getField: (path) => internalForm.getField(path),
     getValuesSnapshot: () => internalForm._valuesSnapshot(),
     getRawValuesSnapshot: () => internalForm._rawValues(),
@@ -298,18 +287,26 @@ function createRuleRuntimeHost(form: IForm): RuleRuntimeHost {
   };
 }
 
+// ─── Reaction guard (cycle prevention) ───────────────────────────────────────
+// Two layers:
+// 1. Static graph analysis (reportStaticReactionCycles) — warns at schema load
+// 2. Runtime re-entry detection via reactionExecutionStack — prevents infinite loops
+
 function runReactionWithGuard(
   form: IForm,
   entry: ReactionEntry,
   field: IField,
   runner: () => void,
 ): void {
+  // Non-value reactions cannot cause cycles (they don't trigger other reactions)
   if (entry.reactionKey !== "value") {
     runner();
     return;
   }
 
   const internals = getFormInternals(form);
+
+  // Re-entry check: if this exact effect is already on the stack, it's a cycle
   if (internals.reactionExecutionStack.has(entry.effectKey)) {
     (form as InternalForm)._emitError({
       scope: "reaction",
@@ -320,6 +317,7 @@ function runReactionWithGuard(
     return;
   }
 
+  // Frequency check: cap total runs per microtask to catch indirect cycles
   const nextCount = (internals.reactionRunCounts.get(entry.effectKey) || 0) + 1;
   if (nextCount > MAX_REACTION_RUNS_PER_TICK) {
     (form as InternalForm)._emitError({
@@ -332,7 +330,7 @@ function runReactionWithGuard(
   }
 
   internals.reactionRunCounts.set(entry.effectKey, nextCount);
-  queueReactionCountReset(form);
+  scheduleRunCountReset(internals);
   internals.reactionExecutionStack.add(entry.effectKey);
   try {
     runner();
@@ -341,26 +339,24 @@ function runReactionWithGuard(
   }
 }
 
-function queueReactionCountReset(form: IForm): void {
-  const internals = getFormInternals(form);
+function scheduleRunCountReset(internals: ReturnType<typeof getFormInternals>): void {
   if (internals.reactionRunResetQueued) return;
   internals.reactionRunResetQueued = true;
   queueMicrotask(() => {
-    const nextInternals = getFormInternals(form);
-    nextInternals.reactionRunCounts.clear();
-    nextInternals.reactionRunResetQueued = false;
+    internals.reactionRunCounts.clear();
+    internals.reactionRunResetQueued = false;
   });
 }
 
-function trackImplicitSelfDependency(
-  field: IField,
-  reactionKey: string,
-  rule: SchemaXRule,
-): void {
+// ─── Implicit dependency tracking ────────────────────────────────────────────
+
+function trackImplicitSelfDependency(field: IField, reactionKey: string, rule: SchemaXRule): void {
+  // Value reactions always track self.value to re-run when the field value changes externally
   if (reactionKey === "value") {
     void field.value;
     return;
   }
+  // Other reactions without explicit deps track self.value as implicit dependency
   if (rule.dependencies) return;
   void field.value;
 }

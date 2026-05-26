@@ -123,11 +123,25 @@ export function resolveXRuleValue(
     case "expression":
       return evaluateExpression(rule.expression, scope);
     case "match": {
-      const source = rule.source
-        ? evaluateExpression(rule.source, scope)
-        : kind === "x-format" || kind === "x-validate"
-          ? scope.$value
-          : defaultMatchSource(scope);
+      let source: any;
+      if (rule.source) {
+        source = evaluateExpression(rule.source, scope);
+      } else if (kind === "x-format" || kind === "x-validate") {
+        source = scope.$value;
+      } else {
+        const resolved = defaultMatchSource(scope);
+        if (resolved.ambiguous) {
+          host.emitError({
+            scope: kind,
+            path: field?.path || "",
+            key,
+            message:
+              `match rule has ${Object.keys(scope.$dependencies).length} dependencies but no explicit "source". ` +
+              `Add a "source" expression to disambiguate.`,
+          });
+        }
+        source = resolved.value;
+      }
       const matchKey = source === undefined || source === null ? "default" : String(source);
       return Object.prototype.hasOwnProperty.call(rule.match, matchKey)
         ? rule.match[matchKey]
@@ -284,8 +298,14 @@ export function applyReactionValue(
   }
 }
 
-function defaultMatchSource(scope: Record<string, any>): any {
+/**
+ * Implicit match source: when no explicit `source` is declared on a match rule,
+ * the single dependency value is used. If multiple dependencies exist, the
+ * match source is ambiguous — return undefined and let the caller emit a warning.
+ */
+function defaultMatchSource(scope: Record<string, any>): { value: any; ambiguous: boolean } {
   const deps = scope.$dependencies || {};
   const values = Object.values(deps);
-  return values.length === 1 ? values[0] : undefined;
+  if (values.length === 1) return { value: values[0], ambiguous: false };
+  return { value: undefined, ambiguous: values.length > 1 };
 }

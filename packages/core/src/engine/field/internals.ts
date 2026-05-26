@@ -45,6 +45,23 @@ export interface FieldHost {
 }
 
 // ─── Signals bundle ──────────────────────────────────────────────────────────
+//
+// Signals are split into two groups:
+// 1. Hot signals — frequently read/written at runtime (value, display, pattern, etc.)
+// 2. Cold meta — a single signal holding rarely-changing metadata as a frozen object
+//
+// This reduces per-field memory overhead from ~20 signals to ~12 signals + 1 meta object.
+
+export interface FieldMeta {
+  title: string;
+  description: string;
+  component: string;
+  componentProps: Record<string, any>;
+  decorator: string;
+  decoratorProps: Record<string, any>;
+  data: Record<string, any>;
+  content: any;
+}
 
 export interface FieldSignals {
   value: SignalValue<any>;
@@ -54,18 +71,12 @@ export interface FieldSignals {
   errors: SignalValue<FieldError[]>;
   warnings: SignalValue<FieldError[]>;
   validateStatus: SignalValue<ValidateStatus>;
-  title: SignalValue<string>;
-  description: SignalValue<string>;
-  component: SignalValue<string>;
-  componentProps: SignalValue<Record<string, any>>;
-  decorator: SignalValue<string>;
-  decoratorProps: SignalValue<Record<string, any>>;
   dataSource: SignalValue<Array<{ label: string; value: any }>>;
   loading: SignalValue<boolean>;
-  data: SignalValue<Record<string, any>>;
-  content: SignalValue<any>;
   version: SignalValue<number>;
   arrayRows: SignalValue<number>;
+  /** Rarely-changing metadata bundled into a single signal. */
+  meta: SignalValue<FieldMeta>;
 }
 
 // ─── Field Internals ─────────────────────────────────────────────────────────
@@ -121,18 +132,20 @@ export function createFieldInternals(
     errors: signal<FieldError[]>([]),
     warnings: signal<FieldError[]>([]),
     validateStatus: signal<ValidateStatus>(""),
-    title: signal(schema.title || ""),
-    description: signal(schema.description || ""),
-    component: signal(schema.component || "Input"),
-    componentProps: signal(schema.props || {}),
-    decorator: signal(schema.decorator || "FormItem"),
-    decoratorProps: signal(schema.decoratorProps || {}),
     dataSource: signal(normalizeDataSource(schema.dataSource)),
     loading: signal(false),
-    data: signal(schema.data || {}),
-    content: signal(schema.content || null),
     version: signal(0),
     arrayRows: signal(isArrayField ? (Array.isArray(defaultValue) ? defaultValue.length : 0) : 0),
+    meta: signal<FieldMeta>({
+      title: schema.title || "",
+      description: schema.description || "",
+      component: schema.component || "Input",
+      componentProps: schema.props || {},
+      decorator: schema.decorator || "FormItem",
+      decoratorProps: schema.decoratorProps || {},
+      data: schema.data || {},
+      content: schema.content || null,
+    }),
   };
 
   const internals: FieldInternals = {
