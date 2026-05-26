@@ -161,7 +161,24 @@ interface IFormSchema {
 
 ### `void`
 
-布局节点。不贡献值到 `form.values`，但可携带 `component`、`props`、`title`、`content`，并递归渲染子属性。
+分组/包装节点。**路径透明**——子字段直接继承父路径前缀，`void` 节点的 key 不出现在子字段路径和 `form.values` 中。
+
+可携带 `component`、`props`、`title`、`content`，递归渲染子属性。典型用途：卡片分组、栅格布局、分步容器。
+
+```json
+{
+  "card": {
+    "type": "void",
+    "component": "Card",
+    "properties": {
+      "name": { "type": "string" },
+      "age": { "type": "number" }
+    }
+  }
+}
+// → 子字段路径: "name", "age"（不是 "card.name"）
+// → form.values: { name: "...", age: ... }
+```
 
 ### `array`
 

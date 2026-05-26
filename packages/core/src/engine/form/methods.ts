@@ -263,11 +263,15 @@ function createFieldTree(
   }
 
   if (schema.type === "void") {
+    // void nodes are path-transparent: children inherit the parent prefix,
+    // not the void node's own key. The void field itself still registers at
+    // `path` for rendering, but its key is excluded from child paths and form.values.
+    const parentPrefix = path.includes(".") ? path.slice(0, path.lastIndexOf(".")) : "";
     if (schema.component) {
       form.createField(path, { ...schema, required: false }, initialValue);
     }
     if (schema.properties) {
-      createFieldsFromSchema(form, path, schema.properties, schema.required, initialValue);
+      createFieldsFromSchema(form, parentPrefix, schema.properties, schema.required);
     }
     return;
   }

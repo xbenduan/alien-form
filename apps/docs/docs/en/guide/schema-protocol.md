@@ -131,7 +131,24 @@ Executed in order; errors from any step append to `field.errors`.
 
 ### `void`
 
-Layout node. Does not contribute to `form.values`, but carries `component`, `props`, `title`, `content`, and recursively renders children.
+Grouping/wrapper node. **Path-transparent** — children inherit the parent path prefix; the `void` node's key does not appear in child paths or `form.values`.
+
+Can carry `component`, `props`, `title`, `content`, and recursively renders children. Typical use: card grouping, grid layout, step containers.
+
+```json
+{
+  "card": {
+    "type": "void",
+    "component": "Card",
+    "properties": {
+      "name": { "type": "string" },
+      "age": { "type": "number" }
+    }
+  }
+}
+// → child paths: "name", "age" (not "card.name")
+// → form.values: { name: "...", age: ... }
+```
 
 ### `array`
 

@@ -70,7 +70,7 @@ Both `profile` and `grid` are wrapper component nodes:
 - They do not appear in `form.values`
 - `name` and `age` values live at their respective paths
 
-> Note: void nodes as path prefixes do not affect `form.values` structure. Value paths only traverse nodes with value semantics.
+> `void` nodes are **path-transparent**: children inherit the parent path prefix of the void node; the void node's own key does not participate in path construction. In the example above, `name`'s path is just `name`, not `profile.grid.name`.
 
 ## Props Received by Wrapper Components
 
