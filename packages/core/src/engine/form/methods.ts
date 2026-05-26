@@ -455,7 +455,9 @@ export function createFormMethods(
       startBatch();
       try {
         // Sort: array fields first (by path length ascending) so parent arrays
-        // are populated before their children are iterated.
+        // are populated (triggering child field creation via arrayController)
+        // before their children are assigned values. Without this ordering,
+        // child fields may not exist yet when we try to setValue on them.
         const entries = Array.from(internals.fields.entries()).sort(([pathA, fieldA], [pathB, fieldB]) => {
           if (fieldA.isArrayField !== fieldB.isArrayField) return fieldA.isArrayField ? -1 : 1;
           return pathA.length - pathB.length;
