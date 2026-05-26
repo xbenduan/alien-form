@@ -8,7 +8,6 @@ export interface ArrayTableProps {
   onMoveUp?: (index: number) => void;
   onMoveDown?: (index: number) => void;
   disabled?: boolean;
-  readOnly?: boolean;
   maxItems?: number;
   addText?: string;
   className?: string;
@@ -23,14 +22,13 @@ const ArrayTable = React.forwardRef<HTMLDivElement, ArrayTableProps>(
       onMoveUp,
       onMoveDown,
       disabled,
-      readOnly,
       maxItems,
       addText = "+ Add Row",
       className,
     },
     ref,
   ) => {
-    const canAdd = !disabled && !readOnly && (!maxItems || rows.length < maxItems);
+    const canAdd = !disabled && (!maxItems || rows.length < maxItems);
 
     return (
       <div ref={ref} className={cn("space-y-2", className)}>
@@ -42,7 +40,7 @@ const ArrayTable = React.forwardRef<HTMLDivElement, ArrayTableProps>(
             >
               <span className="text-xs text-muted-foreground pt-2 w-6 shrink-0">{index + 1}.</span>
               <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">{rowFields}</div>
-              {!disabled && !readOnly && (
+              {!disabled && (
                 <div className="flex items-center gap-0.5 pt-1.5 shrink-0">
                   <button
                     type="button"

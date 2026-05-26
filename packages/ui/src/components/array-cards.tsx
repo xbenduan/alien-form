@@ -8,7 +8,6 @@ export interface ArrayCardsProps {
   onMoveUp?: (index: number) => void;
   onMoveDown?: (index: number) => void;
   disabled?: boolean;
-  readOnly?: boolean;
   maxItems?: number;
   addText?: string;
   className?: string;
@@ -23,14 +22,13 @@ const ArrayCards = React.forwardRef<HTMLDivElement, ArrayCardsProps>(
       onMoveUp,
       onMoveDown,
       disabled,
-      readOnly,
       maxItems,
       addText = "+ Add Item",
       className,
     },
     ref,
   ) => {
-    const canAdd = !disabled && !readOnly && (!maxItems || rows.length < maxItems);
+    const canAdd = !disabled && (!maxItems || rows.length < maxItems);
 
     return (
       <div ref={ref} className={cn("space-y-3", className)}>
@@ -39,7 +37,7 @@ const ArrayCards = React.forwardRef<HTMLDivElement, ArrayCardsProps>(
             {/* Header with index and actions */}
             <div className="flex items-center justify-between mb-3 pb-2 border-b">
               <span className="text-xs font-medium text-muted-foreground">#{index + 1}</span>
-              {!disabled && !readOnly && (
+              {!disabled && (
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
