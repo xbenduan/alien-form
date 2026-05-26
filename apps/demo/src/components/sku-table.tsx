@@ -1,18 +1,11 @@
 import React from "react";
 import type { IField } from "@alien-form/react";
 
-/**
- * Row shape provided by ArrayFieldRenderer.
- * Each row contains `fields` (named slot map) and `children` (ordered nodes).
- */
-interface SkuRow {
-  fields: Record<string, React.ReactNode>;
-  children: React.ReactNode[];
-}
-
 interface SkuTableProps {
   field?: IField;
-  rows?: SkuRow[];
+  rows?: React.ReactNode[][];
+  /** Named field slots per row — enables `rowFields[i][columnKey]` access. */
+  rowFields?: Record<string, React.ReactNode>[];
   emptyText?: string;
   helperText?: string;
   className?: string;
@@ -32,6 +25,7 @@ function getRowField(rowFields: IField[], name: string): IField | undefined {
 export const SkuTable: React.FC<SkuTableProps> = ({
   field,
   rows = [],
+  rowFields = [],
   emptyText = "请先配置规格值，系统会自动生成 SKU 组合。",
   helperText,
   className,
@@ -77,8 +71,8 @@ export const SkuTable: React.FC<SkuTableProps> = ({
         </thead>
         <tbody>
           {rowIndices.map((rowIdx, displayIdx) => {
-            const row = rows[rowIdx];
-            if (!row) return null;
+            const fields = rowFields[rowIdx];
+            if (!fields) return null;
             return (
               <tr key={rowIdx} className="align-top">
                 <td className="border-b px-3 py-3 text-xs text-muted-foreground">
@@ -86,7 +80,7 @@ export const SkuTable: React.FC<SkuTableProps> = ({
                 </td>
                 {visibleColumns.map((col) => (
                   <td key={col.key} className="border-b px-3 py-2">
-                    {row.fields[col.key]}
+                    {fields[col.key]}
                   </td>
                 ))}
               </tr>

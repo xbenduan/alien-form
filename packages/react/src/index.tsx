@@ -674,7 +674,10 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
   const itemSchema = schema.items;
 
   // Build rows of rendered child fields with named fields map
-  const rows = arrayValue.map((_: any, index: number) => {
+  const rows: React.ReactNode[][] = [];
+  const rowFields: Record<string, React.ReactNode>[] = [];
+
+  arrayValue.forEach((_: any, index: number) => {
     const children: React.ReactNode[] = [];
     const fieldMap: Record<string, React.ReactNode> = {};
     if (itemSchema?.properties) {
@@ -695,13 +698,15 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
         fieldMap[childKey] = node;
       }
     }
-    return { children, fields: fieldMap };
+    rows.push(children);
+    rowFields.push(fieldMap);
   });
 
   const arrayProps = {
     ...field.componentProps,
     field,
     rows,
+    rowFields,
     onAdd: (initialValues?: Record<string, any>) => field.push(initialValues),
     onRemove: (index: number) => field.remove(index),
     onMoveUp: (index: number) => field.moveUp(index),
@@ -733,9 +738,9 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
   // Fallback: simple list rendering
   const fallback = (
     <div className="space-y-3">
-      {rows.map((row, index) => (
+      {rows.map((rowChildren, index) => (
         <div key={index} className="flex items-start gap-2 p-3 border rounded-lg">
-          <div className="flex-1 space-y-2">{row.children}</div>
+          <div className="flex-1 space-y-2">{rowChildren}</div>
           {!field.readPretty && (
             <button
               type="button"
