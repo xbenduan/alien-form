@@ -279,7 +279,7 @@ function buildSkuKey(combination: Array<{ name: string; label: string }>) {
   - 定义 `specs`
   - 定义 `skus`
   - 定义每个销售字段
-- form effects：
+- form setup：
   - 监听 `specs`
   - 做规格归一化
   - 控制唯一图片规格

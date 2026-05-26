@@ -5,13 +5,13 @@
     "activeMatch": "^/zh/guide/"
   },
   {
-    "text": "开发范式",
-    "link": "/patterns/introduction",
-    "activeMatch": "^/zh/patterns/"
-  },
-  {
     "text": "API",
     "link": "/api/core/form",
     "activeMatch": "^/zh/api/"
+  },
+  {
+    "text": "开发范式",
+    "link": "/patterns/introduction",
+    "activeMatch": "^/zh/patterns/"
   }
 ]

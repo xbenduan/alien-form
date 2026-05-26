@@ -90,7 +90,7 @@ console.log(form.values);
 | `submit` | `<T = any>(onSubmit?: (values: Record<string, any>) => T \| Promise<T>) => Promise<T>` | 先校验，再执行提交回调；未传回调时返回 `form.values` |
 | `destroy` | `() => void` | 释放 `setup` 注册的清理逻辑，以及运行期 effect/error 订阅 |
 
-### 数组与订阅
+### 数组与响应式能力
 
 | 方法 | 签名 | 说明 |
 | --- | --- | --- |

@@ -67,7 +67,7 @@ const form = useMemo(
 这条范式的含义是：
 
 1. `mode` 属于表单运行时上下文，不属于用户输入值
-2. schema reaction 通过 `scope.mode` 或 `$scope.mode` 参与计算
+2. schema reaction 通过 `createForm({ scope })` 注入的 `mode` 直接参与计算
 3. 形态发生根变化时，直接切换到一个新的 form 实例
 
 ## 推荐写法
@@ -107,11 +107,11 @@ function UserPage({ mode }: { mode: "create" | "edit" | "readonly" }) {
       "x-reaction": {
         "pattern": {
           "type": "expression",
-          "expression": "$scope.mode === 'readonly' ? 'readOnly' : 'editable'"
+          "expression": "mode === 'readonly' ? 'readOnly' : 'editable'"
         },
         "props": {
           "type": "expression",
-          "expression": "{ placeholder: $scope.mode === 'readonly' ? '当前为只读模式' : '请输入姓名' }"
+          "expression": "{ placeholder: mode === 'readonly' ? '当前为只读模式' : '请输入姓名' }"
         }
       }
     }
@@ -131,7 +131,7 @@ function UserPage({ mode }: { mode: "create" | "edit" | "readonly" }) {
 
 - `mode` 的来源清晰，它是外部上下文，不是用户输入值
 - form 实例和运行时 `scope` 一一对应，不会残留旧形态状态
-- schema reaction 可以天然基于 `scope.mode` 推导结果
+- schema reaction 可以天然基于 `mode` 推导结果
 - React 层只负责根据 `mode` 重建 form，不负责修补字段树
 
 ## 什么时候应该重建 form

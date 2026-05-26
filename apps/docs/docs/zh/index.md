@@ -6,28 +6,31 @@ titleSuffix: Schema 驱动表单引擎
 hero:
   name: AlienForm
   text: Schema 驱动表单引擎
-  tagline: 文档正在按英文版优先重写。当前保留中文首页、导航和目录框架，后续会逐页补齐正文。
+  tagline: 一套围绕 headless core、React 绑定层和收敛 schema 协议构建的企业表单运行时。
   image:
     src: /logo.svg
     alt: AlienForm
   actions:
     - theme: brand
-      text: 查看英文 Guide
-      link: /guide/introduction
+      text: 快速开始
+      link: /zh/guide/getting-started
     - theme: alt
-      text: 中文框架
-      link: /zh/guide/introduction
+      text: 架构设计
+      link: /zh/guide/architecture
     - theme: alt
-      text: API 结构
+      text: API 参考
       link: /zh/api/core/form
+    - theme: alt
+      text: 开发范式
+      link: /zh/patterns/introduction
 
 features:
-  - title: 英文优先重写
-    details: 当前重写优先覆盖英文正文，中文先保留同构目录和页面骨架。
-  - title: 结构已迁移
-    details: 文档结构已切换为 Guide 和 API 两大部分，并对齐新的信息架构。
-  - title: 方便后续翻译
-    details: 中文页面标题、导航和路径已经固定，后续只需要按页面逐步补正文即可。
-  - title: 与源码对齐
-    details: 新文档结构以当前 AlienForm 源码导出和运行时行为为准，而不是沿用旧文档组织方式。
+  - title: Headless Core
+    details: `@alien-form/core` 负责 `createForm`、`IForm`、`IField` 与规则执行，不依赖 React 和具体 UI 组件。
+  - title: React 绑定层
+    details: `@alien-form/react` 是 React 项目的主要入口，围绕 `useCreateForm`、`FormProvider`、`SchemaField` 和桥接型 hooks 组织。
+  - title: Schema 有边界
+    details: schema 负责结构和字段属性派生，复杂内部规则归位到 `setup + form.effect(...)`，业务异步能力归位到 `handlers`。
+  - title: 面向团队模式
+    details: Patterns 区域把编辑态初始化、形态切换、权限控制、SKU 矩阵等企业场景沉淀成统一写法。
 ---

@@ -49,12 +49,12 @@ export function App() {
 }
 ```
 
-### 让 Provider 负责销毁
+### 让 Provider 接管外部 form 的销毁
 
 ```tsx
-function Page() {
-  const form = useCreateForm();
+const form = createForm();
 
+function Page() {
   return (
     <FormProvider form={form} destroyOnUnmount>
       <SchemaField schema={schema} />
@@ -68,3 +68,4 @@ function Page() {
 - `useForm()` 强依赖于此 Provider 提供的上下文。
 - Schema 渲染器会使用此上下文中的注册表来查找组件。
 - React 项目通常直接从 `@alien-form/react` 导入 `createForm`、`FormProvider` 和相关类型。
+- 如果 form 来自 `useCreateForm()`，hook 在卸载时已经会自动 `destroy()`，通常不需要再额外传 `destroyOnUnmount`。

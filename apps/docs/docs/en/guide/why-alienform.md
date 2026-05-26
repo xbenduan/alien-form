@@ -60,8 +60,7 @@ That means schema should look more like this:
   name: 'city',
   title: 'City',
   'x-reaction': {
-    target: 'dataSource',
-    rule: {
+    dataSource: {
       type: 'computed',
       handler: 'loadCitiesByProvince'
     }
@@ -119,8 +118,7 @@ The schema references the handler by name, without embedding request details:
 {
   name: 'city',
   'x-reaction': {
-    target: 'dataSource',
-    rule: {
+    dataSource: {
       type: 'computed',
       handler: 'loadCitiesByProvince'
     }

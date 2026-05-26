@@ -49,12 +49,12 @@ export function App() {
 }
 ```
 
-### Let the provider clean up
+### Let the provider clean up an external form
 
 ```tsx
-function Page() {
-  const form = useCreateForm();
+const form = createForm();
 
+function Page() {
   return (
     <FormProvider form={form} destroyOnUnmount>
       <SchemaField schema={schema} />
@@ -68,3 +68,4 @@ function Page() {
 - `useForm()` depends on this provider.
 - Schema rendering uses the registries from this context.
 - React projects will usually import `createForm`, `FormProvider`, and related types directly from `@alien-form/react`.
+- If the form comes from `useCreateForm()`, the hook already destroys it on unmount, so `destroyOnUnmount` is usually unnecessary.

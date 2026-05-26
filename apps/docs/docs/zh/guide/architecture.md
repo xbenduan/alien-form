@@ -1,50 +1,103 @@
 # 架构设计
 
-AlienForm 被组织为一个分层的运行时系统。
+AlienForm 的架构重点不是“分几层”，而是“每类逻辑该落在哪一层”。
 
-## 分层结构
+如果把这个边界讲清楚，很多常见争议都会自然消失，比如：
 
-### 核心层 (Core Layer)
+- 为什么内部联动不推荐写成 React `useEffect`
+- 为什么 `core` 不直接依赖 React 组件
+- 为什么异步请求不直接写进 schema
 
-核心层是框架无关的，它负责：
+## 三层结构
 
-- 表单的创建
-- 字段的创建
-- 订阅管理
-- 校验逻辑
-- 值格式化转换
-- 联动执行
-- 数组行管理
+### Core 层
 
-### React 层 (React Layer)
+`@alien-form/core` 是 framework-agnostic 的 headless runtime，负责：
 
-React 层消费核心模型，负责：
+- `createForm()` 创建 `IForm`
+- 字段树创建与维护
+- `x-reaction`、`x-format`、`x-validate` 执行
+- `form.effect(...)` 驱动的响应式规则
+- 校验、提交、数组字段能力
 
-- 将表单实例放入上下文中
-- 将 Schema 树解析并渲染为 React 元素
-- 让组件订阅字段和表单的更新
-- 将字段状态映射为组件的 props
+这一层不感知 React，也不持有任何 React 组件实例。
 
-### UI 层 (UI Layer)
+### React 层
 
-UI 层提供了可选的组件，如 `Input`、`Select`、`FormItem`、`FormGrid`、`ArrayCards` 和 `ArrayTable`。核心模型并不强制依赖这些组件，但它们为演示和面向产品的表单提供了默认的实现。
+`@alien-form/react` 负责把 `core` 接入 React，主要提供：
 
-## 为什么这样分层很重要
+- `useCreateForm`
+- `FormProvider`
+- `SchemaField`
+- `useForm`、`useFieldState`、`useFormEffect` 等 hooks
 
-- 核心逻辑不与 React 组件绑定。
-- 运行时行为可以在不渲染 UI 的情况下进行测试。
-- Schema 的解析规则可以在不同的渲染层之间保持一致。
-- 只要实现了组件契约，UI 库就可以被轻松替换。
+它的职责是“绑定”和“桥接”，而不是承载表单内部业务规则。
 
-## 主要的运行时对象
+### UI 层
 
-| 对象           | 角色                        |
-| -------------- | --------------------------- |
-| `Form`         | 拥有字段注册表和顶层状态    |
-| `Field`        | 存储单个路径的状态          |
-| `SchemaField`  | 通过 React 渲染 Schema 树   |
-| `FormProvider` | 将表单和组件注册表连接到 UI |
+`@alien-form/ui` 提供默认组件实现，例如：
 
-## 设计方向
+- `Input`
+- `Select`
+- `FormItem`
+- `FormGrid`
+- `ArrayCards`
+- `ArrayTable`
 
-这种架构有意偏向于领域模型，而不是一组 Hooks 的集合。表单（Form）是主要的运行时模型，而 React 只是该模型的一个消费者。
+这些组件只是协议的默认表现层，可以被替换，但不会反向定义 core 的能力边界。
+
+## 逻辑应该放哪
+
+### 放在 schema
+
+适合 schema 的逻辑：
+
+- 字段结构
+- 字段标题、描述、组件、装饰器
+- 基于依赖值的字段属性派生
+- 值格式化规则
+- 校验规则
+
+也就是说，schema 负责“当前字段如何表现”。
+
+### 放在 `setup`
+
+适合 `createForm({ setup })` 的逻辑：
+
+- 表单内部的复杂联动
+- 依赖多个字段的派生规则
+- 不适合塞进单个字段 `x-reaction` 的内部规则
+- 需要在 form 生命周期内注册和清理的 effect
+
+这里的标准写法是 `setup + form.effect(...)`。
+
+### 放在 React
+
+适合 React 层的逻辑：
+
+- 页面级参数和路由变化
+- 外部状态同步
+- 页面副作用、日志、埋点
+- 提交按钮、校验按钮等视图交互桥接
+
+React 是宿主层，不应该承担表单内部规则编排。
+
+## 主要运行时对象
+
+| 对象 | 角色 |
+| --- | --- |
+| `IForm` | 顶层运行时对象，拥有字段注册表、值树、校验和 effect 能力 |
+| `IField` | 单个字段运行时对象，拥有局部状态、数组能力和字段级 effect |
+| `FormProvider` | 把 form 与组件注册表注入 React 上下文 |
+| `SchemaField` | 将 schema 应用到 form 并递归渲染字段树 |
+
+## 为什么这样分层
+
+- core 可以脱离 UI 单独测试
+- React 只是绑定层，不成为模型层的一部分
+- UI 可以替换，不影响协议和运行时
+- `setup` 能直接挂到响应式图上，比 React 补丁式联动更稳定
+
+## 一句话总结
+
+AlienForm 的架构核心不是“用很多层”，而是“schema 管字段派生，`setup` 管内部规则，React 管视图桥接，UI 管最终呈现”。

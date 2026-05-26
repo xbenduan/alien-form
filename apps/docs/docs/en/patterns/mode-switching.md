@@ -67,7 +67,7 @@ const form = useMemo(
 This pattern means:
 
 1. `mode` is runtime context, not user input
-2. schema reactions derive behavior from `scope.mode` or `$scope.mode`
+2. schema reactions derive behavior from the `mode` value injected by `createForm({ scope })`
 3. when the form shape changes fundamentally, switch to a new form instance
 
 ## Recommended Pattern
@@ -107,11 +107,11 @@ function UserPage({ mode }: { mode: "create" | "edit" | "readonly" }) {
       "x-reaction": {
         "pattern": {
           "type": "expression",
-          "expression": "$scope.mode === 'readonly' ? 'readOnly' : 'editable'"
+          "expression": "mode === 'readonly' ? 'readOnly' : 'editable'"
         },
         "props": {
           "type": "expression",
-          "expression": "{ placeholder: $scope.mode === 'readonly' ? 'Readonly mode' : 'Please enter your name' }"
+          "expression": "{ placeholder: mode === 'readonly' ? 'Readonly mode' : 'Please enter your name' }"
         }
       }
     }
@@ -131,7 +131,7 @@ instead of React `useEffect` patching fields one by one.
 
 - the source of `mode` is explicit: it is external context, not user input
 - a form instance corresponds to one runtime `scope`, so old state does not leak across modes
-- schema reactions can naturally derive behavior from `scope.mode`
+- schema reactions can naturally derive behavior from `mode`
 - the React layer only recreates the form, instead of patching the field tree manually
 
 ## When to recreate the form

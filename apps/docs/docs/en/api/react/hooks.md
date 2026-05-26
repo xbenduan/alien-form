@@ -176,5 +176,6 @@ Use it when validation is triggered by an external button or a step-based flow.
 - read the runtime instance: use `useForm`
 - render form-wide state: use `useFormState`
 - render a single field: use `useFieldState`
-- express reactive linkage: prefer `useFormEffect` or `useFormWatch`
+- write complex internal form linkage: prefer `createForm({ setup }) + form.effect(...)`
+- bridge form state from the React side: use `useFormEffect` or `useFormWatch`
 - bridge submit and validation buttons: use `useFormSubmit` and `useFormValidate`

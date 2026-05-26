@@ -244,4 +244,4 @@ Bad fits:
 - side effects that are not field-state derivation
 - business workflows that should live outside the field model
 
-Those concerns belong in `effects` or the surrounding application layer rather than being forced into reactions.
+Those concerns belong in `setup + form.effect(...)` or the surrounding application layer rather than being forced into reactions.

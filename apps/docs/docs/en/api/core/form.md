@@ -88,9 +88,9 @@ console.log(form.values);
 | --- | --- | --- |
 | `validate` | `() => Promise<boolean>` | validate all visible fields and return `true` when all pass |
 | `submit` | `<T = any>(onSubmit?: (values: Record<string, any>) => T \| Promise<T>) => Promise<T>` | validate first, then run the submit callback; returns `form.values` when no callback is passed |
-| `destroy` | `() => void` | release cleanup registered from `setup`, plus runtime effect/error subscriptions |
+| `destroy` | `() => void` | release cleanup registered from `setup`, plus runtime effect and error listeners |
 
-### Arrays and subscriptions
+### Arrays and reactive APIs
 
 | Method | Signature | Description |
 | --- | --- | --- |

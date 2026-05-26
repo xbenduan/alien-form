@@ -195,7 +195,7 @@ So the array component should not be responsible for:
 - assembling one giant business object
 - defining the derivation rule from `specs` to `skus`
 
-Those belong to the form controller or `effects`.
+Those belong to the form controller or `setup + form.effect(...)`.
 
 ## Current Rendering Pipeline
 

@@ -1,45 +1,60 @@
 # Introduction
 
-AlienForm is a schema-driven form solution for enterprise applications. The project is split into a headless core, a React binding layer, and a UI component layer. The goal is not only to render forms, but to make field state, value transformations, validation, and reactions predictable.
+AlienForm is a Schema Form runtime for enterprise applications. The goal is not only to render forms, but to keep a few critical concerns explicit:
 
-## Why Another Form Layer?
+- who owns the value tree
+- who owns field instances
+- whether linkage belongs in schema, core, or React
+- where business async behavior should live
 
-Form-heavy applications are difficult for a few recurring reasons:
+The current project standardizes on this split:
 
-- Field count grows quickly, and uncontrolled rerendering becomes expensive.
-- Field linkage logic mixes UI conditions, data conditions, and async side effects.
-- Input values often do not match the shape required by backend payloads.
-- Dynamic configuration requires a protocol that can describe both data and UI concerns.
+- `@alien-form/core` provides the headless runtime and exposes `createForm`, `IForm`, and `IField`
+- `@alien-form/react` is the main entry for React applications
+- `@alien-form/ui` only provides default component implementations and does not define protocol boundaries
 
-AlienForm answers those problems with a small set of runtime concepts:
+## Why This Layering Exists
 
-- `Form`: the top-level model that owns fields, values, errors, subscriptions, and schema setup.
-- `Field`: the reactive unit that stores value, display mode, interaction mode, validation state, and array helpers.
-- `Schema`: a JSON object that describes structure, UI registration keys, validation, and reactions.
+As forms become more complex, the hard part is not “having inputs”. The hard part is:
+
+- expressing linkage rules in a way that stays readable
+- decoupling form values from backend payload shapes
+- integrating requests, permissions, caching, and telemetry without polluting core
+- keeping docs, examples, and runtime behavior aligned over time
+
+AlienForm answers those problems with a constrained runtime model:
+
+- `createForm()` creates a long-lived `IForm` runtime object
+- `form.getField(path)` returns `IField`, which owns local field state
+- `SchemaField` applies schema to the form and renders the field tree recursively
+- internal form rules belong in `createForm({ setup })`, driven by `form.effect(...)`
+- remote data and business side effects are injected through `handlers` instead of being embedded into schema DSL
 
 ## What This Documentation Covers
 
-The documentation is split into two parts:
+The docs are organized into two layers:
 
-- `Guide`: concepts, runtime design, and learning path.
-- `API`: reference pages for the core model, React bindings, and the schema protocol.
+- `Guide`: problem framing, architectural boundaries, and recommended patterns
+- `API`: the real public contracts, method signatures, and behavioral boundaries
 
-This rewrite intentionally follows a reference-driven style similar to the official Formily documentation:
+When reading the Guide, the main goal is to learn where logic should live:
 
-- Guide pages explain the problem space and the design intent.
-- API pages describe constructor inputs, attributes, methods, and behavior boundaries.
+- schema describes structure and field-property derivation
+- `setup` hosts internal form rules
+- React handles view binding and external bridges
+- `handlers` host business async implementations
 
 ## Package Map
 
-| Package             | Responsibility                                               |
-| ------------------- | ------------------------------------------------------------ |
-| `@alien-form/core`  | form model, field model, validation, reactions, schema setup |
-| `@alien-form/react` | React context, hooks, schema rendering                       |
-| `@alien-form/ui`    | default widgets, layout containers, array renderers          |
+| Package | Responsibility |
+| --- | --- |
+| `@alien-form/core` | headless form runtime with `createForm`, field trees, rule execution, validation, and array support |
+| `@alien-form/react` | React context, hooks, `FormProvider`, and `SchemaField` |
+| `@alien-form/ui` | default widgets, layout components, and array presentation components |
 
 ## Recommended Reading Order
 
-1. Start from [Getting Started](./getting-started) to understand the minimum runtime setup.
-2. Continue with [Architecture](./architecture) to see how the layers fit together.
-3. Read [Schema Protocol](./schema-protocol) before reading the API reference.
-4. Move into [API / Core / Form](/api/core/form) and [API / Shared / Schema](/api/shared/schema) when you need exact signatures and runtime rules.
+1. Start with [Getting Started](./getting-started) and build the base mental model of `useCreateForm + FormProvider + SchemaField`.
+2. Continue with [Architecture](./architecture) to understand the `core / react / ui` boundary.
+3. Then read [Schema Protocol](./schema-protocol) and [x-reaction](./advanced/x-reaction) to understand field-property derivation.
+4. Move to [API / Core / Form](/api/core/form), [API / Core / Field](/api/core/field), and [API / React / Hooks](/api/react/hooks) when you need exact contracts.

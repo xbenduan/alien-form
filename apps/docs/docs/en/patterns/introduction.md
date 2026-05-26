@@ -1,13 +1,35 @@
 # Development Patterns
 
-Welcome to the Development Patterns guide. AlienForm is a highly flexible framework, which means there are often multiple ways to solve a problem.
+This section collects the recommended solutions for recurring enterprise form scenarios in AlienForm.
 
-To prevent "hacker code" and ensure consistency across large teams, this guide outlines the **standardized approaches** for common enterprise form scenarios.
+These pages are not presented as interchangeable options. They exist to standardize where logic should live so teams can keep a consistent implementation style across schema, `setup`, React, decorators, and business handlers.
 
-By following these patterns, your code will be:
+## How to Read This Section
 
-- Easier to read and maintain by other developers.
-- More performant (leveraging the core model rather than React re-renders).
-- Fully aligned with AlienForm's architectural philosophy.
+Recommended order:
 
-Please read through the specific patterns in the sidebar to learn how to handle permissions, mode switching, asynchronous data, edit initialization, composite field modeling, and more advanced enterprise scenarios such as spec and SKU sales matrices.
+1. Read the `Guide` first and build the base mental model of `core / react / ui` and `setup + form.effect(...)`.
+2. Then open the matching pattern for the business scenario you are solving.
+3. Return to the `API` pages when you need exact contracts or runtime behavior.
+
+## What These Patterns Solve
+
+Patterns mainly answer where business logic should be placed in scenarios such as:
+
+- edit initialization
+- mode switching
+- permissions and visibility
+- async data
+- composite field modeling
+- spec and SKU sales matrices
+
+Each page is organized to answer the same set of questions:
+
+- what the scenario is
+- what the anti-pattern looks like
+- where the recommended solution should live
+- why that solution matches the current runtime model
+
+## One-Sentence Rule
+
+Decide first whether the logic belongs to schema, `setup`, decorator, or business handler, and only then choose the concrete implementation.

@@ -5,13 +5,13 @@
     "activeMatch": "^/guide/"
   },
   {
-    "text": "Patterns",
-    "link": "/patterns/introduction",
-    "activeMatch": "^/patterns/"
-  },
-  {
     "text": "API",
     "link": "/api/core/form",
     "activeMatch": "^/api/"
+  },
+  {
+    "text": "Patterns",
+    "link": "/patterns/introduction",
+    "activeMatch": "^/patterns/"
   }
 ]

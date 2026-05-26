@@ -1,50 +1,103 @@
 # Architecture
 
-AlienForm is organized as a layered runtime.
+The key architectural question in AlienForm is not only how many layers exist, but where each kind of logic should live.
 
-## Layers
+Once that boundary is clear, many common questions answer themselves:
+
+- why internal linkage should not default to React `useEffect`
+- why `core` must not depend on React components
+- why async business work should not be embedded into schema
+
+## Three Layers
 
 ### Core Layer
 
-The core layer is framework-agnostic. It owns:
+`@alien-form/core` is the framework-agnostic headless runtime. It owns:
 
-- form creation
-- field creation
-- subscriptions
-- validation
-- value formatting
-- reaction execution
-- array row management
+- `createForm()` and the `IForm` runtime
+- field-tree creation and maintenance
+- `x-reaction`, `x-format`, and `x-validate` execution
+- reactive rules driven by `form.effect(...)`
+- validation, submission, and array-field behavior
+
+This layer knows nothing about React and never holds React component instances.
 
 ### React Layer
 
-The React layer consumes the core model and is responsible for:
+`@alien-form/react` connects the core runtime to React and mainly provides:
 
-- putting the form into context
-- resolving schema trees into React elements
-- subscribing components to field and form updates
-- mapping field state into component props
+- `useCreateForm`
+- `FormProvider`
+- `SchemaField`
+- hooks such as `useForm`, `useFieldState`, and `useFormEffect`
+
+Its job is binding and bridging, not owning internal business rules.
 
 ### UI Layer
 
-The UI layer provides optional components such as `Input`, `Select`, `FormItem`, `FormGrid`, `ArrayCards`, and `ArrayTable`. These components are not required by the core model, but they provide a default implementation for demos and product-facing forms.
+`@alien-form/ui` provides default component implementations such as:
 
-## Why This Split Matters
+- `Input`
+- `Select`
+- `FormItem`
+- `FormGrid`
+- `ArrayCards`
+- `ArrayTable`
 
-- Logic is not tied to React components.
-- Runtime behavior remains testable without rendering UI.
-- Schema parsing rules can stay consistent across render layers.
-- UI libraries can be swapped as long as they implement the component contract.
+These are only default presentation components. They can be replaced and do not define what the core runtime is allowed to do.
+
+## Where Logic Should Live
+
+### In schema
+
+Schema is the right place for:
+
+- field structure
+- titles, descriptions, components, and decorators
+- field-property derivation based on dependency values
+- value formatting rules
+- validation rules
+
+In short, schema explains how the current field behaves.
+
+### In `setup`
+
+`createForm({ setup })` is the right place for:
+
+- complex internal form linkage
+- derivation that depends on multiple fields
+- internal rules that do not fit cleanly into a single field's `x-reaction`
+- effects that need registration and cleanup within form lifecycle
+
+The standard pattern here is `setup + form.effect(...)`.
+
+### In React
+
+React is the right place for:
+
+- route params and page-level mode changes
+- external state synchronization
+- page effects, logging, and analytics
+- submit buttons, validate buttons, and other view-level bridges
+
+React is the host layer. It should not become the scheduler of internal form rules.
 
 ## Main Runtime Objects
 
-| Object         | Role                                             |
-| -------------- | ------------------------------------------------ |
-| `Form`         | owns the field registry and top-level state      |
-| `Field`        | stores state for a single path                   |
-| `SchemaField`  | renders a schema tree through React              |
-| `FormProvider` | connects form and component registries to the UI |
+| Object | Role |
+| --- | --- |
+| `IForm` | top-level runtime object that owns field registry, value tree, validation, and effect APIs |
+| `IField` | per-field runtime object with local state, array helpers, and field-level effects |
+| `FormProvider` | injects form and component registries into React context |
+| `SchemaField` | applies schema to the form and renders the field tree recursively |
 
-## Design Direction
+## Why This Split Matters
 
-The architecture is intentionally closer to a domain model than to a collection of hooks. The form is the primary runtime model, and React is a consumer of that model.
+- core stays testable without UI
+- React remains a binding layer instead of part of the model layer
+- UI can be swapped without changing protocol or runtime semantics
+- `setup` attaches directly to the reactive graph, which is more stable than patch-style React linkage
+
+## One-Sentence Summary
+
+The essence of AlienForm architecture is: schema handles field derivation, `setup` handles internal rules, React handles view bridges, and UI handles final presentation.

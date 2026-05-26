@@ -176,5 +176,6 @@ const valid = await validate();
 - 想拿实例：用 `useForm`
 - 想渲染整体状态：用 `useFormState`
 - 想渲染某个字段：用 `useFieldState`
-- 想处理复杂联动：优先 `useFormEffect` 或 `useFormWatch`
+- 想写表单内部复杂联动：优先 `createForm({ setup }) + form.effect(...)`
+- 想在 React 侧做桥接逻辑：用 `useFormEffect` 或 `useFormWatch`
 - 想桥接提交和校验按钮：用 `useFormSubmit`、`useFormValidate`

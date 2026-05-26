@@ -24,7 +24,7 @@ Array fields support:
 
 ## Identity Rules
 
-Removing a row reindexes subsequent row fields in place, which preserves field identity for later rows. This matters for subscriptions, validation state, and row-local metadata.
+Removing a row reindexes subsequent row fields in place, which preserves field identity for later rows. This matters for reactive effects, validation state, and row-local metadata.
 
 ## Renderer Contract
 

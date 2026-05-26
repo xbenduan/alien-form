@@ -1,16 +1,16 @@
-# Async Data Fetching
+# Async Data
 
-## The Scenario
+## Scenario
 
-A dropdown list (Select component) needs to fetch its options from an API. Furthermore, the options might need to change based on another field (e.g., selecting a Country fetches the corresponding States).
+A select-like field needs async options, and those options may depend on another field such as `country`.
 
-## The Anti-Pattern
+## Anti-Pattern
 
-Do not fetch data inside React components and try to pass it down as props.
+Do not fetch options inside React components and push them down as ad hoc props. That mixes UI bridging with business async behavior.
 
-## The Standard Pattern
+## Standard Pattern
 
-Use a `computed` reaction to fetch data and assign it to the field's `dataSource`.
+Use `x-reaction` to declare that `dataSource` is derived by a handler. The schema describes the dependency and the target property, while the handler performs the async work.
 
 ### 1. Define the Schema
 
@@ -45,7 +45,7 @@ Use a `computed` reaction to fetch data and assign it to the field's `dataSource
 
 ### 2. Implement the Handler
 
-Register the `fetchStates` function in the form configuration. The `computed` handler receives a context object rather than raw `deps`. It must return the new value for the target property, which in this case is an array of options.
+Register the `fetchStates` function in form configuration. The handler receives runtime context and returns the new `dataSource` value.
 
 ```ts
 const form = createForm({
@@ -62,8 +62,13 @@ const form = createForm({
 });
 ```
 
-### Why do it this way?
+## Why this is the recommended pattern
 
-- Data fetching logic is cleanly separated from the UI components.
-- The `dataSource` is automatically updated whenever the dependency (`country`) changes.
-- The React layer automatically re-renders the `Select` component when its `dataSource` is updated by the core model.
+- Schema stays declarative: it only references the dependency and handler name.
+- Async implementation stays in business handlers instead of leaking request details into schema.
+- `dataSource` updates automatically when its dependency changes.
+- React only renders the result and does not become the scheduler of async option loading.
+
+## One-Sentence Rule
+
+Let schema declare which field property is derived, and let handlers own the async implementation.

@@ -1,45 +1,60 @@
 # 简介
 
-AlienForm 是一款面向企业级应用的基于 Schema 驱动的表单解决方案。该项目被划分为无头（headless）核心层、React 绑定层以及 UI 组件层。其目标不仅是渲染表单，而是让字段状态、值转换、校验和响应式联动变得可预测。
+AlienForm 是一套面向企业场景的 Schema Form 运行时，目标不是只把表单“渲染出来”，而是把表单里的几个核心问题拆清楚：
 
-## 为什么还需要另一个表单方案？
+- 值树由谁管理
+- 字段实例由谁管理
+- 联动逻辑应该写在 schema、core 还是 React
+- 业务异步能力应该放在协议里还是放在外部 handler
 
-表单密集的应用程序通常会面临以下几个反复出现的问题：
+当前项目的基本范式是：
 
-- 字段数量增长迅速，不受控的重新渲染成本高昂。
-- 字段联动逻辑混合了 UI 条件、数据条件和异步副作用。
-- 输入值通常与后端接口要求的数据结构不匹配。
-- 动态配置需要一种能够同时描述数据和 UI 关注点的协议。
+- `@alien-form/core` 负责 headless runtime，公开 `createForm`、`IForm`、`IField`
+- `@alien-form/react` 负责 React 绑定，作为 React 项目的主要入口
+- `@alien-form/ui` 只提供默认组件实现，不定义协议边界
 
-AlienForm 通过一组精简的运行时概念来解决这些问题：
+## 为什么需要这套分层
 
-- `Form`：顶层模型，拥有字段、值、错误信息、订阅和 Schema 设置的控制权。
-- `Field`：响应式单元，存储值、显示模式、交互模式、校验状态和数组辅助方法。
-- `Schema`：一个 JSON 对象，描述数据结构、UI 注册键、校验规则和联动逻辑。
+表单复杂起来以后，真正困难的不是“有没有输入框”，而是：
+
+- 字段之间如何联动，而且逻辑还能被读懂
+- 表单值如何和接口值结构解耦
+- 异步请求、权限、缓存、埋点这些业务能力如何接入而不污染 core
+- 文档、示例和运行时心智能否长期保持一致
+
+AlienForm 选择用一套更收敛的模型来回答这些问题：
+
+- `createForm()` 创建长期存活的 `IForm` 运行时对象
+- `form.getField(path)` 返回 `IField`，字段实例负责局部状态
+- `SchemaField` 把 schema 应用到 form 并递归渲染字段树
+- 复杂内部规则优先放在 `createForm({ setup })` 中，通过 `form.effect(...)` 驱动
+- 远程数据和业务副作用通过 `handlers` 注入，而不是硬塞进 schema DSL
 
 ## 文档结构
 
-本文档分为两部分：
+本文档分为两层：
 
-- `指南 (Guide)`：概念、运行时设计和学习路径。
-- `API 参考`：核心模型、React 绑定和 Schema 协议的参考手册。
+- `Guide`：解释问题域、架构边界和推荐范式
+- `API`：描述真实公开契约、方法签名和行为边界
 
-本次重写有意采用了类似于官方 Formily 文档的“参考手册驱动”风格：
+阅读 Guide 时，重点是建立“逻辑归位”的判断标准：
 
-- 指南页面解释了问题域和设计意图。
-- API 页面描述了构造函数入参、属性、方法和行为边界。
+- schema 负责声明结构和字段属性派生
+- `setup` 负责表单内部规则
+- React 负责视图绑定和外部桥接
+- `handlers` 负责业务异步实现
 
 ## 包结构映射
 
-| 包名                | 职责                                        |
-| ------------------- | ------------------------------------------- |
-| `@alien-form/core`  | 表单模型、字段模型、校验、联动、Schema 设置 |
-| `@alien-form/react` | React 上下文、Hooks、Schema 渲染            |
-| `@alien-form/ui`    | 默认组件、布局容器、数组渲染器              |
+| 包名 | 职责 |
+| --- | --- |
+| `@alien-form/core` | headless form runtime，负责 `createForm`、字段树、规则执行、校验、数组能力 |
+| `@alien-form/react` | React 上下文、hooks、`FormProvider`、`SchemaField` |
+| `@alien-form/ui` | 默认组件、布局组件、数组表现层 |
 
 ## 推荐阅读顺序
 
-1. 从 [快速开始](./getting-started) 入手，了解最小化的运行时配置。
-2. 继续阅读 [架构设计](./architecture)，了解各个层是如何协同工作的。
-3. 在阅读 API 参考之前，请先阅读 [Schema 协议](./schema-protocol)。
-4. 当需要了解具体的签名和运行时规则时，请查阅 [API / Core / Form](/api/core/form) 和 [API / Shared / Schema](/api/shared/schema)。
+1. 先看 [快速开始](./getting-started)，建立 `useCreateForm + FormProvider + SchemaField` 的基本心智。
+2. 再看 [架构设计](./architecture)，理解 `core / react / ui` 三层边界。
+3. 接着读 [Schema 协议](./schema-protocol) 和 [x-reaction](./advanced/x-reaction)，理解字段属性派生模型。
+4. 需要查契约时，回到 [API / Core / Form](/api/core/form)、[API / Core / Field](/api/core/field)、[API / React / Hooks](/api/react/hooks)。

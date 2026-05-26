@@ -6,28 +6,31 @@ titleSuffix: Schema-Driven Form Engine
 hero:
   name: AlienForm
   text: Schema-Driven Form Engine
-  tagline: A reactive form solution built around a headless core, React bindings, and a JSON-schema-inspired protocol.
+  tagline: A form runtime built around a headless core, React bindings, and a constrained schema protocol for enterprise forms.
   image:
     src: /logo.svg
     alt: AlienForm
   actions:
     - theme: brand
-      text: Guide
-      link: /guide/introduction
+      text: Get Started
+      link: /guide/getting-started
+    - theme: alt
+      text: Architecture
+      link: /guide/architecture
     - theme: alt
       text: API Reference
       link: /api/core/form
     - theme: alt
-      text: 中文框架
-      link: /zh/
+      text: Patterns
+      link: /patterns/introduction
 
 features:
-  - title: Guide First
-    details: The guide explains why AlienForm exists, how the architecture is layered, and how the schema protocol maps to runtime behavior.
-  - title: API As Reference
-    details: The API section is organized by runtime objects and protocol surfaces, following a reference-manual style instead of tutorial prose.
-  - title: Schema As The Center
-    details: Form, Field, React bindings, and UI components all revolve around the same schema model and field state pipeline.
-  - title: English First Rewrite
-    details: This documentation pass rewrites the English content first and keeps the Chinese structure ready for the next translation phase.
+  - title: Headless Core
+    details: `@alien-form/core` exposes `createForm`, `IForm`, and `IField` so form logic stays independent from React and UI libraries.
+  - title: React As Binding
+    details: `@alien-form/react` is the main React entry, centered on `useCreateForm`, `FormProvider`, `SchemaField`, and bridge-oriented hooks.
+  - title: Schema With Boundaries
+    details: Schema handles structure and field-property derivation, while complex internal rules move into `setup + form.effect(...)`.
+  - title: Patterns For Teams
+    details: The Patterns section turns common enterprise scenarios into repeatable approaches such as edit initialization, mode switching, and SKU matrices.
 ---

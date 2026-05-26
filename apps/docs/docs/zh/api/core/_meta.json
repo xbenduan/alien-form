@@ -1,6 +1,6 @@
 [
-  { "type": "file", "name": "exports", "label": "导出项" },
   { "type": "file", "name": "form", "label": "表单" },
   { "type": "file", "name": "field", "label": "字段" },
-  { "type": "file", "name": "form-config", "label": "FormConfig" }
+  { "type": "file", "name": "form-config", "label": "FormConfig" },
+  { "type": "file", "name": "exports", "label": "导出项" }
 ]

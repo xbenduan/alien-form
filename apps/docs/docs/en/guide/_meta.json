@@ -1,9 +1,9 @@
 [
-  { "type": "file", "name": "introduction", "label": "Introduction" },
-  { "type": "file", "name": "why-alienform", "label": "Why AlienForm" },
-  { "type": "file", "name": "learning-path", "label": "Learning Path" },
   { "type": "file", "name": "getting-started", "label": "Getting Started" },
+  { "type": "file", "name": "introduction", "label": "Introduction" },
   { "type": "file", "name": "architecture", "label": "Architecture" },
+  { "type": "file", "name": "learning-path", "label": "Learning Path" },
+  { "type": "file", "name": "why-alienform", "label": "Why AlienForm" },
   { "type": "file", "name": "schema-protocol", "label": "Schema Protocol" },
   { "type": "file", "name": "array-fields", "label": "Array Fields" },
   { "type": "dir", "name": "advanced", "label": "Advanced Guide" }
