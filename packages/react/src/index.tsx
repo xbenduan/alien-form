@@ -1,16 +1,75 @@
 /**
- * @alien-form/react — React bindings
- * Enterprise schema protocol inspired by Formily
+ * @alien-form/react — React bindings for AlienForm
+ *
+ * Provides React hooks, context providers, and schema-driven rendering.
+ * React projects should depend ONLY on this package.
  */
 
-import { createContext, useContext, useMemo, useEffect, useState, useRef, Fragment } from "react";
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  useSyncExternalStore,
+  Fragment,
+} from "react";
 import type React from "react";
-import type { IForm, IField, IFormSchema } from "@alien-form/core";
+import type {
+  IForm,
+  IField,
+  IFormSchema,
+  IFieldSchema,
+  FormConfig,
+  FormError,
+  FieldError,
+  FieldMutableState,
+  EffectOptions,
+  EffectContext,
+} from "@alien-form/core";
+import { createForm } from "@alien-form/core";
+
+// ============================================================
+// Re-export core types so consumers don't need @alien-form/core
+// ============================================================
+
+export type {
+  IForm,
+  IField,
+  IFormSchema,
+  IFieldSchema,
+  FormConfig,
+  FormError,
+  FieldError,
+  FieldMutableState,
+  EffectOptions,
+  EffectContext,
+  ValidateStatus,
+  FieldDisplayTypes,
+  FieldPatternTypes,
+  Validator,
+  ValidatorFn,
+  ValidatorRule,
+  RuntimeRuleHandler,
+  RuntimeRuleHandlerContext,
+  DataSourcePolicy,
+  SchemaTypes,
+} from "@alien-form/core";
+
+export { createForm } from "@alien-form/core";
+
+// ============================================================
+// Component/Decorator Maps
+// ============================================================
 
 export type ComponentMap = Record<string, React.ComponentType<any>>;
 export type DecoratorMap = Record<string, React.ComponentType<any>>;
 
-// --- Contexts ---
+// ============================================================
+// Contexts
+// ============================================================
 
 interface FormContextValue {
   form: IForm;
@@ -21,14 +80,104 @@ interface FormContextValue {
 const FormContext = createContext<FormContextValue | null>(null);
 const FieldContext = createContext<IField | null>(null);
 
-// --- Hooks ---
+export { FormContext, FieldContext };
 
+// ============================================================
+// useCreateForm — creates and manages form lifecycle
+// ============================================================
+
+/**
+ * Creates an IForm instance managed by React lifecycle.
+ * The form is stable across renders and destroyed on unmount.
+ *
+ * @example
+ * const form = useCreateForm({ initialValues: { name: '' } });
+ */
+export function useCreateForm(config: FormConfig = {}): IForm {
+  const configRef = useRef(config);
+  configRef.current = config;
+
+  const formRef = useRef<IForm | null>(null);
+  if (!formRef.current) {
+    formRef.current = createForm(configRef.current);
+  }
+
+  useEffect(() => {
+    return () => {
+      formRef.current?.destroy();
+      formRef.current = null;
+    };
+  }, []);
+
+  return formRef.current;
+}
+
+// ============================================================
+// useForm — access form from context
+// ============================================================
+
+/**
+ * Access the IForm instance from the nearest FormProvider.
+ * Throws if used outside FormProvider.
+ */
 export function useForm(): IForm {
   const ctx = useContext(FormContext);
-  if (!ctx) throw new Error("useForm must be used within FormProvider");
+  if (!ctx) throw new Error("[alien-form] useForm must be used within <FormProvider>");
   return ctx.form;
 }
 
+// ============================================================
+// useFormState — reactive form-level state
+// ============================================================
+
+export interface FormState {
+  values: Record<string, any>;
+  initialValues: Record<string, any>;
+  valid: boolean;
+  invalid: boolean;
+  submitting: boolean;
+  errors: FieldError[];
+}
+
+/**
+ * Subscribe to form-level state changes (values, validity, errors).
+ * Triggers re-render only when form state changes.
+ */
+export function useFormState(): FormState {
+  const form = useForm();
+
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => form.subscribe(onStoreChange),
+    [form],
+  );
+
+  const getSnapshot = useCallback(
+    () => ({
+      values: form.values,
+      initialValues: form.initialValues,
+      valid: form.valid,
+      invalid: form.invalid,
+      submitting: form.submitting,
+      errors: form.errors,
+    }),
+    [form],
+  );
+
+  // Use a version counter to trigger useSyncExternalStore
+  const [, forceRender] = useState(0);
+  useEffect(() => form.subscribe(() => forceRender((v) => v + 1)), [form]);
+
+  return getSnapshot();
+}
+
+// ============================================================
+// useField — access a field by path with reactive subscription
+// ============================================================
+
+/**
+ * Access and subscribe to a field by path. Returns null if field doesn't exist.
+ * If no path is provided, inherits from the nearest FieldContext.
+ */
 export function useField(path?: string): IField | null {
   const ctx = useContext(FormContext);
   const parentField = useContext(FieldContext);
@@ -36,35 +185,83 @@ export function useField(path?: string): IField | null {
   const resolvedPath = path || parentField?.path;
   const field = ctx && resolvedPath ? ctx.form.getField(resolvedPath) || null : null;
 
-  // Subscribe to field changes (hooks must run unconditionally).
   const [, forceRender] = useState(0);
   useEffect(() => {
     if (!field) return;
     return field.subscribe(() => forceRender((v) => v + 1));
   }, [field]);
 
-  if (!ctx) return null;
   return field;
 }
 
-export function useFormState() {
-  const form = useForm();
-  const [, forceRender] = useState(0);
+// ============================================================
+// useFieldState — fine-grained field state access
+// ============================================================
 
-  useEffect(() => {
-    return form.subscribe(() => forceRender((v) => v + 1));
-  }, [form]);
+export interface FieldState {
+  value: any;
+  display: string;
+  pattern: string;
+  visible: boolean;
+  hidden: boolean;
+  disabled: boolean;
+  readOnly: boolean;
+  readPretty: boolean;
+  editable: boolean;
+  required: boolean;
+  errors: FieldError[];
+  warnings: FieldError[];
+  validateStatus: string;
+  title: string;
+  description: string;
+  loading: boolean;
+  dataSource: Array<{ label: string; value: any }>;
+}
 
+/**
+ * Returns a snapshot of the field's current state. Triggers re-render on change.
+ */
+export function useFieldState(path?: string): FieldState | null {
+  const field = useField(path);
+  if (!field) return null;
   return {
-    values: form.values,
-    valid: form.valid,
-    invalid: form.invalid,
-    submitting: form.submitting,
-    errors: form.errors,
+    value: field.value,
+    display: field.display,
+    pattern: field.pattern,
+    visible: field.visible,
+    hidden: field.hidden,
+    disabled: field.disabled,
+    readOnly: field.readOnly,
+    readPretty: field.readPretty,
+    editable: field.editable,
+    required: field.required,
+    errors: field.errors,
+    warnings: field.warnings,
+    validateStatus: field.validateStatus,
+    title: field.title,
+    description: field.description,
+    loading: field.loading,
+    dataSource: field.dataSource,
   };
 }
 
-export function useArrayField(path: string) {
+// ============================================================
+// useArrayField — array field operations
+// ============================================================
+
+export interface ArrayFieldAPI {
+  field: IField | null;
+  items: IField[][];
+  push: (initialValues?: Record<string, any>) => void;
+  remove: (index: number) => void;
+  moveUp: (index: number) => void;
+  moveDown: (index: number) => void;
+}
+
+/**
+ * Access array field with convenience mutation methods.
+ */
+export function useArrayField(path: string): ArrayFieldAPI {
   const field = useField(path);
 
   return {
@@ -77,7 +274,134 @@ export function useArrayField(path: string) {
   };
 }
 
-// --- FormProvider ---
+// ============================================================
+// useFormEffect — declarative form-level effects
+// ============================================================
+
+/**
+ * Run an effect that re-executes when its reactive dependencies change.
+ * Automatically cleaned up on unmount.
+ *
+ * @example
+ * useFormEffect((form) => {
+ *   console.log('values changed:', form.values);
+ * });
+ */
+export function useFormEffect(
+  runner: (form: IForm, ctx: EffectContext) => void | (() => void),
+): void {
+  const form = useForm();
+  const runnerRef = useRef(runner);
+  runnerRef.current = runner;
+
+  useEffect(() => {
+    return form.effect((f, ctx) => runnerRef.current(f, ctx));
+  }, [form]);
+}
+
+/**
+ * Run a selector-based effect that fires when the selected value changes.
+ *
+ * @example
+ * useFormWatch(
+ *   (form) => form.getField('country')?.value,
+ *   (country, prev) => console.log(`Country changed: ${prev} -> ${country}`)
+ * );
+ */
+export function useFormWatch<T>(
+  selector: (form: IForm) => T,
+  listener: (value: T, prevValue: T | undefined, ctx: EffectContext) => void,
+  options?: EffectOptions<T>,
+): void {
+  const form = useForm();
+  const selectorRef = useRef(selector);
+  const listenerRef = useRef(listener);
+  selectorRef.current = selector;
+  listenerRef.current = listener;
+
+  useEffect(() => {
+    return form.effect(
+      (f) => selectorRef.current(f),
+      (val, prev, ctx) => listenerRef.current(val, prev, ctx),
+      options,
+    );
+  }, [form, options?.immediate, options?.equals]);
+}
+
+// ============================================================
+// useFormErrors — subscribe to form-level error events
+// ============================================================
+
+/**
+ * Subscribe to non-fatal runtime errors from reactions/format/validators.
+ */
+export function useFormErrors(listener: (error: FormError) => void): void {
+  const form = useForm();
+  const listenerRef = useRef(listener);
+  listenerRef.current = listener;
+
+  useEffect(() => {
+    return form.onError((err) => listenerRef.current(err));
+  }, [form]);
+}
+
+// ============================================================
+// useFormSubmit — submit helper with loading state
+// ============================================================
+
+export interface SubmitState<T = any> {
+  submit: (onSubmit?: (values: Record<string, any>) => T | Promise<T>) => Promise<T>;
+  submitting: boolean;
+}
+
+/**
+ * Provides a submit function and submitting state.
+ */
+export function useFormSubmit<T = any>(): SubmitState<T> {
+  const form = useForm();
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = useCallback(
+    async (onSubmit?: (values: Record<string, any>) => T | Promise<T>) => {
+      setSubmitting(true);
+      try {
+        return await form.submit(onSubmit);
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [form],
+  );
+
+  return { submit, submitting };
+}
+
+// ============================================================
+// useFormValidate — validate helper
+// ============================================================
+
+/**
+ * Provides a validate function and validation result state.
+ */
+export function useFormValidate() {
+  const form = useForm();
+  const [validating, setValidating] = useState(false);
+
+  const validate = useCallback(async () => {
+    setValidating(true);
+    try {
+      return await form.validate();
+    } finally {
+      setValidating(false);
+    }
+  }, [form]);
+
+  return { validate, validating };
+}
+
+// ============================================================
+// FormProvider
+// ============================================================
 
 interface FormProviderProps {
   form: IForm;
@@ -106,7 +430,9 @@ export const FormProvider: React.FC<FormProviderProps> = ({
   return <FormContext.Provider value={value}>{children}</FormContext.Provider>;
 };
 
-// --- SchemaField: renders a form from schema ---
+// ============================================================
+// SchemaField — schema-driven rendering
+// ============================================================
 
 interface SchemaFieldProps {
   schema: IFormSchema;
@@ -114,14 +440,11 @@ interface SchemaFieldProps {
 
 export const SchemaField: React.FC<SchemaFieldProps> = ({ schema }) => {
   const ctx = useContext(FormContext);
-  if (!ctx) throw new Error("SchemaField must be used within FormProvider");
+  if (!ctx) throw new Error("[alien-form] SchemaField must be used within <FormProvider>");
 
   const { form, components, decorators } = ctx;
   const resolvedSchema = useMemo(() => resolveSchemaRefs(schema), [schema]);
 
-  // Initialize or replace fields when schema/form changes. setSchema rebuilds
-  // the field registry; force a render afterwards so the first paint includes
-  // the freshly created fields rather than waiting for an unrelated update.
   const [, forceRender] = useState(0);
   const lastAppliedSchemaRef = useRef<{ form: IForm | null; schema: IFormSchema | null }>({
     form: null,
@@ -159,6 +482,10 @@ export const SchemaField: React.FC<SchemaFieldProps> = ({ schema }) => {
     </>
   );
 };
+
+// ============================================================
+// Internal Rendering Components
+// ============================================================
 
 interface SchemaFieldItemProps {
   path: string;
@@ -448,8 +775,7 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({ field, components, decora
     componentProps.dataSource = field.dataSource;
   }
 
-  // readPretty mode: prefer a registered ReadPretty variant, fall back to the
-  // base component below.
+  // readPretty mode: prefer a registered ReadPretty variant
   if (field.readPretty) {
     const PreviewComponent =
       components[`${field.component}.ReadPretty`] || components[`ReadPretty.${field.component}`];
@@ -471,7 +797,9 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({ field, components, decora
   );
 };
 
-// --- Helpers ---
+// ============================================================
+// Helpers
+// ============================================================
 
 function getSortedEntries(properties: Record<string, any>): [string, any][] {
   return Object.entries(properties).sort(([, a], [, b]) => {
@@ -576,8 +904,6 @@ function areDeepEqual(a: any, b: any, seen: WeakMap<object, object> = new WeakMa
   return true;
 }
 
-// Re-export contexts for custom components
-export { FieldContext, FormContext };
-
-// Suppress unused import warning when toolchain inlines Fragment elsewhere
+// Suppress unused import warning
 void Fragment;
+void useSyncExternalStore;

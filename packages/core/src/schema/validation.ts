@@ -1,18 +1,16 @@
 /**
- * @alien-form/core — Field validation and x-validate result normalization.
+ * @alien-form/core — Schema validation pure functions.
  *
- * This module is the single home for built-in validator execution. Field keeps
- * only validation orchestration, while rule details live here.
+ * Zero alien-signals dependency. All functions are pure and synchronous.
  */
 
 import type {
   FieldError,
-  IField,
   IFieldSchema,
   Validator,
-  ValidatorFn,
+  ValidatorFormats,
   ValidatorRule,
-} from "../types";
+} from "./types";
 
 export function isEmptyValue(value: any): boolean {
   return (
@@ -62,39 +60,12 @@ export function schemaValidators(schema: IFieldSchema): ValidatorRule[] {
   return Object.keys(rule).length > 0 ? [rule] : [];
 }
 
-export async function runValidator(
-  validator: Validator,
-  value: any,
-  field: IField,
-): Promise<FieldError[] | null> {
-  if (typeof validator === "function") {
-    const msg = await (validator as ValidatorFn)(value, field);
-    return msg ? [{ message: msg }] : null;
-  }
-
-  const rules = Array.isArray(validator) ? validator : [validator];
+/**
+ * Core synchronous rule application logic. Shared between async `runValidator`
+ * and `normalizeValidationErrors` (which runs inline rules synchronously).
+ */
+export function applyValidatorRule(rule: ValidatorRule, value: any): FieldError[] {
   const errors: FieldError[] = [];
-
-  for (const rule of rules) {
-    const ruleErrors = await runValidatorRule(rule as ValidatorRule, value, field);
-    if (ruleErrors.length > 0) errors.push(...ruleErrors);
-  }
-
-  return errors.length > 0 ? errors : null;
-}
-
-export async function runValidatorRule(
-  rule: ValidatorRule,
-  value: any,
-  field?: IField,
-): Promise<FieldError[]> {
-  const errors: FieldError[] = [];
-
-  if (rule.validator && field) {
-    const msg = await rule.validator(value, field);
-    if (msg) errors.push({ message: msg });
-    return errors;
-  }
 
   if (rule.required && isEmptyValue(value)) {
     errors.push({ message: rule.message || "Field is required", type: "required" });
@@ -171,8 +142,7 @@ export async function runValidatorRule(
 
 /**
  * Normalize a free-form x-validate result (boolean | string | object | array)
- * into a flat FieldError list. Treats `undefined | null | true` as passed, and
- * `false` as a generic failure.
+ * into a flat FieldError list.
  */
 export function normalizeValidationErrors(result: any): FieldError[] {
   if (result === undefined || result === null || result === true) return [];
@@ -198,7 +168,7 @@ export function normalizeValidationErrors(result: any): FieldError[] {
         errors.push({ message: fieldError.message, type: fieldError.type || "x-validate" });
         continue;
       }
-      const validatorErrors = runValidatorRuleSync(item as ValidatorRule, (item as any).value);
+      const validatorErrors = applyValidatorRule(item as ValidatorRule, (item as any).value);
       if (validatorErrors.length > 0) errors.push(...validatorErrors);
       else if ("message" in fieldError) {
         errors.push({ message: fieldError.message, type: fieldError.type || "x-validate" });
@@ -209,83 +179,7 @@ export function normalizeValidationErrors(result: any): FieldError[] {
   return errors;
 }
 
-function runValidatorRuleSync(rule: ValidatorRule, value: any): FieldError[] {
-  const errors: FieldError[] = [];
-
-  if (rule.required && isEmptyValue(value)) {
-    errors.push({ message: rule.message || "Field is required", type: "required" });
-  }
-  if (rule.min !== undefined && typeof value === "number" && value < rule.min) {
-    errors.push({ message: rule.message || `Must be >= ${rule.min}`, type: "min" });
-  }
-  if (rule.max !== undefined && typeof value === "number" && value > rule.max) {
-    errors.push({ message: rule.message || `Must be <= ${rule.max}`, type: "max" });
-  }
-  if (
-    rule.exclusiveMinimum !== undefined &&
-    typeof value === "number" &&
-    value <= rule.exclusiveMinimum
-  ) {
-    errors.push({
-      message: rule.message || `Must be > ${rule.exclusiveMinimum}`,
-      type: "exclusiveMinimum",
-    });
-  }
-  if (
-    rule.exclusiveMaximum !== undefined &&
-    typeof value === "number" &&
-    value >= rule.exclusiveMaximum
-  ) {
-    errors.push({
-      message: rule.message || `Must be < ${rule.exclusiveMaximum}`,
-      type: "exclusiveMaximum",
-    });
-  }
-  if (rule.multipleOf !== undefined && typeof value === "number" && value % rule.multipleOf !== 0) {
-    errors.push({
-      message: rule.message || `Must be a multiple of ${rule.multipleOf}`,
-      type: "multipleOf",
-    });
-  }
-  if (rule.minLength !== undefined && typeof value === "string" && value.length < rule.minLength) {
-    errors.push({ message: rule.message || `Min length: ${rule.minLength}`, type: "minLength" });
-  }
-  if (rule.maxLength !== undefined && typeof value === "string" && value.length > rule.maxLength) {
-    errors.push({ message: rule.message || `Max length: ${rule.maxLength}`, type: "maxLength" });
-  }
-  if (rule.minItems !== undefined && Array.isArray(value) && value.length < rule.minItems) {
-    errors.push({ message: rule.message || `Minimum ${rule.minItems} items`, type: "minItems" });
-  }
-  if (rule.maxItems !== undefined && Array.isArray(value) && value.length > rule.maxItems) {
-    errors.push({ message: rule.message || `Maximum ${rule.maxItems} items`, type: "maxItems" });
-  }
-  if (rule.uniqueItems && Array.isArray(value)) {
-    const unique = new Set(value.map((item: any) => JSON.stringify(item)));
-    if (unique.size !== value.length) {
-      errors.push({ message: rule.message || "Items must be unique", type: "uniqueItems" });
-    }
-  }
-  if (rule.const !== undefined && value !== rule.const) {
-    errors.push({
-      message: rule.message || `Must equal ${JSON.stringify(rule.const)}`,
-      type: "const",
-    });
-  }
-  if (rule.pattern) {
-    const regex = typeof rule.pattern === "string" ? new RegExp(rule.pattern) : rule.pattern;
-    if (value && !regex.test(String(value))) {
-      errors.push({ message: rule.message || "Invalid format", type: "pattern" });
-    }
-  }
-  if (rule.format && value) {
-    const formatError = validateFormat(rule.format, value, rule.message);
-    if (formatError) errors.push(formatError);
-  }
-
-  return errors;
-}
-
-function validateFormat(format: string, value: any, message?: string): FieldError | null {
+export function validateFormat(format: string, value: any, message?: string): FieldError | null {
   const str = String(value);
   switch (format) {
     case "email":

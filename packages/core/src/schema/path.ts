@@ -5,7 +5,7 @@
  * denote array indices. These helpers operate on that convention.
  */
 
-import type { IFieldSchema, IFormSchema } from "../types";
+import type { IFieldSchema, IFormSchema } from "./types";
 
 export function getDeepValue(obj: Record<string, any> | null | undefined, path: string): any {
   if (obj === undefined || obj === null) return undefined;

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createForm } from "../index";
-import type { IFormSchema } from "../types";
+import type { IFormSchema } from "../schema/types";
 
 const basicSchema: IFormSchema = {
   type: "object",
@@ -432,7 +432,7 @@ describe("@alien-form/core", () => {
 
     form.getField("specs.0.values.0.label")?.setValue("月光白");
 
-    expect(snapshots.at(-1)).toEqual([
+    expect(snapshots[snapshots.length - 1]).toEqual([
       {
         name: "颜色",
         values: [{ label: "月光白", image: "black.png" }],

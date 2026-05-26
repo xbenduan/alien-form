@@ -2,42 +2,29 @@
  * @alien-form/core — Main entry point
  */
 
-// Form & Field
-export { createForm, Form } from "./form/index";
-export { Field } from "./field/index";
+// Form
+export { createForm } from "./engine/form/index";
 
-// Types
+// Types — only expose what consumers actually need
 export type {
   IForm,
   IField,
   IFormSchema,
   IFieldSchema,
   FieldError,
-  FieldValue,
-  FieldState,
-  ValidateStatus,
   FieldMutableState,
-  SchemaXRuleType,
-  SchemaReactionKey,
-  SchemaXRule,
-  SchemaRule,
-  SchemaRuleSet,
-  SchemaReactions,
-  SchemaFormat,
-  SchemaXValidate,
-  DataSourcePolicy,
-  RuntimeRuleHandlerContext,
-  RuntimeRuleHandler,
-  SchemaTypes,
-  FieldPatternTypes,
+  ValidateStatus,
   FieldDisplayTypes,
-  ValidatorFormats,
+  FieldPatternTypes,
   Validator,
   ValidatorFn,
   ValidatorRule,
   FormConfig,
   FormError,
-  FormErrorScope,
   EffectOptions,
   EffectContext,
-} from "./types";
+  RuntimeRuleHandler,
+  RuntimeRuleHandlerContext,
+  DataSourcePolicy,
+  SchemaTypes,
+} from "./schema/types";

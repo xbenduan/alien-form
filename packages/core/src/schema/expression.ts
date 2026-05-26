@@ -162,7 +162,7 @@ function tokenize(input: string): Token[] {
       continue;
     }
 
-    if (PUNCTUATORS.has(char)) {
+    if (PUNCTUATORS.has(char) && !(char === "." && isDigit(input[index + 1]))) {
       tokens.push({ type: "punctuator", value: char, index });
       index += 1;
       continue;

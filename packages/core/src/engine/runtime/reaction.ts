@@ -12,9 +12,9 @@ import type {
   SchemaReactionKey,
   RuntimeRuleHandler,
   FormError,
-} from "../types";
-import { evaluateExpression } from "./expression";
-import { isPromiseLike } from "../utils/type";
+} from "../../schema/types";
+import { evaluateExpression } from "../../schema/expression";
+import { isPromiseLike } from "../../utils";
 import { normalizeDataSource } from "../field/validation";
 
 export type RuleKind = "x-reaction" | "x-format" | "x-validate";
@@ -24,7 +24,9 @@ export interface RuleRuntimeHost {
   scope: Record<string, any>;
   handlers?: Record<string, RuntimeRuleHandler>;
   fields: Map<string, IField>;
-  rawValues(): Record<string, any>;
+  getField(path: string): IField | undefined;
+  getValuesSnapshot(): Record<string, any>;
+  getRawValuesSnapshot(): Record<string, any>;
   beginFieldLoading(field: IField): void;
   endFieldLoading(field: IField): void;
   emitError(error: FormError): void;
@@ -44,7 +46,7 @@ export function buildReactionScope(
   return {
     $self: selfField,
     $form: host.form,
-    $values: host.form.values,
+    $values: host.getValuesSnapshot(),
     $deps: depsArray.length > 0 ? depsArray : deps,
     $dependencies: deps,
     $value: selfField.value,
@@ -60,7 +62,7 @@ export function buildValueScope(
   return {
     $self: field,
     $form: host.form,
-    $values: host.rawValues(),
+    $values: host.getRawValuesSnapshot(),
     $deps: {},
     $dependencies: {},
     $value: value,
@@ -81,7 +83,7 @@ export function resolveDependencies(
   if (Array.isArray(dependencies)) {
     for (const depPath of dependencies) {
       const resolvedPath = resolveFieldPath(depPath, selfPath);
-      const depField = host.fields.get(resolvedPath);
+      const depField = host.getField(resolvedPath);
       const value = depField ? depField.value : undefined;
       depsArray.push(value);
       deps[depPath] = value;
@@ -89,7 +91,7 @@ export function resolveDependencies(
   } else {
     for (const [alias, depPath] of Object.entries(dependencies)) {
       const resolvedPath = resolveFieldPath(depPath, selfPath);
-      const depField = host.fields.get(resolvedPath);
+      const depField = host.getField(resolvedPath);
       const value = depField ? depField.value : undefined;
       deps[alias] = value;
     }
@@ -139,7 +141,7 @@ export function resolveXRuleValue(
       const result = handler({
         field: field as IField,
         form: host.form,
-        values: host.rawValues(),
+        values: host.getRawValuesSnapshot(),
         deps: scope.$dependencies,
         dependencies: scope.$dependencies,
         scope,

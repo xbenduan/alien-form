@@ -1,6 +1,6 @@
 /** Schema-level pure helpers. */
 
-import type { IFieldSchema } from "../types";
+import type { IFieldSchema } from "./types";
 
 export function getArrayItemSchema(schema: IFieldSchema): IFieldSchema | null {
   if (schema.type !== "array") return null;
