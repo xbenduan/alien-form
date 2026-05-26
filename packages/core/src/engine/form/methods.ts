@@ -1,4 +1,4 @@
-import { computed, effect, effectScope, endBatch, startBatch } from "alien-signals";
+import { computed, effect, endBatch, startBatch } from "alien-signals";
 import { createField, getFieldInternals } from "../field/index";
 import { normalizeValidationErrors } from "../field/validation";
 import { buildValueScope, resolveDependencies, resolveXRuleValue, runXRuleListSync, type RuleRuntimeHost } from "../runtime/reaction";
@@ -23,16 +23,40 @@ import type { FormInternals } from "./internals";
 // ─── Internal helpers ────────────────────────────────────────────────────────
 
 function invalidateComputed(internals: FormInternals): void {
-  // Bump version signal to invalidate computed values
   internals.version(internals.version() + 1);
+}
+
+/**
+ * Determine if a path is a child of an array field.
+ * Uses a Set of known array field paths for O(depth) lookup instead of
+ * iterating all fields.
+ */
+function isArrayChildPath(arrayFieldPaths: Set<string>, path: string): boolean {
+  const parts = path.split(".");
+  for (let i = 1; i < parts.length; i++) {
+    const parentPath = parts.slice(0, i).join(".");
+    if (arrayFieldPaths.has(parentPath)) return true;
+  }
+  return false;
+}
+
+/** Build a set of all array field paths for fast child-path lookups. */
+function getArrayFieldPaths(fields: Map<string, IField>): Set<string> {
+  const set = new Set<string>();
+  for (const [path, field] of fields) {
+    if (field.isArrayField) set.add(path);
+  }
+  return set;
 }
 
 function collectFormValues(form: InternalForm, mode: "output" | "raw"): Record<string, any> {
   const internals = form._getInternals();
   const result: Record<string, any> = {};
+  const arrayPaths = getArrayFieldPaths(internals.fields);
+
   for (const [path, field] of internals.fields) {
     if (!field.visible) continue;
-    if (isArrayChildPath(form, path)) continue;
+    if (isArrayChildPath(arrayPaths, path)) continue;
     if (field.component && isVoidField(path, internals.schema)) continue;
     setDeepValue(
       result,
@@ -173,17 +197,6 @@ function formatFieldValue(
   }
 }
 
-function isArrayChildPath(form: InternalForm, path: string): boolean {
-  const { fields } = form._getInternals();
-  const parts = path.split(".");
-  for (let index = 1; index < parts.length; index += 1) {
-    const parentPath = parts.slice(0, index).join(".");
-    const parentField = fields.get(parentPath);
-    if (parentField?.isArrayField) return true;
-  }
-  return false;
-}
-
 function createFieldsFromSchema(
   form: InternalForm,
   prefix: string,
@@ -221,7 +234,7 @@ function createFieldTree(
       if ((itemSchema as IFieldSchema).properties) {
         const itemProperties = (itemSchema as IFieldSchema).properties!;
         const sortedEntries = Object.entries(itemProperties).sort(([, a], [, b]) => (a.order ?? Infinity) - (b.order ?? Infinity));
-        for (let index = 0; index < initialValue.length; index += 1) {
+        for (let index = 0; index < initialValue.length; index++) {
           for (const [childKey, childSchema] of sortedEntries) {
             createFieldTree(
               form,
@@ -233,7 +246,7 @@ function createFieldTree(
           }
         }
       } else {
-        for (let index = 0; index < initialValue.length; index += 1) {
+        for (let index = 0; index < initialValue.length; index++) {
           createFieldTree(form, `${path}.${index}`, itemSchema as IFieldSchema, initialValue[index]);
         }
       }
@@ -441,13 +454,16 @@ export function createFormMethods(
 
       startBatch();
       try {
+        // Sort: array fields first (by path length ascending) so parent arrays
+        // are populated before their children are iterated.
         const entries = Array.from(internals.fields.entries()).sort(([pathA, fieldA], [pathB, fieldB]) => {
           if (fieldA.isArrayField !== fieldB.isArrayField) return fieldA.isArrayField ? -1 : 1;
           return pathA.length - pathB.length;
         });
 
+        const arrayPaths = getArrayFieldPaths(internals.fields);
         for (const [path, field] of entries) {
-          if (isArrayChildPath(form, path)) continue;
+          if (isArrayChildPath(arrayPaths, path)) continue;
           const value = getDeepValue(values, path);
           if (value !== undefined) field.setValue(formatFieldValue(form, path, value, "input"));
         }
@@ -492,18 +508,12 @@ export function createFormMethods(
       if (internals.destroyed) return;
       internals.destroyed = true;
 
-      // Dispose all tracked effects
       const disposers = getEffectDisposers(internals);
       for (const dispose of Array.from(disposers)) {
-        try {
-          dispose();
-        } catch (error) {
-          console.error("[alien-form] destroy disposer threw:", error);
-        }
+        try { dispose(); } catch (e) { console.error("[alien-form] destroy disposer threw:", e); }
       }
       disposers.clear();
 
-      // Dispose scope if present
       if (internals.scopeDispose) {
         internals.scopeDispose();
         internals.scopeDispose = null;
@@ -513,12 +523,11 @@ export function createFormMethods(
       internals.errorListeners.clear();
     },
     subscribe(listener) {
-      const dispose = effect(() => {
+      return effect(() => {
         internals.version();
         internals.fieldRegistryVersion();
         listener();
       });
-      return dispose;
     },
     effect<T>(
       runnerOrSelector:

@@ -21,6 +21,10 @@ export function isPromiseLike<T = any>(value: any): value is Promise<T> {
 /**
  * Execute a reader function without subscribing to any reactive dependencies.
  * Useful for snapshotting values without creating tracking links.
+ *
+ * NOTE: This uses alien-signals' low-level getActiveSub/setActiveSub because
+ * the library does not expose an official `untracked()` API. If one is added
+ * in the future, this helper should be replaced.
  */
 export function readUntracked<T>(reader: () => T): T {
   const previous = getActiveSub();

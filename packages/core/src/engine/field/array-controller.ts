@@ -73,31 +73,34 @@ export function createArrayFieldController(options: ArrayFieldControllerOptions)
     return host.getField(path);
   };
 
-  const deleteRowFields = (host: ArrayFieldHost, index: number | string) => {
+  /** Collect all field paths belonging to a given row index. */
+  const getRowPaths = (host: ArrayFieldHost, index: number | string): string[] => {
     const rowPrefix = `${options.path}.${index}`;
     const childPrefix = `${rowPrefix}.`;
-    Array.from(host.fields.keys()).forEach((fieldPath) => {
-      if (fieldPath === rowPrefix || fieldPath.startsWith(childPrefix)) {
-        host.fields.delete(fieldPath);
-      }
-    });
+    return Array.from(host.fields.keys()).filter(
+      (p) => p === rowPrefix || p.startsWith(childPrefix),
+    );
+  };
+
+  const deleteRowFields = (host: ArrayFieldHost, index: number | string) => {
+    for (const p of getRowPaths(host, index)) {
+      host.fields.delete(p);
+    }
   };
 
   const renameRow = (host: ArrayFieldHost, fromIndex: number | string, toIndex: number | string) => {
     const fromPrefix = `${options.path}.${fromIndex}`;
     const toPrefix = `${options.path}.${toIndex}`;
-    const movingPaths = Array.from(host.fields.keys()).filter(
-      (fieldPath) => fieldPath === fromPrefix || fieldPath.startsWith(`${fromPrefix}.`),
-    );
+    const paths = getRowPaths(host, fromIndex);
 
-    movingPaths.forEach((fromPath) => {
+    for (const fromPath of paths) {
       const toPath = toPrefix + fromPath.slice(fromPrefix.length);
-      const moving = host.fields.get(fromPath) as RenameableField | undefined;
-      if (!moving) return;
+      const field = host.fields.get(fromPath) as RenameableField | undefined;
+      if (!field) continue;
       host.fields.delete(fromPath);
-      moving._renamePath?.(toPath);
-      host.fields.set(toPath, moving);
-    });
+      field._renamePath?.(toPath);
+      host.fields.set(toPath, field);
+    }
   };
 
   const collectObjectRow = (
@@ -162,6 +165,10 @@ export function createArrayFieldController(options: ArrayFieldControllerOptions)
     ensureField(host, `${options.path}.${index}`, { ...itemSchema }, rowValue)?.setValue(rowValue);
   };
 
+  /**
+   * Swap two rows by directly exchanging their field entries in the Map.
+   * Single-pass: collect both sets of paths, delete them, rename, re-insert.
+   */
   const swapRows = (indexA: number, indexB: number) => {
     const host = options.getHost();
     const itemSchema = options.itemSchema;
@@ -169,10 +176,37 @@ export function createArrayFieldController(options: ArrayFieldControllerOptions)
     if (!host || !itemSchema || indexA === indexB) return false;
     if (indexA < 0 || indexB < 0 || indexA >= rowCount || indexB >= rowCount) return false;
 
-    const tempIndex = `__swap__${indexA}_${indexB}_${Date.now()}`;
-    renameRow(host, indexA, tempIndex);
-    renameRow(host, indexB, indexA);
-    renameRow(host, tempIndex, indexB);
+    const prefixA = `${options.path}.${indexA}`;
+    const prefixB = `${options.path}.${indexB}`;
+
+    // Collect entries for both rows
+    const entriesA: [string, IField][] = [];
+    const entriesB: [string, IField][] = [];
+
+    for (const [path, field] of host.fields) {
+      if (path === prefixA || path.startsWith(`${prefixA}.`)) {
+        entriesA.push([path, field]);
+      } else if (path === prefixB || path.startsWith(`${prefixB}.`)) {
+        entriesB.push([path, field]);
+      }
+    }
+
+    // Remove both sets
+    for (const [path] of entriesA) host.fields.delete(path);
+    for (const [path] of entriesB) host.fields.delete(path);
+
+    // Re-insert with swapped prefixes
+    for (const [fromPath, field] of entriesA) {
+      const toPath = prefixB + fromPath.slice(prefixA.length);
+      (field as RenameableField)._renamePath?.(toPath);
+      host.fields.set(toPath, field);
+    }
+    for (const [fromPath, field] of entriesB) {
+      const toPath = prefixA + fromPath.slice(prefixB.length);
+      (field as RenameableField)._renamePath?.(toPath);
+      host.fields.set(toPath, field);
+    }
+
     host._notifyFieldStructureChange?.();
     return true;
   };
@@ -223,9 +257,9 @@ export function createArrayFieldController(options: ArrayFieldControllerOptions)
       if (index < 0 || index >= currentRows) return false;
 
       deleteRowFields(host, index);
-      Array.from({ length: currentRows - index - 1 }, (_, offset) => offset + index + 1).forEach(
-        (row) => renameRow(host, row, row - 1),
-      );
+      for (let row = index + 1; row < currentRows; row++) {
+        renameRow(host, row, row - 1);
+      }
 
       options.setRowCount(currentRows - 1);
       host._notifyFieldStructureChange?.();

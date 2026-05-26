@@ -7,8 +7,10 @@ import type {
   IField,
 } from "../../schema/types";
 import { arrayShallowEqual } from "../../utils";
-import type { FieldInternals } from "./internals";
+import type { FieldInternals, FieldMeta } from "./internals";
 import { isEmptyValue, normalizeDataSource, runValidator } from "./validation";
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function shallowEqualObject(
   left: Record<string, any> | undefined,
@@ -38,6 +40,24 @@ function readFieldValue(field: IField, internals: FieldInternals): any {
   return internals.isArrayField && internals.arrayController
     ? internals.arrayController.collectValue(internals.signals.value())
     : internals.signals.value();
+}
+
+/** Immutably update one or more keys on the meta signal. */
+function updateMeta(internals: FieldInternals, patch: Partial<FieldMeta>): boolean {
+  const current = internals.signals.meta();
+  let changed = false;
+  for (const key of Object.keys(patch) as (keyof FieldMeta)[]) {
+    const newVal = patch[key];
+    const curVal = current[key];
+    if (typeof newVal === "object" && newVal !== null) {
+      if (!shallowEqualObject(curVal as any, newVal as any)) { changed = true; break; }
+    } else if (curVal !== newVal) {
+      changed = true; break;
+    }
+  }
+  if (!changed) return false;
+  internals.signals.meta({ ...current, ...patch });
+  return true;
 }
 
 function reconcileValueWithDataSource(field: IField, internals: FieldInternals): boolean {
@@ -82,6 +102,46 @@ function reconcileValueWithDataSource(field: IField, internals: FieldInternals):
   }
 }
 
+// ─── Display / Pattern shorthand resolution ──────────────────────────────────
+
+/** Maps FieldMutableState shorthand keys to their canonical display value. */
+function resolveDisplay(
+  state: Partial<FieldMutableState>,
+  current: FieldDisplayTypes,
+): FieldDisplayTypes | undefined {
+  if ("display" in state) return state.display!;
+  if ("visible" in state) return state.visible ? "visible" : "none";
+  if ("hidden" in state) {
+    if (state.hidden) return "hidden";
+    return current === "hidden" ? "visible" : undefined;
+  }
+  return undefined;
+}
+
+/** Maps FieldMutableState shorthand keys to their canonical pattern value. */
+function resolvePattern(
+  state: Partial<FieldMutableState>,
+  current: FieldPatternTypes,
+): FieldPatternTypes | undefined {
+  if ("pattern" in state) return state.pattern!;
+  if ("disabled" in state) {
+    if (state.disabled) return "disabled";
+    return current === "disabled" ? "editable" : undefined;
+  }
+  if ("readOnly" in state) {
+    if (state.readOnly) return "readOnly";
+    return current === "readOnly" ? "editable" : undefined;
+  }
+  if ("readPretty" in state) {
+    if (state.readPretty) return "readPretty";
+    return current === "readPretty" ? "editable" : undefined;
+  }
+  if ("editable" in state) return state.editable ? "editable" : "readOnly";
+  return undefined;
+}
+
+// ─── Method bundle interface ─────────────────────────────────────────────────
+
 export interface FieldMethodBundle {
   setValue(value: any): void;
   setErrors(errors: FieldError[]): void;
@@ -103,6 +163,8 @@ export interface FieldMethodBundle {
   effect(runner: (field: IField) => void): () => void;
   _renamePath(newPath: string): void;
 }
+
+// ─── Factory ─────────────────────────────────────────────────────────────────
 
 export function createFieldMethods(field: IField, internals: FieldInternals): FieldMethodBundle {
   return {
@@ -155,198 +217,117 @@ export function createFieldMethods(field: IField, internals: FieldInternals): Fi
       notifyFieldChange(field, internals);
     },
     setComponent(component, props) {
-      const nextProps = props ?? internals.signals.componentProps();
-      if (
-        internals.signals.component() === component &&
-        shallowEqualObject(internals.signals.componentProps(), nextProps)
-      ) {
-        return;
-      }
-      startBatch();
-      try {
-        internals.signals.component(component);
-        if (props !== undefined) internals.signals.componentProps(props);
-        bumpFieldVersion(internals);
-      } finally {
-        endBatch();
-      }
+      const meta = internals.signals.meta();
+      const nextProps = props ?? meta.componentProps;
+      if (meta.component === component && shallowEqualObject(meta.componentProps, nextProps)) return;
+      updateMeta(internals, { component, ...(props !== undefined ? { componentProps: props } : {}) });
+      bumpFieldVersion(internals);
       notifyFieldChange(field, internals);
     },
     setDecorator(decorator, props) {
-      const nextProps = props ?? internals.signals.decoratorProps();
-      if (
-        internals.signals.decorator() === decorator &&
-        shallowEqualObject(internals.signals.decoratorProps(), nextProps)
-      ) {
-        return;
-      }
-      startBatch();
-      try {
-        internals.signals.decorator(decorator);
-        if (props !== undefined) internals.signals.decoratorProps(props);
-        bumpFieldVersion(internals);
-      } finally {
-        endBatch();
-      }
+      const meta = internals.signals.meta();
+      const nextProps = props ?? meta.decoratorProps;
+      if (meta.decorator === decorator && shallowEqualObject(meta.decoratorProps, nextProps)) return;
+      updateMeta(internals, { decorator, ...(props !== undefined ? { decoratorProps: props } : {}) });
+      bumpFieldVersion(internals);
       notifyFieldChange(field, internals);
     },
+
     setState(state) {
-      const hasValueLikeChange =
-        "value" in state || "visible" in state || "hidden" in state || "display" in state;
       let changed = false;
+      const s = internals.signals;
 
       startBatch();
       try {
+        // ── Value ──
         if ("value" in state) {
           if (internals.isArrayField && Array.isArray(state.value)) {
             changed = !!internals.arrayController?.setValue(state.value);
-          } else if (!Object.is(internals.signals.value(), state.value)) {
-            internals.signals.value(state.value);
+          } else if (!Object.is(s.value(), state.value)) {
+            s.value(state.value);
             changed = true;
           }
         }
-        if ("visible" in state) {
-          const nextDisplay = state.visible ? "visible" : "none";
-          if (internals.signals.display() !== nextDisplay) {
-            internals.signals.display(nextDisplay);
-            changed = true;
+
+        // ── Display (visible/hidden/display all map to one signal) ──
+        const nextDisplay = resolveDisplay(state, s.display());
+        if (nextDisplay !== undefined && s.display() !== nextDisplay) {
+          s.display(nextDisplay);
+          changed = true;
+        }
+
+        // ── Pattern (disabled/readOnly/readPretty/editable/pattern all map to one signal) ──
+        const nextPattern = resolvePattern(state, s.pattern());
+        if (nextPattern !== undefined && s.pattern() !== nextPattern) {
+          s.pattern(nextPattern);
+          changed = true;
+        }
+
+        // ── Simple scalar signals ──
+        if ("required" in state && s.required() !== state.required) {
+          s.required(state.required!);
+          changed = true;
+        }
+        if ("loading" in state && s.loading() !== state.loading) {
+          s.loading(state.loading!);
+          changed = true;
+        }
+
+        // ── Meta fields (title, description, componentProps, decoratorProps) ──
+        const metaPatch: Partial<FieldMeta> = {};
+        const meta = s.meta();
+        if ("title" in state && meta.title !== state.title) metaPatch.title = state.title!;
+        if ("description" in state && meta.description !== state.description) metaPatch.description = state.description!;
+        if ("componentProps" in state && !shallowEqualObject(meta.componentProps, state.componentProps!)) {
+          metaPatch.componentProps = state.componentProps!;
+        }
+        if ("decoratorProps" in state && !shallowEqualObject(meta.decoratorProps, state.decoratorProps!)) {
+          metaPatch.decoratorProps = state.decoratorProps!;
+        }
+        if ("component" in state && Array.isArray(state.component)) {
+          if (meta.component !== state.component[0]) metaPatch.component = state.component[0];
+          if (state.component[1] !== undefined && !shallowEqualObject(meta.componentProps, state.component[1])) {
+            metaPatch.componentProps = state.component[1];
           }
         }
-        if ("hidden" in state) {
-          if (state.hidden) {
-            if (internals.signals.display() !== "hidden") {
-              internals.signals.display("hidden");
-              changed = true;
-            }
-          } else if (internals.signals.display() === "hidden") {
-            internals.signals.display("visible");
-            changed = true;
+        if ("decorator" in state && Array.isArray(state.decorator)) {
+          if (meta.decorator !== state.decorator[0]) metaPatch.decorator = state.decorator[0];
+          if (state.decorator[1] !== undefined && !shallowEqualObject(meta.decoratorProps, state.decorator[1])) {
+            metaPatch.decoratorProps = state.decorator[1];
           }
         }
-        if ("display" in state && internals.signals.display() !== state.display) {
-          internals.signals.display(state.display!);
+        if (Object.keys(metaPatch).length > 0) {
+          updateMeta(internals, metaPatch);
           changed = true;
         }
-        if ("pattern" in state && internals.signals.pattern() !== state.pattern) {
-          internals.signals.pattern(state.pattern!);
-          changed = true;
-        }
-        if ("disabled" in state) {
-          if (state.disabled) {
-            if (internals.signals.pattern() !== "disabled") {
-              internals.signals.pattern("disabled");
-              changed = true;
-            }
-          } else if (internals.signals.pattern() === "disabled") {
-            internals.signals.pattern("editable");
-            changed = true;
-          }
-        }
-        if ("readOnly" in state) {
-          if (state.readOnly) {
-            if (internals.signals.pattern() !== "readOnly") {
-              internals.signals.pattern("readOnly");
-              changed = true;
-            }
-          } else if (internals.signals.pattern() === "readOnly") {
-            internals.signals.pattern("editable");
-            changed = true;
-          }
-        }
-        if ("readPretty" in state) {
-          if (state.readPretty) {
-            if (internals.signals.pattern() !== "readPretty") {
-              internals.signals.pattern("readPretty");
-              changed = true;
-            }
-          } else if (internals.signals.pattern() === "readPretty") {
-            internals.signals.pattern("editable");
-            changed = true;
-          }
-        }
-        if ("editable" in state) {
-          const nextPattern = state.editable ? "editable" : "readOnly";
-          if (internals.signals.pattern() !== nextPattern) {
-            internals.signals.pattern(nextPattern);
-            changed = true;
-          }
-        }
-        if ("required" in state && internals.signals.required() !== state.required) {
-          internals.signals.required(state.required!);
-          changed = true;
-        }
-        if ("title" in state && internals.signals.title() !== state.title) {
-          internals.signals.title(state.title!);
-          changed = true;
-        }
-        if ("description" in state && internals.signals.description() !== state.description) {
-          internals.signals.description(state.description!);
-          changed = true;
-        }
-        if (
-          "componentProps" in state &&
-          !shallowEqualObject(internals.signals.componentProps(), state.componentProps!)
-        ) {
-          internals.signals.componentProps(state.componentProps!);
-          changed = true;
-        }
-        if (
-          "decoratorProps" in state &&
-          !shallowEqualObject(internals.signals.decoratorProps(), state.decoratorProps!)
-        ) {
-          internals.signals.decoratorProps(state.decoratorProps!);
-          changed = true;
-        }
+
+        // ── DataSource ──
         if ("dataSource" in state) {
-          const nextDataSource = normalizeDataSource(state.dataSource);
-          if (!arrayShallowEqual(internals.signals.dataSource(), nextDataSource)) {
-            internals.signals.dataSource(nextDataSource);
+          const nextDS = normalizeDataSource(state.dataSource);
+          if (!arrayShallowEqual(s.dataSource(), nextDS)) {
+            s.dataSource(nextDS);
             changed = true;
           }
           changed = reconcileValueWithDataSource(field, internals) || changed;
         }
-        if ("loading" in state && internals.signals.loading() !== state.loading) {
-          internals.signals.loading(state.loading!);
-          changed = true;
-        }
-        if ("component" in state && Array.isArray(state.component)) {
-          if (internals.signals.component() !== state.component[0]) {
-            internals.signals.component(state.component[0]);
-            changed = true;
-          }
-          if (
-            state.component[1] !== undefined &&
-            !shallowEqualObject(internals.signals.componentProps(), state.component[1])
-          ) {
-            internals.signals.componentProps(state.component[1]);
-            changed = true;
-          }
-        }
-        if ("decorator" in state && Array.isArray(state.decorator)) {
-          if (internals.signals.decorator() !== state.decorator[0]) {
-            internals.signals.decorator(state.decorator[0]);
-            changed = true;
-          }
-          if (
-            state.decorator[1] !== undefined &&
-            !shallowEqualObject(internals.signals.decoratorProps(), state.decorator[1])
-          ) {
-            internals.signals.decoratorProps(state.decorator[1]);
-            changed = true;
-          }
-        }
+
         if (changed) bumpFieldVersion(internals);
       } finally {
         endBatch();
       }
 
       if (!changed) return;
+
+      // Determine notification type
+      const hasValueLikeChange =
+        "value" in state || "visible" in state || "hidden" in state || "display" in state;
       if (hasValueLikeChange) {
         notifyFieldValueChange(field, internals);
-        return;
+      } else {
+        notifyFieldChange(field, internals);
       }
-      notifyFieldChange(field, internals);
     },
+
     push(initialValues) {
       if (!internals.arrayController?.push(initialValues)) return;
       bumpFieldVersion(internals);
@@ -377,7 +358,7 @@ export function createFieldMethods(field: IField, internals: FieldInternals): Fi
 
       if (internals.signals.required() && isEmptyValue(value)) {
         errors.push({
-          message: `${internals.signals.title() || internals.path} is required`,
+          message: `${internals.signals.meta().title || internals.path} is required`,
           type: "required",
         });
       }
