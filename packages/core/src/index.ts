@@ -5,6 +5,9 @@
 // Form
 export { createForm } from "./engine/form/index";
 
+// Internals (for testing only)
+export { getFormInternals } from "./engine/form/internals";
+
 // Types — only expose what consumers actually need
 export type {
   IForm,

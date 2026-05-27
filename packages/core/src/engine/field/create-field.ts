@@ -7,8 +7,16 @@ export function createField(path: string, schema: IFieldSchema, initialValue?: a
   const internals = createFieldInternals(path, schema, initialValue);
   const methods = createFieldMethods(field, internals);
 
-  // Attach methods
-  Object.assign(field, methods);
+  // Attach public methods (enumerable)
+  const { _renamePath, ...publicMethods } = methods;
+  Object.assign(field, publicMethods);
+  // Attach internal method as non-enumerable (consistent with form's _getInternals etc.)
+  Object.defineProperty(field, "_renamePath", {
+    value: _renamePath,
+    enumerable: false,
+    writable: false,
+    configurable: false,
+  });
 
   // Define reactive getters
   Object.defineProperties(field, {

@@ -496,6 +496,10 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
   const field = form.getField(fullPath);
 
   // Void nodes — layout containers
+  // IMPORTANT:
+  // - Plain inline void fields are path-transparent.
+  // - But a concrete property that resolves from $ref into a void schema must
+  //   keep its own prefix (e.g. profile -> $ref -> void => profile.name).
   if (schema.type === "void" && schema.properties) {
     const LayoutComponent = schema.component ? components[schema.component] : null;
     const componentProps = {
@@ -503,6 +507,9 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
       title: schema.title,
       description: schema.description,
     };
+
+    const preservesOwnPath = parentPath !== "" || path !== fullPath || schema["x-from-ref"] === true;
+    const voidChildParentPath = preservesOwnPath ? fullPath : parentPath;
 
     const sortedChildren = getSortedEntries(schema.properties);
     const fieldMap: Record<string, React.ReactNode> = {};
@@ -515,7 +522,7 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
           components={components}
           decorators={decorators}
           form={form}
-          parentPath={fullPath}
+          parentPath={voidChildParentPath}
         />
       );
       fieldMap[key] = node;
@@ -875,6 +882,7 @@ function resolveFieldSchema(
         resolved = {
           ...resolveFieldSchema(referenced, definitions, new Set([...seen, refPath])),
           ...localProps,
+          "x-from-ref": true,
         };
       }
     }

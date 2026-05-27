@@ -1282,11 +1282,7 @@ describe("@alien-form/core", () => {
     expect(form.getField("city")?.dataSource).toEqual([{ label: "Singapore", value: "sg" }]);
   });
 
-  it.skip("installs x-reaction for array item fields using indexed paths", () => {
-    // TODO: known issue — reaction effects for dynamically pushed array items
-    // don't re-fire when their relative dependencies change. The installer effect
-    // correctly detects and installs the reaction, but the alien-signals effect
-    // doesn't track the dependency field's value signal properly during first run.
+  it("installs x-reaction for array item fields using indexed paths", () => {
     const form = createForm();
     form.setSchema({
       type: "object",
