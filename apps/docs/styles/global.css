@@ -3,6 +3,16 @@
 @source "../../../packages/ui/src/**/*.tsx";
 @source "../docs/**/*.{mdx,tsx}";
 
+/* Move the "view code" button to the bottom of the preview card */
+.rp-preview--internal__card {
+  flex-direction: column;
+}
+.rp-preview-operations--web {
+  margin-left: 0;
+  margin-top: 12px;
+  justify-content: flex-end;
+}
+
 @theme {
   --color-border: hsl(214.3 31.8% 91.4%);
   --color-input: hsl(214.3 31.8% 91.4%);
