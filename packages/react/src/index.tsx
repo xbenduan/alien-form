@@ -934,6 +934,31 @@ function areDeepEqual(a: any, b: any, seen: WeakMap<object, object> = new WeakMa
   return true;
 }
 
+// ============================================================
+// Component Definition Helpers
+// ============================================================
+
+export {
+  defineFieldComponent,
+  defineArrayComponent,
+  defineVoidComponent,
+  defineObjectComponent,
+  defineDecorator,
+} from "./define";
+
+export type {
+  FieldComponentBaseProps,
+  FieldComponentProps,
+  ArrayComponentBaseProps,
+  ArrayComponentProps,
+  VoidComponentBaseProps,
+  VoidComponentProps,
+  ObjectComponentBaseProps,
+  ObjectComponentProps,
+  DecoratorBaseProps,
+  DecoratorProps,
+} from "./define";
+
 // Suppress unused import warning
 void Fragment;
 void useSyncExternalStore;
