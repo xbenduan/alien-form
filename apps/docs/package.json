@@ -18,6 +18,7 @@
   "devDependencies": {
     "@rspress/core": "^2.0.11",
     "@rspress/plugin-preview": "^2.0.11",
+    "@tailwindcss/postcss": "^4.0.0",
     "tailwindcss": "^4.0.0"
   }
 }

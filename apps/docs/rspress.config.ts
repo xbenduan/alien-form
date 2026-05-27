@@ -28,6 +28,15 @@ export default defineConfig({
       defaultRenderMode: "pure",
     }),
   ],
+  builderConfig: {
+    tools: {
+      postcss: {
+        postcssOptions: {
+          plugins: [require("@tailwindcss/postcss")],
+        },
+      },
+    },
+  },
   globalStyles: "./styles/demo.css",
   themeConfig: {
     socialLinks: [
