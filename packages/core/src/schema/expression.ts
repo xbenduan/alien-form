@@ -62,6 +62,13 @@ class Parser {
     if (this.pos < this.len) {
       const ch = this.src[this.pos];
       if (ch === "(") this.fail("function calls are not allowed; use computed handler");
+      // Detect assignment operators: =, +=, -=, *=, /=, %=
+      if (ch === "=" && this.src[this.pos + 1] !== "=" && this.src[this.pos + 1] !== ">") {
+        this.fail("assignment is not allowed");
+      }
+      if ((ch === "+" || ch === "-" || ch === "*" || ch === "/" || ch === "%") && this.src[this.pos + 1] === "=") {
+        this.fail("assignment is not allowed");
+      }
       this.fail(`unexpected character '${ch}'`);
     }
   }

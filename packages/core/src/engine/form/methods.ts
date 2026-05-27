@@ -263,11 +263,22 @@ function createFieldTree(
   }
 
   if (schema.type === "void") {
+    // Plain void nodes are path-transparent: children inherit the parent prefix,
+    // not the void node's own key. However, when a concrete property resolves
+    // from $ref into a void schema, the original raw schema had a real path node
+    // (e.g. profile -> $ref -> void container). In that case the path prefix must
+    // be preserved so values remain nested under that property.
+    const preserveOwnPath = !!rawSchema.$ref;
+    const childPrefix = preserveOwnPath
+      ? path
+      : path.includes(".")
+        ? path.slice(0, path.lastIndexOf("."))
+        : "";
     if (schema.component) {
       form.createField(path, { ...schema, required: false }, initialValue);
     }
     if (schema.properties) {
-      createFieldsFromSchema(form, path, schema.properties, schema.required, initialValue);
+      createFieldsFromSchema(form, childPrefix, schema.properties, schema.required, initialValue);
     }
     return;
   }

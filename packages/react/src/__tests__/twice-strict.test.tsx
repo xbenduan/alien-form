@@ -1,8 +1,12 @@
 import { StrictMode } from "react";
-import { render, fireEvent, act } from "@testing-library/react";
+import { render, fireEvent, act, cleanup } from "@testing-library/react";
 import { createForm } from "@alien-form/core";
 import { FormProvider, SchemaField } from "../index";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
+
+afterEach(() => {
+  cleanup();
+});
 
 const components = {
   Input: (props: any) => {

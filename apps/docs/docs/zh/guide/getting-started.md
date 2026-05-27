@@ -6,18 +6,13 @@
 pnpm add @alien-form/react @alien-form/ui
 ```
 
-## 最小化配置
+## 最小示例
 
 ```tsx
 import { useCreateForm, FormProvider, SchemaField } from "@alien-form/react";
 import { Input, FormItem } from "@alien-form/ui";
 
-const components = {
-  Input: ({ value, onChange, ...rest }: any) => (
-    <Input value={value ?? ""} onChange={(event) => onChange(event.target.value)} {...rest} />
-  ),
-};
-
+const components = { Input };
 const decorators = { FormItem };
 
 const schema = {
@@ -25,19 +20,16 @@ const schema = {
   properties: {
     name: {
       type: "string",
-      title: "Name",
+      title: "姓名",
       component: "Input",
       decorator: "FormItem",
-      props: {
-        placeholder: "Enter a name",
-      },
+      required: true,
     },
   },
 };
 
 export function App() {
   const form = useCreateForm();
-
   return (
     <FormProvider form={form} components={components} decorators={decorators}>
       <SchemaField schema={schema} />
@@ -48,31 +40,53 @@ export function App() {
 
 ## 运行时流程
 
-1. `useCreateForm()` 在 React 生命周期内创建并持有一个稳定的 `IForm` 实例。
-2. `FormProvider` 将表单模型和组件注册表放入 React 上下文中。
-3. `SchemaField` 调用 `form.setSchema(schema)` 并渲染字段树。
-4. 渲染器将标准化的字段属性传递给每个字段组件。
+1. `useCreateForm()` 创建并持有稳定的 `IForm` 实例
+2. `FormProvider` 注入表单模型和组件注册表
+3. `SchemaField` 调用 `form.setSchema(schema)` 并递归渲染字段树
+4. 渲染器将字段属性传递给每个注册组件
 
-## 进阶模式
+## 进阶用法
 
-如果页面外部已经持有 form，也可以直接把外部实例传给 `FormProvider`：
+### 外部持有 form
 
 ```tsx
-import { createForm, FormProvider, SchemaField } from "@alien-form/react";
+import { createForm } from "@alien-form/react";
 
-const form = createForm();
+const form = createForm({ initialValues: { name: "Alice" } });
+
+function App() {
+  return (
+    <FormProvider form={form} components={components} decorators={decorators}>
+      <SchemaField schema={schema} />
+    </FormProvider>
+  );
+}
 ```
 
-这种模式适合：
+### 带 setup 的联动
 
-- 页面外部统一管理 form 生命周期
-- 在 React 之外复用同一个 form 实例
-- 按需配合 `destroyOnUnmount` 让 Provider 接管销毁
+```tsx
+const form = createForm({
+  initialValues: { country: "cn" },
+  handlers: {
+    fetchCities: async ({ deps }) => {
+      const res = await fetch(`/api/cities?country=${deps.country}`);
+      return (await res.json()).map((c) => ({ label: c.name, value: c.code }));
+    },
+  },
+  setup(form) {
+    form.effect(
+      (f) => f.getField("country")?.value,
+      () => { /* 依赖变化时 handler 会自动重新执行 */ }
+    );
+  },
+});
+```
 
 ## 注意事项
 
-- 原生文本输入框需要一个适配器，因为渲染器传递的是 `onChange(value)`，而 DOM 输入框触发的是事件对象。
-- 建议为类似文本的输入框使用 `value ?? ''` 后备值，以避免 React 报受控/非受控组件警告。
-- Schema 中使用的组件和包装器标识符（如 `component: 'Input'`）必须与 `components` 和 `decorators` 中注册的键名一致。
-- React 项目只需要依赖 `@alien-form/react`；它已经重导出了 `createForm` 和常用 core 类型。
-- 内部复杂联动优先放到 `createForm({ setup }) + form.effect(...)`，不要默认写成 React `useEffect` 补丁。
+- 文本输入框需要适配器：渲染器传 `onChange(value)`，DOM 触发事件对象
+- 使用 `value ?? ''` 避免 React 受控/非受控警告
+- schema 中 `component: 'Input'` 必须与 `components` 注册表键名一致
+- React 项目直接从 `@alien-form/react` 导入即可，它重导出了 core 类型
+- 内部联动优先 `setup + form.effect(...)`，不要默认写 React `useEffect`

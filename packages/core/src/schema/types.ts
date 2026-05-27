@@ -7,10 +7,6 @@
 // Basic Types
 // ============================================================
 
-export type FieldValue = any;
-
-export type FieldState = "active" | "inactive";
-
 export type ValidateStatus = "success" | "error" | "warning" | "validating" | "";
 
 export type SchemaTypes =
@@ -20,11 +16,7 @@ export type SchemaTypes =
   | "object"
   | "array"
   | "void"
-  | "date"
-  | "datetime"
   | (string & {});
-
-export type FieldPatternTypes = "editable" | "readOnly" | "disabled" | "readPretty";
 
 export type FieldDisplayTypes = "visible" | "hidden" | "none";
 
@@ -46,51 +38,40 @@ export interface FieldError {
 }
 
 // ============================================================
-// Validator Types
+// Schema Validate — static constraint declaration
 // ============================================================
 
-export interface ValidatorFn {
-  (value: any, field: IField): string | undefined | Promise<string | undefined>;
-}
-
-export type Validator = ValidatorFn | ValidatorRule | ValidatorRule[];
-
-export interface ValidatorRule {
+/**
+ * `validate` is the built-in static constraint object on IFieldSchema.
+ * It collects all pre-defined validation rules in a single declarative block.
+ * For dynamic/custom validation, use `x-validate` instead.
+ */
+export interface SchemaValidate {
   required?: boolean;
-  min?: number;
-  max?: number;
-  minLength?: number;
-  maxLength?: number;
-  pattern?: RegExp | string;
-  format?: ValidatorFormats;
-  message?: string;
-  validator?: ValidatorFn;
-  // JSON Schema standard validators
+  minimum?: number;
+  maximum?: number;
   exclusiveMinimum?: number;
   exclusiveMaximum?: number;
   multipleOf?: number;
-  maxItems?: number;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  format?: ValidatorFormats;
   minItems?: number;
+  maxItems?: number;
   uniqueItems?: boolean;
   const?: any;
+  message?: string;
 }
 
 // ============================================================
 // Schema Reactions
 // ============================================================
 
-export type SchemaXRuleType = "static" | "expression" | "match" | "computed";
-
 export type SchemaReactionKey =
   | "value"
   | "display"
-  | "visible"
-  | "hidden"
-  | "pattern"
   | "disabled"
-  | "readOnly"
-  | "readPretty"
-  | "editable"
   | "required"
   | "title"
   | "description"
@@ -138,7 +119,6 @@ export type SchemaXRule =
       params?: Record<string, any>;
     };
 
-export type SchemaRule = SchemaXRule;
 export type SchemaRuleSet = SchemaXRule | SchemaXRule[];
 export type SchemaReactions = Partial<Record<SchemaReactionKey | string, SchemaRuleSet>>;
 export interface SchemaFormat {
@@ -153,14 +133,8 @@ export type SchemaXValidate = SchemaRuleSet;
 
 export interface FieldMutableState {
   value: any;
-  visible: boolean;
-  hidden: boolean;
   display: FieldDisplayTypes;
-  pattern: FieldPatternTypes;
   disabled: boolean;
-  readOnly: boolean;
-  readPretty: boolean;
-  editable: boolean;
   required: boolean;
   title: string;
   description: string;
@@ -178,19 +152,14 @@ export interface FieldMutableState {
 
 export interface IField {
   path: string;
-  address: string;
   title: string;
   description: string;
   value: any;
   initialValue: any;
   display: FieldDisplayTypes;
-  pattern: FieldPatternTypes;
   visible: boolean;
   hidden: boolean;
   disabled: boolean;
-  readOnly: boolean;
-  readPretty: boolean;
-  editable: boolean;
   required: boolean;
   errors: FieldError[];
   warnings: FieldError[];
@@ -201,8 +170,6 @@ export interface IField {
   decoratorProps: Record<string, any>;
   dataSource: Array<{ label: string; value: any; [key: string]: any }>;
   loading: boolean;
-  data: Record<string, any>;
-  content: any;
 
   // Methods
   setValue(value: any): void;
@@ -214,7 +181,7 @@ export interface IField {
   setDataSource(ds: Array<{ label: string; value: any; [key: string]: any }>): void;
   setLoading(loading: boolean): void;
   setDisplay(display: FieldDisplayTypes): void;
-  setPattern(pattern: FieldPatternTypes): void;
+  setDisabled(value: boolean): void;
   setComponent(component: string, props?: Record<string, any>): void;
   setDecorator(decorator: string, props?: Record<string, any>): void;
 
@@ -232,54 +199,28 @@ export interface IField {
 }
 
 // ============================================================
-// IFieldSchema — JSON Schema with AlienForm schema protocol fields
+// IFieldSchema — AlienForm DSL schema protocol
 // ============================================================
 
 export type DataSourcePolicy = "preserve" | "clear" | "filter" | "first";
 
 export interface IFieldSchema {
-  // --- JSON Schema Standard ---
+  // --- Structure ---
   type?: SchemaTypes;
   title?: string;
   description?: string;
   default?: any;
-  required?: boolean | string[];
-  const?: any;
-
-  // Numeric validators
-  minimum?: number;
-  maximum?: number;
-  exclusiveMinimum?: number;
-  exclusiveMaximum?: number;
-  multipleOf?: number;
-
-  // String validators
-  minLength?: number;
-  maxLength?: number;
-  pattern?: string;
-  format?: ValidatorFormats;
-
-  // Array validators
-  maxItems?: number;
-  minItems?: number;
-  uniqueItems?: boolean;
-
-  // Structural
   properties?: Record<string, IFieldSchema>;
   items?: IFieldSchema | IFieldSchema[];
-
-  // $ref only supports root-level definitions on IFormSchema
   $ref?: string;
 
   // --- AlienForm Schema Protocol ---
   order?: number;
-  state?: Partial<
-    Pick<
-      FieldMutableState,
-      "display" | "pattern" | "disabled" | "readOnly" | "readPretty" | "editable"
-    >
-  >;
-  validators?: Validator | Validator[];
+  required?: boolean | string[];
+  display?: FieldDisplayTypes;
+  disabled?: boolean;
+  /** Built-in static validation constraints. */
+  validate?: SchemaValidate;
   decorator?: string;
   decoratorProps?: Record<string, any>;
   component?: string;
@@ -288,10 +229,8 @@ export interface IFieldSchema {
   "x-reaction"?: SchemaReactions;
   /** Input/output value formatting rules. */
   "x-format"?: SchemaFormat;
-  /** Dynamic validation rule derivation. */
+  /** Dynamic validation rule derivation (custom/async/reactive). */
   "x-validate"?: SchemaXValidate;
-  content?: any;
-  data?: Record<string, any>;
   dataSource?: Array<{ label: string; value: any; [key: string]: any }>;
   dataSourcePolicy?: DataSourcePolicy;
 }
@@ -339,9 +278,9 @@ export type FormErrorScope =
 
 export interface FormError {
   scope: FormErrorScope;
-  /** Field path that owns the rule, or '' for form-level errors. */
+  /** Field path that owns the rule, or \'\'  for form-level errors. */
   path: string;
-  /** Optional reaction key (e.g. 'visible', 'title') or rule kind. */
+  /** Optional reaction key (e.g. \'visible\', \'title\') or rule kind. */
   key?: string;
   message: string;
   cause?: unknown;

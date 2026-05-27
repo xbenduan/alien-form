@@ -3,15 +3,14 @@ import type {
   DataSourcePolicy,
   FieldDisplayTypes,
   FieldError,
-  FieldPatternTypes,
   IField,
   IFieldSchema,
+  SchemaValidate,
   SchemaXValidate,
   ValidateStatus,
-  Validator,
 } from "../../schema/types";
 import { createArrayFieldController, type ArrayFieldController } from "./array-controller";
-import { normalizeDataSource, normalizeValidators, schemaValidators } from "./validation";
+import { normalizeDataSource } from "./validation";
 import { getArrayItemSchema, isArrayFieldSchema } from "../../schema/normalize";
 
 // ─── Symbol ──────────────────────────────────────────────────────────────────
@@ -45,12 +44,6 @@ export interface FieldHost {
 }
 
 // ─── Signals bundle ──────────────────────────────────────────────────────────
-//
-// Signals are split into two groups:
-// 1. Hot signals — frequently read/written at runtime (value, display, pattern, etc.)
-// 2. Cold meta — a single signal holding rarely-changing metadata as a frozen object
-//
-// This reduces per-field memory overhead from ~20 signals to ~12 signals + 1 meta object.
 
 export interface FieldMeta {
   title: string;
@@ -59,14 +52,12 @@ export interface FieldMeta {
   componentProps: Record<string, any>;
   decorator: string;
   decoratorProps: Record<string, any>;
-  data: Record<string, any>;
-  content: any;
 }
 
 export interface FieldSignals {
   value: SignalValue<any>;
   display: SignalValue<FieldDisplayTypes>;
-  pattern: SignalValue<FieldPatternTypes>;
+  disabled: SignalValue<boolean>;
   required: SignalValue<boolean>;
   errors: SignalValue<FieldError[]>;
   warnings: SignalValue<FieldError[]>;
@@ -83,11 +74,12 @@ export interface FieldSignals {
 
 export interface FieldInternals {
   path: string;
-  address: string;
   schema: IFieldSchema;
   signals: FieldSignals;
   initialValue: any;
-  validators: Validator[];
+  /** Static validation constraints from schema.validate */
+  validate: SchemaValidate | undefined;
+  /** Dynamic validation rules from schema["x-validate"] */
   xValidate?: SchemaXValidate;
   dataSourcePolicy: string;
   isArrayField: boolean;
@@ -111,24 +103,18 @@ export function createFieldInternals(
 
   // Compute initial state
   const defaultValue = initialValue !== undefined ? initialValue : schema.default;
-  const display: FieldDisplayTypes = schema.state?.display || "visible";
-  const pattern: FieldPatternTypes =
-    schema.state?.pattern ||
-    (schema.state?.readPretty === true
-      ? "readPretty"
-      : schema.state?.readOnly === true
-        ? "readOnly"
-        : schema.state?.disabled === true
-          ? "disabled"
-          : schema.state?.editable === false
-            ? "readOnly"
-            : "editable");
+  const display: FieldDisplayTypes = schema.display || "visible";
+  const disabled: boolean = schema.disabled === true;
+
+  // Resolve required: schema.required (top-level) OR schema.validate.required
+  const required =
+    schema.required === true || schema.validate?.required === true;
 
   const signals: FieldSignals = {
     value: signal(isArrayField ? (Array.isArray(defaultValue) ? defaultValue : []) : defaultValue),
     display: signal<FieldDisplayTypes>(display),
-    pattern: signal<FieldPatternTypes>(pattern),
-    required: signal(schema.required === true),
+    disabled: signal<boolean>(disabled),
+    required: signal(required),
     errors: signal<FieldError[]>([]),
     warnings: signal<FieldError[]>([]),
     validateStatus: signal<ValidateStatus>(""),
@@ -143,21 +129,15 @@ export function createFieldInternals(
       componentProps: schema.props || {},
       decorator: schema.decorator || "FormItem",
       decoratorProps: schema.decoratorProps || {},
-      data: schema.data || {},
-      content: schema.content || null,
     }),
   };
 
   const internals: FieldInternals = {
     path,
-    address: path,
     schema,
     signals,
     initialValue: defaultValue,
-    validators: normalizeValidators([
-      ...schemaValidators(schema),
-      ...normalizeValidators(schema.validators),
-    ]),
+    validate: schema.validate,
     xValidate: schema["x-validate"],
     dataSourcePolicy: schema.dataSourcePolicy || "preserve",
     isArrayField,
@@ -171,7 +151,6 @@ export function createFieldInternals(
       },
       renamePath(newPath: string) {
         internals.path = newPath;
-        internals.address = newPath;
       },
     },
   };

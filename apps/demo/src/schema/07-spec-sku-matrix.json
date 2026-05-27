@@ -4,7 +4,12 @@
   "description": "演示“规格定义 -> 笛卡尔积 -> 销售配置表格”的企业级建模方式。规格是上游字段树，SKU 表是下游数组字段，价格、库存、售卖时间和配件清单都落在真实字段路径上。",
   "category": "03 企业范式",
   "order": 70,
-  "tags": ["sku", "spec", "array-table", "cartesian"],
+  "tags": [
+    "sku",
+    "spec",
+    "array-table",
+    "cartesian"
+  ],
   "schema": {
     "type": "object",
     "properties": {
@@ -14,13 +19,11 @@
         "default": "这个示例刻意没有把“规格 + 销售矩阵”做成一个 value(object)+onChange(object) 的超级组件。上半部分 specs 是规格定义，下半部分 skus 是派生出来的真实数组字段。规格支持图片时，会自动成为主分组规格，SKU 表会按它的规格值和图片做分组，并尽量保留你已填写的销售配置。",
         "component": "Textarea",
         "decorator": "FormItem",
-        "state": {
-          "pattern": "readPretty"
-        },
         "props": {
           "rows": 4
         },
-        "order": 5
+        "order": 5,
+        "disabled": true
       },
       "specs": {
         "type": "array",
@@ -111,51 +114,57 @@
             "skuKey": {
               "type": "string",
               "title": "SKU Key",
-              "state": {
-                "display": "none"
+              "order": 5,
+              "decoratorProps": {
+                "label": ""
               },
-              "order": 5
+              "display": "none"
             },
             "groupKey": {
               "type": "string",
               "title": "分组键",
-              "state": {
-                "display": "none"
+              "order": 6,
+              "decoratorProps": {
+                "label": ""
               },
-              "order": 6
+              "display": "none"
             },
             "groupSpecName": {
               "type": "string",
               "title": "分组规格名",
-              "state": {
-                "display": "none"
+              "order": 7,
+              "decoratorProps": {
+                "label": ""
               },
-              "order": 7
+              "display": "none"
             },
             "groupSpecValue": {
               "type": "string",
               "title": "分组规格值",
-              "state": {
-                "display": "none"
+              "order": 8,
+              "decoratorProps": {
+                "label": ""
               },
-              "order": 8
+              "display": "none"
             },
             "groupSpecImage": {
               "type": "string",
               "title": "分组规格图片",
-              "state": {
-                "display": "none"
+              "order": 9,
+              "decoratorProps": {
+                "label": ""
               },
-              "order": 9
+              "display": "none"
             },
             "specSummary": {
               "type": "string",
               "title": "销售规格",
               "component": "Input",
-              "state": {
-                "pattern": "readPretty"
+              "order": 10,
+              "decoratorProps": {
+                "label": ""
               },
-              "order": 10
+              "disabled": true
             },
             "price": {
               "type": "number",
@@ -167,7 +176,10 @@
                 "placeholder": "请输入售价"
               },
               "minimum": 0,
-              "order": 20
+              "order": 20,
+              "decoratorProps": {
+                "label": ""
+              }
             },
             "stock": {
               "type": "number",
@@ -179,19 +191,28 @@
                 "placeholder": "请输入库存"
               },
               "minimum": 0,
-              "order": 30
+              "order": 30,
+              "decoratorProps": {
+                "label": ""
+              }
             },
             "startDate": {
               "type": "string",
               "title": "开始时间",
               "component": "DateInput",
-              "order": 40
+              "order": 40,
+              "decoratorProps": {
+                "label": ""
+              }
             },
             "endDate": {
               "type": "string",
               "title": "结束时间",
               "component": "DateInput",
-              "order": 50
+              "order": 50,
+              "decoratorProps": {
+                "label": ""
+              }
             },
             "accessories": {
               "type": "array",
@@ -200,13 +221,19 @@
               "props": {
                 "placeholder": "输入配件后按 Enter"
               },
-              "order": 60
+              "order": 60,
+              "decoratorProps": {
+                "label": ""
+              }
             },
             "enabled": {
               "type": "boolean",
               "title": "启售",
               "component": "Switch",
-              "order": 70
+              "order": 70,
+              "decoratorProps": {
+                "label": ""
+              }
             }
           }
         }

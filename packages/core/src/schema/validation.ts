@@ -7,9 +7,8 @@
 import type {
   FieldError,
   IFieldSchema,
-  Validator,
+  SchemaValidate,
   ValidatorFormats,
-  ValidatorRule,
 } from "./types";
 
 export function isEmptyValue(value: any): boolean {
@@ -36,105 +35,97 @@ export function normalizeDataSource(
   });
 }
 
-export function normalizeValidators(v?: Validator | Validator[]): Validator[] {
-  if (!v) return [];
-  if (Array.isArray(v)) return v;
-  return [v];
-}
-
-export function schemaValidators(schema: IFieldSchema): ValidatorRule[] {
-  const rule: ValidatorRule = {};
-  if (schema.minimum !== undefined) rule.min = schema.minimum;
-  if (schema.maximum !== undefined) rule.max = schema.maximum;
-  if (schema.exclusiveMinimum !== undefined) rule.exclusiveMinimum = schema.exclusiveMinimum;
-  if (schema.exclusiveMaximum !== undefined) rule.exclusiveMaximum = schema.exclusiveMaximum;
-  if (schema.multipleOf !== undefined) rule.multipleOf = schema.multipleOf;
-  if (schema.minLength !== undefined) rule.minLength = schema.minLength;
-  if (schema.maxLength !== undefined) rule.maxLength = schema.maxLength;
-  if (schema.pattern !== undefined) rule.pattern = schema.pattern;
-  if (schema.format !== undefined) rule.format = schema.format;
-  if (schema.minItems !== undefined) rule.minItems = schema.minItems;
-  if (schema.maxItems !== undefined) rule.maxItems = schema.maxItems;
-  if (schema.uniqueItems !== undefined) rule.uniqueItems = schema.uniqueItems;
-  if (schema.const !== undefined) rule.const = schema.const;
-  return Object.keys(rule).length > 0 ? [rule] : [];
-}
-
 /**
- * Core synchronous rule application logic. Shared between async `runValidator`
- * and `normalizeValidationErrors` (which runs inline rules synchronously).
+ * Run the static `validate` constraints from a SchemaValidate object against a value.
+ * Returns an array of FieldError (empty if all pass).
  */
-export function applyValidatorRule(rule: ValidatorRule, value: any): FieldError[] {
-  const errors: FieldError[] = [];
+export function runStaticValidate(validate: SchemaValidate | undefined, value: any): FieldError[] {
+  if (!validate) return [];
 
-  if (rule.required && isEmptyValue(value)) {
-    errors.push({ message: rule.message || "Field is required", type: "required" });
+  const errors: FieldError[] = [];
+  const msg = validate.message;
+
+  if (validate.required && isEmptyValue(value)) {
+    errors.push({ message: msg || "Field is required", type: "required" });
   }
-  if (rule.min !== undefined && typeof value === "number" && value < rule.min) {
-    errors.push({ message: rule.message || `Must be >= ${rule.min}`, type: "min" });
+
+  // Array length constraints (check before empty-bail since empty arrays should fail minItems)
+  if (validate.minItems !== undefined && Array.isArray(value) && value.length < validate.minItems) {
+    errors.push({ message: msg || `Minimum ${validate.minItems} items`, type: "minItems" });
   }
-  if (rule.max !== undefined && typeof value === "number" && value > rule.max) {
-    errors.push({ message: rule.message || `Must be <= ${rule.max}`, type: "max" });
+  if (validate.maxItems !== undefined && Array.isArray(value) && value.length > validate.maxItems) {
+    errors.push({ message: msg || `Maximum ${validate.maxItems} items`, type: "maxItems" });
+  }
+
+  // Skip further checks if value is empty (unless required already caught it)
+  if (isEmptyValue(value)) return errors;
+
+  // Numeric constraints
+  if (validate.minimum !== undefined && typeof value === "number" && value < validate.minimum) {
+    errors.push({ message: msg || `Must be >= ${validate.minimum}`, type: "minimum" });
+  }
+  if (validate.maximum !== undefined && typeof value === "number" && value > validate.maximum) {
+    errors.push({ message: msg || `Must be <= ${validate.maximum}`, type: "maximum" });
   }
   if (
-    rule.exclusiveMinimum !== undefined &&
+    validate.exclusiveMinimum !== undefined &&
     typeof value === "number" &&
-    value <= rule.exclusiveMinimum
+    value <= validate.exclusiveMinimum
   ) {
     errors.push({
-      message: rule.message || `Must be > ${rule.exclusiveMinimum}`,
+      message: msg || `Must be > ${validate.exclusiveMinimum}`,
       type: "exclusiveMinimum",
     });
   }
   if (
-    rule.exclusiveMaximum !== undefined &&
+    validate.exclusiveMaximum !== undefined &&
     typeof value === "number" &&
-    value >= rule.exclusiveMaximum
+    value >= validate.exclusiveMaximum
   ) {
     errors.push({
-      message: rule.message || `Must be < ${rule.exclusiveMaximum}`,
+      message: msg || `Must be < ${validate.exclusiveMaximum}`,
       type: "exclusiveMaximum",
     });
   }
-  if (rule.multipleOf !== undefined && typeof value === "number" && value % rule.multipleOf !== 0) {
+  if (validate.multipleOf !== undefined && typeof value === "number" && value % validate.multipleOf !== 0) {
     errors.push({
-      message: rule.message || `Must be a multiple of ${rule.multipleOf}`,
+      message: msg || `Must be a multiple of ${validate.multipleOf}`,
       type: "multipleOf",
     });
   }
-  if (rule.minLength !== undefined && typeof value === "string" && value.length < rule.minLength) {
-    errors.push({ message: rule.message || `Min length: ${rule.minLength}`, type: "minLength" });
+
+  // String constraints
+  if (validate.minLength !== undefined && typeof value === "string" && value.length < validate.minLength) {
+    errors.push({ message: msg || `Min length: ${validate.minLength}`, type: "minLength" });
   }
-  if (rule.maxLength !== undefined && typeof value === "string" && value.length > rule.maxLength) {
-    errors.push({ message: rule.message || `Max length: ${rule.maxLength}`, type: "maxLength" });
+  if (validate.maxLength !== undefined && typeof value === "string" && value.length > validate.maxLength) {
+    errors.push({ message: msg || `Max length: ${validate.maxLength}`, type: "maxLength" });
   }
-  if (rule.minItems !== undefined && Array.isArray(value) && value.length < rule.minItems) {
-    errors.push({ message: rule.message || `Minimum ${rule.minItems} items`, type: "minItems" });
+  if (validate.pattern !== undefined) {
+    const regex = new RegExp(validate.pattern);
+    if (!regex.test(String(value))) {
+      errors.push({ message: msg || "Invalid format", type: "pattern" });
+    }
   }
-  if (rule.maxItems !== undefined && Array.isArray(value) && value.length > rule.maxItems) {
-    errors.push({ message: rule.message || `Maximum ${rule.maxItems} items`, type: "maxItems" });
+  if (validate.format) {
+    const formatError = validateFormat(validate.format, value, msg);
+    if (formatError) errors.push(formatError);
   }
-  if (rule.uniqueItems && Array.isArray(value)) {
+
+  // Array constraints (minItems/maxItems already checked above)
+  if (validate.uniqueItems && Array.isArray(value)) {
     const unique = new Set(value.map((item: any) => JSON.stringify(item)));
     if (unique.size !== value.length) {
-      errors.push({ message: rule.message || "Items must be unique", type: "uniqueItems" });
+      errors.push({ message: msg || "Items must be unique", type: "uniqueItems" });
     }
   }
-  if (rule.const !== undefined && value !== rule.const) {
+
+  // Const constraint
+  if (validate.const !== undefined && value !== validate.const) {
     errors.push({
-      message: rule.message || `Must equal ${JSON.stringify(rule.const)}`,
+      message: msg || `Must equal ${JSON.stringify(validate.const)}`,
       type: "const",
     });
-  }
-  if (rule.pattern) {
-    const regex = typeof rule.pattern === "string" ? new RegExp(rule.pattern) : rule.pattern;
-    if (value && !regex.test(String(value))) {
-      errors.push({ message: rule.message || "Invalid format", type: "pattern" });
-    }
-  }
-  if (rule.format && value) {
-    const formatError = validateFormat(rule.format, value, rule.message);
-    if (formatError) errors.push(formatError);
   }
 
   return errors;
@@ -162,17 +153,8 @@ export function normalizeValidationErrors(result: any): FieldError[] {
       errors.push({ message: item, type: "x-validate" });
       continue;
     }
-    if (typeof item === "object") {
-      const fieldError = item as FieldError;
-      if ("message" in fieldError && !isValidatorRule(item as ValidatorRule)) {
-        errors.push({ message: fieldError.message, type: fieldError.type || "x-validate" });
-        continue;
-      }
-      const validatorErrors = applyValidatorRule(item as ValidatorRule, (item as any).value);
-      if (validatorErrors.length > 0) errors.push(...validatorErrors);
-      else if ("message" in fieldError) {
-        errors.push({ message: fieldError.message, type: fieldError.type || "x-validate" });
-      }
+    if (typeof item === "object" && "message" in item) {
+      errors.push({ message: (item as FieldError).message, type: (item as FieldError).type || "x-validate" });
     }
   }
 
@@ -220,25 +202,4 @@ export function validateFormat(format: string, value: any, message?: string): Fi
       break;
   }
   return null;
-}
-
-function isValidatorRule(rule: ValidatorRule): boolean {
-  return (
-    !!rule &&
-    ("required" in rule ||
-      "min" in rule ||
-      "max" in rule ||
-      "minLength" in rule ||
-      "maxLength" in rule ||
-      "pattern" in rule ||
-      "format" in rule ||
-      "exclusiveMinimum" in rule ||
-      "exclusiveMaximum" in rule ||
-      "multipleOf" in rule ||
-      "maxItems" in rule ||
-      "minItems" in rule ||
-      "uniqueItems" in rule ||
-      "const" in rule ||
-      "validator" in rule)
-  );
 }

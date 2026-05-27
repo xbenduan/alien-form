@@ -1,10 +1,14 @@
 {
   "id": "state-and-display",
   "name": "字段状态与展示模式",
-  "description": "演示 display、pattern、disabled、readOnly、readPretty、props、decoratorProps 等可变状态，便于沉淀企业级展示范式。",
+  "description": "演示 display、disabled 等可变状态，便于沉淀企业级展示范式。",
   "category": "03 企业范式",
   "order": 60,
-  "tags": ["state", "pattern", "props"],
+  "tags": [
+    "display",
+    "disabled",
+    "props"
+  ],
   "schema": {
     "type": "object",
     "title": "字段状态与展示模式",
@@ -21,8 +25,8 @@
             "value": "edit"
           },
           {
-            "label": "只读",
-            "value": "readonly"
+            "label": "禁用态",
+            "value": "disabled"
           },
           {
             "label": "隐藏敏感项",
@@ -37,22 +41,22 @@
         "component": "Input",
         "decorator": "FormItem",
         "x-reaction": {
-          "pattern": {
-            "type": "match",
-            "dependencies": {
-              "mode": "mode"
-            },
-            "match": {
-              "readonly": "readPretty",
-              "default": "editable"
-            }
-          },
           "props": {
             "type": "expression",
             "dependencies": {
               "mode": "mode"
             },
             "expression": "{ placeholder: $deps.mode === 'readonly' ? '当前为只读模式' : '请输入昵称' }"
+          },
+          "disabled": {
+            "type": "match",
+            "dependencies": {
+              "mode": "mode"
+            },
+            "match": {
+              "readonly": true,
+              "default": false
+            }
           }
         }
       },
@@ -87,9 +91,6 @@
         "props": {
           "rows": 3
         },
-        "state": {
-          "display": "none"
-        },
         "x-reaction": {
           "display": {
             "type": "match",
@@ -105,7 +106,8 @@
             "type": "static",
             "value": "secure 模式下敏感字段由外层权限/装饰器范式控制，不建议写成 schema 内权限协议。"
           }
-        }
+        },
+        "display": "none"
       },
       "submitButtonHint": {
         "type": "string",
@@ -113,9 +115,6 @@
         "default": "x-reaction 可以动态更新 props/decoratorProps/title/description 等 UI 属性",
         "component": "Input",
         "decorator": "FormItem",
-        "state": {
-          "pattern": "readPretty"
-        },
         "x-reaction": {
           "description": {
             "type": "expression",
@@ -124,7 +123,8 @@
             },
             "expression": "'当前模式：' + $deps.mode"
           }
-        }
+        },
+        "disabled": true
       }
     }
   }

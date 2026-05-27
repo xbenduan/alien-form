@@ -7,23 +7,26 @@ export function createField(path: string, schema: IFieldSchema, initialValue?: a
   const internals = createFieldInternals(path, schema, initialValue);
   const methods = createFieldMethods(field, internals);
 
-  // Attach methods
-  Object.assign(field, methods);
+  // Attach public methods (enumerable)
+  const { _renamePath, ...publicMethods } = methods;
+  Object.assign(field, publicMethods);
+  // Attach internal method as non-enumerable (consistent with form's _getInternals etc.)
+  Object.defineProperty(field, "_renamePath", {
+    value: _renamePath,
+    enumerable: false,
+    writable: false,
+    configurable: false,
+  });
 
   // Define reactive getters
   Object.defineProperties(field, {
     path: { get: () => internals.path, enumerable: true },
-    address: { get: () => internals.address, enumerable: true },
     value: { get: () => getFieldValue(field, internals), enumerable: true },
     initialValue: { get: () => internals.initialValue, enumerable: true },
     display: { get: () => internals.signals.display(), enumerable: true },
-    pattern: { get: () => internals.signals.pattern(), enumerable: true },
     visible: { get: () => internals.signals.display() !== "none", enumerable: true },
     hidden: { get: () => internals.signals.display() === "hidden", enumerable: true },
-    disabled: { get: () => internals.signals.pattern() === "disabled", enumerable: true },
-    readOnly: { get: () => internals.signals.pattern() === "readOnly", enumerable: true },
-    readPretty: { get: () => internals.signals.pattern() === "readPretty", enumerable: true },
-    editable: { get: () => internals.signals.pattern() === "editable", enumerable: true },
+    disabled: { get: () => internals.signals.disabled(), enumerable: true },
     required: { get: () => internals.signals.required(), enumerable: true },
     errors: { get: () => internals.signals.errors(), enumerable: true },
     warnings: { get: () => internals.signals.warnings(), enumerable: true },
@@ -40,8 +43,6 @@ export function createField(path: string, schema: IFieldSchema, initialValue?: a
     componentProps: { get: () => internals.signals.meta().componentProps, enumerable: true },
     decorator: { get: () => internals.signals.meta().decorator, enumerable: true },
     decoratorProps: { get: () => internals.signals.meta().decoratorProps, enumerable: true },
-    data: { get: () => internals.signals.meta().data, enumerable: true },
-    content: { get: () => internals.signals.meta().content, enumerable: true },
   });
 
   attachFieldInternals(field, internals);

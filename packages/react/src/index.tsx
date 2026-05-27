@@ -48,10 +48,6 @@ export type {
   EffectContext,
   ValidateStatus,
   FieldDisplayTypes,
-  FieldPatternTypes,
-  Validator,
-  ValidatorFn,
-  ValidatorRule,
   RuntimeRuleHandler,
   RuntimeRuleHandlerContext,
   DataSourcePolicy,
@@ -201,13 +197,9 @@ export function useField(path?: string): IField | null {
 export interface FieldState {
   value: any;
   display: string;
-  pattern: string;
   visible: boolean;
   hidden: boolean;
   disabled: boolean;
-  readOnly: boolean;
-  readPretty: boolean;
-  editable: boolean;
   required: boolean;
   errors: FieldError[];
   warnings: FieldError[];
@@ -227,13 +219,9 @@ export function useFieldState(path?: string): FieldState | null {
   return {
     value: field.value,
     display: field.display,
-    pattern: field.pattern,
     visible: field.visible,
     hidden: field.hidden,
     disabled: field.disabled,
-    readOnly: field.readOnly,
-    readPretty: field.readPretty,
-    editable: field.editable,
     required: field.required,
     errors: field.errors,
     warnings: field.warnings,
@@ -508,6 +496,10 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
   const field = form.getField(fullPath);
 
   // Void nodes — layout containers
+  // IMPORTANT:
+  // - Plain inline void fields are path-transparent.
+  // - But a concrete property that resolves from $ref into a void schema must
+  //   keep its own prefix (e.g. profile -> $ref -> void => profile.name).
   if (schema.type === "void" && schema.properties) {
     const LayoutComponent = schema.component ? components[schema.component] : null;
     const componentProps = {
@@ -516,22 +508,85 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
       description: schema.description,
     };
 
+    const preservesOwnPath = parentPath !== "" || path !== fullPath || schema["x-from-ref"] === true;
+    const voidChildParentPath = preservesOwnPath ? fullPath : parentPath;
+
     const sortedChildren = getSortedEntries(schema.properties);
-    const children = sortedChildren.map(([key, childSchema]) => (
-      <SchemaFieldItem
-        key={key}
-        path={key}
-        schema={childSchema}
-        components={components}
-        decorators={decorators}
-        form={form}
-        parentPath={fullPath}
-      />
-    ));
+    const fieldMap: Record<string, React.ReactNode> = {};
+    const children = sortedChildren.map(([key, childSchema]) => {
+      const node = (
+        <SchemaFieldItem
+          key={key}
+          path={key}
+          schema={childSchema}
+          components={components}
+          decorators={decorators}
+          form={form}
+          parentPath={voidChildParentPath}
+        />
+      );
+      fieldMap[key] = node;
+      return node;
+    });
 
     if (LayoutComponent) {
-      return <LayoutComponent {...componentProps}>{children}</LayoutComponent>;
+      return (
+        <LayoutComponent {...componentProps} fields={fieldMap}>
+          {children}
+        </LayoutComponent>
+      );
     }
+    return <>{children}</>;
+  }
+
+  // Object nodes with component — higher-order components (pass fields map)
+  if (schema.type === "object" && schema.properties && schema.component) {
+    if (!field) return null;
+    const ObjectComponent = components[schema.component];
+    const Decorator = decorators[schema.decorator || ""];
+    const sortedChildren = getSortedEntries(schema.properties);
+    const fieldMap: Record<string, React.ReactNode> = {};
+    const children = sortedChildren.map(([key, childSchema]) => {
+      const node = (
+        <SchemaFieldItem
+          key={key}
+          path={key}
+          schema={childSchema}
+          components={components}
+          decorators={decorators}
+          form={form}
+          parentPath={fullPath}
+        />
+      );
+      fieldMap[key] = node;
+      return node;
+    });
+
+    if (ObjectComponent) {
+      const objectProps = {
+        ...field.componentProps,
+        field,
+        fields: fieldMap,
+        title: field.title,
+        description: field.description,
+      };
+      const decoratorProps = {
+        label: field.title,
+        required: field.required,
+        errors: field.errors,
+        warnings: field.warnings,
+        description: field.description,
+        validateStatus: field.validateStatus,
+        ...field.decoratorProps,
+      };
+      const rendered = <ObjectComponent {...objectProps}>{children}</ObjectComponent>;
+      return (
+        <FieldContext.Provider value={field}>
+          {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
+        </FieldContext.Provider>
+      );
+    }
+
     return <>{children}</>;
   }
 
@@ -616,13 +671,17 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
   const arrayValue = Array.isArray(field.value) ? field.value : [];
   const itemSchema = schema.items;
 
-  // Build rows of rendered child fields
-  const rows = arrayValue.map((_: any, index: number) => {
-    const rowFields: React.ReactNode[] = [];
+  // Build rows of rendered child fields with named fields map
+  const rows: React.ReactNode[][] = [];
+  const rowFields: Record<string, React.ReactNode>[] = [];
+
+  arrayValue.forEach((_: any, index: number) => {
+    const children: React.ReactNode[] = [];
+    const fieldMap: Record<string, React.ReactNode> = {};
     if (itemSchema?.properties) {
       const sortedProps = getSortedEntries(itemSchema.properties);
       for (const [childKey, childSchema] of sortedProps) {
-        rowFields.push(
+        const node = (
           <SchemaFieldItem
             key={childKey}
             path={childKey}
@@ -631,34 +690,36 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
             decorators={decorators}
             form={form}
             parentPath={`${fullPath}.${index}`}
-          />,
+          />
         );
+        children.push(node);
+        fieldMap[childKey] = node;
       }
     }
-    return rowFields;
+    rows.push(children);
+    rowFields.push(fieldMap);
   });
 
   const arrayProps = {
     ...field.componentProps,
     field,
     rows,
+    rowFields,
     onAdd: (initialValues?: Record<string, any>) => field.push(initialValues),
     onRemove: (index: number) => field.remove(index),
     onMoveUp: (index: number) => field.moveUp(index),
     onMoveDown: (index: number) => field.moveDown(index),
     disabled: field.disabled,
-    readOnly: field.readOnly,
-    readPretty: field.readPretty,
   };
 
   const decoratorProps = {
-    ...field.decoratorProps,
     label: field.title,
     required: field.required,
     errors: field.errors,
     warnings: field.warnings,
     description: field.description,
     validateStatus: field.validateStatus,
+    ...field.decoratorProps,
   };
 
   if (ArrayComponent) {
@@ -673,27 +734,25 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
   // Fallback: simple list rendering
   const fallback = (
     <div className="space-y-3">
-      {rows.map((rowFields, index) => (
+      {rows.map((rowChildren, index) => (
         <div key={index} className="flex items-start gap-2 p-3 border rounded-lg">
-          <div className="flex-1 space-y-2">{rowFields}</div>
-          {!field.readPretty && (
+          <div className="flex-1 space-y-2">{rowChildren}</div>
+          {!field.disabled && (
             <button
               type="button"
               className="text-destructive text-xs mt-2"
               onClick={() => field.remove(index)}
-              disabled={field.disabled || field.readOnly}
             >
               Remove
             </button>
           )}
         </div>
       ))}
-      {!field.readPretty && (
+      {!field.disabled && (
         <button
           type="button"
           className="text-primary text-sm"
           onClick={() => field.push()}
-          disabled={field.disabled || field.readOnly}
         >
           + Add Item
         </button>
@@ -731,27 +790,14 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({ field, components, decora
   const Decorator = decorators[field.decorator];
 
   const decoratorProps = {
-    ...field.decoratorProps,
     label: field.title,
     required: field.required,
     errors: field.errors,
     warnings: field.warnings,
     description: field.description,
     validateStatus: field.validateStatus,
-    pattern: field.pattern,
+    ...field.decoratorProps,
   };
-
-  // content: render content directly if specified
-  if (field.content !== null && field.content !== undefined) {
-    const contentNode =
-      typeof field.content === "string" ? <span>{field.content}</span> : field.content;
-
-    return (
-      <FieldContext.Provider value={field}>
-        {Decorator ? <Decorator {...decoratorProps}>{contentNode}</Decorator> : contentNode}
-      </FieldContext.Provider>
-    );
-  }
 
   if (!Component) {
     return (
@@ -765,28 +811,11 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({ field, components, decora
     value: field.value,
     onChange: (val: any) => field.setValue(val),
     disabled: field.disabled,
-    readOnly: field.readOnly,
-    readPretty: field.readPretty,
     loading: field.loading,
-    pattern: field.pattern,
   };
 
   if (field.dataSource.length > 0) {
     componentProps.dataSource = field.dataSource;
-  }
-
-  // readPretty mode: prefer a registered ReadPretty variant
-  if (field.readPretty) {
-    const PreviewComponent =
-      components[`${field.component}.ReadPretty`] || components[`ReadPretty.${field.component}`];
-    if (PreviewComponent) {
-      const rendered = <PreviewComponent {...componentProps} />;
-      return (
-        <FieldContext.Provider value={field}>
-          {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
-        </FieldContext.Provider>
-      );
-    }
   }
 
   const rendered = <Component {...componentProps} />;
@@ -853,6 +882,7 @@ function resolveFieldSchema(
         resolved = {
           ...resolveFieldSchema(referenced, definitions, new Set([...seen, refPath])),
           ...localProps,
+          "x-from-ref": true,
         };
       }
     }

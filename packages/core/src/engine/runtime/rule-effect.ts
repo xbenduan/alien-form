@@ -1,4 +1,4 @@
-import { effect } from "alien-signals";
+import { effect, getActiveSub, setActiveSub } from "alien-signals";
 import { getFormInternals } from "../form/internals";
 import type { InternalForm } from "../form/methods";
 import type { IField, IFieldSchema, IForm, IFormSchema, SchemaXRule } from "../../schema/types";
@@ -59,11 +59,22 @@ function syncRuleEffects(form: IForm, schema: IFormSchema): void {
   const nextKeys = new Set(entries.map((entry) => entry.effectKey));
   nextKeys.add("__installer__");
 
-  for (const entry of entries) {
-    if (internals.installedRuleEffects.has(entry.effectKey)) continue;
-    if (!form.getField(entry.path)) continue;
-    const dispose = installRuleEffect(form, entry);
-    internals.installedRuleEffects.set(entry.effectKey, dispose);
+  // IMPORTANT: Break out of the installer effect's reactive tracking scope
+  // before creating individual reaction effects. Without this, alien-signals
+  // treats inner effects as children of the installer effect. When the installer
+  // re-runs (due to fieldRegistryVersion bump), it orphans the inner effects'
+  // subscriptions, causing them to stop reacting to dependency changes.
+  const prevSub = getActiveSub();
+  setActiveSub(undefined);
+  try {
+    for (const entry of entries) {
+      if (internals.installedRuleEffects.has(entry.effectKey)) continue;
+      if (!form.getField(entry.path)) continue;
+      const dispose = installRuleEffect(form, entry);
+      internals.installedRuleEffects.set(entry.effectKey, dispose);
+    }
+  } finally {
+    setActiveSub(prevSub);
   }
 
   for (const [effectKey, dispose] of Array.from(internals.installedRuleEffects.entries())) {
@@ -196,12 +207,10 @@ function collectSingleSchemaReactionEntries(path: string, schema: IFieldSchema):
 function installRuleEffect(form: IForm, entry: ReactionEntry): () => void {
   const host = createRuleRuntimeHost(form);
 
-  // NOTE: We create the effect at top level. The effect callback itself reads
-  // reactive dependencies (field values via resolveDependencies), so
-  // alien-signals will track those correctly. No need to manipulate
-  // getActiveSub/setActiveSub — the effect is installed from a non-reactive
-  // context (the syncRuleEffects function runs inside the installer effect's
-  // callback which already provides a tracking scope).
+  // This effect is created outside the installer effect's reactive scope
+  // (syncRuleEffects uses setActiveSub(undefined) before calling us).
+  // This ensures the reaction effect is an independent top-level effect
+  // whose subscriptions won't be invalidated when the installer re-runs.
   return effect(() => {
     const internals = getFormInternals(form);
     internals.fieldRegistryVersion();

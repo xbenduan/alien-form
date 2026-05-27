@@ -3,12 +3,11 @@ import type {
   FieldDisplayTypes,
   FieldError,
   FieldMutableState,
-  FieldPatternTypes,
   IField,
 } from "../../schema/types";
 import { arrayShallowEqual } from "../../utils";
 import type { FieldInternals, FieldMeta } from "./internals";
-import { isEmptyValue, normalizeDataSource, runValidator } from "./validation";
+import { isEmptyValue, normalizeDataSource, runStaticValidate } from "./validation";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -102,43 +101,18 @@ function reconcileValueWithDataSource(field: IField, internals: FieldInternals):
   }
 }
 
-// ─── Display / Pattern shorthand resolution ──────────────────────────────────
+// ─── Display shorthand resolution ──────────────────────────────────────────
 
-/** Maps FieldMutableState shorthand keys to their canonical display value. */
+/** Maps FieldMutableState display key. */
 function resolveDisplay(
   state: Partial<FieldMutableState>,
   current: FieldDisplayTypes,
 ): FieldDisplayTypes | undefined {
   if ("display" in state) return state.display!;
-  if ("visible" in state) return state.visible ? "visible" : "none";
-  if ("hidden" in state) {
-    if (state.hidden) return "hidden";
-    return current === "hidden" ? "visible" : undefined;
-  }
   return undefined;
 }
 
-/** Maps FieldMutableState shorthand keys to their canonical pattern value. */
-function resolvePattern(
-  state: Partial<FieldMutableState>,
-  current: FieldPatternTypes,
-): FieldPatternTypes | undefined {
-  if ("pattern" in state) return state.pattern!;
-  if ("disabled" in state) {
-    if (state.disabled) return "disabled";
-    return current === "disabled" ? "editable" : undefined;
-  }
-  if ("readOnly" in state) {
-    if (state.readOnly) return "readOnly";
-    return current === "readOnly" ? "editable" : undefined;
-  }
-  if ("readPretty" in state) {
-    if (state.readPretty) return "readPretty";
-    return current === "readPretty" ? "editable" : undefined;
-  }
-  if ("editable" in state) return state.editable ? "editable" : "readOnly";
-  return undefined;
-}
+
 
 // ─── Method bundle interface ─────────────────────────────────────────────────
 
@@ -149,7 +123,7 @@ export interface FieldMethodBundle {
   setDataSource(ds: Array<{ label: string; value: any; [key: string]: any }>): void;
   setLoading(loading: boolean): void;
   setDisplay(display: FieldDisplayTypes): void;
-  setPattern(pattern: FieldPatternTypes): void;
+  setDisabled(value: boolean): void;
   setComponent(component: string, props?: Record<string, any>): void;
   setDecorator(decorator: string, props?: Record<string, any>): void;
   setState(state: Partial<FieldMutableState>): void;
@@ -210,9 +184,9 @@ export function createFieldMethods(field: IField, internals: FieldInternals): Fi
       bumpFieldVersion(internals);
       notifyFieldValueChange(field, internals);
     },
-    setPattern(pattern) {
-      if (internals.signals.pattern() === pattern) return;
-      internals.signals.pattern(pattern);
+    setDisabled(value) {
+      if (internals.signals.disabled() === value) return;
+      internals.signals.disabled(value);
       bumpFieldVersion(internals);
       notifyFieldChange(field, internals);
     },
@@ -256,10 +230,9 @@ export function createFieldMethods(field: IField, internals: FieldInternals): Fi
           changed = true;
         }
 
-        // ── Pattern (disabled/readOnly/readPretty/editable/pattern all map to one signal) ──
-        const nextPattern = resolvePattern(state, s.pattern());
-        if (nextPattern !== undefined && s.pattern() !== nextPattern) {
-          s.pattern(nextPattern);
+        // ── Disabled ──
+        if ("disabled" in state && s.disabled() !== Boolean(state.disabled)) {
+          s.disabled(Boolean(state.disabled));
           changed = true;
         }
 
@@ -319,8 +292,7 @@ export function createFieldMethods(field: IField, internals: FieldInternals): Fi
       if (!changed) return;
 
       // Determine notification type
-      const hasValueLikeChange =
-        "value" in state || "visible" in state || "hidden" in state || "display" in state;
+      const hasValueLikeChange = "value" in state || "display" in state;
       if (hasValueLikeChange) {
         notifyFieldValueChange(field, internals);
       } else {
@@ -356,16 +328,16 @@ export function createFieldMethods(field: IField, internals: FieldInternals): Fi
       const errors: FieldError[] = [];
       const value = readFieldValue(field, internals);
 
-      if (internals.signals.required() && isEmptyValue(value)) {
+      // Step 1: Run static validate constraints (includes required check)
+      const staticErrors = runStaticValidate(internals.validate, value);
+      if (staticErrors.length > 0) errors.push(...staticErrors);
+
+      // If no required error from validate, check top-level required signal
+      if (internals.signals.required() && !internals.validate?.required && isEmptyValue(value)) {
         errors.push({
           message: `${internals.signals.meta().title || internals.path} is required`,
           type: "required",
         });
-      }
-
-      for (const validator of internals.validators) {
-        const validationErrors = await runValidator(validator, value, field);
-        if (validationErrors) errors.push(...validationErrors);
       }
 
       if (internals.xValidate && internals.form?._runXValidate) {

@@ -4,7 +4,12 @@
   "description": "集中演示 property-level x-reaction：联动渲染、联动状态、联动计算、异步加载 dataSource。",
   "category": "02 动态协议",
   "order": 30,
-  "tags": ["x-reaction", "linkage", "async", "computed"],
+  "tags": [
+    "x-reaction",
+    "linkage",
+    "async",
+    "computed"
+  ],
   "schema": {
     "type": "object",
     "title": "x-reaction 详解",
@@ -44,9 +49,6 @@
             "message": "邮箱格式不正确"
           }
         ],
-        "state": {
-          "display": "visible"
-        },
         "x-reaction": {
           "display": {
             "type": "match",
@@ -58,7 +60,8 @@
               "default": "none"
             }
           }
-        }
+        },
+        "display": "visible"
       },
       "phone": {
         "type": "string",
@@ -67,9 +70,6 @@
         "decorator": "FormItem",
         "props": {
           "placeholder": "请输入手机号"
-        },
-        "state": {
-          "display": "none"
         },
         "x-reaction": {
           "display": {
@@ -82,7 +82,8 @@
               "default": "none"
             }
           }
-        }
+        },
+        "display": "none"
       },
       "larkId": {
         "type": "string",
@@ -91,9 +92,6 @@
         "decorator": "FormItem",
         "props": {
           "placeholder": "请输入飞书 ID"
-        },
-        "state": {
-          "display": "none"
         },
         "x-reaction": {
           "display": {
@@ -106,7 +104,8 @@
               "default": "none"
             }
           }
-        }
+        },
+        "display": "none"
       },
       "quantity": {
         "type": "number",
@@ -133,9 +132,6 @@
         "title": "总价（联动计算）",
         "component": "Input",
         "decorator": "FormItem",
-        "state": {
-          "pattern": "readPretty"
-        },
         "description": "由 quantity 与 unitPrice 通过 x-reaction.value 计算。",
         "x-reaction": {
           "value": {
@@ -146,7 +142,8 @@
             },
             "expression": "($deps.quantity || 0) * ($deps.unitPrice || 0)"
           }
-        }
+        },
+        "disabled": true
       },
       "category": {
         "type": "string",

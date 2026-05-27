@@ -1,9 +1,8 @@
 [
-  { "type": "file", "name": "introduction", "label": "Introduction" },
   { "type": "file", "name": "edit-initialization", "label": "Edit Initialization" },
   { "type": "file", "name": "mode-switching", "label": "Mode Switching" },
-  { "type": "file", "name": "permissions", "label": "Permissions & Visibility" },
-  { "type": "file", "name": "async-data", "label": "Async Data Fetching" },
-  { "type": "file", "name": "composite-fields", "label": "Composite Field Modeling" },
-  { "type": "file", "name": "spec-sku-matrix", "label": "Spec and SKU Sales Matrix" }
+  { "type": "file", "name": "permissions", "label": "Permissions" },
+  { "type": "file", "name": "async-data", "label": "Async Data" },
+  { "type": "file", "name": "composite-fields", "label": "Composite Fields" },
+  { "type": "file", "name": "spec-sku-matrix", "label": "Spec & SKU Matrix" }
 ]
