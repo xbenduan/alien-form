@@ -8,7 +8,7 @@ title: x-reaction 联动
 
 ```tsx preview
 import React from "react";
-import { createForm, FormProvider, SchemaField } from "@alien-form/react";
+import { useCreateForm, FormProvider, SchemaField } from "@alien-form/react";
 import {
   SchemaInput,
   SchemaTextarea,
@@ -108,7 +108,7 @@ const decorators = { FormItem };
 
 export default () => {
   const [result, setResult] = React.useState<any>(null);
-  const form = createForm();
+  const form = useCreateForm();
 
   const handleSubmit = async () => {
     try {
