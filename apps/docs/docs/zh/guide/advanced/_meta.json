@@ -1,6 +1,5 @@
 [
   { "type": "file", "name": "custom-components", "label": "自定义组件" },
-  { "type": "file", "name": "higher-order-components", "label": "高阶组件" },
   { "type": "file", "name": "x-reaction", "label": "x-reaction" },
   { "type": "file", "name": "x-format", "label": "x-format" },
   { "type": "file", "name": "x-validate", "label": "x-validate" }
