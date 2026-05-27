@@ -34,26 +34,13 @@ export default defineConfig({
     }),
   ],
   builderConfig: {
-    plugins: [
-      {
-        name: "tailwindcss",
-        setup(api) {
-          api.modifyBundlerChain((chain) => {
-            chain.module
-              .rule("css")
-              .use("postcss")
-              .tap((options = {}) => {
-                options.postcssOptions = options.postcssOptions || {};
-                options.postcssOptions.plugins = [
-                  ...(options.postcssOptions.plugins || []),
-                  tailwindcss(),
-                ];
-                return options;
-              });
-          });
-        },
+    tools: {
+      postcss(config) {
+        config.postcssOptions ||= {};
+        config.postcssOptions.plugins ||= [];
+        config.postcssOptions.plugins.push(tailwindcss());
       },
-    ],
+    },
   },
   globalStyles: path.join(__dirname, "styles/global.css"),
   themeConfig: {
