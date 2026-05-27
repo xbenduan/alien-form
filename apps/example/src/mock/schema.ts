@@ -1,0 +1,188 @@
+import { IFormSchema } from "@alien-form/react";
+import { sleep } from ".";
+
+export const getSchema = async (): Promise<IFormSchema> => {
+  await sleep(500);
+  return {
+    type: "object",
+    properties: {
+      intro: {
+        type: "string",
+        title: "设计说明",
+        default:
+          "这个示例刻意没有把规格 + 销售矩阵做成一个 value(object)+onChange(object) 的超级组件。上半部分 specs 是规格定义，下半部分 skus 是派生出来的真实数组字段。规格支持图片时，会自动成为主分组规格，SKU 表会按它的规格值和图片做分组，并尽量保留你已填写的销售配置。",
+        component: "Textarea",
+        decorator: "FormItem",
+        props: {
+          rows: 4,
+        },
+        order: 5,
+      },
+      specs: {
+        type: "array",
+        title: "规格定义",
+        description:
+          "先定义规格维度与可选值。若某个规格开启支持图片，它会自动成为 SKU 主分组规格，表格按它的值与图片分组。",
+        component: "ArrayCards",
+        decorator: "FormItem",
+        props: {
+          addText: "+ 添加规格维度",
+        },
+        order: 10,
+        items: {
+          type: "object",
+          properties: {
+            name: {
+              type: "string",
+              title: "规格名",
+              component: "Input",
+              decorator: "FormItem",
+              required: true,
+              props: {
+                placeholder: "例如：颜色、内存、运行内存",
+              },
+              order: 10,
+            },
+            supportsImage: {
+              type: "boolean",
+              title: "支持图片",
+              component: "Switch",
+              decorator: "FormItem",
+              description:
+                "只允许一个规格开启。若多个规格都开启，系统会自动以后开启者为主分组规格。",
+              order: 20,
+            },
+            values: {
+              type: "array",
+              title: "规格值",
+              component: "ArrayCards",
+              decorator: "FormItem",
+              required: true,
+              props: {
+                addText: "+ 添加规格值",
+              },
+              order: 30,
+              items: {
+                type: "object",
+                properties: {
+                  label: {
+                    type: "string",
+                    title: "规格值",
+                    component: "Input",
+                    decorator: "FormItem",
+                    required: true,
+                    props: {
+                      placeholder: "例如：曜石黑、256G、12G",
+                    },
+                    order: 10,
+                  },
+                  image: {
+                    type: "string",
+                    title: "规格图片",
+                    component: "ImageInput",
+                    decorator: "FormItem",
+                    description: "仅在当前规格开启图片模式时参与主分组展示。",
+                    props: {
+                      placeholder: "输入图片 URL",
+                    },
+                    order: 20,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      skus: {
+        type: "array",
+        title: "规格配置",
+        description:
+          "系统根据规格做笛卡尔积生成 SKU 行。若存在图片规格，销售矩阵会按该规格分组显示，每组下继续编辑其余规格组合的售价、库存和售卖时间。",
+        component: "SkuTable",
+        decorator: "FormItem",
+        props: {
+          helperText:
+            "规格变化后，已有 SKU 行会按 skuKey 尽量保留价格、库存、售卖时间和配件配置。若规格中存在图片规格，系统会按该规格值分组展示；其余规格组合继续在组内逐行编辑。",
+        },
+        order: 20,
+        items: {
+          type: "object",
+          properties: {
+            skuKey: {
+              type: "string",
+              title: "SKU Key",
+              order: 5,
+            },
+            groupKey: {
+              type: "string",
+              title: "分组键",
+              order: 6,
+            },
+            groupSpecName: {
+              type: "string",
+              title: "分组规格名",
+              order: 7,
+            },
+            groupSpecValue: {
+              type: "string",
+              title: "分组规格值",
+              order: 8,
+            },
+            groupSpecImage: {
+              type: "string",
+              title: "分组规格图片",
+              order: 9,
+            },
+            specSummary: {
+              type: "string",
+              title: "销售规格",
+              component: "Input",
+              order: 10,
+            },
+            price: {
+              type: "number",
+              title: "售价",
+              component: "Input",
+              required: true,
+              props: { type: "number", placeholder: "请输入售价" },
+              order: 20,
+            },
+            stock: {
+              type: "number",
+              title: "库存",
+              component: "Input",
+              required: true,
+              props: { type: "number", placeholder: "请输入库存" },
+              order: 30,
+            },
+            startDate: {
+              type: "string",
+              title: "开始时间",
+              component: "DateInput",
+              order: 40,
+            },
+            endDate: {
+              type: "string",
+              title: "结束时间",
+              component: "DateInput",
+              order: 50,
+            },
+            accessories: {
+              type: "array",
+              title: "配件列表",
+              component: "ItemInput",
+              props: { placeholder: "输入配件后按 Enter" },
+              order: 60,
+            },
+            enabled: {
+              type: "boolean",
+              title: "启售",
+              component: "Switch",
+              order: 70,
+            },
+          },
+        },
+      },
+    },
+  };
+};
