@@ -53,8 +53,6 @@ interface IFormSchema {
 | `validate` | `SchemaValidate` | 内置静态校验约束（详见下方） | → 校验管线第 1 步 |
 | `dataSource` | `Array<{label, value, ...}>` | 静态选项源 | → `field.dataSource` |
 | `dataSourcePolicy` | `"preserve" \| "clear" \| "filter" \| "first"` | 数据源变化时如何处理当前值 | → 值调和策略 |
-| `content` | `any` | 字段内容槽 | → `field.content` |
-| `data` | `Record<string, any>` | 字段私有数据槽 | → `field.data` |
 | `x-reaction` | `SchemaReactions` | 动态字段属性派生规则（详见 [x-reaction](./advanced/x-reaction)） | → 响应式 effect |
 | `x-format` | `{input?, output?}` | 值输入/输出转换（详见 [x-format](./advanced/x-format)） | → 字段创建时 + `form.values` 读取时 |
 | `x-validate` | `SchemaRuleSet` | 动态校验规则（详见 [x-validate](./advanced/x-validate)） | → 校验管线第 2 步 |

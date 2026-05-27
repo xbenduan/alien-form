@@ -53,8 +53,6 @@ Process: clear old fields → cache `definitions` → sort by `order` → recurs
 | `validate` | `SchemaValidate` | Built-in static constraints (see below) | → validation pipeline step 1 |
 | `dataSource` | `Array<{label, value, ...}>` | Static options | → `field.dataSource` |
 | `dataSourcePolicy` | `"preserve" \| "clear" \| "filter" \| "first"` | Value reconciliation on dataSource change | → value reconciliation |
-| `content` | `any` | Content slot | → `field.content` |
-| `data` | `Record<string, any>` | Private data slot | → `field.data` |
 | `x-reaction` | `SchemaReactions` | Dynamic property derivation rules | → reactive effects |
 | `x-format` | `{input?, output?}` | Value input/output transforms | → on create + form.values read |
 | `x-validate` | `SchemaRuleSet` | Dynamic validation rules | → validation pipeline step 2 |
