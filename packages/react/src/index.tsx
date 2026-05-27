@@ -935,28 +935,23 @@ function areDeepEqual(a: any, b: any, seen: WeakMap<object, object> = new WeakMa
 }
 
 // ============================================================
-// Component Definition Helpers
+// Component Definition Helper (Schema-driven type inference)
 // ============================================================
 
-export {
-  defineFieldComponent,
-  defineArrayComponent,
-  defineVoidComponent,
-  defineObjectComponent,
-  defineDecorator,
-} from "./define";
+export { defineComponent } from "./define";
 
 export type {
-  FieldComponentBaseProps,
-  FieldComponentProps,
-  ArrayComponentBaseProps,
-  ArrayComponentProps,
-  VoidComponentBaseProps,
-  VoidComponentProps,
-  ObjectComponentBaseProps,
-  ObjectComponentProps,
-  DecoratorBaseProps,
-  DecoratorProps,
+  SchemaComponentDef,
+  InferComponentProps,
+  InferDecoratorProps,
+  InferFieldsMap,
+  InferBaseSlots,
+  InferCustomProps,
+  FieldBaseSlots,
+  ArrayBaseSlots,
+  VoidBaseSlots,
+  ObjectBaseSlots,
+  DecoratorBaseSlots,
 } from "./define";
 
 // Suppress unused import warning

@@ -1,259 +1,234 @@
 /**
- * @alien-form/react — Component definition helpers
+ * @alien-form/react — Schema-driven component definition with full type inference
  *
- * Type-safe wrappers for defining custom field components, array components,
- * void/object layout components, and decorators with full IntelliSense.
+ * A single `defineComponent` function that infers the exact props (slots, actions,
+ * custom props) a component will receive based on the schema definition you provide.
  *
- * These are zero-runtime identity functions — they exist purely for type inference.
+ * Zero runtime cost — it's an identity function that only exists for TypeScript inference.
  */
 
 import type React from "react";
 import type { IField, FieldError } from "@alien-form/core";
 
 // ============================================================
-// Field Component (Normal)
+// Schema Definition Types (used as input to defineComponent)
 // ============================================================
 
-/**
- * Props automatically injected by the renderer into every normal field component.
- * Custom props from schema `props` are merged on top via the generic `P`.
- */
-export interface FieldComponentBaseProps {
-  /** Current field value */
+type SchemaType = "string" | "number" | "boolean" | "void" | "object" | "array";
+
+interface FieldDef {
+  type?: SchemaType;
+  [key: string]: any;
+}
+
+/** Schema definition object passed to defineComponent */
+interface SchemaComponentDef {
+  type?: SchemaType;
+  items?: Record<string, FieldDef> | FieldDef;
+  properties?: Record<string, FieldDef>;
+  props?: Record<string, any>;
+  decoratorProps?: Record<string, any>;
+  decorator?: string;
+}
+
+// ============================================================
+// Inferred Props — conditional types based on schema definition
+// ============================================================
+
+/** Convert an items/properties record into a typed fields map of ReactNode */
+type InferFieldsMap<T> = T extends Record<string, any>
+  ? { [K in keyof T]: React.ReactNode }
+  : Record<string, React.ReactNode>;
+
+/** Infer custom props from schema `props` field */
+type InferCustomProps<S extends SchemaComponentDef> =
+  S extends { props: infer P } ? { [K in keyof P]: P[K] } : {};
+
+// --- Base props for each category ---
+
+interface FieldBaseSlots {
   value: any;
-  /** Callback to update the field value */
   onChange: (value: any) => void;
-  /** Whether the field is disabled */
   disabled?: boolean;
-  /** Whether the field is in a loading state */
   loading?: boolean;
-  /** Option data source (when field has dataSource) */
   dataSource?: Array<{ label: string; value: any; [key: string]: any }>;
 }
 
-/**
- * Full props type for a normal field component.
- * `P` = your custom props from schema `props`.
- */
-export type FieldComponentProps<P = {}> = FieldComponentBaseProps & P;
-
-/**
- * Define a normal field component with full type safety.
- *
- * @example
- * const ImageInput = defineFieldComponent<{ placeholder?: string }>(
- *   ({ value, onChange, placeholder, disabled }) => {
- *     return <input value={value ?? ""} onChange={e => onChange(e.target.value)} ... />;
- *   }
- * );
- */
-export function defineFieldComponent<P = {}>(
-  component: React.FC<FieldComponentProps<P>>,
-): React.FC<FieldComponentProps<P>> {
-  return component;
+interface VoidBaseSlots<Fields = Record<string, React.ReactNode>> {
+  title?: string;
+  description?: string;
+  children?: React.ReactNode;
+  fields?: Fields;
 }
 
-// ============================================================
-// Array Component
-// ============================================================
-
-/**
- * Props automatically injected by the renderer into array components.
- */
-export interface ArrayComponentBaseProps {
-  /** The array field instance */
+interface ObjectBaseSlots<Fields = Record<string, React.ReactNode>> {
   field: IField;
-  /** Rendered child fields per row: rows[rowIndex][fieldIndex] */
+  title?: string;
+  description?: string;
+  children?: React.ReactNode;
+  fields?: Fields;
+}
+
+interface ArrayBaseSlots<RowFields = Record<string, React.ReactNode>> {
+  field: IField;
   rows: React.ReactNode[][];
-  /** Rendered child fields per row keyed by field name */
-  rowFields: Record<string, React.ReactNode>[];
-  /** Add a new row (optionally with initial values) */
+  rowFields: RowFields[];
   onAdd: (initialValues?: Record<string, any>) => void;
-  /** Remove row at index */
   onRemove: (index: number) => void;
-  /** Move row up */
   onMoveUp: (index: number) => void;
-  /** Move row down */
   onMoveDown: (index: number) => void;
-  /** Whether the array field is disabled */
   disabled?: boolean;
 }
 
-/**
- * Full props type for an array component.
- * `P` = your custom props from schema `props`.
- */
-export type ArrayComponentProps<P = {}> = ArrayComponentBaseProps & P;
-
-/**
- * Define an array container component with full type safety.
- *
- * @example
- * const MyArrayCards = defineArrayComponent<{ maxItems?: number; addText?: string }>(
- *   ({ rows, onAdd, onRemove, disabled, maxItems, addText }) => {
- *     return (
- *       <div>
- *         {rows.map((row, i) => <div key={i}>{row}</div>)}
- *         <button onClick={() => onAdd()}>{ addText ?? '+ Add' }</button>
- *       </div>
- *     );
- *   }
- * );
- */
-export function defineArrayComponent<P = {}>(
-  component: React.FC<ArrayComponentProps<P>>,
-): React.FC<ArrayComponentProps<P>> {
-  return component;
-}
-
-// ============================================================
-// Void Component (Layout / Grouping Container)
-// ============================================================
-
-/**
- * Props automatically injected by the renderer into void layout components.
- * Void components do NOT receive `field` or `value/onChange`.
- */
-export interface VoidComponentBaseProps {
-  /** Schema title */
-  title?: string;
-  /** Schema description */
-  description?: string;
-  /** Child field nodes (rendered as React children) */
-  children?: React.ReactNode;
-  /** Child fields keyed by field name */
-  fields?: Record<string, React.ReactNode>;
-}
-
-/**
- * Full props type for a void/layout component.
- * `P` = your custom props from schema `props`.
- */
-export type VoidComponentProps<P = {}> = VoidComponentBaseProps & P;
-
-/**
- * Define a void/layout container component with full type safety.
- *
- * @example
- * const MyCard = defineVoidComponent<{ bordered?: boolean; collapsible?: boolean }>(
- *   ({ title, children, bordered, collapsible }) => {
- *     return (
- *       <div className={bordered ? "border rounded" : ""}>
- *         <h3>{title}</h3>
- *         {children}
- *       </div>
- *     );
- *   }
- * );
- */
-export function defineVoidComponent<P = {}>(
-  component: React.FC<VoidComponentProps<P>>,
-): React.FC<VoidComponentProps<P>> {
-  return component;
-}
-
-// ============================================================
-// Object Component (Object Container)
-// ============================================================
-
-/**
- * Props automatically injected by the renderer into object container components.
- */
-export interface ObjectComponentBaseProps {
-  /** The object field instance */
-  field: IField;
-  /** Schema title */
-  title?: string;
-  /** Schema description */
-  description?: string;
-  /** Child field nodes (rendered as React children) */
-  children?: React.ReactNode;
-  /** Child fields keyed by field name */
-  fields?: Record<string, React.ReactNode>;
-}
-
-/**
- * Full props type for an object container component.
- * `P` = your custom props from schema `props`.
- */
-export type ObjectComponentProps<P = {}> = ObjectComponentBaseProps & P;
-
-/**
- * Define an object container component with full type safety.
- *
- * @example
- * const AddressGroup = defineObjectComponent<{ columns?: number }>(
- *   ({ title, children, field, columns = 2 }) => {
- *     return (
- *       <div>
- *         <h4>{title}</h4>
- *         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
- *           {children}
- *         </div>
- *       </div>
- *     );
- *   }
- * );
- */
-export function defineObjectComponent<P = {}>(
-  component: React.FC<ObjectComponentProps<P>>,
-): React.FC<ObjectComponentProps<P>> {
-  return component;
-}
-
-// ============================================================
-// Decorator Component
-// ============================================================
-
-/**
- * Props automatically injected by the renderer into decorator components.
- */
-export interface DecoratorBaseProps {
-  /** Field label (from field.title) */
+/** Decorator base slots */
+interface DecoratorBaseSlots {
   label?: string;
-  /** Whether the field is required */
   required?: boolean;
-  /** Validation errors */
   errors?: FieldError[];
-  /** Validation warnings */
   warnings?: FieldError[];
-  /** Field description */
   description?: string;
-  /** Validation status */
   validateStatus?: "success" | "error" | "warning" | "validating" | "";
-  /** The rendered field component */
   children?: React.ReactNode;
 }
 
-/**
- * Full props type for a decorator component.
- * `P` = your custom props from schema `decoratorProps`.
- */
-export type DecoratorProps<P = {}> = DecoratorBaseProps & P;
+// --- Main conditional inference ---
+
+type InferBaseSlots<S extends SchemaComponentDef> =
+  S extends { type: "array" }
+    ? S extends { items: infer I }
+      ? I extends Record<string, FieldDef>
+        ? ArrayBaseSlots<InferFieldsMap<I>>
+        : I extends { properties: infer P }
+          ? P extends Record<string, any>
+            ? ArrayBaseSlots<InferFieldsMap<P>>
+            : ArrayBaseSlots
+          : ArrayBaseSlots
+      : ArrayBaseSlots
+    : S extends { type: "void" }
+      ? S extends { properties: infer P }
+        ? VoidBaseSlots<InferFieldsMap<P>>
+        : VoidBaseSlots
+      : S extends { type: "object" }
+        ? S extends { properties: infer P }
+          ? ObjectBaseSlots<InferFieldsMap<P>>
+          : ObjectBaseSlots
+        : FieldBaseSlots;
+
+/** Final inferred props = base slots + custom props */
+type InferComponentProps<S extends SchemaComponentDef> = InferBaseSlots<S> & InferCustomProps<S>;
+
+// ============================================================
+// defineComponent — the single unified API
+// ============================================================
 
 /**
- * Define a decorator (field wrapper) component with full type safety.
+ * Define a custom component with schema-driven type inference.
+ *
+ * Pass a schema definition object describing the component's structural role,
+ * and get back a typed component factory. The returned component's props are
+ * fully inferred: base slots (value/onChange, field, rows, children, etc.)
+ * come from `type`, and custom props come from `props`.
  *
  * @example
- * const InlineFormItem = defineDecorator<{ labelWidth?: number }>(
- *   ({ label, required, errors = [], children, labelWidth = 96 }) => {
- *     return (
- *       <div className="flex items-start gap-3 mb-3">
- *         <label style={{ width: labelWidth }}>
- *           {required && <span className="text-red-500">*</span>}
- *           {label}
- *         </label>
- *         <div className="flex-1">
- *           {children}
- *           {errors.length > 0 && <p className="text-red-500">{errors[0].message}</p>}
- *         </div>
- *       </div>
- *     );
- *   }
- * );
+ * // --- Normal field component ---
+ * const ImageInput = defineComponent({
+ *   type: "string",
+ *   props: { placeholder: "" as string, previewSize: 64 as number },
+ * })(({ value, onChange, disabled, placeholder, previewSize }) => {
+ *   //    ^-- all inferred: value/onChange from "string", placeholder/previewSize from props
+ *   return <div>...</div>;
+ * });
+ *
+ * @example
+ * // --- Array component with typed rowFields ---
+ * const ContactCards = defineComponent({
+ *   type: "array",
+ *   items: {
+ *     name: { type: "string" },
+ *     phone: { type: "string" },
+ *     role: { type: "string" },
+ *   },
+ *   props: { maxItems: 5 as number, addText: "" as string },
+ * })(({ rows, rowFields, field, onAdd, onRemove, maxItems, addText }) => {
+ *   //    rowFields[0].name  → React.ReactNode ✓
+ *   //    rowFields[0].phone → React.ReactNode ✓
+ *   //    rowFields[0].xxx   → TS error ✗
+ *   return <div>...</div>;
+ * });
+ *
+ * @example
+ * // --- Void layout container with typed fields ---
+ * const TwoColumnCard = defineComponent({
+ *   type: "void",
+ *   properties: {
+ *     left: { type: "string" },
+ *     right: { type: "string" },
+ *   },
+ *   props: { gap: 16 as number },
+ * })(({ title, children, fields, gap }) => {
+ *   //    fields.left  → React.ReactNode ✓
+ *   //    fields.right → React.ReactNode ✓
+ *   return <div style={{ gap }}>...</div>;
+ * });
+ *
+ * @example
+ * // --- Object container ---
+ * const AddressGroup = defineComponent({
+ *   type: "object",
+ *   properties: {
+ *     province: { type: "string" },
+ *     city: { type: "string" },
+ *     detail: { type: "string" },
+ *   },
+ *   props: { columns: 2 as number },
+ * })(({ field, title, fields, children, columns }) => {
+ *   //    fields.province → React.ReactNode ✓
+ *   return <div>...</div>;
+ * });
+ *
+ * @example
+ * // --- Decorator ---
+ * const InlineFormItem = defineComponent.decorator({
+ *   props: { labelWidth: 96 as number },
+ * })(({ label, required, errors, children, labelWidth }) => {
+ *   return <div>...</div>;
+ * });
  */
-export function defineDecorator<P = {}>(
-  component: React.FC<DecoratorProps<P>>,
-): React.FC<DecoratorProps<P>> {
-  return component;
+export function defineComponent<S extends SchemaComponentDef>(schema: S) {
+  return function <C extends React.FC<InferComponentProps<S>>>(component: C): C {
+    return component;
+  };
 }
+
+// --- Decorator variant ---
+
+interface DecoratorDef {
+  props?: Record<string, any>;
+}
+
+type InferDecoratorProps<S extends DecoratorDef> =
+  DecoratorBaseSlots & (S extends { props: infer P } ? { [K in keyof P]: P[K] } : {});
+
+defineComponent.decorator = function <S extends DecoratorDef>(schema: S) {
+  return function <C extends React.FC<InferDecoratorProps<S>>>(component: C): C {
+    return component;
+  };
+};
+
+// ============================================================
+// Exports
+// ============================================================
+
+export type {
+  SchemaComponentDef,
+  InferComponentProps,
+  InferDecoratorProps,
+  InferFieldsMap,
+  InferBaseSlots,
+  InferCustomProps,
+  FieldBaseSlots,
+  ArrayBaseSlots,
+  VoidBaseSlots,
+  ObjectBaseSlots,
+  DecoratorBaseSlots,
+};
