@@ -3,14 +3,26 @@
 @source "../../../packages/ui/src/**/*.tsx";
 @source "../docs/**/*.{mdx,tsx}";
 
-/* Move the "view code" button to the bottom of the preview card */
+/* Move the "view code" button to bottom-right of the preview card */
 .rp-preview--internal__card {
   flex-direction: column;
+  padding-right: 24px;
 }
 .rp-preview-operations--web {
-  margin-left: 0;
+  margin-left: auto;
   margin-top: 12px;
-  justify-content: flex-end;
+}
+.rp-preview-operations__button {
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+.rp-preview-operations__button:hover {
+  background: none;
+}
+.rp-preview-operations__button--expanded {
+  background: none;
+  box-shadow: none;
 }
 
 @theme {
