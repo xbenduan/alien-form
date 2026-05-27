@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+@source "../../../packages/ui/src/**/*.tsx";
+@source "../docs/**/*.{mdx,tsx}";
+
 @theme {
   --color-border: hsl(214.3 31.8% 91.4%);
   --color-input: hsl(214.3 31.8% 91.4%);
@@ -31,10 +34,4 @@
   --radius-lg: 0.5rem;
   --radius-md: calc(0.5rem - 2px);
   --radius-sm: calc(0.5rem - 4px);
-}
-
-@layer base {
-  .rspress-doc * {
-    border-color: var(--color-border);
-  }
 }
