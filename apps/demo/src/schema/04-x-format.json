@@ -4,7 +4,11 @@
   "description": "演示输入态与提交态转换：初始化/default/setValues 进入组件前执行 input，submit/form.values 输出前执行 output。",
   "category": "02 动态协议",
   "order": 40,
-  "tags": ["x-format", "input", "output"],
+  "tags": [
+    "x-format",
+    "input",
+    "output"
+  ],
   "schema": {
     "type": "object",
     "title": "x-format 格式化演示",
@@ -30,12 +34,10 @@
             "expression": "($value || 0) * 100"
           }
         },
-        "validators": [
-          {
-            "required": true,
-            "message": "请输入金额"
-          }
-        ]
+        "validate": {
+          "required": true,
+          "message": "请输入金额"
+        }
       },
       "code": {
         "type": "string",

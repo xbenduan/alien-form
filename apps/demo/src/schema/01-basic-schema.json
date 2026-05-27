@@ -1,13 +1,13 @@
 {
   "id": "basic-schema",
   "name": "基础 Schema",
-  "description": "演示稳定协议字段：type、title、description、default、component、props、decorator、validators、dataSource、state、order。",
+  "description": "演示稳定协议字段：type、title、description、default、component、props、decorator、validate、dataSource、order。",
   "category": "01 基础能力",
   "order": 10,
   "tags": [
     "schema",
     "component",
-    "validators"
+    "validate"
   ],
   "schema": {
     "type": "object",
@@ -24,12 +24,10 @@
         "props": {
           "placeholder": "例如：企业 Schema 表单引擎"
         },
-        "validators": [
-          {
-            "minLength": 4,
-            "message": "标题至少 4 个字符"
-          }
-        ]
+        "validate": {
+          "minLength": 4,
+          "message": "标题至少 4 个字符"
+        }
       },
       "priority": {
         "type": "string",
@@ -62,12 +60,10 @@
         "props": {
           "placeholder": "请输入负责人"
         },
-        "validators": [
-          {
-            "required": true,
-            "message": "负责人必填"
-          }
-        ]
+        "validate": {
+          "required": true,
+          "message": "负责人必填"
+        }
       },
       "deadline": {
         "type": "string",

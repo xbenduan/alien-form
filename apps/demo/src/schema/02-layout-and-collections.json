@@ -4,7 +4,11 @@
   "description": "演示 FormSection、FormGrid、ArrayCards、ArrayTable，用于企业表单中的分组、栅格、联系人和明细录入。",
   "category": "01 基础能力",
   "order": 20,
-  "tags": ["layout", "array", "object"],
+  "tags": [
+    "layout",
+    "array",
+    "object"
+  ],
   "schema": {
     "type": "object",
     "title": "布局与集合字段演示",
@@ -124,12 +128,10 @@
               "title": "邮箱",
               "component": "Input",
               "decorator": "FormItem",
-              "validators": [
-                {
-                  "format": "email",
-                  "message": "邮箱格式不正确"
-                }
-              ]
+              "validate": {
+                "format": "email",
+                "message": "邮箱格式不正确"
+              }
             }
           }
         }

@@ -175,10 +175,12 @@
                 "type": "number",
                 "placeholder": "请输入售价"
               },
-              "minimum": 0,
               "order": 20,
               "decoratorProps": {
                 "label": ""
+              },
+              "validate": {
+                "minimum": 0
               }
             },
             "stock": {
@@ -190,10 +192,12 @@
                 "type": "number",
                 "placeholder": "请输入库存"
               },
-              "minimum": 0,
               "order": 30,
               "decoratorProps": {
                 "label": ""
+              },
+              "validate": {
+                "minimum": 0
               }
             },
             "startDate": {

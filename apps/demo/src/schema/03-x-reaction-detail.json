@@ -43,12 +43,6 @@
         "props": {
           "placeholder": "name@example.com"
         },
-        "validators": [
-          {
-            "format": "email",
-            "message": "邮箱格式不正确"
-          }
-        ],
         "x-reaction": {
           "display": {
             "type": "match",
@@ -61,7 +55,11 @@
             }
           }
         },
-        "display": "visible"
+        "display": "visible",
+        "validate": {
+          "format": "email",
+          "message": "邮箱格式不正确"
+        }
       },
       "phone": {
         "type": "string",
