@@ -1,0 +1,105 @@
+---
+title: 字段状态与展示模式
+---
+
+# 字段状态与展示模式
+
+演示字段状态控制：`display`、`pattern`（editable/readPretty）、通过 `x-reaction` 条件显隐。
+
+```tsx preview
+import { createForm, FormProvider, SchemaField } from "@alien-form/react";
+import {
+  SchemaInput,
+  SchemaTextarea,
+  SchemaSelect,
+  Checkbox,
+  Switch,
+  DateInput,
+  RadioGroup,
+  Rating,
+  FormItem,
+  FormGrid,
+  FormLayout,
+  FormSection,
+  ArrayCards,
+  ArrayTable,
+} from "@alien-form/ui";
+
+const schema = {
+  type: "object",
+  properties: {
+    mode: {
+      type: "string",
+      title: "表单模式",
+      default: "edit",
+      component: "RadioGroup",
+      decorator: "FormItem",
+      dataSource: [
+        { label: "编辑", value: "edit" },
+        { label: "只读", value: "readonly" },
+        { label: "隐藏敏感项", value: "secure" },
+      ],
+    },
+    nickname: {
+      type: "string",
+      title: "昵称",
+      default: "AlienForm",
+      component: "Input",
+      decorator: "FormItem",
+      "x-reaction": {
+        pattern: {
+          type: "match",
+          dependencies: { mode: "mode" },
+          match: { readonly: "readPretty", default: "editable" },
+        },
+      },
+    },
+    apiSecret: {
+      type: "string",
+      title: "接口密钥",
+      default: "sk_demo_123456",
+      component: "Input",
+      decorator: "FormItem",
+      props: { type: "password" },
+      "x-reaction": {
+        display: {
+          type: "match",
+          dependencies: { mode: "mode" },
+          match: { secure: "none", default: "visible" },
+        },
+      },
+    },
+    reason: {
+      type: "string",
+      title: "隐藏原因",
+      component: "Textarea",
+      decorator: "FormItem",
+      props: { rows: 3 },
+      state: { display: "none" },
+      "x-reaction": {
+        display: {
+          type: "match",
+          dependencies: { mode: "mode" },
+          match: { secure: "visible", default: "none" },
+        },
+        value: {
+          type: "static",
+          value: "secure 模式下敏感字段由外层权限/装饰器范式控制",
+        },
+      },
+    },
+  },
+};
+
+const components = { Input: SchemaInput, Textarea: SchemaTextarea, Select: SchemaSelect, Checkbox, Switch, DateInput, RadioGroup, Rating, FormGrid, FormLayout, FormSection, ArrayCards, ArrayTable };
+const decorators = { FormItem };
+
+export default () => {
+  const form = createForm();
+  return (
+    <FormProvider form={form} components={components} decorators={decorators}>
+      <SchemaField schema={schema} />
+    </FormProvider>
+  );
+};
+```

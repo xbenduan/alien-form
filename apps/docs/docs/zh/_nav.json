@@ -1,6 +1,6 @@
 [
   {
-    "text": "指南",
+    "text": "\u6307\u5357",
     "link": "/guide/introduction",
     "activeMatch": "^/zh/guide/"
   },
@@ -10,8 +10,13 @@
     "activeMatch": "^/zh/api/"
   },
   {
-    "text": "开发范式",
-    "link": "/patterns/edit-initialization",
+    "text": "\u793a\u4f8b",
+    "link": "/demos/basic-schema",
+    "activeMatch": "^/zh/demos/"
+  },
+  {
+    "text": "\u5f00\u53d1\u8303\u5f0f",
+    "link": "/patterns/introduction",
     "activeMatch": "^/zh/patterns/"
   }
 ]

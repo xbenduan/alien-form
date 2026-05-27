@@ -1,0 +1,94 @@
+---
+title: Basic Schema
+---
+
+# Basic Schema
+
+Demonstrates core schema fields: `type`, `title`, `component`, `decorator`, `validators`, `dataSource`, `state`.
+
+```tsx preview
+import { createForm, FormProvider, SchemaField } from "@alien-form/react";
+import {
+  SchemaInput,
+  SchemaTextarea,
+  SchemaSelect,
+  Checkbox,
+  Switch,
+  DateInput,
+  RadioGroup,
+  Rating,
+  FormItem,
+  FormGrid,
+  FormLayout,
+  FormSection,
+  ArrayCards,
+  ArrayTable,
+} from "@alien-form/ui";
+
+const schema = {
+  type: "object",
+  properties: {
+    title: {
+      type: "string",
+      title: "需求标题",
+      required: true,
+      component: "Input",
+      decorator: "FormItem",
+      props: { placeholder: "例如：企业 Schema 表单引擎" },
+      validators: [{ minLength: 4, message: "标题至少 4 个字符" }],
+    },
+    priority: {
+      type: "string",
+      title: "优先级",
+      default: "p1",
+      component: "RadioGroup",
+      decorator: "FormItem",
+      dataSource: [
+        { label: "P0 紧急", value: "p0" },
+        { label: "P1 高", value: "p1" },
+        { label: "P2 普通", value: "p2" },
+      ],
+    },
+    owner: {
+      type: "string",
+      title: "负责人",
+      component: "Input",
+      decorator: "FormItem",
+      props: { placeholder: "请输入负责人" },
+      validators: [{ required: true, message: "负责人必填" }],
+    },
+    deadline: {
+      type: "string",
+      title: "期望完成时间",
+      component: "DateInput",
+      decorator: "FormItem",
+    },
+    description: {
+      type: "string",
+      title: "需求说明",
+      component: "Textarea",
+      decorator: "FormItem",
+      props: { placeholder: "描述背景、目标和验收标准", rows: 4 },
+    },
+    enabled: {
+      type: "boolean",
+      title: "启用需求",
+      default: true,
+      component: "Switch",
+      decorator: "FormItem",
+    },
+  },
+};
+
+const components = { Input: SchemaInput, Textarea: SchemaTextarea, Select: SchemaSelect, Checkbox, Switch, DateInput, RadioGroup, Rating, FormGrid, FormLayout, FormSection, ArrayCards, ArrayTable };
+const decorators = { FormItem };
+
+export default () => {
+  const form = createForm();
+  return (
+    <FormProvider form={form} components={components} decorators={decorators}>
+      <SchemaField schema={schema} />
+    </FormProvider>
+  );
+};
+```

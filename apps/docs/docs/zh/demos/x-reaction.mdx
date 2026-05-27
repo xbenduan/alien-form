@@ -1,0 +1,116 @@
+---
+title: x-reaction 联动
+---
+
+# x-reaction 联动
+
+演示 `x-reaction`：条件显隐、联动计算、动态属性联动。
+
+```tsx preview
+import { createForm, FormProvider, SchemaField } from "@alien-form/react";
+import {
+  SchemaInput,
+  SchemaTextarea,
+  SchemaSelect,
+  Checkbox,
+  Switch,
+  DateInput,
+  RadioGroup,
+  Rating,
+  FormItem,
+  FormGrid,
+  FormLayout,
+  FormSection,
+  ArrayCards,
+  ArrayTable,
+} from "@alien-form/ui";
+
+const schema = {
+  type: "object",
+  properties: {
+    contactType: {
+      type: "string",
+      title: "联系方式",
+      default: "email",
+      component: "Select",
+      decorator: "FormItem",
+      dataSource: [
+        { label: "邮箱", value: "email" },
+        { label: "电话", value: "phone" },
+        { label: "飞书", value: "lark" },
+      ],
+    },
+    email: {
+      type: "string",
+      title: "邮箱地址",
+      component: "Input",
+      decorator: "FormItem",
+      props: { placeholder: "name@example.com" },
+      "x-reaction": {
+        display: {
+          type: "match",
+          dependencies: { contactType: "contactType" },
+          match: { email: "visible", default: "none" },
+        },
+      },
+    },
+    phone: {
+      type: "string",
+      title: "手机号",
+      component: "Input",
+      decorator: "FormItem",
+      props: { placeholder: "请输入手机号" },
+      state: { display: "none" },
+      "x-reaction": {
+        display: {
+          type: "match",
+          dependencies: { contactType: "contactType" },
+          match: { phone: "visible", default: "none" },
+        },
+      },
+    },
+    larkId: {
+      type: "string",
+      title: "飞书 ID",
+      component: "Input",
+      decorator: "FormItem",
+      state: { display: "none" },
+      "x-reaction": {
+        display: {
+          type: "match",
+          dependencies: { contactType: "contactType" },
+          match: { lark: "visible", default: "none" },
+        },
+      },
+    },
+    quantity: { type: "number", title: "数量", default: 2, component: "Input", decorator: "FormItem", props: { type: "number" } },
+    unitPrice: { type: "number", title: "单价", default: 99, component: "Input", decorator: "FormItem", props: { type: "number" } },
+    totalPrice: {
+      type: "number",
+      title: "总价（联动计算）",
+      component: "Input",
+      decorator: "FormItem",
+      state: { pattern: "readPretty" },
+      "x-reaction": {
+        value: {
+          type: "expression",
+          dependencies: { quantity: "quantity", unitPrice: "unitPrice" },
+          expression: "($deps.quantity || 0) * ($deps.unitPrice || 0)",
+        },
+      },
+    },
+  },
+};
+
+const components = { Input: SchemaInput, Textarea: SchemaTextarea, Select: SchemaSelect, Checkbox, Switch, DateInput, RadioGroup, Rating, FormGrid, FormLayout, FormSection, ArrayCards, ArrayTable };
+const decorators = { FormItem };
+
+export default () => {
+  const form = createForm();
+  return (
+    <FormProvider form={form} components={components} decorators={decorators}>
+      <SchemaField schema={schema} />
+    </FormProvider>
+  );
+};
+```

@@ -1,4 +1,5 @@
 import { defineConfig } from "@rspress/core";
+import { pluginPreview } from "@rspress/plugin-preview";
 
 export default defineConfig({
   root: "docs",
@@ -22,16 +23,32 @@ export default defineConfig({
   icon: "/logo.svg",
   logo: "/logo.svg",
   logoText: "AlienForm",
+  plugins: [
+    pluginPreview({
+      defaultRenderMode: "pure",
+    }),
+  ],
+  builderConfig: {
+    tools: {
+      postcss: {
+        postcssOptions: {
+          plugins: [require("tailwindcss"), require("autoprefixer")],
+        },
+      },
+    },
+  },
+  globalStyles: "./styles/demo.css",
   themeConfig: {
     socialLinks: [
       {
         icon: "github",
         mode: "link",
-        content: "https://github.com/nicepkg/formily-bao",
+        content: "https://github.com/xbenduan/alien-form",
       },
     ],
     footer: {
-      message: "Released under the MIT License.<br />Copyright 2024-present AlienForm Contributors",
+      message:
+        "Released under the MIT License.<br />Copyright 2024-present AlienForm Contributors",
     },
     search: true,
     localeRedirect: "never",
