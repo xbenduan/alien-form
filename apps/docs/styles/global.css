@@ -13,16 +13,16 @@
   margin-top: 12px;
 }
 .rp-preview-operations__button {
-  background: none;
-  border: none;
-  box-shadow: none;
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 .rp-preview-operations__button:hover {
-  background: none;
+  background: none !important;
 }
 .rp-preview-operations__button--expanded {
-  background: none;
-  box-shadow: none;
+  background: none !important;
+  box-shadow: none !important;
 }
 
 @theme {
