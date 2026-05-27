@@ -82,10 +82,10 @@ describe("react bindings", () => {
           component: "Input",
           props: { "data-testid": "adult" },
           "x-reaction": {
-            visible: {
+            display: {
               type: "expression" as const,
               dependencies: { age: "age" },
-              expression: "$deps.age >= 18",
+              expression: "$deps.age >= 18 ? 'visible' : 'none'",
             },
           },
         },

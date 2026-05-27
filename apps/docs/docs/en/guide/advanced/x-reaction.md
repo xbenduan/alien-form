@@ -109,15 +109,8 @@ If `dependencies` is omitted, the reaction watches the current field itself.
 
 ## Runtime Context
 
-Both `expression` and `computed` handlers can read the following context, but only `computed` handlers may call functions, run async logic, or produce side effects:
+Expression context variables are described in [Schema Protocol — Expression Context](../schema-protocol#expression-context). `expression` can only read variables; `computed` handlers can call functions and perform async operations.
 
-- `$self`
-- `$form`
-- `$values`
-- `$deps`
-- `$dependencies`
-- `$value`
-- custom variables injected via `createForm({ scope })`
 
 ## Typical Patterns
 

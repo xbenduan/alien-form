@@ -1,7 +1,11 @@
-import { render, fireEvent, act } from "@testing-library/react";
+import { render, fireEvent, act, cleanup } from "@testing-library/react";
 import { createForm } from "@alien-form/core";
 import { FormProvider, SchemaField } from "../index";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
+
+afterEach(() => {
+  cleanup();
+});
 
 const components = {
   Input: (props: any) => {

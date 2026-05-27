@@ -1,10 +1,10 @@
 # x-validate
 
-`x-validate` describes dynamic validation logic. Unlike static `validators`, it supports expressions, cross-field dependencies, and complex or async validation through handlers.
+`x-validate` describes dynamic validation logic. Unlike the built-in `validate` object, it supports expressions, cross-field dependencies, and complex or async validation through handlers.
 
 ## Actual Shape
 
-In the current implementation, `x-validate` itself is a `SchemaRuleSet`, which means it can be either a single rule or an array of rules.
+`x-validate` is a `SchemaRuleSet` — either a single rule or an array of rules.
 
 ```json
 {
@@ -18,35 +18,28 @@ In the current implementation, `x-validate` itself is a `SchemaRuleSet`, which m
 }
 ```
 
-It supports only the same four rule types:
-
-- `static`
-- `expression`
-- `match`
-- `computed`
+Rule types: `static` / `expression` / `match` / `computed`. See [Schema Protocol — Rule Model](../schema-protocol#rule-model-schemaxrule).
 
 ## Execution Timing
 
 `x-validate` does not run automatically on every keystroke.
 
-In the current implementation, it only runs when:
+It only runs when:
 
 - `field.validate()` is called
 - `form.validate()` is called
 - `form.submit()` is called
 
-So if you want realtime validation during typing, the UI layer or surrounding interaction logic must trigger validation explicitly.
+For realtime validation during typing, the UI layer must trigger validation explicitly.
 
-## Validation Order
+## Validation Pipeline
 
-The validation flow for a field is fixed:
+Field validation has exactly two layers:
 
-1. if `display === 'none'`, the field is skipped
-2. run `required`
-3. run static `validators`
-4. run `x-validate`
+1. **`validate`** — built-in static constraints (`required`, `minLength`, `pattern`, etc.).
+2. **`x-validate`** — dynamic rules (expression / match / computed).
 
-That means `x-validate` is a dynamic extension layer on top of built-in validators, not a total replacement.
+Fields with `display === 'none'` skip validation entirely.
 
 ## Typical Patterns
 
@@ -63,12 +56,12 @@ That means `x-validate` is a dynamic extension layer on top of built-in validato
 }
 ```
 
-In the current implementation:
+Return value convention:
 
-- `undefined` / `null` / `true` means pass
-- `false` means fail without a specific message
-- `string` becomes an error message
-- `object` or `array` is normalized into `FieldError[]`
+- `undefined` / `null` / `true` → pass
+- `false` → fail (no specific message)
+- `string` → error message
+- `object` / `array` → normalized into `FieldError[]`
 
 ### 2. Cross-field validation
 
@@ -86,12 +79,12 @@ In the current implementation:
 }
 ```
 
-This is a strong fit for:
+Good fits:
 
-- password confirmation
-- start/end time comparison
-- min/max cross-field constraints
-- business consistency checks across fields
+- Password confirmation
+- Start/end time comparison
+- Min/max cross-field constraints
+- Business consistency checks
 
 ### 3. Async validation
 
@@ -117,32 +110,15 @@ const form = createForm({
 });
 ```
 
-This shows the correct pattern in the current project: advanced dynamic validation should live in `handlers`, not as inline runtime functions embedded in the schema.
+Complex dynamic validation belongs in `handlers`, not as inline functions in the schema.
 
 ## Handler Context
 
-A `computed` validation handler receives a context object rather than a raw value. Available fields include:
-
-- `field`
-- `form`
-- `values`
-- `deps`
-- `dependencies`
-- `scope`
-- `key`
-- `rule`
-- `value`
-- `kind`
-
-Important details:
-
-- `values` is the raw value snapshot, not the `x-format.output` result
-- `deps` contains dependency values
-- `kind` is `x-validate` in this case
+A `computed` handler receives a context object. See [Schema Protocol — Expression Context](../schema-protocol#expression-context). Key notes: `values` is the raw snapshot (not `x-format.output` result), `kind` is `"x-validate"`.
 
 ## Rule Array Behavior
 
-`x-validate` also supports arrays:
+`x-validate` supports arrays:
 
 ```json
 {
@@ -159,34 +135,26 @@ Important details:
 }
 ```
 
-Array rules run in sequence and accumulate all errors.
-
-This is not a transformation pipeline like `x-format`. Every validation rule still sees the same current field value.
+Array rules run in sequence and accumulate all errors. Every rule sees the same field value (not a transformation pipeline).
 
 ## Visibility Boundary
 
-Fields with `display: 'none'` do not participate in validation.
-
-That means once a field is truly removed from the visible runtime surface:
-
-- it does not appear in `form.values`
-- it is skipped by `form.validate()`
-
-Fields with `display: 'hidden'` still participate in value output and validation, which is fundamentally different from `none`.
+- `display: 'none'` → skipped in validation, excluded from `form.values`
+- `display: 'hidden'` → still participates in validation and value output
 
 ## When To Use x-validate
 
 Good fits:
 
-- validation that depends on other fields
-- business-rule validation
-- validation that requires async requests
-- rules that cannot be described by static `validators` alone
+- Validation that depends on other fields
+- Business-rule validation
+- Validation requiring async requests
+- Rules that cannot be described by `validate` static constraints
 
 Bad fits:
 
-- moving every simple required, length, and regex rule into `x-validate`
-- mixing UI interaction behavior into validation expressions
-- embedding runtime functions directly inside the schema
+- Moving every simple required/length/regex rule into `x-validate`
+- Mixing UI interaction logic into validation expressions
+- Embedding runtime functions directly in the schema
 
-Use `validators` first for simple rules. Reach for `x-validate` only when the rule genuinely depends on runtime context.
+Use `validate` for simple constraints. Reach for `x-validate` only when the rule genuinely depends on runtime context.
