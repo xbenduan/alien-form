@@ -31,12 +31,10 @@
         "props": {
           "placeholder": "name@example.com"
         },
-        "validators": [
-          {
-            "format": "email",
-            "message": "邮箱格式不正确"
-          }
-        ]
+        "validate": {
+          "format": "email",
+          "message": "邮箱格式不正确"
+        }
       },
       "contactPhone": {
         "type": "string",

@@ -4,7 +4,11 @@
   "description": "演示动态校验结果协议：undefined/null/true 表示通过，false/string/object/array 表示错误。",
   "category": "02 动态协议",
   "order": 50,
-  "tags": ["x-validate", "expression", "computed"],
+  "tags": [
+    "x-validate",
+    "expression",
+    "computed"
+  ],
   "schema": {
     "type": "object",
     "title": "x-validate 动态校验演示",
@@ -33,16 +37,11 @@
           "type": "password",
           "placeholder": "至少 6 位"
         },
-        "validators": [
-          {
-            "required": true,
-            "message": "请输入密码"
-          },
-          {
-            "minLength": 6,
-            "message": "密码至少 6 位"
-          }
-        ]
+        "validate": {
+          "required": true,
+          "message": "密码至少 6 位",
+          "minLength": 6
+        }
       },
       "confirmPassword": {
         "type": "string",
