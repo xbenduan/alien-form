@@ -1,0 +1,32 @@
+[
+  {
+    "type": "file",
+    "name": "basic-schema",
+    "label": "Basic Schema"
+  },
+  {
+    "type": "file",
+    "name": "layout-and-collections",
+    "label": "Layout & Collections"
+  },
+  {
+    "type": "file",
+    "name": "x-reaction",
+    "label": "x-reaction Linkage"
+  },
+  {
+    "type": "file",
+    "name": "x-format",
+    "label": "x-format Transform"
+  },
+  {
+    "type": "file",
+    "name": "x-validate",
+    "label": "x-validate Validation"
+  },
+  {
+    "type": "file",
+    "name": "state-and-display",
+    "label": "State & Display"
+  }
+]

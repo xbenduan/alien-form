@@ -2,16 +2,21 @@
   {
     "text": "Guide",
     "link": "/guide/introduction",
-    "activeMatch": "^/en/guide/"
+    "activeMatch": "^/guide/"
   },
   {
     "text": "API",
     "link": "/api/core/form",
-    "activeMatch": "^/en/api/"
+    "activeMatch": "^/api/"
+  },
+  {
+    "text": "Demo",
+    "link": "/demos/basic-schema",
+    "activeMatch": "^/demos/"
   },
   {
     "text": "Patterns",
-    "link": "/patterns/edit-initialization",
-    "activeMatch": "^/en/patterns/"
+    "link": "/patterns/introduction",
+    "activeMatch": "^/patterns/"
   }
 ]
