@@ -4,6 +4,130 @@ title: Layout & Collections
 
 # Layout & Collections
 
-Demonstrates , ,  for grouping, grid layout, and list input patterns.
+Demonstrates `FormSection`, `FormGrid`, `ArrayCards` for grouping, grid layout, and list input patterns.
 
+```tsx preview
+import React from "react";
+import { createForm, FormProvider, SchemaField } from "@alien-form/react";
+import {
+  SchemaInput,
+  SchemaTextarea,
+  SchemaSelect,
+  Checkbox,
+  Switch,
+  DateInput,
+  RadioGroup,
+  Rating,
+  FormItem,
+  FormGrid,
+  FormLayout,
+  FormSection,
+  ArrayCards,
+  ArrayTable,
+} from "@alien-form/ui";
 
+const schema = {
+  type: "object",
+  properties: {
+    basicSection: {
+      type: "void",
+      title: "基础信息",
+      component: "FormSection",
+      props: { bordered: true, collapsible: true },
+      properties: {
+        basicGrid: {
+          type: "void",
+          component: "FormGrid",
+          props: { columns: 2, gap: 4 },
+          properties: {
+            projectName: {
+              type: "string",
+              title: "项目名称",
+              required: true,
+              component: "Input",
+              decorator: "FormItem",
+              props: { placeholder: "请输入项目名称" },
+            },
+            projectType: {
+              type: "string",
+              title: "项目类型",
+              default: "internal",
+              component: "Select",
+              decorator: "FormItem",
+              dataSource: [
+                { label: "内部平台", value: "internal" },
+                { label: "商业化", value: "commercial" },
+                { label: "基础设施", value: "infra" },
+              ],
+            },
+            startDate: { type: "string", title: "开始日期", component: "DateInput", decorator: "FormItem" },
+            riskLevel: { type: "number", title: "风险评分", default: 3, component: "Rating", decorator: "FormItem", props: { max: 5 } },
+          },
+        },
+      },
+    },
+    contacts: {
+      type: "array",
+      title: "项目联系人",
+      component: "ArrayCards",
+      decorator: "FormItem",
+      props: { addText: "+ 添加联系人" },
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string", title: "姓名", required: true, component: "Input", decorator: "FormItem" },
+          role: {
+            type: "string", title: "角色", component: "Select", decorator: "FormItem",
+            dataSource: [{ label: "PM", value: "pm" }, { label: "RD", value: "rd" }, { label: "QA", value: "qa" }],
+          },
+          email: { type: "string", title: "邮箱", component: "Input", decorator: "FormItem" },
+        },
+      },
+    },
+  },
+};
+
+const components = { Input: SchemaInput, Textarea: SchemaTextarea, Select: SchemaSelect, Checkbox, Switch, DateInput, RadioGroup, Rating, FormGrid, FormLayout, FormSection, ArrayCards, ArrayTable };
+const decorators = { FormItem };
+
+export default () => {
+  const [result, setResult] = React.useState<any>(null);
+  const form = createForm();
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.submit();
+      setResult({ success: true, values });
+    } catch (err: any) {
+      setResult({ success: false, errors: err?.messages || [String(err)] });
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <FormProvider form={form} components={components} decorators={decorators}>
+        <SchemaField schema={schema} />
+      </FormProvider>
+      <div className="flex gap-2 border-t pt-4">
+        <button
+          onClick={handleSubmit}
+          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+        >
+          提交
+        </button>
+        <button
+          onClick={() => { form.reset(); setResult(null); }}
+          className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
+        >
+          重置
+        </button>
+      </div>
+      {result && (
+        <pre className="rounded-lg bg-muted p-4 text-sm overflow-auto max-h-[300px]">
+          <code>{JSON.stringify(result, null, 2)}</code>
+        </pre>
+      )}
+    </div>
+  );
+};
+```
