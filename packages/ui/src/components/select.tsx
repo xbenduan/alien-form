@@ -1,8 +1,6 @@
 import * as React from "react";
 import { cn } from "../lib/utils";
 
-// --- Select with multi-select support ---
-
 export interface SelectOption {
   label: string;
   value: any;
@@ -35,7 +33,6 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
     const [open, setOpen] = React.useState(false);
     const containerRef = React.useRef<HTMLDivElement>(null);
 
-    // Close on outside click
     React.useEffect(() => {
       const handler = (e: MouseEvent) => {
         if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -80,7 +77,7 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
           disabled={disabled}
           onClick={() => setOpen(!open)}
           className={cn(
-            "flex h-9 w-full items-center justify-between rounded-md border border-border/60 bg-transparent px-3 py-2 text-sm shadow-sm transition-colors",
+            "flex h-9 w-full items-center justify-between rounded-md border border-border/60 bg-transparent px-3 py-2 text-sm transition-colors",
             "focus:outline-none focus:border-primary/50",
             "disabled:cursor-not-allowed disabled:opacity-50",
             selectedValues.length === 0 && "text-muted-foreground",
@@ -118,36 +115,16 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
                         )}
                       >
                         {isSelected && (
-                          <svg
-                            className="h-3 w-3"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={3}
-                              d="M5 13l4 4L19 7"
-                            />
+                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                           </svg>
                         )}
                       </span>
                     )}
                     {option.label}
                     {!multiple && isSelected && (
-                      <svg
-                        className="ml-auto h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
+                      <svg className="ml-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     )}
                   </button>
