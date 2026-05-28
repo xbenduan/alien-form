@@ -1,8 +1,8 @@
-import { defineComponent } from "@alien-form/react";
-import type { IField } from "@alien-form/react";
+import type React from "react";
+import { define, type Resolved, type IField } from "@alien-form/react";
 
-const skuSchema = {
-  type: "array" as const,
+const skuSchema = define({
+  type: "array",
   items: {
     skuKey: { type: "string" },
     groupKey: { type: "string" },
@@ -17,13 +17,12 @@ const skuSchema = {
     accessories: { type: "array" },
     enabled: { type: "boolean" },
   },
-};
-
-interface SkuTableProps {
-  emptyText?: string;
-  helperText?: string;
-  className?: string;
-}
+  props: {
+    emptyText: "",
+    helperText: "",
+    className: "",
+  },
+});
 
 function getFieldName(field: IField): string {
   return field.path.split(".").pop() ?? field.path;
@@ -33,9 +32,7 @@ function getRowFieldValue(rowFields: IField[], name: string): any {
   return rowFields.find((f) => getFieldName(f) === name)?.value;
 }
 
-export const SkuTable = defineComponent<typeof skuSchema, SkuTableProps>(
-  skuSchema,
-)(({
+export const SkuTable: React.FC<Resolved<typeof skuSchema>> = ({
   field,
   rows,
   rowFields,
@@ -43,7 +40,6 @@ export const SkuTable = defineComponent<typeof skuSchema, SkuTableProps>(
   helperText,
   className,
 }) => {
-
   // Get field metadata from arrayItems for column headers and grouping logic
   const arrayItems = field?.arrayItems ?? [];
 
@@ -189,4 +185,4 @@ export const SkuTable = defineComponent<typeof skuSchema, SkuTableProps>(
       {helperText && <p className="mt-2 text-xs text-muted-foreground">{helperText}</p>}
     </div>
   );
-});
+};

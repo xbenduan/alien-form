@@ -1,15 +1,16 @@
-import React from "react";
-import { defineComponent } from "@alien-form/react";
+import type React from "react";
+import { define, type Resolved } from "@alien-form/react";
 import { Input } from "@alien-form/ui";
 
-interface ImageInputProps {
-  placeholder?: string;
-  className?: string;
-}
-
-export const ImageInput = defineComponent<{ type: "string" }, ImageInputProps>({
+const imageInputSchema = define({
   type: "string",
-})(({
+  props: {
+    placeholder: "",
+    className: "",
+  },
+});
+
+export const ImageInput: React.FC<Resolved<typeof imageInputSchema>> = ({
   value,
   onChange,
   placeholder,
@@ -42,4 +43,4 @@ export const ImageInput = defineComponent<{ type: "string" }, ImageInputProps>({
       </div>
     </div>
   );
-});
+};

@@ -416,3 +416,179 @@ export default () => {
 | 子字段聚合为对象 | `object` + 高阶组件 |
 | 可增删行的列表 | `array` + 高阶组件 |
 | 字段外壳（标签/错误/描述） | Decorator |
+
+## 类型工具：`define` + `Resolved`
+
+自定义组件可以通过 `define` + `Resolved<typeof schema>` 获得完整的类型推导，**无需手动声明 interface**。
+
+- `define(schema)` — 零运行时 identity 函数，触发 TS `const` 泛型窄化（无需 `as const`）
+- `Resolved<S>` — 从 schema 自动推导出：框架注入的 Slots + `schema.props` 声明的自定义 Props
+
+```tsx preview
+import React from "react";
+import { useCreateForm, FormProvider, SchemaField, define, type Resolved } from "@alien-form/react";
+import {
+  SchemaInput,
+  SchemaTextarea,
+  SchemaSelect,
+  Checkbox,
+  Switch,
+  DateInput,
+  RadioGroup,
+  Rating,
+  FormItem,
+  FormGrid,
+  FormLayout,
+  FormSection,
+  ArrayCards,
+  ArrayTable,
+} from "@alien-form/ui";
+
+// 1. 用 define 声明组件 schema
+const colorPickerSchema = define({
+  type: "string",
+  props: {
+    placeholder: "",
+    swatches: [] as string[],
+  },
+});
+
+// 2. Resolved 自动推导出 Props = FieldSlots & { placeholder?: string; swatches?: string[] }
+const ColorPicker: React.FC<Resolved<typeof colorPickerSchema>> = ({
+  value,       // ← FieldSlots: any
+  onChange,    // ← FieldSlots: (value: any) => void
+  disabled,    // ← FieldSlots: boolean | undefined
+  placeholder, // ← schema.props: string | undefined
+  swatches,    // ← schema.props: string[] | undefined
+}) => {
+  const colors = swatches?.length ? swatches : ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#8b5cf6"];
+  return (
+    <div className="space-y-2">
+      <input
+        className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+      />
+      <div className="flex gap-1.5 flex-wrap">
+        {colors.map((c) => (
+          <button
+            key={c}
+            type="button"
+            disabled={disabled}
+            className={`h-7 w-7 rounded-md border-2 transition-all ${value === c ? "border-ring scale-110" : "border-transparent"}`}
+            style={{ backgroundColor: c }}
+            onClick={() => onChange(c)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// 3. Array 组件同样适用
+const tagListSchema = define({
+  type: "array",
+  items: {
+    label: { type: "string" },
+  },
+  props: {
+    addText: "",
+    maxItems: 0,
+  },
+});
+
+const TagList: React.FC<Resolved<typeof tagListSchema>> = ({
+  field,       // ← ArraySlots: IField
+  rows,        // ← ArraySlots: ReactNode[][]
+  rowFields,   // ← ArraySlots: { label: ReactNode }[]
+  onAdd,       // ← ArraySlots: (initialValues?) => void
+  onRemove,    // ← ArraySlots: (index: number) => void
+  addText,     // ← schema.props: string | undefined
+  maxItems,    // ← schema.props: number | undefined
+}) => {
+  const items = Array.isArray(field?.value) ? field.value : [];
+  const canAdd = !maxItems || items.length < maxItems;
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {rowFields.map((rf, i) => (
+          <div key={i} className="flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-sm">
+            {rf.label}
+            <button type="button" onClick={() => onRemove(i)} className="text-muted-foreground hover:text-destructive ml-1">&times;</button>
+          </div>
+        ))}
+      </div>
+      {canAdd && (
+        <button type="button" onClick={() => onAdd({ label: "" })} className="text-sm text-primary hover:underline">
+          {addText || "+ 添加标签"}
+        </button>
+      )}
+    </div>
+  );
+};
+
+const schema = {
+  type: "object",
+  properties: {
+    color: {
+      type: "string",
+      title: "主题色",
+      component: "ColorPicker",
+      decorator: "FormItem",
+      default: "#3b82f6",
+      props: { placeholder: "输入 HEX 色值", swatches: ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899"] },
+    },
+    tags: {
+      type: "array",
+      title: "标签",
+      component: "TagList",
+      decorator: "FormItem",
+      props: { addText: "+ 新标签", maxItems: 5 },
+      items: {
+        type: "object",
+        properties: {
+          label: { type: "string", title: "标签名", component: "Input", decorator: "FormItem" },
+        },
+      },
+    },
+  },
+};
+
+const components = { Input: SchemaInput, Textarea: SchemaTextarea, Select: SchemaSelect, Checkbox, Switch, DateInput, RadioGroup, Rating, FormGrid, FormLayout, FormSection, ArrayCards, ArrayTable, ColorPicker, TagList };
+const decorators = { FormItem };
+
+export default () => {
+  const [result, setResult] = React.useState<any>(null);
+  const form = useCreateForm();
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.submit();
+      setResult({ success: true, values });
+    } catch (err: any) {
+      setResult({ success: false, errors: err?.messages || [String(err)] });
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <FormProvider form={form} components={components} decorators={decorators}>
+        <SchemaField schema={schema} />
+      </FormProvider>
+      <div className="flex gap-2 border-t pt-4">
+        <button onClick={handleSubmit} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">提交</button>
+        <button onClick={() => { form.reset(); setResult(null); }} className="rounded-md border px-4 py-2 text-sm hover:bg-accent">重置</button>
+      </div>
+      {result && (
+        <pre className="rounded-lg bg-muted p-4 text-sm overflow-auto max-h-[300px]">
+          <code>{JSON.stringify(result, null, 2)}</code>
+        </pre>
+      )}
+    </div>
+  );
+};
+```
+
+> **推导规则**：`schema.type` 决定注入哪些 Slots（`FieldSlots` / `ArraySlots` / `VoidSlots` / `ObjectSlots` / `DecoratorSlots`），`schema.items` / `schema.properties` 决定子字段映射类型，`schema.props` 的值类型决定自定义 Props（全部可选）。

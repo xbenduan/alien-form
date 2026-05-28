@@ -52,9 +52,18 @@ export type {
   RuntimeRuleHandlerContext,
   DataSourcePolicy,
   SchemaTypes,
+  Resolved,
+  InferRole,
+  InferSlots,
+  InferCustomProps,
+  FieldSlots,
+  VoidSlots,
+  ObjectSlots,
+  ArraySlots,
+  DecoratorSlots,
 } from "@alien-form/core";
 
-export { createForm } from "@alien-form/core";
+export { createForm, define } from "@alien-form/core";
 
 // ============================================================
 // Component/Decorator Maps
