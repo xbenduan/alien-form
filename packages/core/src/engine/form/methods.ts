@@ -16,6 +16,7 @@ import type {
   IFormSchema,
   SchemaXValidate,
 } from "../../schema/types";
+import { resolveSchemaRef } from "../../schema/ref-resolve";
 import { getDeepValue, isVoidField, setDeepValue, sortByOrder } from "../../schema/path";
 import { readUntracked } from "../../utils";
 import type { FormInternals } from "./internals";
@@ -109,37 +110,11 @@ function emitError(form: InternalForm, error: FormError): void {
   }
 }
 
-function resolveRef(form: InternalForm, schema: IFieldSchema, seen: Set<string> = new Set()): IFieldSchema {
+function resolveRef(form: InternalForm, schema: IFieldSchema): IFieldSchema {
   const internals = form._getInternals();
-  if (!schema.$ref) return schema;
-
-  const refPath = schema.$ref.replace(/^#\/definitions\//, "");
-  if (seen.has(refPath)) {
-    emitError(form, {
-      scope: "ref-resolve",
-      path: "",
-      message: `Circular $ref detected: ${schema.$ref} (chain: ${Array.from(seen).join(" -> ")} -> ${refPath})`,
-    });
-    const { $ref: _ignored, ...localProps } = schema;
-    void _ignored;
-    return localProps as IFieldSchema;
-  }
-
-  const resolved = internals.definitions[refPath];
-  if (!resolved) {
-    emitError(form, {
-      scope: "ref-resolve",
-      path: "",
-      message: `Could not resolve $ref: ${schema.$ref}`,
-    });
-    return schema;
-  }
-
-  const nextSeen = new Set(seen);
-  nextSeen.add(refPath);
-  const localProps = { ...schema };
-  delete localProps.$ref;
-  return { ...resolveRef(form, resolved, nextSeen), ...localProps };
+  return resolveSchemaRef(schema, internals.definitions, (ref, message) => {
+    emitError(form, { scope: "ref-resolve", path: "", message });
+  }).schema;
 }
 
 function getRuleRuntimeHost(form: InternalForm): RuleRuntimeHost {

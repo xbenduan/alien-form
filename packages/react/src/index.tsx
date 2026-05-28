@@ -29,7 +29,7 @@ import type {
   EffectOptions,
   EffectContext,
 } from "@alien-form/core";
-import { createForm } from "@alien-form/core";
+import { createForm, resolveSchemaRef } from "@alien-form/core";
 
 // ============================================================
 // Re-export core types so consumers don't need @alien-form/core
@@ -146,17 +146,12 @@ export interface FormState {
 
 /**
  * Subscribe to form-level state changes (values, validity, errors).
- * Triggers re-render only when form state changes.
+ * Uses React 18 useSyncExternalStore for concurrent-rendering safety.
  */
 export function useFormState(): FormState {
   const form = useForm();
-
-  const subscribe = useCallback(
+  return useSyncExternalStore(
     (onStoreChange: () => void) => form.subscribe(onStoreChange),
-    [form],
-  );
-
-  const getSnapshot = useCallback(
     () => ({
       values: form.values,
       initialValues: form.initialValues,
@@ -165,14 +160,7 @@ export function useFormState(): FormState {
       submitting: form.submitting,
       errors: form.errors,
     }),
-    [form],
   );
-
-  // Use a version counter to trigger useSyncExternalStore
-  const [, forceRender] = useState(0);
-  useEffect(() => form.subscribe(() => forceRender((v) => v + 1)), [form]);
-
-  return getSnapshot();
 }
 
 // ============================================================
@@ -182,21 +170,18 @@ export function useFormState(): FormState {
 /**
  * Access and subscribe to a field by path. Returns null if field doesn't exist.
  * If no path is provided, inherits from the nearest FieldContext.
+ * Uses React 18 useSyncExternalStore for concurrent-rendering safety.
  */
 export function useField(path?: string): IField | null {
   const ctx = useContext(FormContext);
   const parentField = useContext(FieldContext);
 
   const resolvedPath = path || parentField?.path;
-  const field = ctx && resolvedPath ? ctx.form.getField(resolvedPath) || null : null;
 
-  const [, forceRender] = useState(0);
-  useEffect(() => {
-    if (!field) return;
-    return field.subscribe(() => forceRender((v) => v + 1));
-  }, [field]);
-
-  return field;
+  return useSyncExternalStore(
+    (onStoreChange: () => void) => (ctx ? ctx.form.subscribe(onStoreChange) : () => {}),
+    () => (ctx && resolvedPath ? ctx.form.getField(resolvedPath) || null : null),
+  );
 }
 
 // ============================================================
@@ -858,62 +843,49 @@ function resolveSchemaRefs(schema: IFormSchema): IFormSchema {
 }
 
 function resolveProperties(
-  properties: Record<string, any>,
-  definitions: Record<string, any>,
-): Record<string, any> {
+  properties: Record<string, IFieldSchema>,
+  definitions: Record<string, IFieldSchema>,
+): Record<string, IFieldSchema> {
   return Object.fromEntries(
     Object.entries(properties).map(([key, fieldSchema]) => [
       key,
-      resolveFieldSchema(fieldSchema, definitions),
+      resolveFieldSchemaTree(fieldSchema, definitions),
     ]),
   );
 }
 
-function resolveFieldSchema(
-  schema: any,
-  definitions: Record<string, any>,
+/**
+ * Recursively resolve $ref, properties, and items in a field schema tree.
+ * Uses core's resolveSchemaRef for the $ref resolution step.
+ */
+function resolveFieldSchemaTree(
+  schema: IFieldSchema,
+  definitions: Record<string, IFieldSchema>,
   seen: Set<string> = new Set(),
-): any {
+): IFieldSchema {
   if (!schema || typeof schema !== "object") return schema;
 
-  let resolved = schema;
-  if (typeof schema.$ref === "string") {
-    const refPath = schema.$ref.replace(/^#\/definitions\//, "");
-    if (seen.has(refPath)) {
-      const { $ref: _ignored, ...localProps } = schema;
-      void _ignored;
-      resolved = localProps;
-    } else {
-      const referenced = definitions[refPath];
-      if (referenced) {
-        const { $ref: _ignored, ...localProps } = schema;
-        void _ignored;
-        resolved = {
-          ...resolveFieldSchema(referenced, definitions, new Set([...seen, refPath])),
-          ...localProps,
-          "x-from-ref": true,
-        };
-      }
-    }
-  }
+  const { schema: resolved, fromRef } = resolveSchemaRef(schema, definitions, undefined, seen);
+
+  let result = resolved;
 
   if (resolved.properties) {
-    resolved = {
-      ...resolved,
+    result = {
+      ...result,
       properties: resolveProperties(resolved.properties, definitions),
     };
   }
 
   if (resolved.items) {
-    resolved = {
-      ...resolved,
+    result = {
+      ...result,
       items: Array.isArray(resolved.items)
-        ? resolved.items.map((item: any) => resolveFieldSchema(item, definitions, seen))
-        : resolveFieldSchema(resolved.items, definitions, seen),
+        ? resolved.items.map((item: IFieldSchema) => resolveFieldSchemaTree(item, definitions, seen))
+        : resolveFieldSchemaTree(resolved.items as IFieldSchema, definitions, seen),
     };
   }
 
-  return resolved;
+  return fromRef ? { ...result, "x-from-ref": true } : result;
 }
 
 function areDeepEqual(a: any, b: any, seen: WeakMap<object, object> = new WeakMap()): boolean {
@@ -945,4 +917,3 @@ function areDeepEqual(a: any, b: any, seen: WeakMap<object, object> = new WeakMa
 
 // Suppress unused import warning
 void Fragment;
-void useSyncExternalStore;

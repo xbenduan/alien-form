@@ -42,3 +42,7 @@ export type {
   DataSourcePolicy,
   SchemaTypes,
 } from "./schema/types";
+
+// Schema ref resolution (pure, stateless)
+export { resolveSchemaRef } from "./schema";
+export type { ResolveRefResult } from "./schema";

@@ -45,3 +45,7 @@ export { getDeepValue, setDeepValue, sortByOrder, isVoidField } from "./path";
 
 // Schema normalization
 export { getArrayItemSchema, isArrayFieldSchema } from "./normalize";
+
+// Schema ref resolution
+export { resolveSchemaRef } from "./ref-resolve";
+export type { ResolveRefResult } from "./ref-resolve";
