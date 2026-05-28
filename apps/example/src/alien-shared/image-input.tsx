@@ -1,15 +1,14 @@
 import React from "react";
+import { defineComponent } from "@alien-form/react";
 import { Input } from "@alien-form/ui";
 
-interface ImageInputProps {
-  value?: string;
-  onChange?: (value: string) => void;
-  placeholder?: string;
-  disabled?: boolean;
-  className?: string;
-}
-
-export const ImageInput: React.FC<ImageInputProps> = ({
+export const ImageInput = defineComponent({
+  type: "string",
+  props: {
+    placeholder: "" as string,
+    className: "" as string,
+  },
+})(({
   value,
   onChange,
   placeholder,
@@ -31,7 +30,7 @@ export const ImageInput: React.FC<ImageInputProps> = ({
         <div className="flex-1">
           <Input
             value={imageUrl}
-            onChange={(event) => onChange?.(event.target.value)}
+            onChange={(event) => onChange(event.target.value)}
             placeholder={placeholder}
             disabled={disabled}
           />
@@ -42,4 +41,4 @@ export const ImageInput: React.FC<ImageInputProps> = ({
       </div>
     </div>
   );
-};
+});

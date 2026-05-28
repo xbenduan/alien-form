@@ -1,13 +1,7 @@
 import React from "react";
+import { defineComponent } from "@alien-form/react";
 import type { IField } from "@alien-form/react";
 import { Checkbox, DateInput, Input, ItemInput, Select, Switch } from "@alien-form/ui";
-
-interface SkuTableProps {
-  field?: IField;
-  emptyText?: string;
-  helperText?: string;
-  className?: string;
-}
 
 function formatCellValue(value: unknown): string {
   if (value === undefined || value === null || value === "") return "-";
@@ -118,7 +112,28 @@ const SkuFieldCell: React.FC<{ field: IField }> = ({ field }) => {
   }
 };
 
-export const SkuTable: React.FC<SkuTableProps> = ({
+export const SkuTable = defineComponent({
+  type: "array",
+  items: {
+    skuKey: { type: "string" },
+    groupKey: { type: "string" },
+    groupSpecName: { type: "string" },
+    groupSpecValue: { type: "string" },
+    groupSpecImage: { type: "string" },
+    specSummary: { type: "string" },
+    price: { type: "number" },
+    stock: { type: "number" },
+    startDate: { type: "string" },
+    endDate: { type: "string" },
+    accessories: { type: "array" },
+    enabled: { type: "boolean" },
+  },
+  props: {
+    emptyText: "" as string,
+    helperText: "" as string,
+    className: "" as string,
+  },
+})(({
   field,
   emptyText = "请先配置规格值，系统会自动生成 SKU 组合。",
   helperText,
@@ -263,4 +278,4 @@ export const SkuTable: React.FC<SkuTableProps> = ({
       {helperText && <p className="mt-2 text-xs text-muted-foreground">{helperText}</p>}
     </div>
   );
-};
+});
