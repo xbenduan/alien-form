@@ -2,59 +2,64 @@
  * Type-level test — this file should compile with zero errors when
  * @types/react and @alien-form/core are available.
  *
- * Run: tsc --noEmit --strict packages/react/src/__tests__/define-types.test-d.ts
+ * Run: tsc --noEmit --strict --project tsconfig.check-define.json
  */
 
 import type React from "react";
 import { defineComponent } from "../define";
 
 // ============================================================
-// 1. Normal field component (type: "string")
+// 1. Normal field component (type: "string") — props via generic
 // ============================================================
 
-const ImageInput = defineComponent({
+interface ImageInputProps {
+  placeholder?: string;
+  previewSize?: number;
+}
+
+const ImageInput = defineComponent<{ type: "string" }, ImageInputProps>({
   type: "string",
-  props: {
-    placeholder: "" as string,
-    previewSize: 64 as number,
-  },
 })(({ value, onChange, disabled, loading, placeholder, previewSize }) => {
   // value: any ✓
   // onChange: (value: any) => void ✓
   // disabled?: boolean ✓
-  // placeholder: string ✓
-  // previewSize: number ✓
+  // placeholder?: string ✓
+  // previewSize?: number ✓
   return null as any;
 });
 
 // ============================================================
-// 2. Array component with typed rowFields
+// 2. Array component with typed rowFields — props via generic
 // ============================================================
 
-const ContactCards = defineComponent({
-  type: "array",
+const contactSchema = {
+  type: "array" as const,
   items: {
     name: { type: "string" },
     phone: { type: "string" },
     role: { type: "string" },
   },
-  props: {
-    maxItems: 5 as number,
-    addText: "" as string,
-  },
-})(({ rows, rowFields, field, onAdd, onRemove, onMoveUp, onMoveDown, disabled, maxItems, addText }) => {
+};
+
+interface ContactCardsProps {
+  maxItems?: number;
+  addText?: string;
+}
+
+const ContactCards = defineComponent<typeof contactSchema, ContactCardsProps>(
+  contactSchema,
+)(({ rows, rowFields, field, onAdd, onRemove, onMoveUp, onMoveDown, disabled, maxItems, addText }) => {
   // field: IField ✓
   // rows: ReactNode[][] ✓
   // rowFields: { name: ReactNode; phone: ReactNode; role: ReactNode }[] ✓
-  // onAdd: (initialValues?) => void ✓
-  // maxItems: number ✓
+  // maxItems?: number ✓
 
   const firstRow = rowFields[0];
   const nameSlot: React.ReactNode = firstRow.name;  // ✓ typed
   const phoneSlot: React.ReactNode = firstRow.phone; // ✓ typed
   const roleSlot: React.ReactNode = firstRow.role;   // ✓ typed
 
-  // @ts-expect-error — 'xxx' does not exist
+  // @ts-expect-error — 'xxx' does not exist on rowFields item
   const bad = firstRow.xxx;
 
   return null as any;
@@ -64,16 +69,21 @@ const ContactCards = defineComponent({
 // 3. Void layout container with typed fields
 // ============================================================
 
-const TwoColumnCard = defineComponent({
-  type: "void",
+const voidSchema = {
+  type: "void" as const,
   properties: {
     left: { type: "string" },
     right: { type: "string" },
   },
-  props: {
-    gap: 16 as number,
-  },
-})(({ title, description, children, fields, gap }) => {
+};
+
+interface TwoColumnProps {
+  gap?: number;
+}
+
+const TwoColumnCard = defineComponent<typeof voidSchema, TwoColumnProps>(
+  voidSchema,
+)(({ title, description, children, fields, gap }) => {
   // fields.left: ReactNode ✓
   // fields.right: ReactNode ✓
   const leftSlot: React.ReactNode = fields!.left;
@@ -89,17 +99,22 @@ const TwoColumnCard = defineComponent({
 // 4. Object container
 // ============================================================
 
-const AddressGroup = defineComponent({
-  type: "object",
+const objectSchema = {
+  type: "object" as const,
   properties: {
     province: { type: "string" },
     city: { type: "string" },
     detail: { type: "string" },
   },
-  props: {
-    columns: 2 as number,
-  },
-})(({ field, title, description, children, fields, columns }) => {
+};
+
+interface AddressGroupProps {
+  columns?: number;
+}
+
+const AddressGroup = defineComponent<typeof objectSchema, AddressGroupProps>(
+  objectSchema,
+)(({ field, title, description, children, fields, columns }) => {
   // field: IField ✓
   // fields.province: ReactNode ✓
   const provinceSlot: React.ReactNode = fields!.province;
@@ -111,49 +126,44 @@ const AddressGroup = defineComponent({
 });
 
 // ============================================================
-// 5. Decorator
+// 5. Decorator — props via generic
 // ============================================================
 
-const InlineFormItem = defineComponent.decorator({
-  props: {
-    labelWidth: 96 as number,
-    direction: "horizontal" as "horizontal" | "vertical",
+interface InlineFormItemProps {
+  labelWidth?: number;
+  direction?: "horizontal" | "vertical";
+}
+
+const InlineFormItem = defineComponent.decorator<InlineFormItemProps>()(
+  ({ label, required, errors, warnings, description, validateStatus, children, labelWidth, direction }) => {
+    // label?: string ✓
+    // errors?: FieldError[] ✓
+    // labelWidth?: number ✓
+    // direction?: "horizontal" | "vertical" ✓
+    return null as any;
   },
-})(({ label, required, errors, warnings, description, validateStatus, children, labelWidth, direction }) => {
-  // label?: string ✓
-  // errors?: FieldError[] ✓
-  // labelWidth: number ✓
-  // direction: "horizontal" | "vertical" ✓
-  return null as any;
-});
+);
 
 // ============================================================
-// 6. Array with items.properties (nested object items)
+// 6. No custom props — just omit the generic
 // ============================================================
 
-const SkuTable = defineComponent({
-  type: "array",
-  items: {
-    properties: {
-      price: { type: "number" },
-      stock: { type: "number" },
-      enabled: { type: "boolean" },
-    },
-  } as any, // This tests the items-as-FieldDef branch
-  props: {
-    specFields: [] as string[],
+const SimpleInput = defineComponent({ type: "string" })(
+  ({ value, onChange, disabled }) => {
+    return null as any;
   },
-})(({ rows, rowFields, field, onAdd, onRemove, specFields }) => {
-  return null as any;
-});
+);
 
-// Ensure components are assignable to React.FC<any> (for ComponentMap)
+// ============================================================
+// 7. Ensure components are assignable to React.FC<any> (for ComponentMap)
+// ============================================================
+
 const _components: Record<string, React.FC<any>> = {
   ImageInput,
   ContactCards,
   TwoColumnCard,
   AddressGroup,
-  SkuTable,
+  SimpleInput,
 };
 
 const _decorators: Record<string, React.FC<any>> = {

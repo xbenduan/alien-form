@@ -17,17 +17,15 @@ import type { IField, FieldError } from "@alien-form/core";
 type SchemaType = "string" | "number" | "boolean" | "void" | "object" | "array";
 
 interface FieldDef {
-  type?: SchemaType;
+  type?: string;
   [key: string]: any;
 }
 
-/** Schema definition object passed to defineComponent */
+/** Schema definition object passed to defineComponent (without props — those go to the generic) */
 interface SchemaComponentDef {
   type?: SchemaType;
   items?: Record<string, FieldDef> | FieldDef;
   properties?: Record<string, FieldDef>;
-  props?: Record<string, any>;
-  decoratorProps?: Record<string, any>;
   decorator?: string;
 }
 
@@ -39,10 +37,6 @@ interface SchemaComponentDef {
 type InferFieldsMap<T> = T extends Record<string, any>
   ? { [K in keyof T]: React.ReactNode }
   : Record<string, React.ReactNode>;
-
-/** Infer custom props from schema `props` field */
-type InferCustomProps<S extends SchemaComponentDef> =
-  S extends { props: infer P } ? { [K in keyof P]: P[K] } : {};
 
 // --- Base props for each category ---
 
@@ -114,8 +108,8 @@ type InferBaseSlots<S extends SchemaComponentDef> =
           : ObjectBaseSlots
         : FieldBaseSlots;
 
-/** Final inferred props = base slots + custom props */
-type InferComponentProps<S extends SchemaComponentDef> = InferBaseSlots<S> & InferCustomProps<S>;
+/** Final inferred props = base slots + custom props (P) */
+type InferComponentProps<S extends SchemaComponentDef, P = {}> = InferBaseSlots<S> & P;
 
 // ============================================================
 // defineComponent — the single unified API
@@ -125,31 +119,46 @@ type InferComponentProps<S extends SchemaComponentDef> = InferBaseSlots<S> & Inf
  * Define a custom component with schema-driven type inference.
  *
  * Pass a schema definition object describing the component's structural role,
- * and get back a typed component factory. The returned component's props are
- * fully inferred: base slots (value/onChange, field, rows, children, etc.)
- * come from `type`, and custom props come from `props`.
+ * and a generic `P` for your custom props. The returned component's props are
+ * fully inferred: base slots come from `type`, custom props come from `P`.
  *
  * @example
  * // --- Normal field component ---
- * const ImageInput = defineComponent({
+ * interface ImageInputProps {
+ *   placeholder?: string;
+ *   previewSize?: number;
+ * }
+ *
+ * const ImageInput = defineComponent<typeof schema, ImageInputProps>({
  *   type: "string",
- *   props: { placeholder: "" as string, previewSize: 64 as number },
  * })(({ value, onChange, disabled, placeholder, previewSize }) => {
- *   //    ^-- all inferred: value/onChange from "string", placeholder/previewSize from props
  *   return <div>...</div>;
  * });
  *
+ * // Or with inline type parameter:
+ * const ImageInput = defineComponent<{ type: "string" }, { placeholder?: string }>({
+ *   type: "string",
+ * })(({ value, onChange, placeholder }) => <div>...</div>);
+ *
  * @example
  * // --- Array component with typed rowFields ---
- * const ContactCards = defineComponent({
- *   type: "array",
+ * const contactSchema = {
+ *   type: "array" as const,
  *   items: {
  *     name: { type: "string" },
  *     phone: { type: "string" },
  *     role: { type: "string" },
  *   },
- *   props: { maxItems: 5 as number, addText: "" as string },
- * })(({ rows, rowFields, field, onAdd, onRemove, maxItems, addText }) => {
+ * };
+ *
+ * interface ContactCardsProps {
+ *   maxItems?: number;
+ *   addText?: string;
+ * }
+ *
+ * const ContactCards = defineComponent<typeof contactSchema, ContactCardsProps>(
+ *   contactSchema
+ * )(({ rows, rowFields, field, onAdd, onRemove, maxItems, addText }) => {
  *   //    rowFields[0].name  → React.ReactNode ✓
  *   //    rowFields[0].phone → React.ReactNode ✓
  *   //    rowFields[0].xxx   → TS error ✗
@@ -157,60 +166,32 @@ type InferComponentProps<S extends SchemaComponentDef> = InferBaseSlots<S> & Inf
  * });
  *
  * @example
- * // --- Void layout container with typed fields ---
- * const TwoColumnCard = defineComponent({
- *   type: "void",
- *   properties: {
- *     left: { type: "string" },
- *     right: { type: "string" },
- *   },
- *   props: { gap: 16 as number },
- * })(({ title, children, fields, gap }) => {
+ * // --- Void layout container ---
+ * const TwoColumnCard = defineComponent<typeof schema, { gap?: number }>(
+ *   { type: "void", properties: { left: { type: "string" }, right: { type: "string" } } }
+ * )(({ title, children, fields, gap }) => {
  *   //    fields.left  → React.ReactNode ✓
- *   //    fields.right → React.ReactNode ✓
- *   return <div style={{ gap }}>...</div>;
- * });
- *
- * @example
- * // --- Object container ---
- * const AddressGroup = defineComponent({
- *   type: "object",
- *   properties: {
- *     province: { type: "string" },
- *     city: { type: "string" },
- *     detail: { type: "string" },
- *   },
- *   props: { columns: 2 as number },
- * })(({ field, title, fields, children, columns }) => {
- *   //    fields.province → React.ReactNode ✓
  *   return <div>...</div>;
  * });
  *
  * @example
  * // --- Decorator ---
- * const InlineFormItem = defineComponent.decorator({
- *   props: { labelWidth: 96 as number },
- * })(({ label, required, errors, children, labelWidth }) => {
- *   return <div>...</div>;
- * });
+ * const InlineFormItem = defineComponent.decorator<{ labelWidth?: number }>()(
+ *   ({ label, required, errors, children, labelWidth }) => <div>...</div>
+ * );
  */
-export function defineComponent<S extends SchemaComponentDef>(schema: S) {
-  return function <C extends React.FC<InferComponentProps<S>>>(component: C): C {
+export function defineComponent<S extends SchemaComponentDef, P = {}>(schema: S) {
+  return function <C extends React.FC<InferComponentProps<S, P>>>(component: C): C {
     return component;
   };
 }
 
 // --- Decorator variant ---
 
-interface DecoratorDef {
-  props?: Record<string, any>;
-}
+type InferDecoratorProps<P = {}> = DecoratorBaseSlots & P;
 
-type InferDecoratorProps<S extends DecoratorDef> =
-  DecoratorBaseSlots & (S extends { props: infer P } ? { [K in keyof P]: P[K] } : {});
-
-defineComponent.decorator = function <S extends DecoratorDef>(schema: S) {
-  return function <C extends React.FC<InferDecoratorProps<S>>>(component: C): C {
+defineComponent.decorator = function <P = {}>() {
+  return function <C extends React.FC<InferDecoratorProps<P>>>(component: C): C {
     return component;
   };
 };
@@ -225,7 +206,6 @@ export type {
   InferDecoratorProps,
   InferFieldsMap,
   InferBaseSlots,
-  InferCustomProps,
   FieldBaseSlots,
   ArrayBaseSlots,
   VoidBaseSlots,

@@ -2,12 +2,13 @@ import React from "react";
 import { defineComponent } from "@alien-form/react";
 import { Input } from "@alien-form/ui";
 
-export const ImageInput = defineComponent({
+interface ImageInputProps {
+  placeholder?: string;
+  className?: string;
+}
+
+export const ImageInput = defineComponent<{ type: "string" }, ImageInputProps>({
   type: "string",
-  props: {
-    placeholder: "" as string,
-    className: "" as string,
-  },
 })(({
   value,
   onChange,

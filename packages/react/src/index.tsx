@@ -946,7 +946,6 @@ export type {
   InferDecoratorProps,
   InferFieldsMap,
   InferBaseSlots,
-  InferCustomProps,
   FieldBaseSlots,
   ArrayBaseSlots,
   VoidBaseSlots,

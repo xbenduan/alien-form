@@ -112,8 +112,8 @@ const SkuFieldCell: React.FC<{ field: IField }> = ({ field }) => {
   }
 };
 
-export const SkuTable = defineComponent({
-  type: "array",
+const skuSchema = {
+  type: "array" as const,
   items: {
     skuKey: { type: "string" },
     groupKey: { type: "string" },
@@ -128,12 +128,17 @@ export const SkuTable = defineComponent({
     accessories: { type: "array" },
     enabled: { type: "boolean" },
   },
-  props: {
-    emptyText: "" as string,
-    helperText: "" as string,
-    className: "" as string,
-  },
-})(({
+};
+
+interface SkuTableProps {
+  emptyText?: string;
+  helperText?: string;
+  className?: string;
+}
+
+export const SkuTable = defineComponent<typeof skuSchema, SkuTableProps>(
+  skuSchema,
+)(({
   field,
   emptyText = "请先配置规格值，系统会自动生成 SKU 组合。",
   helperText,
