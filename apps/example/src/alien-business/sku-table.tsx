@@ -1,4 +1,3 @@
-import React from "react";
 import { defineComponent } from "@alien-form/react";
 import type { IField } from "@alien-form/react";
 
@@ -44,12 +43,6 @@ export const SkuTable = defineComponent<typeof skuSchema, SkuTableProps>(
   helperText,
   className,
 }) => {
-  const [, forceRender] = React.useState(0);
-
-  React.useEffect(() => {
-    if (!field) return;
-    return field.subscribe(() => forceRender((v) => v + 1));
-  }, [field]);
 
   // Get field metadata from arrayItems for column headers and grouping logic
   const arrayItems = field?.arrayItems ?? [];
