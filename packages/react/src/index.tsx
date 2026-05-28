@@ -14,7 +14,6 @@ import {
   useRef,
   useCallback,
   useSyncExternalStore,
-  Fragment,
 } from "react";
 import type React from "react";
 import type {
@@ -69,8 +68,8 @@ export { createForm, define } from "@alien-form/core";
 // Component/Decorator Maps
 // ============================================================
 
-export type ComponentMap = Record<string, React.ComponentType<any>>;
-export type DecoratorMap = Record<string, React.ComponentType<any>>;
+export type ComponentMap = Record<string, React.ComponentType<Record<string, any>>>;
+export type DecoratorMap = Record<string, React.ComponentType<Record<string, any>>>;
 
 // ============================================================
 // Contexts
@@ -190,14 +189,14 @@ export function useField(path?: string): IField | null {
 
 export interface FieldState {
   value: any;
-  display: string;
+  display: "visible" | "hidden" | "none";
   visible: boolean;
   hidden: boolean;
   disabled: boolean;
   required: boolean;
   errors: FieldError[];
   warnings: FieldError[];
-  validateStatus: string;
+  validateStatus: "success" | "error" | "warning" | "validating" | "";
   title: string;
   description: string;
   loading: boolean;
@@ -395,12 +394,23 @@ interface FormProviderProps {
 
 export const FormProvider: React.FC<FormProviderProps> = ({
   form,
-  components = {},
-  decorators = {},
+  components: rawComponents = {},
+  decorators: rawDecorators = {},
   destroyOnUnmount = false,
   children,
 }) => {
-  const value = useMemo(() => ({ form, components, decorators }), [form, components, decorators]);
+  // Stabilize component/decorator maps via refs — prevents context invalidation
+  // when parent re-renders with inline `components={{ Input }}` objects.
+  const compRef = useRef(rawComponents);
+  const decoRef = useRef(rawDecorators);
+  compRef.current = rawComponents;
+  decoRef.current = rawDecorators;
+
+  const value = useMemo(() => ({
+    form,
+    get components() { return compRef.current; },
+    get decorators() { return decoRef.current; },
+  }), [form]);
 
   useEffect(() => {
     if (!destroyOnUnmount) return;
@@ -433,10 +443,18 @@ export const SchemaField: React.FC<SchemaFieldProps> = ({ schema }) => {
     schema: null,
   });
   useEffect(() => {
+    // Fast path: same reference → skip expensive areDeepEqual
+    if (
+      lastAppliedSchemaRef.current.form === form &&
+      lastAppliedSchemaRef.current.schema === schema
+    ) {
+      return;
+    }
     if (
       lastAppliedSchemaRef.current.form === form &&
       areDeepEqual(lastAppliedSchemaRef.current.schema, schema)
     ) {
+      lastAppliedSchemaRef.current = { form, schema };
       return;
     }
     form.setSchema(schema);
@@ -471,7 +489,7 @@ export const SchemaField: React.FC<SchemaFieldProps> = ({ schema }) => {
 
 interface SchemaFieldItemProps {
   path: string;
-  schema: any;
+  schema: IFieldSchema;
   components: ComponentMap;
   decorators: DecoratorMap;
   form: IForm;
@@ -502,26 +520,30 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
       description: schema.description,
     };
 
-    const preservesOwnPath = parentPath !== "" || path !== fullPath || schema["x-from-ref"] === true;
+    const preservesOwnPath = parentPath !== "" || path !== fullPath || (schema as Record<string, unknown>)[REF_RESOLVED_KEY] === true;
     const voidChildParentPath = preservesOwnPath ? fullPath : parentPath;
 
-    const sortedChildren = getSortedEntries(schema.properties);
-    const fieldMap: Record<string, React.ReactNode> = {};
-    const children = sortedChildren.map(([key, childSchema]) => {
-      const node = (
-        <SchemaFieldItem
-          key={key}
-          path={key}
-          schema={childSchema}
-          components={components}
-          decorators={decorators}
-          form={form}
-          parentPath={voidChildParentPath}
-        />
-      );
-      fieldMap[key] = node;
-      return node;
-    });
+    // Memoize children + fieldMap — avoids rebuilding on every field-value-driven re-render
+    const { children, fieldMap } = useMemo(() => {
+      const sortedChildren = getSortedEntries(schema.properties!);
+      const fieldMap: Record<string, React.ReactNode> = {};
+      const children = sortedChildren.map(([key, childSchema]) => {
+        const node = (
+          <SchemaFieldItem
+            key={key}
+            path={key}
+            schema={childSchema}
+            components={components}
+            decorators={decorators}
+            form={form}
+            parentPath={voidChildParentPath}
+          />
+        );
+        fieldMap[key] = node;
+        return node;
+      });
+      return { children, fieldMap };
+    }, [schema.properties, voidChildParentPath, components, decorators, form]);
 
     if (LayoutComponent) {
       return (
@@ -538,23 +560,28 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
     if (!field) return null;
     const ObjectComponent = components[schema.component];
     const Decorator = decorators[schema.decorator || ""];
-    const sortedChildren = getSortedEntries(schema.properties);
-    const fieldMap: Record<string, React.ReactNode> = {};
-    const children = sortedChildren.map(([key, childSchema]) => {
-      const node = (
-        <SchemaFieldItem
-          key={key}
-          path={key}
-          schema={childSchema}
-          components={components}
-          decorators={decorators}
-          form={form}
-          parentPath={fullPath}
-        />
-      );
-      fieldMap[key] = node;
-      return node;
-    });
+
+    // Memoize children + fieldMap — avoids rebuilding on every field-value-driven re-render
+    const { children, fieldMap } = useMemo(() => {
+      const sortedChildren = getSortedEntries(schema.properties!);
+      const fieldMap: Record<string, React.ReactNode> = {};
+      const children = sortedChildren.map(([key, childSchema]) => {
+        const node = (
+          <SchemaFieldItem
+            key={key}
+            path={key}
+            schema={childSchema}
+            components={components}
+            decorators={decorators}
+            form={form}
+            parentPath={fullPath}
+          />
+        );
+        fieldMap[key] = node;
+        return node;
+      });
+      return { children, fieldMap };
+    }, [schema.properties, fullPath, components, decorators, form]);
 
     if (ObjectComponent) {
       const objectProps = {
@@ -637,7 +664,7 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
 
 interface ArrayFieldRendererProps {
   field: IField;
-  schema: any;
+  schema: IFieldSchema;
   components: ComponentMap;
   decorators: DecoratorMap;
   form: IForm;
@@ -652,50 +679,70 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
   form,
   fullPath,
 }) => {
-  const [, forceRender] = useState(0);
+  // UseSyncExternalStore for concurrent-rendering safety (replaces useState+useEffect force-render hack)
+  const snapshot = useSyncExternalStore(
+    (cb) => field.subscribe(cb),
+    () => ({
+      display: field.display,
+      value: field.value,
+      component: field.component,
+      decorator: field.decorator,
+      title: field.title,
+      required: field.required,
+      errors: field.errors,
+      warnings: field.warnings,
+      description: field.description,
+      validateStatus: field.validateStatus,
+      disabled: field.disabled,
+      componentProps: field.componentProps,
+      decoratorProps: field.decoratorProps,
+    }),
+  );
 
-  useEffect(() => field.subscribe(() => forceRender((v) => v + 1)), [field]);
+  if (snapshot.display === "none") return null;
+  if (snapshot.display === "hidden") return <div style={{ display: "none" }} />;
 
-  if (field.display === "none") return null;
-  if (field.display === "hidden") return <div style={{ display: "none" }} />;
+  const ArrayComponent = components[snapshot.component];
+  const Decorator = decorators[snapshot.decorator];
 
-  const ArrayComponent = components[field.component];
-  const Decorator = decorators[field.decorator];
+  const arrayValue = Array.isArray(snapshot.value) ? snapshot.value : [];
+  const itemSchema = schema.items as IFieldSchema | undefined;
 
-  const arrayValue = Array.isArray(field.value) ? field.value : [];
-  const itemSchema = schema.items;
+  // Memoize rows/rowFields to avoid rebuilding on every render
+  const { rows, rowFields } = useMemo(() => {
+    const rows: React.ReactNode[][] = [];
+    const rowFields: Record<string, React.ReactNode>[] = [];
 
-  // Build rows of rendered child fields with named fields map
-  const rows: React.ReactNode[][] = [];
-  const rowFields: Record<string, React.ReactNode>[] = [];
-
-  arrayValue.forEach((_: any, index: number) => {
-    const children: React.ReactNode[] = [];
-    const fieldMap: Record<string, React.ReactNode> = {};
-    if (itemSchema?.properties) {
-      const sortedProps = getSortedEntries(itemSchema.properties);
-      for (const [childKey, childSchema] of sortedProps) {
-        const node = (
-          <SchemaFieldItem
-            key={childKey}
-            path={childKey}
-            schema={childSchema}
-            components={components}
-            decorators={decorators}
-            form={form}
-            parentPath={`${fullPath}.${index}`}
-          />
-        );
-        children.push(node);
-        fieldMap[childKey] = node;
+    arrayValue.forEach((_: any, index: number) => {
+      const children: React.ReactNode[] = [];
+      const fieldMap: Record<string, React.ReactNode> = {};
+      if (itemSchema?.properties) {
+        const sortedProps = getSortedEntries(itemSchema.properties);
+        for (const [childKey, childSchema] of sortedProps) {
+          const node = (
+            <SchemaFieldItem
+              key={childKey}
+              path={childKey}
+              schema={childSchema}
+              components={components}
+              decorators={decorators}
+              form={form}
+              parentPath={`${fullPath}.${index}`}
+            />
+          );
+          children.push(node);
+          fieldMap[childKey] = node;
+        }
       }
-    }
-    rows.push(children);
-    rowFields.push(fieldMap);
-  });
+      rows.push(children);
+      rowFields.push(fieldMap);
+    });
+
+    return { rows, rowFields };
+  }, [arrayValue, itemSchema, components, decorators, form, fullPath]);
 
   const arrayProps = {
-    ...field.componentProps,
+    ...snapshot.componentProps,
     field,
     rows,
     rowFields,
@@ -703,17 +750,17 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
     onRemove: (index: number) => field.remove(index),
     onMoveUp: (index: number) => field.moveUp(index),
     onMoveDown: (index: number) => field.moveDown(index),
-    disabled: field.disabled,
+    disabled: snapshot.disabled,
   };
 
   const decoratorProps = {
-    label: field.title,
-    required: field.required,
-    errors: field.errors,
-    warnings: field.warnings,
-    description: field.description,
-    validateStatus: field.validateStatus,
-    ...field.decoratorProps,
+    label: snapshot.title,
+    required: snapshot.required,
+    errors: snapshot.errors,
+    warnings: snapshot.warnings,
+    description: snapshot.description,
+    validateStatus: snapshot.validateStatus,
+    ...snapshot.decoratorProps,
   };
 
   if (ArrayComponent) {
@@ -765,7 +812,7 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
 
 interface FieldRendererProps {
   field: IField;
-  schema: any;
+  schema: IFieldSchema;
   components: ComponentMap;
   decorators: DecoratorMap;
   form: IForm;
@@ -773,43 +820,61 @@ interface FieldRendererProps {
 }
 
 const FieldRenderer: React.FC<FieldRendererProps> = ({ field, components, decorators }) => {
-  const [, forceRender] = useState(0);
+  // UseSyncExternalStore for concurrent-rendering safety (replaces useState+useEffect force-render hack)
+  const snapshot = useSyncExternalStore(
+    (cb) => field.subscribe(cb),
+    () => ({
+      display: field.display,
+      component: field.component,
+      decorator: field.decorator,
+      title: field.title,
+      required: field.required,
+      errors: field.errors,
+      warnings: field.warnings,
+      description: field.description,
+      validateStatus: field.validateStatus,
+      disabled: field.disabled,
+      loading: field.loading,
+      value: field.value,
+      dataSource: field.dataSource,
+      componentProps: field.componentProps,
+      decoratorProps: field.decoratorProps,
+    }),
+  );
 
-  useEffect(() => field.subscribe(() => forceRender((v) => v + 1)), [field]);
+  if (snapshot.display === "none") return null;
+  if (snapshot.display === "hidden") return <div style={{ display: "none" }} />;
 
-  if (field.display === "none") return null;
-  if (field.display === "hidden") return <div style={{ display: "none" }} />;
-
-  const Component = components[field.component];
-  const Decorator = decorators[field.decorator];
+  const Component = components[snapshot.component];
+  const Decorator = decorators[snapshot.decorator];
 
   const decoratorProps = {
-    label: field.title,
-    required: field.required,
-    errors: field.errors,
-    warnings: field.warnings,
-    description: field.description,
-    validateStatus: field.validateStatus,
-    ...field.decoratorProps,
+    label: snapshot.title,
+    required: snapshot.required,
+    errors: snapshot.errors,
+    warnings: snapshot.warnings,
+    description: snapshot.description,
+    validateStatus: snapshot.validateStatus,
+    ...snapshot.decoratorProps,
   };
 
   if (!Component) {
     return (
-      <div className="text-destructive text-sm">{`Unknown component: ${field.component}`}</div>
+      <div className="text-destructive text-sm">{`Unknown component: ${snapshot.component}`}</div>
     );
   }
 
   // Build component props
   const componentProps: Record<string, any> = {
-    ...field.componentProps,
-    value: field.value,
+    ...snapshot.componentProps,
+    value: snapshot.value,
     onChange: (val: any) => field.setValue(val),
-    disabled: field.disabled,
-    loading: field.loading,
+    disabled: snapshot.disabled,
+    loading: snapshot.loading,
   };
 
-  if (field.dataSource.length > 0) {
-    componentProps.dataSource = field.dataSource;
+  if (snapshot.dataSource.length > 0) {
+    componentProps.dataSource = snapshot.dataSource;
   }
 
   const rendered = <Component {...componentProps} />;
@@ -821,10 +886,17 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({ field, components, decora
 };
 
 // ============================================================
+// Internal constants
+// ============================================================
+
+/** Marks schemas that were resolved from a $ref definition. */
+const REF_RESOLVED_KEY = "__alien_ref_resolved";
+
+// ============================================================
 // Helpers
 // ============================================================
 
-function getSortedEntries(properties: Record<string, any>): [string, any][] {
+function getSortedEntries(properties: Record<string, IFieldSchema>): [string, IFieldSchema][] {
   return Object.entries(properties).sort(([, a], [, b]) => {
     const ai = a?.order ?? Infinity;
     const bi = b?.order ?? Infinity;
@@ -885,7 +957,7 @@ function resolveFieldSchemaTree(
     };
   }
 
-  return fromRef ? { ...result, "x-from-ref": true } : result;
+  return fromRef ? { ...result, [REF_RESOLVED_KEY]: true } : result;
 }
 
 function areDeepEqual(a: any, b: any, seen: WeakMap<object, object> = new WeakMap()): boolean {
@@ -914,6 +986,3 @@ function areDeepEqual(a: any, b: any, seen: WeakMap<object, object> = new WeakMa
   }
   return true;
 }
-
-// Suppress unused import warning
-void Fragment;
