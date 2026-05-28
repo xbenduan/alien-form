@@ -9,6 +9,7 @@
     "jsx": "react-jsx",
     "outDir": "dist",
     "rootDir": "src",
+    "resolveJsonModule": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "paths": {
       "@/*": ["./src/*"]

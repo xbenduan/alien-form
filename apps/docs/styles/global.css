@@ -1,9 +1,34 @@
 @import "tailwindcss";
 
+@source "../../../packages/ui/src/**/*.tsx";
+@source "../docs/**/*.{mdx,tsx}";
+
+/* Move the "view code" button to bottom-right of the preview card */
+.rp-preview--internal__card {
+  flex-direction: column;
+  padding-right: 24px;
+}
+.rp-preview-operations--web {
+  margin-left: auto;
+  margin-top: 12px;
+}
+.rp-preview-operations__button {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.rp-preview-operations__button:hover {
+  background: none !important;
+}
+.rp-preview-operations__button--expanded {
+  background: none !important;
+  box-shadow: none !important;
+}
+
 @theme {
   --color-border: hsl(214.3 31.8% 91.4%);
   --color-input: hsl(214.3 31.8% 91.4%);
-  --color-ring: hsl(222.2 84% 4.9%);
+  --color-ring: hsl(222.2 47.4% 11.2%);
   --color-background: hsl(0 0% 100%);
   --color-foreground: hsl(222.2 84% 4.9%);
 
@@ -31,10 +56,4 @@
   --radius-lg: 0.5rem;
   --radius-md: calc(0.5rem - 2px);
   --radius-sm: calc(0.5rem - 4px);
-}
-
-@layer base {
-  .rspress-doc * {
-    border-color: var(--color-border);
-  }
 }

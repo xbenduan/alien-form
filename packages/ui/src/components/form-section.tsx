@@ -27,7 +27,7 @@ const FormSection = React.forwardRef<HTMLDivElement, FormSectionProps>(
     const [collapsed, setCollapsed] = React.useState(defaultCollapsed);
 
     return (
-      <div ref={ref} className={cn("mb-4", bordered && "border rounded-lg p-4", className)}>
+      <div ref={ref} className={cn("mb-4", bordered && "border border-border/50 rounded-lg p-4", className)}>
         {(title || description) && (
           <div className="mb-3">
             {title && (
@@ -39,7 +39,7 @@ const FormSection = React.forwardRef<HTMLDivElement, FormSectionProps>(
                     className="flex items-center justify-center h-5 w-5 rounded hover:bg-accent transition-colors"
                   >
                     <svg
-                      className={cn("h-3.5 w-3.5 transition-transform", collapsed && "-rotate-90")}
+                      className={cn("h-3.5 w-3.5 transition-transform text-muted-foreground", collapsed && "-rotate-90")}
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"

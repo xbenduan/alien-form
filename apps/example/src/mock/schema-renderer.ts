@@ -1,4 +1,5 @@
 import type { FormConfig } from "@alien-form/react";
+import { sleep } from ".";
 
 type SelectOption = {
   label: string;
@@ -23,10 +24,6 @@ const categoryData: Record<string, SelectOption[]> = {
     { label: "战略", value: "strategy" },
   ],
 };
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 export const schemaRendererHandlers: FormConfig["handlers"] = {
   fetchCountries: async () => {

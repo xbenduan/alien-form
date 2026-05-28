@@ -1,0 +1,594 @@
+---
+title: Custom Components
+---
+
+# Custom Components
+
+AlienForm's component system has three layers: **Field Components** (edit a single value), **Higher-Order Components** (organize child fields), and **Decorators** (wrap field chrome).
+
+## Field Components
+
+Follow the `value / onChange` contract to edit a single field value. The UI can be rich, but ultimately calls `onChange` with one value.
+
+```tsx preview
+import React from "react";
+import { useCreateForm, FormProvider, SchemaField } from "@alien-form/react";
+import {
+  SchemaInput,
+  SchemaTextarea,
+  SchemaSelect,
+  Checkbox,
+  Switch,
+  DateInput,
+  RadioGroup,
+  Rating,
+  FormItem,
+  FormGrid,
+  FormLayout,
+  FormSection,
+  ArrayCards,
+  ArrayTable,
+} from "@alien-form/ui";
+
+// Custom field component: URL input with image preview
+const ImageInput = ({ value, onChange, placeholder, disabled }) => {
+  const url = value ?? "";
+  return (
+    <div className="flex items-start gap-3">
+      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md border bg-muted flex items-center justify-center">
+        {url ? (
+          <img src={url} alt="preview" className="h-full w-full object-cover" />
+        ) : (
+          <span className="text-[10px] text-muted-foreground">No image</span>
+        )}
+      </div>
+      <input
+        className="flex-1 h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+        value={url}
+        onChange={(e) => onChange?.(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+      />
+    </div>
+  );
+};
+
+const schema = {
+  type: "object",
+  properties: {
+    name: {
+      type: "string",
+      title: "Product Name",
+      component: "Input",
+      decorator: "FormItem",
+      validators: [{ required: true, message: "Required" }],
+    },
+    image: {
+      type: "string",
+      title: "Product Image",
+      component: "ImageInput",
+      decorator: "FormItem",
+      default: "https://picsum.photos/200",
+      props: { placeholder: "Enter image URL" },
+    },
+    score: {
+      type: "number",
+      title: "Rating",
+      component: "Rating",
+      decorator: "FormItem",
+      default: 3,
+    },
+  },
+};
+
+const components = { Input: SchemaInput, Textarea: SchemaTextarea, Select: SchemaSelect, Checkbox, Switch, DateInput, RadioGroup, Rating, ImageInput, FormGrid, FormLayout, FormSection, ArrayCards, ArrayTable };
+const decorators = { FormItem };
+
+export default () => {
+  const [result, setResult] = React.useState<any>(null);
+  const form = useCreateForm();
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.submit();
+      setResult({ success: true, values });
+    } catch (err: any) {
+      setResult({ success: false, errors: err?.messages || [String(err)] });
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <FormProvider form={form} components={components} decorators={decorators}>
+        <SchemaField schema={schema} />
+      </FormProvider>
+      <div className="flex gap-2 border-t pt-4">
+        <button onClick={handleSubmit} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">Submit</button>
+        <button onClick={() => { form.reset(); setResult(null); }} className="rounded-md border px-4 py-2 text-sm hover:bg-accent">Reset</button>
+      </div>
+      {result && (
+        <pre className="rounded-lg bg-muted p-4 text-sm overflow-auto max-h-[300px]">
+          <code>{JSON.stringify(result, null, 2)}</code>
+        </pre>
+      )}
+    </div>
+  );
+};
+```
+
+## Higher-Order: Void Container
+
+`type: "void"` nodes produce **no value** and their children paths are transparent. Used for cards, grids, collapsible sections.
+
+```tsx preview
+import React from "react";
+import { useCreateForm, FormProvider, SchemaField } from "@alien-form/react";
+import {
+  SchemaInput,
+  SchemaTextarea,
+  SchemaSelect,
+  Checkbox,
+  Switch,
+  DateInput,
+  RadioGroup,
+  Rating,
+  FormItem,
+  FormGrid,
+  FormLayout,
+  FormSection,
+  ArrayCards,
+  ArrayTable,
+} from "@alien-form/ui";
+
+const schema = {
+  type: "object",
+  properties: {
+    basic: {
+      type: "void",
+      title: "Basic Info",
+      component: "FormSection",
+      props: { bordered: true, collapsible: true },
+      properties: {
+        name: { type: "string", title: "Name", component: "Input", decorator: "FormItem", validators: [{ required: true, message: "Required" }] },
+        age: { type: "number", title: "Age", component: "Input", decorator: "FormItem", props: { type: "number" } },
+      },
+    },
+    grid: {
+      type: "void",
+      title: "Contact (Grid Layout)",
+      component: "FormGrid",
+      props: { columns: 2 },
+      properties: {
+        email: { type: "string", title: "Email", component: "Input", decorator: "FormItem" },
+        phone: { type: "string", title: "Phone", component: "Input", decorator: "FormItem" },
+      },
+    },
+  },
+};
+
+const components = { Input: SchemaInput, Textarea: SchemaTextarea, Select: SchemaSelect, Checkbox, Switch, DateInput, RadioGroup, Rating, FormGrid, FormLayout, FormSection, ArrayCards, ArrayTable };
+const decorators = { FormItem };
+
+export default () => {
+  const [result, setResult] = React.useState<any>(null);
+  const form = useCreateForm();
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.submit();
+      setResult({ success: true, values });
+    } catch (err: any) {
+      setResult({ success: false, errors: err?.messages || [String(err)] });
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <FormProvider form={form} components={components} decorators={decorators}>
+        <SchemaField schema={schema} />
+      </FormProvider>
+      <div className="flex gap-2 border-t pt-4">
+        <button onClick={handleSubmit} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">Submit</button>
+        <button onClick={() => { form.reset(); setResult(null); }} className="rounded-md border px-4 py-2 text-sm hover:bg-accent">Reset</button>
+      </div>
+      {result && (
+        <pre className="rounded-lg bg-muted p-4 text-sm overflow-auto max-h-[300px]">
+          <code>{JSON.stringify(result, null, 2)}</code>
+        </pre>
+      )}
+    </div>
+  );
+};
+```
+
+> Notice that `name`, `age`, `email`, `phone` are all top-level in the output — void nodes `basic` / `grid` do not contribute to the path.
+
+## Higher-Order: Array Container
+
+`type: "array"` + `items` defines a dynamic add/remove list. Each row expands the fields defined in `items.properties`.
+
+```tsx preview
+import React from "react";
+import { useCreateForm, FormProvider, SchemaField } from "@alien-form/react";
+import {
+  SchemaInput,
+  SchemaTextarea,
+  SchemaSelect,
+  Checkbox,
+  Switch,
+  DateInput,
+  RadioGroup,
+  Rating,
+  FormItem,
+  FormGrid,
+  FormLayout,
+  FormSection,
+  ArrayCards,
+  ArrayTable,
+} from "@alien-form/ui";
+
+const schema = {
+  type: "object",
+  properties: {
+    contacts: {
+      type: "array",
+      title: "Contact List",
+      component: "ArrayCards",
+      decorator: "FormItem",
+      props: { addText: "+ Add Contact", maxItems: 5 },
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string", title: "Name", component: "Input", decorator: "FormItem", validators: [{ required: true, message: "Required" }] },
+          phone: { type: "string", title: "Phone", component: "Input", decorator: "FormItem" },
+          role: {
+            type: "string",
+            title: "Role",
+            component: "Select",
+            decorator: "FormItem",
+            dataSource: [
+              { label: "Primary", value: "primary" },
+              { label: "Secondary", value: "secondary" },
+            ],
+          },
+        },
+      },
+    },
+  },
+};
+
+const components = { Input: SchemaInput, Textarea: SchemaTextarea, Select: SchemaSelect, Checkbox, Switch, DateInput, RadioGroup, Rating, FormGrid, FormLayout, FormSection, ArrayCards, ArrayTable };
+const decorators = { FormItem };
+
+export default () => {
+  const [result, setResult] = React.useState<any>(null);
+  const form = useCreateForm();
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.submit();
+      setResult({ success: true, values });
+    } catch (err: any) {
+      setResult({ success: false, errors: err?.messages || [String(err)] });
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <FormProvider form={form} components={components} decorators={decorators}>
+        <SchemaField schema={schema} />
+      </FormProvider>
+      <div className="flex gap-2 border-t pt-4">
+        <button onClick={handleSubmit} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">Submit</button>
+        <button onClick={() => { form.reset(); setResult(null); }} className="rounded-md border px-4 py-2 text-sm hover:bg-accent">Reset</button>
+      </div>
+      {result && (
+        <pre className="rounded-lg bg-muted p-4 text-sm overflow-auto max-h-[300px]">
+          <code>{JSON.stringify(result, null, 2)}</code>
+        </pre>
+      )}
+    </div>
+  );
+};
+```
+
+## Custom Decorator
+
+Decorators render field chrome: label, required mark, validation errors, description. Register via `decorators`, reference in schema with `"decorator"`.
+
+```tsx preview
+import React from "react";
+import { useCreateForm, FormProvider, SchemaField } from "@alien-form/react";
+import {
+  SchemaInput,
+  SchemaTextarea,
+  SchemaSelect,
+  Checkbox,
+  Switch,
+  DateInput,
+  RadioGroup,
+  Rating,
+  FormItem,
+  FormGrid,
+  FormLayout,
+  FormSection,
+  ArrayCards,
+  ArrayTable,
+} from "@alien-form/ui";
+
+// Custom Decorator: horizontal label + input layout
+const InlineFormItem = ({ label, required, errors = [], description, children }) => (
+  <div className="flex items-start gap-3 mb-3">
+    {label && (
+      <label className="w-24 pt-2 text-sm text-right shrink-0 text-muted-foreground">
+        {required && <span className="text-destructive">*</span>}
+        {label}
+      </label>
+    )}
+    <div className="flex-1">
+      {children}
+      {description && errors.length === 0 && (
+        <p className="text-xs text-muted-foreground mt-1">{description}</p>
+      )}
+      {errors.length > 0 && (
+        <p className="text-xs text-destructive mt-1">{errors.map((e) => e.message).join(", ")}</p>
+      )}
+    </div>
+  </div>
+);
+
+const schema = {
+  type: "object",
+  properties: {
+    username: {
+      type: "string",
+      title: "Username",
+      component: "Input",
+      decorator: "InlineFormItem",
+      validators: [{ required: true, message: "Required" }, { minLength: 3, message: "At least 3 characters" }],
+    },
+    email: {
+      type: "string",
+      title: "Email",
+      component: "Input",
+      decorator: "InlineFormItem",
+      description: "Used for notifications",
+      validators: [{ required: true, message: "Required" }],
+    },
+    bio: {
+      type: "string",
+      title: "Bio",
+      component: "Textarea",
+      decorator: "InlineFormItem",
+      props: { rows: 3 },
+    },
+    defaultItem: {
+      type: "string",
+      title: "Default FormItem",
+      component: "Input",
+      decorator: "FormItem",
+      description: "Comparison: this uses the default vertical FormItem",
+    },
+  },
+};
+
+const components = { Input: SchemaInput, Textarea: SchemaTextarea, Select: SchemaSelect, Checkbox, Switch, DateInput, RadioGroup, Rating, FormGrid, FormLayout, FormSection, ArrayCards, ArrayTable };
+const decorators = { FormItem, InlineFormItem };
+
+export default () => {
+  const [result, setResult] = React.useState<any>(null);
+  const form = useCreateForm();
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.submit();
+      setResult({ success: true, values });
+    } catch (err: any) {
+      setResult({ success: false, errors: err?.messages || [String(err)] });
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <FormProvider form={form} components={components} decorators={decorators}>
+        <SchemaField schema={schema} />
+      </FormProvider>
+      <div className="flex gap-2 border-t pt-4">
+        <button onClick={handleSubmit} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">Submit</button>
+        <button onClick={() => { form.reset(); setResult(null); }} className="rounded-md border px-4 py-2 text-sm hover:bg-accent">Reset</button>
+      </div>
+      {result && (
+        <pre className="rounded-lg bg-muted p-4 text-sm overflow-auto max-h-[300px]">
+          <code>{JSON.stringify(result, null, 2)}</code>
+        </pre>
+      )}
+    </div>
+  );
+};
+```
+
+## Decision Guide
+
+| You need... | Choose |
+| --- | --- |
+| Edit a single field value (text/image/rating/color) | Field component with `value/onChange` |
+| Pure UI grouping (card/grid/collapse) | `void` + higher-order component |
+| Aggregate child fields into an object | `object` + higher-order component |
+| Dynamic add/remove list | `array` + higher-order component |
+| Field chrome (label/error/description) | Decorator |
+
+## Type Tool: `define` + `Resolved`
+
+Custom components can get full type inference via `define` + `Resolved<typeof schema>` — **no manual interface declarations needed**.
+
+- `define(schema)` — Zero-runtime identity function that triggers TS `const` generic narrowing (no `as const` required)
+- `Resolved<S>` — Automatically infers: framework-injected Slots + custom Props from `schema.props`
+
+```tsx preview
+import React from "react";
+import { useCreateForm, FormProvider, SchemaField, define, type Resolved } from "@alien-form/react";
+import {
+  SchemaInput,
+  SchemaTextarea,
+  SchemaSelect,
+  Checkbox,
+  Switch,
+  DateInput,
+  RadioGroup,
+  Rating,
+  FormItem,
+  FormGrid,
+  FormLayout,
+  FormSection,
+  ArrayCards,
+  ArrayTable,
+} from "@alien-form/ui";
+
+// 1. Declare the component schema with define
+const colorPickerSchema = define({
+  type: "string",
+  props: {
+    placeholder: "",
+    swatches: [] as string[],
+  },
+});
+
+// 2. Resolved auto-infers Props = FieldSlots & { placeholder?: string; swatches?: string[] }
+const ColorPicker: React.FC<Resolved<typeof colorPickerSchema>> = ({
+  value,       // ← FieldSlots: any
+  onChange,    // ← FieldSlots: (value: any) => void
+  disabled,    // ← FieldSlots: boolean | undefined
+  placeholder, // ← schema.props: string | undefined
+  swatches,    // ← schema.props: string[] | undefined
+}) => {
+  const colors = swatches?.length ? swatches : ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#8b5cf6"];
+  return (
+    <div className="space-y-2">
+      <input
+        className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+      />
+      <div className="flex gap-1.5 flex-wrap">
+        {colors.map((c) => (
+          <button
+            key={c}
+            type="button"
+            disabled={disabled}
+            className={`h-7 w-7 rounded-md border-2 transition-all ${value === c ? "border-ring scale-110" : "border-transparent"}`}
+            style={{ backgroundColor: c }}
+            onClick={() => onChange(c)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// 3. Array components work the same way
+const tagListSchema = define({
+  type: "array",
+  items: {
+    label: { type: "string" },
+  },
+  props: {
+    addText: "",
+    maxItems: 0,
+  },
+});
+
+const TagList: React.FC<Resolved<typeof tagListSchema>> = ({
+  field,       // ← ArraySlots: IField
+  rows,        // ← ArraySlots: ReactNode[][]
+  rowFields,   // ← ArraySlots: { label: ReactNode }[]
+  onAdd,       // ← ArraySlots: (initialValues?) => void
+  onRemove,    // ← ArraySlots: (index: number) => void
+  addText,     // ← schema.props: string | undefined
+  maxItems,    // ← schema.props: number | undefined
+}) => {
+  const items = Array.isArray(field?.value) ? field.value : [];
+  const canAdd = !maxItems || items.length < maxItems;
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {rowFields.map((rf, i) => (
+          <div key={i} className="flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-sm">
+            {rf.label}
+            <button type="button" onClick={() => onRemove(i)} className="text-muted-foreground hover:text-destructive ml-1">&times;</button>
+          </div>
+        ))}
+      </div>
+      {canAdd && (
+        <button type="button" onClick={() => onAdd({ label: "" })} className="text-sm text-primary hover:underline">
+          {addText || "+ Add Tag"}
+        </button>
+      )}
+    </div>
+  );
+};
+
+const schema = {
+  type: "object",
+  properties: {
+    color: {
+      type: "string",
+      title: "Theme Color",
+      component: "ColorPicker",
+      decorator: "FormItem",
+      default: "#3b82f6",
+      props: { placeholder: "Enter HEX color", swatches: ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899"] },
+    },
+    tags: {
+      type: "array",
+      title: "Tags",
+      component: "TagList",
+      decorator: "FormItem",
+      props: { addText: "+ New Tag", maxItems: 5 },
+      items: {
+        type: "object",
+        properties: {
+          label: { type: "string", title: "Tag Name", component: "Input", decorator: "FormItem" },
+        },
+      },
+    },
+  },
+};
+
+const components = { Input: SchemaInput, Textarea: SchemaTextarea, Select: SchemaSelect, Checkbox, Switch, DateInput, RadioGroup, Rating, FormGrid, FormLayout, FormSection, ArrayCards, ArrayTable, ColorPicker, TagList };
+const decorators = { FormItem };
+
+export default () => {
+  const [result, setResult] = React.useState<any>(null);
+  const form = useCreateForm();
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.submit();
+      setResult({ success: true, values });
+    } catch (err: any) {
+      setResult({ success: false, errors: err?.messages || [String(err)] });
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <FormProvider form={form} components={components} decorators={decorators}>
+        <SchemaField schema={schema} />
+      </FormProvider>
+      <div className="flex gap-2 border-t pt-4">
+        <button onClick={handleSubmit} className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">Submit</button>
+        <button onClick={() => { form.reset(); setResult(null); }} className="rounded-md border px-4 py-2 text-sm hover:bg-accent">Reset</button>
+      </div>
+      {result && (
+        <pre className="rounded-lg bg-muted p-4 text-sm overflow-auto max-h-[300px]">
+          <code>{JSON.stringify(result, null, 2)}</code>
+        </pre>
+      )}
+    </div>
+  );
+};
+```
+
+> **Inference rules**: `schema.type` determines which Slots are injected (`FieldSlots` / `ArraySlots` / `VoidSlots` / `ObjectSlots` / `DecoratorSlots`), `schema.items` / `schema.properties` determines child field type mappings, and `schema.props` value types determine custom Props (all optional).

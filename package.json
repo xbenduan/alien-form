@@ -2,7 +2,7 @@
   "name": "alien-form",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @alien-form/demo run dev",
+    "dev": "pnpm --filter @alien-form/example run dev",
     "dev:docs": "pnpm --filter @alien-form/docs run dev",
     "build": "pnpm -r run build",
     "package:source": "bash ./scripts/package-project.sh",

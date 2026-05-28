@@ -1,8 +1,6 @@
 import * as React from "react";
 import { cn } from "../lib/utils";
 
-// --- Select with multi-select support ---
-
 export interface SelectOption {
   label: string;
   value: any;
@@ -35,7 +33,6 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
     const [open, setOpen] = React.useState(false);
     const containerRef = React.useRef<HTMLDivElement>(null);
 
-    // Close on outside click
     React.useEffect(() => {
       const handler = (e: MouseEvent) => {
         if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -80,10 +77,11 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
           disabled={disabled}
           onClick={() => setOpen(!open)}
           className={cn(
-            "flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background",
-            "placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring",
+            "flex h-9 w-full items-center justify-between rounded-md border border-border/60 bg-transparent px-3 py-2 text-sm transition-colors",
+            "focus:outline-none focus:border-primary/50",
             "disabled:cursor-not-allowed disabled:opacity-50",
             selectedValues.length === 0 && "text-muted-foreground",
+            open && "border-primary/50",
           )}
         >
           <span className="truncate">{displayText}</span>
@@ -92,7 +90,7 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
           </svg>
         </button>
         {open && (
-          <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-1 shadow-md animate-in fade-in-0 zoom-in-95">
+          <div className="absolute z-50 mt-1 w-full rounded-md border border-border/40 bg-popover p-1 shadow-lg animate-in fade-in-0 zoom-in-95">
             <div className="max-h-[200px] overflow-auto">
               {dataSource.map((option) => {
                 const isSelected = selectedValues.includes(option.value);
@@ -112,41 +110,21 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
                     {multiple && (
                       <span
                         className={cn(
-                          "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                          isSelected && "bg-primary text-primary-foreground",
+                          "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-border/80",
+                          isSelected && "bg-primary text-primary-foreground border-primary",
                         )}
                       >
                         {isSelected && (
-                          <svg
-                            className="h-3 w-3"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={3}
-                              d="M5 13l4 4L19 7"
-                            />
+                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                           </svg>
                         )}
                       </span>
                     )}
                     {option.label}
                     {!multiple && isSelected && (
-                      <svg
-                        className="ml-auto h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
+                      <svg className="ml-auto h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     )}
                   </button>

@@ -1,15 +1,16 @@
-import React from "react";
+import type React from "react";
+import { define, type Resolved } from "@alien-form/react";
 import { Input } from "@alien-form/ui";
 
-interface ImageInputProps {
-  value?: string;
-  onChange?: (value: string) => void;
-  placeholder?: string;
-  disabled?: boolean;
-  className?: string;
-}
+const imageInputSchema = define({
+  type: "string",
+  props: {
+    placeholder: "",
+    className: "",
+  },
+});
 
-export const ImageInput: React.FC<ImageInputProps> = ({
+export const ImageInput: React.FC<Resolved<typeof imageInputSchema>> = ({
   value,
   onChange,
   placeholder,
@@ -31,7 +32,7 @@ export const ImageInput: React.FC<ImageInputProps> = ({
         <div className="flex-1">
           <Input
             value={imageUrl}
-            onChange={(event) => onChange?.(event.target.value)}
+            onChange={(event) => onChange(event.target.value)}
             placeholder={placeholder}
             disabled={disabled}
           />

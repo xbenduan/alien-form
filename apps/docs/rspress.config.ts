@@ -1,5 +1,10 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "@rspress/core";
 import { pluginPreview } from "@rspress/plugin-preview";
+import tailwindcss from "@tailwindcss/postcss";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   root: "docs",
@@ -30,14 +35,14 @@ export default defineConfig({
   ],
   builderConfig: {
     tools: {
-      postcss: {
-        postcssOptions: {
-          plugins: [require("@tailwindcss/postcss")],
-        },
+      postcss(config) {
+        config.postcssOptions ||= {};
+        config.postcssOptions.plugins ||= [];
+        config.postcssOptions.plugins.push(tailwindcss());
       },
     },
   },
-  globalStyles: "./styles/demo.css",
+  globalStyles: path.join(__dirname, "styles/global.css"),
   themeConfig: {
     socialLinks: [
       {

@@ -7,7 +7,8 @@ title: x-reaction Linkage
 Demonstrates `x-reaction` for conditional display, computed values, and dynamic property linking.
 
 ```tsx preview
-import { createForm, FormProvider, SchemaField } from "@alien-form/react";
+import React from "react";
+import { useCreateForm, FormProvider, SchemaField } from "@alien-form/react";
 import {
   SchemaInput,
   SchemaTextarea,
@@ -106,11 +107,43 @@ const components = { Input: SchemaInput, Textarea: SchemaTextarea, Select: Schem
 const decorators = { FormItem };
 
 export default () => {
-  const form = createForm();
+  const [result, setResult] = React.useState<any>(null);
+  const form = useCreateForm();
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.submit();
+      setResult({ success: true, values });
+    } catch (err: any) {
+      setResult({ success: false, errors: err?.messages || [String(err)] });
+    }
+  };
+
   return (
-    <FormProvider form={form} components={components} decorators={decorators}>
-      <SchemaField schema={schema} />
-    </FormProvider>
+    <div className="space-y-4">
+      <FormProvider form={form} components={components} decorators={decorators}>
+        <SchemaField schema={schema} />
+      </FormProvider>
+      <div className="flex gap-2 border-t pt-4">
+        <button
+          onClick={handleSubmit}
+          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+        >
+          提交
+        </button>
+        <button
+          onClick={() => { form.reset(); setResult(null); }}
+          className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
+        >
+          重置
+        </button>
+      </div>
+      {result && (
+        <pre className="rounded-lg bg-muted p-4 text-sm overflow-auto max-h-[300px]">
+          <code>{JSON.stringify(result, null, 2)}</code>
+        </pre>
+      )}
+    </div>
   );
 };
 ```
