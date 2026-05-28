@@ -1,116 +1,6 @@
 import React from "react";
 import { defineComponent } from "@alien-form/react";
 import type { IField } from "@alien-form/react";
-import { Checkbox, DateInput, Input, ItemInput, Select, Switch } from "@alien-form/ui";
-
-function formatCellValue(value: unknown): string {
-  if (value === undefined || value === null || value === "") return "-";
-  if (Array.isArray(value)) return value.join("、");
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
-}
-
-function getFieldName(field: IField): string {
-  return field.path.split(".").pop() ?? field.path;
-}
-
-function getRowField(rowFields: IField[], name: string): IField | undefined {
-  return rowFields.find((field) => getFieldName(field) === name);
-}
-
-const SkuFieldCell: React.FC<{ field: IField }> = ({ field }) => {
-  const [, forceRender] = React.useState(0);
-
-  React.useEffect(() => field.subscribe(() => forceRender((v) => v + 1)), [field]);
-
-  if (field.display === "none") {
-    return <div className="text-sm text-muted-foreground">-</div>;
-  }
-
-  const disabled = field.disabled || field.readOnly || field.readPretty;
-  const commonClassName = "min-w-[120px] border-0 bg-transparent shadow-none focus-visible:ring-0";
-
-  if (field.readPretty) {
-    return <div className="min-h-9 py-2 text-sm">{formatCellValue(field.value)}</div>;
-  }
-
-  switch (field.component) {
-    case "Input":
-      return (
-        <Input
-          {...field.componentProps}
-          className={commonClassName}
-          type={field.componentProps?.type}
-          value={field.value ?? ""}
-          disabled={disabled}
-          onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
-            const nextValue = event.target.value;
-            if (field.componentProps?.type === "number") {
-              field.setValue(nextValue === "" ? undefined : Number(nextValue));
-              return;
-            }
-            field.setValue(nextValue);
-          }}
-        />
-      );
-    case "Select":
-      return (
-        <Select
-          {...field.componentProps}
-          className={commonClassName}
-          value={field.value}
-          disabled={disabled}
-          dataSource={field.dataSource}
-          onChange={(value) => field.setValue(value)}
-        />
-      );
-    case "DateInput":
-      return (
-        <DateInput
-          {...field.componentProps}
-          className={commonClassName}
-          value={field.value ?? ""}
-          disabled={disabled}
-          onChange={(value) => field.setValue(value)}
-        />
-      );
-    case "ItemInput":
-      return (
-        <ItemInput
-          {...field.componentProps}
-          className="min-w-[200px]"
-          value={Array.isArray(field.value) ? field.value : []}
-          disabled={disabled}
-          onChange={(value) => field.setValue(value)}
-        />
-      );
-    case "Checkbox":
-      return (
-        <div className="flex min-h-9 items-center">
-          <Checkbox
-            {...field.componentProps}
-            value={Boolean(field.value)}
-            disabled={disabled}
-            label={field.componentProps?.label}
-            onChange={(value) => field.setValue(value)}
-          />
-        </div>
-      );
-    case "Switch":
-      return (
-        <div className="flex min-h-9 items-center">
-          <Switch
-            {...field.componentProps}
-            value={Boolean(field.value)}
-            disabled={disabled}
-            onChange={(value) => field.setValue(value)}
-          />
-        </div>
-      );
-    default:
-      return <div className="min-h-9 py-2 text-sm">{formatCellValue(field.value)}</div>;
-  }
-};
 
 const skuSchema = {
   type: "array" as const,
@@ -136,10 +26,20 @@ interface SkuTableProps {
   className?: string;
 }
 
+function getFieldName(field: IField): string {
+  return field.path.split(".").pop() ?? field.path;
+}
+
+function getRowFieldValue(rowFields: IField[], name: string): any {
+  return rowFields.find((f) => getFieldName(f) === name)?.value;
+}
+
 export const SkuTable = defineComponent<typeof skuSchema, SkuTableProps>(
   skuSchema,
 )(({
   field,
+  rows,
+  rowFields,
   emptyText = "请先配置规格值，系统会自动生成 SKU 组合。",
   helperText,
   className,
@@ -151,15 +51,24 @@ export const SkuTable = defineComponent<typeof skuSchema, SkuTableProps>(
     return field.subscribe(() => forceRender((v) => v + 1));
   }, [field]);
 
-  const rowGroups = field?.arrayItems ?? [];
-  const columns = (rowGroups[0] ?? []).filter((column) => column.display !== "none");
-  const hasImageGrouping = rowGroups.some((rowFields) => {
-    const groupSpecName = getRowField(rowFields, "groupSpecName")?.value;
-    const groupSpecValue = getRowField(rowFields, "groupSpecValue")?.value;
-    return Boolean(groupSpecName && groupSpecValue);
+  // Get field metadata from arrayItems for column headers and grouping logic
+  const arrayItems = field?.arrayItems ?? [];
+
+  // Determine visible columns from first row's fields (exclude display=none and grouping fields)
+  const hiddenFields = new Set(["skuKey", "groupKey", "groupSpecName", "groupSpecValue", "groupSpecImage"]);
+  const visibleColumns = (arrayItems[0] ?? []).filter(
+    (f) => f.display !== "none" && !hiddenFields.has(getFieldName(f)),
+  );
+
+  // Detect image grouping
+  const hasImageGrouping = arrayItems.some((rowMeta) => {
+    const specName = getRowFieldValue(rowMeta, "groupSpecName");
+    const specValue = getRowFieldValue(rowMeta, "groupSpecValue");
+    return Boolean(specName && specValue);
   });
 
-  const renderTable = (tableRows: IField[][], groupTitle?: string) => (
+  // Render a table for a subset of row indices
+  const renderTable = (indices: number[], groupTitle?: string) => (
     <div className="overflow-x-auto rounded-lg border bg-background">
       <table className="min-w-full border-collapse">
         <thead className="bg-muted/50">
@@ -167,119 +76,123 @@ export const SkuTable = defineComponent<typeof skuSchema, SkuTableProps>(
             <th className="w-14 border-b px-3 py-2 text-left text-xs font-semibold text-muted-foreground">
               #
             </th>
-            {columns.map((column) => (
+            {visibleColumns.map((col) => (
               <th
-                key={`${groupTitle ?? "default"}-${column.path}`}
+                key={`${groupTitle ?? "default"}-${col.path}`}
                 className="border-b px-3 py-2 text-left text-xs font-semibold text-muted-foreground"
               >
-                {column.title || column.path.split(".").pop()}
+                {col.title || getFieldName(col)}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {tableRows.map((rowFields, index) => (
-            <tr key={rowFields[0]?.path ?? index} className="align-top">
-              <td className="border-b px-3 py-3 text-xs text-muted-foreground">{index + 1}</td>
-              {rowFields
-                .filter((rowField) => rowField.display !== "none")
-                .map((rowField) => (
-                  <td key={rowField.path} className="border-b px-3 py-2">
-                    <SkuFieldCell field={rowField} />
-                    {rowField.errors.length > 0 && (
-                      <div className="mt-1 text-xs text-destructive">
-                        {rowField.errors[0]?.message}
-                      </div>
-                    )}
-                  </td>
-                ))}
-            </tr>
-          ))}
+          {indices.map((idx, localIndex) => {
+            const slotRow = rowFields[idx];
+            return (
+              <tr key={idx} className="align-top">
+                <td className="border-b px-3 py-3 text-xs text-muted-foreground">
+                  {localIndex + 1}
+                </td>
+                {visibleColumns.map((col) => {
+                  const name = getFieldName(col);
+                  return (
+                    <td key={col.path} className="border-b px-3 py-2">
+                      {slotRow[name as keyof typeof slotRow]}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
 
-  return (
-    <div className={className}>
-      {rowGroups.length === 0 ? (
+  // Build row indices and grouping
+  const allIndices = Array.from({ length: rows.length }, (_, i) => i);
+
+  if (rows.length === 0) {
+    return (
+      <div className={className}>
         <div className="overflow-x-auto rounded-lg border bg-background">
           <div className="py-10 text-center text-sm text-muted-foreground">{emptyText}</div>
         </div>
-      ) : hasImageGrouping ? (
-        <div className="space-y-4">
-          {Array.from(
-            rowGroups
-              .reduce<
-                Map<
-                  string,
-                  {
-                    key: string;
-                    groupSpecName: string;
-                    groupSpecValue: string;
-                    groupSpecImage: string;
-                    rows: IField[][];
-                  }
-                >
-              >((groups, rowFields) => {
-                const groupSpecName = String(getRowField(rowFields, "groupSpecName")?.value ?? "");
-                const groupSpecValue = String(
-                  getRowField(rowFields, "groupSpecValue")?.value ?? "",
-                );
-                const groupSpecImage = String(
-                  getRowField(rowFields, "groupSpecImage")?.value ?? "",
-                );
-                const groupKey = String(
-                  getRowField(rowFields, "groupKey")?.value ?? groupSpecValue,
-                );
-                const existing = groups.get(groupKey);
+        {helperText && <p className="mt-2 text-xs text-muted-foreground">{helperText}</p>}
+      </div>
+    );
+  }
 
-                if (existing) {
-                  existing.rows.push(rowFields);
-                } else {
-                  groups.set(groupKey, {
-                    key: groupKey,
-                    groupSpecName,
-                    groupSpecValue,
-                    groupSpecImage,
-                    rows: [rowFields],
-                  });
-                }
+  if (!hasImageGrouping) {
+    return (
+      <div className={className}>
+        {renderTable(allIndices)}
+        {helperText && <p className="mt-2 text-xs text-muted-foreground">{helperText}</p>}
+      </div>
+    );
+  }
 
-                return groups;
-              }, new Map())
-              .values(),
-          ).map((group) => (
-            <div key={group.key} className="rounded-xl border bg-card shadow-sm">
-              <div className="flex items-center gap-4 border-b px-4 py-4">
-                <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg border bg-muted">
-                  {group.groupSpecImage ? (
-                    <img
-                      src={group.groupSpecImage}
-                      alt={group.groupSpecValue}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-xs text-muted-foreground">无图片</span>
-                  )}
+  // Group by image spec
+  const groups: Map<string, {
+    key: string;
+    groupSpecName: string;
+    groupSpecValue: string;
+    groupSpecImage: string;
+    indices: number[];
+  }> = new Map();
+
+  arrayItems.forEach((rowMeta, idx) => {
+    const groupSpecName = String(getRowFieldValue(rowMeta, "groupSpecName") ?? "");
+    const groupSpecValue = String(getRowFieldValue(rowMeta, "groupSpecValue") ?? "");
+    const groupSpecImage = String(getRowFieldValue(rowMeta, "groupSpecImage") ?? "");
+    const groupKey = String(getRowFieldValue(rowMeta, "groupKey") ?? groupSpecValue);
+
+    const existing = groups.get(groupKey);
+    if (existing) {
+      existing.indices.push(idx);
+    } else {
+      groups.set(groupKey, {
+        key: groupKey,
+        groupSpecName,
+        groupSpecValue,
+        groupSpecImage,
+        indices: [idx],
+      });
+    }
+  });
+
+  return (
+    <div className={className}>
+      <div className="space-y-4">
+        {Array.from(groups.values()).map((group) => (
+          <div key={group.key} className="rounded-xl border bg-card shadow-sm">
+            <div className="flex items-center gap-4 border-b px-4 py-4">
+              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg border bg-muted">
+                {group.groupSpecImage ? (
+                  <img
+                    src={group.groupSpecImage}
+                    alt={group.groupSpecValue}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-xs text-muted-foreground">无图片</span>
+                )}
+              </div>
+              <div>
+                <div className="text-sm text-muted-foreground">
+                  {group.groupSpecName || "图片规格"}
                 </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">
-                    {group.groupSpecName || "图片规格"}
-                  </div>
-                  <div className="text-lg font-semibold">{group.groupSpecValue}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    其余销售配置按该规格值分组管理。
-                  </div>
+                <div className="text-lg font-semibold">{group.groupSpecValue}</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  其余销售配置按该规格值分组管理。
                 </div>
               </div>
-              <div className="p-4">{renderTable(group.rows, group.groupSpecValue)}</div>
             </div>
-          ))}
-        </div>
-      ) : (
-        renderTable(rowGroups)
-      )}
+            <div className="p-4">{renderTable(group.indices, group.groupSpecValue)}</div>
+          </div>
+        ))}
+      </div>
       {helperText && <p className="mt-2 text-xs text-muted-foreground">{helperText}</p>}
     </div>
   );

@@ -111,32 +111,38 @@ export const getSchema = async (): Promise<IFormSchema> => {
             skuKey: {
               type: "string",
               title: "SKU Key",
+              display: "none",
               order: 5,
             },
             groupKey: {
               type: "string",
               title: "分组键",
+              display: "none",
               order: 6,
             },
             groupSpecName: {
               type: "string",
               title: "分组规格名",
+              display: "none",
               order: 7,
             },
             groupSpecValue: {
               type: "string",
               title: "分组规格值",
+              display: "none",
               order: 8,
             },
             groupSpecImage: {
               type: "string",
               title: "分组规格图片",
+              display: "none",
               order: 9,
             },
             specSummary: {
               type: "string",
               title: "销售规格",
               component: "Input",
+              props: { disabled: true },
               order: 10,
             },
             price: {
