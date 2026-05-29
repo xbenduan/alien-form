@@ -1,7 +1,3 @@
-/**
- * Antd component & decorator adapters for alien-form.
- * Each component follows: { value, onChange, disabled, loading, dataSource?, ...props }
- */
 export { Input, Textarea, NumberInput } from "./input";
 export { Select } from "./select";
 export { Switch } from "./switch";
@@ -11,3 +7,6 @@ export { CheckboxGroup } from "./checkbox";
 export { Rate } from "./rate";
 export { ArrayCards } from "./array-cards";
 export { FormItem } from "./form-item";
+export { SectionCard } from "./section-card";
+export { TagsInput } from "./tags-input";
+export { SkuTable } from "./sku-table";

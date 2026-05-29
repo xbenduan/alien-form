@@ -7,13 +7,19 @@ import {
   useFormSubmit,
   type IFormSchema,
 } from "@alien-form/react";
-import { Input, Textarea, NumberInput, Select, Switch, DateInput, Rate, ArrayCards, FormItem } from "@/adapters";
+import {
+  Input, Textarea, NumberInput, Select, Switch, DateInput, Rate,
+  ArrayCards, FormItem, SectionCard, TagsInput, SkuTable,
+} from "@/adapters";
 import { handlers } from "@/handlers";
 import { createGoods, updateGoods, fetchGoodsById, fetchGoodsSchema } from "@/mock";
 
 const { Title } = Typography;
 
-const components = { Input, Textarea, NumberInput, Select, Switch, DateInput, Rate, ArrayCards };
+const components = {
+  Input, Textarea, NumberInput, Select, Switch, DateInput, Rate,
+  ArrayCards, SectionCard, TagsInput, SkuTable,
+};
 const decorators = { FormItem };
 
 interface GoodsFormProps {
@@ -35,9 +41,9 @@ export const GoodsForm: React.FC<GoodsFormProps> = ({ mode, id, onBack }) => {
 
       if (mode === "edit" && id) {
         const item = await fetchGoodsById(id);
-        setInitialData(item || { status: "draft", specs: [] });
+        setInitialData(item || { status: "draft", specs: [], skus: [] });
       } else {
-        setInitialData({ status: "draft", specs: [] });
+        setInitialData({ status: "draft", specs: [], skus: [] });
       }
       setLoading(false);
     };
@@ -65,25 +71,29 @@ const GoodsFormInner: React.FC<{
   const form = useCreateForm({ initialValues: initialData, handlers });
 
   return (
-    <Card>
-      <Title level={4} className="!mb-6">
-        {mode === "create" ? "新增商品" : "编辑商品"}
-      </Title>
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <Title level={4} className="!mb-0">
+          {mode === "create" ? "新增商品" : "编辑商品"}
+        </Title>
+      </div>
       <Form layout="horizontal" labelCol={{ span: 4 }} wrapperCol={{ span: 16 }}>
         <FormProvider form={form} components={components} decorators={decorators}>
           <SchemaField schema={schema} />
-          <Divider />
-          <SubmitBar mode={mode} id={id} onBack={onBack} />
+          <div className="text-center mt-6">
+            <Space size="middle">
+              <Button onClick={onBack}>取消</Button>
+              <SubmitButton mode={mode} id={id} onBack={onBack} />
+            </Space>
+          </div>
         </FormProvider>
       </Form>
-    </Card>
+    </div>
   );
 };
 
-const SubmitBar: React.FC<{ mode: "create" | "edit"; id?: string; onBack: () => void }> = ({
-  mode,
-  id,
-  onBack,
+const SubmitButton: React.FC<{ mode: "create" | "edit"; id?: string; onBack: () => void }> = ({
+  mode, id, onBack,
 }) => {
   const { submit, submitting } = useFormSubmit();
 
@@ -104,13 +114,8 @@ const SubmitBar: React.FC<{ mode: "create" | "edit"; id?: string; onBack: () => 
   };
 
   return (
-    <div className="text-center">
-      <Space size="middle">
-        <Button onClick={onBack}>取消</Button>
-        <Button type="primary" loading={submitting} onClick={handleSubmit}>
-          {mode === "create" ? "创建商品" : "保存修改"}
-        </Button>
-      </Space>
-    </div>
+    <Button type="primary" loading={submitting} onClick={handleSubmit}>
+      {mode === "create" ? "创建商品" : "保存修改"}
+    </Button>
   );
 };

@@ -8,7 +8,14 @@ export type GoodsStatus = "active" | "reviewing" | "draft" | "offline";
 
 export interface GoodsSpec {
   name: string;
-  value: string;
+  values: string[];
+}
+
+export interface GoodsSku {
+  specAttrs: Record<string, string>;
+  price: number;
+  stock: number;
+  status: 0 | 1;
 }
 
 export interface GoodsItem {
@@ -21,6 +28,7 @@ export interface GoodsItem {
   cover: string;
   description: string;
   specs: GoodsSpec[];
+  skus: GoodsSku[];
   createdAt: string;
   updatedAt: string;
 }
@@ -42,11 +50,21 @@ let goods: GoodsItem[] = [
     stock: 120,
     status: "active",
     cover: "https://picsum.photos/seed/iphone/200/200",
-    description: "Apple iPhone 15 Pro Max 256GB 原色钛金属，A17 Pro 芯片，钛金属设计",
+    description: "Apple iPhone 15 Pro Max，A17 Pro 芯片，钛金属设计，超视网膜 XDR 显示屏",
     specs: [
-      { name: "颜色", value: "原色钛金属" },
-      { name: "存储", value: "256GB" },
-      { name: "屏幕", value: "6.7 英寸" },
+      { name: "颜色", values: ["原色钛金属", "蓝色钛金属", "黑色钛金属"] },
+      { name: "存储", values: ["256GB", "512GB", "1TB"] },
+    ],
+    skus: [
+      { specAttrs: { "颜色": "原色钛金属", "存储": "256GB" }, price: 9999, stock: 20, status: 1 },
+      { specAttrs: { "颜色": "原色钛金属", "存储": "512GB" }, price: 11999, stock: 15, status: 1 },
+      { specAttrs: { "颜色": "原色钛金属", "存储": "1TB" }, price: 13999, stock: 10, status: 1 },
+      { specAttrs: { "颜色": "蓝色钛金属", "存储": "256GB" }, price: 9999, stock: 18, status: 1 },
+      { specAttrs: { "颜色": "蓝色钛金属", "存储": "512GB" }, price: 11999, stock: 12, status: 1 },
+      { specAttrs: { "颜色": "蓝色钛金属", "存储": "1TB" }, price: 13999, stock: 8, status: 0 },
+      { specAttrs: { "颜色": "黑色钛金属", "存储": "256GB" }, price: 9999, stock: 22, status: 1 },
+      { specAttrs: { "颜色": "黑色钛金属", "存储": "512GB" }, price: 11999, stock: 10, status: 1 },
+      { specAttrs: { "颜色": "黑色钛金属", "存储": "1TB" }, price: 13999, stock: 5, status: 0 },
     ],
     createdAt: "2024-09-15T10:00:00Z",
     updatedAt: "2024-12-01T08:30:00Z",
@@ -61,9 +79,19 @@ let goods: GoodsItem[] = [
     cover: "https://picsum.photos/seed/nike/200/200",
     description: "Nike Air Max 270 运动休闲跑鞋，大气垫缓震，轻盈透气",
     specs: [
-      { name: "颜色", value: "黑白" },
-      { name: "尺码", value: "40-45" },
-      { name: "材质", value: "网面+合成革" },
+      { name: "颜色", values: ["黑白", "纯白", "灰蓝"] },
+      { name: "尺码", values: ["40", "41", "42", "43", "44"] },
+    ],
+    skus: [
+      { specAttrs: { "颜色": "黑白", "尺码": "40" }, price: 1099, stock: 30, status: 1 },
+      { specAttrs: { "颜色": "黑白", "尺码": "41" }, price: 1099, stock: 25, status: 1 },
+      { specAttrs: { "颜色": "黑白", "尺码": "42" }, price: 1099, stock: 40, status: 1 },
+      { specAttrs: { "颜色": "黑白", "尺码": "43" }, price: 1099, stock: 35, status: 1 },
+      { specAttrs: { "颜色": "黑白", "尺码": "44" }, price: 1099, stock: 20, status: 1 },
+      { specAttrs: { "颜色": "纯白", "尺码": "40" }, price: 1099, stock: 15, status: 1 },
+      { specAttrs: { "颜色": "纯白", "尺码": "42" }, price: 1099, stock: 30, status: 1 },
+      { specAttrs: { "颜色": "灰蓝", "尺码": "41" }, price: 1199, stock: 20, status: 1 },
+      { specAttrs: { "颜色": "灰蓝", "尺码": "43" }, price: 1199, stock: 18, status: 0 },
     ],
     createdAt: "2025-01-10T14:20:00Z",
     updatedAt: "2025-03-05T09:15:00Z",
@@ -78,9 +106,11 @@ let goods: GoodsItem[] = [
     cover: "https://picsum.photos/seed/lamp/200/200",
     description: "米家智能台灯 Pro，支持 HomeKit，色温亮度无极调节，读写双模式",
     specs: [
-      { name: "功率", value: "12W" },
-      { name: "色温范围", value: "2700K-6500K" },
-      { name: "连接方式", value: "Wi-Fi" },
+      { name: "颜色", values: ["白色", "黑色"] },
+    ],
+    skus: [
+      { specAttrs: { "颜色": "白色" }, price: 249, stock: 500, status: 1 },
+      { specAttrs: { "颜色": "黑色" }, price: 249, stock: 300, status: 1 },
     ],
     createdAt: "2025-04-20T16:00:00Z",
     updatedAt: "2025-04-20T16:00:00Z",
