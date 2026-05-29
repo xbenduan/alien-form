@@ -23,7 +23,7 @@ export const getSchema = async (): Promise<IFormSchema> => {
         title: "规格定义",
         description:
           "先定义规格维度与可选值。若某个规格开启支持图片，它会自动成为 SKU 主分组规格，表格按它的值与图片分组。",
-        component: "ArrayCards",
+        component: "Specs",
         decorator: "FormItem",
         props: {
           addText: "+ 添加规格维度",
@@ -55,12 +55,8 @@ export const getSchema = async (): Promise<IFormSchema> => {
             values: {
               type: "array",
               title: "规格值",
-              component: "ArrayCards",
-              decorator: "FormItem",
               required: true,
-              props: {
-                addText: "+ 添加规格值",
-              },
+              display: "none",
               order: 30,
               items: {
                 type: "object",
@@ -68,23 +64,14 @@ export const getSchema = async (): Promise<IFormSchema> => {
                   label: {
                     type: "string",
                     title: "规格值",
-                    component: "Input",
-                    decorator: "FormItem",
                     required: true,
-                    props: {
-                      placeholder: "例如：曜石黑、256G、12G",
-                    },
+                    display: "none",
                     order: 10,
                   },
                   image: {
                     type: "string",
                     title: "规格图片",
-                    component: "ImageInput",
-                    decorator: "FormItem",
-                    description: "仅在当前规格开启图片模式时参与主分组展示。",
-                    props: {
-                      placeholder: "输入图片 URL",
-                    },
+                    display: "none",
                     order: 20,
                   },
                 },
