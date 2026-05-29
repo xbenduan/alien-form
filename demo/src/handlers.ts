@@ -25,7 +25,7 @@ function cartesian(specs: Array<{ name: string; values: string[] }>): Record<str
 function skuKey(attrs: Record<string, string>): string {
   return Object.keys(attrs)
     .sort()
-    .map((k) => )
+    .map((k) => `${k}=${attrs[k]}`)
     .join("|");
 }
 
