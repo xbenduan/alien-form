@@ -28,7 +28,7 @@ import type {
   EffectOptions,
   EffectContext,
 } from "@alien-form/core";
-import { createForm, resolveSchemaRef } from "@alien-form/core";
+import { createForm } from "@alien-form/core";
 
 // ============================================================
 // Re-export core types so consumers don't need @alien-form/core
@@ -632,7 +632,7 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
   }
 
   // Array field
-  if (schema.type === "array" && schema.items?.properties) {
+  if (schema.type === "array" && schema.items && !Array.isArray(schema.items) && schema.items.properties) {
     if (!field) return null;
     return (
       <ArrayFieldRenderer
@@ -928,7 +928,7 @@ function resolveProperties(
 
 /**
  * Recursively resolve $ref, properties, and items in a field schema tree.
- * Uses core's resolveSchemaRef for the $ref resolution step.
+ * Inlines the $ref resolution step (no external dependency).
  */
 function resolveFieldSchemaTree(
   schema: IFieldSchema,
@@ -937,7 +937,25 @@ function resolveFieldSchemaTree(
 ): IFieldSchema {
   if (!schema || typeof schema !== "object") return schema;
 
-  const { schema: resolved, fromRef } = resolveSchemaRef(schema, definitions, undefined, seen);
+  // Inline $ref resolution
+  let resolved: IFieldSchema = schema;
+  let fromRef = false;
+  if (typeof (schema as any).$ref === "string") {
+    const refPath = ((schema as any).$ref as string).replace(/^#\/definitions\//, "");
+    if (!seen.has(refPath) && definitions[refPath]) {
+      const { $ref: _ignored, ...localProps } = schema as any;
+      void _ignored;
+      resolved = {
+        ...resolveFieldSchemaTree(definitions[refPath], definitions, new Set([...seen, refPath])),
+        ...localProps,
+      };
+      fromRef = true;
+    } else {
+      const { $ref: _ignored, ...localProps } = schema as any;
+      void _ignored;
+      resolved = localProps as IFieldSchema;
+    }
+  }
 
   let result = resolved;
 
@@ -957,7 +975,7 @@ function resolveFieldSchemaTree(
     };
   }
 
-  return fromRef ? { ...result, [REF_RESOLVED_KEY]: true } : result;
+  return fromRef ? { ...result, [REF_RESOLVED_KEY]: true } as IFieldSchema : result;
 }
 
 function areDeepEqual(a: any, b: any, seen: WeakMap<object, object> = new WeakMap()): boolean {
@@ -986,3 +1004,4 @@ function areDeepEqual(a: any, b: any, seen: WeakMap<object, object> = new WeakMa
   }
   return true;
 }
+
