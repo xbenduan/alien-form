@@ -7,6 +7,7 @@
  * 3. Reaction effects are field lifecycle — installed after all fields exist
  * 4. Each field property is an independent signal atom
  * 5. No render-phase side effects required from framework layer
+ * 6. FieldContext — fields hold a lightweight context, not the full form
  */
 
 import { signal, computed, effect, startBatch, endBatch } from "alien-signals";
@@ -33,10 +34,52 @@ import { isEmptyValue, normalizeDataSource, runStaticValidate, normalizeValidati
 import { getDeepValue, setDeepValue, sortByOrder, resolveFieldPath } from "./path";
 import { resolveSchemaRef, resolveSchemaTree } from "./ref-resolve";
 
+// ─── FieldContext — lightweight context that fields hold ────────────────────
+// Created before any fields, so every field can reference it at construction.
+// Does NOT depend on FormInstance — avoids circular _bindForm hack.
+
+interface FieldContext {
+  /** The live fieldsMap — mutated in place, same reference throughout lifecycle */
+  readonly fieldsMap: Map<string, FieldAtoms>;
+  /** Form config (handlers, scope, etc.) */
+  readonly config: FormConfig;
+  /** Error emitter */
+  emitError(error: FormError): void;
+  /** Notify React that fieldsMap has changed (triggers fieldsSignal update) */
+  notifyFieldsChanged(): void;
+  /** Access form instance (set after form is assembled) */
+  form: FormInstance;
+}
+
+// ─── Deep Equality (shallow for objects/arrays, used in reaction guards) ────
+
+function shallowEqual(a: any, b: any): boolean {
+  if (Object.is(a, b)) return true;
+  if (a == null || b == null) return false;
+  if (typeof a !== "object" || typeof b !== "object") return false;
+
+  if (Array.isArray(a)) {
+    if (!Array.isArray(b) || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (!Object.is(a[i], b[i])) return false;
+    }
+    return true;
+  }
+
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  for (const k of keysA) {
+    if (!Object.is(a[k], b[k])) return false;
+  }
+  return true;
+}
+
 // ─── Field Atom Factory ─────────────────────────────────────────────────────
 // Creates pure atoms without installing reactions (Phase 1)
 
 function createFieldAtoms(
+  ctx: FieldContext,
   path: string,
   schema: IFieldSchema,
   initialValue?: any,
@@ -46,10 +89,6 @@ function createFieldAtoms(
   const fieldValue = isArrayField
     ? (Array.isArray(defaultValue) ? defaultValue : [])
     : defaultValue;
-
-  // Placeholder — form reference set after createForm constructs the instance
-  let formRef: FormInstance = null as any;
-  let fieldsMapRef: Map<string, FieldAtoms> = null as any;
 
   const atoms: FieldAtoms = {
     path,
@@ -75,11 +114,11 @@ function createFieldAtoms(
     loading: signal(false),
     arrayRows: signal(isArrayField ? (Array.isArray(fieldValue) ? fieldValue.length : 0) : 0),
 
-    // ─── Methods (bound to form after construction) ──────────────────
+    // ─── Methods ─────────────────────────────────────────────────────
     setValue(value: any) {
       if (atoms.isArrayField) {
         const arr = Array.isArray(value) ? value : [];
-        setArrayValue(formRef, fieldsMapRef, atoms, arr);
+        setArrayValue(ctx, atoms, arr);
         return;
       }
       if (Object.is(atoms.value(), value)) return;
@@ -116,17 +155,19 @@ function createFieldAtoms(
     },
 
     setDataSource(ds: DataSourceItem[]) {
-      atoms.dataSource(normalizeDataSource(ds));
+      const normalized = normalizeDataSource(ds);
+      if (shallowEqual(atoms.dataSource(), normalized)) return;
+      atoms.dataSource(normalized);
     },
 
     setComponent(component: string, props?: Record<string, any>) {
-      atoms.component(component);
-      if (props !== undefined) atoms.componentProps(props);
+      if (atoms.component() !== component) atoms.component(component);
+      if (props !== undefined && !shallowEqual(atoms.componentProps(), props)) atoms.componentProps(props);
     },
 
     setDecorator(decorator: string, props?: Record<string, any>) {
-      atoms.decorator(decorator);
-      if (props !== undefined) atoms.decoratorProps(props);
+      if (atoms.decorator() !== decorator) atoms.decorator(decorator);
+      if (props !== undefined && !shallowEqual(atoms.decoratorProps(), props)) atoms.decoratorProps(props);
     },
 
     async validate(): Promise<FieldError[]> {
@@ -146,7 +187,7 @@ function createFieldAtoms(
 
       // x-validate
       if (schema["x-validate"]) {
-        const dynamicErrors = await runXValidate(formRef, fieldsMapRef, atoms, schema["x-validate"], value);
+        const dynamicErrors = await runXValidate(ctx, atoms, schema["x-validate"], value);
         errors.push(...dynamicErrors);
       }
 
@@ -162,7 +203,7 @@ function createFieldAtoms(
       atoms.warnings([]);
       atoms.validateStatus("");
       if (isArrayField) {
-        resetArrayRows(formRef, fieldsMapRef, atoms, fieldValue);
+        resetArrayRows(ctx, atoms, fieldValue);
       }
       endBatch();
     },
@@ -175,29 +216,23 @@ function createFieldAtoms(
     // Array methods
     push(initialValues?: any) {
       if (!atoms.isArrayField) return;
-      pushArrayRow(formRef, fieldsMapRef, atoms, initialValues);
+      pushArrayRow(ctx, atoms, initialValues);
     },
 
     remove(index: number) {
       if (!atoms.isArrayField) return;
-      removeArrayRow(formRef, fieldsMapRef, atoms, index);
+      removeArrayRow(ctx, atoms, index);
     },
 
     moveUp(index: number) {
       if (!atoms.isArrayField || index <= 0) return;
-      swapArrayRows(formRef, fieldsMapRef, atoms, index, index - 1);
+      swapArrayRows(ctx, atoms, index, index - 1);
     },
 
     moveDown(index: number) {
       if (!atoms.isArrayField || index >= atoms.arrayRows() - 1) return;
-      swapArrayRows(formRef, fieldsMapRef, atoms, index, index + 1);
+      swapArrayRows(ctx, atoms, index, index + 1);
     },
-  };
-
-  // Bind form/fieldsMap reference (set by createForm after construction)
-  (atoms as any)._bindForm = (form: FormInstance, map: Map<string, FieldAtoms>) => {
-    formRef = form;
-    fieldsMapRef = map;
   };
 
   return atoms;
@@ -205,7 +240,7 @@ function createFieldAtoms(
 
 // ─── Per-field Reaction Installation (Phase 3) ─────────────────────────────
 
-function installFieldReactions(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, atoms: FieldAtoms): void {
+function installFieldReactions(ctx: FieldContext, atoms: FieldAtoms): void {
   const reactions = atoms.schema["x-reaction"]!;
 
   for (const [reactionKey, ruleOrRules] of Object.entries(reactions)) {
@@ -218,22 +253,31 @@ function installFieldReactions(form: FormInstance, fieldsMap: Map<string, FieldA
         (!Array.isArray(rule.dependencies) && Object.keys(rule.dependencies).length > 0)
       );
 
+      // Guard: no-deps value reaction is likely a mistake — warn and skip
+      if (!hasDeps && reactionKey === "value") {
+        console.warn(
+          `[alien-form] Field "${atoms.path}" has x-reaction.value without dependencies. ` +
+          `This would track self-value and risk infinite loops. Skipping.`
+        );
+        continue;
+      }
+
       const dispose = effect(() => {
         // Track ONLY the dependency field value signals
-        // Use atoms.path (dynamic) for relative path resolution
-        const { deps, depsArray } = resolveDeps(fieldsMap, rule.dependencies, atoms.path);
+        // Use atoms.path (dynamic) for relative path resolution after array rename
+        const { deps, depsArray } = resolveDeps(ctx.fieldsMap, rule.dependencies, atoms.path);
 
         // If no explicit deps, track self value as the trigger
         if (!hasDeps) {
           void atoms.value();
         }
 
-        const scope = buildScope(form, atoms, deps, depsArray);
-        const result = resolveXRuleValue(form, atoms, reactionKey, rule, scope);
+        const scope = buildScope(ctx, atoms, deps, depsArray);
+        const result = resolveXRuleValue(ctx, atoms, reactionKey, rule, scope);
 
         if (result && typeof result === "object" && typeof result.then === "function") {
           result.then((resolved: any) => applyReactionValue(atoms, reactionKey, resolved))
-            .catch((err: any) => emitError(form, {
+            .catch((err: any) => ctx.emitError({
               scope: "x-reaction", path: atoms.path, key: reactionKey,
               message: err instanceof Error ? err.message : String(err), cause: err,
             }));
@@ -255,8 +299,7 @@ function getItemSchema(atoms: FieldAtoms): IFieldSchema | null {
 }
 
 function createRowFields(
-  form: FormInstance,
-  fieldsMap: Map<string, FieldAtoms>,
+  ctx: FieldContext,
   atoms: FieldAtoms,
   index: number,
   initialValues?: any,
@@ -271,31 +314,30 @@ function createRowFields(
     for (const [key, childSchema] of sorted) {
       const childPath = `${atoms.path}.${index}.${key}`;
       const childValue = initialValues ? initialValues[key] : undefined;
-      const newAtoms = buildFieldTree(form, fieldsMap, childPath, childSchema, childValue, itemSchema.required);
+      const newAtoms = buildFieldTree(ctx, childPath, childSchema, childValue, itemSchema.required);
       created.push(...newAtoms);
     }
   } else {
     const childPath = `${atoms.path}.${index}`;
-    const childAtoms = createFieldAtoms(childPath, itemSchema, initialValues);
-    (childAtoms as any)._bindForm(form, fieldsMap);
-    fieldsMap.set(childPath, childAtoms);
+    const childAtoms = createFieldAtoms(ctx, childPath, itemSchema, initialValues);
+    ctx.fieldsMap.set(childPath, childAtoms);
     created.push(childAtoms);
   }
 
   return created;
 }
 
-function pushArrayRow(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, atoms: FieldAtoms, initialValues?: any) {
+function pushArrayRow(ctx: FieldContext, atoms: FieldAtoms, initialValues?: any) {
   const newIndex = atoms.arrayRows();
 
   startBatch();
   // Phase 1: create all row field atoms
-  const created = createRowFields(form, fieldsMap, atoms, newIndex, initialValues);
+  const created = createRowFields(ctx, atoms, newIndex, initialValues);
 
   // Phase 2: install reactions for new row fields (all siblings now exist)
   for (const field of created) {
     if (field.schema["x-reaction"]) {
-      installFieldReactions(form, fieldsMap, field);
+      installFieldReactions(ctx, field);
     }
   }
 
@@ -305,13 +347,14 @@ function pushArrayRow(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, at
   atoms.value(current);
 
   // Notify React
-  form.fields(new Map(fieldsMap));
+  ctx.notifyFieldsChanged();
   endBatch();
 }
 
-function removeArrayRow(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, atoms: FieldAtoms, index: number) {
+function removeArrayRow(ctx: FieldContext, atoms: FieldAtoms, index: number) {
   const currentRows = atoms.arrayRows();
   if (index < 0 || index >= currentRows) return;
+  const { fieldsMap } = ctx;
 
   startBatch();
 
@@ -348,11 +391,12 @@ function removeArrayRow(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, 
   current.splice(index, 1);
   atoms.value(current);
 
-  form.fields(new Map(fieldsMap));
+  ctx.notifyFieldsChanged();
   endBatch();
 }
 
-function swapArrayRows(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, atoms: FieldAtoms, indexA: number, indexB: number) {
+function swapArrayRows(ctx: FieldContext, atoms: FieldAtoms, indexA: number, indexB: number) {
+  const { fieldsMap } = ctx;
   const prefixA = `${atoms.path}.${indexA}`;
   const prefixB = `${atoms.path}.${indexB}`;
 
@@ -386,13 +430,14 @@ function swapArrayRows(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, a
   current[indexB] = tmp;
   atoms.value(current);
 
-  form.fields(new Map(fieldsMap));
+  ctx.notifyFieldsChanged();
   endBatch();
 }
 
-function setArrayValue(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, atoms: FieldAtoms, value: any[]) {
+function setArrayValue(ctx: FieldContext, atoms: FieldAtoms, value: any[]) {
   const itemSchema = getItemSchema(atoms);
   if (!itemSchema) return;
+  const { fieldsMap } = ctx;
 
   startBatch();
   const currentRows = atoms.arrayRows();
@@ -413,7 +458,7 @@ function setArrayValue(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, a
   const newlyCreated: FieldAtoms[] = [];
   for (let i = 0; i < value.length; i++) {
     if (i >= currentRows) {
-      const created = createRowFields(form, fieldsMap, atoms, i, value[i]);
+      const created = createRowFields(ctx, atoms, i, value[i]);
       newlyCreated.push(...created);
     } else if (itemSchema.properties) {
       for (const key of Object.keys(itemSchema.properties)) {
@@ -426,24 +471,24 @@ function setArrayValue(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, a
   // Install reactions for newly created fields
   for (const field of newlyCreated) {
     if (field.schema["x-reaction"]) {
-      installFieldReactions(form, fieldsMap, field);
+      installFieldReactions(ctx, field);
     }
   }
 
   atoms.arrayRows(value.length);
   atoms.value(value);
-  form.fields(new Map(fieldsMap));
+  ctx.notifyFieldsChanged();
   endBatch();
 }
 
-function resetArrayRows(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, atoms: FieldAtoms, initialValue: any) {
-  setArrayValue(form, fieldsMap, atoms, Array.isArray(initialValue) ? initialValue : []);
+function resetArrayRows(ctx: FieldContext, atoms: FieldAtoms, initialValue: any) {
+  setArrayValue(ctx, atoms, Array.isArray(initialValue) ? initialValue : []);
 }
 
 // ─── Reaction Runtime ───────────────────────────────────────────────────────
 
 function resolveXRuleValue(
-  form: FormInstance,
+  ctx: FieldContext,
   fieldAtoms: FieldAtoms | undefined,
   key: string,
   rule: SchemaXRule,
@@ -463,13 +508,12 @@ function resolveXRuleValue(
       return Object.prototype.hasOwnProperty.call(rule.match, matchKey) ? rule.match[matchKey] : rule.match.default;
     }
     case "computed": {
-      const config = (form as any)._config as FormConfig;
-      const handler = config.handlers?.[rule.handler];
+      const handler = ctx.config.handlers?.[rule.handler];
       if (!handler) return undefined;
       return handler({
         field: fieldAtoms!,
-        form,
-        get values() { return form.values(); },
+        form: ctx.form,
+        get values() { return ctx.form.values(); },
         deps: scope.$dependencies || {},
         dependencies: scope.$dependencies || {},
         scope,
@@ -505,53 +549,91 @@ function resolveDeps(fieldsMap: Map<string, FieldAtoms>, dependencies: string[] 
   return { deps, depsArray };
 }
 
-function buildScope(form: FormInstance, fieldAtoms: FieldAtoms, deps: Record<string, any>, depsArray: any[]): Record<string, any> {
-  const config = (form as any)._config as FormConfig;
+function buildScope(ctx: FieldContext, fieldAtoms: FieldAtoms, deps: Record<string, any>, depsArray: any[]): Record<string, any> {
   return {
     $self: fieldAtoms,
-    $form: form,
-    get $values() { return form.values(); },  // lazy — only tracked if handler reads it
+    $form: ctx.form,
+    get $values() { return ctx.form.values(); },  // lazy — only tracked if handler reads it
     $deps: depsArray.length > 0 ? depsArray : deps,
     $dependencies: deps,
     get $value() { return fieldAtoms.value(); },  // lazy
-    ...(config.scope || {}),
+    ...(ctx.config.scope || {}),
   };
 }
 
+/**
+ * Apply reaction result to field atom with equality guards.
+ * Prevents infinite loops when reactions produce structurally-equal values.
+ */
 function applyReactionValue(fieldAtoms: FieldAtoms, reactionKey: string, value: any): void {
   if (value === undefined) return;
   switch (reactionKey) {
-    case "value": fieldAtoms.setValue(value); break;
+    case "value": {
+      // Shallow equality guard — prevents loop when expression returns new but equal object/array
+      const current = fieldAtoms.value();
+      if (Object.is(current, value)) return;
+      if (shallowEqual(current, value)) return;
+      fieldAtoms.setValue(value);
+      break;
+    }
     case "display": fieldAtoms.setDisplay(value); break;
     case "disabled": fieldAtoms.setDisabled(Boolean(value)); break;
     case "required": fieldAtoms.setRequired(Boolean(value)); break;
-    case "title": fieldAtoms.title(value); break;
-    case "description": fieldAtoms.description(value); break;
-    case "props": fieldAtoms.componentProps({ ...fieldAtoms.componentProps(), ...value }); break;
-    case "decoratorProps": fieldAtoms.decoratorProps({ ...fieldAtoms.decoratorProps(), ...value }); break;
-    case "component": if (Array.isArray(value)) fieldAtoms.setComponent(value[0], value[1]); else fieldAtoms.setComponent(value); break;
-    case "decorator": if (Array.isArray(value)) fieldAtoms.setDecorator(value[0], value[1]); else fieldAtoms.setDecorator(value); break;
-    case "dataSource": fieldAtoms.setDataSource(normalizeDataSource(value)); break;
+    case "title": {
+      if (fieldAtoms.title() === value) return;
+      fieldAtoms.title(value);
+      break;
+    }
+    case "description": {
+      if (fieldAtoms.description() === value) return;
+      fieldAtoms.description(value);
+      break;
+    }
+    case "props": {
+      const merged = { ...fieldAtoms.componentProps(), ...value };
+      if (shallowEqual(fieldAtoms.componentProps(), merged)) return;
+      fieldAtoms.componentProps(merged);
+      break;
+    }
+    case "decoratorProps": {
+      const merged = { ...fieldAtoms.decoratorProps(), ...value };
+      if (shallowEqual(fieldAtoms.decoratorProps(), merged)) return;
+      fieldAtoms.decoratorProps(merged);
+      break;
+    }
+    case "component":
+      if (Array.isArray(value)) fieldAtoms.setComponent(value[0], value[1]);
+      else fieldAtoms.setComponent(value);
+      break;
+    case "decorator":
+      if (Array.isArray(value)) fieldAtoms.setDecorator(value[0], value[1]);
+      else fieldAtoms.setDecorator(value);
+      break;
+    case "dataSource": {
+      const normalized = normalizeDataSource(value);
+      if (shallowEqual(fieldAtoms.dataSource(), normalized)) return;
+      fieldAtoms.dataSource(normalized);
+      break;
+    }
   }
 }
 
-async function runXValidate(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, fieldAtoms: FieldAtoms, rules: SchemaXValidate, value: any): Promise<FieldError[]> {
+async function runXValidate(ctx: FieldContext, fieldAtoms: FieldAtoms, rules: SchemaXValidate, value: any): Promise<FieldError[]> {
   const ruleList = Array.isArray(rules) ? rules : [rules];
   const errors: FieldError[] = [];
-  const config = (form as any)._config as FormConfig;
 
   for (const rule of ruleList) {
-    const { deps, depsArray } = resolveDeps(fieldsMap, rule.dependencies, fieldAtoms.path);
+    const { deps, depsArray } = resolveDeps(ctx.fieldsMap, rule.dependencies, fieldAtoms.path);
     const scope = {
       $self: fieldAtoms,
-      $form: form,
-      $values: form.values(),
+      $form: ctx.form,
+      $values: ctx.form.values(),
       $deps: depsArray.length > 0 ? depsArray : deps,
       $dependencies: deps,
       $value: value,
-      ...(config.scope || {}),
+      ...(ctx.config.scope || {}),
     };
-    const result = await resolveXRuleValue(form, fieldAtoms, "validate", rule, scope);
+    const result = await resolveXRuleValue(ctx, fieldAtoms, "validate", rule, scope);
     errors.push(...normalizeValidationErrors(result));
   }
   return errors;
@@ -561,16 +643,15 @@ async function runXValidate(form: FormInstance, fieldsMap: Map<string, FieldAtom
 // Pure construction — no reactions, no signal writes to fieldsSignal
 
 function buildFieldTree(
-  form: FormInstance,
-  fieldsMap: Map<string, FieldAtoms>,
+  ctx: FieldContext,
   path: string,
   rawSchema: IFieldSchema,
   initialValue?: any,
   parentRequired?: boolean | string[],
 ): FieldAtoms[] {
-  const definitions = (form as any)._definitions as Record<string, IFieldSchema>;
+  const definitions = (ctx.form as any)._definitions as Record<string, IFieldSchema>;
   const schema = resolveSchemaTree(rawSchema, definitions, (ref, msg) => {
-    emitError(form, { scope: "ref-resolve", path: "", message: msg });
+    ctx.emitError({ scope: "ref-resolve", path: "", message: msg });
   });
 
   const parts = path.split(".");
@@ -579,11 +660,11 @@ function buildFieldTree(
   const mergedSchema = { ...schema, required: isRequired };
 
   const created: FieldAtoms[] = [];
+  const { fieldsMap } = ctx;
 
   if (schema.type === "array" && schema.items && !Array.isArray(schema.items)) {
-    const iv = initialValue !== undefined ? initialValue : getDeepValue((form as any)._initialValues, path);
-    const atoms = createFieldAtoms(path, mergedSchema, iv);
-    (atoms as any)._bindForm(form, fieldsMap);
+    const iv = initialValue !== undefined ? initialValue : getDeepValue((ctx.form as any)._initialValues, path);
+    const atoms = createFieldAtoms(ctx, path, mergedSchema, iv);
     fieldsMap.set(path, atoms);
     created.push(atoms);
 
@@ -593,7 +674,7 @@ function buildFieldTree(
       for (let i = 0; i < iv.length; i++) {
         const sorted = sortByOrder(itemSchema.properties!);
         for (const [childKey, childSchema] of sorted) {
-          const childCreated = buildFieldTree(form, fieldsMap, `${path}.${i}.${childKey}`, childSchema, iv[i]?.[childKey], itemSchema.required);
+          const childCreated = buildFieldTree(ctx, `${path}.${i}.${childKey}`, childSchema, iv[i]?.[childKey], itemSchema.required);
           created.push(...childCreated);
         }
       }
@@ -603,15 +684,14 @@ function buildFieldTree(
 
   if (schema.type === "object" && schema.properties) {
     if (schema.component) {
-      const atoms = createFieldAtoms(path, mergedSchema, initialValue);
-      (atoms as any)._bindForm(form, fieldsMap);
+      const atoms = createFieldAtoms(ctx, path, mergedSchema, initialValue);
       fieldsMap.set(path, atoms);
       created.push(atoms);
     }
     const sorted = sortByOrder(schema.properties);
     for (const [childKey, childSchema] of sorted) {
-      const childIv = initialValue != null ? initialValue[childKey] : getDeepValue((form as any)._initialValues, `${path}.${childKey}`);
-      const childCreated = buildFieldTree(form, fieldsMap, `${path}.${childKey}`, childSchema, childIv, schema.required);
+      const childIv = initialValue != null ? initialValue[childKey] : getDeepValue((ctx.form as any)._initialValues, `${path}.${childKey}`);
+      const childCreated = buildFieldTree(ctx, `${path}.${childKey}`, childSchema, childIv, schema.required);
       created.push(...childCreated);
     }
     return created;
@@ -621,8 +701,7 @@ function buildFieldTree(
     const preserveOwnPath = !!rawSchema.$ref;
     const childPrefix = preserveOwnPath ? path : (path.includes(".") ? path.slice(0, path.lastIndexOf(".")) : "");
     if (schema.component) {
-      const atoms = createFieldAtoms(path, mergedSchema, initialValue);
-      (atoms as any)._bindForm(form, fieldsMap);
+      const atoms = createFieldAtoms(ctx, path, mergedSchema, initialValue);
       fieldsMap.set(path, atoms);
       created.push(atoms);
     }
@@ -630,7 +709,7 @@ function buildFieldTree(
       const sorted = sortByOrder(schema.properties);
       for (const [childKey, childSchema] of sorted) {
         const childPath = childPrefix ? `${childPrefix}.${childKey}` : childKey;
-        const childCreated = buildFieldTree(form, fieldsMap, childPath, childSchema, undefined, schema.required);
+        const childCreated = buildFieldTree(ctx, childPath, childSchema, undefined, schema.required);
         created.push(...childCreated);
       }
     }
@@ -638,25 +717,11 @@ function buildFieldTree(
   }
 
   // Leaf field
-  const iv = initialValue !== undefined ? initialValue : getDeepValue((form as any)._initialValues, path);
-  const atoms = createFieldAtoms(path, mergedSchema, iv);
-  (atoms as any)._bindForm(form, fieldsMap);
+  const iv = initialValue !== undefined ? initialValue : getDeepValue((ctx.form as any)._initialValues, path);
+  const atoms = createFieldAtoms(ctx, path, mergedSchema, iv);
   fieldsMap.set(path, atoms);
   created.push(atoms);
   return created;
-}
-
-// ─── Error Handling ─────────────────────────────────────────────────────────
-
-function emitError(form: FormInstance, error: FormError): void {
-  const listeners = (form as any)._errorListeners as Set<(e: FormError) => void>;
-  if (listeners.size === 0) {
-    console.warn(`[alien-form] [${error.scope}] ${error.path || "<form>"}: ${error.message}`);
-    return;
-  }
-  for (const listener of listeners) {
-    try { listener(error); } catch (e) { console.error("[alien-form] onError threw:", e); }
-  }
 }
 
 // ─── createForm ─────────────────────────────────────────────────────────────
@@ -670,22 +735,44 @@ export function createForm(config: FormConfig = {}): FormInstance {
   const effectDisposers = new Set<() => void>();
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // Phase 1: Build all field atoms (no signals written, no reactions)
+  // FieldContext — created before fields, holds shared mutable state
   // ═══════════════════════════════════════════════════════════════════════════
 
   const fieldsMap = new Map<string, FieldAtoms>();
 
-  // Partial form object needed during tree building (for error emission & definitions)
+  const ctx: FieldContext = {
+    fieldsMap,
+    config,
+    form: null as any, // set below after form is assembled
+    emitError(error: FormError) {
+      if (errorListeners.size === 0) {
+        console.warn(`[alien-form] [${error.scope}] ${error.path || "<form>"}: ${error.message}`);
+        return;
+      }
+      for (const listener of errorListeners) {
+        try { listener(error); } catch (e) { console.error("[alien-form] onError threw:", e); }
+      }
+    },
+    notifyFieldsChanged() {
+      // Trigger React re-render by writing new Map reference to signal
+      fieldsSignal(new Map(fieldsMap));
+    },
+  };
+
+  // Partial form needed for buildFieldTree (definitions, initialValues)
   const form: FormInstance = {} as FormInstance;
-  (form as any)._config = config;
-  (form as any)._errorListeners = errorListeners;
   (form as any)._definitions = definitions;
   (form as any)._initialValues = initialValues;
+  ctx.form = form;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Phase 1: Build all field atoms (no signals written, no reactions)
+  // ═══════════════════════════════════════════════════════════════════════════
 
   if (config.schema?.properties) {
     const sorted = sortByOrder(config.schema.properties);
     for (const [key, fieldSchema] of sorted) {
-      buildFieldTree(form, fieldsMap, key, fieldSchema, undefined, config.schema.required);
+      buildFieldTree(ctx, key, fieldSchema, undefined, config.schema.required);
     }
   }
 
@@ -863,7 +950,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
   startBatch();
   for (const atoms of fieldsMap.values()) {
     if (atoms.schema["x-reaction"]) {
-      installFieldReactions(form, fieldsMap, atoms);
+      installFieldReactions(ctx, atoms);
     }
   }
   endBatch();
