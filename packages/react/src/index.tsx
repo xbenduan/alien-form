@@ -660,6 +660,42 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
   );
 };
 
+// ============================================================
+// Safe subscribe wrapper for useSyncExternalStore
+// ============================================================
+//
+// field.subscribe(cb) uses alien-signals' effect() internally:
+//   effect(() => { version(); cb(); })
+//
+// Problem: useSyncExternalStore calls getSnapshot() inside the onStoreChange
+// callback (to check consistency). Since onStoreChange runs inside effect(),
+// any signal reads in getSnapshot() (field.display, field.value, etc.) get
+// tracked by the effect. This means ANY field signal change re-triggers the
+// effect → onStoreChange → getSnapshot reads more signals → cascading
+// re-renders → Maximum update depth exceeded.
+//
+// Fix: wrap the listener so it runs outside the effect's tracking scope via
+// queueMicrotask. The effect only tracks the version signal (as intended),
+// and the React callback runs in a clean context where signal reads are not
+// tracked.
+
+function safeFieldSubscribe(field: IField, onStoreChange: () => void): () => void {
+  let mounted = true;
+  const unsub = field.subscribe(() => {
+    if (mounted) {
+      // Use queueMicrotask to escape alien-signals effect tracking context.
+      // This ensures getSnapshot() signal reads are NOT tracked by the effect.
+      queueMicrotask(() => {
+        if (mounted) onStoreChange();
+      });
+    }
+  });
+  return () => {
+    mounted = false;
+    unsub();
+  };
+}
+
 // --- ArrayFieldRenderer ---
 
 interface ArrayFieldRendererProps {
@@ -679,10 +715,27 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
   form,
   fullPath,
 }) => {
-  // UseSyncExternalStore for concurrent-rendering safety (replaces useState+useEffect force-render hack)
-  const snapshot = useSyncExternalStore(
-    (cb) => field.subscribe(cb),
-    () => ({
+  // Use useState + useEffect instead of useSyncExternalStore to avoid
+  // alien-signals effect tracking issue with getSnapshot signal reads.
+  const [snapshot, setSnapshot] = useState(() => ({
+    display: field.display,
+    value: field.value,
+    component: field.component,
+    decorator: field.decorator,
+    title: field.title,
+    required: field.required,
+    errors: field.errors,
+    warnings: field.warnings,
+    description: field.description,
+    validateStatus: field.validateStatus,
+    disabled: field.disabled,
+    componentProps: field.componentProps,
+    decoratorProps: field.decoratorProps,
+  }));
+
+  useEffect(() => {
+    // Read initial state outside effect tracking
+    setSnapshot({
       display: field.display,
       value: field.value,
       component: field.component,
@@ -696,8 +749,25 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
       disabled: field.disabled,
       componentProps: field.componentProps,
       decoratorProps: field.decoratorProps,
-    }),
-  );
+    });
+    return field.subscribe(() => {
+      setSnapshot({
+        display: field.display,
+        value: field.value,
+        component: field.component,
+        decorator: field.decorator,
+        title: field.title,
+        required: field.required,
+        errors: field.errors,
+        warnings: field.warnings,
+        description: field.description,
+        validateStatus: field.validateStatus,
+        disabled: field.disabled,
+        componentProps: field.componentProps,
+        decoratorProps: field.decoratorProps,
+      });
+    });
+  }, [field]);
 
   if (snapshot.display === "none") return null;
   if (snapshot.display === "hidden") return <div style={{ display: "none" }} />;
@@ -820,10 +890,29 @@ interface FieldRendererProps {
 }
 
 const FieldRenderer: React.FC<FieldRendererProps> = ({ field, components, decorators }) => {
-  // UseSyncExternalStore for concurrent-rendering safety (replaces useState+useEffect force-render hack)
-  const snapshot = useSyncExternalStore(
-    (cb) => field.subscribe(cb),
-    () => ({
+  // Use useState + useEffect instead of useSyncExternalStore to avoid
+  // alien-signals effect tracking issue with getSnapshot signal reads.
+  const [snapshot, setSnapshot] = useState(() => ({
+    display: field.display,
+    component: field.component,
+    decorator: field.decorator,
+    title: field.title,
+    required: field.required,
+    errors: field.errors,
+    warnings: field.warnings,
+    description: field.description,
+    validateStatus: field.validateStatus,
+    disabled: field.disabled,
+    loading: field.loading,
+    value: field.value,
+    dataSource: field.dataSource,
+    componentProps: field.componentProps,
+    decoratorProps: field.decoratorProps,
+  }));
+
+  useEffect(() => {
+    // Read initial state outside effect tracking
+    setSnapshot({
       display: field.display,
       component: field.component,
       decorator: field.decorator,
@@ -839,8 +928,27 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({ field, components, decora
       dataSource: field.dataSource,
       componentProps: field.componentProps,
       decoratorProps: field.decoratorProps,
-    }),
-  );
+    });
+    return field.subscribe(() => {
+      setSnapshot({
+        display: field.display,
+        component: field.component,
+        decorator: field.decorator,
+        title: field.title,
+        required: field.required,
+        errors: field.errors,
+        warnings: field.warnings,
+        description: field.description,
+        validateStatus: field.validateStatus,
+        disabled: field.disabled,
+        loading: field.loading,
+        value: field.value,
+        dataSource: field.dataSource,
+        componentProps: field.componentProps,
+        decoratorProps: field.decoratorProps,
+      });
+    });
+  }, [field]);
 
   if (snapshot.display === "none") return null;
   if (snapshot.display === "hidden") return <div style={{ display: "none" }} />;
@@ -1004,4 +1112,3 @@ function areDeepEqual(a: any, b: any, seen: WeakMap<object, object> = new WeakMa
   }
   return true;
 }
-
