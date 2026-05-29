@@ -1,66 +1,55 @@
 import type { FormConfig } from "@alien-form/react";
 import { sleep } from ".";
 
-type SelectOption = {
-  label: string;
-  value: string;
-};
-
-const categoryData: Record<string, SelectOption[]> = {
-  tech: [
-    { label: "前端", value: "frontend" },
-    { label: "后端", value: "backend" },
-    { label: "运维", value: "devops" },
-    { label: "AI/机器学习", value: "ai" },
-  ],
-  design: [
-    { label: "UI 设计", value: "ui" },
-    { label: "用户研究", value: "ux" },
-    { label: "品牌设计", value: "brand" },
-  ],
-  business: [
-    { label: "市场", value: "marketing" },
-    { label: "销售", value: "sales" },
-    { label: "战略", value: "strategy" },
-  ],
-};
-
 export const schemaRendererHandlers: FormConfig["handlers"] = {
-  fetchCountries: async () => {
-    await sleep(500);
-    return [
-      { label: "中国", value: "cn" },
-      { label: "新加坡", value: "sg" },
-      { label: "日本", value: "jp" },
-      { label: "美国", value: "us" },
-      { label: "英国", value: "uk" },
-      { label: "德国", value: "de" },
-    ];
-  },
   fetchCategories: async () => {
-    await sleep(500);
+    await sleep(300);
     return [
-      { label: "技术", value: "tech" },
-      { label: "设计", value: "design" },
-      { label: "业务", value: "business" },
+      { label: "数码电子", value: "electronics" },
+      { label: "服饰鞋包", value: "clothing" },
+      { label: "食品饮料", value: "food" },
+      { label: "家居百货", value: "home" },
+      { label: "美妆个护", value: "beauty" },
     ];
   },
   fetchSubCategories: async ({ deps }) => {
-    await sleep(400);
+    await sleep(200);
     const category = deps.category;
     if (!category) return [];
-    return categoryData[category] || [];
-  },
-  normalizeCode: ({ value }) =>
-    String(value ?? "")
-      .trim()
-      .toUpperCase(),
-  checkConfirmCode: async ({ value }) => {
-    await sleep(300);
-    return String(value ?? "")
-      .trim()
-      .toUpperCase() === "OK"
-      ? []
-      : [{ message: "确认码必须是 OK", type: "x-validate" }];
+    const map: Record<string, { label: string; value: string }[]> = {
+      electronics: [
+        { label: "手机", value: "phone" },
+        { label: "平板电脑", value: "tablet" },
+        { label: "笔记本电脑", value: "laptop" },
+        { label: "耳机", value: "headphone" },
+        { label: "智能手表", value: "watch" },
+      ],
+      clothing: [
+        { label: "上衣", value: "tops" },
+        { label: "裤装", value: "pants" },
+        { label: "裙装", value: "dress" },
+        { label: "鞋靴", value: "shoes" },
+        { label: "箱包", value: "bags" },
+      ],
+      food: [
+        { label: "零食", value: "snack" },
+        { label: "饮品", value: "beverage" },
+        { label: "生鲜", value: "fresh" },
+        { label: "粮油调味", value: "seasoning" },
+      ],
+      home: [
+        { label: "家具", value: "furniture" },
+        { label: "家纺", value: "textile" },
+        { label: "厨具", value: "kitchen" },
+        { label: "清洁用品", value: "cleaning" },
+      ],
+      beauty: [
+        { label: "护肤", value: "skincare" },
+        { label: "彩妆", value: "makeup" },
+        { label: "香水", value: "perfume" },
+        { label: "个人护理", value: "personal-care" },
+      ],
+    };
+    return map[category] || [];
   },
 };

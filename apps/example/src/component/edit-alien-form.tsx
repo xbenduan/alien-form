@@ -12,7 +12,15 @@ export const EditAlienForm: React.FC<{ id: string; onBack: () => void }> = ({ id
     Promise.all([getSchema(), getProduct(id)]).then(([s, product]) => {
       setSchema(s);
       if (product) {
-        setData({ specs: product.specs || [], skus: product.skus || [] });
+        setData({
+          name: product.name,
+          category: product.category,
+          subCategory: product.subCategory,
+          description: product.description,
+          status: product.status,
+          specs: product.specs || [],
+          skus: product.skus || [],
+        });
       }
       setLoading(false);
     });
@@ -38,10 +46,14 @@ export const EditAlienForm: React.FC<{ id: string; onBack: () => void }> = ({ id
         submitText="保存修改"
         onSubmit={async (values) => {
           const result = await updateProduct(id, {
-            name: values.specs?.[0]?.name || "未命名商品",
+            name: values.name || "未命名商品",
             price: calcMinPrice(values.skus),
             originalPrice: calcMinPrice(values.skus) * 1.2,
             stock: calcTotalStock(values.skus),
+            status: values.status || "on",
+            category: values.category,
+            subCategory: values.subCategory,
+            description: values.description,
             specs: values.specs,
             skus: values.skus,
           });
@@ -60,7 +72,7 @@ export const EditAlienForm: React.FC<{ id: string; onBack: () => void }> = ({ id
 function PageShell({ title, onBack, children }: { title: string; onBack: () => void; children: React.ReactNode }) {
   return (
     <div>
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-6 flex items-center gap-3">
         <button
           type="button"
           onClick={onBack}

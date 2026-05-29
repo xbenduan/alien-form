@@ -13,6 +13,9 @@ export interface Product {
   originalPrice: number;
   stock: number;
   status: "on" | "off";
+  category?: string;
+  subCategory?: string;
+  description?: string;
   specs?: any[];
   skus?: any[];
   createdAt: number;
@@ -49,7 +52,7 @@ export const getProduct = async (id: string): Promise<Product | null> => {
 };
 
 /** 创建商品 */
-export const createProduct = async (data: Omit<Product, "id" | "createdAt">): Promise<{ success: boolean; message: string }> => {
+export const createProduct = async (data: Omit<Product, "id" | "createdAt"> & Record<string, any>): Promise<{ success: boolean; message: string }> => {
   await sleep(200);
   const products = getAll();
   if (products.length >= MAX_ITEMS) {

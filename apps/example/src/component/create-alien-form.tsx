@@ -21,11 +21,14 @@ export const CreateAlienForm: React.FC<{ onBack: () => void }> = ({ onBack }) =>
         submitText="创建商品"
         onSubmit={async (values) => {
           const result = await createProduct({
-            name: values.specs?.[0]?.name || "未命名商品",
+            name: values.name || "未命名商品",
             price: calcMinPrice(values.skus),
             originalPrice: calcMinPrice(values.skus) * 1.2,
             stock: calcTotalStock(values.skus),
-            status: "on",
+            status: values.status || "on",
+            category: values.category,
+            subCategory: values.subCategory,
+            description: values.description,
             specs: values.specs,
             skus: values.skus,
           });
@@ -44,7 +47,7 @@ export const CreateAlienForm: React.FC<{ onBack: () => void }> = ({ onBack }) =>
 function PageShell({ title, onBack, children }: { title: string; onBack: () => void; children: React.ReactNode }) {
   return (
     <div>
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-6 flex items-center gap-3">
         <button
           type="button"
           onClick={onBack}

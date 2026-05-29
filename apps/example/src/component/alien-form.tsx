@@ -5,7 +5,18 @@ import { linkSpecAndSku } from "@/alien-business/link-spec-sku";
 import { schemaRendererHandlers } from "@/mock";
 import { FormProvider, IFormSchema, SchemaField, useCreateForm, type IForm } from "@alien-form/react";
 import { ArrayCards, FormItem, SchemaInput, SchemaSelect, Switch, Textarea } from "@alien-form/ui";
-import { useMemo, useRef, useImperativeHandle, forwardRef, useState } from "react";
+import { useMemo, useImperativeHandle, forwardRef, useState } from "react";
+import type React from "react";
+
+/** Section — 表单分区标题容器 */
+const Section: React.FC<{ title?: string; children?: React.ReactNode }> = ({ title, children }) => (
+  <div className="mb-6">
+    {title && (
+      <h3 className="mb-4 border-b pb-2 text-base font-semibold text-foreground">{title}</h3>
+    )}
+    <div>{children}</div>
+  </div>
+);
 
 const baseComponents: Record<string, React.ComponentType<any>> = {
   Input: SchemaInput,
@@ -16,6 +27,7 @@ const baseComponents: Record<string, React.ComponentType<any>> = {
   SkuTable,
   Specs,
   SpecValues,
+  Section,
 };
 const baseDecorators = { FormItem };
 
@@ -86,29 +98,31 @@ export const AlienForm = forwardRef<AlienFormRef, AlienFormProps>(({
   };
 
   return (
-    <FormProvider form={form} components={mergedComponents} decorators={mergedDecorators}>
-      <SchemaField schema={schema} />
-      {onSubmit && (
-        <div className="flex items-center gap-3 border-t pt-6 mt-6">
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none"
-          >
-            {submitting ? "提交中…" : submitText}
-          </button>
-          <button
-            type="button"
-            onClick={handleReset}
-            disabled={submitting}
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-6 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none"
-          >
-            {resetText}
-          </button>
-        </div>
-      )}
-    </FormProvider>
+    <div className="mx-auto max-w-2xl">
+      <FormProvider form={form} components={mergedComponents} decorators={mergedDecorators}>
+        <SchemaField schema={schema} />
+        {onSubmit && (
+          <div className="flex items-center gap-3 border-t pt-6 mt-6">
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none"
+            >
+              {submitting ? "提交中…" : submitText}
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={submitting}
+              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-6 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none"
+            >
+              {resetText}
+            </button>
+          </div>
+        )}
+      </FormProvider>
+    </div>
   );
 });
 

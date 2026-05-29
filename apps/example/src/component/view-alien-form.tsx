@@ -4,11 +4,29 @@ import { AlienForm } from "./alien-form";
 import { IFormSchema } from "@alien-form/react";
 import { FormItem } from "@alien-form/ui";
 
+/** 只读文本组件 */
 const Text = ({ value }: any) => (
-  <div className="text-sm text-muted-foreground">{Array.isArray(value) ? JSON.stringify(value) : String(value ?? "-")}</div>
+  <div className="min-h-[36px] flex items-center text-sm text-foreground">
+    {value == null || value === "" ? (
+      <span className="text-muted-foreground">-</span>
+    ) : (
+      String(value)
+    )}
+  </div>
 );
 
-const readPrettyComponents = { Input: Text, Select: Text, Textarea: Text, Switch: Text };
+/** 只读开关显示 */
+const SwitchText = ({ value }: any) => (
+  <div className="min-h-[36px] flex items-center">
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+      value ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+    }`}>
+      {value ? "是" : "否"}
+    </span>
+  </div>
+);
+
+const readPrettyComponents = { Input: Text, Select: Text, Textarea: Text, Switch: SwitchText };
 const readPrettyDecorators = { FormItem };
 
 export const ViewAlienForm: React.FC<{ id: string; onBack: () => void }> = ({ id, onBack }) => {
@@ -20,7 +38,15 @@ export const ViewAlienForm: React.FC<{ id: string; onBack: () => void }> = ({ id
     Promise.all([getSchema(), getProduct(id)]).then(([s, product]) => {
       setSchema(s);
       if (product) {
-        setData({ specs: product.specs || [], skus: product.skus || [] });
+        setData({
+          name: product.name,
+          category: product.category,
+          subCategory: product.subCategory,
+          description: product.description,
+          status: product.status === "on" ? "上架" : "下架",
+          specs: product.specs || [],
+          skus: product.skus || [],
+        });
       }
       setLoading(false);
     });
@@ -53,7 +79,7 @@ export const ViewAlienForm: React.FC<{ id: string; onBack: () => void }> = ({ id
 function PageShell({ title, onBack, children }: { title: string; onBack: () => void; children: React.ReactNode }) {
   return (
     <div>
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-6 flex items-center gap-3">
         <button
           type="button"
           onClick={onBack}
@@ -69,7 +95,7 @@ function PageShell({ title, onBack, children }: { title: string; onBack: () => v
       {children}
     </div>
   );
-}
+};
 
 function LoadingState() {
   return <div className="py-12 text-center text-muted-foreground">加载中…</div>;
