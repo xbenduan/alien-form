@@ -6,7 +6,7 @@ import { FormProvider, IFormSchema, SchemaField, useCreateForm } from "@alien-fo
 import { ArrayCards, FormItem, SchemaInput, SchemaSelect, Switch, Textarea } from "@alien-form/ui";
 import { useMemo } from "react";
 
-const baseComponents = {
+const baseComponents: Record<string, React.ComponentType<any>> = {
   Input: SchemaInput,
   Select: SchemaSelect,
   Textarea,
