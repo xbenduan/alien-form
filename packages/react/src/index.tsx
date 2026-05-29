@@ -401,6 +401,9 @@ export function useFormValidate() {
  * fine-grained control over *where* child fields appear while still
  * delegating *how* they look to the component & decorator registries.
  *
+ * Each call returns a self-subscribing React element that re-renders
+ * automatically when the underlying field state changes.
+ *
  * @example
  * function Specs({ field }) {
  *   const renderField = useRenderField();
@@ -416,69 +419,86 @@ export function useRenderField() {
   const ctx = useContext(FormContext);
   if (!ctx) throw new Error("[alien-form] useRenderField must be used within <FormProvider>");
 
-  const { form, components, decorators } = ctx;
-
   return useCallback(
     (path: FieldPath): React.ReactNode => {
       const resolvedPath = toFieldPath(path);
-      const field = form.getField(resolvedPath);
-      if (!field) return null;
-
-      if (field.display === "none") return null;
-      if (field.display === "hidden") return <div key={resolvedPath} style={{ display: "none" }} />;
-
-      const Component = components[field.component];
-      const Decorator = decorators[field.decorator];
-
-      if (!Component) return null;
-
-      const decoratorProps = {
-        label: field.title,
-        required: field.required,
-        errors: field.errors,
-        warnings: field.warnings,
-        description: field.description,
-        validateStatus: field.validateStatus,
-        ...field.decoratorProps,
-      };
-
-      let componentProps: Record<string, any>;
-
-      if (field.isArrayField) {
-        // Array fields get field + mutation callbacks
-        componentProps = {
-          ...field.componentProps,
-          field,
-          onAdd: (initialValues?: Record<string, any>) => field.push(initialValues),
-          onRemove: (index: number) => field.remove(index),
-          onMoveUp: (index: number) => field.moveUp(index),
-          onMoveDown: (index: number) => field.moveDown(index),
-          disabled: field.disabled,
-        };
-      } else {
-        // Leaf fields get value + onChange
-        componentProps = {
-          ...field.componentProps,
-          value: field.value,
-          onChange: (val: any) => field.setValue(val),
-          disabled: field.disabled,
-          loading: field.loading,
-        };
-        if (field.dataSource.length > 0) {
-          componentProps.dataSource = field.dataSource;
-        }
-      }
-
-      const rendered = <Component {...componentProps} />;
-      return (
-        <FieldContext.Provider key={resolvedPath} value={field}>
-          {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
-        </FieldContext.Provider>
-      );
+      return <RenderFieldBridge key={resolvedPath} path={resolvedPath} />;
     },
-    [form, components, decorators],
+    [],
   );
 }
+
+/**
+ * Internal bridge component rendered by useRenderField.
+ * Subscribes to the field and re-renders when field state changes.
+ */
+const RenderFieldBridge: React.FC<{ path: string }> = ({ path }) => {
+  const ctx = useContext(FormContext);
+  if (!ctx) return null;
+
+  const { form, components, decorators } = ctx;
+  const [, forceRender] = useState(0);
+
+  const field = form.getField(path);
+
+  useEffect(() => {
+    if (!field) return;
+    return field.subscribe(() => forceRender((v) => v + 1));
+  }, [field]);
+
+  if (!field) return null;
+  if (field.display === "none") return null;
+  if (field.display === "hidden") return <div style={{ display: "none" }} />;
+
+  const Component = components[field.component];
+  const Decorator = decorators[field.decorator];
+
+  if (!Component) return null;
+
+  const decoratorProps = {
+    label: field.title,
+    required: field.required,
+    errors: field.errors,
+    warnings: field.warnings,
+    description: field.description,
+    validateStatus: field.validateStatus,
+    ...field.decoratorProps,
+  };
+
+  let componentProps: Record<string, any>;
+
+  if (field.isArrayField) {
+    // Array fields get field + mutation callbacks
+    componentProps = {
+      ...field.componentProps,
+      field,
+      onAdd: (initialValues?: Record<string, any>) => field.push(initialValues),
+      onRemove: (index: number) => field.remove(index),
+      onMoveUp: (index: number) => field.moveUp(index),
+      onMoveDown: (index: number) => field.moveDown(index),
+      disabled: field.disabled,
+    };
+  } else {
+    // Leaf fields get value + onChange
+    componentProps = {
+      ...field.componentProps,
+      value: field.value,
+      onChange: (val: any) => field.setValue(val),
+      disabled: field.disabled,
+      loading: field.loading,
+    };
+    if (field.dataSource.length > 0) {
+      componentProps.dataSource = field.dataSource;
+    }
+  }
+
+  const rendered = <Component {...componentProps} />;
+  return (
+    <FieldContext.Provider value={field}>
+      {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
+    </FieldContext.Provider>
+  );
+};
 
 // ============================================================
 // FormProvider
