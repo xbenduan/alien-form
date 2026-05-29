@@ -99,13 +99,6 @@ export function useCreateForm(config: FormConfig = {}): IForm {
     formRef.current = createForm(configRef.current);
   }
 
-  useEffect(() => {
-    return () => {
-      formRef.current?.destroy();
-      formRef.current = null;
-    };
-  }, []);
-
   return formRef.current;
 }
 

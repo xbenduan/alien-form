@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { render, fireEvent, act, cleanup } from "@testing-library/react";
 import { createForm } from "@alien-form/core";
-import { FormProvider, SchemaField } from "../index";
+import { FormProvider, SchemaField, useCreateForm } from "../index";
 import { describe, it, expect, vi, afterEach } from "vitest";
 
 afterEach(() => {
@@ -122,5 +122,55 @@ describe("Twice to take effect bug in StrictMode", () => {
         stop: expect.any(Function),
       }),
     );
+  });
+
+  it("useCreateForm setup effect survives StrictMode double-mount", () => {
+    const effectValues: string[] = [];
+    const schema = {
+      type: "object" as const,
+      properties: {
+        name: { type: "string", component: "Input", props: { "data-testid": "name-input" } },
+        derived: { type: "string", component: "Input", props: { "data-testid": "derived-input" } },
+      },
+    };
+
+    function TestForm() {
+      const form = useCreateForm({
+        setup: (f) => {
+          const dispose = f.effect(() => {
+            const nameField = f.getField("name");
+            const derivedField = f.getField("derived");
+            if (!nameField || !derivedField) return;
+            const val = nameField.value;
+            if (val) {
+              effectValues.push(val);
+              derivedField.setValue(`Hello ${val}`);
+            }
+          });
+          return () => dispose();
+        },
+      });
+
+      return (
+        <FormProvider form={form} components={components}>
+          <SchemaField schema={schema} />
+        </FormProvider>
+      );
+    }
+
+    const { getByTestId } = render(
+      <StrictMode>
+        <TestForm />
+      </StrictMode>,
+    );
+
+    act(() => {
+      fireEvent.change(getByTestId("name-input"), { target: { value: "World" } });
+    });
+
+    // The effect should have captured the value
+    expect(effectValues).toContain("World");
+    // The derived field should be updated
+    expect((getByTestId("derived-input") as HTMLInputElement).value).toBe("Hello World");
   });
 });
