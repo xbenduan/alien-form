@@ -1,48 +1,43 @@
 /**
  * @alien-form/core — Main entry point
+ * Atomic signal-per-property architecture
  */
 
-// Form
-export { createForm } from "./engine/form/index";
+export { createForm } from "./form";
 
-// Internals (for testing only)
-export { getFormInternals } from "./engine/form/internals";
-
-// Schema type utilities
-export { define } from "./resolved";
 export type {
-  Resolved,
-  InferRole,
-  InferSlots,
-  InferCustomProps,
-  InferFieldsMap,
-  FieldSlots,
-  VoidSlots,
-  ObjectSlots,
-  ArraySlots,
-  DecoratorSlots,
-} from "./resolved";
+  // Core atoms
+  FieldAtoms,
+  FormInstance,
+  FormConfig,
+  FormError,
+  FormErrorScope,
 
-// Types — only expose what consumers actually need
-export type {
-  IForm,
-  IField,
+  // Schema types
   IFormSchema,
   IFieldSchema,
   FieldError,
-  FieldMutableState,
-  ValidateStatus,
+  DataSourceItem,
   FieldDisplayTypes,
-  FormConfig,
-  FormError,
-  EffectOptions,
-  EffectContext,
+  ValidateStatus,
+  SchemaTypes,
+  DataSourcePolicy,
+
+  // Reaction types
+  SchemaXRule,
+  SchemaRuleSet,
+  SchemaReactions,
+  SchemaFormat,
+  SchemaXValidate,
+  SchemaReactionKey,
   RuntimeRuleHandler,
   RuntimeRuleHandlerContext,
-  DataSourcePolicy,
-  SchemaTypes,
-} from "./schema/types";
+  SchemaValidate,
+} from "./types";
 
-// Schema ref resolution (pure, stateless)
-export { resolveSchemaRef } from "./schema";
-export type { ResolveRefResult } from "./schema";
+// Schema utilities
+export { resolveSchemaRef, resolveSchemaTree } from "./ref-resolve";
+export type { ResolveRefResult } from "./ref-resolve";
+export { getDeepValue, setDeepValue, sortByOrder } from "./path";
+export { evaluateExpression } from "./expression";
+export { normalizeDataSource, isEmptyValue } from "./validation";
