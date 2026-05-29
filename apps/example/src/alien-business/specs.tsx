@@ -40,7 +40,7 @@ export const Specs: React.FC<{
           {/* 头部：规格名标签 + 输入框（w-32） + 操作按钮 */}
           <div className="flex items-center gap-3 border-b px-4 py-3">
             <span className="shrink-0 text-sm font-medium text-foreground">规格名：</span>
-            <div className="w-32 shrink-0">
+            <div className="w-64 shrink-0">
               {renderField([field.path, i, "name"], { decorator: false })}
             </div>
             {!disabled && (
