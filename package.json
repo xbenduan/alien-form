@@ -2,14 +2,10 @@
   "name": "alien-form",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @alien-form/example run dev",
+    "dev": "pnpm --filter @alien-form/core run build && pnpm --filter @alien-form/example run dev",
     "dev:docs": "pnpm --filter @alien-form/docs run dev",
     "build": "pnpm -r run build",
-    "package:source": "bash ./scripts/package-project.sh",
-    "test": "pnpm -r run test",
-    "test:core": "pnpm --filter @alien-form/core run test",
     "lint": "oxlint --deny-warnings",
-    "lint:core": "oxlint packages/core/src --deny-warnings",
     "format": "oxfmt . --write",
     "format:check": "oxfmt . --check"
   },
