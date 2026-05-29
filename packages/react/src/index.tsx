@@ -135,7 +135,7 @@ export interface FormState {
 
 /**
  * Subscribe to form-level state changes (values, validity, errors).
- * Uses useState + useEffect with field.subscribe for safe reactivity.
+ * Uses useState + useEffect with form.subscribe for safe reactivity.
  */
 export function useFormState(): FormState {
   const form = useForm();
@@ -570,12 +570,6 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
     }, [schema.properties, fullPath, components, decorators, form]);
 
     if (ObjectComponent) {
-      const objectProps = {
-        ...field.componentProps,
-        field,
-        title: field.title,
-        description: field.description,
-      };
       const decoratorProps = {
         label: field.title,
         required: field.required,
@@ -585,7 +579,7 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
         validateStatus: field.validateStatus,
         ...field.decoratorProps,
       };
-      const rendered = <ObjectComponent {...objectProps}>{children}</ObjectComponent>;
+      const rendered = <ObjectComponent {...field.componentProps}>{children}</ObjectComponent>;
       return (
         <FieldContext.Provider value={field}>
           {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
@@ -664,112 +658,55 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
   form,
   fullPath,
 }) => {
-  const [snapshot, setSnapshot] = useState(() => ({
-    display: field.display,
-    value: field.value,
-    component: field.component,
-    decorator: field.decorator,
-    title: field.title,
+  const [, forceRender] = useState(0);
+
+  useEffect(() => field.subscribe(() => forceRender((v) => v + 1)), [field]);
+
+  if (field.display === "none") return null;
+  if (field.display === "hidden") return <div style={{ display: "none" }} />;
+
+  const ArrayComponent = components[field.component];
+  const Decorator = decorators[field.decorator];
+
+  const arrayValue = Array.isArray(field.value) ? field.value : [];
+  const itemSchema = schema.items as IFieldSchema | undefined;
+
+  // Build rows of rendered child fields
+  const rows: React.ReactNode[][] = [];
+
+  arrayValue.forEach((_: any, index: number) => {
+    const children: React.ReactNode[] = [];
+    if (itemSchema?.properties) {
+      const sortedProps = getSortedEntries(itemSchema.properties);
+      for (const [childKey, childSchema] of sortedProps) {
+        children.push(
+          <SchemaFieldItem
+            key={childKey}
+            path={childKey}
+            schema={childSchema}
+            components={components}
+            decorators={decorators}
+            form={form}
+            parentPath={`${fullPath}.${index}`}
+          />,
+        );
+      }
+    }
+    rows.push(children);
+  });
+
+  const decoratorProps = {
+    label: field.title,
     required: field.required,
     errors: field.errors,
     warnings: field.warnings,
     description: field.description,
     validateStatus: field.validateStatus,
-    disabled: field.disabled,
-    componentProps: field.componentProps,
-    decoratorProps: field.decoratorProps,
-  }));
-
-  useEffect(() => {
-    setSnapshot({
-      display: field.display,
-      value: field.value,
-      component: field.component,
-      decorator: field.decorator,
-      title: field.title,
-      required: field.required,
-      errors: field.errors,
-      warnings: field.warnings,
-      description: field.description,
-      validateStatus: field.validateStatus,
-      disabled: field.disabled,
-      componentProps: field.componentProps,
-      decoratorProps: field.decoratorProps,
-    });
-    return field.subscribe(() => {
-      setSnapshot({
-        display: field.display,
-        value: field.value,
-        component: field.component,
-        decorator: field.decorator,
-        title: field.title,
-        required: field.required,
-        errors: field.errors,
-        warnings: field.warnings,
-        description: field.description,
-        validateStatus: field.validateStatus,
-        disabled: field.disabled,
-        componentProps: field.componentProps,
-        decoratorProps: field.decoratorProps,
-      });
-    });
-  }, [field]);
-
-  if (snapshot.display === "none") return null;
-  if (snapshot.display === "hidden") return <div style={{ display: "none" }} />;
-
-  const ArrayComponent = components[snapshot.component];
-  const Decorator = decorators[snapshot.decorator];
-
-  const arrayValue = Array.isArray(snapshot.value) ? snapshot.value : [];
-  const itemSchema = schema.items as IFieldSchema | undefined;
-
-  const rows = useMemo(() => {
-    return arrayValue.map((_: any, index: number) => {
-      const children: React.ReactNode[] = [];
-      if (itemSchema?.properties) {
-        const sortedProps = getSortedEntries(itemSchema.properties);
-        for (const [childKey, childSchema] of sortedProps) {
-          children.push(
-            <SchemaFieldItem
-              key={childKey}
-              path={childKey}
-              schema={childSchema}
-              components={components}
-              decorators={decorators}
-              form={form}
-              parentPath={`${fullPath}.${index}`}
-            />,
-          );
-        }
-      }
-      return children;
-    });
-  }, [arrayValue, itemSchema, components, decorators, form, fullPath]);
-
-  const arrayProps = {
-    ...snapshot.componentProps,
-    field,
-    rows,
-    onAdd: (initialValues?: Record<string, any>) => field.push(initialValues),
-    onRemove: (index: number) => field.remove(index),
-    onMoveUp: (index: number) => field.moveUp(index),
-    onMoveDown: (index: number) => field.moveDown(index),
-    disabled: snapshot.disabled,
-  };
-
-  const decoratorProps = {
-    label: snapshot.title,
-    required: snapshot.required,
-    errors: snapshot.errors,
-    warnings: snapshot.warnings,
-    description: snapshot.description,
-    validateStatus: snapshot.validateStatus,
-    ...snapshot.decoratorProps,
+    ...field.decoratorProps,
   };
 
   if (ArrayComponent) {
-    const rendered = <ArrayComponent {...arrayProps} />;
+    const rendered = <ArrayComponent {...field.componentProps} />;
     return (
       <FieldContext.Provider value={field}>
         {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
@@ -825,96 +762,43 @@ interface FieldRendererProps {
 }
 
 const FieldRenderer: React.FC<FieldRendererProps> = ({ field, components, decorators }) => {
-  const [snapshot, setSnapshot] = useState(() => ({
-    display: field.display,
-    component: field.component,
-    decorator: field.decorator,
-    title: field.title,
+  const [, forceRender] = useState(0);
+
+  useEffect(() => field.subscribe(() => forceRender((v) => v + 1)), [field]);
+
+  if (field.display === "none") return null;
+  if (field.display === "hidden") return <div style={{ display: "none" }} />;
+
+  const Component = components[field.component];
+  const Decorator = decorators[field.decorator];
+
+  const decoratorProps = {
+    label: field.title,
     required: field.required,
     errors: field.errors,
     warnings: field.warnings,
     description: field.description,
     validateStatus: field.validateStatus,
-    disabled: field.disabled,
-    loading: field.loading,
-    value: field.value,
-    dataSource: field.dataSource,
-    componentProps: field.componentProps,
-    decoratorProps: field.decoratorProps,
-  }));
-
-  useEffect(() => {
-    setSnapshot({
-      display: field.display,
-      component: field.component,
-      decorator: field.decorator,
-      title: field.title,
-      required: field.required,
-      errors: field.errors,
-      warnings: field.warnings,
-      description: field.description,
-      validateStatus: field.validateStatus,
-      disabled: field.disabled,
-      loading: field.loading,
-      value: field.value,
-      dataSource: field.dataSource,
-      componentProps: field.componentProps,
-      decoratorProps: field.decoratorProps,
-    });
-    return field.subscribe(() => {
-      setSnapshot({
-        display: field.display,
-        component: field.component,
-        decorator: field.decorator,
-        title: field.title,
-        required: field.required,
-        errors: field.errors,
-        warnings: field.warnings,
-        description: field.description,
-        validateStatus: field.validateStatus,
-        disabled: field.disabled,
-        loading: field.loading,
-        value: field.value,
-        dataSource: field.dataSource,
-        componentProps: field.componentProps,
-        decoratorProps: field.decoratorProps,
-      });
-    });
-  }, [field]);
-
-  if (snapshot.display === "none") return null;
-  if (snapshot.display === "hidden") return <div style={{ display: "none" }} />;
-
-  const Component = components[snapshot.component];
-  const Decorator = decorators[snapshot.decorator];
-
-  const decoratorProps = {
-    label: snapshot.title,
-    required: snapshot.required,
-    errors: snapshot.errors,
-    warnings: snapshot.warnings,
-    description: snapshot.description,
-    validateStatus: snapshot.validateStatus,
-    ...snapshot.decoratorProps,
+    ...field.decoratorProps,
   };
 
   if (!Component) {
     return (
-      <div className="text-destructive text-sm">{`Unknown component: ${snapshot.component}`}</div>
+      <div className="text-destructive text-sm">{`Unknown component: ${field.component}`}</div>
     );
   }
 
   // Build component props
   const componentProps: Record<string, any> = {
-    ...snapshot.componentProps,
-    value: snapshot.value,
+    ...field.componentProps,
+    value: field.value,
     onChange: (val: any) => field.setValue(val),
-    disabled: snapshot.disabled,
-    loading: snapshot.loading,
+    disabled: field.disabled,
+    loading: field.loading,
   };
 
-  if (snapshot.dataSource.length > 0) {
-    componentProps.dataSource = snapshot.dataSource;
+  if (field.dataSource.length > 0) {
+    componentProps.dataSource = field.dataSource;
   }
 
   const rendered = <Component {...componentProps} />;
