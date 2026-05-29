@@ -379,16 +379,27 @@ function resolveXRuleValue(
   }
 }
 
-function resolveDeps(form: FormInstance, dependencies: string[] | Record<string, string> | undefined, selfPath: string) {
+/**
+ * Resolve dependencies for a reaction rule.
+ *
+ * IMPORTANT: When called inside an effect, we must ONLY track the dependency
+ * field value signals — not the fieldsSignal itself. Reading fieldsSignal()
+ * inside an effect causes the effect to re-run on ANY field registry change
+ * (add/remove), which is both wasteful and can interfere with proper dep tracking.
+ *
+ * We accept the fieldsMap as a parameter so the caller controls whether
+ * fieldsSignal is tracked or not.
+ */
+function resolveDeps(fieldsMap: Map<string, FieldAtoms>, dependencies: string[] | Record<string, string> | undefined, selfPath: string) {
   const deps: Record<string, any> = {};
   const depsArray: any[] = [];
   if (!dependencies) return { deps, depsArray };
 
-  const fieldsMap = form.fields();
   if (Array.isArray(dependencies)) {
     for (const depPath of dependencies) {
       const resolved = resolveFieldPath(depPath, selfPath);
       const depField = fieldsMap.get(resolved);
+      // Reading depField.value() inside an effect TRACKS this signal
       const value = depField ? depField.value() : undefined;
       depsArray.push(value);
       deps[depPath] = value;
@@ -408,10 +419,12 @@ function buildScope(form: FormInstance, fieldAtoms: FieldAtoms, deps: Record<str
   return {
     $self: fieldAtoms,
     $form: form,
-    $values: form.values(),
+    // Lazy getters: avoid tracking form.values() and fieldAtoms.value()
+    // inside the reaction effect unless they are actually accessed by the rule.
+    get $values() { return form.values(); },
     $deps: depsArray.length > 0 ? depsArray : deps,
     $dependencies: deps,
-    $value: fieldAtoms.value(),
+    get $value() { return fieldAtoms.value(); },
     ...(config.scope || {}),
   };
 }
@@ -437,9 +450,10 @@ async function runXValidate(form: FormInstance, fieldAtoms: FieldAtoms, rules: S
   const ruleList = Array.isArray(rules) ? rules : [rules];
   const errors: FieldError[] = [];
   const config = (form as any)._config as FormConfig;
+  const fieldsMap = form.fields();
 
   for (const rule of ruleList) {
-    const { deps, depsArray } = resolveDeps(form, rule.dependencies, fieldAtoms.path);
+    const { deps, depsArray } = resolveDeps(fieldsMap, rule.dependencies, fieldAtoms.path);
     const scope = {
       $self: fieldAtoms,
       $form: form,
@@ -537,11 +551,27 @@ function installReactions(form: FormInstance): () => void {
       const rules = Array.isArray(ruleOrRules) ? ruleOrRules : [ruleOrRules];
 
       for (const rule of rules) {
+        // Determine if this rule has explicit dependencies
+        const hasDeps = rule.dependencies && (
+          (Array.isArray(rule.dependencies) && rule.dependencies.length > 0) ||
+          (!Array.isArray(rule.dependencies) && Object.keys(rule.dependencies).length > 0)
+        );
+
         const dispose = effect(() => {
-          // Track dependencies by reading their value signals
-          const { deps, depsArray } = resolveDeps(form, rule.dependencies, path);
-          // Also track self value for implicit dependency
-          void fieldAtoms.value();
+          // Read the fieldsMap OUTSIDE the signal tracking path.
+          // We snapshot the current fields map directly — we do NOT want to
+          // track fieldsSignal here because that would re-trigger this effect
+          // on every field add/remove (e.g. array push/remove).
+          const currentFieldsMap = (form as any)._fieldsMap as Map<string, FieldAtoms>;
+
+          // Track ONLY the dependency field value signals
+          const { deps, depsArray } = resolveDeps(currentFieldsMap, rule.dependencies, path);
+
+          // If no explicit dependencies declared, track self value as implicit dep
+          // so static/expression rules without deps still run on init
+          if (!hasDeps) {
+            void fieldAtoms.value();
+          }
 
           const scope = buildScope(form, fieldAtoms, deps, depsArray);
           const result = resolveXRuleValue(form, fieldAtoms, reactionKey, rule, scope);
@@ -582,6 +612,10 @@ function emitError(form: FormInstance, error: FormError): void {
 
 export function createForm(config: FormConfig = {}): FormInstance {
   const fieldsSignal = signal(new Map<string, FieldAtoms>());
+  // Plain mutable ref to the current fields Map — used by reaction effects
+  // to read the Map WITHOUT tracking fieldsSignal (avoids re-triggering
+  // all reactions on every field add/remove).
+  let fieldsMapRef = fieldsSignal();
   const submittingSignal = signal(false);
   const errorListeners = new Set<(e: FormError) => void>(config.onError ? [config.onError] : []);
   let destroyed = false;
@@ -652,7 +686,9 @@ export function createForm(config: FormConfig = {}): FormInstance {
       const atoms = createFieldAtoms(form, path, schema, initialValue);
       const map = fieldsSignal();
       map.set(path, atoms);
-      fieldsSignal(new Map(map));
+      const newMap = new Map(map);
+      fieldsMapRef = newMap;
+      fieldsSignal(newMap);
       return atoms;
     },
 
@@ -660,7 +696,9 @@ export function createForm(config: FormConfig = {}): FormInstance {
       startBatch();
       if (reactionDispose) { reactionDispose(); reactionDispose = null; }
       definitions = schema.definitions || {};
-      fieldsSignal(new Map());
+      const emptyMap = new Map<string, FieldAtoms>();
+      fieldsMapRef = emptyMap;
+      fieldsSignal(emptyMap);
 
       if (schema.properties) {
         const sorted = sortByOrder(schema.properties);
@@ -782,6 +820,25 @@ export function createForm(config: FormConfig = {}): FormInstance {
   (form as any)._errorListeners = errorListeners;
   (form as any)._definitions = definitions;
   (form as any)._initialValues = initialValues;
+
+  // Override form.fields with a wrapper that keeps fieldsMapRef in sync.
+  // Reading (no args) still tracks fieldsSignal normally.
+  // Writing (with args) also updates the plain fieldsMapRef.
+  const originalFields = form.fields;
+  (form as any).fields = ((...args: any[]) => {
+    if (args.length === 0) {
+      return originalFields();
+    }
+    const newMap = args[0] as Map<string, FieldAtoms>;
+    fieldsMapRef = newMap;
+    return (originalFields as any)(newMap);
+  }) as typeof fieldsSignal;
+
+  // Expose a getter for reaction effects to read without signal tracking
+  Object.defineProperty(form, '_fieldsMap', {
+    get() { return fieldsMapRef; },
+    enumerable: false,
+  });
 
   // Run setup
   if (config.setup) {
