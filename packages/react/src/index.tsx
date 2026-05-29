@@ -27,7 +27,8 @@ import type {
   EffectOptions,
   EffectContext,
 } from "@alien-form/core";
-import { createForm, resolveSchemaRef } from "@alien-form/core";
+import { createForm, resolveSchemaRef, toFieldPath } from "@alien-form/core";
+import type { FieldPath } from "@alien-form/core";
 
 // ============================================================
 // Re-export core types so consumers don't need @alien-form/core
@@ -53,6 +54,8 @@ export type {
 } from "@alien-form/core";
 
 export { createForm } from "@alien-form/core";
+export { toFieldPath } from "@alien-form/core";
+export type { FieldPath } from "@alien-form/core";
 
 // ============================================================
 // Component/Decorator Maps
@@ -386,6 +389,54 @@ export function useFormValidate() {
   }, [form]);
 
   return { validate, validating };
+}
+
+// ============================================================
+// useRenderField — on-demand field rendering for custom components
+// ============================================================
+
+/**
+ * Returns a render function that produces framework-managed field UI for a
+ * given path.  Designed for custom array / object / void components that need
+ * fine-grained control over *where* child fields appear while still
+ * delegating *how* they look to the component & decorator registries.
+ *
+ * @example
+ * function Specs({ field }) {
+ *   const renderField = useRenderField();
+ *   return field.value.map((_, i) => (
+ *     <Card key={i}>
+ *       {renderField([field.path, i, "name"])}
+ *       {renderField([field.path, i, "price"])}
+ *     </Card>
+ *   ));
+ * }
+ */
+export function useRenderField() {
+  const ctx = useContext(FormContext);
+  if (!ctx) throw new Error("[alien-form] useRenderField must be used within <FormProvider>");
+
+  const { form, components, decorators } = ctx;
+
+  return useCallback(
+    (path: FieldPath): React.ReactNode => {
+      const resolvedPath = toFieldPath(path);
+      const field = form.getField(resolvedPath);
+      if (!field) return null;
+      return (
+        <FieldRenderer
+          key={resolvedPath}
+          field={field}
+          schema={{}}
+          components={components}
+          decorators={decorators}
+          form={form}
+          fullPath={resolvedPath}
+        />
+      );
+    },
+    [form, components, decorators],
+  );
 }
 
 // ============================================================
