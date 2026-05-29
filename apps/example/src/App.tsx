@@ -1,41 +1,27 @@
 import React from "react";
-import {
-  Card,
-  CardHeader,
-  CardContent,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@alien-form/ui";
-import { ViewAlienForm } from "./component/view-alien-form";
-import { EditAlienForm } from "./component/edit-alien-form";
-import { CreateAlienForm } from "./component/create-alien-form";
+import { Tabs, Card, Typography } from "antd";
+import { CreateForm } from "./pages/create-form";
+import { EditForm } from "./pages/edit-form";
+import { ViewForm } from "./pages/view-form";
+
+const { Title } = Typography;
 
 export const App: React.FC = () => {
   return (
-    <div className="min-h-screen bg-muted/20 p-6">
-      <div className="mx-auto max-w-5xl space-y-4">
+    <div style={{ minHeight: "100vh", background: "#f5f5f5", padding: 24 }}>
+      <div style={{ maxWidth: 960, margin: "0 auto" }}>
         <Card>
-          <CardHeader>企业级场景</CardHeader>
-          <CardContent>
-            <Tabs defaultValue="detail">
-              <TabsList className="mb-4">
-                <TabsTrigger value="edit">编辑</TabsTrigger>
-                <TabsTrigger value="create">新增</TabsTrigger>
-                <TabsTrigger value="detail">详情</TabsTrigger>
-              </TabsList>
-              <TabsContent value="edit">
-                <EditAlienForm />
-              </TabsContent>
-              <TabsContent value="create">
-                <CreateAlienForm />
-              </TabsContent>
-              <TabsContent value="detail">
-                <ViewAlienForm />
-              </TabsContent>
-            </Tabs>
-          </CardContent>
+          <Title level={3} style={{ marginBottom: 24 }}>
+            Alien Form + Antd 示例
+          </Title>
+          <Tabs
+            defaultActiveKey="create"
+            items={[
+              { key: "create", label: "新增", children: <CreateForm /> },
+              { key: "edit", label: "编辑", children: <EditForm /> },
+              { key: "view", label: "详情", children: <ViewForm /> },
+            ]}
+          />
         </Card>
       </div>
     </div>
