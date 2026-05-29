@@ -53,16 +53,7 @@ const reactionTestSchema: IFormSchema = {
           default: "我应该根据 trigger1 显示/隐藏",
           order: 20,
           "x-reaction": {
-            display: {
-              type: "match",
-              dependencies: ["trigger1"],
-              match: {
-                show: "visible",
-                hide: "hidden",
-                none: "none",
-                default: "visible",
-              },
-            },
+            display: "{{ trigger1 === 'hide' ? 'hidden' : trigger1 === 'none' ? 'none' : 'visible' }}",
           },
         },
       },
@@ -101,11 +92,7 @@ const reactionTestSchema: IFormSchema = {
           props: { placeholder: "由 reaction 自动计算", disabled: true },
           order: 30,
           "x-reaction": {
-            value: {
-              type: "expression",
-              dependencies: ["firstName", "lastName"],
-              expression: "$deps[0] + $deps[1]",
-            },
+            value: "{{ firstName + lastName }}",
           },
         },
       },
@@ -139,11 +126,7 @@ const reactionTestSchema: IFormSchema = {
           default: "只有 admin 可编辑",
           order: 20,
           "x-reaction": {
-            disabled: {
-              type: "computed",
-              dependencies: ["role"],
-              handler: "isNotAdmin",
-            },
+            disabled: "@isNotAdmin",
           },
         },
       },
@@ -188,11 +171,7 @@ const reactionTestSchema: IFormSchema = {
           props: { placeholder: "当 enableA=yes AND enableB=yes 时必填" },
           order: 30,
           "x-reaction": {
-            required: {
-              type: "expression",
-              dependencies: { a: "enableA", b: "enableB" },
-              expression: "$deps.a === 'yes' && $deps.b === 'yes'",
-            },
+            required: "{{ enableA === 'yes' && enableB === 'yes' }}",
           },
         },
       },
@@ -226,34 +205,8 @@ const reactionTestSchema: IFormSchema = {
           props: { placeholder: "根据国家显示不同城市" },
           order: 20,
           "x-reaction": {
-            dataSource: {
-              type: "match",
-              dependencies: ["country"],
-              match: {
-                cn: [
-                  { label: "北京", value: "beijing" },
-                  { label: "上海", value: "shanghai" },
-                  { label: "深圳", value: "shenzhen" },
-                ],
-                us: [
-                  { label: "New York", value: "nyc" },
-                  { label: "San Francisco", value: "sf" },
-                  { label: "Los Angeles", value: "la" },
-                ],
-                jp: [
-                  { label: "东京", value: "tokyo" },
-                  { label: "大阪", value: "osaka" },
-                  { label: "京都", value: "kyoto" },
-                ],
-                default: [],
-              },
-            },
-            // Also clear the value when country changes
-            value: {
-              type: "expression",
-              dependencies: ["country"],
-              expression: "undefined",
-            },
+            dataSource: "@cityOptions",
+            value: undefined,
           },
         },
       },
@@ -288,11 +241,7 @@ const reactionTestSchema: IFormSchema = {
           props: { placeholder: "title 会根据 count 动态变化" },
           order: 20,
           "x-reaction": {
-            title: {
-              type: "expression",
-              dependencies: ["count"],
-              expression: "'项目 (共 ' + $deps[0] + ' 个)'",
-            },
+            title: "{{ '项目 (共 ' + count + ' 个)' }}",
           },
         },
       },
@@ -336,21 +285,8 @@ const reactionTestSchema: IFormSchema = {
                 props: { placeholder: "根据 rowType 控制显隐" },
                 order: 20,
                 "x-reaction": {
-                  display: {
-                    type: "match",
-                    dependencies: [".rowType"],
-                    match: {
-                      text: "visible",
-                      number: "visible",
-                      hidden: "none",
-                      default: "visible",
-                    },
-                  },
-                  title: {
-                    type: "expression",
-                    dependencies: [".rowType"],
-                    expression: "'详情 (' + $deps[0] + ' 模式)'",
-                  },
+                  display: "{{ rowType === 'hidden' ? 'none' : 'visible' }}",
+                  title: "{{ '详情 (' + rowType + ' 模式)' }}",
                 },
               },
             },
@@ -364,22 +300,30 @@ const reactionTestSchema: IFormSchema = {
 // ─── Handlers ─────────────────────────────────────────────────────────────────
 
 const reactionHandlers: FormConfig["handlers"] = {
-  isNotAdmin: ({ deps }) => {
-    const role = Object.values(deps)[0];
+  isNotAdmin: (ctx) => {
+    const role = ctx.get("role");
     console.log("[handler:isNotAdmin] role =", role, "→ disabled =", role !== "admin");
     return role !== "admin";
   },
-};
-
-// ─── Setup with logging ─────────────────────────────────────────────────────
-
-const reactionSetup: FormConfig["setup"] = (form) => {
-  // Log all field value changes for debugging
-  const dispose = form.effect((f) => {
-    const values = f.values();
-    console.log("[reaction-test] form.values() changed:", JSON.stringify(values, null, 2));
-  });
-  return dispose;
+  cityOptions: (ctx) => {
+    const country = ctx.get("country");
+    if (country === "cn") return [
+      { label: "北京", value: "beijing" },
+      { label: "上海", value: "shanghai" },
+      { label: "深圳", value: "shenzhen" },
+    ];
+    if (country === "us") return [
+      { label: "New York", value: "nyc" },
+      { label: "San Francisco", value: "sf" },
+      { label: "Los Angeles", value: "la" },
+    ];
+    if (country === "jp") return [
+      { label: "东京", value: "tokyo" },
+      { label: "大阪", value: "osaka" },
+      { label: "京都", value: "kyoto" },
+    ];
+    return [];
+  },
 };
 
 // ─── Components ──────────────────────────────────────────────────────────────
@@ -464,7 +408,6 @@ export const ReactionTest: React.FC = () => {
   const form = useCreateForm({
     schema: reactionTestSchema,
     handlers: reactionHandlers,
-    setup: reactionSetup,
   });
 
   const handleReset = useCallback(() => {

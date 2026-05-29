@@ -3,7 +3,7 @@ import type { IFormSchema } from "@alien-form/react";
 /**
  * 商品表单 Schema
  * 分为两个 void 布局区域：基础信息 + 规格信息
- * skus 联动由 handlers.ts 中的 setup 实现（监听 values.specs 变化）
+ * skus 联动由 skus 节点上的 x-effect 实现（监听 values.specs 变化）
  */
 export const goodsFormSchema: IFormSchema = {
   type: "object",
@@ -145,6 +145,7 @@ export const goodsFormSchema: IFormSchema = {
           description: "规格笛卡尔积生成的销售单元，可单独设置价格、库存和售卖状态",
           component: "SkuTable",
           decorator: "FormItem",
+          "x-effect": "@syncSkus",
           order: 20,
           items: {
             type: "object",

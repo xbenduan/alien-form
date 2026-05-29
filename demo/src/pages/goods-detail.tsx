@@ -174,7 +174,7 @@ const GoodsDetailInner: React.FC<{
   item: GoodsItem;
   onBack: () => void;
 }> = ({ schema, item, onBack }) => {
-  const form = useCreateForm({ initialValues: item, handlers });
+  const form = useCreateForm({ schema, initialValues: item, handlers });
 
   return (
     <div>

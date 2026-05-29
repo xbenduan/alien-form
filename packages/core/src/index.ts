@@ -1,6 +1,6 @@
 /**
  * @alien-form/core — Main entry point
- * Atomic signal-per-property architecture
+ * Value-capability runtime architecture
  */
 
 export { createForm } from "./form";
@@ -10,18 +10,22 @@ export { createForm } from "./form";
 export { signal, computed, effect, startBatch, endBatch } from "alien-signals";
 
 export type {
-  // Signal types (defined locally since alien-signals doesn't export them)
   Signal,
   Computed,
-
-  // Core atoms
+  FieldNode,
   FieldAtoms,
+  BaseFieldNode,
+  PrimitiveFieldNode,
+  ObjectFieldNode,
+  ArrayFieldNode,
+  VoidFieldNode,
+  RowNode,
+  FieldKind,
+  PrimitiveSchemaType,
   FormInstance,
   FormConfig,
   FormError,
   FormErrorScope,
-
-  // Schema types
   IFormSchema,
   IFieldSchema,
   FieldError,
@@ -30,8 +34,8 @@ export type {
   ValidateStatus,
   SchemaTypes,
   DataSourcePolicy,
-
-  // Reaction types
+  SchemaRuntimeValue,
+  SchemaEffect,
   SchemaXRule,
   SchemaRuleSet,
   SchemaReactions,
@@ -40,10 +44,10 @@ export type {
   SchemaReactionKey,
   RuntimeRuleHandler,
   RuntimeRuleHandlerContext,
+  RuntimeRuleContext,
   SchemaValidate,
 } from "./types";
 
-// Schema utilities
 export { resolveSchemaRef, resolveSchemaTree } from "./ref-resolve";
 export type { ResolveRefResult } from "./ref-resolve";
 export { getDeepValue, setDeepValue, sortByOrder } from "./path";

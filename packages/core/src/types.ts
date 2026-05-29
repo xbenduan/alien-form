@@ -1,11 +1,9 @@
 /**
  * @alien-form/core — Type definitions
- * Atomic signal-per-property architecture
+ * Value-capability runtime architecture
  */
 
 // ─── Signal Types ─────────────────────────────────────────────────────────────
-// alien-signals does NOT export Signal/Computed as named types.
-// We define them here to match the actual return types of signal() and computed().
 
 /** A readable/writable signal: call with no args to read, with one arg to write. */
 export type Signal<T> = {
@@ -19,7 +17,9 @@ export type Computed<T> = () => T;
 // ─── Basic Types ──────────────────────────────────────────────────────────────
 
 export type ValidateStatus = "success" | "error" | "warning" | "validating" | "";
-export type SchemaTypes = "string" | "number" | "boolean" | "object" | "array" | "void" | (string & {});
+export type PrimitiveSchemaType = "string" | "number" | "boolean";
+export type SchemaTypes = PrimitiveSchemaType | "object" | "array" | "void" | (string & {});
+export type FieldKind = "primitive" | "object" | "array" | "void";
 export type FieldDisplayTypes = "visible" | "hidden" | "none";
 export type ValidatorFormats = "email" | "url" | "phone" | "number" | "integer" | "idcard" | "ip" | "ipv6" | "zip" | (string & {});
 export type DataSourcePolicy = "preserve" | "clear" | "filter" | "first";
@@ -55,38 +55,44 @@ export interface SchemaValidate {
   message?: string;
 }
 
-// ─── Schema Reactions ─────────────────────────────────────────────────────────
+// ─── Runtime Context / Rule Values ────────────────────────────────────────────
 
 export type SchemaReactionKey =
-  | "value" | "display" | "disabled" | "required"
+  | "value" | "rows" | "display" | "disabled" | "required"
   | "title" | "description" | "props" | "decoratorProps"
   | "component" | "decorator" | "dataSource";
 
-export interface RuntimeRuleHandlerContext {
-  field: FieldAtoms;
+export type RuntimeExecutable = (ctx: RuntimeRuleContext, form: FormInstance) => any | Promise<any>;
+export type SchemaRuntimeValue = string | number | boolean | null | undefined | Record<string, any> | any[] | RuntimeExecutable;
+export type SchemaReactions = Partial<Record<SchemaReactionKey | string, SchemaRuntimeValue | SchemaRuntimeValue[]>>;
+export type SchemaEffect = SchemaRuntimeValue | SchemaRuntimeValue[];
+export interface SchemaFormat { input?: SchemaRuntimeValue; output?: SchemaRuntimeValue; }
+export type SchemaXValidate = SchemaRuntimeValue | SchemaRuntimeValue[];
+
+export interface RuntimeRuleContext {
+  field: FieldNode;
   form: FormInstance;
-  values: Record<string, any>;
-  deps: Record<string, any>;
-  dependencies: Record<string, any>;
+  path: string;
+  key?: string;
+  kind: "x-reaction" | "x-effect" | "x-format" | "x-validate";
+  schema: IFieldSchema | IFormSchema;
+  row?: RowNode;
   scope: Record<string, any>;
-  key: string;
-  rule: SchemaXRule;
+  values: Record<string, any>;
   value?: any;
-  kind?: "x-reaction" | "x-format" | "x-validate";
+  get(selector: string): any;
+  set(selector: string, value: any): void;
+  project(selector?: string): any;
+  effect(runner: () => void | (() => void)): () => void;
 }
 
-export type RuntimeRuleHandler = (context: RuntimeRuleHandlerContext) => any | Promise<any>;
+export type RuntimeRuleHandler = RuntimeExecutable;
 
-export type SchemaXRule =
-  | { type: "static"; dependencies?: string[] | Record<string, string>; value: any }
-  | { type: "expression"; dependencies?: string[] | Record<string, string>; expression: string }
-  | { type: "match"; dependencies?: string[] | Record<string, string>; source?: string; match: Record<string, any> }
-  | { type: "computed"; dependencies?: string[] | Record<string, string>; handler: string; params?: Record<string, any> };
-
-export type SchemaRuleSet = SchemaXRule | SchemaXRule[];
-export type SchemaReactions = Partial<Record<SchemaReactionKey | string, SchemaRuleSet>>;
-export interface SchemaFormat { input?: SchemaRuleSet; output?: SchemaRuleSet; }
-export type SchemaXValidate = SchemaRuleSet;
+// Compatibility aliases for old public names. The runtime no longer exposes
+// static/expression/match/computed rule objects to schema authors.
+export type SchemaXRule = SchemaRuntimeValue;
+export type SchemaRuleSet = SchemaRuntimeValue | SchemaRuntimeValue[];
+export type RuntimeRuleHandlerContext = RuntimeRuleContext;
 
 // ─── IFieldSchema ─────────────────────────────────────────────────────────────
 
@@ -108,6 +114,7 @@ export interface IFieldSchema {
   component?: string;
   props?: Record<string, any>;
   "x-reaction"?: SchemaReactions;
+  "x-effect"?: SchemaEffect;
   "x-format"?: SchemaFormat;
   "x-validate"?: SchemaXValidate;
   dataSource?: DataSourceItem[];
@@ -123,15 +130,19 @@ export interface IFormSchema {
   required?: boolean | string[];
   properties?: Record<string, IFieldSchema>;
   definitions?: Record<string, IFieldSchema>;
+  "x-reaction"?: SchemaReactions;
+  "x-effect"?: SchemaEffect;
 }
 
-// ─── FieldAtoms — the core atomic unit ────────────────────────────────────────
+// ─── FieldNode — value-capability runtime nodes ───────────────────────────────
 
-export interface FieldAtoms {
+export interface BaseFieldNode {
+  id: string;
   path: string;
   schema: IFieldSchema;
-  // Each property is an independent signal
-  value: Signal<any>;
+  kind: FieldKind;
+  parent?: FieldNode;
+  row?: RowNode;
   display: Signal<FieldDisplayTypes>;
   disabled: Signal<boolean>;
   required: Signal<boolean>;
@@ -146,14 +157,8 @@ export interface FieldAtoms {
   decoratorProps: Signal<Record<string, any>>;
   dataSource: Signal<DataSourceItem[]>;
   loading: Signal<boolean>;
-  // Array
-  isArrayField: boolean;
-  arrayRows: Signal<number>;
-  // Lifecycle
   _disposers: (() => void)[];
   dispose(): void;
-  // Methods
-  setValue(value: any): void;
   setErrors(errors: FieldError[]): void;
   setWarnings(warnings: FieldError[]): void;
   setDisplay(display: FieldDisplayTypes): void;
@@ -165,16 +170,49 @@ export interface FieldAtoms {
   setDecorator(decorator: string, props?: Record<string, any>): void;
   validate(): Promise<FieldError[]>;
   reset(): void;
-  // Array methods
+}
+
+export interface PrimitiveFieldNode extends BaseFieldNode {
+  kind: "primitive";
+  value: Signal<any>;
+  setValue(value: any): void;
+}
+
+export interface ObjectFieldNode extends BaseFieldNode {
+  kind: "object";
+  children: Map<string, FieldNode>;
+}
+
+export interface ArrayFieldNode extends BaseFieldNode {
+  kind: "array";
+  rows: Signal<RowNode[]>;
   push(initialValues?: any): void;
   remove(index: number): void;
+  move(from: number, to: number): void;
   moveUp(index: number): void;
   moveDown(index: number): void;
+  setRows(values: any[]): void;
 }
+
+export interface VoidFieldNode extends BaseFieldNode {
+  kind: "void";
+  children: Map<string, FieldNode>;
+}
+
+export interface RowNode {
+  id: string;
+  index: number;
+  path: string;
+  parent: ArrayFieldNode;
+  children: Map<string, FieldNode>;
+}
+
+export type FieldNode = PrimitiveFieldNode | ObjectFieldNode | ArrayFieldNode | VoidFieldNode;
+export type FieldAtoms = FieldNode;
 
 // ─── FormConfig ───────────────────────────────────────────────────────────────
 
-export type FormErrorScope = "reaction" | "x-reaction" | "x-format" | "x-validate" | "ref-resolve" | "expression";
+export type FormErrorScope = "reaction" | "x-reaction" | "x-effect" | "x-format" | "x-validate" | "ref-resolve" | "expression";
 
 export interface FormError {
   scope: FormErrorScope;
@@ -188,7 +226,6 @@ export interface FormConfig {
   schema?: IFormSchema;
   initialValues?: Record<string, any>;
   validateFirst?: boolean;
-  setup?: (form: FormInstance) => void | (() => void);
   scope?: Record<string, any>;
   handlers?: Record<string, RuntimeRuleHandler>;
   onError?: (error: FormError) => void;
@@ -197,17 +234,18 @@ export interface FormConfig {
 // ─── FormInstance ─────────────────────────────────────────────────────────────
 
 export interface FormInstance {
-  // The schema this form was created with
   schema: IFormSchema;
-  // Atomic signals
-  fields: Signal<Map<string, FieldAtoms>>;
+  root: ObjectFieldNode;
+  fields: Signal<Map<string, FieldNode>>;
   submitting: Signal<boolean>;
   values: Computed<Record<string, any>>;
   errors: Computed<FieldError[]>;
   valid: Computed<boolean>;
 
-  // Methods
-  field(path: string): FieldAtoms | undefined;
+  field(path: string): FieldNode | undefined;
+  get(selector: string): any;
+  set(selector: string, value: any): void;
+  project(selector?: string): any;
   setValues(values: Record<string, any>): void;
   setInitialValues(values: Record<string, any>): void;
   reset(): void;

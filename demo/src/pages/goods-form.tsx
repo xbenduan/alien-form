@@ -8,7 +8,7 @@ import {
   type IFormSchema,
 } from "@alien-form/react";
 import { Input, Textarea, NumberInput, Select, Switch, DateInput, Rate, ArrayCards, FormItem, SectionCard, TagsInput, SkuTable } from "@/adapters";
-import { handlers, formSetup } from "@/handlers";
+import { handlers } from "@/handlers";
 import { createGoods, updateGoods, fetchGoodsById, fetchGoodsSchema } from "@/mock";
 
 const { Title } = Typography;
@@ -62,7 +62,7 @@ const GoodsFormInner: React.FC<{
   initialData: Record<string, any>;
   onBack: () => void;
 }> = ({ mode, id, schema, initialData, onBack }) => {
-  const form = useCreateForm({ initialValues: initialData, handlers, setup: formSetup });
+  const form = useCreateForm({ schema, initialValues: initialData, handlers });
 
   return (
     <Card>
