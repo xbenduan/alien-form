@@ -1,17 +1,36 @@
-import React from "react";
-import { Card, Descriptions, Tag, Image, Typography, Button, Empty, Divider } from "antd";
-import { getGoodsById, type GoodsStatus } from "@/mock";
+import React, { useEffect, useState } from "react";
+import { Card, Button, Spin, Empty, Form, Typography, Tag } from "antd";
+import {
+  FormProvider,
+  SchemaField,
+  useCreateForm,
+  type IFormSchema,
+  type ComponentMap,
+  type DecoratorMap,
+} from "@alien-form/react";
+import { fetchGoodsById, fetchGoodsSchema, type GoodsItem, type GoodsStatus } from "@/mock";
+import { handlers } from "@/handlers";
 
-const { Title, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
-const STATUS_MAP: Record<GoodsStatus, { label: string; color: string }> = {
+// ─── Read-only text components ────────────────────────────────────────────────
+
+const TextView: React.FC<{ value?: any }> = ({ value }) => (
+  <Text className="leading-8">{value ?? "-"}</Text>
+);
+
+const NumberView: React.FC<{ value?: number }> = ({ value }) => (
+  <Text className="leading-8">{value != null ? String(value) : "-"}</Text>
+);
+
+const STATUS_LABELS: Record<GoodsStatus, { label: string; color: string }> = {
   active: { label: "生效中", color: "green" },
   reviewing: { label: "审核中", color: "orange" },
   draft: { label: "草稿", color: "default" },
   offline: { label: "已下架", color: "red" },
 };
 
-const CATEGORY_MAP: Record<string, string> = {
+const CATEGORY_LABELS: Record<string, string> = {
   electronics: "数码电子",
   clothing: "服饰鞋包",
   home: "家居生活",
@@ -19,13 +38,97 @@ const CATEGORY_MAP: Record<string, string> = {
   beauty: "美妆个护",
 };
 
+const SelectView: React.FC<{ value?: any; dataSource?: { label: string; value: any }[] }> = ({ value, dataSource = [] }) => {
+  const item = dataSource.find((d) => d.value === value);
+  // Special rendering for status field
+  if (value && STATUS_LABELS[value as GoodsStatus]) {
+    const config = STATUS_LABELS[value as GoodsStatus];
+    return <Tag color={config.color}>{config.label}</Tag>;
+  }
+  return <Text className="leading-8">{item?.label ?? CATEGORY_LABELS[value] ?? value ?? "-"}</Text>;
+};
+
+const TextareaView: React.FC<{ value?: string }> = ({ value }) => (
+  <Text className="leading-6 whitespace-pre-wrap">{value || "-"}</Text>
+);
+
+const ArrayView: React.FC<{ rows: React.ReactNode[][] }> = ({ rows }) => (
+  <div className="flex flex-col gap-2">
+    {rows.length === 0 && <Text type="secondary">暂无</Text>}
+    {rows.map((row, i) => (
+      <div key={i} className="rounded-md bg-gray-50 px-4 py-3 border border-gray-100">
+        {row}
+      </div>
+    ))}
+  </div>
+);
+
+// ─── Decorator for detail mode ────────────────────────────────────────────────
+
+const DetailFormItem: React.FC<{
+  label?: string;
+  required?: boolean;
+  errors?: any[];
+  warnings?: any[];
+  description?: string;
+  validateStatus?: string;
+  children?: React.ReactNode;
+}> = ({ label, children }) => (
+  <Form.Item label={label} className="!mb-3" labelCol={{ span: 4 }} wrapperCol={{ span: 16 }}>
+    {children}
+  </Form.Item>
+);
+
+// ─── Component/Decorator maps ─────────────────────────────────────────────────
+
+const viewComponents: ComponentMap = {
+  Input: TextView,
+  Textarea: TextareaView,
+  NumberInput: NumberView,
+  Select: SelectView,
+  Switch: ({ value }: { value?: boolean }) => <Tag color={value ? "green" : "default"}>{value ? "是" : "否"}</Tag>,
+  DateInput: TextView,
+  Rate: TextView,
+  ArrayCards: ArrayView,
+};
+
+const viewDecorators: DecoratorMap = {
+  FormItem: DetailFormItem,
+};
+
+// ─── Detail page ──────────────────────────────────────────────────────────────
+
 interface GoodsDetailProps {
   id: string;
   onBack: () => void;
 }
 
 export const GoodsDetail: React.FC<GoodsDetailProps> = ({ id, onBack }) => {
-  const item = getGoodsById(id);
+  const [schema, setSchema] = useState<IFormSchema | null>(null);
+  const [item, setItem] = useState<GoodsItem | null | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const [schemaData, itemData] = await Promise.all([
+        fetchGoodsSchema(),
+        fetchGoodsById(id),
+      ]);
+      setSchema(schemaData);
+      setItem(itemData);
+      setLoading(false);
+    };
+    load();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <Card>
+        <Spin tip="加载中..." className="block py-20 text-center" />
+      </Card>
+    );
+  }
 
   if (!item) {
     return (
@@ -38,54 +141,24 @@ export const GoodsDetail: React.FC<GoodsDetailProps> = ({ id, onBack }) => {
     );
   }
 
-  const statusConfig = STATUS_MAP[item.status];
+  return <GoodsDetailInner schema={schema!} item={item} onBack={onBack} />;
+};
+
+const GoodsDetailInner: React.FC<{
+  schema: IFormSchema;
+  item: GoodsItem;
+  onBack: () => void;
+}> = ({ schema, item, onBack }) => {
+  const form = useCreateForm({ initialValues: item, handlers });
 
   return (
     <Card>
-      <div className="flex items-start gap-6 mb-6">
-        <Image
-          src={item.cover}
-          width={160}
-          height={160}
-          className="rounded-lg object-cover"
-          fallback="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYwIiBoZWlnaHQ9IjE2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTYwIiBoZWlnaHQ9IjE2MCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOTk5IiBmb250LXNpemU9IjE0Ij7ml6Dlm748L3RleHQ+PC9zdmc+"
-        />
-        <div className="flex-1">
-          <Title level={4} className="!mb-2">{item.name}</Title>
-          <Tag color={statusConfig.color}>{statusConfig.label}</Tag>
-          <div className="mt-3 text-2xl font-bold text-red-500">¥{item.price.toFixed(2)}</div>
-        </div>
-      </div>
-
-      <Descriptions bordered column={2} size="small">
-        <Descriptions.Item label="商品 ID">{item.id}</Descriptions.Item>
-        <Descriptions.Item label="分类">{CATEGORY_MAP[item.category] || item.category}</Descriptions.Item>
-        <Descriptions.Item label="库存">{item.stock}</Descriptions.Item>
-        <Descriptions.Item label="状态">
-          <Tag color={statusConfig.color}>{statusConfig.label}</Tag>
-        </Descriptions.Item>
-        <Descriptions.Item label="创建时间">{new Date(item.createdAt).toLocaleString("zh-CN")}</Descriptions.Item>
-        <Descriptions.Item label="更新时间">{new Date(item.updatedAt).toLocaleString("zh-CN")}</Descriptions.Item>
-      </Descriptions>
-
-      {item.description && (
-        <>
-          <Divider orientation="left">商品描述</Divider>
-          <Paragraph className="text-gray-600">{item.description}</Paragraph>
-        </>
-      )}
-
-      {item.specs && item.specs.length > 0 && (
-        <>
-          <Divider orientation="left">规格参数</Divider>
-          <Descriptions bordered column={2} size="small">
-            {item.specs.map((spec, i) => (
-              <Descriptions.Item key={i} label={spec.name}>{spec.value}</Descriptions.Item>
-            ))}
-          </Descriptions>
-        </>
-      )}
-
+      <Title level={4} className="!mb-6">商品详情</Title>
+      <Form layout="horizontal">
+        <FormProvider form={form} components={viewComponents} decorators={viewDecorators}>
+          <SchemaField schema={schema} />
+        </FormProvider>
+      </Form>
       <div className="text-center mt-6">
         <Button onClick={onBack}>返回列表</Button>
       </div>

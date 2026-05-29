@@ -1,7 +1,8 @@
 /**
- * Mock data store — top-level mutable variable.
- * All CRUD operations mutate this in-memory store.
+ * Mock data store — all interfaces are async (simulating real API calls).
  */
+import type { IFormSchema } from "@alien-form/react";
+import { goodsFormSchema } from "@/schema";
 
 export type GoodsStatus = "active" | "reviewing" | "draft" | "offline";
 
@@ -24,11 +25,15 @@ export interface GoodsItem {
   updatedAt: string;
 }
 
-// ─── Initial mock data ────────────────────────────────────────────────────────
+// ─── Async delay ──────────────────────────────────────────────────────────────
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+// ─── Data store ───────────────────────────────────────────────────────────────
 
 let nextId = 4;
 
-export let goods: GoodsItem[] = [
+let goods: GoodsItem[] = [
   {
     id: "1",
     name: "iPhone 15 Pro Max",
@@ -82,22 +87,31 @@ export let goods: GoodsItem[] = [
   },
 ];
 
-// ─── CRUD operations ──────────────────────────────────────────────────────────
+// ─── Async CRUD APIs ──────────────────────────────────────────────────────────
 
-export function getGoods(): GoodsItem[] {
-  return goods;
+export async function fetchGoods(): Promise<GoodsItem[]> {
+  await sleep(500);
+  return [...goods];
 }
 
-export function getGoodsByStatus(status: GoodsStatus | "all"): GoodsItem[] {
-  if (status === "all") return goods;
+export async function fetchGoodsByStatus(status: GoodsStatus | "all"): Promise<GoodsItem[]> {
+  await sleep(500);
+  if (status === "all") return [...goods];
   return goods.filter((g) => g.status === status);
 }
 
-export function getGoodsById(id: string): GoodsItem | undefined {
-  return goods.find((g) => g.id === id);
+export async function fetchGoodsById(id: string): Promise<GoodsItem | null> {
+  await sleep(500);
+  return goods.find((g) => g.id === id) ?? null;
 }
 
-export function createGoods(data: Omit<GoodsItem, "id" | "createdAt" | "updatedAt">): GoodsItem {
+export async function fetchGoodsSchema(): Promise<IFormSchema> {
+  await sleep(500);
+  return goodsFormSchema;
+}
+
+export async function createGoods(data: Omit<GoodsItem, "id" | "createdAt" | "updatedAt">): Promise<GoodsItem> {
+  await sleep(500);
   const now = new Date().toISOString();
   const item: GoodsItem = {
     ...data,
@@ -109,15 +123,17 @@ export function createGoods(data: Omit<GoodsItem, "id" | "createdAt" | "updatedA
   return item;
 }
 
-export function updateGoods(id: string, data: Partial<Omit<GoodsItem, "id" | "createdAt">>): GoodsItem | null {
+export async function updateGoods(id: string, data: Partial<Omit<GoodsItem, "id" | "createdAt">>): Promise<GoodsItem | null> {
+  await sleep(500);
   const index = goods.findIndex((g) => g.id === id);
   if (index === -1) return null;
   goods[index] = { ...goods[index], ...data, updatedAt: new Date().toISOString() };
-  goods = [...goods]; // trigger re-read
+  goods = [...goods];
   return goods[index];
 }
 
-export function deleteGoods(id: string): boolean {
+export async function deleteGoods(id: string): Promise<boolean> {
+  await sleep(500);
   const len = goods.length;
   goods = goods.filter((g) => g.id !== id);
   return goods.length < len;

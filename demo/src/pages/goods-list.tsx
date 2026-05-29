@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from "react";
-import { Card, Button, Table, Tag, Space, Popconfirm, message, Tabs, Image } from "antd";
+import React, { useState, useEffect, useCallback } from "react";
+import { Card, Button, Table, Tag, Space, Popconfirm, message, Tabs, Image, Spin } from "antd";
 import { PlusOutlined, EditOutlined, EyeOutlined, DeleteOutlined } from "@ant-design/icons";
-import { getGoodsByStatus, deleteGoods, type GoodsItem, type GoodsStatus } from "@/mock";
+import { fetchGoodsByStatus, deleteGoods, type GoodsItem, type GoodsStatus } from "@/mock";
 import type { PageView } from "@/App";
 
 const STATUS_CONFIG: Record<GoodsStatus, { label: string; color: string }> = {
@@ -17,15 +17,25 @@ interface GoodsListProps {
 
 export const GoodsList: React.FC<GoodsListProps> = ({ onNavigate }) => {
   const [statusFilter, setStatusFilter] = useState<GoodsStatus | "all">("all");
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [data, setData] = useState<GoodsItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const data = getGoodsByStatus(statusFilter);
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const items = await fetchGoodsByStatus(statusFilter);
+    setData(items);
+    setLoading(false);
+  }, [statusFilter]);
 
-  const handleDelete = useCallback((id: string) => {
-    deleteGoods(id);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleDelete = useCallback(async (id: string) => {
+    await deleteGoods(id);
     message.success("删除成功");
-    setRefreshKey((k) => k + 1);
-  }, []);
+    loadData();
+  }, [loadData]);
 
   const columns = [
     {
@@ -101,11 +111,11 @@ export const GoodsList: React.FC<GoodsListProps> = ({ onNavigate }) => {
   ];
 
   const tabItems = [
-    { key: "all", label: `全部 (${getGoodsByStatus("all").length})` },
-    { key: "active", label: `生效中 (${getGoodsByStatus("active").length})` },
-    { key: "reviewing", label: `审核中 (${getGoodsByStatus("reviewing").length})` },
-    { key: "draft", label: `草稿 (${getGoodsByStatus("draft").length})` },
-    { key: "offline", label: `已下架 (${getGoodsByStatus("offline").length})` },
+    { key: "all", label: "全部" },
+    { key: "active", label: "生效中" },
+    { key: "reviewing", label: "审核中" },
+    { key: "draft", label: "草稿" },
+    { key: "offline", label: "已下架" },
   ];
 
   return (
@@ -121,14 +131,15 @@ export const GoodsList: React.FC<GoodsListProps> = ({ onNavigate }) => {
           新增商品
         </Button>
       </div>
-      <Table
-        key={refreshKey}
-        dataSource={data}
-        columns={columns}
-        rowKey="id"
-        pagination={{ pageSize: 10 }}
-        locale={{ emptyText: "暂无商品数据" }}
-      />
+      <Spin spinning={loading}>
+        <Table
+          dataSource={data}
+          columns={columns}
+          rowKey="id"
+          pagination={{ pageSize: 10 }}
+          locale={{ emptyText: "暂无商品数据" }}
+        />
+      </Spin>
     </Card>
   );
 };

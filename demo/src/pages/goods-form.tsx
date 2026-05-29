@@ -1,15 +1,15 @@
-import React from "react";
-import { Card, Button, Space, message, Divider, Form, Typography } from "antd";
+import React, { useEffect, useState } from "react";
+import { Card, Button, Space, message, Divider, Form, Typography, Spin } from "antd";
 import {
   FormProvider,
   SchemaField,
   useCreateForm,
   useFormSubmit,
+  type IFormSchema,
 } from "@alien-form/react";
 import { Input, Textarea, NumberInput, Select, Switch, DateInput, Rate, ArrayCards, FormItem } from "@/adapters";
-import { goodsFormSchema } from "@/schema";
 import { handlers } from "@/handlers";
-import { createGoods, updateGoods, getGoodsById } from "@/mock";
+import { createGoods, updateGoods, fetchGoodsById, fetchGoodsSchema } from "@/mock";
 
 const { Title } = Typography;
 
@@ -23,12 +23,46 @@ interface GoodsFormProps {
 }
 
 export const GoodsForm: React.FC<GoodsFormProps> = ({ mode, id, onBack }) => {
-  const existingData = mode === "edit" && id ? getGoodsById(id) : undefined;
+  const [schema, setSchema] = useState<IFormSchema | null>(null);
+  const [initialData, setInitialData] = useState<Record<string, any> | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const form = useCreateForm({
-    initialValues: existingData || { status: "draft", specs: [] },
-    handlers,
-  });
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const schemaData = await fetchGoodsSchema();
+      setSchema(schemaData);
+
+      if (mode === "edit" && id) {
+        const item = await fetchGoodsById(id);
+        setInitialData(item || { status: "draft", specs: [] });
+      } else {
+        setInitialData({ status: "draft", specs: [] });
+      }
+      setLoading(false);
+    };
+    load();
+  }, [mode, id]);
+
+  if (loading || !schema || !initialData) {
+    return (
+      <Card>
+        <Spin tip="加载中..." className="block py-20 text-center" />
+      </Card>
+    );
+  }
+
+  return <GoodsFormInner mode={mode} id={id} schema={schema} initialData={initialData} onBack={onBack} />;
+};
+
+const GoodsFormInner: React.FC<{
+  mode: "create" | "edit";
+  id?: string;
+  schema: IFormSchema;
+  initialData: Record<string, any>;
+  onBack: () => void;
+}> = ({ mode, id, schema, initialData, onBack }) => {
+  const form = useCreateForm({ initialValues: initialData, handlers });
 
   return (
     <Card>
@@ -37,7 +71,7 @@ export const GoodsForm: React.FC<GoodsFormProps> = ({ mode, id, onBack }) => {
       </Title>
       <Form layout="horizontal" labelCol={{ span: 4 }} wrapperCol={{ span: 16 }}>
         <FormProvider form={form} components={components} decorators={decorators}>
-          <SchemaField schema={goodsFormSchema} />
+          <SchemaField schema={schema} />
           <Divider />
           <SubmitBar mode={mode} id={id} onBack={onBack} />
         </FormProvider>
@@ -57,10 +91,10 @@ const SubmitBar: React.FC<{ mode: "create" | "edit"; id?: string; onBack: () => 
     try {
       const values = await submit();
       if (mode === "create") {
-        createGoods(values as any);
+        await createGoods(values as any);
         message.success("商品创建成功");
       } else if (id) {
-        updateGoods(id, values as any);
+        await updateGoods(id, values as any);
         message.success("商品更新成功");
       }
       onBack();
