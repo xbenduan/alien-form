@@ -1,12 +1,9 @@
-import type { FormConfig } from "@alien-form/react";
+import type { FormConfig, FormInstance } from "@alien-form/react";
 
-/**
- * 笛卡尔积生成 SKU 列表
- * 当 specs 变化时自动触发，保留已存在 SKU 的价格/库存/状态
- */
+// ─── Cartesian Product Utility ───────────────────────────────────────────────
+
 function cartesian(specs: Array<{ name: string; values: string[] }>): Record<string, string>[] {
   if (!specs || specs.length === 0) return [];
-  // Filter out specs with empty name or no values
   const valid = specs.filter((s) => s.name && s.values && s.values.length > 0);
   if (valid.length === 0) return [];
 
@@ -24,54 +21,78 @@ function cartesian(specs: Array<{ name: string; values: string[] }>): Record<str
   );
 }
 
-/** Create a stable key for a SKU combination (sorted attrs joined) */
+/** Stable key for SKU combination */
 function skuKey(attrs: Record<string, string>): string {
   return Object.keys(attrs)
     .sort()
-    .map((k) => `${k}=${attrs[k]}`)
+    .map((k) => )
     .join("|");
 }
 
-export const handlers: FormConfig["handlers"] = {
-  /**
-   * generateSkus — x-reaction handler
-   * Dependencies: { specs: "specs" }
-   * Produces: array of { specAttrs, price, stock, status }
-   *
-   * Preserves existing SKU data (price/stock/status) when specs change,
-   * only adding new combinations and removing stale ones.
-   */
-  generateSkus({ field, dependencies }) {
-    const specs: Array<{ name: string; values: string[] }> | undefined = dependencies.specs;
-    const currentSkus: Array<{
-      specAttrs: Record<string, string>;
-      price: number;
-      stock: number;
-      status: 0 | 1;
-    }> = field.value() || [];
+// ─── Setup: specs → skus linkage via form.effect ─────────────────────────────
 
-    // Build lookup of existing SKUs by their attribute key
-    const existingMap = new Map<string, (typeof currentSkus)[number]>();
-    for (const sku of currentSkus) {
-      if (sku.specAttrs) {
-        existingMap.set(skuKey(sku.specAttrs), sku);
+/**
+ * Use form.effect with a selector on form.values().specs to detect ANY change
+ * in the specs tree (including child field edits like specs.0.values).
+ *
+ * form.values() is a computed signal that reads ALL child field value signals,
+ * so when specs.0.values changes, form.values() recomputes, and our selector
+ * picks up the new specs array.
+ */
+function setupSpecsToSkusLinkage(form: FormInstance): void {
+  form.effect(
+    // Selector: extract specs from computed values
+    (f) => {
+      const vals = f.values();
+      return vals.specs as Array<{ name: string; values: string[] }> | undefined;
+    },
+    // Listener: fires when specs changes
+    (specs) => {
+      const skusField = form.field("skus");
+      if (!skusField) return;
+
+      const currentSkus: Array<{
+        specAttrs: Record<string, string>;
+        price: number;
+        stock: number;
+        status: 0 | 1;
+      }> = skusField.value() || [];
+
+      // Build lookup of existing SKUs
+      const existingMap = new Map<string, (typeof currentSkus)[number]>();
+      for (const sku of currentSkus) {
+        if (sku.specAttrs) {
+          existingMap.set(skuKey(sku.specAttrs), sku);
+        }
       }
-    }
 
-    // Generate new cartesian product
-    const combos = cartesian(specs || []);
-    if (combos.length === 0) return [];
-
-    // Map to SKU objects, preserving existing data
-    return combos.map((attrs) => {
-      const key = skuKey(attrs);
-      const existing = existingMap.get(key);
-      if (existing) {
-        // Preserve price/stock/status, update specAttrs in case key order changed
-        return { ...existing, specAttrs: attrs };
+      // Generate cartesian product
+      const combos = cartesian(specs || []);
+      if (combos.length === 0) {
+        skusField.setValue([]);
+        return;
       }
-      // New combination — default values
-      return { specAttrs: attrs, price: 0, stock: 0, status: 1 as const };
-    });
-  },
+
+      // Build new SKUs, preserving existing data
+      const newSkus = combos.map((attrs) => {
+        const key = skuKey(attrs);
+        const existing = existingMap.get(key);
+        if (existing) {
+          return { ...existing, specAttrs: attrs };
+        }
+        return { specAttrs: attrs, price: 0, stock: 0, status: 1 as const };
+      });
+
+      skusField.setValue(newSkus);
+    },
+    { immediate: false, equals: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
+  );
+}
+
+// ─── Export ──────────────────────────────────────────────────────────────────
+
+export const handlers: FormConfig["handlers"] = {};
+
+export const formSetup: FormConfig["setup"] = (form) => {
+  setupSpecsToSkusLinkage(form);
 };

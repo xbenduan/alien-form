@@ -7,19 +7,13 @@ import {
   useFormSubmit,
   type IFormSchema,
 } from "@alien-form/react";
-import {
-  Input, Textarea, NumberInput, Select, Switch, DateInput, Rate,
-  ArrayCards, FormItem, SectionCard, TagsInput, SkuTable,
-} from "@/adapters";
-import { handlers } from "@/handlers";
+import { Input, Textarea, NumberInput, Select, Switch, DateInput, Rate, ArrayCards, FormItem, SectionCard, TagsInput, SkuTable } from "@/adapters";
+import { handlers, formSetup } from "@/handlers";
 import { createGoods, updateGoods, fetchGoodsById, fetchGoodsSchema } from "@/mock";
 
 const { Title } = Typography;
 
-const components = {
-  Input, Textarea, NumberInput, Select, Switch, DateInput, Rate,
-  ArrayCards, SectionCard, TagsInput, SkuTable,
-};
+const components = { Input, Textarea, NumberInput, Select, Switch, DateInput, Rate, ArrayCards, SectionCard, TagsInput, SkuTable };
 const decorators = { FormItem };
 
 interface GoodsFormProps {
@@ -68,32 +62,28 @@ const GoodsFormInner: React.FC<{
   initialData: Record<string, any>;
   onBack: () => void;
 }> = ({ mode, id, schema, initialData, onBack }) => {
-  const form = useCreateForm({ initialValues: initialData, handlers });
+  const form = useCreateForm({ initialValues: initialData, handlers, setup: formSetup });
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <Title level={4} className="!mb-0">
-          {mode === "create" ? "新增商品" : "编辑商品"}
-        </Title>
-      </div>
+    <Card>
+      <Title level={4} className="!mb-6">
+        {mode === "create" ? "新增商品" : "编辑商品"}
+      </Title>
       <Form layout="horizontal" labelCol={{ span: 4 }} wrapperCol={{ span: 16 }}>
         <FormProvider form={form} components={components} decorators={decorators}>
           <SchemaField schema={schema} />
-          <div className="text-center mt-6">
-            <Space size="middle">
-              <Button onClick={onBack}>取消</Button>
-              <SubmitButton mode={mode} id={id} onBack={onBack} />
-            </Space>
-          </div>
+          <Divider />
+          <SubmitBar mode={mode} id={id} onBack={onBack} />
         </FormProvider>
       </Form>
-    </div>
+    </Card>
   );
 };
 
-const SubmitButton: React.FC<{ mode: "create" | "edit"; id?: string; onBack: () => void }> = ({
-  mode, id, onBack,
+const SubmitBar: React.FC<{ mode: "create" | "edit"; id?: string; onBack: () => void }> = ({
+  mode,
+  id,
+  onBack,
 }) => {
   const { submit, submitting } = useFormSubmit();
 
@@ -114,8 +104,13 @@ const SubmitButton: React.FC<{ mode: "create" | "edit"; id?: string; onBack: () 
   };
 
   return (
-    <Button type="primary" loading={submitting} onClick={handleSubmit}>
-      {mode === "create" ? "创建商品" : "保存修改"}
-    </Button>
+    <div className="text-center">
+      <Space size="middle">
+        <Button onClick={onBack}>取消</Button>
+        <Button type="primary" loading={submitting} onClick={handleSubmit}>
+          {mode === "create" ? "创建商品" : "保存修改"}
+        </Button>
+      </Space>
+    </div>
   );
 };
