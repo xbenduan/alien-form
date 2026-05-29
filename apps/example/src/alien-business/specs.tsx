@@ -4,20 +4,23 @@ import { useArrayRows, useRenderField, type IField } from "@alien-form/react";
 /**
  * Specs — 规格定义列表组件
  *
- * 只负责卡片布局编排，不渲染任何 UI 控件。
- * 所有子字段的渲染由 schema 声明的 component 决定，
- * 通过 renderField 放到正确位置。
+ * 每张卡片：左侧固定宽度的规格名输入框，右侧上移/下移/删除按钮。
+ * 下方是规格值列表。
  */
 export const Specs: React.FC<{
   field: IField;
   onAdd: (initialValues?: Record<string, any>) => void;
   onRemove: (index: number) => void;
+  onMoveUp: (index: number) => void;
+  onMoveDown: (index: number) => void;
   disabled?: boolean;
   addText?: string;
 }> = ({
   field,
   onAdd,
   onRemove,
+  onMoveUp,
+  onMoveDown,
   disabled,
   addText = "+ 添加规格维度",
 }) => {
@@ -34,30 +37,53 @@ export const Specs: React.FC<{
 
       {Array.from({ length: specsCount }, (_, i) => (
         <div key={i} className="overflow-hidden rounded-xl border bg-card shadow-sm">
-          {/* 规格名 */}
-          <div className="flex items-center gap-4 border-b px-4 py-3">
-            <div className="flex-1">
-              {renderField([field.path, i, "name"], { decoratorProps: { label: "" } })}
+          {/* 头部：规格名（固定宽度） + 操作按钮 */}
+          <div className="flex items-center gap-3 border-b px-4 py-3">
+            <div className="w-48 shrink-0">
+              {renderField([field.path, i, "name"], { decorator: false })}
             </div>
+            {!disabled && (
+              <div className="ml-auto flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => onMoveUp(i)}
+                  disabled={i === 0}
+                  className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                  title="上移"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onMoveDown(i)}
+                  disabled={i === specsCount - 1}
+                  className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                  title="下移"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRemove(i)}
+                  className="rounded p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  title="删除此规格维度"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 规格值列表 */}
           <div className="p-4">
             {renderField([field.path, i, "values"], { decoratorProps: { label: "" } })}
           </div>
-
-          {/* 删除规格按钮 */}
-          {!disabled && (
-            <div className="flex justify-end border-t px-4 py-2">
-              <button
-                type="button"
-                onClick={() => onRemove(i)}
-                className="text-xs text-muted-foreground transition-colors hover:text-destructive"
-              >
-                删除此规格维度
-              </button>
-            </div>
-          )}
         </div>
       ))}
 
