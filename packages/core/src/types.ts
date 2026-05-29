@@ -149,6 +149,9 @@ export interface FieldAtoms {
   // Array
   isArrayField: boolean;
   arrayRows: Signal<number>;
+  // Lifecycle
+  _disposers: (() => void)[];
+  dispose(): void;
   // Methods
   setValue(value: any): void;
   setErrors(errors: FieldError[]): void;

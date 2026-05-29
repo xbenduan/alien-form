@@ -13,7 +13,7 @@ import {
   type IFormSchema,
   type FormConfig,
 } from "@alien-form/react";
-import { Input, Select, FormItem, SectionCard } from "@/adapters";
+import { Input, Select, FormItem, SectionCard, ArrayCards } from "@/adapters";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -297,6 +297,67 @@ const reactionTestSchema: IFormSchema = {
         },
       },
     },
+
+    // ─── Case 7: Array items with x-reaction (push后子字段reaction是否工作) ──
+    case7: {
+      type: "void",
+      title: "Case 7: Array items 内部的 x-reaction",
+      component: "SectionCard",
+      order: 70,
+      properties: {
+        rows: {
+          type: "array",
+          title: "动态行 (push后观察行内联动)",
+          component: "ArrayCards",
+          decorator: "FormItem",
+          props: { addText: "+ 添加行" },
+          order: 10,
+          items: {
+            type: "object",
+            properties: {
+              rowType: {
+                type: "string",
+                title: "行类型",
+                component: "Select",
+                decorator: "FormItem",
+                default: "text",
+                dataSource: [
+                  { label: "文本", value: "text" },
+                  { label: "数字", value: "number" },
+                  { label: "隐藏详情", value: "hidden" },
+                ],
+                order: 10,
+              },
+              rowDetail: {
+                type: "string",
+                title: "行详情",
+                component: "Input",
+                decorator: "FormItem",
+                props: { placeholder: "根据 rowType 控制显隐" },
+                order: 20,
+                "x-reaction": {
+                  display: {
+                    type: "match",
+                    dependencies: [".rowType"],
+                    match: {
+                      text: "visible",
+                      number: "visible",
+                      hidden: "none",
+                      default: "visible",
+                    },
+                  },
+                  title: {
+                    type: "expression",
+                    dependencies: [".rowType"],
+                    expression: "'详情 (' + $deps[0] + ' 模式)'",
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   },
 };
 
@@ -323,7 +384,7 @@ const reactionSetup: FormConfig["setup"] = (form) => {
 
 // ─── Components ──────────────────────────────────────────────────────────────
 
-const components = { Input, Select, SectionCard };
+const components = { Input, Select, SectionCard, ArrayCards };
 const decorators = { FormItem };
 
 // ─── Debug Panel ─────────────────────────────────────────────────────────────
@@ -369,6 +430,10 @@ const DebugPanel: React.FC = () => {
         <div>
           <Tag color="cyan">Case 6</Tag>
           <Text>items.title = <Text code>{itemsTitle}</Text></Text>
+        </div>
+        <div>
+          <Tag color="gold">Case 7</Tag>
+          <Text>Array push 后行内 x-reaction — 切换 rowType 观察 rowDetail 显隐</Text>
         </div>
       </Space>
       <Divider style={{ margin: "12px 0" }} />
