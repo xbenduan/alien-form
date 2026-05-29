@@ -1,25 +1,7 @@
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { define, type Resolved, useForm } from "@alien-form/react";
+import { useCallback, useEffect, useState } from "react";
+import { useForm, useRenderField, type IField } from "@alien-form/react";
 import { Input, Switch } from "@alien-form/ui";
-
-const specSchema = define({
-  type: "array",
-  items: {
-    name: { type: "string" },
-    supportsImage: { type: "boolean" },
-    values: {
-      type: "array",
-      items: {
-        label: { type: "string" },
-        image: { type: "string" },
-      },
-    },
-  },
-  props: {
-    addText: "",
-  },
-});
 
 // ─── SpecValueItem ──────────────────────────────────────────────────────────
 // 单个规格值卡片，自管理对 field 的读写，避免父组件 render 中访问 field signal
@@ -306,7 +288,13 @@ const SpecCard: React.FC<{
 
 // ─── Specs (主组件) ─────────────────────────────────────────────────────────
 
-export const Specs: React.FC<Resolved<typeof specSchema>> = ({
+export const Specs: React.FC<{
+  field: IField;
+  onAdd: (initialValues?: Record<string, any>) => void;
+  onRemove: (index: number) => void;
+  disabled?: boolean;
+  addText?: string;
+}> = ({
   field,
   onAdd,
   onRemove,

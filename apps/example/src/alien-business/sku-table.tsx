@@ -1,28 +1,6 @@
 import type React from "react";
-import { define, type Resolved, type IField } from "@alien-form/react";
-
-const skuSchema = define({
-  type: "array",
-  items: {
-    skuKey: { type: "string" },
-    groupKey: { type: "string" },
-    groupSpecName: { type: "string" },
-    groupSpecValue: { type: "string" },
-    groupSpecImage: { type: "string" },
-    specSummary: { type: "string" },
-    price: { type: "number" },
-    stock: { type: "number" },
-    startDate: { type: "string" },
-    endDate: { type: "string" },
-    accessories: { type: "array" },
-    enabled: { type: "boolean" },
-  },
-  props: {
-    emptyText: "",
-    helperText: "",
-    className: "",
-  },
-});
+import { useEffect, useState } from "react";
+import { useForm, useRenderField, type IField } from "@alien-form/react";
 
 function getFieldName(field: IField): string {
   return field.path.split(".").pop() ?? field.path;
@@ -32,16 +10,29 @@ function getRowFieldValue(rowFields: IField[], name: string): any {
   return rowFields.find((f) => getFieldName(f) === name)?.value;
 }
 
-export const SkuTable: React.FC<Resolved<typeof skuSchema>> = ({
+export const SkuTable: React.FC<{
+  field: IField;
+  disabled?: boolean;
+  emptyText?: string;
+  helperText?: string;
+  className?: string;
+}> = ({
   field,
-  rows,
-  rowFields,
+  disabled,
   emptyText = "请先配置规格值，系统会自动生成 SKU 组合。",
   helperText,
   className,
 }) => {
+  const form = useForm();
+  const renderField = useRenderField();
+
+  // Subscribe to field changes to trigger re-renders
+  const [, forceRender] = useState(0);
+  useEffect(() => field.subscribe(() => forceRender((v) => v + 1)), [field]);
+
   // Get field metadata from arrayItems for column headers and grouping logic
-  const arrayItems = field?.arrayItems ?? [];
+  const arrayItems = field.arrayItems ?? [];
+  const arrayValue = Array.isArray(field.value) ? field.value : [];
 
   // Determine visible columns from first row's fields (exclude display=none and grouping fields)
   const hiddenFields = new Set(["skuKey", "groupKey", "groupSpecName", "groupSpecValue", "groupSpecImage"]);
@@ -76,33 +67,30 @@ export const SkuTable: React.FC<Resolved<typeof skuSchema>> = ({
           </tr>
         </thead>
         <tbody>
-          {indices.map((idx, localIndex) => {
-            const slotRow = rowFields[idx];
-            return (
-              <tr key={idx} className="align-top">
-                <td className="border-b px-3 py-3 text-xs text-muted-foreground">
-                  {localIndex + 1}
-                </td>
-                {visibleColumns.map((col) => {
-                  const name = getFieldName(col);
-                  return (
-                    <td key={col.path} className="border-b px-3 py-2">
-                      {slotRow[name as keyof typeof slotRow]}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
+          {indices.map((idx, localIndex) => (
+            <tr key={idx} className="align-top">
+              <td className="border-b px-3 py-3 text-xs text-muted-foreground">
+                {localIndex + 1}
+              </td>
+              {visibleColumns.map((col) => {
+                const name = getFieldName(col);
+                return (
+                  <td key={col.path} className="border-b px-3 py-2">
+                    {renderField([field.path, idx, name])}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
   );
 
   // Build row indices and grouping
-  const allIndices = Array.from({ length: rows.length }, (_, i) => i);
+  const allIndices = Array.from({ length: arrayValue.length }, (_, i) => i);
 
-  if (rows.length === 0) {
+  if (arrayValue.length === 0) {
     return (
       <div className={className}>
         <div className="overflow-x-auto rounded-lg border bg-background">
