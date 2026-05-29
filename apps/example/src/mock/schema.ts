@@ -53,7 +53,7 @@ export const getSchema = async (): Promise<IFormSchema> => {
                     title: "规格值",
                     required: true,
                     component: "Input",
-                    props: { className: "h-7 text-xs", placeholder: "规格值" },
+                    props: { placeholder: "规格值" },
                     order: 10,
                   },
                 },
