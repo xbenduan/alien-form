@@ -37,9 +37,10 @@ export const Specs: React.FC<{
 
       {Array.from({ length: specsCount }, (_, i) => (
         <div key={i} className="overflow-hidden rounded-xl border bg-card shadow-sm">
-          {/* 头部：规格名（固定宽度） + 操作按钮 */}
+          {/* 头部：规格名标签 + 输入框（w-32） + 操作按钮 */}
           <div className="flex items-center gap-3 border-b px-4 py-3">
-            <div className="w-48 shrink-0">
+            <span className="shrink-0 text-sm font-medium text-foreground">规格名：</span>
+            <div className="w-32 shrink-0">
               {renderField([field.path, i, "name"], { decorator: false })}
             </div>
             {!disabled && (
