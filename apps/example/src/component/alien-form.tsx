@@ -1,5 +1,6 @@
 import { SkuTable } from "@/alien-business/sku-table";
 import { Specs } from "@/alien-business/specs";
+import { SpecValues } from "@/alien-business/spec-values";
 import { ImageInput } from "@/alien-shared/image-input";
 import { schemaRendererHandlers } from "@/mock";
 import { FormProvider, IFormSchema, SchemaField, useCreateForm } from "@alien-form/react";
@@ -15,6 +16,7 @@ const baseComponents: Record<string, React.ComponentType<any>> = {
   ImageInput,
   SkuTable,
   Specs,
+  SpecValues,
 };
 const baseDecorators = { FormItem };
 
