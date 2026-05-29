@@ -1,10 +1,11 @@
 /**
  * @alien-form/react — Atomic signal bindings for React
  *
- * Core principle: each React component subscribes ONLY to the specific
- * signals it reads. No version bumps, no snapshot objects, no deep equal.
- *
- * Total: ~280 lines (down from ~990)
+ * Core principles:
+ * 1. Each React component subscribes ONLY to specific signals it reads
+ * 2. No render-phase side effects — schema is already processed at createForm()
+ * 3. All hooks called unconditionally (Rules of Hooks)
+ * 4. Components split into existence-check layer + rendering layer
  */
 
 import {
@@ -73,7 +74,10 @@ export type {
 /**
  * Subscribe to a single alien-signal and return its current value.
  * Only re-renders when THIS specific signal changes.
- * This is the fundamental building block — all other hooks compose on top.
+ *
+ * When the signal reference itself changes (e.g. field replaced),
+ * useSyncExternalStore detects snapshot mismatch and triggers re-render,
+ * then the new subscribe will track the new signal on next cycle.
  */
 export function useSignalValue<T>(sig: Signal<T> | Computed<T>): T {
   const sigRef = useRef(sig);
@@ -233,26 +237,19 @@ export const FormProvider: React.FC<FormProviderProps> = ({
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SchemaField — schema-driven rendering
+// SchemaField — schema-driven rendering (PURE — no side effects)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-interface SchemaFieldProps {
-  schema: IFormSchema;
-}
-
-export const SchemaField: React.FC<SchemaFieldProps> = ({ schema }) => {
+/**
+ * SchemaField is now purely a renderer. It does NOT call form.setSchema().
+ * The schema was already processed during createForm().
+ * It reads form.schema and recursively renders field slots.
+ */
+export const SchemaField: React.FC = () => {
   const ctx = useContext(FormContext);
   if (!ctx) throw new Error("[alien-form] SchemaField must be inside <FormProvider>");
   const { form } = ctx;
-
-  // Let core handle schema — only call setSchema when schema changes
-  const lastSchemaRef = useRef<IFormSchema | null>(null);
-  if (lastSchemaRef.current !== schema) {
-    lastSchemaRef.current = schema;
-    form.setSchema(schema);
-  }
-
-  return <SchemaProperties schema={schema} parentPath="" />;
+  return <SchemaProperties schema={form.schema} parentPath="" />;
 };
 
 // ─── Internal Renderers ─────────────────────────────────────────────────────
@@ -280,7 +277,7 @@ const SchemaFieldItem: React.FC<{
   parentPath: string;
 }> = memo(({ fieldKey, schema, parentPath }) => {
   const ctx = useContext(FormContext)!;
-  const { form, components, decorators } = ctx;
+  const { components } = ctx;
   const fullPath = parentPath ? `${parentPath}.${fieldKey}` : fieldKey;
 
   // Void nodes — layout only
@@ -315,18 +312,25 @@ const SchemaFieldItem: React.FC<{
   return <FieldSlot path={fullPath} />;
 });
 
-// ─── FieldSlot — subscribes only to what it renders ─────────────────────────
+// ─── FieldSlot — split into existence check + inner renderer ────────────────
+// This ensures all hooks in the inner component are called unconditionally.
 
 const FieldSlot: React.FC<{ path: string }> = memo(({ path }) => {
   const ctx = useContext(FormContext)!;
-  const { form, components, decorators } = ctx;
+  const { form } = ctx;
   const atoms = useSignalValue(form.fields).get(path);
+
   if (!atoms) return null;
+  return <FieldSlotInner atoms={atoms} />;
+});
 
+/** Inner component — all useSignalValue calls are unconditional */
+const FieldSlotInner: React.FC<{ atoms: FieldAtoms }> = memo(({ atoms }) => {
+  const ctx = useContext(FormContext)!;
+  const { components, decorators } = ctx;
+
+  // All signal subscriptions — unconditional (Rules of Hooks compliant)
   const display = useSignalValue(atoms.display);
-  if (display === "none") return null;
-  if (display === "hidden") return <div style={{ display: "none" }} />;
-
   const componentName = useSignalValue(atoms.component);
   const decoratorName = useSignalValue(atoms.decorator);
   const value = useSignalValue(atoms.value);
@@ -341,6 +345,10 @@ const FieldSlot: React.FC<{ path: string }> = memo(({ path }) => {
   const description = useSignalValue(atoms.description);
   const validateStatus = useSignalValue(atoms.validateStatus);
   const decoratorProps = useSignalValue(atoms.decoratorProps);
+
+  // Early returns AFTER all hooks
+  if (display === "none") return null;
+  if (display === "hidden") return <div style={{ display: "none" }} />;
 
   const Component = components[componentName];
   const Decorator = decorators[decoratorName];
@@ -372,13 +380,19 @@ const FieldSlot: React.FC<{ path: string }> = memo(({ path }) => {
 
 const ArrayFieldSlot: React.FC<{ path: string; schema: IFieldSchema }> = memo(({ path, schema }) => {
   const ctx = useContext(FormContext)!;
-  const { form, components, decorators } = ctx;
+  const { form } = ctx;
   const atoms = useSignalValue(form.fields).get(path);
+
   if (!atoms) return null;
+  return <ArrayFieldSlotInner atoms={atoms} schema={schema} />;
+});
 
+const ArrayFieldSlotInner: React.FC<{ atoms: FieldAtoms; schema: IFieldSchema }> = memo(({ atoms, schema }) => {
+  const ctx = useContext(FormContext)!;
+  const { components, decorators } = ctx;
+
+  // All hooks unconditional
   const display = useSignalValue(atoms.display);
-  if (display === "none") return null;
-
   const componentName = useSignalValue(atoms.component);
   const decoratorName = useSignalValue(atoms.decorator);
   const disabled = useSignalValue(atoms.disabled);
@@ -391,6 +405,8 @@ const ArrayFieldSlot: React.FC<{ path: string; schema: IFieldSchema }> = memo(({
   const componentProps = useSignalValue(atoms.componentProps);
   const decoratorProps = useSignalValue(atoms.decoratorProps);
   const rowCount = useSignalValue(atoms.arrayRows);
+
+  if (display === "none") return null;
 
   const ArrayComponent = components[componentName];
   const Decorator = decorators[decoratorName];
@@ -405,8 +421,8 @@ const ArrayFieldSlot: React.FC<{ path: string; schema: IFieldSchema }> = memo(({
     const fieldMap: Record<string, React.ReactNode> = {};
     if (itemSchema.properties) {
       const sorted = sortByOrder(itemSchema.properties);
-      for (const [childKey, childSchema] of sorted) {
-        const node = <FieldSlot key={childKey} path={`${path}.${i}.${childKey}`} />;
+      for (const [childKey] of sorted) {
+        const node = <FieldSlot key={childKey} path={`${atoms.path}.${i}.${childKey}`} />;
         children.push(node);
         fieldMap[childKey] = node;
       }
@@ -449,29 +465,40 @@ const ArrayFieldSlot: React.FC<{ path: string; schema: IFieldSchema }> = memo(({
 
 const ObjectFieldSlot: React.FC<{ path: string; schema: IFieldSchema }> = memo(({ path, schema }) => {
   const ctx = useContext(FormContext)!;
-  const { form, components, decorators } = ctx;
+  const { form } = ctx;
   const atoms = useSignalValue(form.fields).get(path);
+
   if (!atoms) return null;
+  return <ObjectFieldSlotInner atoms={atoms} schema={schema} />;
+});
 
+const ObjectFieldSlotInner: React.FC<{ atoms: FieldAtoms; schema: IFieldSchema }> = memo(({ atoms, schema }) => {
+  const ctx = useContext(FormContext)!;
+  const { components, decorators } = ctx;
+
+  // All hooks unconditional
   const display = useSignalValue(atoms.display);
-  if (display === "none") return null;
-
   const componentName = useSignalValue(atoms.component);
   const decoratorName = useSignalValue(atoms.decorator);
   const componentProps = useSignalValue(atoms.componentProps);
   const title = useSignalValue(atoms.title);
   const description = useSignalValue(atoms.description);
+  const required = useSignalValue(atoms.required);
+  const errors = useSignalValue(atoms.errors);
+  const decoratorProps = useSignalValue(atoms.decoratorProps);
+
+  if (display === "none") return null;
 
   const ObjectComponent = components[componentName];
   const Decorator = decorators[decoratorName];
 
   const sorted = schema.properties ? sortByOrder(schema.properties) : [];
   const children = sorted.map(([k, s]) => (
-    <SchemaFieldItem key={k} fieldKey={k} schema={s} parentPath={path} />
+    <SchemaFieldItem key={k} fieldKey={k} schema={s} parentPath={atoms.path} />
   ));
   const fieldMap: Record<string, React.ReactNode> = {};
-  for (const [k, s] of sorted) {
-    fieldMap[k] = <FieldSlot key={k} path={`${path}.${k}`} />;
+  for (const [k] of sorted) {
+    fieldMap[k] = <FieldSlot key={k} path={`${atoms.path}.${k}`} />;
   }
 
   if (ObjectComponent) {
@@ -481,9 +508,7 @@ const ObjectFieldSlot: React.FC<{ path: string; schema: IFieldSchema }> = memo((
       </ObjectComponent>
     );
     if (Decorator) {
-      const required = useSignalValue(atoms.required);
-      const errors = useSignalValue(atoms.errors);
-      return <Decorator label={title} required={required} errors={errors}>{rendered}</Decorator>;
+      return <Decorator label={title} required={required} errors={errors} {...decoratorProps}>{rendered}</Decorator>;
     }
     return rendered;
   }

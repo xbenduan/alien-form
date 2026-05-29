@@ -1,11 +1,12 @@
 /**
  * @alien-form/core — Form engine (atomic signal-per-property)
  *
- * Each field property is an independent alien-signal atom.
- * React (or any framework) subscribes directly to individual signals.
- *
- * Design principle: x-reaction effects are part of the field's lifecycle,
- * installed at creation and disposed at removal. No separate "install" pass.
+ * Design principles:
+ * 1. Schema is configuration — passed at createForm(), not mutated at runtime
+ * 2. Three-phase initialization: atoms → signal → reactions
+ * 3. Reaction effects are field lifecycle — installed after all fields exist
+ * 4. Each field property is an independent signal atom
+ * 5. No render-phase side effects required from framework layer
  */
 
 import { signal, computed, effect, startBatch, endBatch } from "alien-signals";
@@ -33,9 +34,9 @@ import { getDeepValue, setDeepValue, sortByOrder, resolveFieldPath } from "./pat
 import { resolveSchemaRef, resolveSchemaTree } from "./ref-resolve";
 
 // ─── Field Atom Factory ─────────────────────────────────────────────────────
+// Creates pure atoms without installing reactions (Phase 1)
 
 function createFieldAtoms(
-  form: FormInstance,
   path: string,
   schema: IFieldSchema,
   initialValue?: any,
@@ -45,6 +46,10 @@ function createFieldAtoms(
   const fieldValue = isArrayField
     ? (Array.isArray(defaultValue) ? defaultValue : [])
     : defaultValue;
+
+  // Placeholder — form reference set after createForm constructs the instance
+  let formRef: FormInstance = null as any;
+  let fieldsMapRef: Map<string, FieldAtoms> = null as any;
 
   const atoms: FieldAtoms = {
     path,
@@ -70,11 +75,11 @@ function createFieldAtoms(
     loading: signal(false),
     arrayRows: signal(isArrayField ? (Array.isArray(fieldValue) ? fieldValue.length : 0) : 0),
 
-    // ─── Methods ──────────────────────────────────────────────────────
+    // ─── Methods (bound to form after construction) ──────────────────
     setValue(value: any) {
       if (atoms.isArrayField) {
         const arr = Array.isArray(value) ? value : [];
-        setArrayValue(form, atoms, arr);
+        setArrayValue(formRef, fieldsMapRef, atoms, arr);
         return;
       }
       if (Object.is(atoms.value(), value)) return;
@@ -141,7 +146,7 @@ function createFieldAtoms(
 
       // x-validate
       if (schema["x-validate"]) {
-        const dynamicErrors = await runXValidate(form, atoms, schema["x-validate"], value);
+        const dynamicErrors = await runXValidate(formRef, fieldsMapRef, atoms, schema["x-validate"], value);
         errors.push(...dynamicErrors);
       }
 
@@ -157,7 +162,7 @@ function createFieldAtoms(
       atoms.warnings([]);
       atoms.validateStatus("");
       if (isArrayField) {
-        resetArrayRows(form, atoms, fieldValue);
+        resetArrayRows(formRef, fieldsMapRef, atoms, fieldValue);
       }
       endBatch();
     },
@@ -170,38 +175,38 @@ function createFieldAtoms(
     // Array methods
     push(initialValues?: any) {
       if (!atoms.isArrayField) return;
-      pushArrayRow(form, atoms, initialValues);
+      pushArrayRow(formRef, fieldsMapRef, atoms, initialValues);
     },
 
     remove(index: number) {
       if (!atoms.isArrayField) return;
-      removeArrayRow(form, atoms, index);
+      removeArrayRow(formRef, fieldsMapRef, atoms, index);
     },
 
     moveUp(index: number) {
       if (!atoms.isArrayField || index <= 0) return;
-      swapArrayRows(form, atoms, index, index - 1);
+      swapArrayRows(formRef, fieldsMapRef, atoms, index, index - 1);
     },
 
     moveDown(index: number) {
       if (!atoms.isArrayField || index >= atoms.arrayRows() - 1) return;
-      swapArrayRows(form, atoms, index, index + 1);
+      swapArrayRows(formRef, fieldsMapRef, atoms, index, index + 1);
     },
   };
 
-  // Install x-reaction effects as part of this field's lifecycle
-  if (schema["x-reaction"]) {
-    installFieldReactions(form, atoms);
-  }
+  // Bind form/fieldsMap reference (set by createForm after construction)
+  (atoms as any)._bindForm = (form: FormInstance, map: Map<string, FieldAtoms>) => {
+    formRef = form;
+    fieldsMapRef = map;
+  };
 
   return atoms;
 }
 
-// ─── Per-field Reaction Installation ────────────────────────────────────────
+// ─── Per-field Reaction Installation (Phase 3) ─────────────────────────────
 
-function installFieldReactions(form: FormInstance, atoms: FieldAtoms): void {
+function installFieldReactions(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, atoms: FieldAtoms): void {
   const reactions = atoms.schema["x-reaction"]!;
-  const path = atoms.path;
 
   for (const [reactionKey, ruleOrRules] of Object.entries(reactions)) {
     if (!ruleOrRules) continue;
@@ -214,11 +219,8 @@ function installFieldReactions(form: FormInstance, atoms: FieldAtoms): void {
       );
 
       const dispose = effect(() => {
-        // Read fieldsMap without tracking fieldsSignal.
-        // We use the plain ref to avoid re-triggering on field registry changes.
-        const fieldsMap = (form as any)._fieldsMap as Map<string, FieldAtoms>;
-
         // Track ONLY the dependency field value signals
+        // Use atoms.path (dynamic) for relative path resolution
         const { deps, depsArray } = resolveDeps(fieldsMap, rule.dependencies, atoms.path);
 
         // If no explicit deps, track self value as the trigger
@@ -232,7 +234,7 @@ function installFieldReactions(form: FormInstance, atoms: FieldAtoms): void {
         if (result && typeof result === "object" && typeof result.then === "function") {
           result.then((resolved: any) => applyReactionValue(atoms, reactionKey, resolved))
             .catch((err: any) => emitError(form, {
-              scope: "x-reaction", path, key: reactionKey,
+              scope: "x-reaction", path: atoms.path, key: reactionKey,
               message: err instanceof Error ? err.message : String(err), cause: err,
             }));
         } else {
@@ -252,37 +254,66 @@ function getItemSchema(atoms: FieldAtoms): IFieldSchema | null {
   return items as IFieldSchema;
 }
 
-function createRowFields(form: FormInstance, atoms: FieldAtoms, index: number, initialValues?: any) {
+function createRowFields(
+  form: FormInstance,
+  fieldsMap: Map<string, FieldAtoms>,
+  atoms: FieldAtoms,
+  index: number,
+  initialValues?: any,
+): FieldAtoms[] {
   const itemSchema = getItemSchema(atoms);
-  if (!itemSchema) return;
+  if (!itemSchema) return [];
+
+  const created: FieldAtoms[] = [];
 
   if (itemSchema.properties) {
     const sorted = sortByOrder(itemSchema.properties);
     for (const [key, childSchema] of sorted) {
       const childPath = `${atoms.path}.${index}.${key}`;
       const childValue = initialValues ? initialValues[key] : undefined;
-      createFieldTree(form, childPath, childSchema, childValue, itemSchema.required);
+      const newAtoms = buildFieldTree(form, fieldsMap, childPath, childSchema, childValue, itemSchema.required);
+      created.push(...newAtoms);
     }
   } else {
-    form.createField(`${atoms.path}.${index}`, itemSchema, initialValues);
+    const childPath = `${atoms.path}.${index}`;
+    const childAtoms = createFieldAtoms(childPath, itemSchema, initialValues);
+    (childAtoms as any)._bindForm(form, fieldsMap);
+    fieldsMap.set(childPath, childAtoms);
+    created.push(childAtoms);
   }
+
+  return created;
 }
 
-function pushArrayRow(form: FormInstance, atoms: FieldAtoms, initialValues?: any) {
+function pushArrayRow(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, atoms: FieldAtoms, initialValues?: any) {
   const newIndex = atoms.arrayRows();
-  createRowFields(form, atoms, newIndex, initialValues);
+
+  startBatch();
+  // Phase 1: create all row field atoms
+  const created = createRowFields(form, fieldsMap, atoms, newIndex, initialValues);
+
+  // Phase 2: install reactions for new row fields (all siblings now exist)
+  for (const field of created) {
+    if (field.schema["x-reaction"]) {
+      installFieldReactions(form, fieldsMap, field);
+    }
+  }
+
   atoms.arrayRows(newIndex + 1);
   const current = Array.isArray(atoms.value()) ? [...atoms.value()] : [];
   current.push(initialValues || {});
   atoms.value(current);
+
+  // Notify React
+  form.fields(new Map(fieldsMap));
+  endBatch();
 }
 
-function removeArrayRow(form: FormInstance, atoms: FieldAtoms, index: number) {
+function removeArrayRow(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, atoms: FieldAtoms, index: number) {
   const currentRows = atoms.arrayRows();
   if (index < 0 || index >= currentRows) return;
 
   startBatch();
-  const fieldsMap = form.fields();
 
   // Dispose and delete row fields
   const rowPrefix = `${atoms.path}.${index}`;
@@ -321,8 +352,7 @@ function removeArrayRow(form: FormInstance, atoms: FieldAtoms, index: number) {
   endBatch();
 }
 
-function swapArrayRows(form: FormInstance, atoms: FieldAtoms, indexA: number, indexB: number) {
-  const fieldsMap = form.fields();
+function swapArrayRows(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, atoms: FieldAtoms, indexA: number, indexB: number) {
   const prefixA = `${atoms.path}.${indexA}`;
   const prefixB = `${atoms.path}.${indexB}`;
 
@@ -360,12 +390,11 @@ function swapArrayRows(form: FormInstance, atoms: FieldAtoms, indexA: number, in
   endBatch();
 }
 
-function setArrayValue(form: FormInstance, atoms: FieldAtoms, value: any[]) {
+function setArrayValue(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, atoms: FieldAtoms, value: any[]) {
   const itemSchema = getItemSchema(atoms);
   if (!itemSchema) return;
 
   startBatch();
-  const fieldsMap = form.fields();
   const currentRows = atoms.arrayRows();
 
   // Remove excess rows (dispose their reactions)
@@ -381,14 +410,23 @@ function setArrayValue(form: FormInstance, atoms: FieldAtoms, value: any[]) {
   }
 
   // Create/update rows
+  const newlyCreated: FieldAtoms[] = [];
   for (let i = 0; i < value.length; i++) {
     if (i >= currentRows) {
-      createRowFields(form, atoms, i, value[i]);
+      const created = createRowFields(form, fieldsMap, atoms, i, value[i]);
+      newlyCreated.push(...created);
     } else if (itemSchema.properties) {
       for (const key of Object.keys(itemSchema.properties)) {
         const field = fieldsMap.get(`${atoms.path}.${i}.${key}`);
         if (field) field.setValue(value[i]?.[key]);
       }
+    }
+  }
+
+  // Install reactions for newly created fields
+  for (const field of newlyCreated) {
+    if (field.schema["x-reaction"]) {
+      installFieldReactions(form, fieldsMap, field);
     }
   }
 
@@ -398,8 +436,8 @@ function setArrayValue(form: FormInstance, atoms: FieldAtoms, value: any[]) {
   endBatch();
 }
 
-function resetArrayRows(form: FormInstance, atoms: FieldAtoms, initialValue: any) {
-  setArrayValue(form, atoms, Array.isArray(initialValue) ? initialValue : []);
+function resetArrayRows(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, atoms: FieldAtoms, initialValue: any) {
+  setArrayValue(form, fieldsMap, atoms, Array.isArray(initialValue) ? initialValue : []);
 }
 
 // ─── Reaction Runtime ───────────────────────────────────────────────────────
@@ -431,13 +469,13 @@ function resolveXRuleValue(
       return handler({
         field: fieldAtoms!,
         form,
-        values: form.values(),
+        get values() { return form.values(); },
         deps: scope.$dependencies || {},
         dependencies: scope.$dependencies || {},
         scope,
         key,
         rule,
-        value: scope.$value,
+        get value() { return fieldAtoms!.value(); },
         kind: "x-reaction",
       });
     }
@@ -453,7 +491,7 @@ function resolveDeps(fieldsMap: Map<string, FieldAtoms>, dependencies: string[] 
     for (const depPath of dependencies) {
       const resolved = resolveFieldPath(depPath, selfPath);
       const depField = fieldsMap.get(resolved);
-      const value = depField ? depField.value() : undefined;
+      const value = depField ? depField.value() : undefined; // ← tracks dep.value signal
       depsArray.push(value);
       deps[depPath] = value;
     }
@@ -461,7 +499,7 @@ function resolveDeps(fieldsMap: Map<string, FieldAtoms>, dependencies: string[] 
     for (const [alias, depPath] of Object.entries(dependencies)) {
       const resolved = resolveFieldPath(depPath, selfPath);
       const depField = fieldsMap.get(resolved);
-      deps[alias] = depField ? depField.value() : undefined;
+      deps[alias] = depField ? depField.value() : undefined; // ← tracks dep.value signal
     }
   }
   return { deps, depsArray };
@@ -472,10 +510,10 @@ function buildScope(form: FormInstance, fieldAtoms: FieldAtoms, deps: Record<str
   return {
     $self: fieldAtoms,
     $form: form,
-    get $values() { return form.values(); },
+    get $values() { return form.values(); },  // lazy — only tracked if handler reads it
     $deps: depsArray.length > 0 ? depsArray : deps,
     $dependencies: deps,
-    get $value() { return fieldAtoms.value(); },
+    get $value() { return fieldAtoms.value(); },  // lazy
     ...(config.scope || {}),
   };
 }
@@ -497,11 +535,10 @@ function applyReactionValue(fieldAtoms: FieldAtoms, reactionKey: string, value: 
   }
 }
 
-async function runXValidate(form: FormInstance, fieldAtoms: FieldAtoms, rules: SchemaXValidate, value: any): Promise<FieldError[]> {
+async function runXValidate(form: FormInstance, fieldsMap: Map<string, FieldAtoms>, fieldAtoms: FieldAtoms, rules: SchemaXValidate, value: any): Promise<FieldError[]> {
   const ruleList = Array.isArray(rules) ? rules : [rules];
   const errors: FieldError[] = [];
   const config = (form as any)._config as FormConfig;
-  const fieldsMap = form.fields();
 
   for (const rule of ruleList) {
     const { deps, depsArray } = resolveDeps(fieldsMap, rule.dependencies, fieldAtoms.path);
@@ -520,15 +557,17 @@ async function runXValidate(form: FormInstance, fieldAtoms: FieldAtoms, rules: S
   return errors;
 }
 
-// ─── Schema → Field Tree Creation ───────────────────────────────────────────
+// ─── Schema → Field Tree Building (Phase 1) ────────────────────────────────
+// Pure construction — no reactions, no signal writes to fieldsSignal
 
-function createFieldTree(
+function buildFieldTree(
   form: FormInstance,
+  fieldsMap: Map<string, FieldAtoms>,
   path: string,
   rawSchema: IFieldSchema,
   initialValue?: any,
   parentRequired?: boolean | string[],
-): void {
+): FieldAtoms[] {
   const definitions = (form as any)._definitions as Record<string, IFieldSchema>;
   const schema = resolveSchemaTree(rawSchema, definitions, (ref, msg) => {
     emitError(form, { scope: "ref-resolve", path: "", message: msg });
@@ -539,52 +578,72 @@ function createFieldTree(
   const isRequired = schema.required === true || (Array.isArray(parentRequired) && parentRequired.includes(key));
   const mergedSchema = { ...schema, required: isRequired };
 
+  const created: FieldAtoms[] = [];
+
   if (schema.type === "array" && schema.items && !Array.isArray(schema.items)) {
     const iv = initialValue !== undefined ? initialValue : getDeepValue((form as any)._initialValues, path);
-    const atoms = form.createField(path, mergedSchema, iv);
+    const atoms = createFieldAtoms(path, mergedSchema, iv);
+    (atoms as any)._bindForm(form, fieldsMap);
+    fieldsMap.set(path, atoms);
+    created.push(atoms);
+
     // Create initial rows
     if (Array.isArray(iv) && schema.items.properties) {
       const itemSchema = schema.items as IFieldSchema;
       for (let i = 0; i < iv.length; i++) {
         const sorted = sortByOrder(itemSchema.properties!);
         for (const [childKey, childSchema] of sorted) {
-          createFieldTree(form, `${path}.${i}.${childKey}`, childSchema, iv[i]?.[childKey], itemSchema.required);
+          const childCreated = buildFieldTree(form, fieldsMap, `${path}.${i}.${childKey}`, childSchema, iv[i]?.[childKey], itemSchema.required);
+          created.push(...childCreated);
         }
       }
     }
-    return;
+    return created;
   }
 
   if (schema.type === "object" && schema.properties) {
     if (schema.component) {
-      form.createField(path, mergedSchema, initialValue);
+      const atoms = createFieldAtoms(path, mergedSchema, initialValue);
+      (atoms as any)._bindForm(form, fieldsMap);
+      fieldsMap.set(path, atoms);
+      created.push(atoms);
     }
     const sorted = sortByOrder(schema.properties);
     for (const [childKey, childSchema] of sorted) {
       const childIv = initialValue != null ? initialValue[childKey] : getDeepValue((form as any)._initialValues, `${path}.${childKey}`);
-      createFieldTree(form, `${path}.${childKey}`, childSchema, childIv, schema.required);
+      const childCreated = buildFieldTree(form, fieldsMap, `${path}.${childKey}`, childSchema, childIv, schema.required);
+      created.push(...childCreated);
     }
-    return;
+    return created;
   }
 
   if (schema.type === "void") {
     const preserveOwnPath = !!rawSchema.$ref;
     const childPrefix = preserveOwnPath ? path : (path.includes(".") ? path.slice(0, path.lastIndexOf(".")) : "");
     if (schema.component) {
-      form.createField(path, mergedSchema, initialValue);
+      const atoms = createFieldAtoms(path, mergedSchema, initialValue);
+      (atoms as any)._bindForm(form, fieldsMap);
+      fieldsMap.set(path, atoms);
+      created.push(atoms);
     }
     if (schema.properties) {
       const sorted = sortByOrder(schema.properties);
       for (const [childKey, childSchema] of sorted) {
         const childPath = childPrefix ? `${childPrefix}.${childKey}` : childKey;
-        createFieldTree(form, childPath, childSchema, undefined, schema.required);
+        const childCreated = buildFieldTree(form, fieldsMap, childPath, childSchema, undefined, schema.required);
+        created.push(...childCreated);
       }
     }
-    return;
+    return created;
   }
 
+  // Leaf field
   const iv = initialValue !== undefined ? initialValue : getDeepValue((form as any)._initialValues, path);
-  form.createField(path, mergedSchema, iv);
+  const atoms = createFieldAtoms(path, mergedSchema, iv);
+  (atoms as any)._bindForm(form, fieldsMap);
+  fieldsMap.set(path, atoms);
+  created.push(atoms);
+  return created;
 }
 
 // ─── Error Handling ─────────────────────────────────────────────────────────
@@ -603,20 +662,44 @@ function emitError(form: FormInstance, error: FormError): void {
 // ─── createForm ─────────────────────────────────────────────────────────────
 
 export function createForm(config: FormConfig = {}): FormInstance {
-  const fieldsSignal = signal(new Map<string, FieldAtoms>());
-  let fieldsMapRef = fieldsSignal();
-  const submittingSignal = signal(false);
   const errorListeners = new Set<(e: FormError) => void>(config.onError ? [config.onError] : []);
   let destroyed = false;
   let setupDispose: (() => void) | null = null;
-  let initialValues = config.initialValues ? { ...config.initialValues } : {};
-  let definitions: Record<string, IFieldSchema> = {};
+  const initialValues = config.initialValues ? { ...config.initialValues } : {};
+  const definitions: Record<string, IFieldSchema> = config.schema?.definitions || {};
   const effectDisposers = new Set<() => void>();
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Phase 1: Build all field atoms (no signals written, no reactions)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const fieldsMap = new Map<string, FieldAtoms>();
+
+  // Partial form object needed during tree building (for error emission & definitions)
+  const form: FormInstance = {} as FormInstance;
+  (form as any)._config = config;
+  (form as any)._errorListeners = errorListeners;
+  (form as any)._definitions = definitions;
+  (form as any)._initialValues = initialValues;
+
+  if (config.schema?.properties) {
+    const sorted = sortByOrder(config.schema.properties);
+    for (const [key, fieldSchema] of sorted) {
+      buildFieldTree(form, fieldsMap, key, fieldSchema, undefined, config.schema.required);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Phase 2: Create signals (single write, React notified once)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const fieldsSignal = signal(fieldsMap);
+  const submittingSignal = signal(false);
 
   const valuesComputed = computed(() => {
     const result: Record<string, any> = {};
-    const fieldsMap = fieldsSignal();
-    for (const [path, atoms] of fieldsMap) {
+    const map = fieldsSignal();
+    for (const [path, atoms] of map) {
       if (atoms.display() === "none") continue;
       if (atoms.isArrayField) {
         const itemSchema = getItemSchema(atoms);
@@ -626,7 +709,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
           for (let i = 0; i < rowCount; i++) {
             const row: Record<string, any> = {};
             for (const key of Object.keys(itemSchema.properties)) {
-              const childField = fieldsMap.get(`${path}.${i}.${key}`);
+              const childField = map.get(`${path}.${i}.${key}`);
               if (childField && childField.display() !== "none") {
                 row[key] = childField.value();
               }
@@ -639,7 +722,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
         }
         continue;
       }
-      if (isArrayChildPath(fieldsMap, path)) continue;
+      if (isArrayChildPath(map, path)) continue;
       if (atoms.schema.type === "void") continue;
       setDeepValue(result, path, atoms.value());
     }
@@ -656,13 +739,12 @@ export function createForm(config: FormConfig = {}): FormInstance {
 
   const validComputed = computed(() => errorsComputed().length === 0);
 
-  // Helper: update fieldsSignal and keep plain ref in sync
-  function setFieldsMap(map: Map<string, FieldAtoms>) {
-    fieldsMapRef = map;
-    fieldsSignal(map);
-  }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Assemble form instance
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  const form: FormInstance = {
+  Object.assign(form, {
+    schema: config.schema || { type: "object" as const },
     fields: fieldsSignal,
     submitting: submittingSignal,
     values: valuesComputed,
@@ -673,42 +755,16 @@ export function createForm(config: FormConfig = {}): FormInstance {
       return fieldsSignal().get(path);
     },
 
-    createField(path: string, schema: IFieldSchema, initialValue?: any) {
-      const atoms = createFieldAtoms(form, path, schema, initialValue);
-      const map = fieldsSignal();
-      map.set(path, atoms);
-      setFieldsMap(new Map(map));
-      return atoms;
-    },
-
-    setSchema(schema: IFormSchema) {
-      startBatch();
-      // Dispose all existing field reactions
-      for (const atoms of fieldsSignal().values()) atoms.dispose();
-
-      definitions = schema.definitions || {};
-      (form as any)._definitions = definitions;
-      setFieldsMap(new Map());
-
-      if (schema.properties) {
-        const sorted = sortByOrder(schema.properties);
-        for (const [key, fieldSchema] of sorted) {
-          createFieldTree(form, key, fieldSchema, undefined, schema.required);
-        }
-      }
-      endBatch();
-    },
-
     setValues(values: Record<string, any>) {
       if (!values || typeof values !== "object") return;
       startBatch();
-      const fieldsMap = fieldsSignal();
-      const entries = Array.from(fieldsMap.entries()).sort(([, a], [, b]) => {
+      const map = fieldsSignal();
+      const entries = Array.from(map.entries()).sort(([, a], [, b]) => {
         if (a.isArrayField !== b.isArrayField) return a.isArrayField ? -1 : 1;
         return 0;
       });
       for (const [path, atoms] of entries) {
-        if (isArrayChildPath(fieldsMap, path)) continue;
+        if (isArrayChildPath(map, path)) continue;
         const value = getDeepValue(values, path);
         if (value !== undefined) atoms.setValue(value);
       }
@@ -716,8 +772,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
     },
 
     setInitialValues(values: Record<string, any>) {
-      initialValues = { ...values };
-      (form as any)._initialValues = initialValues;
+      (form as any)._initialValues = { ...values };
     },
 
     reset() {
@@ -741,7 +796,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
         const isValid = await form.validate();
         if (!isValid) {
           const error: any = new Error("Validation failed");
-          error.messages = form.errors().map((e) => e.message);
+          error.messages = form.errors().map((e: FieldError) => e.message);
           throw error;
         }
         return onSubmit ? await onSubmit(form.values()) : (form.values() as T);
@@ -753,7 +808,6 @@ export function createForm(config: FormConfig = {}): FormInstance {
     destroy() {
       if (destroyed) return;
       destroyed = true;
-      // Dispose all field reactions
       for (const atoms of fieldsSignal().values()) atoms.dispose();
       if (setupDispose) setupDispose();
       for (const d of effectDisposers) d();
@@ -800,29 +854,21 @@ export function createForm(config: FormConfig = {}): FormInstance {
       effectDisposers.add(dispose);
       return () => { dispose(); effectDisposers.delete(dispose); };
     },
-  };
+  } satisfies Omit<FormInstance, 'fields' | 'submitting' | 'values' | 'errors' | 'valid'> & { schema: IFormSchema });
 
-  // Attach internal state
-  (form as any)._config = config;
-  (form as any)._errorListeners = errorListeners;
-  (form as any)._definitions = definitions;
-  (form as any)._initialValues = initialValues;
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Phase 3: Install all reactions (all fields now exist in fieldsMap)
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  // _fieldsMap: plain getter for reaction effects (no signal tracking)
-  Object.defineProperty(form, '_fieldsMap', {
-    get() { return fieldsMapRef; },
-    enumerable: false,
-  });
+  startBatch();
+  for (const atoms of fieldsMap.values()) {
+    if (atoms.schema["x-reaction"]) {
+      installFieldReactions(form, fieldsMap, atoms);
+    }
+  }
+  endBatch();
 
-  // Wrap form.fields to keep fieldsMapRef in sync on external writes
-  const rawFieldsSignal = fieldsSignal;
-  (form as any).fields = ((...args: any[]) => {
-    if (args.length === 0) return rawFieldsSignal();
-    setFieldsMap(args[0]);
-    return undefined;
-  }) as typeof fieldsSignal;
-
-  // Run setup
+  // Run user setup
   if (config.setup) {
     const dispose = config.setup(form);
     if (typeof dispose === "function") setupDispose = dispose;

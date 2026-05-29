@@ -185,6 +185,7 @@ export interface FormError {
 }
 
 export interface FormConfig {
+  schema?: IFormSchema;
   initialValues?: Record<string, any>;
   validateFirst?: boolean;
   setup?: (form: FormInstance) => void | (() => void);
@@ -196,6 +197,8 @@ export interface FormConfig {
 // ─── FormInstance ─────────────────────────────────────────────────────────────
 
 export interface FormInstance {
+  // The schema this form was created with
+  schema: IFormSchema;
   // Atomic signals
   fields: Signal<Map<string, FieldAtoms>>;
   submitting: Signal<boolean>;
@@ -205,8 +208,6 @@ export interface FormInstance {
 
   // Methods
   field(path: string): FieldAtoms | undefined;
-  createField(path: string, schema: IFieldSchema, initialValue?: any): FieldAtoms;
-  setSchema(schema: IFormSchema): void;
   setValues(values: Record<string, any>): void;
   setInitialValues(values: Record<string, any>): void;
   reset(): void;

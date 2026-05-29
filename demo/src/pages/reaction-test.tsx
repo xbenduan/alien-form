@@ -397,15 +397,19 @@ const DebugPanel: React.FC = () => {
   const target1Display = useFieldDisplay("target1");
   const fullNameValue = useFieldValue("fullName");
   const secretDisabled = useFieldDisabled("secretField");
+
+  // For fields that may not exist, use form.field() + useSignalValue with fallback
   const conditionalField = form.field("conditionalField");
-  const conditionalRequired = conditionalField ? useSignalValue(conditionalField.required) : false;
+  const conditionalRequired = useSignalValue(conditionalField?.required ?? falseSignalLocal);
+
   const cityField = form.field("city");
-  const cityDataSource = cityField ? useSignalValue(cityField.dataSource) : [];
+  const cityDataSource = useSignalValue(cityField?.dataSource ?? emptyArraySignalLocal);
+
   const itemsField = form.field("items");
-  const itemsTitle = itemsField ? useSignalValue(itemsField.title) : "";
+  const itemsTitle = useSignalValue(itemsField?.title ?? emptyStringSignalLocal);
 
   return (
-    <Card title="🔍 Reaction Debug Panel" size="small" style={{ marginTop: 16, background: "#f6f8fa" }}>
+    <Card title="Reaction Debug Panel" size="small" style={{ marginTop: 16, background: "#f6f8fa" }}>
       <Space direction="vertical" style={{ width: "100%" }}>
         <div>
           <Tag color="blue">Case 1</Tag>
@@ -425,7 +429,7 @@ const DebugPanel: React.FC = () => {
         </div>
         <div>
           <Tag color="purple">Case 5</Tag>
-          <Text>city.dataSource = <Text code>{JSON.stringify(cityDataSource.map(d => d.value))}</Text></Text>
+          <Text>city.dataSource = <Text code>{JSON.stringify((cityDataSource as any[]).map((d: any) => d.value))}</Text></Text>
         </div>
         <div>
           <Tag color="cyan">Case 6</Tag>
@@ -447,10 +451,18 @@ const DebugPanel: React.FC = () => {
   );
 };
 
+// Local fallback signals for DebugPanel (fields always exist so these are just type safety)
+import { signal as createSig } from "@alien-form/core";
+const falseSignalLocal = createSig(false);
+const emptyArraySignalLocal = createSig([] as any[]);
+const emptyStringSignalLocal = createSig("");
+
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
 export const ReactionTest: React.FC = () => {
+  // Schema passed at creation time — no setSchema needed!
   const form = useCreateForm({
+    schema: reactionTestSchema,
     handlers: reactionHandlers,
     setup: reactionSetup,
   });
@@ -469,7 +481,7 @@ export const ReactionTest: React.FC = () => {
       </Paragraph>
       <Divider />
       <FormProvider form={form} components={components} decorators={decorators}>
-        <SchemaField schema={reactionTestSchema} />
+        <SchemaField />
         <DebugPanel />
       </FormProvider>
       <Divider />
