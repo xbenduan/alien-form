@@ -457,6 +457,14 @@ export function useFormValidate() {
 export interface RenderFieldOptions {
   /** Set to false to render without the decorator (e.g. FormItem) wrapper. */
   decorator?: boolean;
+  /**
+   * Override or extend the props passed to the decorator (e.g. FormItem).
+   * Merged on top of the default decorator props derived from field state.
+   *
+   * Common use: `{ label: "" }` to suppress the title,
+   * or `{ className: "mb-0" }` to remove bottom margin.
+   */
+  decoratorProps?: Record<string, any>;
 }
 
 /**
@@ -487,7 +495,15 @@ export function useRenderField() {
     (path: FieldPath, options?: RenderFieldOptions): React.ReactNode => {
       const resolvedPath = toFieldPath(path);
       const skipDecorator = options?.decorator === false;
-      return <FieldNode key={resolvedPath} path={resolvedPath} skipDecorator={skipDecorator} />;
+      const decoratorPropsOverride = options?.decoratorProps;
+      return (
+        <FieldNode
+          key={resolvedPath}
+          path={resolvedPath}
+          skipDecorator={skipDecorator}
+          decoratorPropsOverride={decoratorPropsOverride}
+        />
+      );
     },
     [],
   );
@@ -512,11 +528,13 @@ interface FieldNodeProps {
   path: string;
   /** Skip the decorator wrapper (e.g. FormItem). Useful for inline fields. */
   skipDecorator?: boolean;
+  /** Override/extend decorator props (e.g. { label: "" } to hide title). */
+  decoratorPropsOverride?: Record<string, any>;
   /** Fallback content when no component is registered (used by array fallback). */
   fallback?: React.ReactNode;
 }
 
-const FieldNode: React.FC<FieldNodeProps> = ({ path, skipDecorator, fallback }) => {
+const FieldNode: React.FC<FieldNodeProps> = ({ path, skipDecorator, decoratorPropsOverride, fallback }) => {
   const ctx = useContext(FormContext);
   if (!ctx) return null;
 
@@ -575,6 +593,7 @@ const FieldNode: React.FC<FieldNodeProps> = ({ path, skipDecorator, fallback }) 
         description: field.description,
         validateStatus: field.validateStatus,
         ...field.decoratorProps,
+        ...decoratorPropsOverride,
       }
     : undefined;
 

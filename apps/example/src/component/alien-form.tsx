@@ -1,7 +1,6 @@
 import { SkuTable } from "@/alien-business/sku-table";
 import { Specs } from "@/alien-business/specs";
 import { SpecValues } from "@/alien-business/spec-values";
-import { ImageInput } from "@/alien-shared/image-input";
 import { schemaRendererHandlers } from "@/mock";
 import { FormProvider, IFormSchema, SchemaField, useCreateForm } from "@alien-form/react";
 import { ArrayCards, FormItem, SchemaInput, SchemaSelect, Switch, Textarea } from "@alien-form/ui";
@@ -13,7 +12,6 @@ const baseComponents: Record<string, React.ComponentType<any>> = {
   Textarea,
   Switch,
   ArrayCards,
-  ImageInput,
   SkuTable,
   Specs,
   SpecValues,

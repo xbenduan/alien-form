@@ -5,7 +5,7 @@ import { useArrayRows, useRenderField, type IField } from "@alien-form/react";
  * Specs — 规格定义列表组件
  *
  * 只负责卡片布局编排，不渲染任何 UI 控件。
- * 所有子字段（name、supportsImage、values）的渲染由 schema 声明的 component 决定，
+ * 所有子字段的渲染由 schema 声明的 component 决定，
  * 通过 renderField 放到正确位置。
  */
 export const Specs: React.FC<{
@@ -34,20 +34,16 @@ export const Specs: React.FC<{
 
       {Array.from({ length: specsCount }, (_, i) => (
         <div key={i} className="overflow-hidden rounded-xl border bg-card shadow-sm">
-          {/* 上半部分：规格名 + 是否支持图片 */}
+          {/* 规格名 */}
           <div className="flex items-center gap-4 border-b px-4 py-3">
             <div className="flex-1">
-              {renderField([field.path, i, "name"])}
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <span className="text-sm text-muted-foreground">支持图片</span>
-              {renderField([field.path, i, "supportsImage"])}
+              {renderField([field.path, i, "name"], { decoratorProps: { label: "" } })}
             </div>
           </div>
 
-          {/* 下半部分：规格值列表（由 SpecValues 组件渲染） */}
+          {/* 规格值列表 */}
           <div className="p-4">
-            {renderField([field.path, i, "values"])}
+            {renderField([field.path, i, "values"], { decoratorProps: { label: "" } })}
           </div>
 
           {/* 删除规格按钮 */}

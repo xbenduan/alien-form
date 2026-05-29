@@ -10,7 +10,7 @@ export const getSchema = async (): Promise<IFormSchema> => {
         type: "string",
         title: "设计说明",
         default:
-          "这个示例刻意没有把规格 + 销售矩阵做成一个 value(object)+onChange(object) 的超级组件。上半部分 specs 是规格定义，下半部分 skus 是派生出来的真实数组字段。规格支持图片时，会自动成为主分组规格，SKU 表会按它的规格值和图片做分组，并尽量保留你已填写的销售配置。",
+          "这个示例刻意没有把规格 + 销售矩阵做成一个 value(object)+onChange(object) 的超级组件。上半部分 specs 是规格定义，下半部分 skus 是派生出来的真实数组字段。",
         component: "Textarea",
         decorator: "FormItem",
         props: {
@@ -21,8 +21,7 @@ export const getSchema = async (): Promise<IFormSchema> => {
       specs: {
         type: "array",
         title: "规格定义",
-        description:
-          "先定义规格维度与可选值。若某个规格开启支持图片，它会自动成为 SKU 主分组规格，表格按它的值与图片分组。",
+        description: "先定义规格维度与可选值，系统会自动根据规格值做笛卡尔积生成 SKU 组合。",
         component: "Specs",
         decorator: "FormItem",
         props: {
@@ -37,21 +36,15 @@ export const getSchema = async (): Promise<IFormSchema> => {
               title: "规格名",
               required: true,
               component: "Input",
-              props: { placeholder: "例如：颜色、内存、运行内存" },
+              props: { placeholder: "例如：颜色、尺码" },
               order: 10,
-            },
-            supportsImage: {
-              type: "boolean",
-              title: "支持图片",
-              component: "Switch",
-              order: 20,
             },
             values: {
               type: "array",
               title: "规格值",
               required: true,
               component: "SpecValues",
-              order: 30,
+              order: 20,
               items: {
                 type: "object",
                 properties: {
@@ -63,13 +56,6 @@ export const getSchema = async (): Promise<IFormSchema> => {
                     props: { className: "h-7 text-xs", placeholder: "规格值" },
                     order: 10,
                   },
-                  image: {
-                    type: "string",
-                    title: "规格图片",
-                    component: "Input",
-                    props: { className: "h-7 text-xs", placeholder: "图片 URL" },
-                    order: 20,
-                  },
                 },
               },
             },
@@ -80,12 +66,12 @@ export const getSchema = async (): Promise<IFormSchema> => {
         type: "array",
         title: "规格配置",
         description:
-          "系统根据规格做笛卡尔积生成 SKU 行。若存在图片规格，销售矩阵会按该规格分组显示，每组下继续编辑其余规格组合的售价、库存和售卖时间。",
+          "系统根据规格做笛卡尔积生成 SKU 行，每行可编辑售价、库存等销售配置。",
         component: "SkuTable",
         decorator: "FormItem",
         props: {
           helperText:
-            "规格变化后，已有 SKU 行会按 skuKey 尽量保留价格、库存、售卖时间和配件配置。若规格中存在图片规格，系统会按该规格值分组展示；其余规格组合继续在组内逐行编辑。",
+            "规格变化后，已有 SKU 行会按 skuKey 尽量保留价格和库存。",
         },
         order: 20,
         items: {
@@ -96,30 +82,6 @@ export const getSchema = async (): Promise<IFormSchema> => {
               title: "SKU Key",
               display: "none",
               order: 5,
-            },
-            groupKey: {
-              type: "string",
-              title: "分组键",
-              display: "none",
-              order: 6,
-            },
-            groupSpecName: {
-              type: "string",
-              title: "分组规格名",
-              display: "none",
-              order: 7,
-            },
-            groupSpecValue: {
-              type: "string",
-              title: "分组规格值",
-              display: "none",
-              order: 8,
-            },
-            groupSpecImage: {
-              type: "string",
-              title: "分组规格图片",
-              display: "none",
-              order: 9,
             },
             specSummary: {
               type: "string",
@@ -144,30 +106,11 @@ export const getSchema = async (): Promise<IFormSchema> => {
               props: { type: "number", placeholder: "请输入库存" },
               order: 30,
             },
-            startDate: {
-              type: "string",
-              title: "开始时间",
-              component: "DateInput",
-              order: 40,
-            },
-            endDate: {
-              type: "string",
-              title: "结束时间",
-              component: "DateInput",
-              order: 50,
-            },
-            accessories: {
-              type: "array",
-              title: "配件列表",
-              component: "ItemInput",
-              props: { placeholder: "输入配件后按 Enter" },
-              order: 60,
-            },
             enabled: {
               type: "boolean",
               title: "启售",
               component: "Switch",
-              order: 70,
+              order: 40,
             },
           },
         },
