@@ -1,8 +1,0 @@
-[
-  { "type": "file", "name": "edit-initialization", "label": "Edit Initialization" },
-  { "type": "file", "name": "mode-switching", "label": "Mode Switching" },
-  { "type": "file", "name": "permissions", "label": "Permissions" },
-  { "type": "file", "name": "async-data", "label": "Async Data" },
-  { "type": "file", "name": "composite-fields", "label": "Composite Fields" },
-  { "type": "file", "name": "spec-sku-matrix", "label": "Spec & SKU Matrix" }
-]

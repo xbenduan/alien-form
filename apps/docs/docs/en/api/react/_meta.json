@@ -1,5 +1,0 @@
-[
-  { "type": "file", "name": "hooks", "label": "Hooks" },
-  { "type": "file", "name": "form-provider", "label": "FormProvider" },
-  { "type": "file", "name": "schema-field", "label": "SchemaField" }
-]
