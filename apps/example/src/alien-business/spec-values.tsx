@@ -20,7 +20,7 @@ export const SpecValues: React.FC<{
   const valuesCount = useArrayRows(field);
 
   // 读取同级 supportsImage 的值
-  const specPath = field.path.replace(/\.values$/, "");
+  const specPath = field.segments.slice(0, -1).join(".");
   const supportsImageField = useField(`${specPath}.supportsImage`);
   const supportsImage = !!supportsImageField?.value;
 

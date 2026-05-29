@@ -1,4 +1,5 @@
 import type { IField, IFieldSchema } from "../../schema/types";
+import { toFieldSegments } from "../../path";
 import { attachFieldInternals, createFieldInternals, type FieldMeta } from "./internals";
 import { createFieldMethods, getFieldValue } from "./methods";
 
@@ -21,6 +22,7 @@ export function createField(path: string, schema: IFieldSchema, initialValue?: a
   // Define reactive getters
   Object.defineProperties(field, {
     path: { get: () => internals.path, enumerable: true },
+    segments: { get: () => toFieldSegments(internals.path), enumerable: true },
     value: { get: () => getFieldValue(field, internals), enumerable: true },
     initialValue: { get: () => internals.initialValue, enumerable: true },
     display: { get: () => internals.signals.display(), enumerable: true },

@@ -1,9 +1,9 @@
 import type React from "react";
-import { useEffect, useState } from "react";
-import { useForm, useRenderField, type IField } from "@alien-form/react";
+import { useArrayRows, useForm, useRenderField, type IField } from "@alien-form/react";
 
 function getFieldName(field: IField): string {
-  return field.path.split(".").pop() ?? field.path;
+  const segs = field.segments;
+  return segs.length > 0 ? segs[segs.length - 1] : field.path;
 }
 
 function getRowFieldValue(rowFields: IField[], name: string): any {
@@ -25,10 +25,7 @@ export const SkuTable: React.FC<{
 }) => {
   const form = useForm();
   const renderField = useRenderField();
-
-  // Subscribe to field changes to trigger re-renders
-  const [, forceRender] = useState(0);
-  useEffect(() => field.subscribe(() => forceRender((v) => v + 1)), [field]);
+  const rowCount = useArrayRows(field);
 
   // Get field metadata from arrayItems for column headers and grouping logic
   const arrayItems = field.arrayItems ?? [];

@@ -27,3 +27,14 @@ export function toFieldPath(path: FieldPath): string {
   if (typeof path === "string") return path;
   return path.join(".");
 }
+
+/**
+ * Split a dot-delimited path string into an array of segments.
+ *
+ * @example
+ * toFieldSegments("specs.0.name")  // ["specs", "0", "name"]
+ * toFieldSegments("")              // []
+ */
+export function toFieldSegments(path: string): readonly string[] {
+  return path === "" ? [] : path.split(".");
+}

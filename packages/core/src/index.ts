@@ -29,7 +29,7 @@ export type {
 } from "./schema/types";
 
 // Path utilities
-export { toFieldPath } from "./path";
+export { toFieldPath, toFieldSegments } from "./path";
 export type { FieldPath } from "./path";
 
 // Schema ref resolution (pure, stateless)

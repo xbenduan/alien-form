@@ -152,6 +152,8 @@ export interface FieldMutableState {
 
 export interface IField {
   path: string;
+  /** Path as an array of segments, e.g. ["specs", "0", "name"]. */
+  segments: readonly string[];
   title: string;
   description: string;
   value: any;

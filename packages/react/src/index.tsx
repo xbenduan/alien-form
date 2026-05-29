@@ -27,7 +27,7 @@ import type {
   EffectOptions,
   EffectContext,
 } from "@alien-form/core";
-import { createForm, resolveSchemaRef, toFieldPath } from "@alien-form/core";
+import { createForm, resolveSchemaRef, toFieldPath, toFieldSegments } from "@alien-form/core";
 import type { FieldPath } from "@alien-form/core";
 
 // ============================================================
@@ -54,7 +54,7 @@ export type {
 } from "@alien-form/core";
 
 export { createForm } from "@alien-form/core";
-export { toFieldPath } from "@alien-form/core";
+export { toFieldPath, toFieldSegments } from "@alien-form/core";
 export type { FieldPath } from "@alien-form/core";
 
 // ============================================================
