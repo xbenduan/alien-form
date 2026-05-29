@@ -945,7 +945,7 @@ function resolveFieldSchemaTree(
     };
   }
 
-  return fromRef ? { ...result, [REF_RESOLVED_KEY]: true } : result;
+  return fromRef ? { ...result, [REF_RESOLVED_KEY]: true } as IFieldSchema : result;
 }
 
 function areDeepEqual(a: any, b: any, seen: WeakMap<object, object> = new WeakMap()): boolean {
