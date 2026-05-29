@@ -5,7 +5,15 @@
 
 export { createForm } from "./form";
 
+// Re-export alien-signals primitives so downstream packages
+// (like @alien-form/react) don't need to depend on alien-signals directly.
+export { signal, computed, effect, startBatch, endBatch } from "alien-signals";
+
 export type {
+  // Signal types (defined locally since alien-signals doesn't export them)
+  Signal,
+  Computed,
+
   // Core atoms
   FieldAtoms,
   FormInstance,

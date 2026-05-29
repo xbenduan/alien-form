@@ -3,9 +3,20 @@
  * Atomic signal-per-property architecture
  */
 
-import type { Signal, Computed } from "alien-signals";
+// ─── Signal Types ─────────────────────────────────────────────────────────────
+// alien-signals does NOT export Signal/Computed as named types.
+// We define them here to match the actual return types of signal() and computed().
 
-// ─── Basic Types ────────────────────────────────────────────────────────────
+/** A readable/writable signal: call with no args to read, with one arg to write. */
+export type Signal<T> = {
+  (): T;
+  (value: T): void;
+};
+
+/** A read-only computed signal: call with no args to read. */
+export type Computed<T> = () => T;
+
+// ─── Basic Types ──────────────────────────────────────────────────────────────
 
 export type ValidateStatus = "success" | "error" | "warning" | "validating" | "";
 export type SchemaTypes = "string" | "number" | "boolean" | "object" | "array" | "void" | (string & {});
@@ -24,7 +35,7 @@ export interface DataSourceItem {
   [key: string]: any;
 }
 
-// ─── Schema Validate ────────────────────────────────────────────────────────
+// ─── Schema Validate ──────────────────────────────────────────────────────────
 
 export interface SchemaValidate {
   required?: boolean;
@@ -44,7 +55,7 @@ export interface SchemaValidate {
   message?: string;
 }
 
-// ─── Schema Reactions ───────────────────────────────────────────────────────
+// ─── Schema Reactions ─────────────────────────────────────────────────────────
 
 export type SchemaReactionKey =
   | "value" | "display" | "disabled" | "required"
@@ -77,7 +88,7 @@ export type SchemaReactions = Partial<Record<SchemaReactionKey | string, SchemaR
 export interface SchemaFormat { input?: SchemaRuleSet; output?: SchemaRuleSet; }
 export type SchemaXValidate = SchemaRuleSet;
 
-// ─── IFieldSchema ───────────────────────────────────────────────────────────
+// ─── IFieldSchema ─────────────────────────────────────────────────────────────
 
 export interface IFieldSchema {
   type?: SchemaTypes;
@@ -103,7 +114,7 @@ export interface IFieldSchema {
   dataSourcePolicy?: DataSourcePolicy;
 }
 
-// ─── IFormSchema ────────────────────────────────────────────────────────────
+// ─── IFormSchema ──────────────────────────────────────────────────────────────
 
 export interface IFormSchema {
   type: "object";
@@ -114,7 +125,7 @@ export interface IFormSchema {
   definitions?: Record<string, IFieldSchema>;
 }
 
-// ─── FieldAtoms — the core atomic unit ──────────────────────────────────────
+// ─── FieldAtoms — the core atomic unit ────────────────────────────────────────
 
 export interface FieldAtoms {
   path: string;
@@ -158,7 +169,7 @@ export interface FieldAtoms {
   moveDown(index: number): void;
 }
 
-// ─── FormConfig ─────────────────────────────────────────────────────────────
+// ─── FormConfig ───────────────────────────────────────────────────────────────
 
 export type FormErrorScope = "reaction" | "x-reaction" | "x-format" | "x-validate" | "ref-resolve" | "expression";
 
@@ -179,7 +190,7 @@ export interface FormConfig {
   onError?: (error: FormError) => void;
 }
 
-// ─── FormInstance ───────────────────────────────────────────────────────────
+// ─── FormInstance ─────────────────────────────────────────────────────────────
 
 export interface FormInstance {
   // Atomic signals

@@ -18,9 +18,10 @@ import {
   memo,
 } from "react";
 import type React from "react";
-import { effect } from "alien-signals";
-import type { Signal, Computed } from "alien-signals";
+import { effect, signal as createSignal } from "@alien-form/core";
 import type {
+  Signal,
+  Computed,
   FormInstance,
   FormConfig,
   FieldAtoms,
@@ -31,7 +32,7 @@ import type {
   DataSourceItem,
   ValidateStatus,
 } from "@alien-form/core";
-import { createForm, sortByOrder, resolveSchemaTree } from "@alien-form/core";
+import { createForm, sortByOrder } from "@alien-form/core";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Re-exports — consumers only need @alien-form/react
@@ -39,6 +40,8 @@ import { createForm, sortByOrder, resolveSchemaTree } from "@alien-form/core";
 
 export { createForm } from "@alien-form/core";
 export type {
+  Signal,
+  Computed,
   FormInstance,
   FormConfig,
   FieldAtoms,
@@ -490,7 +493,6 @@ const ObjectFieldSlot: React.FC<{ path: string; schema: IFieldSchema }> = memo((
 
 // ─── Null signals (fallbacks for missing fields) ────────────────────────────
 
-import { signal as createSignal } from "alien-signals";
 const nullSignal = createSignal(undefined);
 const emptyArraySignal = createSignal([]);
 const visibleSignal = createSignal("visible" as FieldDisplayTypes);
