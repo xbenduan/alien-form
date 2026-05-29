@@ -1,0 +1,157 @@
+import type { IFormSchema } from "@alien-form/react";
+
+export const employeeSchema: IFormSchema = {
+  type: "object",
+  properties: {
+    name: {
+      type: "string",
+      title: "姓名",
+      component: "Input",
+      decorator: "FormItem",
+      required: true,
+      validate: { minLength: 2, maxLength: 20 },
+      props: { placeholder: "请输入姓名" },
+      order: 10,
+    },
+    email: {
+      type: "string",
+      title: "邮箱",
+      component: "Input",
+      decorator: "FormItem",
+      required: true,
+      validate: { format: "email" },
+      props: { placeholder: "请输入邮箱" },
+      order: 20,
+    },
+    department: {
+      type: "string",
+      title: "部门",
+      component: "Select",
+      decorator: "FormItem",
+      required: true,
+      dataSource: [
+        { label: "工程", value: "engineering" },
+        { label: "设计", value: "design" },
+        { label: "产品", value: "product" },
+        { label: "市场", value: "marketing" },
+      ],
+      props: { placeholder: "请选择部门" },
+      order: 30,
+    },
+    level: {
+      type: "string",
+      title: "职级",
+      component: "Select",
+      decorator: "FormItem",
+      props: { placeholder: "请先选择部门" },
+      order: 40,
+      "x-reaction": {
+        dataSource: {
+          type: "computed",
+          dependencies: ["department"],
+          handler: "fetchLevels",
+        },
+        disabled: {
+          type: "expression",
+          dependencies: ["department"],
+          expression: "!$deps[0]",
+        },
+      },
+    },
+    isFullTime: {
+      type: "boolean",
+      title: "全职",
+      component: "Switch",
+      decorator: "FormItem",
+      default: true,
+      order: 50,
+    },
+    joinDate: {
+      type: "string",
+      title: "入职日期",
+      component: "DateInput",
+      decorator: "FormItem",
+      order: 60,
+      "x-reaction": {
+        display: {
+          type: "expression",
+          dependencies: ["isFullTime"],
+          expression: "$deps[0] ? 'visible' : 'hidden'",
+        },
+      },
+    },
+    rating: {
+      type: "number",
+      title: "绩效评分",
+      component: "Rate",
+      decorator: "FormItem",
+      order: 70,
+    },
+    remark: {
+      type: "string",
+      title: "备注",
+      component: "Textarea",
+      decorator: "FormItem",
+      props: { placeholder: "可选备注", rows: 3 },
+      order: 80,
+    },
+    projects: {
+      type: "array",
+      title: "项目经历",
+      description: "添加过往项目经历",
+      component: "ArrayCards",
+      decorator: "FormItem",
+      props: { addText: "+ 添加项目" },
+      order: 90,
+      items: {
+        type: "object",
+        properties: {
+          projectName: {
+            type: "string",
+            title: "项目名称",
+            component: "Input",
+            decorator: "FormItem",
+            required: true,
+            props: { placeholder: "项目名称" },
+            order: 10,
+          },
+          role: {
+            type: "string",
+            title: "角色",
+            component: "Select",
+            decorator: "FormItem",
+            dataSource: [
+              { label: "负责人", value: "lead" },
+              { label: "核心开发", value: "core" },
+              { label: "参与者", value: "participant" },
+            ],
+            order: 20,
+          },
+          description: {
+            type: "string",
+            title: "描述",
+            component: "Textarea",
+            decorator: "FormItem",
+            props: { rows: 2, placeholder: "简要描述" },
+            order: 30,
+          },
+        },
+      },
+    },
+  },
+};
+
+export const mockData = {
+  name: "张三",
+  email: "zhangsan@example.com",
+  department: "engineering",
+  level: "senior",
+  isFullTime: true,
+  joinDate: "2023-06-01",
+  rating: 4,
+  remark: "表现优秀",
+  projects: [
+    { projectName: "Alien Form 重构", role: "lead", description: "主导核心架构重写" },
+    { projectName: "设计系统", role: "core", description: "参与组件库开发" },
+  ],
+};

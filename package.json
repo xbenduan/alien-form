@@ -1,15 +1,18 @@
 {
   "name": "alien-form",
   "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
-    "dev": "pnpm --filter @alien-form/example run dev",
-    "dev:docs": "pnpm --filter @alien-form/docs run dev",
+    "dev": "pnpm --filter @alien-form/demo run dev",
     "build": "pnpm -r run build",
-    "package:source": "bash ./scripts/package-project.sh",
+    "build:core": "pnpm --filter @alien-form/core run build",
+    "build:react": "pnpm --filter @alien-form/react run build",
     "test": "pnpm -r run test",
     "test:core": "pnpm --filter @alien-form/core run test",
     "lint": "oxlint --deny-warnings",
-    "lint:core": "oxlint packages/core/src --deny-warnings",
     "format": "oxfmt . --write",
     "format:check": "oxfmt . --check"
   },

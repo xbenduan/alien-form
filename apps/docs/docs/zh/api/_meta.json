@@ -1,5 +1,0 @@
-[
-  { "type": "dir", "name": "core", "label": "Core" },
-  { "type": "dir", "name": "react", "label": "React" },
-  { "type": "dir", "name": "ui", "label": "UI" }
-]
