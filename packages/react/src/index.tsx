@@ -677,10 +677,37 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
   const arrayValue = Array.isArray(field.value) ? field.value : [];
   const itemSchema = schema.items as IFieldSchema | undefined;
 
-  // Build rows of rendered child fields
-  const rows: React.ReactNode[][] = [];
+  const decoratorProps = {
+    label: field.title,
+    required: field.required,
+    errors: field.errors,
+    warnings: field.warnings,
+    description: field.description,
+    validateStatus: field.validateStatus,
+    ...field.decoratorProps,
+  };
 
-  arrayValue.forEach((_: any, index: number) => {
+  const arrayProps = {
+    ...field.componentProps,
+    field,
+    onAdd: (initialValues?: Record<string, any>) => field.push(initialValues),
+    onRemove: (index: number) => field.remove(index),
+    onMoveUp: (index: number) => field.moveUp(index),
+    onMoveDown: (index: number) => field.moveDown(index),
+    disabled: field.disabled,
+  };
+
+  if (ArrayComponent) {
+    const rendered = <ArrayComponent {...arrayProps} />;
+    return (
+      <FieldContext.Provider value={field}>
+        {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
+      </FieldContext.Provider>
+    );
+  }
+
+  // Fallback: simple list rendering when no ArrayComponent is registered
+  const fallbackRows = arrayValue.map((_: any, index: number) => {
     const children: React.ReactNode[] = [];
     if (itemSchema?.properties) {
       const sortedProps = getSortedEntries(itemSchema.properties);
@@ -698,43 +725,12 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
         );
       }
     }
-    rows.push(children);
+    return children;
   });
 
-  const decoratorProps = {
-    label: field.title,
-    required: field.required,
-    errors: field.errors,
-    warnings: field.warnings,
-    description: field.description,
-    validateStatus: field.validateStatus,
-    ...field.decoratorProps,
-  };
-
-  const arrayProps = {
-    ...field.componentProps,
-    field,
-    rows,
-    onAdd: (initialValues?: Record<string, any>) => field.push(initialValues),
-    onRemove: (index: number) => field.remove(index),
-    onMoveUp: (index: number) => field.moveUp(index),
-    onMoveDown: (index: number) => field.moveDown(index),
-    disabled: field.disabled,
-  };
-
-  if (ArrayComponent) {
-    const rendered = <ArrayComponent {...arrayProps} />;
-    return (
-      <FieldContext.Provider value={field}>
-        {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
-      </FieldContext.Provider>
-    );
-  }
-
-  // Fallback: simple list rendering
   const fallback = (
     <div className="space-y-3">
-      {rows.map((rowChildren, index) => (
+      {fallbackRows.map((rowChildren, index) => (
         <div key={index} className="flex items-start gap-2 p-3 border rounded-lg">
           <div className="flex-1 space-y-2">{rowChildren}</div>
           {!field.disabled && (
