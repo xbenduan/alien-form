@@ -2,6 +2,7 @@ import * as React from "react";
 import { Input } from "./input";
 import { Select } from "./select";
 import { Textarea } from "./textarea";
+import { Switch } from "./switch";
 
 type SchemaFieldCommonProps = {
   readPretty?: boolean;
@@ -84,4 +85,17 @@ export function SchemaSelect(props: SchemaSelectProps) {
   );
 }
 
-export type { SchemaInputProps, SchemaTextareaProps, SchemaSelectProps };
+type SchemaSwitchProps = SchemaFieldCommonProps & {
+  value?: boolean;
+  onChange?: (value: boolean) => void;
+  disabled?: boolean;
+  className?: string;
+  dataSource?: any;
+};
+
+export function SchemaSwitch(props: SchemaSwitchProps) {
+  const { readPretty: _, pattern: _p, loading: _l, dataSource: _ds, ...rest } = props;
+  return <Switch {...rest} />;
+}
+
+export type { SchemaInputProps, SchemaTextareaProps, SchemaSelectProps, SchemaSwitchProps };

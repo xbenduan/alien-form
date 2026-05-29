@@ -4,30 +4,20 @@ import { SpecValues } from "@/alien-business/spec-values";
 import { linkSpecAndSku } from "@/alien-business/link-spec-sku";
 import { schemaRendererHandlers } from "@/mock";
 import { FormProvider, IFormSchema, SchemaField, useCreateForm, type IForm } from "@alien-form/react";
-import { ArrayCards, FormItem, SchemaInput, SchemaSelect, Switch, Textarea } from "@alien-form/ui";
+import { ArrayCards, FormItem, FormSection, SchemaInput, SchemaSelect, SchemaSwitch, SchemaTextarea } from "@alien-form/ui";
 import { useMemo, useImperativeHandle, forwardRef, useState } from "react";
 import type React from "react";
-
-/** Section — 表单分区标题容器 */
-const Section: React.FC<{ title?: string; children?: React.ReactNode }> = ({ title, children }) => (
-  <div className="mb-6">
-    {title && (
-      <h3 className="mb-4 border-b pb-2 text-base font-semibold text-foreground">{title}</h3>
-    )}
-    <div>{children}</div>
-  </div>
-);
 
 const baseComponents: Record<string, React.ComponentType<any>> = {
   Input: SchemaInput,
   Select: SchemaSelect,
-  Textarea,
-  Switch,
+  Textarea: SchemaTextarea,
+  Switch: SchemaSwitch,
   ArrayCards,
   SkuTable,
   Specs,
   SpecValues,
-  Section,
+  Section: FormSection,
 };
 const baseDecorators = { FormItem };
 
