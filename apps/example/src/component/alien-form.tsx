@@ -1,6 +1,7 @@
 import { SkuTable } from "@/alien-business/sku-table";
 import { Specs } from "@/alien-business/specs";
 import { SpecValues } from "@/alien-business/spec-values";
+import { linkSpecAndSku } from "@/alien-business/link-spec-sku";
 import { schemaRendererHandlers } from "@/mock";
 import { FormProvider, IFormSchema, SchemaField, useCreateForm } from "@alien-form/react";
 import { ArrayCards, FormItem, SchemaInput, SchemaSelect, Switch, Textarea } from "@alien-form/ui";
@@ -27,6 +28,14 @@ export const AlienForm: React.FC<{
   const form = useCreateForm({
     initialValues: data,
     handlers: schemaRendererHandlers,
+    setup: (form) => {
+      const disposeSpecSku = form.effect(() => {
+        linkSpecAndSku(form);
+      });
+      return () => {
+        disposeSpecSku();
+      };
+    },
   });
 
   const mergedComponents = useMemo(() => ({ ...baseComponents, ...components }), []);
