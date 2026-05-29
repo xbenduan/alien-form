@@ -1,6 +1,5 @@
 import type React from "react";
-import { useEffect, useState } from "react";
-import { useField, useRenderField, type IField } from "@alien-form/react";
+import { useArrayRows, useField, useRenderField, type IField } from "@alien-form/react";
 
 /**
  * SpecValues — 规格值网格组件
@@ -18,17 +17,7 @@ export const SpecValues: React.FC<{
   disabled?: boolean;
 }> = ({ field, onAdd, onRemove, disabled }) => {
   const renderField = useRenderField();
-  const [valuesCount, setValuesCount] = useState(0);
-
-  // 监听数组长度
-  useEffect(() => {
-    const arr = Array.isArray(field.value) ? field.value : [];
-    setValuesCount(arr.length);
-    return field.subscribe(() => {
-      const arr = Array.isArray(field.value) ? field.value : [];
-      setValuesCount(arr.length);
-    });
-  }, [field]);
+  const valuesCount = useArrayRows(field);
 
   // 读取同级 supportsImage 的值
   const specPath = field.path.replace(/\.values$/, "");

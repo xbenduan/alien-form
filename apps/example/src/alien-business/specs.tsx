@@ -1,6 +1,5 @@
 import type React from "react";
-import { useEffect, useState } from "react";
-import { useRenderField, type IField } from "@alien-form/react";
+import { useArrayRows, useRenderField, type IField } from "@alien-form/react";
 
 /**
  * Specs — 规格定义列表组件
@@ -23,16 +22,7 @@ export const Specs: React.FC<{
   addText = "+ 添加规格维度",
 }) => {
   const renderField = useRenderField();
-  const [specsCount, setSpecsCount] = useState(0);
-
-  useEffect(() => {
-    const arr = Array.isArray(field.value) ? field.value : [];
-    setSpecsCount(arr.length);
-    return field.subscribe(() => {
-      const arr = Array.isArray(field.value) ? field.value : [];
-      setSpecsCount(arr.length);
-    });
-  }, [field]);
+  const specsCount = useArrayRows(field);
 
   return (
     <div className="space-y-4">

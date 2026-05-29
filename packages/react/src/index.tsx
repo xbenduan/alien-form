@@ -169,6 +169,10 @@ export function useFormState(): FormState {
 /**
  * Access and subscribe to a field by path. Returns null if field doesn't exist.
  * If no path is provided, inherits from the nearest FieldContext.
+ *
+ * Uses field-level subscription when the field exists for efficiency,
+ * and falls back to form-level subscription only to detect field
+ * appearance/disappearance.
  */
 export function useField(path?: string): IField | null {
   const ctx = useContext(FormContext);
@@ -185,10 +189,31 @@ export function useField(path?: string): IField | null {
       setField(null);
       return;
     }
-    setField(ctx.form.getField(resolvedPath) || null);
-    return ctx.form.subscribe(() => {
-      setField(ctx.form.getField(resolvedPath) || null);
-    });
+
+    const currentField = ctx.form.getField(resolvedPath) || null;
+    setField(currentField);
+
+    const cleanups: Array<() => void> = [];
+
+    // Field-level subscription: efficient per-field reactivity
+    if (currentField) {
+      cleanups.push(currentField.subscribe(() => {
+        // Force re-render by setting the same reference — the consumer
+        // reads field.value / field.errors etc. directly, so identity is enough.
+        setField(currentField);
+      }));
+    }
+
+    // Form-level subscription: detect field appearance / disappearance only
+    cleanups.push(ctx.form.subscribe(() => {
+      const latest = ctx.form.getField(resolvedPath) || null;
+      setField((prev) => {
+        if (prev === latest) return prev;
+        return latest;
+      });
+    }));
+
+    return () => cleanups.forEach((fn) => fn());
   }, [ctx, resolvedPath]);
 
   return field;
@@ -264,6 +289,37 @@ export function useArrayField(path: string): ArrayFieldAPI {
     moveUp: (index: number) => field?.moveUp(index),
     moveDown: (index: number) => field?.moveDown(index),
   };
+}
+
+// ============================================================
+// useArrayRows — reactive array length for custom array components
+// ============================================================
+
+/**
+ * Returns the current row count of an array field, automatically
+ * re-rendering when items are added or removed.
+ *
+ * Replaces the 8-line useState+useEffect+subscribe boilerplate
+ * that every custom array component previously needed.
+ *
+ * @example
+ * function Specs({ field }) {
+ *   const count = useArrayRows(field);
+ *   return Array.from({ length: count }, (_, i) => (
+ *     <Card key={i}>...</Card>
+ *   ));
+ * }
+ */
+export function useArrayRows(field: IField): number {
+  const getCount = () => (Array.isArray(field.value) ? field.value.length : 0);
+  const [count, setCount] = useState(getCount);
+
+  useEffect(() => {
+    setCount(getCount());
+    return field.subscribe(() => setCount(getCount()));
+  }, [field]);
+
+  return count;
 }
 
 // ============================================================
@@ -396,6 +452,14 @@ export function useFormValidate() {
 // ============================================================
 
 /**
+ * Options for renderField to control rendering behavior.
+ */
+export interface RenderFieldOptions {
+  /** Set to false to render without the decorator (e.g. FormItem) wrapper. */
+  decorator?: boolean;
+}
+
+/**
  * Returns a render function that produces framework-managed field UI for a
  * given path.  Designed for custom array / object / void components that need
  * fine-grained control over *where* child fields appear while still
@@ -410,7 +474,7 @@ export function useFormValidate() {
  *   return field.value.map((_, i) => (
  *     <Card key={i}>
  *       {renderField([field.path, i, "name"])}
- *       {renderField([field.path, i, "price"])}
+ *       {renderField([field.path, i, "price"], { decorator: false })}
  *     </Card>
  *   ));
  * }
@@ -420,19 +484,39 @@ export function useRenderField() {
   if (!ctx) throw new Error("[alien-form] useRenderField must be used within <FormProvider>");
 
   return useCallback(
-    (path: FieldPath): React.ReactNode => {
+    (path: FieldPath, options?: RenderFieldOptions): React.ReactNode => {
       const resolvedPath = toFieldPath(path);
-      return <RenderFieldBridge key={resolvedPath} path={resolvedPath} />;
+      const skipDecorator = options?.decorator === false;
+      return <FieldNode key={resolvedPath} path={resolvedPath} skipDecorator={skipDecorator} />;
     },
     [],
   );
 }
 
+// ============================================================
+// FieldNode — unified field rendering component (single source of truth)
+// ============================================================
+
 /**
- * Internal bridge component rendered by useRenderField.
- * Subscribes to the field and re-renders when field state changes.
+ * Internal component that renders a single field with:
+ * - Self-subscription via field.subscribe()
+ * - Display checks (none / hidden)
+ * - Component + Decorator resolution from FormContext
+ * - Leaf vs array props assembly
+ * - FieldContext.Provider wrapping
+ *
+ * Used by useRenderField, FieldRenderer (schema-driven leaf),
+ * and ArrayFieldRenderer (schema-driven array).
  */
-const RenderFieldBridge: React.FC<{ path: string }> = ({ path }) => {
+interface FieldNodeProps {
+  path: string;
+  /** Skip the decorator wrapper (e.g. FormItem). Useful for inline fields. */
+  skipDecorator?: boolean;
+  /** Fallback content when no component is registered (used by array fallback). */
+  fallback?: React.ReactNode;
+}
+
+const FieldNode: React.FC<FieldNodeProps> = ({ path, skipDecorator, fallback }) => {
   const ctx = useContext(FormContext);
   if (!ctx) return null;
 
@@ -451,20 +535,9 @@ const RenderFieldBridge: React.FC<{ path: string }> = ({ path }) => {
   if (field.display === "hidden") return <div style={{ display: "none" }} />;
 
   const Component = components[field.component];
-  const Decorator = decorators[field.decorator];
+  const Decorator = skipDecorator ? undefined : decorators[field.decorator];
 
-  if (!Component) return null;
-
-  const decoratorProps = {
-    label: field.title,
-    required: field.required,
-    errors: field.errors,
-    warnings: field.warnings,
-    description: field.description,
-    validateStatus: field.validateStatus,
-    ...field.decoratorProps,
-  };
-
+  // --- Build component props ---
   let componentProps: Record<string, any>;
 
   if (field.isArrayField) {
@@ -492,10 +565,31 @@ const RenderFieldBridge: React.FC<{ path: string }> = ({ path }) => {
     }
   }
 
-  const rendered = <Component {...componentProps} />;
+  // --- Build decorator props ---
+  const decoratorProps = Decorator
+    ? {
+        label: field.title,
+        required: field.required,
+        errors: field.errors,
+        warnings: field.warnings,
+        description: field.description,
+        validateStatus: field.validateStatus,
+        ...field.decoratorProps,
+      }
+    : undefined;
+
+  // --- Render ---
+  const rendered = Component
+    ? <Component {...componentProps} />
+    : (fallback ?? null);
+
+  if (!rendered) return null;
+
   return (
     <FieldContext.Provider value={field}>
-      {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
+      {Decorator && decoratorProps
+        ? <Decorator {...decoratorProps}>{rendered}</Decorator>
+        : rendered}
     </FieldContext.Provider>
   );
 };
@@ -554,7 +648,7 @@ export const SchemaField: React.FC<SchemaFieldProps> = ({ schema }) => {
   const ctx = useContext(FormContext);
   if (!ctx) throw new Error("[alien-form] SchemaField must be used within <FormProvider>");
 
-  const { form, components, decorators } = ctx;
+  const { form } = ctx;
   const resolvedSchema = useMemo(() => resolveSchemaRefs(schema), [schema]);
 
   const [, forceRender] = useState(0);
@@ -593,9 +687,6 @@ export const SchemaField: React.FC<SchemaFieldProps> = ({ schema }) => {
           key={key}
           path={key}
           schema={fieldSchema}
-          components={components}
-          decorators={decorators}
-          form={form}
           parentPath=""
         />
       ))}
@@ -610,20 +701,18 @@ export const SchemaField: React.FC<SchemaFieldProps> = ({ schema }) => {
 interface SchemaFieldItemProps {
   path: string;
   schema: IFieldSchema;
-  components: ComponentMap;
-  decorators: DecoratorMap;
-  form: IForm;
   parentPath: string;
 }
 
 const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
   path,
   schema,
-  components,
-  decorators,
-  form,
   parentPath,
 }) => {
+  const ctx = useContext(FormContext);
+  if (!ctx) return null;
+
+  const { form, components, decorators } = ctx;
   const fullPath = parentPath ? `${parentPath}.${path}` : path;
   const field = form.getField(fullPath);
 
@@ -646,13 +735,10 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
           key={key}
           path={key}
           schema={childSchema}
-          components={components}
-          decorators={decorators}
-          form={form}
           parentPath={voidChildParentPath}
         />
       ));
-    }, [schema.properties, voidChildParentPath, components, decorators, form]);
+    }, [schema.properties, voidChildParentPath]);
 
     if (LayoutComponent) {
       return <LayoutComponent {...componentProps}>{children}</LayoutComponent>;
@@ -673,13 +759,10 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
           key={key}
           path={key}
           schema={childSchema}
-          components={components}
-          decorators={decorators}
-          form={form}
           parentPath={fullPath}
         />
       ));
-    }, [schema.properties, fullPath, components, decorators, form]);
+    }, [schema.properties, fullPath]);
 
     if (ObjectComponent) {
       const objectProps = {
@@ -718,9 +801,6 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
             key={key}
             path={key}
             schema={childSchema}
-            components={components}
-            decorators={decorators}
-            form={form}
             parentPath={fullPath}
           />
         ))}
@@ -732,93 +812,77 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
   if (schema.type === "array" && schema.items && !Array.isArray(schema.items) && schema.items.properties) {
     if (!field) return null;
     return (
-      <ArrayFieldRenderer
+      <ArrayFieldSchemaRenderer
         field={field}
         schema={schema}
-        components={components}
-        decorators={decorators}
-        form={form}
         fullPath={fullPath}
       />
     );
   }
 
+  // Leaf field — delegate to unified FieldNode
   if (!field) return null;
+  return <FieldNode path={fullPath} />;
+};
 
+// --- ArrayFieldSchemaRenderer ---
+// Handles the schema-driven array case: delegates to FieldNode for the
+// registered component path, or renders a fallback list.
+
+interface ArrayFieldSchemaRendererProps {
+  field: IField;
+  schema: IFieldSchema;
+  fullPath: string;
+}
+
+const ArrayFieldSchemaRenderer: React.FC<ArrayFieldSchemaRendererProps> = ({
+  field,
+  schema,
+  fullPath,
+}) => {
+  const ctx = useContext(FormContext);
+  if (!ctx) return null;
+
+  const { components, decorators } = ctx;
+  const ArrayComponent = components[field.component];
+
+  // If a custom array component is registered, use FieldNode (unified path)
+  if (ArrayComponent) {
+    return <FieldNode path={fullPath} />;
+  }
+
+  // Fallback: simple list rendering when no ArrayComponent is registered
+  const itemSchema = schema.items as IFieldSchema | undefined;
   return (
-    <FieldRenderer
-      field={field}
-      schema={schema}
-      components={components}
-      decorators={decorators}
-      form={form}
-      fullPath={fullPath}
+    <FieldNode
+      path={fullPath}
+      fallback={
+        <ArrayFallbackContent
+          field={field}
+          itemSchema={itemSchema}
+          fullPath={fullPath}
+        />
+      }
     />
   );
 };
 
-// --- ArrayFieldRenderer ---
+// --- ArrayFallbackContent ---
+// Extracted fallback rendering for arrays without a registered component.
 
-interface ArrayFieldRendererProps {
+interface ArrayFallbackContentProps {
   field: IField;
-  schema: IFieldSchema;
-  components: ComponentMap;
-  decorators: DecoratorMap;
-  form: IForm;
+  itemSchema: IFieldSchema | undefined;
   fullPath: string;
 }
 
-const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
+const ArrayFallbackContent: React.FC<ArrayFallbackContentProps> = ({
   field,
-  schema,
-  components,
-  decorators,
-  form,
+  itemSchema,
   fullPath,
 }) => {
-  const [, forceRender] = useState(0);
-
-  useEffect(() => field.subscribe(() => forceRender((v) => v + 1)), [field]);
-
-  if (field.display === "none") return null;
-  if (field.display === "hidden") return <div style={{ display: "none" }} />;
-
-  const ArrayComponent = components[field.component];
-  const Decorator = decorators[field.decorator];
-
   const arrayValue = Array.isArray(field.value) ? field.value : [];
-  const itemSchema = schema.items as IFieldSchema | undefined;
 
-  const decoratorProps = {
-    label: field.title,
-    required: field.required,
-    errors: field.errors,
-    warnings: field.warnings,
-    description: field.description,
-    validateStatus: field.validateStatus,
-    ...field.decoratorProps,
-  };
-
-  const arrayProps = {
-    ...field.componentProps,
-    field,
-    onAdd: (initialValues?: Record<string, any>) => field.push(initialValues),
-    onRemove: (index: number) => field.remove(index),
-    onMoveUp: (index: number) => field.moveUp(index),
-    onMoveDown: (index: number) => field.moveDown(index),
-    disabled: field.disabled,
-  };
-
-  if (ArrayComponent) {
-    const rendered = <ArrayComponent {...arrayProps} />;
-    return (
-      <FieldContext.Provider value={field}>
-        {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
-      </FieldContext.Provider>
-    );
-  }
-
-  // Fallback: simple list rendering when no ArrayComponent is registered
   const fallbackRows = arrayValue.map((_: any, index: number) => {
     const children: React.ReactNode[] = [];
     if (itemSchema?.properties) {
@@ -829,9 +893,6 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
             key={childKey}
             path={childKey}
             schema={childSchema}
-            components={components}
-            decorators={decorators}
-            form={form}
             parentPath={`${fullPath}.${index}`}
           />,
         );
@@ -840,7 +901,7 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
     return children;
   });
 
-  const fallback = (
+  return (
     <div className="space-y-3">
       {fallbackRows.map((rowChildren, index) => (
         <div key={index} className="flex items-start gap-2 p-3 border rounded-lg">
@@ -866,71 +927,6 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
         </button>
       )}
     </div>
-  );
-
-  return (
-    <FieldContext.Provider value={field}>
-      {Decorator ? <Decorator {...decoratorProps}>{fallback}</Decorator> : fallback}
-    </FieldContext.Provider>
-  );
-};
-
-// --- FieldRenderer ---
-
-interface FieldRendererProps {
-  field: IField;
-  schema: IFieldSchema;
-  components: ComponentMap;
-  decorators: DecoratorMap;
-  form: IForm;
-  fullPath: string;
-}
-
-const FieldRenderer: React.FC<FieldRendererProps> = ({ field, components, decorators }) => {
-  const [, forceRender] = useState(0);
-
-  useEffect(() => field.subscribe(() => forceRender((v) => v + 1)), [field]);
-
-  if (field.display === "none") return null;
-  if (field.display === "hidden") return <div style={{ display: "none" }} />;
-
-  const Component = components[field.component];
-  const Decorator = decorators[field.decorator];
-
-  const decoratorProps = {
-    label: field.title,
-    required: field.required,
-    errors: field.errors,
-    warnings: field.warnings,
-    description: field.description,
-    validateStatus: field.validateStatus,
-    ...field.decoratorProps,
-  };
-
-  if (!Component) {
-    return (
-      <div className="text-destructive text-sm">{`Unknown component: ${field.component}`}</div>
-    );
-  }
-
-  // Build component props
-  const componentProps: Record<string, any> = {
-    ...field.componentProps,
-    value: field.value,
-    onChange: (val: any) => field.setValue(val),
-    disabled: field.disabled,
-    loading: field.loading,
-  };
-
-  if (field.dataSource.length > 0) {
-    componentProps.dataSource = field.dataSource;
-  }
-
-  const rendered = <Component {...componentProps} />;
-  return (
-    <FieldContext.Provider value={field}>
-      {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
-    </FieldContext.Provider>
   );
 };
 
