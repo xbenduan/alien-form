@@ -663,30 +663,25 @@ export const SchemaField: React.FC<SchemaFieldProps> = ({ schema }) => {
   const { form } = ctx;
   const resolvedSchema = useMemo(() => resolveSchemaRefs(schema), [schema]);
 
-  const [, forceRender] = useState(0);
+  // Apply schema synchronously during render (not in useEffect) so fields
+  // exist before the first paint.  The ref-guard prevents redundant calls
+  // when parent re-renders with an equivalent schema object.
   const lastAppliedSchemaRef = useRef<{ form: IForm | null; schema: IFormSchema | null }>({
     form: null,
     schema: null,
   });
-  useEffect(() => {
-    // Fast path: same reference → skip expensive areDeepEqual
+  if (
+    lastAppliedSchemaRef.current.form !== form ||
+    lastAppliedSchemaRef.current.schema !== schema
+  ) {
     if (
-      lastAppliedSchemaRef.current.form === form &&
-      lastAppliedSchemaRef.current.schema === schema
+      lastAppliedSchemaRef.current.form !== form ||
+      !areDeepEqual(lastAppliedSchemaRef.current.schema, schema)
     ) {
-      return;
+      form.setSchema(schema);
     }
-    if (
-      lastAppliedSchemaRef.current.form === form &&
-      areDeepEqual(lastAppliedSchemaRef.current.schema, schema)
-    ) {
-      lastAppliedSchemaRef.current = { form, schema };
-      return;
-    }
-    form.setSchema(schema);
     lastAppliedSchemaRef.current = { form, schema };
-    forceRender((v) => v + 1);
-  }, [form, schema]);
+  }
 
   if (!resolvedSchema.properties) return null;
 
