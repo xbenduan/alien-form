@@ -423,16 +423,57 @@ export function useRenderField() {
       const resolvedPath = toFieldPath(path);
       const field = form.getField(resolvedPath);
       if (!field) return null;
+
+      if (field.display === "none") return null;
+      if (field.display === "hidden") return <div key={resolvedPath} style={{ display: "none" }} />;
+
+      const Component = components[field.component];
+      const Decorator = decorators[field.decorator];
+
+      if (!Component) return null;
+
+      const decoratorProps = {
+        label: field.title,
+        required: field.required,
+        errors: field.errors,
+        warnings: field.warnings,
+        description: field.description,
+        validateStatus: field.validateStatus,
+        ...field.decoratorProps,
+      };
+
+      let componentProps: Record<string, any>;
+
+      if (field.isArrayField) {
+        // Array fields get field + mutation callbacks
+        componentProps = {
+          ...field.componentProps,
+          field,
+          onAdd: (initialValues?: Record<string, any>) => field.push(initialValues),
+          onRemove: (index: number) => field.remove(index),
+          onMoveUp: (index: number) => field.moveUp(index),
+          onMoveDown: (index: number) => field.moveDown(index),
+          disabled: field.disabled,
+        };
+      } else {
+        // Leaf fields get value + onChange
+        componentProps = {
+          ...field.componentProps,
+          value: field.value,
+          onChange: (val: any) => field.setValue(val),
+          disabled: field.disabled,
+          loading: field.loading,
+        };
+        if (field.dataSource.length > 0) {
+          componentProps.dataSource = field.dataSource;
+        }
+      }
+
+      const rendered = <Component {...componentProps} />;
       return (
-        <FieldRenderer
-          key={resolvedPath}
-          field={field}
-          schema={{}}
-          components={components}
-          decorators={decorators}
-          form={form}
-          fullPath={resolvedPath}
-        />
+        <FieldContext.Provider key={resolvedPath} value={field}>
+          {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
+        </FieldContext.Provider>
       );
     },
     [form, components, decorators],
