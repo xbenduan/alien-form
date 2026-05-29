@@ -35,21 +35,14 @@ export const getSchema = async (): Promise<IFormSchema> => {
             name: {
               type: "string",
               title: "规格名",
-              component: "Input",
-              decorator: "FormItem",
               required: true,
-              props: {
-                placeholder: "例如：颜色、内存、运行内存",
-              },
+              display: "none",
               order: 10,
             },
             supportsImage: {
               type: "boolean",
               title: "支持图片",
-              component: "Switch",
-              decorator: "FormItem",
-              description:
-                "只允许一个规格开启。若多个规格都开启，系统会自动以后开启者为主分组规格。",
+              display: "none",
               order: 20,
             },
             values: {
