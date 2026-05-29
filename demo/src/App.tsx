@@ -1,32 +1,40 @@
-import React from "react";
-import { Tabs, Card, Typography } from "antd";
-import { CreateDemo } from "./demos/create";
-import { EditDemo } from "./demos/edit";
-import { ViewDemo } from "./demos/view";
-import { ReactiveDemo } from "./demos/reactive";
+import React, { useState } from "react";
+import { Typography } from "antd";
+import { GoodsList } from "./pages/goods-list";
+import { GoodsForm } from "./pages/goods-form";
+import { GoodsDetail } from "./pages/goods-detail";
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
+
+export type PageView =
+  | { type: "list" }
+  | { type: "create" }
+  | { type: "edit"; id: string }
+  | { type: "detail"; id: string };
 
 export const App: React.FC = () => {
+  const [view, setView] = useState<PageView>({ type: "list" });
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="mx-auto max-w-4xl">
-        <Card>
-          <Title level={3}>Alien Form Demo</Title>
-          <Text type="secondary" className="mb-6 block">
-            基于 atomic signal-per-property 架构，UI 层使用 Antd 承接。
-          </Text>
-          <Tabs
-            defaultActiveKey="create"
-            items={[
-              { key: "create", label: "新增", children: <CreateDemo /> },
-              { key: "edit", label: "编辑", children: <EditDemo /> },
-              { key: "view", label: "详情", children: <ViewDemo /> },
-              { key: "reactive", label: "联动演示", children: <ReactiveDemo /> },
-            ]}
-          />
-        </Card>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <Title level={4} className="!mb-0 !text-gray-800">
+            商品管理平台
+          </Title>
+          {view.type !== "list" && (
+            <a className="text-blue-500 cursor-pointer hover:text-blue-600" onClick={() => setView({ type: "list" })}>
+              ← 返回列表
+            </a>
+          )}
+        </div>
+      </header>
+      <main className="max-w-6xl mx-auto px-6 py-6">
+        {view.type === "list" && <GoodsList onNavigate={setView} />}
+        {view.type === "create" && <GoodsForm mode="create" onBack={() => setView({ type: "list" })} />}
+        {view.type === "edit" && <GoodsForm mode="edit" id={view.id} onBack={() => setView({ type: "list" })} />}
+        {view.type === "detail" && <GoodsDetail id={view.id} onBack={() => setView({ type: "list" })} />}
+      </main>
     </div>
   );
 };
