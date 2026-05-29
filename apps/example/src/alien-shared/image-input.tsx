@@ -1,16 +1,13 @@
 import type React from "react";
-import { define, type Resolved } from "@alien-form/react";
 import { Input } from "@alien-form/ui";
 
-const imageInputSchema = define({
-  type: "string",
-  props: {
-    placeholder: "",
-    className: "",
-  },
-});
-
-export const ImageInput: React.FC<Resolved<typeof imageInputSchema>> = ({
+export const ImageInput: React.FC<{
+  value?: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+}> = ({
   value,
   onChange,
   placeholder,
