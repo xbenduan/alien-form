@@ -570,6 +570,12 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
     }, [schema.properties, fullPath, components, decorators, form]);
 
     if (ObjectComponent) {
+      const objectProps = {
+        ...field.componentProps,
+        field,
+        title: field.title,
+        description: field.description,
+      };
       const decoratorProps = {
         label: field.title,
         required: field.required,
@@ -579,7 +585,7 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
         validateStatus: field.validateStatus,
         ...field.decoratorProps,
       };
-      const rendered = <ObjectComponent {...field.componentProps}>{children}</ObjectComponent>;
+      const rendered = <ObjectComponent {...objectProps}>{children}</ObjectComponent>;
       return (
         <FieldContext.Provider value={field}>
           {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
@@ -705,8 +711,19 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
     ...field.decoratorProps,
   };
 
+  const arrayProps = {
+    ...field.componentProps,
+    field,
+    rows,
+    onAdd: (initialValues?: Record<string, any>) => field.push(initialValues),
+    onRemove: (index: number) => field.remove(index),
+    onMoveUp: (index: number) => field.moveUp(index),
+    onMoveDown: (index: number) => field.moveDown(index),
+    disabled: field.disabled,
+  };
+
   if (ArrayComponent) {
-    const rendered = <ArrayComponent {...field.componentProps} />;
+    const rendered = <ArrayComponent {...arrayProps} />;
     return (
       <FieldContext.Provider value={field}>
         {Decorator ? <Decorator {...decoratorProps}>{rendered}</Decorator> : rendered}
