@@ -13,7 +13,6 @@ import {
   useState,
   useRef,
   useCallback,
-  useSyncExternalStore,
 } from "react";
 import type React from "react";
 import type {
@@ -28,7 +27,7 @@ import type {
   EffectOptions,
   EffectContext,
 } from "@alien-form/core";
-import { createForm } from "@alien-form/core";
+import { createForm, resolveSchemaRef } from "@alien-form/core";
 
 // ============================================================
 // Re-export core types so consumers don't need @alien-form/core
@@ -51,25 +50,16 @@ export type {
   RuntimeRuleHandlerContext,
   DataSourcePolicy,
   SchemaTypes,
-  Resolved,
-  InferRole,
-  InferSlots,
-  InferCustomProps,
-  FieldSlots,
-  VoidSlots,
-  ObjectSlots,
-  ArraySlots,
-  DecoratorSlots,
 } from "@alien-form/core";
 
-export { createForm, define } from "@alien-form/core";
+export { createForm } from "@alien-form/core";
 
 // ============================================================
 // Component/Decorator Maps
 // ============================================================
 
-export type ComponentMap = Record<string, React.ComponentType<Record<string, any>>>;
-export type DecoratorMap = Record<string, React.ComponentType<Record<string, any>>>;
+export type ComponentMap = Record<string, React.ComponentType<any>>;
+export type DecoratorMap = Record<string, React.ComponentType<any>>;
 
 // ============================================================
 // Contexts
@@ -145,21 +135,28 @@ export interface FormState {
 
 /**
  * Subscribe to form-level state changes (values, validity, errors).
- * Uses React 18 useSyncExternalStore for concurrent-rendering safety.
+ * Uses useState + useEffect with field.subscribe for safe reactivity.
  */
 export function useFormState(): FormState {
   const form = useForm();
-  return useSyncExternalStore(
-    (onStoreChange: () => void) => form.subscribe(onStoreChange),
-    () => ({
-      values: form.values,
-      initialValues: form.initialValues,
-      valid: form.valid,
-      invalid: form.invalid,
-      submitting: form.submitting,
-      errors: form.errors,
-    }),
-  );
+
+  const getSnapshot = () => ({
+    values: form.values,
+    initialValues: form.initialValues,
+    valid: form.valid,
+    invalid: form.invalid,
+    submitting: form.submitting,
+    errors: form.errors,
+  });
+
+  const [state, setState] = useState(getSnapshot);
+
+  useEffect(() => {
+    setState(getSnapshot());
+    return form.subscribe(() => setState(getSnapshot()));
+  }, [form]);
+
+  return state;
 }
 
 // ============================================================
@@ -169,7 +166,6 @@ export function useFormState(): FormState {
 /**
  * Access and subscribe to a field by path. Returns null if field doesn't exist.
  * If no path is provided, inherits from the nearest FieldContext.
- * Uses React 18 useSyncExternalStore for concurrent-rendering safety.
  */
 export function useField(path?: string): IField | null {
   const ctx = useContext(FormContext);
@@ -177,10 +173,22 @@ export function useField(path?: string): IField | null {
 
   const resolvedPath = path || parentField?.path;
 
-  return useSyncExternalStore(
-    (onStoreChange: () => void) => (ctx ? ctx.form.subscribe(onStoreChange) : () => {}),
-    () => (ctx && resolvedPath ? ctx.form.getField(resolvedPath) || null : null),
+  const [field, setField] = useState<IField | null>(() =>
+    ctx && resolvedPath ? ctx.form.getField(resolvedPath) || null : null,
   );
+
+  useEffect(() => {
+    if (!ctx || !resolvedPath) {
+      setField(null);
+      return;
+    }
+    setField(ctx.form.getField(resolvedPath) || null);
+    return ctx.form.subscribe(() => {
+      setField(ctx.form.getField(resolvedPath) || null);
+    });
+  }, [ctx, resolvedPath]);
+
+  return field;
 }
 
 // ============================================================
@@ -508,10 +516,6 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
   const field = form.getField(fullPath);
 
   // Void nodes — layout containers
-  // IMPORTANT:
-  // - Plain inline void fields are path-transparent.
-  // - But a concrete property that resolves from $ref into a void schema must
-  //   keep its own prefix (e.g. profile -> $ref -> void => profile.name).
   if (schema.type === "void" && schema.properties) {
     const LayoutComponent = schema.component ? components[schema.component] : null;
     const componentProps = {
@@ -523,71 +527,52 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
     const preservesOwnPath = parentPath !== "" || path !== fullPath || (schema as Record<string, unknown>)[REF_RESOLVED_KEY] === true;
     const voidChildParentPath = preservesOwnPath ? fullPath : parentPath;
 
-    // Memoize children + fieldMap — avoids rebuilding on every field-value-driven re-render
-    const { children, fieldMap } = useMemo(() => {
+    const children = useMemo(() => {
       const sortedChildren = getSortedEntries(schema.properties!);
-      const fieldMap: Record<string, React.ReactNode> = {};
-      const children = sortedChildren.map(([key, childSchema]) => {
-        const node = (
-          <SchemaFieldItem
-            key={key}
-            path={key}
-            schema={childSchema}
-            components={components}
-            decorators={decorators}
-            form={form}
-            parentPath={voidChildParentPath}
-          />
-        );
-        fieldMap[key] = node;
-        return node;
-      });
-      return { children, fieldMap };
+      return sortedChildren.map(([key, childSchema]) => (
+        <SchemaFieldItem
+          key={key}
+          path={key}
+          schema={childSchema}
+          components={components}
+          decorators={decorators}
+          form={form}
+          parentPath={voidChildParentPath}
+        />
+      ));
     }, [schema.properties, voidChildParentPath, components, decorators, form]);
 
     if (LayoutComponent) {
-      return (
-        <LayoutComponent {...componentProps} fields={fieldMap}>
-          {children}
-        </LayoutComponent>
-      );
+      return <LayoutComponent {...componentProps}>{children}</LayoutComponent>;
     }
     return <>{children}</>;
   }
 
-  // Object nodes with component — higher-order components (pass fields map)
+  // Object nodes with component
   if (schema.type === "object" && schema.properties && schema.component) {
     if (!field) return null;
     const ObjectComponent = components[schema.component];
     const Decorator = decorators[schema.decorator || ""];
 
-    // Memoize children + fieldMap — avoids rebuilding on every field-value-driven re-render
-    const { children, fieldMap } = useMemo(() => {
+    const children = useMemo(() => {
       const sortedChildren = getSortedEntries(schema.properties!);
-      const fieldMap: Record<string, React.ReactNode> = {};
-      const children = sortedChildren.map(([key, childSchema]) => {
-        const node = (
-          <SchemaFieldItem
-            key={key}
-            path={key}
-            schema={childSchema}
-            components={components}
-            decorators={decorators}
-            form={form}
-            parentPath={fullPath}
-          />
-        );
-        fieldMap[key] = node;
-        return node;
-      });
-      return { children, fieldMap };
+      return sortedChildren.map(([key, childSchema]) => (
+        <SchemaFieldItem
+          key={key}
+          path={key}
+          schema={childSchema}
+          components={components}
+          decorators={decorators}
+          form={form}
+          parentPath={fullPath}
+        />
+      ));
     }, [schema.properties, fullPath, components, decorators, form]);
 
     if (ObjectComponent) {
       const objectProps = {
         ...field.componentProps,
         field,
-        fields: fieldMap,
         title: field.title,
         description: field.description,
       };
@@ -660,42 +645,6 @@ const SchemaFieldItem: React.FC<SchemaFieldItemProps> = ({
   );
 };
 
-// ============================================================
-// Safe subscribe wrapper for useSyncExternalStore
-// ============================================================
-//
-// field.subscribe(cb) uses alien-signals' effect() internally:
-//   effect(() => { version(); cb(); })
-//
-// Problem: useSyncExternalStore calls getSnapshot() inside the onStoreChange
-// callback (to check consistency). Since onStoreChange runs inside effect(),
-// any signal reads in getSnapshot() (field.display, field.value, etc.) get
-// tracked by the effect. This means ANY field signal change re-triggers the
-// effect → onStoreChange → getSnapshot reads more signals → cascading
-// re-renders → Maximum update depth exceeded.
-//
-// Fix: wrap the listener so it runs outside the effect's tracking scope via
-// queueMicrotask. The effect only tracks the version signal (as intended),
-// and the React callback runs in a clean context where signal reads are not
-// tracked.
-
-function safeFieldSubscribe(field: IField, onStoreChange: () => void): () => void {
-  let mounted = true;
-  const unsub = field.subscribe(() => {
-    if (mounted) {
-      // Use queueMicrotask to escape alien-signals effect tracking context.
-      // This ensures getSnapshot() signal reads are NOT tracked by the effect.
-      queueMicrotask(() => {
-        if (mounted) onStoreChange();
-      });
-    }
-  });
-  return () => {
-    mounted = false;
-    unsub();
-  };
-}
-
 // --- ArrayFieldRenderer ---
 
 interface ArrayFieldRendererProps {
@@ -715,8 +664,6 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
   form,
   fullPath,
 }) => {
-  // Use useState + useEffect instead of useSyncExternalStore to avoid
-  // alien-signals effect tracking issue with getSnapshot signal reads.
   const [snapshot, setSnapshot] = useState(() => ({
     display: field.display,
     value: field.value,
@@ -734,7 +681,6 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
   }));
 
   useEffect(() => {
-    // Read initial state outside effect tracking
     setSnapshot({
       display: field.display,
       value: field.value,
@@ -778,18 +724,13 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
   const arrayValue = Array.isArray(snapshot.value) ? snapshot.value : [];
   const itemSchema = schema.items as IFieldSchema | undefined;
 
-  // Memoize rows/rowFields to avoid rebuilding on every render
-  const { rows, rowFields } = useMemo(() => {
-    const rows: React.ReactNode[][] = [];
-    const rowFields: Record<string, React.ReactNode>[] = [];
-
-    arrayValue.forEach((_: any, index: number) => {
+  const rows = useMemo(() => {
+    return arrayValue.map((_: any, index: number) => {
       const children: React.ReactNode[] = [];
-      const fieldMap: Record<string, React.ReactNode> = {};
       if (itemSchema?.properties) {
         const sortedProps = getSortedEntries(itemSchema.properties);
         for (const [childKey, childSchema] of sortedProps) {
-          const node = (
+          children.push(
             <SchemaFieldItem
               key={childKey}
               path={childKey}
@@ -798,24 +739,18 @@ const ArrayFieldRenderer: React.FC<ArrayFieldRendererProps> = ({
               decorators={decorators}
               form={form}
               parentPath={`${fullPath}.${index}`}
-            />
+            />,
           );
-          children.push(node);
-          fieldMap[childKey] = node;
         }
       }
-      rows.push(children);
-      rowFields.push(fieldMap);
+      return children;
     });
-
-    return { rows, rowFields };
   }, [arrayValue, itemSchema, components, decorators, form, fullPath]);
 
   const arrayProps = {
     ...snapshot.componentProps,
     field,
     rows,
-    rowFields,
     onAdd: (initialValues?: Record<string, any>) => field.push(initialValues),
     onRemove: (index: number) => field.remove(index),
     onMoveUp: (index: number) => field.moveUp(index),
@@ -890,8 +825,6 @@ interface FieldRendererProps {
 }
 
 const FieldRenderer: React.FC<FieldRendererProps> = ({ field, components, decorators }) => {
-  // Use useState + useEffect instead of useSyncExternalStore to avoid
-  // alien-signals effect tracking issue with getSnapshot signal reads.
   const [snapshot, setSnapshot] = useState(() => ({
     display: field.display,
     component: field.component,
@@ -911,7 +844,6 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({ field, components, decora
   }));
 
   useEffect(() => {
-    // Read initial state outside effect tracking
     setSnapshot({
       display: field.display,
       component: field.component,
@@ -1036,7 +968,7 @@ function resolveProperties(
 
 /**
  * Recursively resolve $ref, properties, and items in a field schema tree.
- * Inlines the $ref resolution step (no external dependency).
+ * Uses core's resolveSchemaRef for the $ref resolution step.
  */
 function resolveFieldSchemaTree(
   schema: IFieldSchema,
@@ -1045,25 +977,7 @@ function resolveFieldSchemaTree(
 ): IFieldSchema {
   if (!schema || typeof schema !== "object") return schema;
 
-  // Inline $ref resolution
-  let resolved: IFieldSchema = schema;
-  let fromRef = false;
-  if (typeof (schema as any).$ref === "string") {
-    const refPath = ((schema as any).$ref as string).replace(/^#\/definitions\//, "");
-    if (!seen.has(refPath) && definitions[refPath]) {
-      const { $ref: _ignored, ...localProps } = schema as any;
-      void _ignored;
-      resolved = {
-        ...resolveFieldSchemaTree(definitions[refPath], definitions, new Set([...seen, refPath])),
-        ...localProps,
-      };
-      fromRef = true;
-    } else {
-      const { $ref: _ignored, ...localProps } = schema as any;
-      void _ignored;
-      resolved = localProps as IFieldSchema;
-    }
-  }
+  const { schema: resolved, fromRef } = resolveSchemaRef(schema, definitions, undefined, seen);
 
   let result = resolved;
 
@@ -1083,7 +997,7 @@ function resolveFieldSchemaTree(
     };
   }
 
-  return fromRef ? { ...result, [REF_RESOLVED_KEY]: true } as IFieldSchema : result;
+  return fromRef ? { ...result, [REF_RESOLVED_KEY]: true } : result;
 }
 
 function areDeepEqual(a: any, b: any, seen: WeakMap<object, object> = new WeakMap()): boolean {
