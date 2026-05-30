@@ -481,6 +481,7 @@ function installReactions(ctx: FieldContext, field: FieldNode) {
       const dispose = effect(() => {
         const runtime = buildRuntimeContext(ctx, field, "x-reaction", key);
         const result = executeRuntimeValue(ctx, field, rule, runtime, key);
+        console.log(`[x-reaction] ${field.path}.${key} = ${JSON.stringify(result)}`);
         if (isPromiseLike(result)) {
           let alive = true;
           const cancel = () => { alive = false; };
