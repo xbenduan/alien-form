@@ -361,6 +361,26 @@ function installFieldRuntime(ctx: FieldContext, field: FieldNode) {
   if (isArrayField(field)) for (const row of field.rows()) installRowRuntime(ctx, row);
 }
 
+/**
+ * Re-install runtime (reactions/effects) on all fields.
+ * Used after form.reinitialize() — the field tree and signals are intact,
+ * but all effect disposers have been cleaned up by dispose().
+ * Unlike installFieldRuntime, also re-registers fields in fieldsMap
+ * in case they were removed during dispose.
+ */
+function reinstallFieldRuntime(ctx: FieldContext, field: FieldNode) {
+  // Ensure field is in the map (dispose removes it)
+  if (field.path !== undefined) ctx.fieldsMap.set(field.path, field);
+  if (field.schema["x-reaction"]) installReactions(ctx, field);
+  if (field.schema["x-effect"]) installEffects(ctx, field, field.schema["x-effect"]);
+  if (isContainerField(field)) for (const child of field.children.values()) reinstallFieldRuntime(ctx, child);
+  if (isArrayField(field)) for (const row of field.rows()) reinstallRowRuntime(ctx, row);
+}
+
+function reinstallRowRuntime(ctx: FieldContext, row: RowNode) {
+  for (const child of row.children.values()) reinstallFieldRuntime(ctx, child);
+}
+
 function projectFormValues(root: ObjectFieldNode): Record<string, any> {
   return projectChildren(root.children) || {};
 }
@@ -697,6 +717,17 @@ export function createForm(config: FormConfig = {}): FormInstance {
         return onSubmit ? await onSubmit(form.values()) : (form.values() as T);
       } finally { submittingSignal(false); }
     },
+    reinitialize() {
+      if (!destroyed) return; // Already alive, nothing to do
+      destroyed = false;
+      (form as any)._destroyed = false;
+      // Re-install all field reactions (the field tree + signals are intact)
+      startBatch();
+      reinstallFieldRuntime(ctx, root);
+      if (schema["x-effect"]) installEffects(ctx, root, schema["x-effect"]);
+      if (schema["x-reaction"]) installReactions(ctx, root);
+      endBatch();
+    },
     destroy() {
       if (destroyed) return;
       destroyed = true;
@@ -704,7 +735,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
       root.dispose();
       for (const d of effectDisposers) d();
       effectDisposers.clear();
-      errorListeners.clear();
+      // Note: do NOT clear errorListeners — they may be re-needed after reinitialize
     },
     onError(listener: (error: FormError) => void) {
       errorListeners.add(listener);

@@ -92,7 +92,17 @@ export { FormContext };
 export function useCreateForm(config: FormConfig = {}): FormInstance {
   const formRef = useRef<FormInstance | null>(null);
   if (!formRef.current) formRef.current = createForm(config);
-  useEffect(() => () => { formRef.current?.destroy(); formRef.current = null; }, []);
+  useEffect(() => {
+    // On (re-)mount, reinitialize reactions if they were destroyed
+    // (happens after React 18 StrictMode simulated unmount/remount).
+    formRef.current?.reinitialize();
+    return () => {
+      formRef.current?.destroy();
+      // Do NOT null formRef — the same form instance will be reinitialize()'d
+      // on remount. Only truly null it if the component is permanently unmounting,
+      // but React gives no way to distinguish, so we rely on reinitialize().
+    };
+  }, []);
   return formRef.current!;
 }
 

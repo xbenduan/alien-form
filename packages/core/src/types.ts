@@ -251,6 +251,7 @@ export interface FormInstance {
   reset(): void;
   validate(): Promise<boolean>;
   submit<T = any>(onSubmit?: (values: Record<string, any>) => T | Promise<T>): Promise<T>;
+  reinitialize(): void;
   destroy(): void;
   onError(listener: (error: FormError) => void): () => void;
   effect(runner: (form: FormInstance) => void | (() => void)): () => void;
