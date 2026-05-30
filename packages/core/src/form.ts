@@ -335,20 +335,31 @@ function setArrayRows(ctx: FieldContext, array: ArrayFieldNode, values: any[]) {
 }
 
 function reindexRows(ctx: FieldContext, array: ArrayFieldNode, rows: RowNode[]) {
+  // Two-phase reindex to avoid path collisions when rows swap positions.
+  // Phase 1: remove all old paths from fieldsMap
+  for (const row of rows) removeChildPaths(ctx, row.children);
+  // Phase 2: assign new paths and register
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     row.index = i;
     row.path = `${array.path}.${i}`;
-    updateChildPaths(ctx, row.children, row.path);
+    assignChildPaths(ctx, row.children, row.path);
   }
 }
 
-function updateChildPaths(ctx: FieldContext, children: Map<string, FieldNode>, parentPath: string) {
-  for (const [key, child] of children) {
+function removeChildPaths(ctx: FieldContext, children: Map<string, FieldNode>) {
+  for (const [, child] of children) {
     ctx.fieldsMap.delete(child.path);
+    if (isContainerField(child)) removeChildPaths(ctx, child.children);
+    if (isArrayField(child)) for (const row of child.rows()) removeChildPaths(ctx, row.children);
+  }
+}
+
+function assignChildPaths(ctx: FieldContext, children: Map<string, FieldNode>, parentPath: string) {
+  for (const [key, child] of children) {
     child.path = `${parentPath}.${key}`;
     ctx.fieldsMap.set(child.path, child);
-    if (isContainerField(child)) updateChildPaths(ctx, child.children, child.path);
+    if (isContainerField(child)) assignChildPaths(ctx, child.children, child.path);
     if (isArrayField(child)) reindexRows(ctx, child, child.rows());
   }
 }
