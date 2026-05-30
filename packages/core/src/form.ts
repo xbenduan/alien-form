@@ -162,6 +162,8 @@ function createBaseField(
         primitive.setValue(schema.default);
       } else if (isArrayField(base as FieldNode)) {
         (base as ArrayFieldNode).setRows(Array.isArray(schema.default) ? schema.default : []);
+      } else if (isContainerField(base as FieldNode)) {
+        for (const child of (base as ObjectFieldNode | VoidFieldNode).children.values()) child.reset();
       }
       base.setErrors([]);
       base.setWarnings([]);
@@ -700,7 +702,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
       endBatch();
     },
     setInitialValues(values: Record<string, any>) { (form as any)._initialValues = { ...values }; },
-    reset() { startBatch(); root.reset(); for (const child of root.children.values()) child.reset(); endBatch(); },
+    reset() { startBatch(); root.reset(); endBatch(); },
     async validate() {
       const results = await Promise.all(Array.from(fieldsSignal().values()).filter((f: FieldNode) => f.display() !== "none").map((f: FieldNode) => f.validate()));
       return results.every((errors) => errors.length === 0);
