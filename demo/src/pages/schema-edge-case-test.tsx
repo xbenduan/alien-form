@@ -1,18 +1,13 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Card, Button, Space, Divider, Typography, Tag, Alert, Badge, Input as AntInput } from "antd";
+import React, { useCallback, useState } from "react";
+import { Card, Button, Space, Typography, Tag, Alert } from "antd";
 import {
   FormProvider,
   SchemaField,
   useCreateForm,
-  useForm,
-  useFieldValue,
-  useFieldDisplay,
   useFormValues,
   useFormErrors,
   useFormValid,
-  useSignalValue,
   type IFormSchema,
-  type FormConfig,
   type FormInstance,
 } from "@alien-form/react";
 import {
@@ -29,7 +24,21 @@ import {
   TagsInput,
 } from "@/adapters";
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
+
+const components = {
+  Input,
+  Textarea,
+  NumberInput,
+  Select,
+  Switch,
+  Radio,
+  CheckboxGroup,
+  TagsInput,
+  SectionCard,
+  ArrayCards,
+};
+const decorators = { FormItem };
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Schema-Driven Edge Cases (S1-S20)
@@ -1265,7 +1274,7 @@ export default function SchemaEdgeCaseTest() {
         <Button danger onClick={() => setErrorLog([])}>Clear Error Log</Button>
       </Space>
 
-      <FormProvider form={form}>
+      <FormProvider form={form} components={components} decorators={decorators}>
         <SchemaField schema={schemaEdgeCases} />
         <DebugPanel />
       </FormProvider>
