@@ -92,8 +92,8 @@ export { FormContext };
 export function useCreateForm(config: FormConfig = {}): FormInstance {
   const formRef = useRef<FormInstance | null>(null);
   if (!formRef.current) formRef.current = createForm(config);
-  useEffect(() => () => { formRef.current?.destroy(); }, []);
-  return formRef.current;
+  useEffect(() => () => { formRef.current?.destroy(); formRef.current = null; }, []);
+  return formRef.current!;
 }
 
 export function useForm(): FormInstance {

@@ -182,10 +182,7 @@ function createPrimitiveField(ctx: FieldContext, path: string, schema: IFieldSch
   const field = base as PrimitiveFieldNode;
   field.value = signal(initial);
   field.setValue = (value: any) => {
-    if (!Object.is(field.value(), value)) {
-      console.log(`[setValue] ${field.path} = ${JSON.stringify(value)}`);
-      field.value(value);
-    }
+    if (!Object.is(field.value(), value)) field.value(value);
   };
   ctx.fieldsMap.set(path, field);
   return field;
@@ -484,7 +481,6 @@ function installReactions(ctx: FieldContext, field: FieldNode) {
       const dispose = effect(() => {
         const runtime = buildRuntimeContext(ctx, field, "x-reaction", key);
         const result = executeRuntimeValue(ctx, field, rule, runtime, key);
-        console.log(`[x-reaction] ${field.path}.${key} = ${JSON.stringify(result)} (deps read)`);
         if (isPromiseLike(result)) {
           let alive = true;
           const cancel = () => { alive = false; };
@@ -704,6 +700,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      (form as any)._destroyed = true;
       root.dispose();
       for (const d of effectDisposers) d();
       effectDisposers.clear();
