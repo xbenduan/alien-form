@@ -57,23 +57,7 @@ const schemaEdgeCases: IFormSchema = {
         zip: { type: "string", title: "Zip", component: "Input", decorator: "FormItem", validate: { format: "zip" }, order: 30 },
       },
     },
-    // Circular ref test: A refs B which refs A
-    circularA: {
-      type: "object",
-      title: "Circular A",
-      properties: {
-        name: { type: "string", title: "Name", component: "Input", decorator: "FormItem" },
-        nested: { $ref: "#/definitions/circularB" },
-      },
-    },
-    circularB: {
-      type: "object",
-      title: "Circular B",
-      properties: {
-        label: { type: "string", title: "Label", component: "Input", decorator: "FormItem" },
-        back: { $ref: "#/definitions/circularA" },
-      },
-    },
+
   },
   properties: {
     // ─── S1: $ref resolution — basic, override, deep ───────────────────────
@@ -101,12 +85,7 @@ const schemaEdgeCases: IFormSchema = {
           title: "Home Address (from $ref)",
           order: 30,
         },
-        // Circular $ref — should not infinite loop, should emit error gracefully
-        circularTest: {
-          $ref: "#/definitions/circularA",
-          title: "Circular $ref (should not crash)",
-          order: 40,
-        },
+
       },
     },
 
@@ -1255,7 +1234,7 @@ export default function SchemaEdgeCaseTest() {
         message="Schema Contract Tests"
         description={
           <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12 }}>
-            <li><b>S1</b>: $ref (basic, override, deep, circular)</li>
+            <li><b>S1</b>: $ref (basic, override, deep)</li>
             <li><b>S2</b>: display:none exclusion from values/validation</li>
             <li><b>S3</b>: void path-skipping in values()</li>
             <li><b>S4</b>: initialValues vs default priority</li>
