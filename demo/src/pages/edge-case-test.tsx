@@ -734,6 +734,571 @@ const edgeCaseSchema: IFormSchema = {
         },
       },
     },
+
+    // ─── E16: Array inside Array (数组嵌套数组) ────────────────────────────
+    e16: {
+      type: "void",
+      title: "E16: Array inside Array (数组嵌套数组)",
+      component: "SectionCard",
+      order: 160,
+      properties: {
+        departments: {
+          type: "array",
+          title: "部门列表",
+          component: "ArrayCards",
+          decorator: "FormItem",
+          default: [
+            {
+              deptName: "研发部",
+              members: [
+                { name: "张三", role: "开发" },
+                { name: "李四", role: "测试" },
+              ],
+            },
+          ],
+          props: { addText: "+ 添加部门" },
+          order: 10,
+          items: {
+            type: "object",
+            properties: {
+              deptName: {
+                type: "string",
+                title: "部门名称",
+                component: "Input",
+                decorator: "FormItem",
+                order: 10,
+              },
+              members: {
+                type: "array",
+                title: "成员列表",
+                component: "ArrayCards",
+                decorator: "FormItem",
+                props: { addText: "+ 添加成员" },
+                order: 20,
+                items: {
+                  type: "object",
+                  properties: {
+                    name: {
+                      type: "string",
+                      title: "姓名",
+                      component: "Input",
+                      decorator: "FormItem",
+                      order: 10,
+                    },
+                    role: {
+                      type: "string",
+                      title: "角色",
+                      component: "Select",
+                      decorator: "FormItem",
+                      default: "开发",
+                      dataSource: [
+                        { label: "开发", value: "开发" },
+                        { label: "测试", value: "测试" },
+                        { label: "产品", value: "产品" },
+                        { label: "设计", value: "设计" },
+                      ],
+                      order: 20,
+                    },
+                    // Inner array reaction: role controls badge display
+                    badge: {
+                      type: "string",
+                      title: "角色徽章",
+                      component: "Input",
+                      decorator: "FormItem",
+                      props: { disabled: true },
+                      order: 30,
+                      "x-reaction": {
+                        value: (ctx: any) => {
+                          const r = ctx.get("$row.role");
+                          const map: Record<string, string> = {
+                            "开发": "💻 Developer",
+                            "测试": "🧪 QA",
+                            "产品": "📋 PM",
+                            "设计": "🎨 Designer",
+                          };
+                          return map[r] || "❓ Unknown";
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    // ─── E17: Object inside Object (对象嵌套对象 + 深层联动) ────────────────
+    e17: {
+      type: "void",
+      title: "E17: Object inside Object (对象嵌套对象)",
+      component: "SectionCard",
+      order: 170,
+      properties: {
+        company: {
+          type: "object",
+          title: "公司信息",
+          component: "SectionCard",
+          properties: {
+            companyName: {
+              type: "string",
+              title: "公司名称",
+              component: "Input",
+              decorator: "FormItem",
+              default: "Acme Inc.",
+              order: 10,
+            },
+            address: {
+              type: "object",
+              title: "公司地址",
+              component: "SectionCard",
+              properties: {
+                province: {
+                  type: "string",
+                  title: "省份",
+                  component: "Select",
+                  decorator: "FormItem",
+                  default: "beijing",
+                  dataSource: [
+                    { label: "北京", value: "beijing" },
+                    { label: "上海", value: "shanghai" },
+                    { label: "广东", value: "guangdong" },
+                  ],
+                  order: 10,
+                },
+                city: {
+                  type: "string",
+                  title: "城市",
+                  component: "Select",
+                  decorator: "FormItem",
+                  order: 20,
+                  "x-reaction": {
+                    dataSource: (ctx: any) => {
+                      const prov = ctx.get("company.address.province");
+                      const map: Record<string, any[]> = {
+                        beijing: [{ label: "朝阳区", value: "chaoyang" }, { label: "海淀区", value: "haidian" }],
+                        shanghai: [{ label: "浦东", value: "pudong" }, { label: "徐汇", value: "xuhui" }],
+                        guangdong: [{ label: "广州", value: "guangzhou" }, { label: "深圳", value: "shenzhen" }],
+                      };
+                      return map[prov] || [];
+                    },
+                    value: (ctx: any) => {
+                      // Reset city when province changes
+                      const prov = ctx.get("company.address.province");
+                      const map: Record<string, string> = {
+                        beijing: "chaoyang", shanghai: "pudong", guangdong: "guangzhou",
+                      };
+                      return map[prov] || undefined;
+                    },
+                  },
+                },
+                // Deep nested reaction: full address summary reads from multiple nested levels
+                summary: {
+                  type: "string",
+                  title: "地址摘要 (自动拼接)",
+                  component: "Input",
+                  decorator: "FormItem",
+                  props: { disabled: true },
+                  order: 30,
+                  "x-reaction": {
+                    value: (ctx: any) => {
+                      const name = ctx.get("company.companyName");
+                      const prov = ctx.get("company.address.province");
+                      const city = ctx.get("company.address.city");
+                      return `${name} — ${prov || "?"}/${city || "?"}`;
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    // ─── E18: Outside field depends on array items (外部依赖数组内字段) ──────
+    e18: {
+      type: "void",
+      title: "E18: 外部字段依赖数组内字段 (聚合计算)",
+      component: "SectionCard",
+      order: 180,
+      properties: {
+        scores: {
+          type: "array",
+          title: "评分列表",
+          component: "ArrayCards",
+          decorator: "FormItem",
+          default: [
+            { subject: "数学", score: 90 },
+            { subject: "语文", score: 85 },
+            { subject: "英语", score: 92 },
+          ],
+          props: { addText: "+ 添加科目" },
+          order: 10,
+          items: {
+            type: "object",
+            properties: {
+              subject: {
+                type: "string",
+                title: "科目",
+                component: "Input",
+                decorator: "FormItem",
+                order: 10,
+              },
+              score: {
+                type: "number",
+                title: "分数",
+                component: "Input",
+                decorator: "FormItem",
+                props: { type: "number" },
+                order: 20,
+              },
+            },
+          },
+        },
+        // Outside field reads ALL scores from array via collection selector
+        totalScore: {
+          type: "string",
+          title: "总分 (自动汇总数组内所有 score)",
+          component: "Input",
+          decorator: "FormItem",
+          props: { disabled: true },
+          order: 20,
+          "x-reaction": {
+            value: (ctx: any) => {
+              const allScores = ctx.get("scores[].score");
+              if (!Array.isArray(allScores) || allScores.length === 0) return "暂无数据";
+              const total = allScores.reduce((sum: number, s: any) => sum + (Number(s) || 0), 0);
+              const avg = (total / allScores.length).toFixed(1);
+              return `总分: ${total}, 平均: ${avg}, 共 ${allScores.length} 科`;
+            },
+          },
+        },
+        // Conditional display based on array length
+        honorBadge: {
+          type: "string",
+          title: "荣誉徽章",
+          component: "Input",
+          decorator: "FormItem",
+          props: { disabled: true },
+          order: 30,
+          "x-reaction": {
+            value: (ctx: any) => {
+              const allScores = ctx.get("scores[].score");
+              if (!Array.isArray(allScores)) return "—";
+              const total = allScores.reduce((sum: number, s: any) => sum + (Number(s) || 0), 0);
+              const avg = allScores.length > 0 ? total / allScores.length : 0;
+              if (avg >= 95) return "🏆 特优";
+              if (avg >= 90) return "🥇 优秀";
+              if (avg >= 80) return "🥈 良好";
+              if (avg >= 60) return "🥉 及格";
+              return "❌ 不及格";
+            },
+            display: (ctx: any) => {
+              const allScores = ctx.get("scores[].score");
+              return Array.isArray(allScores) && allScores.length > 0 ? "visible" : "none";
+            },
+          },
+        },
+      },
+    },
+
+    // ─── E19: Object inside Array, with reaction reading parent array's sibling ─
+    e19: {
+      type: "void",
+      title: "E19: 数组行内对象 + 行内跨层级引用",
+      component: "SectionCard",
+      order: 190,
+      properties: {
+        invoiceItems: {
+          type: "array",
+          title: "发票明细",
+          component: "ArrayCards",
+          decorator: "FormItem",
+          default: [{ product: { name: "笔记本", unitPrice: 5000 }, qty: 2 }],
+          props: { addText: "+ 添加明细" },
+          order: 10,
+          items: {
+            type: "object",
+            properties: {
+              product: {
+                type: "object",
+                title: "商品信息",
+                component: "SectionCard",
+                properties: {
+                  name: {
+                    type: "string",
+                    title: "商品名",
+                    component: "Input",
+                    decorator: "FormItem",
+                    default: "商品",
+                    order: 10,
+                  },
+                  unitPrice: {
+                    type: "number",
+                    title: "单价 (元)",
+                    component: "Input",
+                    decorator: "FormItem",
+                    default: 0,
+                    props: { type: "number" },
+                    order: 20,
+                  },
+                },
+              },
+              qty: {
+                type: "number",
+                title: "数量",
+                component: "Input",
+                decorator: "FormItem",
+                default: 1,
+                props: { type: "number" },
+                order: 20,
+              },
+              // Reaction reads nested object field + sibling field
+              lineTotal: {
+                type: "string",
+                title: "行合计",
+                component: "Input",
+                decorator: "FormItem",
+                props: { disabled: true },
+                order: 30,
+                "x-reaction": {
+                  value: (ctx: any) => {
+                    const price = Number(ctx.get("$row.product.unitPrice")) || 0;
+                    const qty = Number(ctx.get("$row.qty")) || 0;
+                    return `¥${(price * qty).toLocaleString()}`;
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    // ─── E20: Array move stress test (move + inner reactions integrity) ──────
+    e20: {
+      type: "void",
+      title: "E20: 数组 move 压力测试 (5行 + move 后 reaction 完整性)",
+      component: "SectionCard",
+      order: 200,
+      properties: {
+        stressRows: {
+          type: "array",
+          title: "5 行压力测试 — 移动后观察每行 label 是否正确",
+          component: "ArrayCards",
+          decorator: "FormItem",
+          default: [
+            { color: "red" },
+            { color: "green" },
+            { color: "blue" },
+            { color: "yellow" },
+            { color: "purple" },
+          ],
+          props: { addText: "+ 添加行" },
+          order: 10,
+          items: {
+            type: "object",
+            properties: {
+              color: {
+                type: "string",
+                title: "颜色",
+                component: "Select",
+                decorator: "FormItem",
+                dataSource: [
+                  { label: "🔴 Red", value: "red" },
+                  { label: "🟢 Green", value: "green" },
+                  { label: "🔵 Blue", value: "blue" },
+                  { label: "🟡 Yellow", value: "yellow" },
+                  { label: "🟣 Purple", value: "purple" },
+                ],
+                order: 10,
+              },
+              colorLabel: {
+                type: "string",
+                title: "颜色标签 (reaction 生成)",
+                component: "Input",
+                decorator: "FormItem",
+                props: { disabled: true },
+                order: 20,
+                "x-reaction": {
+                  value: (ctx: any) => {
+                    const c = ctx.get("$row.color");
+                    const map: Record<string, string> = {
+                      red: "🔴 RED-" + ctx.path,
+                      green: "🟢 GREEN-" + ctx.path,
+                      blue: "🔵 BLUE-" + ctx.path,
+                      yellow: "🟡 YELLOW-" + ctx.path,
+                      purple: "🟣 PURPLE-" + ctx.path,
+                    };
+                    return map[c] || "?-" + ctx.path;
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    // ─── E21: Deeply nested reaction chain across object boundaries ─────────
+    e21: {
+      type: "void",
+      title: "E21: 跨对象层级的 reaction 链 (obj.a → obj.b.c → obj.b.d.result)",
+      component: "SectionCard",
+      order: 210,
+      properties: {
+        outerObj: {
+          type: "object",
+          title: "外层对象",
+          component: "SectionCard",
+          properties: {
+            outerInput: {
+              type: "string",
+              title: "外层输入",
+              component: "Input",
+              decorator: "FormItem",
+              default: "outer",
+              order: 10,
+            },
+            innerObj: {
+              type: "object",
+              title: "内层对象",
+              component: "SectionCard",
+              properties: {
+                middleField: {
+                  type: "string",
+                  title: "中间层 (= outer + '-mid')",
+                  component: "Input",
+                  decorator: "FormItem",
+                  props: { disabled: true },
+                  order: 10,
+                  "x-reaction": {
+                    value: (ctx: any) => {
+                      const outer = ctx.get("outerObj.outerInput");
+                      return (outer || "") + "-mid";
+                    },
+                  },
+                },
+                deepObj: {
+                  type: "object",
+                  title: "最深层对象",
+                  component: "SectionCard",
+                  properties: {
+                    deepResult: {
+                      type: "string",
+                      title: "最深层结果 (= middle + '-deep')",
+                      component: "Input",
+                      decorator: "FormItem",
+                      props: { disabled: true },
+                      order: 10,
+                      "x-reaction": {
+                        value: (ctx: any) => {
+                          const mid = ctx.get("outerObj.innerObj.middleField");
+                          return (mid || "") + "-deep";
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+
+    // ─── E22: Array with display=none rows excluded from projection ─────────
+    e22: {
+      type: "void",
+      title: "E22: 数组行 display=none 排除 + 外部聚合联动",
+      component: "SectionCard",
+      order: 220,
+      properties: {
+        toggleActive: {
+          type: "string",
+          title: "显示哪些行",
+          component: "Select",
+          decorator: "FormItem",
+          default: "all",
+          dataSource: [
+            { label: "全部显示", value: "all" },
+            { label: "仅高优", value: "high" },
+          ],
+          order: 5,
+        },
+        taskList: {
+          type: "array",
+          title: "任务列表",
+          component: "ArrayCards",
+          decorator: "FormItem",
+          default: [
+            { taskName: "重构核心模块", taskPriority: "high" },
+            { taskName: "写单元测试", taskPriority: "low" },
+            { taskName: "修复线上bug", taskPriority: "high" },
+            { taskName: "更新文档", taskPriority: "low" },
+          ],
+          props: { addText: "+ 添加任务" },
+          order: 10,
+          items: {
+            type: "object",
+            properties: {
+              taskName: {
+                type: "string",
+                title: "任务名",
+                component: "Input",
+                decorator: "FormItem",
+                order: 10,
+                "x-reaction": {
+                  display: (ctx: any) => {
+                    const mode = ctx.get("toggleActive");
+                    if (mode === "all") return "visible";
+                    const prio = ctx.get("$row.taskPriority");
+                    return prio === "high" ? "visible" : "none";
+                  },
+                },
+              },
+              taskPriority: {
+                type: "string",
+                title: "优先级",
+                component: "Select",
+                decorator: "FormItem",
+                default: "low",
+                dataSource: [
+                  { label: "高", value: "high" },
+                  { label: "低", value: "low" },
+                ],
+                order: 20,
+                "x-reaction": {
+                  display: (ctx: any) => {
+                    const mode = ctx.get("toggleActive");
+                    if (mode === "all") return "visible";
+                    const prio = ctx.get("$row.taskPriority");
+                    return prio === "high" ? "visible" : "none";
+                  },
+                },
+              },
+            },
+          },
+        },
+        visibleTaskCount: {
+          type: "string",
+          title: "可见任务统计 (display=none 的不计入 values)",
+          component: "Input",
+          decorator: "FormItem",
+          props: { disabled: true },
+          order: 20,
+          "x-reaction": {
+            value: (ctx: any) => {
+              const names = ctx.get("taskList[].taskName");
+              const visible = Array.isArray(names) ? names.filter((n: any) => n !== undefined) : [];
+              return `可见任务: ${visible.length} 个 — ${visible.join(", ") || "无"}`;
+            },
+          },
+        },
+      },
+    },
   },
 };
 
@@ -795,6 +1360,15 @@ const DebugPanel: React.FC = () => {
   // E11: edge value
   const edgeValue = useFieldValue("edgeTarget");
 
+  // E18: total score
+  const totalScoreValue = useFieldValue("totalScore");
+
+  // E21: deep result
+  const deepResultValue = useFieldValue("outerObj.innerObj.deepObj.deepResult");
+
+  // E22: visible task count
+  const visibleCountValue = useFieldValue("visibleTaskCount");
+
   return (
     <Card
       title={
@@ -841,6 +1415,36 @@ const DebugPanel: React.FC = () => {
         <div>
           <Tag color="gold">E11 Edge</Tag>
           <Text>edgeTarget = <Text code>{JSON.stringify(edgeValue)}</Text> (type: {typeof edgeValue})</Text>
+        </div>
+        <Divider style={{ margin: "6px 0" }} />
+        <Text strong style={{ fontSize: 12 }}>New Structure Cases:</Text>
+        <div>
+          <Tag color="magenta">E16</Tag>
+          <Text>数组套数组 — 外层 add/remove/move 后内层 reaction 仍工作</Text>
+        </div>
+        <div>
+          <Tag color="lime">E17</Tag>
+          <Text>对象套对象 — 省份→城市→地址摘要 三级联动</Text>
+        </div>
+        <div>
+          <Tag color="volcano">E18</Tag>
+          <Text>外部聚合 scores[].score — totalScore = <Text code>{JSON.stringify(totalScoreValue)}</Text></Text>
+        </div>
+        <div>
+          <Tag color="geekblue">E19</Tag>
+          <Text>行内对象 + $row.product.unitPrice × $row.qty</Text>
+        </div>
+        <div>
+          <Tag color="orange">E20</Tag>
+          <Text>5行 move 压力测试 — colorLabel 含 path 便于验证</Text>
+        </div>
+        <div>
+          <Tag color="purple">E21</Tag>
+          <Text>跨对象链 deepResult = <Text code>{JSON.stringify(deepResultValue)}</Text></Text>
+        </div>
+        <div>
+          <Tag color="cyan">E22</Tag>
+          <Text>display=none 排除 — visibleCount = <Text code>{JSON.stringify(visibleCountValue)}</Text></Text>
         </div>
       </Space>
       <Divider style={{ margin: "12px 0" }} />
@@ -937,6 +1541,13 @@ export const EdgeCaseTest: React.FC = () => {
             <li><b>E8</b>: 点击"模拟外部写入"按钮，多个字段应联动更新</li>
             <li><b>E13</b>: 输入关键词后 500ms 出结果</li>
             <li><b>"Destroy + Reinit"</b>: 手动触发 destroy→reinitialize，之后所有 reaction 应仍正常</li>
+            <li><b>E16</b>: 数组嵌套数组 — 外层/内层分别 add/remove/move，内层 badge reaction 正常</li>
+            <li><b>E17</b>: 对象嵌套对象 — 切换省份→城市联动→地址摘要三级联动</li>
+            <li><b>E18</b>: 外部字段聚合数组 — 修改/增删评分行后 totalScore 和 honorBadge 实时更新</li>
+            <li><b>E19</b>: 数组行内对象 — $row.product.unitPrice × $row.qty = lineTotal</li>
+            <li><b>E20</b>: 5行 move 压力 — 连续移动后每行 colorLabel 显示正确 path</li>
+            <li><b>E21</b>: 跨对象层级链 — 修改外层 outerInput，deepResult 应为 "xxx-mid-deep"</li>
+            <li><b>E22</b>: 数组行 display=none — 切换"仅高优"后低优行隐藏，visibleTaskCount 只统计可见行</li>
           </ul>
         }
         style={{ marginBottom: 16 }}
