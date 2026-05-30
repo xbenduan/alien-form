@@ -741,8 +741,10 @@ export function createForm(config: FormConfig = {}): FormInstance {
       if (!destroyed) return; // Already alive, nothing to do
       destroyed = false;
       (form as any)._destroyed = false;
-      // Re-install all field reactions (the field tree + signals are intact)
+      // Reset all field values to schema defaults before re-installing reactions
       startBatch();
+      root.reset();
+      // Re-install all field reactions (the field tree + signals are intact)
       reinstallFieldRuntime(ctx, root);
       if (schema["x-effect"]) installEffects(ctx, root, schema["x-effect"]);
       if (schema["x-reaction"]) installReactions(ctx, root);
