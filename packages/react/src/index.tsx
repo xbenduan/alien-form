@@ -31,7 +31,7 @@ import type {
   DataSourceItem,
   ValidateStatus,
 } from "@alien-form/core";
-import { createForm, sortByOrder } from "@alien-form/core";
+import { createForm, sortByOrder, resolveSchemaTree } from "@alien-form/core";
 
 export { createForm } from "@alien-form/core";
 export type {
