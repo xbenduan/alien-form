@@ -1171,10 +1171,10 @@ const schemaEdgeCases: IFormSchema = {
 // Page Component
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function DebugPanel({ form }: { form: FormInstance }) {
-  const values = useFormValues(form);
-  const errors = useFormErrors(form);
-  const valid = useFormValid(form);
+function DebugPanel() {
+  const values = useFormValues();
+  const errors = useFormErrors();
+  const valid = useFormValid();
   return (
     <Card size="small" title="Debug Panel" style={{ marginTop: 16, background: "#f6f8fa" }}>
       <Space direction="vertical" style={{ width: "100%" }}>
@@ -1288,9 +1288,8 @@ export default function SchemaEdgeCaseTest() {
 
       <FormProvider form={form}>
         <SchemaField schema={schemaEdgeCases} />
+        <DebugPanel />
       </FormProvider>
-
-      <DebugPanel form={form} />
       <ErrorLogPanel errors={errorLog} />
     </div>
   );
