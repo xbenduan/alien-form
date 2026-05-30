@@ -5,6 +5,7 @@ import { PlusOutlined, DeleteOutlined, ArrowUpOutlined, ArrowDownOutlined } from
 interface ArrayCardsProps {
   rows: React.ReactNode[][];
   rowFields: Record<string, React.ReactNode>[];
+  rowNodes?: { id: string }[];
   onAdd: (iv?: any) => void;
   onRemove: (i: number) => void;
   onMoveUp: (i: number) => void;
@@ -16,6 +17,7 @@ interface ArrayCardsProps {
 
 export const ArrayCards: React.FC<ArrayCardsProps> = ({
   rows,
+  rowNodes,
   onAdd,
   onRemove,
   onMoveUp,
@@ -40,7 +42,7 @@ export const ArrayCards: React.FC<ArrayCardsProps> = ({
     <div className="flex flex-col gap-3">
       {rows.map((row, index) => (
         <Card
-          key={index}
+          key={rowNodes?.[index]?.id ?? index}
           size="small"
           title={<span className="text-sm font-medium">#{index + 1}</span>}
           extra={

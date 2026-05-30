@@ -288,7 +288,8 @@ function createRow(ctx: FieldContext, array: ArrayFieldNode, index: number, init
 
 function disposeRow(row: RowNode) {
   for (const child of row.children.values()) child.dispose();
-  row.children.clear();
+  // Do NOT clear children — the field tree structure must survive
+  // destroy→reinitialize cycles (React StrictMode).
 }
 
 function pushArrayRow(ctx: FieldContext, array: ArrayFieldNode, initialValues?: any) {
@@ -745,7 +746,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
     },
     effect<T>(runnerOrSelector: ((form: FormInstance) => void | (() => void)) | ((form: FormInstance) => T), listener?: (value: T, prev: T | undefined) => void, options?: { immediate?: boolean; equals?: (a: T, b: T) => boolean }) {
       if (!listener) {
-        const dispose = effect(() => { if (!destroyed) return (runnerOrSelector as (form: FormInstance) => void | (() => void))(form); });
+        const dispose = effect(() => (runnerOrSelector as (form: FormInstance) => void | (() => void))(form));
         effectDisposers.add(dispose);
         return () => { dispose(); effectDisposers.delete(dispose); };
       }
@@ -753,7 +754,6 @@ export function createForm(config: FormConfig = {}): FormInstance {
       let initialized = false;
       let prev: T | undefined;
       const dispose = effect(() => {
-        if (destroyed) return;
         const next = (runnerOrSelector as (form: FormInstance) => T)(form);
         if (!initialized) {
           initialized = true;
