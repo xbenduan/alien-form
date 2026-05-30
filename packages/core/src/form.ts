@@ -370,14 +370,22 @@ function projectNode(node: FieldNode): any {
   if (isPrimitiveField(node)) return node.value();
   if (node.kind === "object") return projectChildren(node.children);
   if (node.kind === "array") return node.rows().map((row) => projectChildren(row.children) || {});
+  if (node.kind === "void") return projectChildren((node as VoidFieldNode).children);
   return undefined;
 }
 
 function projectChildren(children: Map<string, FieldNode>): Record<string, any> | undefined {
   const result: Record<string, any> = {};
   for (const [key, child] of children) {
-    const value = projectNode(child);
-    if (value !== undefined) result[key] = value;
+    if (child.display() === "none") continue;
+    if (child.kind === "void") {
+      // Void nodes merge their children's projections into parent (they don't own a value key)
+      const nested = projectChildren((child as VoidFieldNode).children);
+      if (nested) Object.assign(result, nested);
+    } else {
+      const value = projectNode(child);
+      if (value !== undefined) result[key] = value;
+    }
   }
   return Object.keys(result).length > 0 ? result : undefined;
 }
