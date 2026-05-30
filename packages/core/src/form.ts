@@ -621,6 +621,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
   const schema: IFormSchema = config.schema || { type: "object", properties: {} };
   const definitions: Record<string, IFieldSchema> = schema.definitions || {};
   const form: FormInstance = {} as FormInstance;
+  const fieldsSignal = signal(fieldsMap);
   const ctx: FieldContext = {
     fieldsMap,
     config,
@@ -633,8 +634,6 @@ export function createForm(config: FormConfig = {}): FormInstance {
 
   const root = createObjectField(ctx, "", { ...schema, type: "object" }, { parentRequired: schema.required });
   buildChildren(ctx, root, schema, initialValues, schema.required);
-
-  const fieldsSignal = signal(fieldsMap);
   const submittingSignal = signal(false);
   const valuesComputed = computed(() => projectFormValues(root));
   const errorsComputed = computed(() => {
