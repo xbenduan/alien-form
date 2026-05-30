@@ -214,7 +214,10 @@ const SchemaProperties: React.FC<{ schema: IFormSchema | IFieldSchema; parentPat
   return <>{sortByOrder(properties).map(([key, fieldSchema]) => <SchemaFieldItem key={key} fieldKey={key} schema={fieldSchema} parentPath={parentPath} />)}</>;
 };
 
-const SchemaFieldItem: React.FC<{ fieldKey: string; schema: IFieldSchema; parentPath: string }> = memo(({ fieldKey, schema, parentPath }) => {
+const SchemaFieldItem: React.FC<{ fieldKey: string; schema: IFieldSchema; parentPath: string }> = memo(({ fieldKey, schema: rawSchema, parentPath }) => {
+  const ctx = useContext(FormContext);
+  const definitions = (ctx?.form as any)?._definitions || {};
+  const schema = rawSchema.$ref ? resolveSchemaTree(rawSchema, definitions) : rawSchema;
   const fullPath = parentPath ? `${parentPath}.${fieldKey}` : fieldKey;
   if (schema.type === "array" && schema.items && !Array.isArray(schema.items)) return <ArrayFieldSlot path={fullPath} schema={schema} />;
   if (schema.type === "object" && schema.properties) return schema.component ? <ObjectFieldSlot path={fullPath} schema={schema} /> : <SchemaProperties schema={schema} parentPath={fullPath} />;

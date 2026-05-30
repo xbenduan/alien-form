@@ -1227,8 +1227,8 @@ export default function SchemaEdgeCaseTest() {
   const handleSetValues = useCallback(() => {
     form.setValues({
       visibleField: "SET-VIA-API",
-      "profile.firstName": "Jane",
-      "profile.lastName": "Smith",
+      profile: { firstName: "Jane", lastName: "Smith" },
+      tags: [{ tag: "beta" }, { tag: "gamma" }],
     });
     console.log("[Schema Edge] setValues called");
   }, [form]);
