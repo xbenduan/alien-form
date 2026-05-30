@@ -429,10 +429,10 @@ function resolveSelector(ctx: FieldContext, baseField: FieldNode, selector: stri
   if (selector === "$value") return isPrimitiveField(baseField) ? baseField.value() : projectNode(baseField);
   if (selector === "$path") return baseField.path;
   if (selector.startsWith("$row.")) {
-    const key = selector.slice(5);
+    const childPath = selector.slice(5);
     const row = baseField.row;
-    const field = row?.children.get(key);
-    return selectorValue(field);
+    if (!row) return undefined;
+    return selectorValue(resolveRowChild(row, childPath));
   }
   const collectionMatch = selector.match(/^(.*)\[\]\.(.+)$/);
   if (collectionMatch) {
@@ -446,14 +446,20 @@ function resolveSelector(ctx: FieldContext, baseField: FieldNode, selector: stri
 }
 
 function resolveRowChild(row: RowNode, childPath: string): FieldNode | undefined {
-  const [first, ...rest] = childPath.split(".");
-  let node = row.children.get(first);
-  for (const segment of rest) {
-    if (isContainerField(node)) node = node.children.get(segment);
-    else if (isArrayField(node) && /^\d+$/.test(segment)) {
-      const next = node.rows()[Number(segment)];
-      node = next ? undefined : undefined;
-    } else return undefined;
+  const segments = childPath.split(".");
+  let node: FieldNode | undefined = row.children.get(segments[0]);
+  for (let i = 1; i < segments.length && node; i++) {
+    const segment = segments[i];
+    if (isContainerField(node)) {
+      node = node.children.get(segment);
+    } else if (isArrayField(node) && /^\d+$/.test(segment)) {
+      const rowNode = node.rows()[Number(segment)];
+      if (!rowNode || i + 1 >= segments.length) return undefined;
+      i++;
+      node = rowNode.children.get(segments[i]);
+    } else {
+      return undefined;
+    }
   }
   return node;
 }
