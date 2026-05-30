@@ -110,7 +110,8 @@ export function useFieldAtoms(path: string): FieldNode | undefined {
 
 export function useFieldValue(path: string): any {
   const field = useFieldAtoms(path);
-  return field?.kind === "primitive" ? useSignalValue(field.value) : undefined;
+  const sig = field?.kind === "primitive" ? field.value : undefinedSignal;
+  return useSignalValue(sig);
 }
 
 export function useFieldErrors(path: string): FieldError[] {
@@ -369,3 +370,4 @@ const VoidFieldSlotInner: React.FC<{ field: FieldNode; schema: IFieldSchema }> =
 const emptyArraySignal = createSignal([]);
 const visibleSignal = createSignal("visible" as FieldDisplayTypes);
 const falseSignal = createSignal(false);
+const undefinedSignal = createSignal(undefined as any);
