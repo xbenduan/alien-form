@@ -295,8 +295,9 @@ const ArrayFieldSlotInner: React.FC<{ field: ArrayFieldNode; schema: IFieldSchem
     const children: React.ReactNode[] = [];
     const fieldMap: Record<string, React.ReactNode> = {};
     if (itemSchema.properties) {
+      const definitions = (ctx.form as any)?._definitions || {};
       for (const [childKey, childSchema] of sortByOrder(itemSchema.properties)) {
-        const node = renderRowChild(row.path, childKey, childSchema);
+        const node = renderRowChild(row.path, childKey, childSchema, definitions);
         children.push(node);
         fieldMap[childKey] = node;
       }
@@ -313,7 +314,8 @@ const ArrayFieldSlotInner: React.FC<{ field: ArrayFieldNode; schema: IFieldSchem
   return <div>{rows.map((row, i) => <div key={rowNodes[i]?.id || i}>{row}</div>)}{!disabled && <button type="button" onClick={() => field.push()}>+ Add</button>}</div>;
 });
 
-function renderRowChild(rowPath: string, childKey: string, childSchema: IFieldSchema): React.ReactNode {
+function renderRowChild(rowPath: string, childKey: string, rawChildSchema: IFieldSchema, definitions?: Record<string, IFieldSchema>): React.ReactNode {
+  const childSchema = rawChildSchema.$ref && definitions ? resolveSchemaTree(rawChildSchema, definitions) : rawChildSchema;
   const path = `${rowPath}.${childKey}`;
   if (childSchema.type === "array" && childSchema.items && !Array.isArray(childSchema.items)) return <ArrayFieldSlot key={childKey} path={path} schema={childSchema} />;
   if (childSchema.type === "object" && childSchema.properties) return childSchema.component ? <ObjectFieldSlot key={childKey} path={path} schema={childSchema} /> : <SchemaProperties key={childKey} schema={childSchema} parentPath={path} />;
@@ -347,7 +349,8 @@ const ObjectFieldSlotInner: React.FC<{ field: ObjectFieldNode; schema: IFieldSch
   const sorted = schema.properties ? sortByOrder(schema.properties) : [];
   const children = sorted.map(([k, s]) => <SchemaFieldItem key={k} fieldKey={k} schema={s} parentPath={field.path} />);
   const fieldMap: Record<string, React.ReactNode> = {};
-  for (const [k, s] of sorted) fieldMap[k] = renderRowChild(field.path, k, s);
+  const definitions = (ctx.form as any)?._definitions || {};
+  for (const [k, s] of sorted) fieldMap[k] = renderRowChild(field.path, k, s, definitions);
   if (ObjectComponent) {
     const rendered = <ObjectComponent {...componentProps} field={field} fields={fieldMap} title={title} description={description}>{children}</ObjectComponent>;
     return Decorator ? <Decorator label={title} required={required} errors={errors} {...decoratorProps}>{rendered}</Decorator> : rendered;

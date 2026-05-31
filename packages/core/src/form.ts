@@ -601,7 +601,6 @@ function buildExpressionScope(ctx: FieldContext, field: FieldNode, runtime: Runt
 }
 
 function applyReactionValue(ctx: FieldContext, field: FieldNode, key: string, value: any) {
-  if (value === undefined) return;
   switch (key) {
     case "value":
       if (isPrimitiveField(field)) {
@@ -610,27 +609,46 @@ function applyReactionValue(ctx: FieldContext, field: FieldNode, key: string, va
       } else warnInvalid(ctx, field, key, `x-reaction.value is only valid for primitive fields.`);
       break;
     case "rows":
+      if (value === undefined) return;
       if (isArrayField(field)) field.setRows(Array.isArray(value) ? value : []);
       else warnInvalid(ctx, field, key, `x-reaction.rows is only valid for array fields.`);
       break;
-    case "display": field.setDisplay(value as FieldDisplayTypes); break;
-    case "disabled": field.setDisabled(Boolean(value)); break;
-    case "required": field.setRequired(Boolean(value)); break;
-    case "title": if (field.title() !== value) field.title(String(value)); break;
-    case "description": if (field.description() !== value) field.description(String(value)); break;
+    case "display":
+      if (value === undefined) return;
+      field.setDisplay(value as FieldDisplayTypes); break;
+    case "disabled":
+      if (value === undefined) return;
+      field.setDisabled(Boolean(value)); break;
+    case "required":
+      if (value === undefined) return;
+      field.setRequired(Boolean(value)); break;
+    case "title":
+      if (value === undefined) return;
+      if (field.title() !== value) field.title(String(value)); break;
+    case "description":
+      if (value === undefined) return;
+      if (field.description() !== value) field.description(String(value)); break;
     case "props": {
+      if (value === undefined) return;
       const merged = { ...field.componentProps(), ...value };
       if (!shallowEqual(field.componentProps(), merged)) field.componentProps(merged);
       break;
     }
     case "decoratorProps": {
+      if (value === undefined) return;
       const merged = { ...field.decoratorProps(), ...value };
       if (!shallowEqual(field.decoratorProps(), merged)) field.decoratorProps(merged);
       break;
     }
-    case "component": Array.isArray(value) ? field.setComponent(value[0], value[1]) : field.setComponent(value); break;
-    case "decorator": Array.isArray(value) ? field.setDecorator(value[0], value[1]) : field.setDecorator(value); break;
-    case "dataSource": field.setDataSource(value); break;
+    case "component":
+      if (value === undefined) return;
+      Array.isArray(value) ? field.setComponent(value[0], value[1]) : field.setComponent(value); break;
+    case "decorator":
+      if (value === undefined) return;
+      Array.isArray(value) ? field.setDecorator(value[0], value[1]) : field.setDecorator(value); break;
+    case "dataSource":
+      if (value === undefined) return;
+      field.setDataSource(value); break;
     default:
       warnInvalid(ctx, field, key, `Unknown x-reaction target "${key}".`);
   }
