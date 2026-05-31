@@ -31,7 +31,7 @@ import type {
   DataSourceItem,
   ValidateStatus,
 } from "@alien-form/core";
-import { createForm, sortByOrder } from "@alien-form/core";
+import { createForm, sortByOrder, resolveSchemaTree } from "@alien-form/core";
 
 export { createForm } from "@alien-form/core";
 export type {
@@ -92,8 +92,18 @@ export { FormContext };
 export function useCreateForm(config: FormConfig = {}): FormInstance {
   const formRef = useRef<FormInstance | null>(null);
   if (!formRef.current) formRef.current = createForm(config);
-  useEffect(() => () => { formRef.current?.destroy(); }, []);
-  return formRef.current;
+  useEffect(() => {
+    // On (re-)mount, reinitialize reactions if they were destroyed
+    // (happens after React 18 StrictMode simulated unmount/remount).
+    formRef.current?.reinitialize();
+    return () => {
+      formRef.current?.destroy();
+      // Do NOT null formRef — the same form instance will be reinitialize()'d
+      // on remount. Only truly null it if the component is permanently unmounting,
+      // but React gives no way to distinguish, so we rely on reinitialize().
+    };
+  }, []);
+  return formRef.current!;
 }
 
 export function useForm(): FormInstance {
@@ -110,7 +120,8 @@ export function useFieldAtoms(path: string): FieldNode | undefined {
 
 export function useFieldValue(path: string): any {
   const field = useFieldAtoms(path);
-  return field?.kind === "primitive" ? useSignalValue(field.value) : undefined;
+  const sig = field?.kind === "primitive" ? field.value : undefinedSignal;
+  return useSignalValue(sig);
 }
 
 export function useFieldErrors(path: string): FieldError[] {
@@ -203,7 +214,10 @@ const SchemaProperties: React.FC<{ schema: IFormSchema | IFieldSchema; parentPat
   return <>{sortByOrder(properties).map(([key, fieldSchema]) => <SchemaFieldItem key={key} fieldKey={key} schema={fieldSchema} parentPath={parentPath} />)}</>;
 };
 
-const SchemaFieldItem: React.FC<{ fieldKey: string; schema: IFieldSchema; parentPath: string }> = memo(({ fieldKey, schema, parentPath }) => {
+const SchemaFieldItem: React.FC<{ fieldKey: string; schema: IFieldSchema; parentPath: string }> = memo(({ fieldKey, schema: rawSchema, parentPath }) => {
+  const ctx = useContext(FormContext);
+  const definitions = (ctx?.form as any)?._definitions || {};
+  const schema = rawSchema.$ref ? resolveSchemaTree(rawSchema, definitions) : rawSchema;
   const fullPath = parentPath ? `${parentPath}.${fieldKey}` : fieldKey;
   if (schema.type === "array" && schema.items && !Array.isArray(schema.items)) return <ArrayFieldSlot path={fullPath} schema={schema} />;
   if (schema.type === "object" && schema.properties) return schema.component ? <ObjectFieldSlot path={fullPath} schema={schema} /> : <SchemaProperties schema={schema} parentPath={fullPath} />;
@@ -281,8 +295,9 @@ const ArrayFieldSlotInner: React.FC<{ field: ArrayFieldNode; schema: IFieldSchem
     const children: React.ReactNode[] = [];
     const fieldMap: Record<string, React.ReactNode> = {};
     if (itemSchema.properties) {
+      const definitions = (ctx.form as any)?._definitions || {};
       for (const [childKey, childSchema] of sortByOrder(itemSchema.properties)) {
-        const node = renderRowChild(row.path, childKey, childSchema);
+        const node = renderRowChild(row.path, childKey, childSchema, definitions);
         children.push(node);
         fieldMap[childKey] = node;
       }
@@ -299,7 +314,8 @@ const ArrayFieldSlotInner: React.FC<{ field: ArrayFieldNode; schema: IFieldSchem
   return <div>{rows.map((row, i) => <div key={rowNodes[i]?.id || i}>{row}</div>)}{!disabled && <button type="button" onClick={() => field.push()}>+ Add</button>}</div>;
 });
 
-function renderRowChild(rowPath: string, childKey: string, childSchema: IFieldSchema): React.ReactNode {
+function renderRowChild(rowPath: string, childKey: string, rawChildSchema: IFieldSchema, definitions?: Record<string, IFieldSchema>): React.ReactNode {
+  const childSchema = rawChildSchema.$ref && definitions ? resolveSchemaTree(rawChildSchema, definitions) : rawChildSchema;
   const path = `${rowPath}.${childKey}`;
   if (childSchema.type === "array" && childSchema.items && !Array.isArray(childSchema.items)) return <ArrayFieldSlot key={childKey} path={path} schema={childSchema} />;
   if (childSchema.type === "object" && childSchema.properties) return childSchema.component ? <ObjectFieldSlot key={childKey} path={path} schema={childSchema} /> : <SchemaProperties key={childKey} schema={childSchema} parentPath={path} />;
@@ -333,7 +349,8 @@ const ObjectFieldSlotInner: React.FC<{ field: ObjectFieldNode; schema: IFieldSch
   const sorted = schema.properties ? sortByOrder(schema.properties) : [];
   const children = sorted.map(([k, s]) => <SchemaFieldItem key={k} fieldKey={k} schema={s} parentPath={field.path} />);
   const fieldMap: Record<string, React.ReactNode> = {};
-  for (const [k, s] of sorted) fieldMap[k] = renderRowChild(field.path, k, s);
+  const definitions = (ctx.form as any)?._definitions || {};
+  for (const [k, s] of sorted) fieldMap[k] = renderRowChild(field.path, k, s, definitions);
   if (ObjectComponent) {
     const rendered = <ObjectComponent {...componentProps} field={field} fields={fieldMap} title={title} description={description}>{children}</ObjectComponent>;
     return Decorator ? <Decorator label={title} required={required} errors={errors} {...decoratorProps}>{rendered}</Decorator> : rendered;
@@ -369,3 +386,4 @@ const VoidFieldSlotInner: React.FC<{ field: FieldNode; schema: IFieldSchema }> =
 const emptyArraySignal = createSignal([]);
 const visibleSignal = createSignal("visible" as FieldDisplayTypes);
 const falseSignal = createSignal(false);
+const undefinedSignal = createSignal(undefined as any);

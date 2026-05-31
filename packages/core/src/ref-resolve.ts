@@ -38,16 +38,17 @@ export function resolveSchemaTree(
   schema: IFieldSchema,
   definitions: Record<string, IFieldSchema>,
   onError?: (ref: string, message: string) => void,
+  seen: Set<string> = new Set(),
 ): IFieldSchema {
-  const { schema: resolved } = resolveSchemaRef(schema, definitions, onError);
+  const { schema: resolved } = resolveSchemaRef(schema, definitions, onError, seen);
   let result = resolved;
   if (resolved.properties) {
     result = { ...result, properties: Object.fromEntries(
-      Object.entries(resolved.properties).map(([k, v]) => [k, resolveSchemaTree(v, definitions, onError)])
+      Object.entries(resolved.properties).map(([k, v]) => [k, resolveSchemaTree(v, definitions, onError, new Set(seen))])
     )};
   }
   if (resolved.items && !Array.isArray(resolved.items)) {
-    result = { ...result, items: resolveSchemaTree(resolved.items as IFieldSchema, definitions, onError) };
+    result = { ...result, items: resolveSchemaTree(resolved.items as IFieldSchema, definitions, onError, new Set(seen)) };
   }
   return result;
 }

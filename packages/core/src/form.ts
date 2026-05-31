@@ -162,6 +162,8 @@ function createBaseField(
         primitive.setValue(schema.default);
       } else if (isArrayField(base as FieldNode)) {
         (base as ArrayFieldNode).setRows(Array.isArray(schema.default) ? schema.default : []);
+      } else if (isContainerField(base as FieldNode)) {
+        for (const child of (base as ObjectFieldNode | VoidFieldNode).children.values()) child.reset();
       }
       base.setErrors([]);
       base.setWarnings([]);
@@ -286,7 +288,8 @@ function createRow(ctx: FieldContext, array: ArrayFieldNode, index: number, init
 
 function disposeRow(row: RowNode) {
   for (const child of row.children.values()) child.dispose();
-  row.children.clear();
+  // Do NOT clear children — the field tree structure must survive
+  // destroy→reinitialize cycles (React StrictMode).
 }
 
 function pushArrayRow(ctx: FieldContext, array: ArrayFieldNode, initialValues?: any) {
@@ -332,20 +335,31 @@ function setArrayRows(ctx: FieldContext, array: ArrayFieldNode, values: any[]) {
 }
 
 function reindexRows(ctx: FieldContext, array: ArrayFieldNode, rows: RowNode[]) {
+  // Two-phase reindex to avoid path collisions when rows swap positions.
+  // Phase 1: remove all old paths from fieldsMap
+  for (const row of rows) removeChildPaths(ctx, row.children);
+  // Phase 2: assign new paths and register
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     row.index = i;
     row.path = `${array.path}.${i}`;
-    updateChildPaths(ctx, row.children, row.path);
+    assignChildPaths(ctx, row.children, row.path);
   }
 }
 
-function updateChildPaths(ctx: FieldContext, children: Map<string, FieldNode>, parentPath: string) {
-  for (const [key, child] of children) {
+function removeChildPaths(ctx: FieldContext, children: Map<string, FieldNode>) {
+  for (const [, child] of children) {
     ctx.fieldsMap.delete(child.path);
+    if (isContainerField(child)) removeChildPaths(ctx, child.children);
+    if (isArrayField(child)) for (const row of child.rows()) removeChildPaths(ctx, row.children);
+  }
+}
+
+function assignChildPaths(ctx: FieldContext, children: Map<string, FieldNode>, parentPath: string) {
+  for (const [key, child] of children) {
     child.path = `${parentPath}.${key}`;
     ctx.fieldsMap.set(child.path, child);
-    if (isContainerField(child)) updateChildPaths(ctx, child.children, child.path);
+    if (isContainerField(child)) assignChildPaths(ctx, child.children, child.path);
     if (isArrayField(child)) reindexRows(ctx, child, child.rows());
   }
 }
@@ -361,6 +375,26 @@ function installFieldRuntime(ctx: FieldContext, field: FieldNode) {
   if (isArrayField(field)) for (const row of field.rows()) installRowRuntime(ctx, row);
 }
 
+/**
+ * Re-install runtime (reactions/effects) on all fields.
+ * Used after form.reinitialize() — the field tree and signals are intact,
+ * but all effect disposers have been cleaned up by dispose().
+ * Unlike installFieldRuntime, also re-registers fields in fieldsMap
+ * in case they were removed during dispose.
+ */
+function reinstallFieldRuntime(ctx: FieldContext, field: FieldNode) {
+  // Ensure field is in the map (dispose removes it)
+  if (field.path !== undefined) ctx.fieldsMap.set(field.path, field);
+  if (field.schema["x-reaction"]) installReactions(ctx, field);
+  if (field.schema["x-effect"]) installEffects(ctx, field, field.schema["x-effect"]);
+  if (isContainerField(field)) for (const child of field.children.values()) reinstallFieldRuntime(ctx, child);
+  if (isArrayField(field)) for (const row of field.rows()) reinstallRowRuntime(ctx, row);
+}
+
+function reinstallRowRuntime(ctx: FieldContext, row: RowNode) {
+  for (const child of row.children.values()) reinstallFieldRuntime(ctx, child);
+}
+
 function projectFormValues(root: ObjectFieldNode): Record<string, any> {
   return projectChildren(root.children) || {};
 }
@@ -370,14 +404,22 @@ function projectNode(node: FieldNode): any {
   if (isPrimitiveField(node)) return node.value();
   if (node.kind === "object") return projectChildren(node.children);
   if (node.kind === "array") return node.rows().map((row) => projectChildren(row.children) || {});
+  if (node.kind === "void") return projectChildren((node as VoidFieldNode).children);
   return undefined;
 }
 
 function projectChildren(children: Map<string, FieldNode>): Record<string, any> | undefined {
   const result: Record<string, any> = {};
   for (const [key, child] of children) {
-    const value = projectNode(child);
-    if (value !== undefined) result[key] = value;
+    if (child.display() === "none") continue;
+    if (child.kind === "void") {
+      // Void nodes merge their children's projections into parent (they don't own a value key)
+      const nested = projectChildren((child as VoidFieldNode).children);
+      if (nested) Object.assign(result, nested);
+    } else {
+      const value = projectNode(child);
+      if (value !== undefined) result[key] = value;
+    }
   }
   return Object.keys(result).length > 0 ? result : undefined;
 }
@@ -387,10 +429,10 @@ function resolveSelector(ctx: FieldContext, baseField: FieldNode, selector: stri
   if (selector === "$value") return isPrimitiveField(baseField) ? baseField.value() : projectNode(baseField);
   if (selector === "$path") return baseField.path;
   if (selector.startsWith("$row.")) {
-    const key = selector.slice(5);
+    const childPath = selector.slice(5);
     const row = baseField.row;
-    const field = row?.children.get(key);
-    return selectorValue(field);
+    if (!row) return undefined;
+    return selectorValue(resolveRowChild(row, childPath));
   }
   const collectionMatch = selector.match(/^(.*)\[\]\.(.+)$/);
   if (collectionMatch) {
@@ -404,14 +446,20 @@ function resolveSelector(ctx: FieldContext, baseField: FieldNode, selector: stri
 }
 
 function resolveRowChild(row: RowNode, childPath: string): FieldNode | undefined {
-  const [first, ...rest] = childPath.split(".");
-  let node = row.children.get(first);
-  for (const segment of rest) {
-    if (isContainerField(node)) node = node.children.get(segment);
-    else if (isArrayField(node) && /^\d+$/.test(segment)) {
-      const next = node.rows()[Number(segment)];
-      node = next ? undefined : undefined;
-    } else return undefined;
+  const segments = childPath.split(".");
+  let node: FieldNode | undefined = row.children.get(segments[0]);
+  for (let i = 1; i < segments.length && node; i++) {
+    const segment = segments[i];
+    if (isContainerField(node)) {
+      node = node.children.get(segment);
+    } else if (isArrayField(node) && /^\d+$/.test(segment)) {
+      const rowNode = node.rows()[Number(segment)];
+      if (!rowNode || i + 1 >= segments.length) return undefined;
+      i++;
+      node = rowNode.children.get(segments[i]);
+    } else {
+      return undefined;
+    }
   }
   return node;
 }
@@ -553,7 +601,6 @@ function buildExpressionScope(ctx: FieldContext, field: FieldNode, runtime: Runt
 }
 
 function applyReactionValue(ctx: FieldContext, field: FieldNode, key: string, value: any) {
-  if (value === undefined) return;
   switch (key) {
     case "value":
       if (isPrimitiveField(field)) {
@@ -562,27 +609,46 @@ function applyReactionValue(ctx: FieldContext, field: FieldNode, key: string, va
       } else warnInvalid(ctx, field, key, `x-reaction.value is only valid for primitive fields.`);
       break;
     case "rows":
+      if (value === undefined) return;
       if (isArrayField(field)) field.setRows(Array.isArray(value) ? value : []);
       else warnInvalid(ctx, field, key, `x-reaction.rows is only valid for array fields.`);
       break;
-    case "display": field.setDisplay(value as FieldDisplayTypes); break;
-    case "disabled": field.setDisabled(Boolean(value)); break;
-    case "required": field.setRequired(Boolean(value)); break;
-    case "title": if (field.title() !== value) field.title(String(value)); break;
-    case "description": if (field.description() !== value) field.description(String(value)); break;
+    case "display":
+      if (value === undefined) return;
+      field.setDisplay(value as FieldDisplayTypes); break;
+    case "disabled":
+      if (value === undefined) return;
+      field.setDisabled(Boolean(value)); break;
+    case "required":
+      if (value === undefined) return;
+      field.setRequired(Boolean(value)); break;
+    case "title":
+      if (value === undefined) return;
+      if (field.title() !== value) field.title(String(value)); break;
+    case "description":
+      if (value === undefined) return;
+      if (field.description() !== value) field.description(String(value)); break;
     case "props": {
+      if (value === undefined) return;
       const merged = { ...field.componentProps(), ...value };
       if (!shallowEqual(field.componentProps(), merged)) field.componentProps(merged);
       break;
     }
     case "decoratorProps": {
+      if (value === undefined) return;
       const merged = { ...field.decoratorProps(), ...value };
       if (!shallowEqual(field.decoratorProps(), merged)) field.decoratorProps(merged);
       break;
     }
-    case "component": Array.isArray(value) ? field.setComponent(value[0], value[1]) : field.setComponent(value); break;
-    case "decorator": Array.isArray(value) ? field.setDecorator(value[0], value[1]) : field.setDecorator(value); break;
-    case "dataSource": field.setDataSource(value); break;
+    case "component":
+      if (value === undefined) return;
+      Array.isArray(value) ? field.setComponent(value[0], value[1]) : field.setComponent(value); break;
+    case "decorator":
+      if (value === undefined) return;
+      Array.isArray(value) ? field.setDecorator(value[0], value[1]) : field.setDecorator(value); break;
+    case "dataSource":
+      if (value === undefined) return;
+      field.setDataSource(value); break;
     default:
       warnInvalid(ctx, field, key, `Unknown x-reaction target "${key}".`);
   }
@@ -621,6 +687,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
   const schema: IFormSchema = config.schema || { type: "object", properties: {} };
   const definitions: Record<string, IFieldSchema> = schema.definitions || {};
   const form: FormInstance = {} as FormInstance;
+  const fieldsSignal = signal(fieldsMap);
   const ctx: FieldContext = {
     fieldsMap,
     config,
@@ -633,8 +700,6 @@ export function createForm(config: FormConfig = {}): FormInstance {
 
   const root = createObjectField(ctx, "", { ...schema, type: "object" }, { parentRequired: schema.required });
   buildChildren(ctx, root, schema, initialValues, schema.required);
-
-  const fieldsSignal = signal(fieldsMap);
   const submittingSignal = signal(false);
   const valuesComputed = computed(() => projectFormValues(root));
   const errorsComputed = computed(() => {
@@ -673,7 +738,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
       endBatch();
     },
     setInitialValues(values: Record<string, any>) { (form as any)._initialValues = { ...values }; },
-    reset() { startBatch(); root.reset(); for (const child of root.children.values()) child.reset(); endBatch(); },
+    reset() { startBatch(); root.reset(); endBatch(); },
     async validate() {
       const results = await Promise.all(Array.from(fieldsSignal().values()).filter((f: FieldNode) => f.display() !== "none").map((f: FieldNode) => f.validate()));
       return results.every((errors) => errors.length === 0);
@@ -690,13 +755,25 @@ export function createForm(config: FormConfig = {}): FormInstance {
         return onSubmit ? await onSubmit(form.values()) : (form.values() as T);
       } finally { submittingSignal(false); }
     },
+    reinitialize() {
+      if (!destroyed) return; // Already alive, nothing to do
+      destroyed = false;
+      (form as any)._destroyed = false;
+      // Re-install all field reactions (the field tree + signals are intact)
+      startBatch();
+      reinstallFieldRuntime(ctx, root);
+      if (schema["x-effect"]) installEffects(ctx, root, schema["x-effect"]);
+      if (schema["x-reaction"]) installReactions(ctx, root);
+      endBatch();
+    },
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      (form as any)._destroyed = true;
       root.dispose();
       for (const d of effectDisposers) d();
       effectDisposers.clear();
-      errorListeners.clear();
+      // Note: do NOT clear errorListeners — they may be re-needed after reinitialize
     },
     onError(listener: (error: FormError) => void) {
       errorListeners.add(listener);
@@ -704,7 +781,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
     },
     effect<T>(runnerOrSelector: ((form: FormInstance) => void | (() => void)) | ((form: FormInstance) => T), listener?: (value: T, prev: T | undefined) => void, options?: { immediate?: boolean; equals?: (a: T, b: T) => boolean }) {
       if (!listener) {
-        const dispose = effect(() => { if (!destroyed) return (runnerOrSelector as (form: FormInstance) => void | (() => void))(form); });
+        const dispose = effect(() => (runnerOrSelector as (form: FormInstance) => void | (() => void))(form));
         effectDisposers.add(dispose);
         return () => { dispose(); effectDisposers.delete(dispose); };
       }
@@ -712,7 +789,6 @@ export function createForm(config: FormConfig = {}): FormInstance {
       let initialized = false;
       let prev: T | undefined;
       const dispose = effect(() => {
-        if (destroyed) return;
         const next = (runnerOrSelector as (form: FormInstance) => T)(form);
         if (!initialized) {
           initialized = true;
