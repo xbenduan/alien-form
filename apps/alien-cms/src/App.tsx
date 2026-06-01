@@ -13,12 +13,15 @@ export default function App() {
   const modelSummariesQuery = useModelSummaries();
   const modelSummaries: ModelSummary[] = modelSummariesQuery.data ?? [];
   const pathname = location.pathname;
+  const builderEditMatch = pathname.match(/^\/builder\/edit\/(.+)/);
   const activeModel =
     pathname.startsWith('/m/')
       ? decodeURIComponent(pathname.split('/')[2] ?? '')
-      : '';
+      : builderEditMatch
+        ? decodeURIComponent(builderEditMatch[1])
+        : '';
   const activeGlobalKey =
-    pathname.startsWith('/builder/')
+    pathname === '/builder/new'
       ? 'new-model'
       : pathname.startsWith('/logs')
         ? 'logs'

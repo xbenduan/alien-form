@@ -19,11 +19,9 @@ export default function SettingsPage() {
               { title: '设置' },
             ]}
           />
-          {modelName ? (
-            <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>
-              返回
-            </Button>
-          ) : null}
+          <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>
+            返回
+          </Button>
         </div>
       </div>
 

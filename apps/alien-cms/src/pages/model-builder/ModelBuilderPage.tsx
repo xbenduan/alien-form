@@ -1,10 +1,11 @@
-import { EyeOutlined, SaveOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, EyeOutlined, SaveOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Breadcrumb, Button, Card, Col, Modal, Row, Space, Spin, Steps, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { buildModelPath } from '../../app/model-path';
 import { buildModelSchema } from '../../core/schema/build-model-schema';
+import { loadSchema } from '../../core/schema/load-schema';
 import { schemaToBuilderDraft } from '../../core/schema/schema-to-draft';
 import { modelSchemaRepository } from '../../data/repository/model-schema-repository';
 import { useModelSummaries } from '../../hooks/use-model-summaries';
@@ -165,7 +166,7 @@ export default function ModelBuilderPage() {
   // Load existing schema when in edit mode
   const existingSchemaQuery = useQuery({
     queryKey: ['model-schema', editModelName],
-    queryFn: () => modelSchemaRepository.get(editModelName!),
+    queryFn: () => loadSchema(editModelName!),
     enabled: isEditMode,
   });
 
@@ -309,6 +310,11 @@ export default function ModelBuilderPage() {
           <Breadcrumb
             items={[{ title: '模型管理' }, { title: pageTitle }, { title: stepItems[currentStep]?.title ?? '设计器' }]}
           />
+          {isEditMode ? (
+            <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => navigate(buildModelPath(editModelName!))}>
+              返回
+            </Button>
+          ) : null}
         </div>
       </div>
 
