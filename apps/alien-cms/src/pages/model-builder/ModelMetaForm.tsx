@@ -5,9 +5,10 @@ interface ModelMetaFormProps {
   draft: ModelBuilderDraft;
   onChange: (nextDraft: ModelBuilderDraft) => void;
   hideTitle?: boolean;
+  modelNameDisabled?: boolean;
 }
 
-export function ModelMetaForm({ draft, onChange, hideTitle }: ModelMetaFormProps) {
+export function ModelMetaForm({ draft, onChange, hideTitle, modelNameDisabled }: ModelMetaFormProps) {
   return (
     <Card className="model-query-card" styles={{ body: { padding: 20 } }}>
       {hideTitle ? null : (
@@ -19,6 +20,7 @@ export function ModelMetaForm({ draft, onChange, hideTitle }: ModelMetaFormProps
         <Form.Item label="模型名（唯一标识）" required>
           <Input
             value={draft.modelName}
+            disabled={modelNameDisabled}
             placeholder="如 product、order-item（小写字母+数字+中划线）"
             onChange={(event) => onChange({ ...draft, modelName: event.target.value })}
           />

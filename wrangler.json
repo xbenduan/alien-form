@@ -2,6 +2,7 @@
   "name": "alien-form",
   "compatibility_date": "2026-06-01",
   "assets": {
-    "directory": "./apps/alien-cms/dist"
+    "directory": "./apps/alien-cms/dist",
+    "not_found_handling": "single-page-application"
   }
 }

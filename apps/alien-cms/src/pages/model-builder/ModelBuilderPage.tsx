@@ -1,10 +1,11 @@
 import { EyeOutlined, SaveOutlined } from '@ant-design/icons';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Alert, Breadcrumb, Button, Card, Col, Modal, Row, Space, Steps, message } from 'antd';
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Alert, Breadcrumb, Button, Card, Col, Modal, Row, Space, Spin, Steps, message } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { buildModelPath } from '../../app/model-path';
 import { buildModelSchema } from '../../core/schema/build-model-schema';
+import { schemaToBuilderDraft } from '../../core/schema/schema-to-draft';
 import { modelSchemaRepository } from '../../data/repository/model-schema-repository';
 import { useModelSummaries } from '../../hooks/use-model-summaries';
 import type { BuilderComponentName, BuilderFieldType, ModelBuilderDraft, ModelBuilderFieldDraft } from '../../types/model-builder';
@@ -99,8 +100,8 @@ function collectRemainingFieldIds(fields: ModelBuilderFieldDraft[]): string[] {
   return fields.flatMap((field) => [field.id, ...(field.children ? collectRemainingFieldIds(field.children) : [])]);
 }
 
-function validateDraft(draft: ModelBuilderDraft, existingModelNames: string[]) {
-  validateModelMeta(draft, existingModelNames);
+function validateDraft(draft: ModelBuilderDraft, existingModelNames: string[], isEditMode: boolean) {
+  validateModelMeta(draft, existingModelNames, isEditMode);
 
   if (draft.fields.length === 0) {
     throw new Error('请至少添加一个字段');
@@ -131,14 +132,14 @@ function validateDraft(draft: ModelBuilderDraft, existingModelNames: string[]) {
   validateFields(draft.fields, draft.title.trim() || '模型');
 }
 
-function validateModelMeta(draft: ModelBuilderDraft, existingModelNames: string[]) {
+function validateModelMeta(draft: ModelBuilderDraft, existingModelNames: string[], isEditMode: boolean) {
   if (!draft.modelName.trim()) {
     throw new Error('请先填写模型名');
   }
   if (!/^[a-z][a-z0-9-]*$/.test(draft.modelName.trim())) {
     throw new Error('模型名仅支持小写字母、数字和中划线，且必须以字母开头');
   }
-  if (existingModelNames.includes(draft.modelName.trim())) {
+  if (!isEditMode && existingModelNames.includes(draft.modelName.trim())) {
     throw new Error(`模型名 ${draft.modelName.trim()} 已存在`);
   }
   if (!draft.title.trim()) {
@@ -149,12 +150,34 @@ function validateModelMeta(draft: ModelBuilderDraft, existingModelNames: string[
 export default function ModelBuilderPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const params = useParams();
+  const editModelName = params.modelName;
+  const isEditMode = Boolean(editModelName);
+
   const summariesQuery = useModelSummaries();
   const [draft, setDraft] = useState<ModelBuilderDraft>(() => createInitialDraft());
+  const [draftInitialized, setDraftInitialized] = useState(!isEditMode);
   const [selectedFieldId, setSelectedFieldId] = useState<string | undefined>(draft.fields[0]?.id);
   const [currentStep, setCurrentStep] = useState(0);
   const [messageApi, contextHolder] = message.useMessage();
   const [previewJsonVisible, setPreviewJsonVisible] = useState(false);
+
+  // Load existing schema when in edit mode
+  const existingSchemaQuery = useQuery({
+    queryKey: ['model-schema', editModelName],
+    queryFn: () => modelSchemaRepository.get(editModelName!),
+    enabled: isEditMode,
+  });
+
+  // Initialize draft from loaded schema
+  useEffect(() => {
+    if (isEditMode && existingSchemaQuery.data && !draftInitialized) {
+      const loadedDraft = schemaToBuilderDraft(existingSchemaQuery.data);
+      setDraft(loadedDraft);
+      setSelectedFieldId(loadedDraft.fields[0]?.id);
+      setDraftInitialized(true);
+    }
+  }, [isEditMode, existingSchemaQuery.data, draftInitialized]);
 
   const previewState = useMemo(() => {
     try {
@@ -175,7 +198,7 @@ export default function ModelBuilderPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      validateDraft(draft, existingModelNames);
+      validateDraft(draft, existingModelNames, isEditMode);
       return modelSchemaRepository.save(buildModelSchema(draft));
     },
     onSuccess: async (record) => {
@@ -184,11 +207,11 @@ export default function ModelBuilderPage() {
         queryClient.invalidateQueries({ queryKey: ['model-schema', record.modelName] }),
         queryClient.invalidateQueries({ queryKey: ['model-list', record.modelName] }),
       ]);
-      messageApi.success('模型创建成功');
+      messageApi.success(isEditMode ? '模型保存成功' : '模型创建成功');
       navigate(buildModelPath(record.modelName));
     },
     onError: (error) => {
-      messageApi.error(error instanceof Error ? error.message : '模型创建失败');
+      messageApi.error(error instanceof Error ? error.message : (isEditMode ? '模型保存失败' : '模型创建失败'));
     },
   });
 
@@ -243,13 +266,48 @@ export default function ModelBuilderPage() {
     { title: '预览保存', description: '预览 schema 效果并最终保存' },
   ];
 
+  const pageTitle = isEditMode ? '编辑模型' : '新增模型';
+
+  // Show loading state when in edit mode and schema is still loading
+  if (isEditMode && (existingSchemaQuery.isLoading || !draftInitialized)) {
+    return (
+      <>
+        <div className="model-breadcrumb-bar">
+          <div className="model-breadcrumb-content">
+            <Breadcrumb items={[{ title: '模型管理' }, { title: pageTitle }, { title: '加载中' }]} />
+          </div>
+        </div>
+        <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
+          <div className="model-page-loading">
+            <Spin size="large" />
+          </div>
+        </Card>
+      </>
+    );
+  }
+
+  if (isEditMode && existingSchemaQuery.isError) {
+    return (
+      <>
+        <div className="model-breadcrumb-bar">
+          <div className="model-breadcrumb-content">
+            <Breadcrumb items={[{ title: '模型管理' }, { title: pageTitle }, { title: '加载失败' }]} />
+          </div>
+        </div>
+        <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
+          <Alert type="error" showIcon message="模型加载失败" description={existingSchemaQuery.error?.message} />
+        </Card>
+      </>
+    );
+  }
+
   return (
     <>
       {contextHolder}
       <div className="model-breadcrumb-bar">
         <div className="model-breadcrumb-content">
           <Breadcrumb
-            items={[{ title: '模型管理' }, { title: '新增模型' }, { title: stepItems[currentStep]?.title ?? '设计器' }]}
+            items={[{ title: '模型管理' }, { title: pageTitle }, { title: stepItems[currentStep]?.title ?? '设计器' }]}
           />
         </div>
       </div>
@@ -270,7 +328,7 @@ export default function ModelBuilderPage() {
 
       <div className="builder-step-body">
         {currentStep === 0 ? (
-          <ModelMetaForm draft={draft} onChange={setDraft} hideTitle />
+          <ModelMetaForm draft={draft} onChange={setDraft} hideTitle modelNameDisabled={isEditMode} />
         ) : null}
 
         {currentStep === 1 ? (
@@ -325,7 +383,7 @@ export default function ModelBuilderPage() {
               onClick={() => {
                 if (currentStep === 0) {
                   try {
-                    validateModelMeta(draft, existingModelNames);
+                    validateModelMeta(draft, existingModelNames, isEditMode);
                   } catch (error) {
                     messageApi.error(error instanceof Error ? error.message : '请完善模型信息');
                     return;
@@ -350,7 +408,7 @@ export default function ModelBuilderPage() {
                 loading={saveMutation.isPending}
                 onClick={() => saveMutation.mutate()}
               >
-                保存模型
+                {isEditMode ? '保存模型' : '创建模型'}
               </Button>
             </>
           )}
