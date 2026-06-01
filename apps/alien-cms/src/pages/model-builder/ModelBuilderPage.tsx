@@ -1,4 +1,4 @@
-import { EyeOutlined, SaveOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, EyeOutlined, SaveOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Breadcrumb, Button, Card, Col, Modal, Row, Space, Spin, Steps, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
@@ -310,6 +310,11 @@ export default function ModelBuilderPage() {
           <Breadcrumb
             items={[{ title: '模型管理' }, { title: pageTitle }, { title: stepItems[currentStep]?.title ?? '设计器' }]}
           />
+          {isEditMode ? (
+            <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => navigate(buildModelPath(editModelName!))}>
+              返回
+            </Button>
+          ) : null}
         </div>
       </div>
 
