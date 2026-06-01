@@ -76,7 +76,6 @@ export interface RuntimeRuleContext {
   key?: string;
   kind: "x-reaction" | "x-effect" | "x-format" | "x-validate";
   schema: IFieldSchema | IFormSchema;
-  rule?: Record<string, any>;
   row?: RowNode;
   scope: Record<string, any>;
   values: Record<string, any>;
