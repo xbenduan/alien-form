@@ -227,16 +227,14 @@ body {
 }
 
 .model-filter-form {
-    flex: 1;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px 0;
-    margin: 0 -8px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px 12px;
+    align-items: end;
 }
 
 .filter-form-item {
-    width: 25%;
-    padding: 0 8px;
+    min-width: 0;
 }
 
 .filter-form-item > .ant-input,
@@ -260,20 +258,19 @@ body {
 .filter-actions-item {
     display: flex;
     align-items: center;
-    width: auto;
-    margin-left: auto;
-    padding: 0 8px;
+    grid-column: -2 / -1;
+    justify-self: end;
 }
 
-@media (max-width: 1599px) {
-    .filter-form-item {
-        width: 50%;
+@media (max-width: 1399px) {
+    .model-filter-form {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     }
 }
 
 @media (max-width: 1199px) {
-    .filter-form-item {
-        width: 100%;
+    .model-filter-form {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     }
 }
 
