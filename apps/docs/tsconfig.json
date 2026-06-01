@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": [
+      "react",
+      "react-dom"
+    ],
+    "baseUrl": "."
+  },
+  "include": [
+    "src",
+    "docs",
+    "rspress.config.ts"
+  ]
+}
