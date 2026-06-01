@@ -1,5 +1,52 @@
-import { ReactionTest } from "../../src/pages/reaction-test";
-
 # Reaction Test
 
-<ReactionTest />
+Demonstrates the `x-reaction` system with various dependency patterns including match expressions, computed handlers, and array item reactions.
+
+## Case 1: Match + Dependencies → Display Toggle
+
+A select field controls whether a target field is visible, hidden, or removed.
+
+```tsx file="./_demos/reaction-case1.tsx" preview
+```
+
+## Case 2: Expression + Dependencies → Value
+
+Two input fields are combined into a computed full name.
+
+```tsx file="./_demos/reaction-case2.tsx" preview
+```
+
+## Case 3: Computed Handler + Dependencies → Disabled
+
+A role select controls whether another field is editable via a named handler.
+
+```tsx file="./_demos/reaction-case3.tsx" preview
+```
+
+## Case 4: Multiple Dependencies → Required
+
+Two switches must both be "yes" for a field to become required.
+
+```tsx file="./_demos/reaction-case4.tsx" preview
+```
+
+## Case 5: Match + Dependencies → DataSource
+
+Country selection dynamically changes the city dropdown options.
+
+```tsx file="./_demos/reaction-case5.tsx" preview
+```
+
+## Case 6: Expression → Dynamic Title
+
+A count selector dynamically updates the title of another field.
+
+```tsx file="./_demos/reaction-case6.tsx" preview
+```
+
+## Case 7: Array Items with x-reaction
+
+Push new rows and observe that x-reaction inside array items still works.
+
+```tsx file="./_demos/reaction-case7.tsx" preview
+```

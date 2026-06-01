@@ -1,5 +1,6 @@
 import { defineConfig } from "rspress/config";
-import containerSyntax from "@rspress/plugin-container-syntax";
+import { pluginPreview } from "@rspress/plugin-preview";
+import path from "node:path";
 
 export default defineConfig({
   root: "docs",
@@ -25,7 +26,16 @@ export default defineConfig({
       description: "Schema 驱动的表单运行时。",
     },
   ],
-  plugins: [containerSyntax()],
+  plugins: [
+    pluginPreview(),
+  ],
+  builderConfig: {
+    resolve: {
+      alias: {
+        "@/adapters": path.resolve(__dirname, "src/adapters"),
+      },
+    },
+  },
   themeConfig: {
     socialLinks: [
       {
