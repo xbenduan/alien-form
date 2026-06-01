@@ -142,14 +142,10 @@ function FilterSchemaRenderer({
   schema,
   initialValues,
   onDraftChange,
-  onSearch,
-  onReset,
 }: {
   schema: IFormSchema;
   initialValues: Record<string, unknown>;
   onDraftChange: (values: Record<string, unknown>) => void;
-  onSearch: (values: Record<string, unknown>) => void;
-  onReset: () => void;
 }) {
   const form = useCreateForm({ schema, initialValues });
 
@@ -212,11 +208,6 @@ export function ModelFilterBar({ fields, values, loading, onSearch }: ModelFilte
       schema={filterSchema}
       initialValues={draftValues}
       onDraftChange={setDraftValues}
-      onSearch={onSearch}
-      onReset={() => {
-        setDraftValues({});
-        onSearch({});
-      }}
     />
   );
 }
