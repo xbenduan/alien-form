@@ -235,7 +235,7 @@ body {
 }
 
 .filter-form-item {
-    width: 22%;
+    width: 25%;
     padding: 0 8px;
 }
 
@@ -260,11 +260,14 @@ body {
 .filter-actions-item {
     display: flex;
     align-items: center;
+    width: auto;
+    margin-left: auto;
+    padding: 0 8px;
 }
 
 @media (max-width: 1599px) {
     .filter-form-item {
-        width: 33.33%;
+        width: 50%;
     }
 }
 
