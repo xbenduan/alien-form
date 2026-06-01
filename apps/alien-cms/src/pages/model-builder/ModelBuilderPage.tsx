@@ -14,8 +14,11 @@ import type { FieldPreset } from './FieldPalette';
 import { ModelMetaForm } from './ModelMetaForm';
 import { ModelPreviewPanel } from './ModelPreviewPanel';
 
+let fieldCounter = 0;
+
 function createFieldDraft(type: BuilderFieldType, component: BuilderComponentName): ModelBuilderFieldDraft {
   const timestamp = Date.now();
+  const suffix = `${(++fieldCounter).toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   const defaultTitle = {
     string: '文本字段',
     number: '数字字段',
@@ -28,8 +31,8 @@ function createFieldDraft(type: BuilderFieldType, component: BuilderComponentNam
   const isObjectArray = type === 'array' && component === 'ArrayCards';
 
   return {
-    id: `field-${timestamp}`,
-    key: `field_${timestamp}`,
+    id: `field-${timestamp}-${suffix}`,
+    key: `field_${timestamp}_${suffix}`,
     title: defaultTitle,
     type,
     component,

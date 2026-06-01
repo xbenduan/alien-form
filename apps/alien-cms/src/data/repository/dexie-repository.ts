@@ -61,6 +61,9 @@ export class DexieRepository {
 
   private getStaticTable(model: string) {
     const table = this.tableMap[model];
+    if (!table) {
+      throw new Error(`未找到静态模型 "${model}" 对应的数据表，请检查 tableMap 配置`);
+    }
     return table;
   }
 

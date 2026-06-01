@@ -1,7 +1,7 @@
 import { Button, Card, Space, Typography } from 'antd';
 import type { BuilderComponentName, BuilderFieldType } from '../../types/model-builder';
 
-interface FieldPreset {
+export interface FieldPreset {
   key: string;
   label: string;
   type: BuilderFieldType;
@@ -46,5 +46,3 @@ export function FieldPalette({ onAddField }: FieldPaletteProps) {
     </Card>
   );
 }
-
-export type { FieldPreset };
