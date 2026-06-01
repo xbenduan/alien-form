@@ -1,6 +1,5 @@
 import {
   DatabaseOutlined,
-  FileAddOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
 import { Card, Menu, Tag, Tooltip, Typography } from 'antd';
@@ -42,7 +41,7 @@ export function ModelPageHeader({
           items={[
             {
               key: 'new-model',
-              icon: <FileAddOutlined />,
+              icon: <DatabaseOutlined />,
               label: '新增模型',
             },
             {
