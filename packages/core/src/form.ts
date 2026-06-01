@@ -176,8 +176,12 @@ function createPrimitiveField(ctx: FieldContext, path: string, schema: IFieldSch
   const base = createBaseField(ctx, "primitive", path, schema, options);
   const initial = initialValue !== undefined ? initialValue : schema.default;
   const field = base as PrimitiveFieldNode;
+  const rowChildKey = options.row ? path.slice(options.row.path.length + 1).split(".")[0] : undefined;
   field.value = signal(initial);
   field.setValue = (value: any) => {
+    if (options.row && rowChildKey && options.row.children.get(rowChildKey) !== field) {
+      options.row.children.set(rowChildKey, field);
+    }
     if (!Object.is(field.value(), value)) field.value(value);
   };
   ctx.fieldsMap.set(path, field);
@@ -366,6 +370,7 @@ function projectNode(node: FieldNode): any {
   if (isPrimitiveField(node)) return node.value();
   if (node.kind === "object") return projectChildren(node.children);
   if (node.kind === "array") return node.rows().map((row) => projectChildren(row.children) || {});
+  if (node.kind === "void") return projectChildren(node.children);
   return undefined;
 }
 
@@ -373,7 +378,12 @@ function projectChildren(children: Map<string, FieldNode>): Record<string, any> 
   const result: Record<string, any> = {};
   for (const [key, child] of children) {
     const value = projectNode(child);
-    if (value !== undefined) result[key] = value;
+    if (value === undefined) continue;
+    if (child.kind === "void" && value && typeof value === "object" && !Array.isArray(value)) {
+      Object.assign(result, value);
+      continue;
+    }
+    result[key] = value;
   }
   return Object.keys(result).length > 0 ? result : undefined;
 }
@@ -611,6 +621,7 @@ function errorMessage(err: any): string {
 export function createForm(config: FormConfig = {}): FormInstance {
   const errorListeners = new Set<(e: FormError) => void>(config.onError ? [config.onError] : []);
   const fieldsMap = new Map<string, FieldNode>();
+  const fieldsSignal = signal(fieldsMap);
   let destroyed = false;
   const effectDisposers = new Set<() => void>();
   const initialValues = config.initialValues ? { ...config.initialValues } : {};
@@ -630,7 +641,6 @@ export function createForm(config: FormConfig = {}): FormInstance {
   const root = createObjectField(ctx, "", { ...schema, type: "object" }, { parentRequired: schema.required });
   buildChildren(ctx, root, schema, initialValues, schema.required);
 
-  const fieldsSignal = signal(fieldsMap);
   const submittingSignal = signal(false);
   const valuesComputed = computed(() => projectFormValues(root));
   const errorsComputed = computed(() => {

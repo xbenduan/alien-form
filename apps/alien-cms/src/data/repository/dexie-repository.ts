@@ -55,6 +55,7 @@ export class DexieRepository {
   private readonly tableMap: Record<string, Table<ModelRecord, string>> = {
     article: db.articles,
     campaign: db.campaigns,
+    'nail-booking': db.nailBookings,
   };
 
   private getTable(model: string) {

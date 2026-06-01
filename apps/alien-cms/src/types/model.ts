@@ -1,7 +1,14 @@
 import type { DataSourceItem, IFieldSchema, IFormSchema } from '@alien-form/react';
 import type { ReactNode } from 'react';
 
-export type DrawerMode = 'closed' | 'add' | 'edit' | 'detail';
+export type ModelActionMode = 'closed' | 'add' | 'edit' | 'detail';
+export type ModelActionKind = Exclude<ModelActionMode, 'closed'>;
+export type ModelActionOpenMode = 'modal' | 'drawer' | 'page';
+export type DrawerMode = ModelActionMode;
+export interface ModelRouteState {
+  mode: ModelActionMode;
+  recordId?: string;
+}
 export type ModelRecord = Record<string, unknown> & {
   id: string;
   createdAt: string;
@@ -22,6 +29,8 @@ export interface CmsFieldUiMeta {
     width?: number;
     ellipsis?: boolean;
     format?: ValueFormat;
+    inline?: string[];
+    expandable?: boolean;
   };
   form?: {
     modes?: Array<'add' | 'edit'>;
@@ -46,6 +55,7 @@ export interface CmsModelMeta {
   primaryField?: string;
   defaultFilterCount?: number;
   defaultPageSize?: number;
+  openMode?: Partial<Record<ModelActionKind, ModelActionOpenMode>>;
 }
 
 export interface CmsModelSchema extends Omit<IFormSchema, 'properties'> {
@@ -81,6 +91,9 @@ export interface TableColumnProjection {
   dataSource?: DataSourceItem[];
   type?: string;
   order: number;
+  inline?: string[];
+  expandable?: boolean;
+  field: CmsFieldSchema;
 }
 
 export interface DetailItemProjection {

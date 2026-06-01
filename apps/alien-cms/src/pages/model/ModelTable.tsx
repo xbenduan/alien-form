@@ -2,8 +2,10 @@ import { DeleteOutlined, EditOutlined, EyeOutlined } from '@ant-design/icons';
 import { Button, Popconfirm, Space, Table, Tag, Typography } from 'antd';
 import type { TableColumnsType, TablePaginationConfig } from 'antd';
 import type { FilterValue, SorterResult } from 'antd/es/table/interface';
-import { renderTableValue } from '../../core/format/format-value';
+import { useState } from 'react';
 import type { ModelRecord, TableColumnProjection } from '../../types/model';
+import { FieldDetailDrawer } from './FieldDetailDrawer';
+import { renderTableCell } from './TableCellRenderer';
 
 interface ModelTableProps {
   columns: TableColumnProjection[];
@@ -34,6 +36,11 @@ export function ModelTable({
   onEdit,
   onDelete,
 }: ModelTableProps) {
+  const [fieldDetailState, setFieldDetailState] = useState<{
+    column?: TableColumnProjection;
+    record?: ModelRecord;
+  }>({});
+
   const antdColumns: TableColumnsType<ModelRecord> = [
     ...columns.map((column) => ({
       title: column.title,
@@ -41,14 +48,12 @@ export function ModelTable({
       key: column.key,
       width: column.width,
       ellipsis: column.ellipsis,
-      sorter: true,
+      sorter: column.type !== 'array' && column.type !== 'object' && column.type !== 'void',
       sortOrder: sorter?.field === column.key ? sorter.order : null,
-      render: (value: unknown) =>
-        renderTableValue(value, {
-          format: column.format,
-          dataSource: column.dataSource,
-          ellipsis: column.ellipsis,
-        }),
+      render: (value: unknown, record: ModelRecord) =>
+        renderTableCell(column, value, record, (nextColumn, nextRecord) =>
+          setFieldDetailState({ column: nextColumn, record: nextRecord }),
+        ),
     })),
     {
       title: '操作',
@@ -83,35 +88,43 @@ export function ModelTable({
   ];
 
   return (
-    <Table<ModelRecord>
-      rowKey="id"
-      className="model-data-table"
-      columns={antdColumns}
-      dataSource={records}
-      loading={loading}
-      locale={{
-        emptyText: (
-          <div className="table-empty-state">
-            <Tag color="default">No Data</Tag>
-            <div>当前条件下暂无记录，请调整筛选条件或新建一条数据。</div>
-          </div>
-        ),
-      }}
-      scroll={{ x: 1120 }}
-      pagination={{
-        current: pagination.current,
-        pageSize: pagination.pageSize,
-        total,
-        showSizeChanger: true,
-        showTotal: (count) => `共 ${count} 条`,
-      }}
-      onChange={(nextPagination, filters, nextSorter) =>
-        onTableChange({
-          pagination: nextPagination,
-          filters,
-          sorter: Array.isArray(nextSorter) ? nextSorter[0] : nextSorter,
-        })
-      }
-    />
+    <>
+      <Table<ModelRecord>
+        rowKey="id"
+        className="model-data-table"
+        columns={antdColumns}
+        dataSource={records}
+        loading={loading}
+        locale={{
+          emptyText: (
+            <div className="table-empty-state">
+              <Tag color="default">No Data</Tag>
+              <div>当前条件下暂无记录，请调整筛选条件或新建一条数据。</div>
+            </div>
+          ),
+        }}
+        scroll={{ x: 1120 }}
+        pagination={{
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total,
+          showSizeChanger: true,
+          showTotal: (count) => `共 ${count} 条`,
+        }}
+        onChange={(nextPagination, filters, nextSorter) =>
+          onTableChange({
+            pagination: nextPagination,
+            filters,
+            sorter: Array.isArray(nextSorter) ? nextSorter[0] : nextSorter,
+          })
+        }
+      />
+      <FieldDetailDrawer
+        open={Boolean(fieldDetailState.column && fieldDetailState.record)}
+        column={fieldDetailState.column}
+        record={fieldDetailState.record}
+        onClose={() => setFieldDetailState({})}
+      />
+    </>
   );
 }

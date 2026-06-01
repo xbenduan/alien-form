@@ -7,7 +7,7 @@ export default function App() {
   const modelSummaries = listModelSummaries();
   const availableModelNames = modelSummaries.map((item) => item.name);
   const defaultModelName = getDefaultModelName();
-  const { currentModel, currentPath, navigateToModel } = useModelRoute(
+  const { currentModel, currentAction, currentPath, navigateToModel, navigateToAction } = useModelRoute(
     availableModelNames,
     defaultModelName,
   );
@@ -22,7 +22,9 @@ export default function App() {
       modelName={currentModel}
       modelSummaries={modelSummaries}
       currentPath={currentPath}
+      routeAction={currentAction}
       onNavigateModel={navigateToModel}
+      onRouteActionChange={navigateToAction}
     />
   );
 }

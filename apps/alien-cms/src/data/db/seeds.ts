@@ -31,6 +31,17 @@ const campaignNames = [
 ];
 const owners = ['Mika', 'Ariel', 'Luna', 'Sven'];
 const channels = ['search', 'social', 'email', 'community'] as const;
+const campaignRegions = ['north', 'east', 'south', 'nationwide'] as const;
+const campaignAudiences = ['new', 'active', 'inactive', 'lead'] as const;
+const campaignPriorities = ['high', 'medium', 'low'] as const;
+const materialFormats = ['banner', 'video', 'landing'] as const;
+const nailCustomerNames = ['林晚', '周周', '陈雨', 'Mia', 'Kiki', '阿宁', 'Yoyo', '苏苏'];
+const nailArtists = ['luna', 'momo', 'kiki', 'nora'] as const;
+const nailBranches = ['guomao', 'jingan', 'mixc'] as const;
+const nailServiceTypes = ['basic', 'french', 'cat-eye', 'festival'] as const;
+const nailSlots = ['10:00', '12:00', '14:00', '16:00', '18:00'] as const;
+const nailShapes = ['round', 'squoval', 'almond'] as const;
+const nailColorTones = ['nude', 'red', 'mix'] as const;
 
 function buildArticleSummary(index: number) {
   return `第 ${index + 1} 篇示例文章，用于验证同一份 schema 在列表、筛选、表单和详情之间的联动行为。`;
@@ -82,8 +93,80 @@ export function createCampaignSeeds(): ModelRecord[] {
       budget: 10 + index * 8,
       active: index % 2 === 0,
       tags: ['growth', channels[index % channels.length], index % 2 === 0 ? 'paid' : 'organic'],
+      targeting: {
+        region: campaignRegions[index % campaignRegions.length],
+        audienceType: campaignAudiences[index % campaignAudiences.length],
+        priority: campaignPriorities[index % campaignPriorities.length],
+        notes: `定向策略第 ${index + 1} 版，重点覆盖 ${index % 2 === 0 ? '新客拉新' : '老客激活'} 场景。`,
+      },
+      landingPage: `https://campaign.example.com/${index + 1}`,
+      trackingCode: `CMP-${String(index + 1).padStart(3, '0')}`,
+      syncCrm: index % 2 === 0,
+      deliveryNotes: `本轮活动由 ${owners[index % owners.length]} 跟进，渠道以 ${channels[index % channels.length]} 为主。`,
+      materials: [
+        {
+          name: `${campaignNames[index]} 主素材`,
+          format: materialFormats[index % materialFormats.length],
+          owner: owners[index % owners.length],
+          enabled: true,
+        },
+        {
+          name: `${campaignNames[index]} 备选素材`,
+          format: materialFormats[(index + 1) % materialFormats.length],
+          owner: owners[(index + 1) % owners.length],
+          enabled: index % 2 === 0,
+        },
+      ],
       summary: `这是 ${campaignNames[index]} 的摘要，用于验证第二模型在同一工作台中的复用能力。`,
       goal: ['验证模型切换体验', '检查不同字段投影', '确认数据层可复用'].join('\n\n'),
+      createdAt: createdAt.toISOString(),
+      updatedAt: updatedAt.toISOString(),
+    } satisfies ModelRecord;
+  });
+}
+
+export function createNailBookingSeeds(): ModelRecord[] {
+  return Array.from({ length: 8 }).map((_, index) => {
+    const createdAt = dayjs().subtract(6 - index, 'day').hour(11 + (index % 4)).minute(20).second(0);
+    const updatedAt = createdAt.add((index % 2) + 1, 'day').add(index * 9, 'minute');
+    const bookingDate = createdAt.add((index % 5) + 1, 'day').format('YYYY-MM-DD');
+    const customerName = nailCustomerNames[index % nailCustomerNames.length];
+    const serviceType = nailServiceTypes[index % nailServiceTypes.length];
+
+    return {
+      id: `nail-booking-${index + 1}`,
+      customerName,
+      phone: `1380000${String(100 + index)}`,
+      bookingDate,
+      bookingSlot: nailSlots[index % nailSlots.length],
+      serviceType,
+      nailArtist: nailArtists[index % nailArtists.length],
+      branch: nailBranches[index % nailBranches.length],
+      status: statuses[index % statuses.length],
+      depositPaid: index % 2 === 0,
+      styleTags: [
+        serviceType,
+        index % 2 === 0 ? '通勤' : '节日',
+        index % 3 === 0 ? '显白' : '低饱和',
+      ],
+      preferences: {
+        shape: nailShapes[index % nailShapes.length],
+        colorTone: nailColorTones[index % nailColorTones.length],
+        specialNotes: `${customerName} 偏好 ${index % 2 === 0 ? '短甲自然款' : '微闪设计'}，希望控制整体时长。`,
+      },
+      serviceItems: [
+        {
+          name: serviceType === 'festival' ? '节日定制延长' : '基础建构',
+          duration: 40 + index * 5,
+          price: 168 + index * 20,
+        },
+        {
+          name: index % 2 === 0 ? '局部贴钻' : '手部护理',
+          duration: index % 2 === 0 ? 20 : 15,
+          price: index % 2 === 0 ? 59 : 39,
+        },
+      ],
+      remark: `${customerName} 已通过小程序提交预约，门店为 ${nailBranches[index % nailBranches.length]}，到店前需再次确认款式细节。`,
       createdAt: createdAt.toISOString(),
       updatedAt: updatedAt.toISOString(),
     } satisfies ModelRecord;

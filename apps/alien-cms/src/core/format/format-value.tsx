@@ -15,22 +15,17 @@ function getLabel(value: unknown, dataSource?: DataSourceItem[]) {
   return dataSource?.find((item) => item.value === value)?.label;
 }
 
-function formatScalar(
+export function formatValueText(
   value: unknown,
   format?: ValueFormat,
   dataSource?: DataSourceItem[],
-) {
+) : string {
   if (value === null || value === undefined || value === '') {
     return '—';
   }
 
   if (Array.isArray(value)) {
     return value.length > 0 ? value.join(' / ') : '—';
-  }
-
-  if (format === 'status') {
-    const label = getLabel(value, dataSource) ?? String(value);
-    return <Tag color={statusColors[String(value)]}>{label}</Tag>;
   }
 
   if (format === 'boolean' || typeof value === 'boolean') {
@@ -46,6 +41,19 @@ function formatScalar(
   }
 
   return getLabel(value, dataSource) ?? String(value);
+}
+
+function formatScalar(
+  value: unknown,
+  format?: ValueFormat,
+  dataSource?: DataSourceItem[],
+) {
+  if (format === 'status' && value !== null && value !== undefined && value !== '') {
+    const label = getLabel(value, dataSource) ?? String(value);
+    return <Tag color={statusColors[String(value)]}>{label}</Tag>;
+  }
+
+  return formatValueText(value, format, dataSource);
 }
 
 export function renderTableValue(

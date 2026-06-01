@@ -1,4 +1,4 @@
-import { Card, Segmented, Space, Tag, Typography } from 'antd';
+import { Card, Menu, Space, Tag, Tooltip, Typography } from 'antd';
 import type { ModelSummary } from '../../types/model';
 
 interface ModelPageHeaderProps {
@@ -21,32 +21,51 @@ export function ModelPageHeader({
   onNavigateModel,
 }: ModelPageHeaderProps) {
   return (
-    <Card className="model-page-header">
-      <div className="header-top-row">
-        <Space size={12} wrap>
+    <Card className="model-side-panel" styles={{ body: { padding: 20 } }}>
+      <div className="model-side-panel-top">
+        <Space size={[8, 8]} wrap>
           <Tag color="blue">Alien CMS P1</Tag>
           {subtitle ? <Tag>{subtitle}</Tag> : null}
           <Tag color="gold">IndexedDB / Dexie</Tag>
         </Space>
-        <div className="model-switcher-block">
-          <Typography.Text type="secondary">模型入口</Typography.Text>
-          <Segmented
-            value={activeModel}
-            options={modelSummaries.map((item) => ({
-              label: item.name,
-              value: item.name,
-            }))}
-            onChange={(value) => onNavigateModel(String(value))}
-          />
-        </div>
+        <Typography.Title level={4} style={{ margin: '14px 0 6px' }}>
+          {title}
+        </Typography.Title>
+        <Typography.Text className="model-side-panel-model-name">{activeModel}</Typography.Text>
+        <Typography.Paragraph className="model-side-panel-description" type="secondary">
+          {description}
+        </Typography.Paragraph>
+        <Typography.Text className="current-model-path">{currentPath}</Typography.Text>
       </div>
-      <Typography.Title level={2} style={{ marginBottom: 8, marginTop: 18 }}>
-        {title}
-      </Typography.Title>
-      <Typography.Paragraph type="secondary" style={{ marginBottom: 8, maxWidth: 760 }}>
-        {description}
-      </Typography.Paragraph>
-      <Typography.Text className="current-model-path">当前 URL: {currentPath}</Typography.Text>
+
+      <div className="model-side-panel-menu-block">
+        <Typography.Text className="model-side-panel-menu-title" type="secondary">
+          模型切换
+        </Typography.Text>
+        <Menu
+          mode="inline"
+          selectedKeys={[activeModel]}
+          items={modelSummaries.map((item) => ({
+            key: item.name,
+            label: (
+              <Tooltip
+                placement="right"
+                title={
+                  <div className="model-menu-item-tooltip">
+                    <div>{item.title}</div>
+                    <div>{item.name}</div>
+                  </div>
+                }
+              >
+                <div className="model-menu-item">
+                  <span className="model-menu-item-name">{item.title}</span>
+                </div>
+              </Tooltip>
+            ),
+          }))}
+          onClick={({ key }) => onNavigateModel(String(key))}
+        />
+      </div>
     </Card>
   );
 }

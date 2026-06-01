@@ -40,6 +40,8 @@ function normalizeField(key: string, field: CmsFieldSchema): CmsFieldSchema {
         width: field['x-cms']?.table?.width,
         ellipsis: field['x-cms']?.table?.ellipsis,
         format: field['x-cms']?.table?.format,
+        inline: field['x-cms']?.table?.inline,
+        expandable: field['x-cms']?.table?.expandable,
       },
       form: {
         modes: field['x-cms']?.form?.modes,
@@ -73,6 +75,11 @@ export function normalizeSchema(rawSchema: CmsModelSchema): CmsModelSchema {
       primaryField: rawSchema['x-model']?.primaryField ?? 'id',
       defaultFilterCount: rawSchema['x-model']?.defaultFilterCount ?? 3,
       defaultPageSize: rawSchema['x-model']?.defaultPageSize ?? 10,
+      openMode: {
+        add: rawSchema['x-model']?.openMode?.add ?? 'drawer',
+        edit: rawSchema['x-model']?.openMode?.edit ?? 'drawer',
+        detail: rawSchema['x-model']?.openMode?.detail ?? 'drawer',
+      },
     },
   };
 }

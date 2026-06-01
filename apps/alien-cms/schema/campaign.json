@@ -11,7 +11,12 @@
     "pluralLabel": "活动",
     "primaryField": "name",
     "defaultFilterCount": 3,
-    "defaultPageSize": 6
+    "defaultPageSize": 5,
+    "openMode": {
+      "add": "page",
+      "edit": "page",
+      "detail": "page"
+    }
   },
   "properties": {
     "name": {
@@ -217,6 +222,226 @@
           "visible": true,
           "width": 220,
           "ellipsis": true
+        },
+        "detail": {
+          "visible": true
+        }
+      }
+    },
+    "targeting": {
+      "type": "object",
+      "title": "定向配置",
+      "component": "SectionCard",
+      "order": 85,
+      "properties": {
+        "region": {
+          "type": "string",
+          "title": "区域",
+          "component": "Select",
+          "decorator": "FormItem",
+          "order": 10,
+          "dataSource": [
+            { "label": "华北", "value": "north" },
+            { "label": "华东", "value": "east" },
+            { "label": "华南", "value": "south" },
+            { "label": "全国", "value": "nationwide" }
+          ],
+          "props": {
+            "placeholder": "请选择区域"
+          }
+        },
+        "audienceType": {
+          "type": "string",
+          "title": "人群",
+          "component": "Select",
+          "decorator": "FormItem",
+          "order": 20,
+          "dataSource": [
+            { "label": "新客", "value": "new" },
+            { "label": "活跃老客", "value": "active" },
+            { "label": "沉默老客", "value": "inactive" },
+            { "label": "高潜线索", "value": "lead" }
+          ],
+          "props": {
+            "placeholder": "请选择人群"
+          }
+        },
+        "priority": {
+          "type": "string",
+          "title": "优先级",
+          "component": "Select",
+          "decorator": "FormItem",
+          "order": 30,
+          "dataSource": [
+            { "label": "高", "value": "high" },
+            { "label": "中", "value": "medium" },
+            { "label": "低", "value": "low" }
+          ],
+          "props": {
+            "placeholder": "请选择优先级"
+          }
+        },
+        "notes": {
+          "type": "string",
+          "title": "投放备注",
+          "component": "Textarea",
+          "decorator": "FormItem",
+          "order": 40,
+          "props": {
+            "rows": 3,
+            "placeholder": "请输入定向补充说明"
+          }
+        }
+      },
+      "x-cms": {
+        "filter": {
+          "visible": false
+        },
+        "table": {
+          "visible": true,
+          "width": 260,
+          "inline": ["region", "audienceType", "priority"],
+          "expandable": true
+        },
+        "detail": {
+          "visible": true
+        }
+      }
+    },
+    "deliverySection": {
+      "type": "void",
+      "title": "投放补充信息",
+      "component": "SectionCard",
+      "order": 86,
+      "properties": {
+        "landingPage": {
+          "type": "string",
+          "title": "落地页地址",
+          "component": "Input",
+          "decorator": "FormItem",
+          "order": 10,
+          "props": {
+            "placeholder": "请输入落地页地址"
+          }
+        },
+        "trackingCode": {
+          "type": "string",
+          "title": "追踪编码",
+          "component": "Input",
+          "decorator": "FormItem",
+          "order": 20,
+          "props": {
+            "placeholder": "请输入追踪编码"
+          }
+        },
+        "syncCrm": {
+          "type": "boolean",
+          "title": "同步到 CRM",
+          "component": "Switch",
+          "decorator": "FormItem",
+          "order": 30,
+          "x-cms": {
+            "detail": {
+              "format": "boolean"
+            }
+          }
+        },
+        "deliveryNotes": {
+          "type": "string",
+          "title": "投放说明",
+          "component": "Textarea",
+          "decorator": "FormItem",
+          "order": 40,
+          "props": {
+            "rows": 3,
+            "placeholder": "请输入投放说明"
+          }
+        }
+      },
+      "x-cms": {
+        "filter": {
+          "visible": false
+        },
+        "table": {
+          "visible": false
+        },
+        "detail": {
+          "visible": true
+        }
+      }
+    },
+    "materials": {
+      "type": "array",
+      "title": "素材清单",
+      "component": "ArrayCards",
+      "decorator": "FormItem",
+      "order": 87,
+      "props": {
+        "addText": "+ 添加素材"
+      },
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "素材名称",
+            "component": "Input",
+            "decorator": "FormItem",
+            "required": true,
+            "order": 10,
+            "props": {
+              "placeholder": "请输入素材名称"
+            }
+          },
+          "format": {
+            "type": "string",
+            "title": "素材类型",
+            "component": "Select",
+            "decorator": "FormItem",
+            "order": 20,
+            "dataSource": [
+              { "label": "Banner", "value": "banner" },
+              { "label": "短视频", "value": "video" },
+              { "label": "落地页", "value": "landing" }
+            ],
+            "props": {
+              "placeholder": "请选择素材类型"
+            }
+          },
+          "owner": {
+            "type": "string",
+            "title": "素材负责人",
+            "component": "Input",
+            "decorator": "FormItem",
+            "order": 30,
+            "props": {
+              "placeholder": "请输入素材负责人"
+            }
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "启用中",
+            "component": "Switch",
+            "decorator": "FormItem",
+            "order": 40,
+            "x-cms": {
+              "detail": {
+                "format": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "default": [],
+      "x-cms": {
+        "filter": {
+          "visible": false
+        },
+        "table": {
+          "visible": true,
+          "width": 220,
+          "inline": ["name", "format"],
+          "expandable": true
         },
         "detail": {
           "visible": true

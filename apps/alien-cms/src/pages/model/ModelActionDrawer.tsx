@@ -1,107 +1,45 @@
-import { FormProvider, SchemaField, useCreateForm } from '@alien-form/react';
-import { Alert, Button, Descriptions, Drawer, Empty, Space, Spin } from 'antd';
-import type { ButtonProps } from 'antd';
+import { Alert, Card, Drawer, Empty, Modal, Spin } from 'antd';
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
-import { renderDetailValue } from '../../core/format/format-value';
-import * as adapters from '../../adapters';
-import type { CmsModelSchema, DetailItemProjection, DrawerMode, ModelRecord } from '../../types/model';
+import type { CmsModelSchema, ModelActionMode, ModelActionOpenMode, ModelRecord } from '../../types/model';
+import { DetailSchemaView, SchemaFormView } from './SchemaRenderer';
 
-const components = {
-  Input: adapters.Input,
-  Textarea: adapters.Textarea,
-  NumberInput: adapters.NumberInput,
-  Select: adapters.Select,
-  Switch: adapters.Switch,
-  DateInput: adapters.DateInput,
-  Radio: adapters.Radio,
-  CheckboxGroup: adapters.CheckboxGroup,
-  Rate: adapters.Rate,
-  ArrayCards: adapters.ArrayCards,
-  SectionCard: adapters.SectionCard,
-  TagsInput: adapters.TagsInput,
-  SkuTable: adapters.SkuTable,
-};
-
-const decorators = {
-  FormItem: adapters.FormItem,
-};
-
-interface DrawerSchemaFormProps {
-  schema: CmsModelSchema;
-  initialValues?: Record<string, unknown>;
-  submitText: string;
-  submitButtonProps?: ButtonProps;
-  loading?: boolean;
-  onSubmit: (values: Record<string, unknown>) => Promise<void>;
-  onCancel: () => void;
-}
-
-function DrawerSchemaForm({
-  schema,
-  initialValues,
-  submitText,
-  submitButtonProps,
-  loading,
-  onSubmit,
-  onCancel,
-}: DrawerSchemaFormProps) {
-  const form = useCreateForm({ schema, initialValues });
-
-  return (
-    <div className="drawer-form-layout">
-      <FormProvider form={form} components={components as Record<string, any>} decorators={decorators as Record<string, any>}>
-        <SchemaField />
-      </FormProvider>
-      <div className="drawer-footer-actions">
-        <Space>
-          <Button onClick={() => form.reset()}>重置</Button>
-          <Button onClick={onCancel}>取消</Button>
-          <Button
-            type="primary"
-            loading={loading}
-            {...submitButtonProps}
-            onClick={() => form.submit(onSubmit)}
-          >
-            {submitText}
-          </Button>
-        </Space>
-      </div>
-    </div>
-  );
-}
-
-function buildDrawerMeta(mode: DrawerMode, singularLabel: string) {
+function buildActionMeta(mode: ModelActionMode, singularLabel: string) {
   switch (mode) {
     case 'add':
       return {
         title: `新增${singularLabel}`,
-        width: 680,
+        drawerWidth: 680,
+        modalWidth: 720,
       };
     case 'edit':
       return {
         title: `编辑${singularLabel}`,
-        width: 680,
+        drawerWidth: 680,
+        modalWidth: 720,
       };
     case 'detail':
       return {
         title: `${singularLabel}详情`,
-        width: 560,
+        drawerWidth: 560,
+        modalWidth: 640,
       };
     default:
       return {
         title: singularLabel,
-        width: 560,
+        drawerWidth: 560,
+        modalWidth: 640,
       };
   }
 }
 
-interface ModelActionDrawerProps {
-  mode: DrawerMode;
+interface ModelActionHostProps {
+  mode: ModelActionMode;
+  openMode: ModelActionOpenMode;
   singularLabel: string;
   addSchema: CmsModelSchema;
   editSchema: CmsModelSchema;
-  detailItems: DetailItemProjection[];
+  detailSchema: CmsModelSchema;
   record?: ModelRecord;
   loading?: boolean;
   submitting?: boolean;
@@ -110,21 +48,22 @@ interface ModelActionDrawerProps {
   onSubmitEdit: (values: Record<string, unknown>) => Promise<void>;
 }
 
-export function ModelActionDrawer({
+export function ModelActionHost({
   mode,
+  openMode,
   singularLabel,
   addSchema,
   editSchema,
-  detailItems,
+  detailSchema,
   record,
   loading,
   submitting,
   onClose,
   onSubmitAdd,
   onSubmitEdit,
-}: ModelActionDrawerProps) {
+}: ModelActionHostProps) {
   const open = mode !== 'closed';
-  const meta = buildDrawerMeta(mode, singularLabel);
+  const meta = buildActionMeta(mode, singularLabel);
   const formKey = useMemo(() => `${mode}:${record?.id ?? 'new'}`, [mode, record?.id]);
 
   let content: ReactNode = null;
@@ -135,18 +74,7 @@ export function ModelActionDrawer({
     } else if (!record) {
       content = <Empty description="暂无详情数据" />;
     } else {
-      content = (
-        <Descriptions column={1} bordered size="small">
-          {detailItems.map((item) => (
-            <Descriptions.Item key={item.key} label={item.title}>
-              {renderDetailValue(record[item.key], {
-                format: item.format,
-                dataSource: item.dataSource,
-              })}
-            </Descriptions.Item>
-          ))}
-        </Descriptions>
-      );
+      content = <DetailSchemaView key={formKey} schema={detailSchema} initialValues={record} />;
     }
   }
 
@@ -157,12 +85,13 @@ export function ModelActionDrawer({
       content = <Alert type="warning" showIcon message="记录不存在或加载失败" />;
     } else {
       content = (
-        <DrawerSchemaForm
+        <SchemaFormView
           key={formKey}
           schema={editSchema}
           initialValues={record}
           submitText="保存修改"
           loading={submitting}
+          layout={openMode === 'page' ? 'page' : 'overlay'}
           onCancel={onClose}
           onSubmit={onSubmitEdit}
         />
@@ -172,14 +101,43 @@ export function ModelActionDrawer({
 
   if (mode === 'add') {
     content = (
-      <DrawerSchemaForm
+      <SchemaFormView
         key={formKey}
         schema={addSchema}
         submitText="创建记录"
         loading={submitting}
+        layout={openMode === 'page' ? 'page' : 'overlay'}
         onCancel={onClose}
         onSubmit={onSubmitAdd}
       />
+    );
+  }
+
+  if (mode === 'closed') {
+    return null;
+  }
+
+  if (openMode === 'page') {
+    return (
+      <Card className="model-action-page" styles={{ body: { padding: 24 } }}>
+        <div className="model-action-page-body">{content}</div>
+      </Card>
+    );
+  }
+
+  if (openMode === 'modal') {
+    return (
+      <Modal
+        centered
+        destroyOnHidden
+        footer={null}
+        title={meta.title}
+        open={open}
+        width={meta.modalWidth}
+        onCancel={onClose}
+      >
+        {content}
+      </Modal>
     );
   }
 
@@ -188,7 +146,7 @@ export function ModelActionDrawer({
       destroyOnHidden
       title={meta.title}
       open={open}
-      width={meta.width}
+      width={meta.drawerWidth}
       onClose={onClose}
     >
       {content}

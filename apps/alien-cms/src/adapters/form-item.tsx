@@ -35,11 +35,13 @@ export function FormItem({
       : undefined;
 
   const labelNode = label ? (
-    <span>
-      {label}
+    <span className="cms-form-item-label">
+      <Tooltip title={label}>
+        <span className="cms-form-item-label-text">{label}</span>
+      </Tooltip>
       {description ? (
         <Tooltip title={description}>
-          <QuestionCircleOutlined style={{ color: '#98a2b3', marginInlineStart: 6 }} />
+          <QuestionCircleOutlined className="cms-form-item-label-icon" />
         </Tooltip>
       ) : null}
     </span>
@@ -47,7 +49,9 @@ export function FormItem({
 
   return (
     <Form.Item
+      className="cms-form-item"
       label={labelNode}
+      colon={false}
       required={required}
       validateStatus={status}
       help={help}

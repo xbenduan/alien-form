@@ -1,12 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { loadSchema } from '../core/schema/load-schema';
-import { projectDetailItems } from '../core/projection/project-detail-items';
+import { projectDetailSchema } from '../core/projection/project-detail-schema';
 import { projectFilterFields } from '../core/projection/project-filter-fields';
 import { projectFormSchema } from '../core/projection/project-form-schema';
 import { projectTableColumns } from '../core/projection/project-table-columns';
 import { localDataProvider } from '../data/provider/local-data-provider';
-import type { DrawerMode } from '../types/model';
+import type { ModelActionKind, ModelActionMode, ModelActionOpenMode, ModelRouteState } from '../types/model';
+
+interface UseModelPageOptions {
+  routeAction: ModelRouteState;
+  onRouteActionChange: (nextAction: ModelRouteState) => void;
+}
 
 interface UseModelPageResult {
   modelName: string;
@@ -15,14 +20,15 @@ interface UseModelPageResult {
   tableColumns: ReturnType<typeof projectTableColumns>;
   addSchema: ReturnType<typeof projectFormSchema>;
   editSchema: ReturnType<typeof projectFormSchema>;
-  detailItems: ReturnType<typeof projectDetailItems>;
+  detailSchema: ReturnType<typeof projectDetailSchema>;
   records: Awaited<ReturnType<typeof localDataProvider.list>>['list'];
   total: number;
   listLoading: boolean;
   filters: Record<string, unknown>;
   pagination: { current: number; pageSize: number };
   sorter?: { field?: string; order?: 'ascend' | 'descend' };
-  drawerMode: DrawerMode;
+  actionMode: ModelActionMode;
+  actionOpenMode?: ModelActionOpenMode;
   activeRecordId?: string;
   activeRecord?: Awaited<ReturnType<typeof localDataProvider.detail>>;
   detailLoading: boolean;
@@ -32,7 +38,7 @@ interface UseModelPageResult {
   openAdd: () => void;
   openEdit: (id: string) => void;
   openDetail: (id: string) => void;
-  closeDrawer: () => void;
+  closeAction: () => void;
   submitAdd: (values: Record<string, unknown>) => Promise<void>;
   submitEdit: (values: Record<string, unknown>) => Promise<void>;
   removeRecord: (id: string) => Promise<void>;
@@ -40,14 +46,15 @@ interface UseModelPageResult {
   deleting: boolean;
 }
 
-export function useModelPage(modelName: string): UseModelPageResult {
+export function useModelPage(modelName: string, options: UseModelPageOptions): UseModelPageResult {
+  const { routeAction, onRouteActionChange } = options;
   const queryClient = useQueryClient();
   const schema = useMemo(() => loadSchema(modelName), [modelName]);
   const filterFields = useMemo(() => projectFilterFields(schema), [schema]);
   const tableColumns = useMemo(() => projectTableColumns(schema), [schema]);
   const addSchema = useMemo(() => projectFormSchema(schema, 'add'), [schema]);
   const editSchema = useMemo(() => projectFormSchema(schema, 'edit'), [schema]);
-  const detailItems = useMemo(() => projectDetailItems(schema), [schema]);
+  const detailSchema = useMemo(() => projectDetailSchema(schema), [schema]);
 
   const [filters, setFilterState] = useState<Record<string, unknown>>({});
   const [pagination, setPaginationState] = useState({
@@ -55,8 +62,63 @@ export function useModelPage(modelName: string): UseModelPageResult {
     pageSize: schema['x-model']?.defaultPageSize ?? 10,
   });
   const [sorter, setSorterState] = useState<{ field?: string; order?: 'ascend' | 'descend' }>();
-  const [drawerMode, setDrawerMode] = useState<DrawerMode>('closed');
-  const [activeRecordId, setActiveRecordId] = useState<string>();
+  const [overlayAction, setOverlayAction] = useState<ModelRouteState>({ mode: 'closed' });
+
+  const actionOpenModeMap = useMemo(
+    () => ({
+      add: schema['x-model']?.openMode?.add ?? 'drawer',
+      edit: schema['x-model']?.openMode?.edit ?? 'drawer',
+      detail: schema['x-model']?.openMode?.detail ?? 'drawer',
+    }),
+    [schema],
+  );
+
+  const pageAction = useMemo(() => {
+    if (routeAction.mode === 'closed') {
+      return { mode: 'closed' } satisfies ModelRouteState;
+    }
+
+    return actionOpenModeMap[routeAction.mode] === 'page'
+      ? routeAction
+      : ({ mode: 'closed' } satisfies ModelRouteState);
+  }, [actionOpenModeMap, routeAction]);
+
+  const currentAction = pageAction.mode !== 'closed' ? pageAction : overlayAction;
+  const activeRecordId = currentAction.recordId;
+  const actionMode = currentAction.mode;
+  const actionOpenMode = actionMode === 'closed' ? undefined : actionOpenModeMap[actionMode];
+
+  useEffect(() => {
+    if (routeAction.mode !== 'closed' && actionOpenModeMap[routeAction.mode] !== 'page') {
+      onRouteActionChange({ mode: 'closed' });
+    }
+  }, [actionOpenModeMap, onRouteActionChange, routeAction]);
+
+  const closeAction = () => {
+    setOverlayAction({ mode: 'closed' });
+
+    if (pageAction.mode !== 'closed') {
+      onRouteActionChange({ mode: 'closed' });
+    }
+  };
+
+  const openAction = (mode: ModelActionKind, recordId?: string) => {
+    const nextAction =
+      mode === 'add'
+        ? ({ mode } satisfies ModelRouteState)
+        : ({
+            mode,
+            recordId,
+          } satisfies ModelRouteState);
+
+    if (actionOpenModeMap[mode] === 'page') {
+      onRouteActionChange(nextAction);
+      setOverlayAction({ mode: 'closed' });
+      return;
+    }
+
+    setOverlayAction(nextAction);
+  };
 
   const listQuery = useQuery({
     queryKey: ['model-list', modelName, filters, pagination, sorter],
@@ -67,11 +129,12 @@ export function useModelPage(modelName: string): UseModelPageResult {
         pagination,
         sorter,
       }),
+    placeholderData: (previousData) => previousData,
   });
 
   const detailQuery = useQuery({
     queryKey: ['model-detail', modelName, activeRecordId],
-    enabled: Boolean(activeRecordId) && drawerMode !== 'add',
+    enabled: Boolean(activeRecordId) && actionMode !== 'add',
     queryFn: () => localDataProvider.detail({ model: modelName, id: activeRecordId! }),
   });
 
@@ -84,7 +147,7 @@ export function useModelPage(modelName: string): UseModelPageResult {
       localDataProvider.create({ model: modelName, values }),
     onSuccess: async () => {
       await invalidateList();
-      setDrawerMode('closed');
+      closeAction();
     },
   });
 
@@ -96,7 +159,7 @@ export function useModelPage(modelName: string): UseModelPageResult {
         invalidateList(),
         queryClient.invalidateQueries({ queryKey: ['model-detail', modelName, activeRecordId] }),
       ]);
-      setDrawerMode('closed');
+      closeAction();
     },
   });
 
@@ -114,14 +177,15 @@ export function useModelPage(modelName: string): UseModelPageResult {
     tableColumns,
     addSchema,
     editSchema,
-    detailItems,
+    detailSchema,
     records: listQuery.data?.list ?? [],
     total: listQuery.data?.total ?? 0,
     listLoading: listQuery.isLoading || listQuery.isFetching,
     filters,
     pagination,
     sorter,
-    drawerMode,
+    actionMode,
+    actionOpenMode,
     activeRecordId,
     activeRecord: detailQuery.data,
     detailLoading: detailQuery.isLoading || detailQuery.isFetching,
@@ -132,21 +196,15 @@ export function useModelPage(modelName: string): UseModelPageResult {
     setPagination: setPaginationState,
     setSorter: setSorterState,
     openAdd: () => {
-      setActiveRecordId(undefined);
-      setDrawerMode('add');
+      openAction('add');
     },
     openEdit: (id) => {
-      setActiveRecordId(id);
-      setDrawerMode('edit');
+      openAction('edit', id);
     },
     openDetail: (id) => {
-      setActiveRecordId(id);
-      setDrawerMode('detail');
+      openAction('detail', id);
     },
-    closeDrawer: () => {
-      setDrawerMode('closed');
-      setActiveRecordId(undefined);
-    },
+    closeAction,
     submitAdd: async (values) => {
       await createMutation.mutateAsync(values);
     },

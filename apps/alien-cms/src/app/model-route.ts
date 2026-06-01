@@ -1,45 +1,90 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ModelRouteState } from '../types/model';
 
 const MODEL_ROUTE_PREFIX = '/models';
 
-function extractModelName(pathname: string) {
-  if (pathname === '/' || pathname === MODEL_ROUTE_PREFIX || pathname === `${MODEL_ROUTE_PREFIX}/`) {
-    return undefined;
+function normalizeRouteState(routeState?: ModelRouteState): ModelRouteState {
+  if (!routeState || routeState.mode === 'closed') {
+    return { mode: 'closed' };
   }
 
-  const match = pathname.match(/^\/models\/([^/]+)$/);
-  return match?.[1];
+  if (routeState.mode === 'add') {
+    return { mode: 'add' };
+  }
+
+  if (!routeState.recordId) {
+    return { mode: 'closed' };
+  }
+
+  return {
+    mode: routeState.mode,
+    recordId: routeState.recordId,
+  };
 }
 
-export function buildModelPath(modelName: string) {
-  return `${MODEL_ROUTE_PREFIX}/${modelName}`;
+function extractRouteState(pathname: string) {
+  if (pathname === '/' || pathname === MODEL_ROUTE_PREFIX || pathname === `${MODEL_ROUTE_PREFIX}/`) {
+    return {
+      modelName: undefined,
+      action: { mode: 'closed' } satisfies ModelRouteState,
+    };
+  }
+
+  const match = pathname.match(/^\/models\/([^/]+)(?:\/(add|edit|detail)(?:\/([^/]+))?)?$/);
+  return {
+    modelName: match?.[1],
+    action: normalizeRouteState({
+      mode: (match?.[2] as ModelRouteState['mode'] | undefined) ?? 'closed',
+      recordId: match?.[3],
+    }),
+  };
+}
+
+export function buildModelPath(modelName: string, routeState: ModelRouteState = { mode: 'closed' }) {
+  const normalizedRouteState = normalizeRouteState(routeState);
+
+  if (normalizedRouteState.mode === 'closed') {
+    return `${MODEL_ROUTE_PREFIX}/${modelName}`;
+  }
+
+  if (normalizedRouteState.mode === 'add') {
+    return `${MODEL_ROUTE_PREFIX}/${modelName}/add`;
+  }
+
+  return `${MODEL_ROUTE_PREFIX}/${modelName}/${normalizedRouteState.mode}/${normalizedRouteState.recordId}`;
 }
 
 export function useModelRoute(availableModels: string[], defaultModel: string) {
   const allowedModels = useMemo(() => new Set(availableModels), [availableModels]);
 
-  const getCurrentModel = useCallback(() => {
+  const getCurrentRoute = useCallback(() => {
     const pathname = window.location.pathname;
-    const modelFromPath = extractModelName(pathname);
-    return modelFromPath && allowedModels.has(modelFromPath) ? modelFromPath : defaultModel;
+    const routeState = extractRouteState(pathname);
+    const isAllowedModel = Boolean(routeState.modelName && allowedModels.has(routeState.modelName));
+    const currentModel = isAllowedModel ? routeState.modelName! : defaultModel;
+
+    return {
+      currentModel,
+      currentAction: isAllowedModel ? routeState.action : ({ mode: 'closed' } satisfies ModelRouteState),
+    };
   }, [allowedModels, defaultModel]);
 
-  const [currentModel, setCurrentModel] = useState(getCurrentModel);
+  const [routeState, setRouteState] = useState(getCurrentRoute);
 
   useEffect(() => {
     const syncWithLocation = () => {
-      const nextModel = getCurrentModel();
-      const nextPath = buildModelPath(nextModel);
+      const nextRoute = getCurrentRoute();
+      const nextPath = buildModelPath(nextRoute.currentModel, nextRoute.currentAction);
       if (window.location.pathname !== nextPath) {
         window.history.replaceState({}, '', nextPath);
       }
-      setCurrentModel(nextModel);
+      setRouteState(nextRoute);
     };
 
     syncWithLocation();
     window.addEventListener('popstate', syncWithLocation);
     return () => window.removeEventListener('popstate', syncWithLocation);
-  }, [getCurrentModel]);
+  }, [getCurrentRoute]);
 
   const navigateToModel = useCallback(
     (modelName: string) => {
@@ -47,18 +92,42 @@ export function useModelRoute(availableModels: string[], defaultModel: string) {
         return;
       }
 
-      const nextPath = buildModelPath(modelName);
+      const nextRoute = {
+        currentModel: modelName,
+        currentAction: { mode: 'closed' } satisfies ModelRouteState,
+      };
+      const nextPath = buildModelPath(nextRoute.currentModel, nextRoute.currentAction);
       if (window.location.pathname !== nextPath) {
         window.history.pushState({}, '', nextPath);
       }
-      setCurrentModel(modelName);
+      setRouteState(nextRoute);
     },
     [allowedModels],
   );
 
+  const navigateToAction = useCallback((nextAction: ModelRouteState) => {
+    setRouteState((currentRouteState) => {
+      const normalizedAction = normalizeRouteState(nextAction);
+      const nextRoute = {
+        currentModel: currentRouteState.currentModel,
+        currentAction: normalizedAction,
+      };
+      const nextPath = buildModelPath(nextRoute.currentModel, nextRoute.currentAction);
+
+      if (window.location.pathname !== nextPath) {
+        window.history.pushState({}, '', nextPath);
+      }
+
+      return nextRoute;
+    });
+  }, []);
+
   return {
-    currentModel,
-    currentPath: buildModelPath(currentModel),
+    currentModel: routeState.currentModel,
+    currentAction: routeState.currentAction,
+    currentPath: buildModelPath(routeState.currentModel, routeState.currentAction),
     navigateToModel,
+    navigateToAction,
+    closeAction: () => navigateToAction({ mode: 'closed' }),
   };
 }

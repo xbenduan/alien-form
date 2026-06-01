@@ -11,7 +11,12 @@
     "pluralLabel": "文章",
     "primaryField": "title",
     "defaultFilterCount": 3,
-    "defaultPageSize": 6
+    "defaultPageSize": 5,
+    "openMode": {
+      "add": "drawer",
+      "edit": "drawer",
+      "detail": "modal"
+    }
   },
   "properties": {
     "title": {

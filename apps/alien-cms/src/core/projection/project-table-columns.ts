@@ -14,9 +14,12 @@ export function projectTableColumns(schema: CmsModelSchema): TableColumnProjecti
         width: field['x-cms']?.table?.width,
         ellipsis: field['x-cms']?.table?.ellipsis,
         format: field['x-cms']?.table?.format,
+        inline: field['x-cms']?.table?.inline,
+        expandable: field['x-cms']?.table?.expandable,
         dataSource: field.dataSource,
         type: field.type,
         order: field.order ?? 0,
+        field,
       },
     ];
   });

@@ -1,7 +1,9 @@
+import type { IFieldSchema, IFormSchema } from '@alien-form/react';
+import { FormProvider, SchemaField, useCreateForm, useFormValues } from '@alien-form/react';
 import { DownOutlined, ReloadOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
-import { Button, Col, DatePicker, Input, InputNumber, Row, Select, Space } from 'antd';
-import dayjs from 'dayjs';
-import { useMemo, useState } from 'react';
+import { Button, Space } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import * as adapters from '../../adapters';
 import type { FilterFieldProjection } from '../../types/model';
 
 interface ModelFilterBarProps {
@@ -11,132 +13,173 @@ interface ModelFilterBarProps {
   onSearch: (values: Record<string, unknown>) => void;
 }
 
-function renderFilterControl(
-  field: FilterFieldProjection,
-  value: unknown,
-  onChange: (nextValue: unknown) => void,
-) {
-  if (field.component === 'Select') {
-    return (
-      <Select
-        allowClear
-        placeholder={String(field.props?.placeholder ?? `请选择${field.title}`)}
-        options={field.dataSource?.map((item) => ({ label: item.label, value: item.value }))}
-        value={value as string | undefined}
-        onChange={onChange}
-      />
-    );
-  }
+const filterComponents = {
+  Input: adapters.Input,
+  Textarea: adapters.Textarea,
+  NumberInput: adapters.NumberInput,
+  Select: adapters.Select,
+  Switch: adapters.Switch,
+  DateInput: adapters.DateInput,
+  Radio: adapters.Radio,
+  CheckboxGroup: adapters.CheckboxGroup,
+  Rate: adapters.Rate,
+  ArrayCards: adapters.ArrayCards,
+  SectionCard: adapters.SectionCard,
+  TagsInput: adapters.TagsInput,
+  SkuTable: adapters.SkuTable,
+};
 
-  if (field.component === 'DateInput') {
-    return (
-      <DatePicker
-        className="full-width-control"
-        value={value ? dayjs(String(value)) : null}
-        onChange={(_, dateString) => onChange(dateString || undefined)}
-      />
-    );
-  }
+const filterDecorators = {
+  FilterItem: adapters.FilterItem,
+};
 
-  if (field.component === 'NumberInput') {
-    return (
-      <InputNumber
-        className="full-width-control"
-        placeholder={String(field.props?.placeholder ?? `请输入${field.title}`)}
-        value={typeof value === 'number' ? value : undefined}
-        onChange={onChange}
-      />
-    );
-  }
-
-  if (field.component === 'Switch' || field.type === 'boolean') {
-    return (
-      <Select
-        allowClear
-        placeholder={`请选择${field.title}`}
-        options={[
+function buildFilterField(field: FilterFieldProjection, visible: boolean): IFieldSchema {
+  const isBooleanField = field.component === 'Switch' || field.type === 'boolean';
+  return {
+    type: field.type,
+    title: field.title,
+    component: isBooleanField ? 'Select' : field.component,
+    decorator: 'FilterItem',
+    order: field.order,
+    display: visible ? 'visible' : 'none',
+    props: {
+      ...(field.props ?? {}),
+      placeholder: String(
+        field.props?.placeholder ??
+          (isBooleanField ? `请选择${field.title}` : field.component === 'Select' ? `请选择${field.title}` : `请输入${field.title}`),
+      ),
+    },
+    dataSource: isBooleanField
+      ? [
           { label: '是', value: true },
           { label: '否', value: false },
-        ]}
-        value={typeof value === 'boolean' ? value : undefined}
-        onChange={onChange}
-      />
-    );
-  }
+        ]
+      : field.dataSource,
+  };
+}
+
+function buildFilterSchema(fields: FilterFieldProjection[], expanded: boolean): IFormSchema {
+  return {
+    type: 'object',
+    properties: Object.fromEntries(
+      fields.map((field) => [
+        field.key,
+        buildFilterField(field, expanded || field.defaultVisible),
+      ]),
+    ),
+  };
+}
+
+function FilterValuesSync({
+  onChange,
+}: {
+  onChange: (values: Record<string, unknown>) => void;
+}) {
+  const currentValues = useFormValues();
+
+  useEffect(() => {
+    onChange(currentValues);
+  }, [currentValues, onChange]);
+
+  return null;
+}
+
+function FilterSchemaRenderer({
+  schema,
+  initialValues,
+  loading,
+  showExpandButton,
+  expanded,
+  onDraftChange,
+  onSearch,
+  onReset,
+  onToggleExpanded,
+}: {
+  schema: IFormSchema;
+  initialValues: Record<string, unknown>;
+  loading?: boolean;
+  showExpandButton: boolean;
+  expanded: boolean;
+  onDraftChange: (values: Record<string, unknown>) => void;
+  onSearch: (values: Record<string, unknown>) => void;
+  onReset: () => void;
+  onToggleExpanded: () => void;
+}) {
+  const form = useCreateForm({ schema, initialValues });
 
   return (
-    <Input
-      allowClear
-      placeholder={String(field.props?.placeholder ?? `请输入${field.title}`)}
-      value={typeof value === 'string' ? value : undefined}
-      onChange={(event) => onChange(event.target.value || undefined)}
-    />
+    <div className="model-filter-panel">
+      <FormProvider
+        form={form}
+        components={filterComponents as Record<string, any>}
+        decorators={filterDecorators as Record<string, any>}
+      >
+        <div className="model-filter-form">
+          <SchemaField />
+          <FilterValuesSync onChange={onDraftChange} />
+          <div className="filter-form-item filter-actions-item">
+            <Space wrap className="filter-actions-cell">
+              <Button
+                type="primary"
+                icon={<SearchOutlined />}
+                loading={loading}
+                onClick={() => form.submit((nextValues) => onSearch(nextValues))}
+              >
+                查询
+              </Button>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={() => {
+                  form.setInitialValues({});
+                  form.reset();
+                  onReset();
+                }}
+              >
+                重置
+              </Button>
+              {showExpandButton ? (
+                <Button
+                  type="link"
+                  icon={expanded ? <UpOutlined /> : <DownOutlined />}
+                  onClick={onToggleExpanded}
+                >
+                  {expanded ? '收起' : '展开'}
+                </Button>
+              ) : null}
+            </Space>
+          </div>
+        </div>
+      </FormProvider>
+    </div>
   );
 }
 
 export function ModelFilterBar({ fields, values, loading, onSearch }: ModelFilterBarProps) {
   const [expanded, setExpanded] = useState(false);
-  const defaultFields = useMemo(
-    () => fields.filter((field) => field.defaultVisible),
-    [fields],
-  );
-  const extraFields = useMemo(
-    () => fields.filter((field) => !field.defaultVisible),
-    [fields],
-  );
-  const visibleFields = expanded ? [...defaultFields, ...extraFields] : defaultFields;
-  const fieldsBeforeActions = visibleFields.slice(0, defaultFields.length);
-  const fieldsAfterActions = visibleFields.slice(defaultFields.length);
+  const [draftValues, setDraftValues] = useState<Record<string, unknown>>(values);
+  const defaultFields = useMemo(() => fields.filter((field) => field.defaultVisible), [fields]);
   const showExpandButton = fields.length > defaultFields.length;
+  const filterSchema = useMemo(() => buildFilterSchema(fields, expanded), [expanded, fields]);
+
+  useEffect(() => {
+    setDraftValues(values);
+  }, [values]);
 
   return (
-    <div className="model-filter-panel">
-      <div className="model-filter-form">
-        <Row gutter={[16, 16]}>
-          {fieldsBeforeActions.map((field) => (
-            <Col key={field.key} xs={24} md={12} xl={8}>
-              <div className="filter-form-item">
-                {renderFilterControl(field, values[field.key], (nextValue) =>
-                  onSearch({ ...values, [field.key]: nextValue }),
-                )}
-              </div>
-            </Col>
-          ))}
-          {fieldsAfterActions.map((field) => (
-            <Col key={field.key} xs={24} md={12} xl={8}>
-              <div className="filter-form-item">
-                {renderFilterControl(field, values[field.key], (nextValue) =>
-                  onSearch({ ...values, [field.key]: nextValue }),
-                )}
-              </div>
-            </Col>
-          ))}
-        </Row>
-      </div>
-      <div className="filter-actions-row">
-        <Space wrap className="filter-actions-cell">
-            <Button
-              type="primary"
-              icon={<SearchOutlined />}
-              loading={loading}
-              onClick={() => onSearch({ ...values })}
-            >
-              查询
-            </Button>
-            <Button icon={<ReloadOutlined />} onClick={() => onSearch({})}>
-              重置
-            </Button>
-            {showExpandButton ? (
-              <Button
-                type="link"
-                icon={expanded ? <UpOutlined /> : <DownOutlined />}
-                onClick={() => setExpanded((current) => !current)}
-              >
-                {expanded ? '收起' : '展开'}
-              </Button>
-            ) : null}
-        </Space>
-      </div>
-    </div>
+    <FilterSchemaRenderer
+      key={expanded ? 'expanded' : 'collapsed'}
+      schema={filterSchema}
+      initialValues={draftValues}
+      loading={loading}
+      showExpandButton={showExpandButton}
+      expanded={expanded}
+      onDraftChange={setDraftValues}
+      onSearch={onSearch}
+      onReset={() => {
+        setDraftValues({});
+        onSearch({});
+      }}
+      onToggleExpanded={() => setExpanded((current) => !current)}
+    />
   );
 }

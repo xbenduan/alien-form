@@ -266,6 +266,7 @@ const ArrayFieldSlotInner: React.FC<{ field: ArrayFieldNode; schema: IFieldSchem
   const componentProps = useSignalValue(field.componentProps);
   const decoratorProps = useSignalValue(field.decoratorProps);
   const rowNodes = useSignalValue(field.rows);
+  const componentDisabled = Boolean((componentProps as Record<string, any> | undefined)?.disabled);
   if (display === "none") return null;
   if (display === "hidden") return <div style={{ display: "none" }} />;
   const ArrayComponent = components[componentName];
@@ -286,7 +287,19 @@ const ArrayFieldSlotInner: React.FC<{ field: ArrayFieldNode; schema: IFieldSchem
     rows.push(children);
     rowFields.push(fieldMap);
   }
-  const arrayProps = { ...componentProps, field, rows, rowNodes, rowFields, onAdd: (iv?: Record<string, any>) => field.push(iv), onRemove: (i: number) => field.remove(i), onMoveUp: (i: number) => field.moveUp(i), onMoveDown: (i: number) => field.moveDown(i), onMove: (from: number, to: number) => field.move(from, to), disabled };
+  const arrayProps = {
+    ...componentProps,
+    field,
+    rows,
+    rowNodes,
+    rowFields,
+    onAdd: (iv?: Record<string, any>) => field.push(iv),
+    onRemove: (i: number) => field.remove(i),
+    onMoveUp: (i: number) => field.moveUp(i),
+    onMoveDown: (i: number) => field.moveDown(i),
+    onMove: (from: number, to: number) => field.move(from, to),
+    disabled: disabled || componentDisabled,
+  };
   const decoProps = { label: title, required, errors, warnings, description, validateStatus, ...decoratorProps };
   if (ArrayComponent) {
     const rendered = <ArrayComponent {...arrayProps} />;
