@@ -1,0 +1,19 @@
+node_modules
+dist
+**.zip
+
+# 版本锁
+package-lock.json
+
+# 文件
+.DS_Store
+
+
+# pnpm store
+.pnpm-store
+
+**/cache
+**/doc_build
+
+
+**.py
