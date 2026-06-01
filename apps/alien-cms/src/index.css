@@ -273,6 +273,7 @@ body {
     justify-content: flex-end;
     align-items: flex-start;
     min-height: 100%;
+    gap: 12px;
 }
 
 .model-add-button {
@@ -557,18 +558,26 @@ body {
     }
 }
 
-/* Builder bottom bar - sticky */
-.builder-bottom-bar {
+/* Builder bottom actions - reuses breadcrumb-bar card */
+.builder-bottom-actions {
   position: sticky;
-  bottom: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
+  bottom: 20px;
+  margin-top: 16px;
+}
+
+.builder-bottom-actions .model-breadcrumb-content {
   justify-content: flex-end;
-  padding: 12px 20px;
-  background: #fff;
-  border-top: 1px solid #f0f0f0;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Settings button hover */
+.model-settings-button {
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.model-settings-button:hover {
+  color: #1677ff !important;
+  border-color: #1677ff !important;
+  background: rgba(22, 119, 255, 0.06) !important;
 }
 
 .builder-step-body {

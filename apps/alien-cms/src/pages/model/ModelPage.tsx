@@ -105,8 +105,9 @@ export default function ModelPage({
                 <div className="model-toolbar-actions">
                   <Button
                     size="large"
+                    className="model-settings-button"
                     icon={<SettingOutlined />}
-                    onClick={() => navigate(buildBuilderEditPath(modelName))}
+                    onClick={() => navigate(`/settings?model=${encodeURIComponent(modelName)}`)}
                   />
                   <Button
                     type="primary"
