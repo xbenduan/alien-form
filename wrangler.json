@@ -1,0 +1,6 @@
+{
+  "name": "alien-cms",
+  "pages": {
+    "build_output_dir": "apps/alien-cms/dist"
+  }
+}
