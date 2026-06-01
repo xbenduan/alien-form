@@ -229,12 +229,13 @@ body {
 .model-filter-form {
     display: flex;
     flex-wrap: wrap;
-    gap: 16px 12px;
+    gap: 12px;
     align-items: end;
 }
 
 .filter-form-item {
-    flex: 0 0 200px;
+    flex: 1 1 180px;
+    max-width: 240px;
     min-width: 0;
 }
 
@@ -261,7 +262,7 @@ body {
     align-items: center;
     gap: 8px;
     margin-left: auto;
-    flex-shrink: 0;
+    flex: none;
 }
 
 .model-toolbar-actions {
