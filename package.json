@@ -14,7 +14,10 @@
     "test:core": "pnpm --filter @alien-form/core run test",
     "lint": "oxlint --deny-warnings",
     "format": "oxfmt . --write",
-    "format:check": "oxfmt . --check"
+    "format:check": "oxfmt . --check",
+    "docs:dev": "pnpm --filter @alien-form/docs dev",
+    "docs:build": "pnpm --filter @alien-form/docs build",
+    "docs:preview": "pnpm --filter @alien-form/docs preview"
   },
   "devDependencies": {
     "oxfmt": "^0.51.0",
