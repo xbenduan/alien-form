@@ -1,6 +1,7 @@
 import { FormProvider, SchemaField, useCreateForm } from '@alien-form/react';
 import type { ButtonProps } from 'antd';
 import { Button, Space, message } from 'antd';
+import { schemaHandlers } from '../../app/schema-handlers';
 import * as adapters from '../../adapters';
 import type { CmsModelSchema } from '../../types/model';
 
@@ -52,7 +53,7 @@ export function SchemaFormView({
   onSubmit,
   onCancel,
 }: SchemaFormViewProps) {
-  const form = useCreateForm({ schema, initialValues });
+  const form = useCreateForm({ schema, initialValues, handlers: schemaHandlers });
   const layoutClassName =
     layout === 'page' ? 'schema-form-layout schema-form-layout-page' : 'schema-form-layout';
   const [messageApi, messageContextHolder] = message.useMessage();
@@ -104,7 +105,7 @@ export function DetailSchemaView({
   schema: CmsModelSchema;
   initialValues?: Record<string, unknown>;
 }) {
-  const form = useCreateForm({ schema, initialValues });
+  const form = useCreateForm({ schema, initialValues, handlers: schemaHandlers });
 
   return (
     <FormProvider

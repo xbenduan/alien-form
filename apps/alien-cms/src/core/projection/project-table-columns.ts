@@ -2,7 +2,8 @@ import type { CmsModelSchema, TableColumnProjection } from '../../types/model';
 import { sortSchemaEntries } from './shared';
 
 export function projectTableColumns(schema: CmsModelSchema): TableColumnProjection[] {
-  return sortSchemaEntries(schema.properties).flatMap(([key, field]) => {
+  const entries = sortSchemaEntries(schema.properties);
+  const visibleColumns = entries.flatMap(([key, field]) => {
     if (!field['x-cms']?.table?.visible) {
       return [];
     }
@@ -23,4 +24,22 @@ export function projectTableColumns(schema: CmsModelSchema): TableColumnProjecti
       },
     ];
   });
+
+  if (visibleColumns.length > 0) {
+    return visibleColumns;
+  }
+
+  return entries.slice(0, 5).map(([key, field]) => ({
+    key,
+    title: field.title ?? key,
+    width: field['x-cms']?.table?.width,
+    ellipsis: field['x-cms']?.table?.ellipsis ?? true,
+    format: field['x-cms']?.table?.format,
+    inline: field['x-cms']?.table?.inline,
+    expandable: field['x-cms']?.table?.expandable,
+    dataSource: field.dataSource,
+    type: field.type,
+    order: field.order ?? 0,
+    field,
+  }));
 }

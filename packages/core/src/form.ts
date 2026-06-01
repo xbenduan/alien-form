@@ -512,6 +512,37 @@ function installEffects(ctx: FieldContext, field: FieldNode, raw: SchemaEffect) 
 function executeRuntimeValue(ctx: FieldContext, field: FieldNode, rule: SchemaRuntimeValue, runtime: RuntimeRuleContext, key?: string): any {
   try {
     if (typeof rule === "function") return rule(runtime, ctx.form);
+    if (rule && typeof rule === "object" && !Array.isArray(rule) && "type" in rule) {
+      const objectRule = rule as Record<string, any>;
+      const runtimeWithRule = { ...runtime, rule: objectRule } satisfies RuntimeRuleContext;
+      switch (objectRule.type) {
+        case "static":
+          return objectRule.value;
+        case "expression": {
+          const expression = typeof objectRule.expression === "string" ? objectRule.expression : "";
+          return evaluateExpression(expression, buildExpressionScope(ctx, field, runtimeWithRule));
+        }
+        case "match": {
+          const source = typeof objectRule.source === "string" && objectRule.source
+            ? runtimeWithRule.get(objectRule.source)
+            : runtimeWithRule.value;
+          const match = objectRule.match && typeof objectRule.match === "object" ? objectRule.match : {};
+          const sourceKey = String(source);
+          return sourceKey in match ? match[sourceKey] : match.default;
+        }
+        case "computed": {
+          const name = objectRule.handler;
+          const handler = typeof name === "string" ? ctx.config.handlers?.[name] : undefined;
+          if (!handler) {
+            ctx.emitError({ scope: runtime.kind, path: field.path, key, message: `Handler "${String(name)}" not found.` });
+            return undefined;
+          }
+          return handler(runtimeWithRule, ctx.form);
+        }
+        default:
+          return objectRule;
+      }
+    }
     if (typeof rule === "string") {
       if (isExpression(rule)) return evaluateExpression(extractExpression(rule), buildExpressionScope(ctx, field, runtime));
       if (rule.startsWith("@")) {

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { loadSchema } from '../core/schema/load-schema';
 import { projectDetailSchema } from '../core/projection/project-detail-schema';
 import { projectFilterFields } from '../core/projection/project-filter-fields';
 import { projectFormSchema } from '../core/projection/project-form-schema';
 import { projectTableColumns } from '../core/projection/project-table-columns';
 import { localDataProvider } from '../data/provider/local-data-provider';
-import type { ModelActionKind, ModelActionMode, ModelActionOpenMode, ModelRouteState } from '../types/model';
+import { useModelSchema } from './use-model-schema';
+import type { CmsModelSchema, ModelActionKind, ModelActionMode, ModelActionOpenMode, ModelRouteState } from '../types/model';
 
 interface UseModelPageOptions {
   routeAction: ModelRouteState;
@@ -15,12 +15,14 @@ interface UseModelPageOptions {
 
 interface UseModelPageResult {
   modelName: string;
-  schema: ReturnType<typeof loadSchema>;
+  schema?: CmsModelSchema;
+  schemaLoading: boolean;
+  schemaError?: Error | null;
   filterFields: ReturnType<typeof projectFilterFields>;
   tableColumns: ReturnType<typeof projectTableColumns>;
-  addSchema: ReturnType<typeof projectFormSchema>;
-  editSchema: ReturnType<typeof projectFormSchema>;
-  detailSchema: ReturnType<typeof projectDetailSchema>;
+  addSchema?: CmsModelSchema;
+  editSchema?: CmsModelSchema;
+  detailSchema?: CmsModelSchema;
   records: Awaited<ReturnType<typeof localDataProvider.list>>['list'];
   total: number;
   listLoading: boolean;
@@ -49,29 +51,37 @@ interface UseModelPageResult {
 export function useModelPage(modelName: string, options: UseModelPageOptions): UseModelPageResult {
   const { routeAction, onRouteActionChange } = options;
   const queryClient = useQueryClient();
-  const schema = useMemo(() => loadSchema(modelName), [modelName]);
-  const filterFields = useMemo(() => projectFilterFields(schema), [schema]);
-  const tableColumns = useMemo(() => projectTableColumns(schema), [schema]);
-  const addSchema = useMemo(() => projectFormSchema(schema, 'add'), [schema]);
-  const editSchema = useMemo(() => projectFormSchema(schema, 'edit'), [schema]);
-  const detailSchema = useMemo(() => projectDetailSchema(schema), [schema]);
+  const schemaQuery = useModelSchema(modelName);
+  const schema = schemaQuery.data;
+  const filterFields = useMemo(() => (schema ? projectFilterFields(schema) : []), [schema]);
+  const tableColumns = useMemo(() => (schema ? projectTableColumns(schema) : []), [schema]);
+  const addSchema = useMemo(() => (schema ? projectFormSchema(schema, 'add') : undefined), [schema]);
+  const editSchema = useMemo(() => (schema ? projectFormSchema(schema, 'edit') : undefined), [schema]);
+  const detailSchema = useMemo(() => (schema ? projectDetailSchema(schema) : undefined), [schema]);
 
   const [filters, setFilterState] = useState<Record<string, unknown>>({});
   const [pagination, setPaginationState] = useState({
     current: 1,
-    pageSize: schema['x-model']?.defaultPageSize ?? 10,
+    pageSize: 10,
   });
   const [sorter, setSorterState] = useState<{ field?: string; order?: 'ascend' | 'descend' }>();
   const [overlayAction, setOverlayAction] = useState<ModelRouteState>({ mode: 'closed' });
 
   const actionOpenModeMap = useMemo(
     () => ({
-      add: schema['x-model']?.openMode?.add ?? 'drawer',
-      edit: schema['x-model']?.openMode?.edit ?? 'drawer',
-      detail: schema['x-model']?.openMode?.detail ?? 'drawer',
+      add: schema?.['x-model']?.openMode?.add ?? 'drawer',
+      edit: schema?.['x-model']?.openMode?.edit ?? 'drawer',
+      detail: schema?.['x-model']?.openMode?.detail ?? 'drawer',
     }),
     [schema],
   );
+
+  useEffect(() => {
+    setPaginationState((current) => ({
+      ...current,
+      pageSize: schema?.['x-model']?.defaultPageSize ?? 10,
+    }));
+  }, [schema]);
 
   const pageAction = useMemo(() => {
     if (routeAction.mode === 'closed') {
@@ -129,12 +139,13 @@ export function useModelPage(modelName: string, options: UseModelPageOptions): U
         pagination,
         sorter,
       }),
+    enabled: Boolean(schema),
     placeholderData: (previousData) => previousData,
   });
 
   const detailQuery = useQuery({
     queryKey: ['model-detail', modelName, activeRecordId],
-    enabled: Boolean(activeRecordId) && actionMode !== 'add',
+    enabled: Boolean(schema) && Boolean(activeRecordId) && actionMode !== 'add',
     queryFn: () => localDataProvider.detail({ model: modelName, id: activeRecordId! }),
   });
 
@@ -173,6 +184,8 @@ export function useModelPage(modelName: string, options: UseModelPageOptions): U
   return {
     modelName,
     schema,
+    schemaLoading: schemaQuery.isLoading || schemaQuery.isFetching,
+    schemaError: schemaQuery.error,
     filterFields,
     tableColumns,
     addSchema,
