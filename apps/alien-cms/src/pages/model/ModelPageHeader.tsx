@@ -1,5 +1,6 @@
 import {
   DatabaseOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import { Card, Menu, Tag, Tooltip, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
@@ -9,7 +10,7 @@ import type { ModelSummary } from '../../types/model';
 interface ModelPageHeaderProps {
   modelSummaries: ModelSummary[];
   activeModel: string;
-  activeGlobalKey?: 'new-model' | 'logs';
+  activeGlobalKey?: 'new-model' | 'logs' | 'settings';
 }
 
 export function ModelPageHeader({
@@ -49,6 +50,18 @@ export function ModelPageHeader({
               label: (
                 <span className="model-global-nav-item">
                   <span>日志</span>
+                  <Tag bordered={false} color="processing">
+                    开发中
+                  </Tag>
+                </span>
+              ),
+            },
+            {
+              key: 'settings',
+              icon: <SettingOutlined />,
+              label: (
+                <span className="model-global-nav-item">
+                  <span>设置</span>
                   <Tag bordered={false} color="processing">
                     开发中
                   </Tag>
