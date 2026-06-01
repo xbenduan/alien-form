@@ -1,4 +1,4 @@
-import type { CmsFieldSchema, CmsModelSchema } from '../../types/model';
+import type { CmsFieldSchema, CmsModelMeta, CmsModelSchema } from '../../types/model';
 import type { BuilderComponentName, BuilderFieldType, ModelBuilderDraft, ModelBuilderFieldDraft, ModelBuilderReactionDraft } from '../../types/model-builder';
 
 let draftFieldCounter = 0;
@@ -32,7 +32,7 @@ function buildReactions(field: CmsFieldSchema): ModelBuilderReactionDraft[] {
 
   const reactionConfigs = field['x-cms']?.reactions ?? {};
 
-  return Object.entries(xReaction).map(([target, handler]) => {
+  return Object.entries(xReaction as Record<string, unknown>).map(([target, handler]) => {
     const handlerStr = typeof handler === 'string' ? handler.replace(/^@/, '') : '';
     const config = reactionConfigs[target];
     return {
@@ -66,6 +66,9 @@ function fieldSchemaToDraft(key: string, field: CmsFieldSchema): ModelBuilderFie
     children = [];
   }
 
+  const requiredRaw = field.required;
+  const requiredBool = typeof requiredRaw === 'boolean' ? requiredRaw : Array.isArray(requiredRaw) ? requiredRaw.length > 0 : false;
+
   return {
     id: `field-${Date.now()}-${(++draftFieldCounter).toString(36)}${Math.random().toString(36).slice(2, 5)}`,
     key,
@@ -73,7 +76,7 @@ function fieldSchemaToDraft(key: string, field: CmsFieldSchema): ModelBuilderFie
     type: fieldType,
     component,
     decorator: isContainer ? undefined : (field.decorator as 'FormItem' | undefined) ?? 'FormItem',
-    required: field.required ?? false,
+    required: requiredBool,
     defaultValueText: field.default !== undefined ? JSON.stringify(field.default) : '',
     propsText: field.props ? JSON.stringify(field.props, null, 2) : '{}',
     dataSourceText: field.dataSource ? JSON.stringify(field.dataSource, null, 2) : '',
@@ -86,12 +89,12 @@ function fieldSchemaToDraft(key: string, field: CmsFieldSchema): ModelBuilderFie
     reactions: buildReactions(field),
     children,
     arrayMode: fieldType === 'array' ? (component === 'ArrayCards' ? 'object' : 'tags') : undefined,
-    itemTitle: isObjectArray ? (field.items as { title?: string })?.title ?? '数组项' : undefined,
+    itemTitle: isObjectArray ? ((field.items as { title?: string } | undefined)?.title ?? '数组项') : undefined,
   };
 }
 
 export function schemaToBuilderDraft(schema: CmsModelSchema): ModelBuilderDraft {
-  const meta = schema['x-model'] ?? {};
+  const meta: CmsModelMeta = schema['x-model'] ?? { name: '' };
   const properties = schema.properties ?? {};
 
   const fields = Object.entries(properties)
