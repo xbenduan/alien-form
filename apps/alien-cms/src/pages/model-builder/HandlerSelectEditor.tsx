@@ -34,6 +34,8 @@ export function HandlerSelectEditor({ reactions, onChange }: HandlerSelectEditor
             value: item.name,
           }));
 
+        const selectedHandler = schemaHandlerCatalog.find((item) => item.name === reaction.handler);
+
         return (
           <div key={reaction.id} className="builder-reaction-card">
             <Space direction="vertical" size={8} style={{ width: '100%' }}>
@@ -48,9 +50,15 @@ export function HandlerSelectEditor({ reactions, onChange }: HandlerSelectEditor
                 value={reaction.handler || undefined}
                 placeholder="选择全局 handler"
                 options={handlerOptions}
-                onChange={(handler) =>
-                  onChange(reactions.map((item) => (item.id === reaction.id ? { ...item, handler } : item)))
-                }
+                onChange={(handler) => {
+                  const catalog = schemaHandlerCatalog.find((item) => item.name === handler);
+                  const defaultText = catalog ? JSON.stringify(catalog.defaultConfig, null, 2) : '{}';
+                  onChange(
+                    reactions.map((item) =>
+                      item.id === reaction.id ? { ...item, handler, paramsText: defaultText } : item,
+                    ),
+                  );
+                }}
               />
               <Input.TextArea
                 value={reaction.paramsText}
@@ -65,7 +73,10 @@ export function HandlerSelectEditor({ reactions, onChange }: HandlerSelectEditor
                 }
               />
               <div className="builder-reaction-card-footer">
-                <Typography.Text type="secondary">`params` 使用 JSON 对象</Typography.Text>
+                <Typography.Text type="secondary">
+                  配置写入 x-cms.reactions，handler 通过 schema 读取
+                  {selectedHandler ? `（${selectedHandler.description}）` : ''}
+                </Typography.Text>
                 <Button
                   danger
                   type="text"

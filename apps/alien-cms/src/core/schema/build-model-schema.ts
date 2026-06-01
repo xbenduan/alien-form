@@ -27,18 +27,27 @@ function buildFieldSchema(
   const props = parseJsonText(draftField.propsText, `${draftField.title || draftField.key} 的 props`);
   const dataSource = parseJsonText(draftField.dataSourceText, `${draftField.title || draftField.key} 的 dataSource`);
   const defaultValue = parseJsonText(draftField.defaultValueText, `${draftField.title || draftField.key} 的默认值`);
-  const reactions = Object.fromEntries(
-    draftField.reactions
-      .filter((reaction) => reaction.handler)
-      .map((reaction) => [
-        reaction.target,
-        {
-          type: 'computed',
-          handler: reaction.handler,
-          params: parseJsonText(reaction.paramsText, `${draftField.title || draftField.key} 的 reaction params`) ?? {},
-        },
-      ]),
-  );
+
+  // 构建 x-reaction：直接使用 handler 名（字符串），core 原生支持 @ 引用
+  const validReactions = draftField.reactions.filter((reaction) => reaction.handler);
+  const xReaction = validReactions.length > 0
+    ? Object.fromEntries(
+        validReactions.map((reaction) => [reaction.target, `@${reaction.handler}`]),
+      )
+    : undefined;
+
+  // handler 配置写入 x-cms.reactions，handler 通过 ctx.schema['x-cms'].reactions[target] 读取
+  const reactionConfigs = validReactions.length > 0
+    ? Object.fromEntries(
+        validReactions
+          .map((reaction) => {
+            const config = parseJsonText(reaction.paramsText, `${draftField.title || draftField.key} 的 reaction 配置`);
+            return [reaction.target, config];
+          })
+          .filter(([, config]) => config !== undefined),
+      )
+    : undefined;
+
   const children = draftField.children ?? [];
   const isObjectField = draftField.type === 'object';
   const isVoidField = draftField.type === 'void';
@@ -55,7 +64,7 @@ function buildFieldSchema(
     default: defaultValue,
     props: props as Record<string, unknown> | undefined,
     dataSource: Array.isArray(dataSource) ? dataSource : undefined,
-    'x-reaction': Object.keys(reactions).length > 0 ? reactions : undefined,
+    'x-reaction': xReaction,
     'x-cms': {
       filter: {
         visible: draftField.filterVisible,
@@ -69,6 +78,7 @@ function buildFieldSchema(
       detail: {
         visible: draftField.detailVisible,
       },
+      ...(reactionConfigs ? { reactions: reactionConfigs } : {}),
     },
   };
 

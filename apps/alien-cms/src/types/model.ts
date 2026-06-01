@@ -39,6 +39,7 @@ export interface CmsFieldUiMeta {
     visible?: boolean;
     format?: ValueFormat;
   };
+  reactions?: Record<string, Record<string, unknown>>;
 }
 
 export interface CmsFieldSchema extends IFieldSchema {
