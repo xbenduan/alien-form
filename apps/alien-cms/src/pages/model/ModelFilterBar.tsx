@@ -2,7 +2,8 @@ import type { IFieldSchema, IFormSchema } from '@alien-form/react';
 import { FormProvider, SchemaField, useCreateForm, useFormValues } from '@alien-form/react';
 import { DownOutlined, ReloadOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
 import { Button, Space } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import type React from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import * as adapters from '../../adapters';
 import type { FilterFieldProjection } from '../../types/model';
 
@@ -27,11 +28,51 @@ const filterComponents = {
   SectionCard: adapters.SectionCard,
   TagsInput: adapters.TagsInput,
   SkuTable: adapters.SkuTable,
+  FilterActions: FilterActions,
 };
 
 const filterDecorators = {
   FilterItem: adapters.FilterItem,
 };
+
+/** Void field component that renders query/reset/expand buttons */
+function FilterActions({ loading, showExpandButton, expanded, onSubmit, onReset, onToggleExpanded }: {
+  loading?: boolean;
+  showExpandButton?: boolean;
+  expanded?: boolean;
+  onSubmit?: () => void;
+  onReset?: () => void;
+  onToggleExpanded?: () => void;
+}) {
+  return (
+    <Space size={8}>
+      <Button
+        type="primary"
+        icon={<SearchOutlined />}
+        loading={loading}
+        onClick={onSubmit}
+      >
+        查询
+      </Button>
+      <Button
+        icon={<ReloadOutlined />}
+        onClick={onReset}
+      >
+        重置
+      </Button>
+      {showExpandButton ? (
+        <Button
+          type="link"
+          icon={expanded ? <UpOutlined /> : <DownOutlined />}
+          onClick={onToggleExpanded}
+          style={{ paddingInline: 4 }}
+        >
+          {expanded ? '收起' : '展开'}
+        </Button>
+      ) : null}
+    </Space>
+  );
+}
 
 function buildFilterField(field: FilterFieldProjection, visible: boolean): IFieldSchema {
   const isBooleanField = field.component === 'Switch' || field.type === 'boolean';
@@ -58,15 +99,28 @@ function buildFilterField(field: FilterFieldProjection, visible: boolean): IFiel
   };
 }
 
-function buildFilterSchema(fields: FilterFieldProjection[], expanded: boolean): IFormSchema {
+function buildFilterSchema(
+  fields: FilterFieldProjection[],
+  expanded: boolean,
+  actionProps: Record<string, unknown>,
+): IFormSchema {
+  const fieldEntries = fields.map((field) => [
+    field.key,
+    buildFilterField(field, expanded || field.defaultVisible),
+  ]);
+
   return {
     type: 'object',
-    properties: Object.fromEntries(
-      fields.map((field) => [
-        field.key,
-        buildFilterField(field, expanded || field.defaultVisible),
-      ]),
-    ),
+    properties: {
+      ...Object.fromEntries(fieldEntries),
+      __actions: {
+        type: 'void',
+        component: 'FilterActions',
+        decorator: 'FilterItem',
+        order: 9999,
+        props: actionProps,
+      },
+    },
   };
 }
 
@@ -87,23 +141,15 @@ function FilterValuesSync({
 function FilterSchemaRenderer({
   schema,
   initialValues,
-  loading,
-  showExpandButton,
-  expanded,
   onDraftChange,
   onSearch,
   onReset,
-  onToggleExpanded,
 }: {
   schema: IFormSchema;
   initialValues: Record<string, unknown>;
-  loading?: boolean;
-  showExpandButton: boolean;
-  expanded: boolean;
   onDraftChange: (values: Record<string, unknown>) => void;
   onSearch: (values: Record<string, unknown>) => void;
   onReset: () => void;
-  onToggleExpanded: () => void;
 }) {
   const form = useCreateForm({ schema, initialValues });
 
@@ -111,46 +157,12 @@ function FilterSchemaRenderer({
     <div className="model-filter-panel">
       <FormProvider
         form={form}
-        components={filterComponents as Record<string, any>}
-        decorators={filterDecorators as Record<string, any>}
+        components={filterComponents as Record<string, React.ComponentType<any>>}
+        decorators={filterDecorators as Record<string, React.ComponentType<any>>}
       >
-        <div className="model-filter-row">
-          <div className="model-filter-fields">
-            <SchemaField />
-            <FilterValuesSync onChange={onDraftChange} />
-          </div>
-          <div className="model-filter-actions">
-            <Space size={8}>
-              <Button
-                type="primary"
-                icon={<SearchOutlined />}
-                loading={loading}
-                onClick={() => form.submit((nextValues) => onSearch(nextValues))}
-              >
-                查询
-              </Button>
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={() => {
-                  form.setInitialValues({});
-                  form.reset();
-                  onReset();
-                }}
-              >
-                重置
-              </Button>
-              {showExpandButton ? (
-                <Button
-                  type="link"
-                  icon={expanded ? <UpOutlined /> : <DownOutlined />}
-                  onClick={onToggleExpanded}
-                  style={{ paddingInline: 4 }}
-                >
-                  {expanded ? '收起' : '展开'}
-                </Button>
-              ) : null}
-            </Space>
-          </div>
+        <div className="model-filter-form">
+          <SchemaField />
+          <FilterValuesSync onChange={onDraftChange} />
         </div>
       </FormProvider>
     </div>
@@ -162,7 +174,33 @@ export function ModelFilterBar({ fields, values, loading, onSearch }: ModelFilte
   const [draftValues, setDraftValues] = useState<Record<string, unknown>>(values);
   const defaultFields = useMemo(() => fields.filter((field) => field.defaultVisible), [fields]);
   const showExpandButton = fields.length > defaultFields.length;
-  const filterSchema = useMemo(() => buildFilterSchema(fields, expanded), [expanded, fields]);
+
+  const handleSubmit = useCallback(() => {
+    onSearch(draftValues);
+  }, [draftValues, onSearch]);
+
+  const handleReset = useCallback(() => {
+    setDraftValues({});
+    onSearch({});
+  }, [onSearch]);
+
+  const handleToggleExpanded = useCallback(() => {
+    setExpanded((current) => !current);
+  }, []);
+
+  const actionProps = useMemo(() => ({
+    loading,
+    showExpandButton,
+    expanded,
+    onSubmit: handleSubmit,
+    onReset: handleReset,
+    onToggleExpanded: handleToggleExpanded,
+  }), [loading, showExpandButton, expanded, handleSubmit, handleReset, handleToggleExpanded]);
+
+  const filterSchema = useMemo(
+    () => buildFilterSchema(fields, expanded, actionProps),
+    [fields, expanded, actionProps],
+  );
 
   useEffect(() => {
     setDraftValues(values);
@@ -173,16 +211,12 @@ export function ModelFilterBar({ fields, values, loading, onSearch }: ModelFilte
       key={expanded ? 'expanded' : 'collapsed'}
       schema={filterSchema}
       initialValues={draftValues}
-      loading={loading}
-      showExpandButton={showExpandButton}
-      expanded={expanded}
       onDraftChange={setDraftValues}
       onSearch={onSearch}
       onReset={() => {
         setDraftValues({});
         onSearch({});
       }}
-      onToggleExpanded={() => setExpanded((current) => !current)}
     />
   );
 }
