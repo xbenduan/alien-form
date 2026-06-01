@@ -311,8 +311,9 @@ export default function ModelBuilderPage() {
         {currentStep === 2 ? <ModelPreviewPanel schema={previewState.schema} error={previewState.error} hideTitle /> : null}
       </div>
 
-      <div className="builder-bottom-bar">
-        <Space>
+      <div className="model-breadcrumb-bar builder-bottom-actions">
+        <div className="model-breadcrumb-content">
+          <Space>
           {currentStep > 0 ? (
             <Button onClick={() => setCurrentStep((step) => step - 1)}>
               上一步
@@ -353,7 +354,8 @@ export default function ModelBuilderPage() {
               </Button>
             </>
           )}
-        </Space>
+          </Space>
+        </div>
       </div>
 
       <Modal

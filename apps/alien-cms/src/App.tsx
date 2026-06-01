@@ -22,9 +22,7 @@ export default function App() {
       ? 'new-model'
       : pathname.startsWith('/logs')
         ? 'logs'
-        : pathname.startsWith('/settings')
-          ? 'settings'
-          : undefined;
+        : undefined;
 
   if (modelSummariesQuery.isError) {
     return <Alert type="error" showIcon message="模型列表加载失败" description={modelSummariesQuery.error.message} />;

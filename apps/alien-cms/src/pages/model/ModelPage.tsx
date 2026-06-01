@@ -1,7 +1,6 @@
 import { ArrowLeftOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
 import { Alert, Breadcrumb, Button, Card, Col, Row, Spin, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { buildBuilderEditPath } from '../../app/model-path';
 import { useModelPage } from '../../hooks/use-model-page';
 import type { ModelRouteState } from '../../types/model';
 import { ModelActionHost } from './ModelActionDrawer';
@@ -105,8 +104,9 @@ export default function ModelPage({
                 <div className="model-toolbar-actions">
                   <Button
                     size="large"
+                    className="model-settings-button"
                     icon={<SettingOutlined />}
-                    onClick={() => navigate(buildBuilderEditPath(modelName))}
+                    onClick={() => navigate(`/settings?model=${encodeURIComponent(modelName)}`)}
                   />
                   <Button
                     type="primary"
