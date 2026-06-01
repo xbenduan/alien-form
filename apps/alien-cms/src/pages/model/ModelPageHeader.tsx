@@ -28,12 +28,19 @@ export function ModelPageHeader({
           {subtitle ? <Tag>{subtitle}</Tag> : null}
           <Tag color="gold">IndexedDB / Dexie</Tag>
         </Space>
-        <Typography.Title level={4} style={{ margin: "14px 0 6px" }}>
+        <Typography.Title
+          level={4}
+          ellipsis={{ rows: 2, tooltip: title }}
+        >
           {title}
         </Typography.Title>
         <Typography.Text className="model-side-panel-model-name">{activeModel}</Typography.Text>
-        <Typography.Paragraph className="model-side-panel-description" type="secondary">
-          {description}
+        <Typography.Paragraph
+          className="model-side-panel-description"
+          type="secondary"
+          ellipsis={description ? { rows: 2, tooltip: description } : false}
+        >
+          {description || '—'}
         </Typography.Paragraph>
         <Typography.Text className="current-model-path">{currentPath}</Typography.Text>
       </div>
