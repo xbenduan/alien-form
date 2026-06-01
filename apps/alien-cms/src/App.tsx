@@ -14,11 +14,11 @@ export default function App() {
   const modelSummaries: ModelSummary[] = modelSummariesQuery.data ?? [];
   const pathname = location.pathname;
   const activeModel =
-    pathname.startsWith('/models/') && pathname !== '/models/new'
+    pathname.startsWith('/m/')
       ? decodeURIComponent(pathname.split('/')[2] ?? '')
       : '';
   const activeGlobalKey =
-    pathname === '/models/new'
+    pathname.startsWith('/builder/')
       ? 'new-model'
       : pathname.startsWith('/logs')
         ? 'logs'

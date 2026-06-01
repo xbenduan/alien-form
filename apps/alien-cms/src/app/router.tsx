@@ -48,15 +48,16 @@ export function AppRouter() {
       <Routes>
         <Route path="/" element={<App />}>
           <Route index element={<HomeRedirect />} />
-          <Route path="models/new" element={<ModelBuilderPage />} />
-          <Route path="models/:modelName" element={<RoutedModelPage routeAction={{ mode: 'closed' }} />} />
-          <Route path="models/:modelName/add" element={<RoutedModelPage routeAction={{ mode: 'add' }} />} />
+          <Route path="builder/new" element={<ModelBuilderPage />} />
+          <Route path="builder/edit/:modelName" element={<ModelBuilderPage />} />
+          <Route path="m/:modelName" element={<RoutedModelPage routeAction={{ mode: 'closed' }} />} />
+          <Route path="m/:modelName/add" element={<RoutedModelPage routeAction={{ mode: 'add' }} />} />
           <Route
-            path="models/:modelName/edit/:recordId"
+            path="m/:modelName/edit/:recordId"
             element={<RoutedModelPage routeAction={{ mode: 'edit' }} />}
           />
           <Route
-            path="models/:modelName/detail/:recordId"
+            path="m/:modelName/detail/:recordId"
             element={<RoutedModelPage routeAction={{ mode: 'detail' }} />}
           />
           <Route path="logs" element={<LogsPage />} />
