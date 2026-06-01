@@ -1,5 +1,5 @@
-import { Card, Menu, Space, Tag, Tooltip, Typography } from 'antd';
-import type { ModelSummary } from '../../types/model';
+import { Card, Menu, Space, Tag, Tooltip, Typography } from "antd";
+import type { ModelSummary } from "../../types/model";
 
 interface ModelPageHeaderProps {
   title: string;
@@ -28,7 +28,7 @@ export function ModelPageHeader({
           {subtitle ? <Tag>{subtitle}</Tag> : null}
           <Tag color="gold">IndexedDB / Dexie</Tag>
         </Space>
-        <Typography.Title level={4} style={{ margin: '14px 0 6px' }}>
+        <Typography.Title level={4} style={{ margin: "14px 0 6px" }}>
           {title}
         </Typography.Title>
         <Typography.Text className="model-side-panel-model-name">{activeModel}</Typography.Text>

@@ -27,7 +27,7 @@ export function AppProviders({ children }: PropsWithChildren) {
         },
         components: {
           Card: {
-            borderRadiusLG: 20,
+            borderRadiusLG: 12,
           },
           Drawer: {
             borderRadiusLG: 20,

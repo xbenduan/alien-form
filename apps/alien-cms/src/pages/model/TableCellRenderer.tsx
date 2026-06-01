@@ -1,5 +1,5 @@
-import { InfoCircleOutlined } from '@ant-design/icons';
-import { Button, Tag, Typography } from 'antd';
+import { ProfileOutlined } from '@ant-design/icons';
+import { Button, Tag, Tooltip, Typography } from 'antd';
 import type { CmsFieldSchema, ModelRecord, TableColumnProjection } from '../../types/model';
 import { formatValueText, renderTableValue } from '../../core/format/format-value';
 
@@ -200,13 +200,15 @@ export function renderTableCell(
     <div className="table-cell-complex">
       <div className="table-cell-summary">{typeof summary === 'string' ? <Typography.Text ellipsis={column.ellipsis ? { tooltip: summary } : false}>{summary}</Typography.Text> : summary}</div>
       {isExpandableColumn(column) ? (
-        <Button
-          type="link"
-          size="small"
-          icon={<InfoCircleOutlined />}
-          aria-label={`查看${column.title}详情`}
-          onClick={() => onOpenFieldDetail(column, record)}
-        />
+        <Tooltip title={`点击查看${column.title}详情`}>
+          <Button
+            type="link"
+            size="small"
+            icon={<ProfileOutlined />}
+            aria-label={`查看${column.title}详情`}
+            onClick={() => onOpenFieldDetail(column, record)}
+          />
+        </Tooltip>
       ) : null}
     </div>
   );

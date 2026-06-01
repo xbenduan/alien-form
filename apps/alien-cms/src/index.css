@@ -220,8 +220,17 @@ body {
 }
 
 .cms-form-item .ant-form-item-label > label {
+  position: relative;
   justify-content: flex-start;
+  padding-left: 10px;
   text-align: left;
+}
+
+.cms-form-item .ant-form-item-label > label.ant-form-item-required::before,
+.cms-form-item .ant-form-item-label > label.ant-form-item-required:not(.ant-form-item-required-mark-optional)::before {
+  position: absolute;
+  left: 0;
+  margin-inline-end: 0;
 }
 
 .cms-form-item-label {
