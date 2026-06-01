@@ -226,29 +226,20 @@ body {
     display: block;
 }
 
-.model-filter-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-}
-
-.model-filter-fields {
-    flex: 1;
-    min-width: 0;
+.model-filter-form {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 12px;
     align-items: end;
 }
 
-.model-filter-actions {
-    flex: none;
-    padding-top: 1px;
-    white-space: nowrap;
-}
-
 .filter-form-item {
     min-width: 0;
+}
+
+.filter-form-item:last-child {
+    justify-self: end;
+    grid-column: -1 / -2;
 }
 
 .filter-form-item > .ant-input,
