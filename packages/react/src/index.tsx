@@ -20,7 +20,6 @@ import type {
   FormInstance,
   FormConfig,
   FieldNode,
-  FieldAtoms,
   PrimitiveFieldNode,
   ArrayFieldNode,
   ObjectFieldNode,
@@ -28,8 +27,6 @@ import type {
   IFieldSchema,
   FieldError,
   FieldDisplayTypes,
-  DataSourceItem,
-  ValidateStatus,
 } from "@alien-form/core";
 import { createForm, sortByOrder } from "@alien-form/core";
 
@@ -40,7 +37,6 @@ export type {
   FormInstance,
   FormConfig,
   FieldNode,
-  FieldAtoms,
   PrimitiveFieldNode,
   ObjectFieldNode,
   ArrayFieldNode,

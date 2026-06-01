@@ -1,74 +1,71 @@
-import React, { useState, useRef } from "react";
-import { Tag, Input } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { PlusOutlined } from '@ant-design/icons';
+import { Input, Tag } from 'antd';
+import { useState } from 'react';
 
 interface TagsInputProps {
   value?: string[];
-  onChange?: (v: string[]) => void;
+  onChange?: (nextValue: string[]) => void;
   disabled?: boolean;
   placeholder?: string;
 }
 
-export const TagsInput: React.FC<TagsInputProps> = ({
+export function TagsInput({
   value = [],
   onChange,
   disabled,
-  placeholder = "输入后按 Enter",
-}) => {
+  placeholder = '输入后按 Enter',
+}: TagsInputProps) {
   const [inputVisible, setInputVisible] = useState(false);
-  const [inputValue, setInputValue] = useState("");
-  const inputRef = useRef<any>(null);
+  const [inputValue, setInputValue] = useState('');
 
   const handleClose = (removedTag: string) => {
-    const newTags = value.filter((t) => t !== removedTag);
-    onChange?.(newTags);
+    const nextTags = value.filter((item) => item !== removedTag);
+    onChange?.(nextTags);
   };
 
   const handleInputConfirm = () => {
-    const trimmed = inputValue.trim();
-    if (trimmed && !value.includes(trimmed)) {
-      onChange?.([...value, trimmed]);
+    const trimmedValue = inputValue.trim();
+    if (trimmedValue && !value.includes(trimmedValue)) {
+      onChange?.([...value, trimmedValue]);
     }
     setInputVisible(false);
-    setInputValue("");
-  };
-
-  const showInput = () => {
-    setInputVisible(true);
-    setTimeout(() => inputRef.current?.focus(), 0);
+    setInputValue('');
   };
 
   return (
-    <div className="flex flex-wrap gap-2 items-center">
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
       {value.map((tag) => (
         <Tag
           key={tag}
           closable={!disabled}
           onClose={() => handleClose(tag)}
-          className="px-2 py-0.5"
+          style={{ paddingInline: 8, paddingBlock: 2 }}
         >
           {tag}
         </Tag>
       ))}
-      {!disabled && (
+      {!disabled ? (
         inputVisible ? (
           <Input
-            ref={inputRef}
             type="text"
             size="small"
-            className="w-24"
+            style={{ width: 120 }}
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            onChange={(event) => setInputValue(event.target.value)}
             onBlur={handleInputConfirm}
             onPressEnter={handleInputConfirm}
             placeholder={placeholder}
+            autoFocus
           />
         ) : (
-          <Tag onClick={showInput} className="border-dashed cursor-pointer">
+          <Tag
+            onClick={() => setInputVisible(true)}
+            style={{ borderStyle: 'dashed', cursor: 'pointer' }}
+          >
             <PlusOutlined /> 添加
           </Tag>
         )
-      )}
+      ) : null}
     </div>
   );
-};
+}

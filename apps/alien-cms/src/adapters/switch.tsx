@@ -1,10 +1,13 @@
-import React from "react";
-import { Switch as AntSwitch } from "antd";
+import { Switch as AntSwitch } from 'antd';
 
-export const Switch: React.FC<{
+export function Switch({
+  value,
+  onChange,
+  disabled,
+}: {
   value?: boolean;
-  onChange?: (v: boolean) => void;
+  onChange?: (nextValue: boolean) => void;
   disabled?: boolean;
-}> = ({ value, onChange, disabled }) => (
-  <AntSwitch checked={!!value} onChange={(v) => onChange?.(v)} disabled={disabled} />
-);
+}) {
+  return <AntSwitch checked={Boolean(value)} onChange={(nextValue) => onChange?.(nextValue)} disabled={disabled} />;
+}

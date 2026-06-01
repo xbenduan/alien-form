@@ -1,16 +1,24 @@
-import React from "react";
-import { Radio as AntRadio } from "antd";
-import type { DataSourceItem } from "@alien-form/core";
+import { Radio as AntRadio } from 'antd';
+import type { DataSourceItem } from '@alien-form/react';
 
-export const Radio: React.FC<{
-  value?: any;
-  onChange?: (v: any) => void;
+export function Radio({
+  value,
+  onChange,
+  disabled,
+  dataSource = [],
+}: {
+  value?: unknown;
+  onChange?: (nextValue: unknown) => void;
   disabled?: boolean;
   dataSource?: DataSourceItem[];
-}> = ({ value, onChange, disabled, dataSource = [] }) => (
-  <AntRadio.Group value={value} onChange={(e) => onChange?.(e.target.value)} disabled={disabled}>
-    {dataSource.map((item) => (
-      <AntRadio key={item.value} value={item.value}>{item.label}</AntRadio>
-    ))}
-  </AntRadio.Group>
-);
+}) {
+  return (
+    <AntRadio.Group value={value} onChange={(event) => onChange?.(event.target.value)} disabled={disabled}>
+      {dataSource.map((item) => (
+        <AntRadio key={item.value} value={item.value}>
+          {item.label}
+        </AntRadio>
+      ))}
+    </AntRadio.Group>
+  );
+}

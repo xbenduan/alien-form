@@ -1,17 +1,23 @@
-import React from "react";
-import { Checkbox } from "antd";
-import type { DataSourceItem } from "@alien-form/core";
+import { Checkbox } from 'antd';
+import type { DataSourceItem } from '@alien-form/react';
 
-export const CheckboxGroup: React.FC<{
-  value?: any[];
-  onChange?: (v: any[]) => void;
+export function CheckboxGroup({
+  value,
+  onChange,
+  disabled,
+  dataSource = [],
+}: {
+  value?: unknown[];
+  onChange?: (nextValue: unknown[]) => void;
   disabled?: boolean;
   dataSource?: DataSourceItem[];
-}> = ({ value, onChange, disabled, dataSource = [] }) => (
-  <Checkbox.Group
-    value={value}
-    onChange={(v) => onChange?.(v as any[])}
-    disabled={disabled}
-    options={dataSource.map((d) => ({ label: d.label, value: d.value }))}
-  />
-);
+}) {
+  return (
+    <Checkbox.Group
+      value={value}
+      onChange={(nextValue) => onChange?.(nextValue as unknown[])}
+      disabled={disabled}
+      options={dataSource.map((item) => ({ label: item.label, value: item.value }))}
+    />
+  );
+}

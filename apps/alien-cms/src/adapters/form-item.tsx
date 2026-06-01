@@ -1,7 +1,7 @@
-import React from "react";
-import { Form, Tooltip } from "antd";
-import { QuestionCircleOutlined } from "@ant-design/icons";
-import type { FieldError, ValidateStatus } from "@alien-form/core";
+import type React from 'react';
+import { Form, Tooltip } from 'antd';
+import { QuestionCircleOutlined } from '@ant-design/icons';
+import type { FieldError, ValidateStatus } from '@alien-form/react';
 
 interface FormItemProps {
   label?: string;
@@ -13,7 +13,7 @@ interface FormItemProps {
   children?: React.ReactNode;
 }
 
-export const FormItem: React.FC<FormItemProps> = ({
+export function FormItem({
   label,
   required,
   errors = [],
@@ -21,27 +21,27 @@ export const FormItem: React.FC<FormItemProps> = ({
   description,
   validateStatus,
   children,
-}) => {
-  let status: "" | "success" | "warning" | "error" | "validating" = "";
-  if (validateStatus === "error" || errors.length > 0) status = "error";
-  else if (validateStatus === "warning" || warnings.length > 0) status = "warning";
-  else if (validateStatus === "validating") status = "validating";
-  else if (validateStatus === "success") status = "success";
+}: FormItemProps) {
+  let status: '' | 'success' | 'warning' | 'error' | 'validating' = '';
+  if (validateStatus === 'error' || errors.length > 0) status = 'error';
+  else if (validateStatus === 'warning' || warnings.length > 0) status = 'warning';
+  else if (validateStatus === 'validating') status = 'validating';
+  else if (validateStatus === 'success') status = 'success';
 
   const help = errors.length > 0
-    ? errors.map((e) => e.message).join("; ")
+    ? errors.map((error) => error.message).join('; ')
     : warnings.length > 0
-    ? warnings.map((w) => w.message).join("; ")
-    : undefined;
+      ? warnings.map((warning) => warning.message).join('; ')
+      : undefined;
 
   const labelNode = label ? (
     <span>
       {label}
-      {description && (
+      {description ? (
         <Tooltip title={description}>
-          <QuestionCircleOutlined className="ml-1 text-gray-400" />
+          <QuestionCircleOutlined style={{ color: '#98a2b3', marginInlineStart: 6 }} />
         </Tooltip>
-      )}
+      ) : null}
     </span>
   ) : undefined;
 
@@ -51,9 +51,9 @@ export const FormItem: React.FC<FormItemProps> = ({
       required={required}
       validateStatus={status}
       help={help}
-      className="mb-4"
+      style={{ marginBottom: 16 }}
     >
       {children}
     </Form.Item>
   );
-};
+}

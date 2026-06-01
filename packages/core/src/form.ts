@@ -51,10 +51,6 @@ function createId(prefix: string): string {
   return `${prefix}_${nextId}`;
 }
 
-function isPrimitiveSchema(schema: IFieldSchema): boolean {
-  return schema.type === "string" || schema.type === "number" || schema.type === "boolean";
-}
-
 function isPrimitiveField(field: FieldNode | undefined): field is PrimitiveFieldNode {
   return !!field && field.kind === "primitive";
 }

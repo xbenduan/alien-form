@@ -1,22 +1,28 @@
-import React from "react";
-import { Card, Typography } from "antd";
+import type React from 'react';
+import { Card, Typography } from 'antd';
 
-const { Title } = Typography;
-
-interface SectionCardProps {
+export function SectionCard({
+  title,
+  description,
+  children,
+}: {
   title?: string;
   description?: string;
   children?: React.ReactNode;
+}) {
+  return (
+    <Card style={{ marginBottom: 24 }}>
+      {title ? (
+        <div style={{ marginBottom: 16 }}>
+          <Typography.Title level={5} style={{ marginBottom: 4 }}>
+            {title}
+          </Typography.Title>
+          {description ? (
+            <Typography.Text type="secondary">{description}</Typography.Text>
+          ) : null}
+        </div>
+      ) : null}
+      {children}
+    </Card>
+  );
 }
-
-export const SectionCard: React.FC<SectionCardProps> = ({ title, description, children }) => (
-  <Card className="mb-6">
-    {title && (
-      <div className="mb-4">
-        <Title level={5} className="!mb-1">{title}</Title>
-        {description && <div className="text-sm text-gray-400">{description}</div>}
-      </div>
-    )}
-    {children}
-  </Card>
-);

@@ -1,67 +1,90 @@
-import React from "react";
-import { Input as AntInput, InputNumber } from "antd";
+import { Input as AntInput, InputNumber } from 'antd';
 
 const { TextArea } = AntInput;
 
-export const Input: React.FC<{
+export function Input({
+  value,
+  onChange,
+  disabled,
+  placeholder,
+  type,
+}: {
   value?: string;
-  onChange?: (v: string) => void;
+  onChange?: (nextValue: string) => void;
   disabled?: boolean;
   placeholder?: string;
   type?: string;
-}> = ({ value, onChange, disabled, placeholder, type }) => {
-  if (type === "number") {
+}) {
+  if (type === 'number') {
     return (
       <InputNumber
-        value={value as any}
-        onChange={(v) => onChange?.(v as any)}
+        style={{ width: '100%' }}
+        value={value as never}
+        onChange={(nextValue) => onChange?.(String(nextValue ?? ''))}
         disabled={disabled}
         placeholder={placeholder}
-        className="w-full"
       />
     );
   }
+
   return (
     <AntInput
-      value={value ?? ""}
-      onChange={(e) => onChange?.(e.target.value)}
+      value={value ?? ''}
+      onChange={(event) => onChange?.(event.target.value)}
       disabled={disabled}
       placeholder={placeholder}
     />
   );
-};
+}
 
-export const Textarea: React.FC<{
+export function Textarea({
+  value,
+  onChange,
+  disabled,
+  placeholder,
+  rows = 4,
+}: {
   value?: string;
-  onChange?: (v: string) => void;
+  onChange?: (nextValue: string) => void;
   disabled?: boolean;
   placeholder?: string;
   rows?: number;
-}> = ({ value, onChange, disabled, placeholder, rows = 4 }) => (
-  <TextArea
-    value={value ?? ""}
-    onChange={(e) => onChange?.(e.target.value)}
-    disabled={disabled}
-    placeholder={placeholder}
-    rows={rows}
-  />
-);
+}) {
+  return (
+    <TextArea
+      value={value ?? ''}
+      onChange={(event) => onChange?.(event.target.value)}
+      disabled={disabled}
+      placeholder={placeholder}
+      rows={rows}
+    />
+  );
+}
 
-export const NumberInput: React.FC<{
+export function NumberInput({
+  value,
+  onChange,
+  disabled,
+  placeholder,
+  min,
+  max,
+}: {
   value?: number;
-  onChange?: (v: number | null) => void;
+  onChange?: (nextValue: number | null) => void;
   disabled?: boolean;
   placeholder?: string;
   min?: number;
   max?: number;
-}> = ({ value, onChange, disabled, placeholder, min, max }) => (
-  <InputNumber
-    value={value}
-    onChange={(v) => onChange?.(v)}
-    disabled={disabled}
-    placeholder={placeholder}
-    min={min}
-    max={max}
-    className="w-full"
-  />
-);
+}) {
+  return (
+    <InputNumber
+      style={{ width: '100%' }}
+      value={value}
+      onChange={(nextValue) => onChange?.(nextValue)}
+      disabled={disabled}
+      placeholder={placeholder}
+      min={min}
+      max={max}
+    />
+  );
+}

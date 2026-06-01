@@ -1,18 +1,24 @@
-import React from "react";
-import { DatePicker } from "antd";
-import dayjs from "dayjs";
+import { DatePicker } from 'antd';
+import dayjs from 'dayjs';
 
-export const DateInput: React.FC<{
+export function DateInput({
+  value,
+  onChange,
+  disabled,
+  placeholder,
+}: {
   value?: string;
-  onChange?: (v: string) => void;
+  onChange?: (nextValue: string) => void;
   disabled?: boolean;
   placeholder?: string;
-}> = ({ value, onChange, disabled, placeholder }) => (
-  <DatePicker
-    value={value ? dayjs(value) : null}
-    onChange={(_, dateStr) => onChange?.(dateStr as string)}
-    disabled={disabled}
-    placeholder={placeholder}
-    className="w-full"
-  />
-);
+}) {
+  return (
+    <DatePicker
+      style={{ width: '100%' }}
+      value={value ? dayjs(value) : null}
+      onChange={(_, dateString) => onChange?.(String(dateString))}
+      disabled={disabled}
+      placeholder={placeholder}
+    />
+  );
+}
