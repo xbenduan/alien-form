@@ -227,16 +227,15 @@ body {
 }
 
 .model-filter-form {
-    flex: 1;
     display: flex;
     flex-wrap: wrap;
-    gap: 16px 0;
-    margin: 0 -8px;
+    gap: 16px 12px;
+    align-items: end;
 }
 
 .filter-form-item {
-    width: 22%;
-    padding: 0 8px;
+    flex: 0 0 200px;
+    min-width: 0;
 }
 
 .filter-form-item > .ant-input,
@@ -260,18 +259,9 @@ body {
 .filter-actions-item {
     display: flex;
     align-items: center;
-}
-
-@media (max-width: 1599px) {
-    .filter-form-item {
-        width: 33.33%;
-    }
-}
-
-@media (max-width: 1199px) {
-    .filter-form-item {
-        width: 100%;
-    }
+    gap: 8px;
+    margin-left: auto;
+    flex-shrink: 0;
 }
 
 .model-toolbar-actions {
