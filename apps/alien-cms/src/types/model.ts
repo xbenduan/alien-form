@@ -39,6 +39,7 @@ export interface CmsFieldUiMeta {
     visible?: boolean;
     format?: ValueFormat;
   };
+  reactions?: Record<string, Record<string, unknown>>;
 }
 
 export interface CmsFieldSchema extends IFieldSchema {
@@ -68,6 +69,25 @@ export interface ModelSummary {
   title: string;
   subtitle?: string;
   description?: string;
+  source?: 'static' | 'runtime';
+}
+
+export type ModelSource = 'static' | 'runtime';
+
+export interface RuntimeModelSchemaRecord {
+  id: string;
+  modelName: string;
+  title: string;
+  subtitle?: string;
+  description?: string;
+  schema: CmsModelSchema;
+  source: 'runtime';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RuntimeModelRecord extends ModelRecord {
+  modelName: string;
 }
 
 export interface FilterFieldProjection {

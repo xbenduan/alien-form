@@ -1,4 +1,5 @@
-import type { CmsModelSchema, ModelSummary } from '../../types/model';
+import type { CmsModelSchema, ModelSource, ModelSummary } from '../../types/model';
+import { modelSchemaRepository } from '../../data/repository/model-schema-repository';
 import { normalizeSchema } from './normalize-schema';
 
 const schemaModules = import.meta.glob('../../../schema/*.json', { eager: true });
@@ -11,30 +12,75 @@ function getRawSchema(mod: unknown) {
   return ((mod as { default?: CmsModelSchema }).default ?? mod) as CmsModelSchema;
 }
 
-export function loadSchema(modelName: string): CmsModelSchema {
-  for (const [filePath, mod] of Object.entries(schemaModules)) {
-    if (extractModelName(filePath) === modelName) {
-      return normalizeSchema(getRawSchema(mod));
+function getStaticSchemas() {
+  return Object.entries(schemaModules)
+    .map(([filePath, mod]) => {
+      const schema = normalizeSchema(getRawSchema(mod));
+      return {
+        modelName: extractModelName(filePath) ?? schema['x-model']?.name ?? 'unknown',
+        schema,
+      };
+    })
+    .sort((left, right) => left.modelName.localeCompare(right.modelName));
+}
+
+export function getStaticModelNames() {
+  return getStaticSchemas().map((item) => item.modelName);
+}
+
+export function listStaticModelSummaries(): ModelSummary[] {
+  return getStaticSchemas().map(({ modelName, schema }) => ({
+    name: modelName,
+    title: schema['x-model']?.title ?? schema.title ?? '模型工作台',
+    subtitle: schema['x-model']?.subtitle,
+    description: schema['x-model']?.description ?? schema.description,
+    source: 'static',
+  }));
+}
+
+export function getDefaultModelName() {
+  return listStaticModelSummaries()[0]?.name ?? 'article';
+}
+
+export function loadStaticSchema(modelName: string): CmsModelSchema | undefined {
+  for (const { modelName: currentModelName, schema } of getStaticSchemas()) {
+    if (currentModelName === modelName) {
+      return schema;
     }
+  }
+
+  return undefined;
+}
+
+export async function listModelSummaries(): Promise<ModelSummary[]> {
+  const staticSummaries = listStaticModelSummaries();
+  const runtimeSummaries = await modelSchemaRepository.listSummaries();
+  const merged = [...staticSummaries, ...runtimeSummaries];
+  return merged.sort((left, right) => left.name.localeCompare(right.name));
+}
+
+export async function loadSchema(modelName: string): Promise<CmsModelSchema> {
+  const staticSchema = loadStaticSchema(modelName);
+  if (staticSchema) {
+    return staticSchema;
+  }
+
+  const runtimeSchema = await modelSchemaRepository.get(modelName);
+  if (runtimeSchema) {
+    return runtimeSchema;
   }
 
   throw new Error(`未找到模型 schema: ${modelName}`);
 }
 
-export function listModelSummaries(): ModelSummary[] {
-  return Object.entries(schemaModules)
-    .map(([filePath, mod]) => {
-      const schema = normalizeSchema(getRawSchema(mod));
-      return {
-        name: extractModelName(filePath) ?? schema['x-model']?.name ?? 'unknown',
-        title: schema['x-model']?.title ?? schema.title ?? '模型工作台',
-        subtitle: schema['x-model']?.subtitle,
-        description: schema['x-model']?.description ?? schema.description,
-      } satisfies ModelSummary;
-    })
-    .sort((left, right) => left.name.localeCompare(right.name));
-}
+export async function resolveModelSource(modelName: string): Promise<ModelSource | undefined> {
+  if (loadStaticSchema(modelName)) {
+    return 'static';
+  }
 
-export function getDefaultModelName() {
-  return listModelSummaries()[0]?.name ?? 'article';
+  if (await modelSchemaRepository.exists(modelName)) {
+    return 'runtime';
+  }
+
+  return undefined;
 }

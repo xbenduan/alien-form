@@ -1,7 +1,8 @@
 import dayjs from 'dayjs';
 import type { Table } from 'dexie';
 import { db, ensureDatabaseReady } from '../db/dexie';
-import type { ModelRecord } from '../../types/model';
+import type { ModelRecord, RuntimeModelRecord } from '../../types/model';
+import { resolveModelSource } from '../../core/schema/load-schema';
 
 type SortOrder = 'ascend' | 'descend' | undefined;
 
@@ -58,12 +59,20 @@ export class DexieRepository {
     'nail-booking': db.nailBookings,
   };
 
-  private getTable(model: string) {
+  private getStaticTable(model: string) {
     const table = this.tableMap[model];
     if (!table) {
-      throw new Error(`未知模型: ${model}`);
+      throw new Error(`未找到静态模型 "${model}" 对应的数据表，请检查 tableMap 配置`);
     }
     return table;
+  }
+
+  private async isRuntimeModel(model: string) {
+    const source = await resolveModelSource(model);
+    if (!source) {
+      throw new Error(`未知模型: ${model}`);
+    }
+    return source === 'runtime';
   }
 
   async list(params: {
@@ -74,8 +83,11 @@ export class DexieRepository {
   }) {
     await ensureDatabaseReady();
     const { model, filters = {}, pagination = { current: 1, pageSize: 10 }, sorter } = params;
-    const table = this.getTable(model);
-    const allRows = await table.toArray();
+    const runtimeModel = await this.isRuntimeModel(model);
+    const table = runtimeModel ? undefined : this.getStaticTable(model);
+    const allRows = runtimeModel
+      ? await db.modelRecords.where('modelName').equals(model).toArray()
+      : await table!.toArray();
     const filteredRows = allRows.filter((record) => matches(record, filters));
 
     if (sorter?.field && sorter.order) {
@@ -97,9 +109,12 @@ export class DexieRepository {
 
   async detail(model: string, id: string) {
     await ensureDatabaseReady();
-    const table = this.getTable(model);
-    const record = await table.get(id);
+    const runtimeModel = await this.isRuntimeModel(model);
+    const record = runtimeModel ? await db.modelRecords.get(id) : await this.getStaticTable(model)?.get(id);
     if (!record) {
+      throw new Error(`未找到记录: ${id}`);
+    }
+    if (runtimeModel && record.modelName !== model) {
       throw new Error(`未找到记录: ${id}`);
     }
     return record;
@@ -107,21 +122,33 @@ export class DexieRepository {
 
   async create(model: string, values: Record<string, unknown>) {
     await ensureDatabaseReady();
-    const table = this.getTable(model);
+    const runtimeModel = await this.isRuntimeModel(model);
+    const table = runtimeModel ? undefined : this.getStaticTable(model);
     const now = dayjs().toISOString();
-    const record: ModelRecord = {
+    const baseRecord: ModelRecord = {
       ...(values as ModelRecord),
       id: `${model}-${Date.now()}`,
       createdAt: now,
       updatedAt: now,
     };
-    await table.add(record);
+    const record = runtimeModel
+      ? ({
+          ...baseRecord,
+          modelName: model,
+        } satisfies RuntimeModelRecord)
+      : baseRecord;
+    if (runtimeModel) {
+      await db.modelRecords.add(record as RuntimeModelRecord);
+    } else {
+      await table!.add(record);
+    }
     return record;
   }
 
   async update(model: string, id: string, values: Record<string, unknown>) {
     await ensureDatabaseReady();
-    const table = this.getTable(model);
+    const runtimeModel = await this.isRuntimeModel(model);
+    const table = runtimeModel ? undefined : this.getStaticTable(model);
     const current = await this.detail(model, id);
     const nextRecord: ModelRecord = {
       ...current,
@@ -129,13 +156,21 @@ export class DexieRepository {
       id,
       updatedAt: dayjs().toISOString(),
     };
-    await table.put(nextRecord);
+    if (runtimeModel) {
+      await db.modelRecords.put(nextRecord as RuntimeModelRecord);
+    } else {
+      await table!.put(nextRecord);
+    }
     return nextRecord;
   }
 
   async remove(model: string, id: string) {
     await ensureDatabaseReady();
-    const table = this.getTable(model);
-    await table.delete(id);
+    const runtimeModel = await this.isRuntimeModel(model);
+    if (runtimeModel) {
+      await db.modelRecords.delete(id);
+      return;
+    }
+    await this.getStaticTable(model)?.delete(id);
   }
 }

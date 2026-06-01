@@ -1,11 +1,13 @@
 import Dexie, { type Table } from 'dexie';
-import type { ModelRecord } from '../../types/model';
+import type { ModelRecord, RuntimeModelRecord, RuntimeModelSchemaRecord } from '../../types/model';
 import { createArticleSeeds, createCampaignSeeds, createNailBookingSeeds } from './seeds';
 
 export class AlienCmsDatabase extends Dexie {
   articles!: Table<ModelRecord, string>;
   campaigns!: Table<ModelRecord, string>;
   nailBookings!: Table<ModelRecord, string>;
+  modelSchemas!: Table<RuntimeModelSchemaRecord, string>;
+  modelRecords!: Table<RuntimeModelRecord, string>;
 
   constructor() {
     super('alien-cms');
@@ -20,6 +22,13 @@ export class AlienCmsDatabase extends Dexie {
       articles: 'id, status, category, author, publishTime, createdAt, updatedAt',
       campaigns: 'id, status, channel, owner, launchDate, createdAt, updatedAt',
       nailBookings: 'id, status, serviceType, nailArtist, branch, bookingDate, createdAt, updatedAt',
+    });
+    this.version(4).stores({
+      articles: 'id, status, category, author, publishTime, createdAt, updatedAt',
+      campaigns: 'id, status, channel, owner, launchDate, createdAt, updatedAt',
+      nailBookings: 'id, status, serviceType, nailArtist, branch, bookingDate, createdAt, updatedAt',
+      modelSchemas: 'id, modelName, updatedAt, createdAt',
+      modelRecords: 'id, modelName, updatedAt, createdAt',
     });
   }
 }

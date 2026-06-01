@@ -1,30 +1,56 @@
-import { Alert } from 'antd';
-import { getDefaultModelName, listModelSummaries } from './core/schema/load-schema';
-import { useModelRoute } from './app/model-route';
-import ModelPage from './pages/model/ModelPage';
+import { Alert, Spin } from 'antd';
+import { Outlet, useLocation } from 'react-router-dom';
+import { useModelSummaries } from './hooks/use-model-summaries';
+import { ModelPageHeader } from './pages/model/ModelPageHeader';
+import type { ModelSummary } from './types/model';
+
+export interface WorkbenchOutletContext {
+  modelSummaries: ModelSummary[];
+}
 
 export default function App() {
-  const modelSummaries = listModelSummaries();
-  const availableModelNames = modelSummaries.map((item) => item.name);
-  const defaultModelName = getDefaultModelName();
-  const { currentModel, currentAction, currentPath, navigateToModel, navigateToAction } = useModelRoute(
-    availableModelNames,
-    defaultModelName,
-  );
+  const location = useLocation();
+  const modelSummariesQuery = useModelSummaries();
+  const modelSummaries: ModelSummary[] = modelSummariesQuery.data ?? [];
+  const pathname = location.pathname;
+  const activeModel =
+    pathname.startsWith('/models/') && pathname !== '/models/new'
+      ? decodeURIComponent(pathname.split('/')[2] ?? '')
+      : '';
+  const activeGlobalKey =
+    pathname === '/models/new'
+      ? 'new-model'
+      : pathname.startsWith('/logs')
+        ? 'logs'
+        : pathname.startsWith('/settings')
+          ? 'settings'
+          : undefined;
 
-  if (modelSummaries.length === 0) {
-    return <Alert type="error" showIcon message="未找到可用模型 schema" />;
+  if (modelSummariesQuery.isError) {
+    return <Alert type="error" showIcon message="模型列表加载失败" description={modelSummariesQuery.error.message} />;
   }
 
   return (
-    <ModelPage
-      key={currentModel}
-      modelName={currentModel}
-      modelSummaries={modelSummaries}
-      currentPath={currentPath}
-      routeAction={currentAction}
-      onNavigateModel={navigateToModel}
-      onRouteActionChange={navigateToAction}
-    />
+    <div className="model-page-shell">
+      <div className="model-workbench-layout">
+        <aside className="model-workbench-sidebar">
+          <ModelPageHeader
+            modelSummaries={modelSummaries}
+            activeModel={activeModel}
+            activeGlobalKey={activeGlobalKey}
+          />
+        </aside>
+
+        <section className="model-workbench-main">
+          {modelSummariesQuery.isLoading && modelSummaries.length === 0 ? (
+            <div className="model-page-loading">
+              <Spin size="large" />
+            </div>
+          ) : (
+            <Outlet context={{ modelSummaries } satisfies WorkbenchOutletContext} />
+          )}
+        </section>
+      </div>
+    </div>
   );
 }

@@ -109,8 +109,22 @@ body {
     line-height: 22px;
 }
 
+.model-side-panel-section-title {
+    margin-top: 16px;
+    margin-bottom: 10px;
+    color: rgba(15, 23, 42, 0.6);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.model-side-panel-section-title-spaced {
+    margin-top: 20px;
+}
+
 .model-side-panel-menu-block {
-    padding-top: 16px;
+    padding-top: 0;
 }
 
 .model-side-panel-menu-title {
@@ -164,9 +178,17 @@ body {
     gap: 2px;
 }
 
-.model-menu-item-tooltip > :last-child {
+.model-menu-item-tooltip > :not(:first-child) {
     color: rgba(255, 255, 255, 0.7);
     font-size: 12px;
+}
+
+.model-global-nav-item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
 }
 
 .current-model-path {
@@ -255,6 +277,13 @@ body {
 
 .model-add-button {
     min-width: 132px;
+}
+
+.model-page-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 240px;
 }
 
 .filter-actions-cell {
@@ -397,6 +426,125 @@ body {
 
 .model-action-page-body {
     min-height: 320px;
+}
+
+.builder-palette-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.builder-field-list {
+    display: grid;
+    gap: 12px;
+}
+
+.builder-field-tree-node {
+    display: grid;
+    gap: 8px;
+}
+
+.builder-field-children {
+    display: grid;
+    gap: 8px;
+}
+
+.builder-slot-panel {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border: 1px dashed rgba(22, 119, 255, 0.24);
+    border-radius: 12px;
+    background: rgba(248, 250, 255, 0.82);
+}
+
+.builder-slot-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.builder-slot-description {
+    margin-top: 4px;
+    color: rgba(15, 23, 42, 0.58);
+    font-size: 12px;
+}
+
+.builder-field-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border: 1px solid rgba(22, 119, 255, 0.14);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.92);
+    cursor: pointer;
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.builder-field-item:hover,
+.builder-field-item.is-active {
+    border-color: rgba(22, 119, 255, 0.4);
+    box-shadow: 0 10px 24px rgba(22, 119, 255, 0.08);
+}
+
+.builder-field-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    color: rgba(15, 23, 42, 0.58);
+    font-size: 12px;
+}
+
+.builder-switch-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 20px;
+    margin-bottom: 20px;
+}
+
+.builder-switch-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 10px;
+    background: rgba(248, 250, 255, 0.8);
+}
+
+.builder-reaction-list {
+    display: grid;
+    gap: 12px;
+}
+
+.builder-panel-subtitle {
+    margin-bottom: 4px;
+    color: rgba(15, 23, 42, 0.72);
+    font-weight: 600;
+}
+
+.builder-reaction-card {
+    padding: 12px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 12px;
+    background: rgba(248, 250, 255, 0.8);
+}
+
+.builder-reaction-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.builder-step-actions {
+    display: flex;
+    justify-content: flex-end;
 }
 
 @media (max-width: 1279px) {

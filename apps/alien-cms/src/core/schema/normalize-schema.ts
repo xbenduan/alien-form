@@ -21,7 +21,7 @@ function getDefaultComponent(field: CmsFieldSchema): string {
 }
 
 function normalizeField(key: string, field: CmsFieldSchema): CmsFieldSchema {
-  return {
+  const normalized: CmsFieldSchema = {
     ...field,
     title: field.title ?? key,
     component: getDefaultComponent(field),
@@ -52,6 +52,29 @@ function normalizeField(key: string, field: CmsFieldSchema): CmsFieldSchema {
       },
     },
   };
+
+  // 递归处理嵌套 properties（object/void 类型）
+  if (normalized.properties) {
+    const nestedProperties: Record<string, CmsFieldSchema> = {};
+    for (const [nestedKey, nestedField] of Object.entries(normalized.properties)) {
+      nestedProperties[nestedKey] = normalizeField(nestedKey, nestedField as CmsFieldSchema);
+    }
+    normalized.properties = nestedProperties;
+  }
+
+  // 递归处理 array items 的 properties
+  if (normalized.items && typeof normalized.items === 'object' && 'properties' in normalized.items) {
+    const items = normalized.items as { type?: string; properties?: Record<string, CmsFieldSchema> };
+    if (items.properties) {
+      const itemProperties: Record<string, CmsFieldSchema> = {};
+      for (const [itemKey, itemField] of Object.entries(items.properties)) {
+        itemProperties[itemKey] = normalizeField(itemKey, itemField);
+      }
+      normalized.items = { ...items, properties: itemProperties };
+    }
+  }
+
+  return normalized;
 }
 
 export function normalizeSchema(rawSchema: CmsModelSchema): CmsModelSchema {

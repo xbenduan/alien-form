@@ -1,43 +1,91 @@
-import { Card, Menu, Space, Tag, Tooltip, Typography } from "antd";
-import type { ModelSummary } from "../../types/model";
+import {
+  DatabaseOutlined,
+  FileAddOutlined,
+  SettingOutlined,
+} from '@ant-design/icons';
+import { Card, Menu, Tag, Tooltip, Typography } from 'antd';
+import { useNavigate } from 'react-router-dom';
+import { buildModelPath } from '../../app/model-path';
+import type { ModelSummary } from '../../types/model';
 
 interface ModelPageHeaderProps {
-  title: string;
-  subtitle?: string;
-  description?: string;
-  currentPath: string;
   modelSummaries: ModelSummary[];
   activeModel: string;
-  onNavigateModel: (modelName: string) => void;
+  activeGlobalKey?: 'new-model' | 'logs' | 'settings';
 }
 
 export function ModelPageHeader({
-  title,
-  subtitle,
-  description,
-  currentPath,
   modelSummaries,
   activeModel,
-  onNavigateModel,
+  activeGlobalKey,
 }: ModelPageHeaderProps) {
+  const navigate = useNavigate();
+
   return (
     <Card className="model-side-panel" styles={{ body: { padding: 20 } }}>
       <div className="model-side-panel-top">
-        <div className="model-side-panel-title">{title}</div>
+        <div className="model-side-panel-title">内容模型工作台</div>
         <Typography.Paragraph
           className="model-side-panel-description"
           type="secondary"
-          ellipsis={description ? { rows: 2, tooltip: description } : false}
+          ellipsis={{ rows: 2, tooltip: '基于 alien-form 的 schema-driven 单页 CMS 验证应用。' }}
         >
-          {description || "—"}
+          基于 alien-form 的 schema-driven 单页 CMS 验证应用。
         </Typography.Paragraph>
-        <Typography.Text className="current-model-path">{currentPath}</Typography.Text>
       </div>
 
+      <div className="model-side-panel-section-title">全局功能</div>
       <div className="model-side-panel-menu-block">
         <Menu
           mode="inline"
-          selectedKeys={[activeModel]}
+          selectedKeys={activeGlobalKey ? [activeGlobalKey] : []}
+          items={[
+            {
+              key: 'new-model',
+              icon: <FileAddOutlined />,
+              label: '新增模型',
+            },
+            {
+              key: 'logs',
+              icon: <DatabaseOutlined />,
+              label: (
+                <span className="model-global-nav-item">
+                  <span>日志</span>
+                  <Tag bordered={false} color="processing">
+                    开发中
+                  </Tag>
+                </span>
+              ),
+            },
+            {
+              key: 'settings',
+              icon: <SettingOutlined />,
+              label: (
+                <span className="model-global-nav-item">
+                  <span>设置</span>
+                  <Tag bordered={false} color="processing">
+                    开发中
+                  </Tag>
+                </span>
+              ),
+            },
+          ]}
+          onClick={({ key }) => {
+            if (key === 'new-model') {
+              navigate('/models/new');
+              return;
+            }
+
+            navigate(`/${String(key)}`);
+          }}
+        />
+      </div>
+
+      <div className="model-side-panel-section-title model-side-panel-section-title-spaced">模型列表</div>
+      <div className="model-side-panel-menu-block">
+        <Menu
+          mode="inline"
+          selectedKeys={activeModel ? [activeModel] : []}
           items={modelSummaries.map((item) => ({
             key: item.name,
             label: (
@@ -47,6 +95,7 @@ export function ModelPageHeader({
                   <div className="model-menu-item-tooltip">
                     <div>{item.title}</div>
                     <div>{item.name}</div>
+                    <div>{item.source === 'runtime' ? '运行时模型' : '静态模型'}</div>
                   </div>
                 }
               >
@@ -56,7 +105,7 @@ export function ModelPageHeader({
               </Tooltip>
             ),
           }))}
-          onClick={({ key }) => onNavigateModel(String(key))}
+          onClick={({ key }) => navigate(buildModelPath(String(key)))}
         />
       </div>
     </Card>

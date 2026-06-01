@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developers.cloudflare.com/pages/configuration/deploy-button-schema.json",
+  "deploy": {
+    "projectName": "alien-cms",
+    "buildCommand": "pnpm install && pnpm --filter @alien-form/core build && pnpm --filter @alien-form/react build && pnpm --filter @alien-form/alien-cms build",
+    "buildOutputDirectory": "apps/alien-cms/dist",
+    "rootDirectory": "",
+    "environmentVariables": {
+      "NODE_VERSION": "20"
+    }
+  }
+}
