@@ -1,9 +1,9 @@
 import type { IFieldSchema, IFormSchema } from '@alien-form/react';
-import { FormProvider, SchemaField, useCreateForm, useFormValues } from '@alien-form/react';
+import { FormProvider, SchemaField, useCreateForm, useForm, useFormValues } from '@alien-form/react';
 import { DownOutlined, ReloadOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
 import { Button, Space } from 'antd';
 import type React from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as adapters from '../../adapters';
 import type { FilterFieldProjection } from '../../types/model';
 
@@ -14,49 +14,41 @@ interface ModelFilterBarProps {
   onSearch: (values: Record<string, unknown>) => void;
 }
 
-const filterComponents = {
-  Input: adapters.Input,
-  Textarea: adapters.Textarea,
-  NumberInput: adapters.NumberInput,
-  Select: adapters.Select,
-  Switch: adapters.Switch,
-  DateInput: adapters.DateInput,
-  Radio: adapters.Radio,
-  CheckboxGroup: adapters.CheckboxGroup,
-  Rate: adapters.Rate,
-  ArrayCards: adapters.ArrayCards,
-  SectionCard: adapters.SectionCard,
-  TagsInput: adapters.TagsInput,
-  SkuTable: adapters.SkuTable,
-  FilterActions: FilterActions,
-};
-
-const filterDecorators = {
-  FilterItem: adapters.FilterItem,
-};
-
-/** Void field component that renders query/reset/expand buttons */
-function FilterActions({ loading, showExpandButton, expanded, onSubmit, onReset, onToggleExpanded }: {
+/**
+ * Void field component that renders query/reset/expand buttons.
+ * Uses useForm() to access the form instance directly for submit/reset.
+ */
+function FilterActions({ loading, showExpandButton, expanded, onSearch, onReset, onToggleExpanded }: {
   loading?: boolean;
   showExpandButton?: boolean;
   expanded?: boolean;
-  onSubmit?: () => void;
+  onSearch?: (values: Record<string, unknown>) => void;
   onReset?: () => void;
   onToggleExpanded?: () => void;
 }) {
+  const form = useForm();
+
   return (
     <Space size={8}>
       <Button
         type="primary"
         icon={<SearchOutlined />}
         loading={loading}
-        onClick={onSubmit}
+        onClick={() => {
+          form.submit((values) => {
+            onSearch?.(values);
+          });
+        }}
       >
         查询
       </Button>
       <Button
         icon={<ReloadOutlined />}
-        onClick={onReset}
+        onClick={() => {
+          form.setInitialValues({});
+          form.reset();
+          onReset?.();
+        }}
       >
         重置
       </Button>
@@ -73,6 +65,27 @@ function FilterActions({ loading, showExpandButton, expanded, onSubmit, onReset,
     </Space>
   );
 }
+
+const filterComponents = {
+  Input: adapters.Input,
+  Textarea: adapters.Textarea,
+  NumberInput: adapters.NumberInput,
+  Select: adapters.Select,
+  Switch: adapters.Switch,
+  DateInput: adapters.DateInput,
+  Radio: adapters.Radio,
+  CheckboxGroup: adapters.CheckboxGroup,
+  Rate: adapters.Rate,
+  ArrayCards: adapters.ArrayCards,
+  SectionCard: adapters.SectionCard,
+  TagsInput: adapters.TagsInput,
+  SkuTable: adapters.SkuTable,
+  FilterActions,
+};
+
+const filterDecorators = {
+  FilterItem: adapters.FilterItem,
+};
 
 function buildFilterField(field: FilterFieldProjection, visible: boolean): IFieldSchema {
   const isBooleanField = field.component === 'Switch' || field.type === 'boolean';
@@ -171,14 +184,18 @@ export function ModelFilterBar({ fields, values, loading, onSearch }: ModelFilte
   const defaultFields = useMemo(() => fields.filter((field) => field.defaultVisible), [fields]);
   const showExpandButton = fields.length > defaultFields.length;
 
-  const handleSubmit = useCallback(() => {
-    onSearch(draftValues);
-  }, [draftValues, onSearch]);
+  // Use refs for callbacks passed into schema props to avoid stale closures
+  const onSearchRef = useRef(onSearch);
+  onSearchRef.current = onSearch;
+
+  const handleSearch = useCallback((vals: Record<string, unknown>) => {
+    onSearchRef.current(vals);
+  }, []);
 
   const handleReset = useCallback(() => {
     setDraftValues({});
-    onSearch({});
-  }, [onSearch]);
+    onSearchRef.current({});
+  }, []);
 
   const handleToggleExpanded = useCallback(() => {
     setExpanded((current) => !current);
@@ -188,10 +205,10 @@ export function ModelFilterBar({ fields, values, loading, onSearch }: ModelFilte
     loading,
     showExpandButton,
     expanded,
-    onSubmit: handleSubmit,
+    onSearch: handleSearch,
     onReset: handleReset,
     onToggleExpanded: handleToggleExpanded,
-  }), [loading, showExpandButton, expanded, handleSubmit, handleReset, handleToggleExpanded]);
+  }), [loading, showExpandButton, expanded, handleSearch, handleReset, handleToggleExpanded]);
 
   const filterSchema = useMemo(
     () => buildFilterSchema(fields, expanded, actionProps),
