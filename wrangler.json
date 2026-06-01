@@ -1,5 +1,5 @@
 {
-  "name": "alien-cms",
+  "name": "alien-form",
   "compatibility_date": "2026-06-01",
   "assets": {
     "directory": "./apps/alien-cms/dist"
