@@ -1,6 +1,7 @@
 {
   "name": "alien-cms",
-  "pages": {
-    "build_output_dir": "apps/alien-cms/dist"
+  "compatibility_date": "2026-06-01",
+  "assets": {
+    "directory": "./apps/alien-cms/dist"
   }
 }
