@@ -66,6 +66,12 @@ body {
     background: rgba(255, 255, 255, 0.92);
 }
 
+.model-breadcrumb-bar.builder-bottom-actions {
+    top: auto;
+    margin-bottom: 0;
+    padding: 10px 18px;
+}
+
 .model-breadcrumb-content {
     display: flex;
     align-items: center;
@@ -561,8 +567,8 @@ body {
 /* Builder bottom actions - reuses breadcrumb-bar card */
 .builder-bottom-actions {
   position: sticky;
-  bottom: 20px;
-  margin-top: 16px;
+  bottom: 12px;
+  margin-top: 12px;
 }
 
 .builder-bottom-actions .model-breadcrumb-content {
