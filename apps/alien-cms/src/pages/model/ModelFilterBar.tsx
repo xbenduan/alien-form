@@ -2,8 +2,7 @@ import type { IFieldSchema, IFormSchema } from '@alien-form/react';
 import { FormProvider, SchemaField, useCreateForm, useForm, useFormValues } from '@alien-form/react';
 import { DownOutlined, ReloadOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
 import { Button, Space } from 'antd';
-import type React from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import * as adapters from '../../adapters';
 import type { FilterFieldProjection } from '../../types/model';
 
@@ -14,19 +13,32 @@ interface ModelFilterBarProps {
   onSearch: (values: Record<string, unknown>) => void;
 }
 
-/**
- * Void field component that renders query/reset/expand buttons.
- * Uses useForm() to access the form instance directly for submit/reset.
- */
-function FilterActions({ loading, showExpandButton, expanded, onSearch, onReset, onToggleExpanded }: {
+// ---- Filter Actions Context ----
+// Dynamic values that change after form creation (loading, callbacks)
+// are passed via context instead of schema props to avoid stale signals.
+
+interface FilterActionsContextValue {
   loading?: boolean;
   showExpandButton?: boolean;
   expanded?: boolean;
-  onSearch?: (values: Record<string, unknown>) => void;
-  onReset?: () => void;
-  onToggleExpanded?: () => void;
-}) {
+  onSearch: (values: Record<string, unknown>) => void;
+  onReset: () => void;
+  onToggleExpanded: () => void;
+}
+
+const FilterActionsContext = createContext<FilterActionsContextValue | null>(null);
+
+/**
+ * Void field component that renders query/reset/expand buttons.
+ * Reads dynamic state from FilterActionsContext, uses useForm() for submit/reset.
+ */
+function FilterActions() {
+  const ctx = useContext(FilterActionsContext);
   const form = useForm();
+
+  if (!ctx) return null;
+
+  const { loading, showExpandButton, expanded, onSearch, onReset, onToggleExpanded } = ctx;
 
   return (
     <Space size={8}>
@@ -36,7 +48,7 @@ function FilterActions({ loading, showExpandButton, expanded, onSearch, onReset,
         loading={loading}
         onClick={() => {
           form.submit((values) => {
-            onSearch?.(values);
+            onSearch(values);
           });
         }}
       >
@@ -47,7 +59,7 @@ function FilterActions({ loading, showExpandButton, expanded, onSearch, onReset,
         onClick={() => {
           form.setInitialValues({});
           form.reset();
-          onReset?.();
+          onReset();
         }}
       >
         重置
@@ -65,6 +77,8 @@ function FilterActions({ loading, showExpandButton, expanded, onSearch, onReset,
     </Space>
   );
 }
+
+// ---- Components & Decorators ----
 
 const filterComponents = {
   Input: adapters.Input,
@@ -86,6 +100,8 @@ const filterComponents = {
 const filterDecorators = {
   FilterItem: adapters.FilterItem,
 };
+
+// ---- Schema builders ----
 
 function buildFilterField(field: FilterFieldProjection, visible: boolean): IFieldSchema {
   const isBooleanField = field.component === 'Switch' || field.type === 'boolean';
@@ -112,11 +128,7 @@ function buildFilterField(field: FilterFieldProjection, visible: boolean): IFiel
   };
 }
 
-function buildFilterSchema(
-  fields: FilterFieldProjection[],
-  expanded: boolean,
-  actionProps: Record<string, unknown>,
-): IFormSchema {
+function buildFilterSchema(fields: FilterFieldProjection[], expanded: boolean): IFormSchema {
   const fieldEntries = fields.map((field) => [
     field.key,
     buildFilterField(field, expanded || field.defaultVisible),
@@ -131,17 +143,14 @@ function buildFilterSchema(
         component: 'FilterActions',
         decorator: 'FilterItem',
         order: 9999,
-        props: actionProps,
       },
     },
   };
 }
 
-function FilterValuesSync({
-  onChange,
-}: {
-  onChange: (values: Record<string, unknown>) => void;
-}) {
+// ---- Internal components ----
+
+function FilterValuesSync({ onChange }: { onChange: (values: Record<string, unknown>) => void }) {
   const currentValues = useFormValues();
 
   useEffect(() => {
@@ -178,13 +187,16 @@ function FilterSchemaRenderer({
   );
 }
 
+// ---- Exported component ----
+
 export function ModelFilterBar({ fields, values, loading, onSearch }: ModelFilterBarProps) {
   const [expanded, setExpanded] = useState(false);
   const [draftValues, setDraftValues] = useState<Record<string, unknown>>(values);
   const defaultFields = useMemo(() => fields.filter((field) => field.defaultVisible), [fields]);
   const showExpandButton = fields.length > defaultFields.length;
+  const filterSchema = useMemo(() => buildFilterSchema(fields, expanded), [fields, expanded]);
 
-  // Use refs for callbacks passed into schema props to avoid stale closures
+  // Stable refs for callbacks
   const onSearchRef = useRef(onSearch);
   onSearchRef.current = onSearch;
 
@@ -201,7 +213,8 @@ export function ModelFilterBar({ fields, values, loading, onSearch }: ModelFilte
     setExpanded((current) => !current);
   }, []);
 
-  const actionProps = useMemo(() => ({
+  // Context value updates on every render with latest loading state
+  const actionsCtx = useMemo<FilterActionsContextValue>(() => ({
     loading,
     showExpandButton,
     expanded,
@@ -210,21 +223,18 @@ export function ModelFilterBar({ fields, values, loading, onSearch }: ModelFilte
     onToggleExpanded: handleToggleExpanded,
   }), [loading, showExpandButton, expanded, handleSearch, handleReset, handleToggleExpanded]);
 
-  const filterSchema = useMemo(
-    () => buildFilterSchema(fields, expanded, actionProps),
-    [fields, expanded, actionProps],
-  );
-
   useEffect(() => {
     setDraftValues(values);
   }, [values]);
 
   return (
-    <FilterSchemaRenderer
-      key={expanded ? 'expanded' : 'collapsed'}
-      schema={filterSchema}
-      initialValues={draftValues}
-      onDraftChange={setDraftValues}
-    />
+    <FilterActionsContext.Provider value={actionsCtx}>
+      <FilterSchemaRenderer
+        key={expanded ? 'expanded' : 'collapsed'}
+        schema={filterSchema}
+        initialValues={draftValues}
+        onDraftChange={setDraftValues}
+      />
+    </FilterActionsContext.Provider>
   );
 }
