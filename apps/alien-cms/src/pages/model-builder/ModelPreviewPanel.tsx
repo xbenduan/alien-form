@@ -8,7 +8,7 @@ interface ModelPreviewPanelProps {
   hideTitle?: boolean;
 }
 
-export function ModelPreviewPanel({ schema, error, hideTitle }: ModelPreviewPanelProps) {
+export function ModelPreviewPanel({ schema, error }: ModelPreviewPanelProps) {
   return (
     <Card className="model-query-card" styles={{ body: { padding: 20 } }}>
       {error ? (
