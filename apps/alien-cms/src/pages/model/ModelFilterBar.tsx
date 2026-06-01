@@ -114,11 +114,13 @@ function FilterSchemaRenderer({
         components={filterComponents as Record<string, any>}
         decorators={filterDecorators as Record<string, any>}
       >
-        <div className="model-filter-form">
-          <SchemaField />
-          <FilterValuesSync onChange={onDraftChange} />
-          <div className="filter-form-item filter-actions-item">
-            <Space wrap className="filter-actions-cell">
+        <div className="model-filter-row">
+          <div className="model-filter-fields">
+            <SchemaField />
+            <FilterValuesSync onChange={onDraftChange} />
+          </div>
+          <div className="model-filter-actions">
+            <Space size={8}>
               <Button
                 type="primary"
                 icon={<SearchOutlined />}
@@ -142,6 +144,7 @@ function FilterSchemaRenderer({
                   type="link"
                   icon={expanded ? <UpOutlined /> : <DownOutlined />}
                   onClick={onToggleExpanded}
+                  style={{ paddingInline: 4 }}
                 >
                   {expanded ? '收起' : '展开'}
                 </Button>
