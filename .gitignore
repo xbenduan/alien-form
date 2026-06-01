@@ -8,7 +8,6 @@ package-lock.json
 # 文件
 .DS_Store
 
-
 # pnpm store
 .pnpm-store
 
@@ -17,3 +16,7 @@ package-lock.json
 
 
 **.py
+
+.trae
+.dbg
+debug**

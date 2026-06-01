@@ -6,7 +6,7 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "dev": "pnpm --filter @alien-form/demo run dev",
+    "dev": "pnpm --filter @alien-form/alien-cms run dev",
     "build": "pnpm -r run build",
     "build:core": "pnpm --filter @alien-form/core run build",
     "build:react": "pnpm --filter @alien-form/react run build",
