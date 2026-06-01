@@ -1,6 +1,6 @@
-import { SaveOutlined } from '@ant-design/icons';
+import { EyeOutlined, SaveOutlined } from '@ant-design/icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Alert, Breadcrumb, Button, Card, Col, Row, Space, Steps, message } from 'antd';
+import { Alert, Breadcrumb, Button, Card, Col, Modal, Row, Space, Steps, message } from 'antd';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { buildModelPath } from '../../app/model-path';
@@ -154,6 +154,7 @@ export default function ModelBuilderPage() {
   const [selectedFieldId, setSelectedFieldId] = useState<string | undefined>(draft.fields[0]?.id);
   const [currentStep, setCurrentStep] = useState(0);
   const [messageApi, contextHolder] = message.useMessage();
+  const [previewJsonVisible, setPreviewJsonVisible] = useState(false);
 
   const previewState = useMemo(() => {
     try {
@@ -267,73 +268,81 @@ export default function ModelBuilderPage() {
         <Steps current={currentStep} items={stepItems} />
       </Card>
 
-      {currentStep === 0 ? (
-        <ModelMetaForm draft={draft} onChange={setDraft} />
-      ) : null}
+      <div className="builder-step-body">
+        {currentStep === 0 ? (
+          <ModelMetaForm draft={draft} onChange={setDraft} hideTitle />
+        ) : null}
 
-      {currentStep === 1 ? (
-        <Row gutter={[20, 20]}>
-          <Col xs={24} xl={10}>
-            <FieldListEditor
-              fields={draft.fields}
-              selectedFieldId={selectedFieldId}
-              onSelect={setSelectedFieldId}
-              onAddField={handleAddField}
-              onRemove={(fieldId) => {
-                const nextFields = removeFieldById(draft.fields, fieldId);
-                setDraft((current) => ({
-                  ...current,
-                  fields: removeFieldById(current.fields, fieldId),
-                }));
-                if (selectedFieldId && !collectRemainingFieldIds(nextFields).includes(selectedFieldId)) {
-                  setSelectedFieldId(collectRemainingFieldIds(nextFields)[0]);
-                }
-              }}
-              onMove={(fromIndex, toIndex) =>
-                setDraft((current) => ({
-                  ...current,
-                  fields: reorder(current.fields, fromIndex, toIndex),
-                }))
-              }
-            />
-          </Col>
-          <Col xs={24} xl={14}>
-            <FieldConfigPanel
-              field={selectedField}
-              onChange={(nextField) => updateField(nextField.id, () => nextField)}
-            />
-          </Col>
-        </Row>
-      ) : null}
-
-      {currentStep === 2 ? <ModelPreviewPanel schema={previewState.schema} error={previewState.error} /> : null}
-
-      <Card className="model-query-card" styles={{ body: { padding: 20 } }}>
-        <div className="builder-step-actions">
-          <Space>
-            {currentStep > 0 ? (
-              <Button onClick={() => setCurrentStep((step) => step - 1)}>
-                上一步
-              </Button>
-            ) : null}
-            {currentStep < 2 ? (
-              <Button
-                type="primary"
-                onClick={() => {
-                  if (currentStep === 0) {
-                    try {
-                      validateModelMeta(draft, existingModelNames);
-                    } catch (error) {
-                      messageApi.error(error instanceof Error ? error.message : '请完善模型信息');
-                      return;
-                    }
+        {currentStep === 1 ? (
+          <Row gutter={[20, 20]}>
+            <Col span={12}>
+              <FieldListEditor
+                fields={draft.fields}
+                selectedFieldId={selectedFieldId}
+                onSelect={setSelectedFieldId}
+                onAddField={handleAddField}
+                onRemove={(fieldId) => {
+                  const nextFields = removeFieldById(draft.fields, fieldId);
+                  setDraft((current) => ({
+                    ...current,
+                    fields: removeFieldById(current.fields, fieldId),
+                  }));
+                  if (selectedFieldId && !collectRemainingFieldIds(nextFields).includes(selectedFieldId)) {
+                    setSelectedFieldId(collectRemainingFieldIds(nextFields)[0]);
                   }
-                  setCurrentStep((step) => step + 1);
                 }}
+                onMove={(fromIndex, toIndex) =>
+                  setDraft((current) => ({
+                    ...current,
+                    fields: reorder(current.fields, fromIndex, toIndex),
+                  }))
+                }
+              />
+            </Col>
+            <Col span={12}>
+              <FieldConfigPanel
+                field={selectedField}
+                onChange={(nextField) => updateField(nextField.id, () => nextField)}
+              />
+            </Col>
+          </Row>
+        ) : null}
+
+        {currentStep === 2 ? <ModelPreviewPanel schema={previewState.schema} error={previewState.error} hideTitle /> : null}
+      </div>
+
+      <div className="builder-bottom-bar">
+        <Space>
+          {currentStep > 0 ? (
+            <Button onClick={() => setCurrentStep((step) => step - 1)}>
+              上一步
+            </Button>
+          ) : null}
+          {currentStep < 2 ? (
+            <Button
+              type="primary"
+              onClick={() => {
+                if (currentStep === 0) {
+                  try {
+                    validateModelMeta(draft, existingModelNames);
+                  } catch (error) {
+                    messageApi.error(error instanceof Error ? error.message : '请完善模型信息');
+                    return;
+                  }
+                }
+                setCurrentStep((step) => step + 1);
+              }}
+            >
+              下一步
+            </Button>
+          ) : (
+            <>
+              <Button
+                icon={<EyeOutlined />}
+                onClick={() => setPreviewJsonVisible(true)}
               >
-                下一步
+                预览提交
               </Button>
-            ) : (
               <Button
                 type="primary"
                 icon={<SaveOutlined />}
@@ -342,10 +351,22 @@ export default function ModelBuilderPage() {
               >
                 保存模型
               </Button>
-            )}
-          </Space>
-        </div>
-      </Card>
+            </>
+          )}
+        </Space>
+      </div>
+
+      <Modal
+        title="Schema JSON 预览"
+        open={previewJsonVisible}
+        footer={null}
+        width={720}
+        onCancel={() => setPreviewJsonVisible(false)}
+      >
+        <pre className="builder-json-preview">
+          {previewState.schema ? JSON.stringify(previewState.schema, null, 2) : previewState.error ?? '无法生成'}
+        </pre>
+      </Modal>
     </>
   );
 }

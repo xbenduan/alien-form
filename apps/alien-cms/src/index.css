@@ -556,3 +556,34 @@ body {
         position: static;
     }
 }
+
+/* Builder bottom bar - sticky */
+.builder-bottom-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 12px 20px;
+  background: #fff;
+  border-top: 1px solid #f0f0f0;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.builder-step-body {
+  flex: 1;
+  padding-bottom: 12px;
+}
+
+.builder-json-preview {
+  max-height: 520px;
+  overflow: auto;
+  padding: 16px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+}

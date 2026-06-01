@@ -1,11 +1,10 @@
 import {
   DatabaseOutlined,
-  FileAddOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
 import { Card, Menu, Tag, Tooltip, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { buildModelPath } from '../../app/model-path';
+import { buildBuilderNewPath, buildModelPath } from '../../app/model-path';
 import type { ModelSummary } from '../../types/model';
 
 interface ModelPageHeaderProps {
@@ -42,7 +41,7 @@ export function ModelPageHeader({
           items={[
             {
               key: 'new-model',
-              icon: <FileAddOutlined />,
+              icon: <DatabaseOutlined />,
               label: '新增模型',
             },
             {
@@ -72,7 +71,7 @@ export function ModelPageHeader({
           ]}
           onClick={({ key }) => {
             if (key === 'new-model') {
-              navigate('/models/new');
+              navigate(buildBuilderNewPath());
               return;
             }
 

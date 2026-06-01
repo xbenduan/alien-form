@@ -39,6 +39,7 @@ interface SchemaFormViewProps {
   submitButtonProps?: ButtonProps;
   loading?: boolean;
   layout?: 'overlay' | 'page';
+  hideActions?: boolean;
   onSubmit: (values: Record<string, unknown>) => Promise<void>;
   onCancel: () => void;
 }
@@ -50,6 +51,7 @@ export function SchemaFormView({
   submitButtonProps,
   loading,
   layout = 'overlay',
+  hideActions,
   onSubmit,
   onCancel,
 }: SchemaFormViewProps) {
@@ -78,20 +80,22 @@ export function SchemaFormView({
       >
         <SchemaField />
       </FormProvider>
-      <div className="schema-form-footer-actions">
-        <Space>
-          <Button onClick={() => form.reset()}>重置</Button>
-          <Button onClick={onCancel}>取消</Button>
-          <Button
-            type="primary"
-            loading={loading}
-            {...submitButtonProps}
-            onClick={handleSubmit}
-          >
-            {submitText}
-          </Button>
-        </Space>
-      </div>
+      {hideActions ? null : (
+        <div className="schema-form-footer-actions">
+          <Space>
+            <Button onClick={() => form.reset()}>重置</Button>
+            <Button onClick={onCancel}>取消</Button>
+            <Button
+              type="primary"
+              loading={loading}
+              {...submitButtonProps}
+              onClick={handleSubmit}
+            >
+              {submitText}
+            </Button>
+          </Space>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { ModelRouteState } from '../types/model';
 
-export const MODEL_ROUTE_PREFIX = '/models';
+export const MODEL_ROUTE_PREFIX = '/m';
+export const BUILDER_ROUTE_PREFIX = '/builder';
 
 function normalizeRouteState(routeState?: ModelRouteState): ModelRouteState {
   if (!routeState || routeState.mode === 'closed') {
@@ -33,4 +34,12 @@ export function buildModelPath(modelName: string, routeState: ModelRouteState = 
   }
 
   return `${MODEL_ROUTE_PREFIX}/${modelName}/${normalizedRouteState.mode}/${normalizedRouteState.recordId}`;
+}
+
+export function buildBuilderNewPath() {
+  return `${BUILDER_ROUTE_PREFIX}/new`;
+}
+
+export function buildBuilderEditPath(modelName: string) {
+  return `${BUILDER_ROUTE_PREFIX}/edit/${modelName}`;
 }

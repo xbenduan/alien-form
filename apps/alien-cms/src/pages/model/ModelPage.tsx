@@ -1,5 +1,7 @@
-import { ArrowLeftOutlined, PlusOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
 import { Alert, Breadcrumb, Button, Card, Col, Row, Spin, message } from 'antd';
+import { useNavigate } from 'react-router-dom';
+import { buildBuilderEditPath } from '../../app/model-path';
 import { useModelPage } from '../../hooks/use-model-page';
 import type { ModelRouteState } from '../../types/model';
 import { ModelActionHost } from './ModelActionDrawer';
@@ -17,6 +19,7 @@ export default function ModelPage({
   routeAction,
   onRouteActionChange,
 }: ModelPageProps) {
+  const navigate = useNavigate();
   const page = useModelPage(modelName, {
     routeAction,
     onRouteActionChange,
@@ -100,6 +103,11 @@ export default function ModelPage({
               </Col>
               <Col flex="220px">
                 <div className="model-toolbar-actions">
+                  <Button
+                    size="large"
+                    icon={<SettingOutlined />}
+                    onClick={() => navigate(buildBuilderEditPath(modelName))}
+                  />
                   <Button
                     type="primary"
                     size="large"
