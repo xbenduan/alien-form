@@ -4,6 +4,7 @@ import type { SchemaProvider } from "../provider/schema-provider";
 import type { CmsModelSchema, ModelSummary } from "../types/schema";
 import type { ModelBuilderDraft, ModelBuilderFieldDraft, BuilderFieldType, BuilderComponentName } from "../types/builder";
 import { buildModelSchema } from "../schema/build-model-schema";
+import { schemaToBuilderDraft } from "../schema/schema-to-builder-draft";
 
 // ─── Helpers ──────────────────────────────────────────────────
 
@@ -50,11 +51,11 @@ function createFieldDraft(type: BuilderFieldType, component: BuilderComponentNam
 function createInitialDraft(): ModelBuilderDraft {
   return {
     modelName: "",
-    title: "New Model",
+    title: "新模型",
     subtitle: "",
     description: "",
-    singularLabel: "Record",
-    pluralLabel: "Records",
+    singularLabel: "记录",
+    pluralLabel: "记录",
     defaultPageSize: 10,
     defaultFilterCount: 3,
     openMode: { add: "drawer", edit: "drawer", detail: "drawer" },
@@ -118,7 +119,10 @@ export class ModelBuilderStore {
   readonly draft: Signal<ModelBuilderDraft>;
   readonly editingModelName: Signal<string | undefined>;
   readonly selectedFieldId: Signal<string | undefined>;
+  readonly selectedField: Computed<ModelBuilderFieldDraft | undefined>;
   readonly saving: Signal<boolean>;
+  readonly loadingSchema: Signal<boolean>;
+  readonly loadingError: Signal<string | undefined>;
 
   // ─── Preview ────────────────────────────────────────────────
   readonly previewSchema: Computed<CmsModelSchema | undefined>;
@@ -133,7 +137,10 @@ export class ModelBuilderStore {
     this.draft = signal<ModelBuilderDraft>(initialDraft);
     this.editingModelName = signal<string | undefined>(undefined);
     this.selectedFieldId = signal<string | undefined>(initialDraft.fields[0]?.id);
+    this.selectedField = computed(() => findFieldById(this.draft().fields, this.selectedFieldId()));
     this.saving = signal(false);
+    this.loadingSchema = signal(false);
+    this.loadingError = signal<string | undefined>(undefined);
 
     this.previewSchema = computed(() => {
       try {
@@ -168,9 +175,20 @@ export class ModelBuilderStore {
   // ─── Schema CRUD ────────────────────────────────────────────
 
   async loadForEdit(modelName: string): Promise<void> {
-    const schema = await this.provider.detail({ modelName });
-    // TODO: reverse-engineer draft from schema
-    this.editingModelName(modelName);
+    this.loadingSchema(true);
+    this.loadingError(undefined);
+    try {
+      const schema = await this.provider.detail({ modelName });
+      const draft = schemaToBuilderDraft(schema);
+      this.draft(draft);
+      this.editingModelName(modelName);
+      this.selectedFieldId(draft.fields[0]?.id);
+    } catch (error) {
+      this.loadingError(error instanceof Error ? error.message : "模型加载失败");
+      throw error;
+    } finally {
+      this.loadingSchema(false);
+    }
   }
 
   async createModel(): Promise<boolean> {
@@ -272,6 +290,10 @@ export class ModelBuilderStore {
     return findFieldById(this.draft().fields, this.selectedFieldId());
   }
 
+  setSelectedField(fieldId?: string): void {
+    this.selectedFieldId(fieldId);
+  }
+
   resetDraft(): void {
     const d = createInitialDraft();
     this.draft(d);
@@ -286,35 +308,41 @@ export class ModelBuilderStore {
     const draft = this.draft();
 
     if (!draft.modelName.trim()) {
-      errors.push("Model name is required");
+      errors.push("请先填写模型名");
     } else if (!/^[a-z][a-z0-9-]*$/.test(draft.modelName.trim())) {
-      errors.push("Model name must be lowercase letters, numbers, and hyphens, starting with a letter");
+      errors.push("模型名仅支持小写字母、数字和中划线，且必须以字母开头");
+    } else {
+      const normalizedModelName = draft.modelName.trim();
+      const duplicated = this.models().some((item) => item.name === normalizedModelName);
+      if (duplicated && this.editingModelName() !== normalizedModelName) {
+        errors.push(`模型名 ${normalizedModelName} 已存在`);
+      }
     }
 
     if (!draft.title.trim()) {
-      errors.push("Model title is required");
+      errors.push("请先填写模型标题");
     }
 
     if (draft.fields.length === 0) {
-      errors.push("At least one field is required");
+      errors.push("请至少添加一个字段");
     }
 
     const validateFields = (fields: ModelBuilderFieldDraft[], path: string) => {
       const keys = new Set<string>();
       for (const field of fields) {
-        const label = `${path}/${field.title || "untitled"}`;
+        const label = `${path} / ${field.title || "未命名字段"}`;
         if (!field.key.trim()) {
-          errors.push(`${label}: key is required`);
+          errors.push(`${label} 缺少 key`);
         }
         if (keys.has(field.key.trim())) {
-          errors.push(`${label}: duplicate key "${field.key.trim()}"`);
+          errors.push(`${label} 的 key 重复：${field.key.trim()}`);
         }
         keys.add(field.key.trim());
 
         const needsChildren = field.type === "object" || field.type === "void" ||
           (field.type === "array" && field.arrayMode === "object");
         if (needsChildren && (!field.children || field.children.length === 0)) {
-          errors.push(`${label}: container field needs at least one child`);
+          errors.push(`${label} 需要至少一个子字段`);
         }
 
         if (field.children?.length) {
@@ -323,7 +351,7 @@ export class ModelBuilderStore {
       }
     };
 
-    validateFields(draft.fields, draft.title.trim() || "model");
+    validateFields(draft.fields, draft.title.trim() || "模型");
     return errors;
   }
 

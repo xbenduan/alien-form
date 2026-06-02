@@ -1,3 +1,4 @@
+import type { ModelSummary } from '@alien-form/cms';
 import {
   DatabaseOutlined,
   SettingOutlined,
@@ -5,7 +6,6 @@ import {
 import { Card, Menu, Tag, Tooltip, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { buildBuilderNewPath, buildModelPath } from '../../app/model-path';
-import type { ModelSummary } from '../../types/model';
 
 interface ModelPageHeaderProps {
   modelSummaries: ModelSummary[];

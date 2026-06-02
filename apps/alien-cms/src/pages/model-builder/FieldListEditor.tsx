@@ -1,7 +1,7 @@
 import { DeleteOutlined, DownOutlined, DragOutlined, PlusOutlined } from '@ant-design/icons';
+import type { ModelBuilderFieldDraft } from '@alien-form/cms';
 import { Button, Card, Dropdown, Empty, Space, Tag, Typography } from 'antd';
 import { useState } from 'react';
-import type { ModelBuilderFieldDraft } from '../../types/model-builder';
 import { fieldPresets, type FieldPreset } from './FieldPalette';
 
 interface FieldListEditorProps {

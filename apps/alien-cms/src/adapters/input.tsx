@@ -1,4 +1,5 @@
 import { Input as AntInput, InputNumber } from 'antd';
+import { FormatValue } from './format-value';
 
 const { TextArea } = AntInput;
 
@@ -6,15 +7,23 @@ export function Input({
   value,
   onChange,
   disabled,
+  readOnly,
   placeholder,
   type,
+  format,
 }: {
   value?: string;
   onChange?: (nextValue: string) => void;
   disabled?: boolean;
+  readOnly?: boolean;
   placeholder?: string;
   type?: string;
+  format?: string;
 }) {
+  if (readOnly) {
+    return <FormatValue value={value} format={format} />;
+  }
+
   if (type === 'number') {
     return (
       <InputNumber
@@ -41,15 +50,23 @@ export function Textarea({
   value,
   onChange,
   disabled,
+  readOnly,
   placeholder,
   rows = 4,
+  format,
 }: {
   value?: string;
   onChange?: (nextValue: string) => void;
   disabled?: boolean;
+  readOnly?: boolean;
   placeholder?: string;
   rows?: number;
+  format?: string;
 }) {
+  if (readOnly) {
+    return <FormatValue value={value} format={format} />;
+  }
+
   return (
     <TextArea
       value={value ?? ''}
@@ -65,17 +82,25 @@ export function NumberInput({
   value,
   onChange,
   disabled,
+  readOnly,
   placeholder,
   min,
   max,
+  format,
 }: {
   value?: number;
   onChange?: (nextValue: number | null) => void;
   disabled?: boolean;
+  readOnly?: boolean;
   placeholder?: string;
   min?: number;
   max?: number;
+  format?: string;
 }) {
+  if (readOnly) {
+    return <FormatValue value={value} format={format} />;
+  }
+
   return (
     <InputNumber
       style={{ width: '100%' }}

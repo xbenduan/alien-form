@@ -1,8 +1,8 @@
+import type { ModelSummary } from '@alien-form/cms';
 import { Alert, Spin } from 'antd';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useModelSummaries } from './hooks/use-model-summaries';
 import { ModelPageHeader } from './pages/model/ModelPageHeader';
-import type { ModelSummary } from './types/model';
 
 export interface WorkbenchOutletContext {
   modelSummaries: ModelSummary[];

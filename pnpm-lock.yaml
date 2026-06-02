@@ -20,6 +20,12 @@ importers:
 
   apps/alien-cms:
     dependencies:
+      '@alien-form/cms':
+        specifier: workspace:*
+        version: link:../../packages/cms
+      '@alien-form/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@alien-form/react':
         specifier: workspace:*
         version: link:../../packages/react

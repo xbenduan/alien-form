@@ -1,4 +1,4 @@
-import type { CmsFieldSchema, CmsModelSchema } from "../types/schema";
+import type { CmsModelSchema } from "../types/schema";
 import type { MobileCardProjection } from "./types";
 import { sortSchemaEntries } from "./shared";
 

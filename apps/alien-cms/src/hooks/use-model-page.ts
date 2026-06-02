@@ -1,12 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { projectDetailSchema } from '../core/projection/project-detail-schema';
-import { projectFilterFields } from '../core/projection/project-filter-fields';
-import { projectFormSchema } from '../core/projection/project-form-schema';
-import { projectTableColumns } from '../core/projection/project-table-columns';
-import { localDataProvider } from '../data/provider/local-data-provider';
+import { signal } from '@alien-form/core';
+import { useEffect, useMemo } from 'react';
+import { useSignalValue } from '@alien-form/react';
+import type {
+  CmsModelSchema,
+  ModelActionKind,
+  ModelActionMode,
+  ModelActionOpenMode,
+  ModelPageStore,
+  ModelRecord,
+  Pagination,
+  Sorter,
+} from '@alien-form/cms';
+import { cmsAppStore } from '../data/cms-data-access';
 import { useModelSchema } from './use-model-schema';
-import type { CmsModelSchema, ModelActionKind, ModelActionMode, ModelActionOpenMode, ModelRouteState } from '../types/model';
+import type { ModelRouteState } from '../types/model';
 
 interface UseModelPageOptions {
   routeAction: ModelRouteState;
@@ -18,12 +25,12 @@ interface UseModelPageResult {
   schema?: CmsModelSchema;
   schemaLoading: boolean;
   schemaError?: Error | null;
-  filterFields: ReturnType<typeof projectFilterFields>;
-  tableColumns: ReturnType<typeof projectTableColumns>;
+  filterFields: ModelPageStore['filterFields'];
+  tableColumns: ModelPageStore['tableColumns'];
   addSchema?: CmsModelSchema;
   editSchema?: CmsModelSchema;
   detailSchema?: CmsModelSchema;
-  records: Awaited<ReturnType<typeof localDataProvider.list>>['list'];
+  records: ModelRecord[];
   total: number;
   listLoading: boolean;
   filters: Record<string, unknown>;
@@ -32,7 +39,7 @@ interface UseModelPageResult {
   actionMode: ModelActionMode;
   actionOpenMode?: ModelActionOpenMode;
   activeRecordId?: string;
-  activeRecord?: Awaited<ReturnType<typeof localDataProvider.detail>>;
+  activeRecord?: ModelRecord;
   detailLoading: boolean;
   setFilters: (values: Record<string, unknown>) => void;
   setPagination: (values: { current: number; pageSize: number }) => void;
@@ -48,166 +55,169 @@ interface UseModelPageResult {
   deleting: boolean;
 }
 
+const emptyFiltersSignal = signal<Record<string, unknown>>({});
+const defaultPaginationSignal = signal<Pagination>({ current: 1, pageSize: 10 });
+const emptyRecordsSignal = signal<ModelRecord[]>([]);
+const zeroSignal = signal(0);
+const falseSignal = signal(false);
+const undefinedSorterSignal = signal<Sorter | undefined>(undefined);
+const closedActionModeSignal = signal<ModelActionMode>('closed');
+const undefinedActionOpenModeSignal = signal<ModelActionOpenMode | undefined>(undefined);
+const undefinedRecordIdSignal = signal<string | undefined>(undefined);
+const undefinedRecordSignal = signal<ModelRecord | undefined>(undefined);
+
 export function useModelPage(modelName: string, options: UseModelPageOptions): UseModelPageResult {
   const { routeAction, onRouteActionChange } = options;
-  const queryClient = useQueryClient();
   const schemaQuery = useModelSchema(modelName);
   const schema = schemaQuery.data;
-  const filterFields = useMemo(() => (schema ? projectFilterFields(schema) : []), [schema]);
-  const tableColumns = useMemo(() => (schema ? projectTableColumns(schema) : []), [schema]);
-  const addSchema = useMemo(() => (schema ? projectFormSchema(schema, 'add') : undefined), [schema]);
-  const editSchema = useMemo(() => (schema ? projectFormSchema(schema, 'edit') : undefined), [schema]);
-  const detailSchema = useMemo(() => (schema ? projectDetailSchema(schema) : undefined), [schema]);
-
-  const [filters, setFilterState] = useState<Record<string, unknown>>({});
-  const [pagination, setPaginationState] = useState({
-    current: 1,
-    pageSize: 10,
-  });
-  const [sorter, setSorterState] = useState<{ field?: string; order?: 'ascend' | 'descend' }>();
-  const [overlayAction, setOverlayAction] = useState<ModelRouteState>({ mode: 'closed' });
-
-  const actionOpenModeMap = useMemo(
-    () => ({
-      add: schema?.['x-model']?.openMode?.add ?? 'drawer',
-      edit: schema?.['x-model']?.openMode?.edit ?? 'drawer',
-      detail: schema?.['x-model']?.openMode?.detail ?? 'drawer',
-    }),
-    [schema],
+  const store = useMemo(
+    () => (schema ? cmsAppStore.createModelPageStore(modelName, schema as CmsModelSchema) : undefined),
+    [modelName, schema],
   );
+  const filters = useSignalValue<Record<string, unknown>>(store?.filters ?? emptyFiltersSignal);
+  const pagination = useSignalValue<Pagination>(store?.pagination ?? defaultPaginationSignal);
+  const sorter = useSignalValue<Sorter | undefined>(store?.sorter ?? undefinedSorterSignal);
+  const records = useSignalValue<ModelRecord[]>(store?.records ?? emptyRecordsSignal);
+  const total = useSignalValue<number>(store?.total ?? zeroSignal);
+  const listLoading = useSignalValue<boolean>(store?.listLoading ?? falseSignal);
+  const actionMode = useSignalValue<ModelActionMode>(store?.actionMode ?? closedActionModeSignal);
+  const actionOpenMode = useSignalValue<ModelActionOpenMode | undefined>(store?.actionOpenMode ?? undefinedActionOpenModeSignal);
+  const activeRecordId = useSignalValue<string | undefined>(store?.activeRecordId ?? undefinedRecordIdSignal);
+  const activeRecord = useSignalValue<ModelRecord | undefined>(store?.activeRecord ?? undefinedRecordSignal);
+  const detailLoading = useSignalValue<boolean>(store?.detailLoading ?? falseSignal);
+  const submitting = useSignalValue<boolean>(store?.submitting ?? falseSignal);
 
   useEffect(() => {
-    setPaginationState((current) => ({
-      ...current,
-      pageSize: schema?.['x-model']?.defaultPageSize ?? 10,
-    }));
-  }, [schema]);
+    if (!store) return;
+    void store.fetchList();
+  }, [store]);
 
-  const pageAction = useMemo(() => {
+  useEffect(() => {
+    return () => {
+      store?.dispose();
+    };
+  }, [store]);
+
+  useEffect(() => {
+    if (!store) return;
+
     if (routeAction.mode === 'closed') {
-      return { mode: 'closed' } satisfies ModelRouteState;
-    }
-
-    return actionOpenModeMap[routeAction.mode] === 'page'
-      ? routeAction
-      : ({ mode: 'closed' } satisfies ModelRouteState);
-  }, [actionOpenModeMap, routeAction]);
-
-  const currentAction = pageAction.mode !== 'closed' ? pageAction : overlayAction;
-  const activeRecordId = currentAction.recordId;
-  const actionMode = currentAction.mode;
-  const actionOpenMode = actionMode === 'closed' ? undefined : actionOpenModeMap[actionMode];
-
-  useEffect(() => {
-    if (routeAction.mode !== 'closed' && actionOpenModeMap[routeAction.mode] !== 'page') {
-      onRouteActionChange({ mode: 'closed' });
-    }
-  }, [actionOpenModeMap, onRouteActionChange, routeAction]);
-
-  const closeAction = () => {
-    setOverlayAction({ mode: 'closed' });
-
-    if (pageAction.mode !== 'closed') {
-      onRouteActionChange({ mode: 'closed' });
-    }
-  };
-
-  const openAction = (mode: ModelActionKind, recordId?: string) => {
-    const nextAction =
-      mode === 'add'
-        ? ({ mode } satisfies ModelRouteState)
-        : ({
-            mode,
-            recordId,
-          } satisfies ModelRouteState);
-
-    if (actionOpenModeMap[mode] === 'page') {
-      onRouteActionChange(nextAction);
-      setOverlayAction({ mode: 'closed' });
+      if (store.actionMode() !== 'closed' && store.actionOpenMode() === 'page') {
+        store.closeAction();
+      }
       return;
     }
 
-    setOverlayAction(nextAction);
+    const routeOpenMode = store.schema['x-model']?.openMode?.[routeAction.mode] ?? 'drawer';
+    if (routeOpenMode !== 'page') {
+      onRouteActionChange({ mode: 'closed' });
+      return;
+    }
+
+    if (routeAction.mode === 'add') {
+      if (store.actionMode() !== 'add') {
+        store.openAdd();
+      }
+      return;
+    }
+
+    if (!routeAction.recordId) {
+      return;
+    }
+
+    if (store.actionMode() === routeAction.mode && store.activeRecordId() === routeAction.recordId) {
+      return;
+    }
+
+    if (routeAction.mode === 'edit') {
+      store.openEdit(routeAction.recordId);
+      return;
+    }
+
+    store.openDetail(routeAction.recordId);
+  }, [onRouteActionChange, routeAction, store]);
+
+  const openAction = (mode: ModelActionKind, recordId?: string) => {
+    if (!store) return;
+
+    const openMode = store.schema['x-model']?.openMode?.[mode] ?? 'drawer';
+    if (openMode === 'page') {
+      onRouteActionChange(
+        mode === 'add'
+          ? { mode }
+          : {
+              mode,
+              recordId,
+            },
+      );
+      return;
+    }
+
+    if (mode === 'add') {
+      store.openAdd();
+      return;
+    }
+
+    if (!recordId) {
+      return;
+    }
+
+    if (mode === 'edit') {
+      store.openEdit(recordId);
+      return;
+    }
+
+    store.openDetail(recordId);
   };
 
-  const listQuery = useQuery({
-    queryKey: ['model-list', modelName, filters, pagination, sorter],
-    queryFn: () =>
-      localDataProvider.list({
-        model: modelName,
-        filters,
-        pagination,
-        sorter,
-      }),
-    enabled: Boolean(schema),
-    placeholderData: (previousData) => previousData,
-  });
+  const closeAction = () => {
+    if (!store) return;
 
-  const detailQuery = useQuery({
-    queryKey: ['model-detail', modelName, activeRecordId],
-    enabled: Boolean(schema) && Boolean(activeRecordId) && actionMode !== 'add',
-    queryFn: () => localDataProvider.detail({ model: modelName, id: activeRecordId! }),
-  });
+    if (store.actionOpenMode() === 'page') {
+      onRouteActionChange({ mode: 'closed' });
+      return;
+    }
 
-  const invalidateList = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['model-list', modelName] });
+    store.closeAction();
   };
-
-  const createMutation = useMutation({
-    mutationFn: (values: Record<string, unknown>) =>
-      localDataProvider.create({ model: modelName, values }),
-    onSuccess: async () => {
-      await invalidateList();
-      closeAction();
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: (values: Record<string, unknown>) =>
-      localDataProvider.update({ model: modelName, id: activeRecordId!, values }),
-    onSuccess: async () => {
-      await Promise.all([
-        invalidateList(),
-        queryClient.invalidateQueries({ queryKey: ['model-detail', modelName, activeRecordId] }),
-      ]);
-      closeAction();
-    },
-  });
-
-  const removeMutation = useMutation({
-    mutationFn: (id: string) => localDataProvider.remove({ model: modelName, id }),
-    onSuccess: async () => {
-      await invalidateList();
-    },
-  });
 
   return {
     modelName,
     schema,
     schemaLoading: schemaQuery.isLoading || schemaQuery.isFetching,
     schemaError: schemaQuery.error,
-    filterFields,
-    tableColumns,
-    addSchema,
-    editSchema,
-    detailSchema,
-    records: listQuery.data?.list ?? [],
-    total: listQuery.data?.total ?? 0,
-    listLoading: listQuery.isLoading || listQuery.isFetching,
+    filterFields: store?.filterFields ?? [],
+    tableColumns: store?.tableColumns ?? [],
+    addSchema: store?.addSchema,
+    editSchema: store?.editSchema,
+    detailSchema: store?.detailSchema,
+    records: records ?? [],
+    total: total ?? 0,
+    listLoading: Boolean(listLoading),
     filters,
     pagination,
     sorter,
     actionMode,
     actionOpenMode,
     activeRecordId,
-    activeRecord: detailQuery.data,
-    detailLoading: detailQuery.isLoading || detailQuery.isFetching,
+    activeRecord,
+    detailLoading: Boolean(detailLoading),
     setFilters: (values) => {
-      setFilterState(values);
-      setPaginationState((current) => ({ ...current, current: 1 }));
+      store?.setFilters(values);
     },
-    setPagination: setPaginationState,
-    setSorter: setSorterState,
+    setPagination: (values) => {
+      store?.setPagination(values);
+    },
+    setSorter: (values) => {
+      if (values?.field && values.order) {
+        store?.setSorter({
+          field: values.field,
+          order: values.order,
+        });
+        return;
+      }
+      store?.setSorter(undefined);
+    },
     openAdd: () => {
       openAction('add');
     },
@@ -219,15 +229,15 @@ export function useModelPage(modelName: string, options: UseModelPageOptions): U
     },
     closeAction,
     submitAdd: async (values) => {
-      await createMutation.mutateAsync(values);
+      await store?.submitAdd(values);
     },
     submitEdit: async (values) => {
-      await updateMutation.mutateAsync(values);
+      await store?.submitEdit(values);
     },
     removeRecord: async (id) => {
-      await removeMutation.mutateAsync(id);
+      await store?.removeRecord(id);
     },
-    submitting: createMutation.isPending || updateMutation.isPending,
-    deleting: removeMutation.isPending,
+    submitting: Boolean(submitting),
+    deleting: false,
   };
 }

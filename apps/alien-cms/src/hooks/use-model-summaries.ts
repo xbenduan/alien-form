@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { listModelSummaries } from '../core/schema/load-schema';
-import type { ModelSummary } from '../types/model';
+import type { ModelSummary } from '@alien-form/cms';
+import { listModelSummaries } from '../data/cms-data-access';
 
 export function useModelSummaries() {
   return useQuery<ModelSummary[]>({

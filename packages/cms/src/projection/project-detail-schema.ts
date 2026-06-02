@@ -2,24 +2,23 @@ import type { CmsFieldSchema, CmsModelSchema } from "../types/schema";
 import { sortSchemaEntries } from "./shared";
 
 function getDetailComponent(field: CmsFieldSchema): string {
-  const format = field["x-cms"]?.detail?.format;
-
-  if (format === "status") return "DetailStatus";
-  if (format === "date") return "DetailDate";
-  if (format === "dateTime") return "DetailDateTime";
-  if (format === "boolean" || field.type === "boolean") return "DetailBoolean";
-  if (field.type === "array") return field.component === "ArrayCards" ? "ArrayCards" : "DetailArrayText";
+  if (field.type === "array") return field.component === "ArrayCards" ? "ArrayCards" : (field.component ?? "TagsInput");
   if (field.type === "void" || field.type === "object") return field.component ?? "SectionCard";
-  return "DetailText";
+  if (field.component) return field.component;
+  if (field.type === "number") return "NumberInput";
+  if (field.type === "boolean") return "Switch";
+  return "Input";
 }
 
 export function projectDetailField(field: CmsFieldSchema): CmsFieldSchema {
+  const format = field["x-cms"]?.detail?.format ?? field["x-cms"]?.table?.format;
   const nextField: CmsFieldSchema = {
     ...field,
     component: getDetailComponent(field),
     decorator: field.type === "void" ? field.decorator : "FormItem",
     props: {
       ...(field.props ?? {}),
+      format,
       disabled: true,
       readOnly: true,
     },

@@ -1,6 +1,6 @@
+import { projectFieldDetailSchema } from '@alien-form/cms';
 import { Empty, Modal } from 'antd';
 import { useMemo } from 'react';
-import { projectFieldDetailSchema } from '../../core/projection/project-detail-schema';
 import type { ModelRecord, TableColumnProjection } from '../../types/model';
 import { DetailSchemaView } from './SchemaRenderer';
 
@@ -13,7 +13,7 @@ interface FieldDetailDrawerProps {
 
 export function FieldDetailDrawer({ open, column, record, onClose }: FieldDetailDrawerProps) {
   const schema = useMemo(
-    () => (column ? projectFieldDetailSchema(column.key, column.field) : undefined),
+    () => (column ? projectFieldDetailSchema(column.key, column.field as never) : undefined),
     [column],
   );
   const initialValues = useMemo(

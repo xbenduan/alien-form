@@ -1,10 +1,10 @@
 import dayjs from 'dayjs';
-import { normalizeSchema } from '../../core/schema/normalize-schema';
+import { normalizeSchema } from '@alien-form/cms';
 import type { CmsModelSchema, ModelSummary, RuntimeModelSchemaRecord } from '../../types/model';
 import { db, ensureDatabaseReady } from '../db/dexie';
 
 function toRecord(schema: CmsModelSchema, existing?: RuntimeModelSchemaRecord): RuntimeModelSchemaRecord {
-  const normalized = normalizeSchema(schema);
+  const normalized = normalizeSchema(schema as never) as unknown as CmsModelSchema;
   const modelName = normalized['x-model']?.name ?? 'unknown';
   const now = dayjs().toISOString();
 
@@ -41,7 +41,7 @@ export class ModelSchemaRepository {
   async get(modelName: string): Promise<CmsModelSchema | undefined> {
     await ensureDatabaseReady();
     const row = await db.modelSchemas.get(modelName);
-    return row ? normalizeSchema(row.schema) : undefined;
+    return row ? (normalizeSchema(row.schema as never) as unknown as CmsModelSchema) : undefined;
   }
 
   async exists(modelName: string): Promise<boolean> {
@@ -56,6 +56,14 @@ export class ModelSchemaRepository {
     const record = toRecord(schema, existing);
     await db.modelSchemas.put(record);
     return record;
+  }
+
+  async delete(modelName: string): Promise<void> {
+    await ensureDatabaseReady();
+    await db.transaction('rw', db.modelSchemas, db.modelRecords, async () => {
+      await db.modelSchemas.delete(modelName);
+      await db.modelRecords.where('modelName').equals(modelName).delete();
+    });
   }
 }
 

@@ -1,20 +1,29 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Input, Tag } from 'antd';
 import { useState } from 'react';
+import { FormatValue } from './format-value';
 
 interface TagsInputProps {
   value?: string[];
   onChange?: (nextValue: string[]) => void;
   disabled?: boolean;
+  readOnly?: boolean;
   placeholder?: string;
+  format?: string;
 }
 
 export function TagsInput({
   value = [],
   onChange,
   disabled,
+  readOnly,
   placeholder = '输入后按 Enter',
+  format,
 }: TagsInputProps) {
+  if (readOnly) {
+    return <FormatValue value={value} format={format} />;
+  }
+
   const [inputVisible, setInputVisible] = useState(false);
   const [inputValue, setInputValue] = useState('');
 

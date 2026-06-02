@@ -11,12 +11,4 @@ export { FilterItem } from "./filter-item";
 export { SectionCard } from "./section-card";
 export { TagsInput } from "./tags-input";
 export { SkuTable } from "./sku-table";
-export {
-  DetailArrayText,
-  DetailBoolean,
-  DetailDate,
-  DetailDateTime,
-  DetailSection,
-  DetailStatus,
-  DetailText,
-} from "./detail";
+export { FormatValue } from "./format-value";

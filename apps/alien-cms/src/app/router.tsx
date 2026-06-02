@@ -1,7 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import App from '../App';
 import { buildModelPath } from './model-path';
-import { getDefaultModelName } from '../core/schema/load-schema';
+import { getDefaultModelName } from '../data/cms-data-access';
 import { useModelSummaries } from '../hooks/use-model-summaries';
 import type { ModelRouteState } from '../types/model';
 import ModelBuilderPage from '../pages/model-builder/ModelBuilderPage';

@@ -1,9 +1,9 @@
 import { FormProvider, SchemaField, useCreateForm } from '@alien-form/react';
+import type { CmsModelSchema } from '@alien-form/cms';
+import { schemaHandlers } from '@alien-form/cms';
 import type { ButtonProps } from 'antd';
 import { Button, Space, message } from 'antd';
-import { schemaHandlers } from '../../app/schema-handlers';
 import * as adapters from '../../adapters';
-import type { CmsModelSchema } from '../../types/model';
 
 export const schemaComponents = {
   Input: adapters.Input,
@@ -19,13 +19,7 @@ export const schemaComponents = {
   SectionCard: adapters.SectionCard,
   TagsInput: adapters.TagsInput,
   SkuTable: adapters.SkuTable,
-  DetailText: adapters.DetailText,
-  DetailBoolean: adapters.DetailBoolean,
-  DetailDate: adapters.DetailDate,
-  DetailDateTime: adapters.DetailDateTime,
-  DetailStatus: adapters.DetailStatus,
-  DetailArrayText: adapters.DetailArrayText,
-  DetailSection: adapters.DetailSection,
+  FormatValue: adapters.FormatValue,
 };
 
 export const schemaDecorators = {

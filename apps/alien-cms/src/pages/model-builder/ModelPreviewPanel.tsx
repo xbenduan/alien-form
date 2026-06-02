@@ -1,6 +1,6 @@
+import type { CmsModelSchema } from '@alien-form/cms';
 import { Alert, Card } from 'antd';
 import { SchemaFormView } from '../model/SchemaRenderer';
-import type { CmsModelSchema } from '../../types/model';
 
 interface ModelPreviewPanelProps {
   schema?: CmsModelSchema;

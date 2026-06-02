@@ -2,7 +2,8 @@ import dayjs from 'dayjs';
 import type { Table } from 'dexie';
 import { db, ensureDatabaseReady } from '../db/dexie';
 import type { ModelRecord, RuntimeModelRecord } from '../../types/model';
-import { resolveModelSource } from '../../core/schema/load-schema';
+import { loadStaticSchema } from '../schema/static-schema-source';
+import { modelSchemaRepository } from './model-schema-repository';
 
 type SortOrder = 'ascend' | 'descend' | undefined;
 
@@ -68,11 +69,15 @@ export class DexieRepository {
   }
 
   private async isRuntimeModel(model: string) {
-    const source = await resolveModelSource(model);
-    if (!source) {
-      throw new Error(`未知模型: ${model}`);
+    if (loadStaticSchema(model)) {
+      return false;
     }
-    return source === 'runtime';
+
+    if (await modelSchemaRepository.exists(model)) {
+      return true;
+    }
+
+    throw new Error(`未知模型: ${model}`);
   }
 
   async list(params: {

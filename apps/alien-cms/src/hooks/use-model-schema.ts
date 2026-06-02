@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { loadSchema } from '../core/schema/load-schema';
-import type { CmsModelSchema } from '../types/model';
+import type { CmsModelSchema } from '@alien-form/cms';
+import { loadSchema } from '../data/cms-data-access';
 
 export function useModelSchema(modelName: string) {
   return useQuery<CmsModelSchema>({

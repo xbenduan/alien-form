@@ -1,7 +1,47 @@
+import { formatValue } from '@alien-form/cms';
 import { ProfileOutlined } from '@ant-design/icons';
 import { Button, Tag, Tooltip, Typography } from 'antd';
 import type { CmsFieldSchema, ModelRecord, TableColumnProjection } from '../../types/model';
-import { formatValueText, renderTableValue } from '../../core/format/format-value';
+
+function formatDisplayText(value: unknown, format?: string, dataSource?: CmsFieldSchema['dataSource']) {
+  const result = formatValue(value, format as never, dataSource);
+  if (typeof value === 'boolean') {
+    return value ? '是' : '否';
+  }
+  return result.text;
+}
+
+function renderSimpleValue(
+  value: unknown,
+  options: {
+    format?: string;
+    dataSource?: CmsFieldSchema['dataSource'];
+    ellipsis?: boolean;
+  } = {},
+) {
+  const result = formatValue(value, options.format as never, options.dataSource);
+  const text = formatDisplayText(value, options.format, options.dataSource);
+
+  if (result.type === 'status') {
+    return <Tag color={result.color}>{text}</Tag>;
+  }
+
+  if (result.type === 'tags') {
+    return (
+      <>
+        {(result.items ?? []).map((item) => (
+          <Tag key={item}>{item}</Tag>
+        ))}
+      </>
+    );
+  }
+
+  if (options.ellipsis && typeof text === 'string') {
+    return <Typography.Text ellipsis={{ tooltip: text }}>{text}</Typography.Text>;
+  }
+
+  return text;
+}
 
 function isComplexColumn(column: TableColumnProjection) {
   return column.type === 'array' || column.type === 'object' || column.type === 'void';
@@ -58,7 +98,7 @@ function buildInlineTokens(
         return null;
       }
 
-      return formatValueText(
+      return formatDisplayText(
         childValue,
         childField?.['x-cms']?.table?.format ?? childField?.['x-cms']?.detail?.format,
         childField?.dataSource,
@@ -184,7 +224,7 @@ export function renderTableCell(
   onOpenFieldDetail: (column: TableColumnProjection, record: ModelRecord) => void,
 ) {
   if (!isComplexColumn(column)) {
-    return renderTableValue(value, {
+    return renderSimpleValue(value, {
       format: column.format,
       dataSource: column.dataSource,
       ellipsis: column.ellipsis,

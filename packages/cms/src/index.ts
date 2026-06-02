@@ -111,6 +111,7 @@ export type {
 // ─── Schema Utilities ─────────────────────────────────────────
 export { normalizeSchema } from "./schema/normalize-schema";
 export { buildModelSchema } from "./schema/build-model-schema";
+export { schemaToBuilderDraft } from "./schema/schema-to-builder-draft";
 
 // ─── Format ───────────────────────────────────────────────────
 export { formatValue } from "./format/format-value";

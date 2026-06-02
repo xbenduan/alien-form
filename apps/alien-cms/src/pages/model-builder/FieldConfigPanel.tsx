@@ -1,6 +1,6 @@
+import type { BuilderComponentName, BuilderFieldType, ModelBuilderFieldDraft } from '@alien-form/cms';
 import { Card, Empty, Form, Input, Select, Switch, Typography } from 'antd';
 import { HandlerSelectEditor } from './HandlerSelectEditor';
-import type { BuilderComponentName, BuilderFieldType, ModelBuilderFieldDraft } from '../../types/model-builder';
 
 const fieldTypeOptions: Array<{ label: string; value: BuilderFieldType }> = [
   { label: 'string', value: 'string' },
