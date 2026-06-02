@@ -39,11 +39,13 @@ export function FormatValue({
     }
 
     return (
-      <>
+      <span className="readonly-tag-list">
         {items.map((item) => (
-          <Tag key={item}>{item}</Tag>
+          <Tag key={item} className="readonly-tag-item">
+            {item}
+          </Tag>
         ))}
-      </>
+      </span>
     );
   }
 

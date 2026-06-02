@@ -1,0 +1,278 @@
+{
+  "type": "object",
+  "title": "Nail Service Workspace",
+  "description": "用于验证具体服务项目和员工服务能力之间的双向关联。",
+  "x-model": {
+    "name": "nail-service",
+    "title": "服务管理",
+    "subtitle": "Nail Service",
+    "description": "围绕具体服务、服务时长、风格说明和可服务员工的联动案例模型。",
+    "singularLabel": "服务",
+    "pluralLabel": "服务",
+    "primaryField": "serviceName",
+    "defaultPageSize": 5,
+    "openMode": {
+      "add": "drawer",
+      "edit": "drawer",
+      "detail": "modal"
+    },
+    "filter": {
+      "count": 3
+    }
+  },
+  "properties": {
+    "serviceName": {
+      "type": "string",
+      "title": "服务名称",
+      "component": "Input",
+      "decorator": "FormItem",
+      "required": true,
+      "order": 10,
+      "props": {
+        "placeholder": "请输入服务名称"
+      },
+      "x-cms": {
+        "table": {
+          "width": 220
+        }
+      }
+    },
+    "category": {
+      "type": "string",
+      "title": "服务分类",
+      "component": "Select",
+      "decorator": "FormItem",
+      "required": true,
+      "order": 20,
+      "dataSource": [
+        {
+          "label": "基础护理",
+          "value": "care"
+        },
+        {
+          "label": "轻设计",
+          "value": "design"
+        },
+        {
+          "label": "延长建构",
+          "value": "extension"
+        },
+        {
+          "label": "节日定制",
+          "value": "festival"
+        }
+      ],
+      "props": {
+        "placeholder": "请选择服务分类"
+      },
+      "x-cms": {
+        "table": {
+          "width": 140
+        }
+      }
+    },
+    "durationMinutes": {
+      "type": "number",
+      "title": "服务时长",
+      "component": "NumberInput",
+      "decorator": "FormItem",
+      "required": true,
+      "order": 30,
+      "props": {
+        "placeholder": "请输入服务时长",
+        "min": 30
+      },
+      "x-cms": {
+        "table": {
+          "width": 120
+        }
+      }
+    },
+    "price": {
+      "type": "number",
+      "title": "参考价格",
+      "component": "NumberInput",
+      "decorator": "FormItem",
+      "required": true,
+      "order": 40,
+      "props": {
+        "placeholder": "请输入参考价格",
+        "min": 99
+      },
+      "x-cms": {
+        "table": {
+          "width": 120
+        }
+      }
+    },
+    "difficulty": {
+      "type": "string",
+      "title": "复杂度",
+      "component": "Select",
+      "decorator": "FormItem",
+      "required": true,
+      "order": 50,
+      "dataSource": [
+        {
+          "label": "标准",
+          "value": "standard"
+        },
+        {
+          "label": "进阶",
+          "value": "advanced"
+        },
+        {
+          "label": "高定",
+          "value": "custom"
+        }
+      ],
+      "props": {
+        "placeholder": "请选择复杂度"
+      },
+      "x-cms": {
+        "table": {
+          "width": 120
+        }
+      }
+    },
+    "styleDescription": {
+      "type": "string",
+      "title": "风格说明",
+      "component": "Textarea",
+      "decorator": "FormItem",
+      "required": true,
+      "order": 60,
+      "props": {
+        "rows": 4,
+        "placeholder": "请输入风格说明"
+      }
+    },
+    "styleTags": {
+      "type": "array",
+      "title": "风格标签",
+      "component": "Select",
+      "decorator": "FormItem",
+      "order": 70,
+      "default": [],
+      "props": {
+        "mode": "tags",
+        "placeholder": "请输入风格标签"
+      },
+      "x-cms": {
+        "table": {
+          "width": 220,
+          "ellipsis": true
+        }
+      }
+    },
+    "employeeIds": {
+      "type": "array",
+      "title": "服务员工",
+      "component": "Select",
+      "decorator": "FormItem",
+      "order": 80,
+      "default": [],
+      "dataSource": [
+        {
+          "label": "Luna",
+          "value": "employee-1"
+        },
+        {
+          "label": "Momo",
+          "value": "employee-2"
+        },
+        {
+          "label": "Kiki",
+          "value": "employee-3"
+        },
+        {
+          "label": "Nora",
+          "value": "employee-4"
+        }
+      ],
+      "x-reaction": {
+        "dataSource": "@modelRecordOptions"
+      },
+      "props": {
+        "mode": "multiple",
+        "placeholder": "请选择服务员工"
+      },
+      "x-cms": {
+        "reactions": {
+          "dataSource": {
+            "model": "nail-employee",
+            "labelField": "employeeName",
+            "valueField": "id"
+          }
+        },
+        "table": {
+          "width": 220,
+          "ellipsis": true
+        }
+      }
+    },
+    "scenes": {
+      "type": "array",
+      "title": "适用场景",
+      "component": "Select",
+      "decorator": "FormItem",
+      "order": 90,
+      "default": [],
+      "props": {
+        "mode": "tags",
+        "placeholder": "请输入适用场景"
+      },
+      "x-cms": {
+        "table": {
+          "width": 220,
+          "ellipsis": true
+        }
+      }
+    },
+    "notes": {
+      "type": "string",
+      "title": "备注",
+      "component": "Textarea",
+      "decorator": "FormItem",
+      "order": 100,
+      "props": {
+        "rows": 3,
+        "placeholder": "请输入备注"
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "title": "创建时间",
+      "component": "DateInput",
+      "decorator": "FormItem",
+      "order": 110,
+      "x-cms": {
+        "form": {
+          "modes": []
+        },
+        "detail": {
+          "format": "dateTime"
+        }
+      }
+    },
+    "updatedAt": {
+      "type": "string",
+      "title": "更新时间",
+      "component": "DateInput",
+      "decorator": "FormItem",
+      "order": 120,
+      "x-cms": {
+        "form": {
+          "modes": []
+        },
+        "table": {
+          "width": 170,
+          "format": "dateTime"
+        },
+        "detail": {
+          "format": "dateTime"
+        }
+      }
+    }
+  }
+}

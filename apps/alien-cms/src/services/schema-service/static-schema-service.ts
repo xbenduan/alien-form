@@ -34,7 +34,7 @@ export function listStaticModelSummaries(): ModelSummary[] {
 }
 
 export function getDefaultModelName() {
-  return listStaticModelSummaries()[0]?.name ?? 'article';
+  return listStaticModelSummaries()[0]?.name ?? 'nail-booking';
 }
 
 export function loadStaticSchema(modelName: string): CmsModelSchema | undefined {

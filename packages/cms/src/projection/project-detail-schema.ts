@@ -2,7 +2,11 @@ import type { CmsFieldSchema, CmsModelSchema } from "../types/schema";
 import { sortSchemaEntries } from "./shared";
 
 function getDetailComponent(field: CmsFieldSchema): string {
-  if (field.type === "array") return field.component === "ArrayCards" ? "ArrayCards" : (field.component ?? "TagsInput");
+  if (field.type === "array") {
+    if (field.component === "ArrayCards") return "ArrayCards";
+    if (field.component === "Select" && field.props?.mode === "tags") return "TagsInput";
+    return field.component ?? "TagsInput";
+  }
   if (field.type === "void" || field.type === "object") return field.component ?? "SectionCard";
   if (field.component) return field.component;
   if (field.type === "number") return "NumberInput";

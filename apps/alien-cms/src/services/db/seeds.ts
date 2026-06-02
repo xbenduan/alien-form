@@ -2,123 +2,243 @@ import dayjs from 'dayjs';
 import type { ModelRecord } from '../../domains/record/types/record';
 
 const statuses = ['draft', 'review', 'published', 'archived'] as const;
-const categories = ['product', 'engineering', 'growth', 'team'] as const;
-const authors = ['Luna', 'Mika', 'Noah', 'Ariel', 'Sven', 'Yuki'];
-const articleTitles = [
-  'Schema 驱动内容平台的投影策略',
-  '用 Dexie 模拟本地 API 的最佳实践',
-  '单页工作台里的筛选与分页协同',
-  '把表单 runtime 提升为业务模型 runtime',
-  '从模型到列表列配置的最小映射',
-  '统一抽屉承载 Add/Edit/Detail 的体验设计',
-  '用一份 schema 驱动多视图的落地细节',
-  '本地数据层与远端 API 切换边界',
-  '企业后台中的状态标签设计',
-  '内容模型里的可读性与可维护性权衡',
-  'Schema-first CMS 的工程化切入点',
-  '投影层如何保持稳定的扩展接口',
-];
+const serviceSlots = [
+  '08:00',
+  '09:00',
+  '10:00',
+  '11:00',
+  '12:00',
+  '13:00',
+  '14:00',
+  '15:00',
+  '16:00',
+  '17:00',
+  '18:00',
+  '19:00',
+  '20:00',
+] as const;
 
-const campaignNames = [
-  '暑期拉新计划',
-  '创作者增长实验',
-  '品牌联动专题',
-  'B 端线索培育',
-  '年度回访活动',
-  '新功能冷启动',
-  '内容分发提效项目',
-  '老客激活计划',
-];
-const owners = ['Mika', 'Ariel', 'Luna', 'Sven'];
-const channels = ['search', 'social', 'email', 'community'] as const;
-const campaignRegions = ['north', 'east', 'south', 'nationwide'] as const;
-const campaignAudiences = ['new', 'active', 'inactive', 'lead'] as const;
-const campaignPriorities = ['high', 'medium', 'low'] as const;
-const materialFormats = ['banner', 'video', 'landing'] as const;
-const nailCustomerNames = ['林晚', '周周', '陈雨', 'Mia', 'Kiki', '阿宁', 'Yoyo', '苏苏'];
-const nailArtists = ['luna', 'momo', 'kiki', 'nora'] as const;
-const nailBranches = ['guomao', 'jingan', 'mixc'] as const;
-const nailServiceTypes = ['basic', 'french', 'cat-eye', 'festival'] as const;
-const nailSlots = ['10:00', '12:00', '14:00', '16:00', '18:00'] as const;
-const nailShapes = ['round', 'squoval', 'almond'] as const;
-const nailColorTones = ['nude', 'red', 'mix'] as const;
+const employees = [
+  {
+    id: 'employee-1',
+    employeeName: 'Luna',
+    age: 28,
+    level: 'senior',
+    hourlyRate: 260,
+    skills: ['延长建构', '节日手绘', '高客单'],
+    serviceIds: ['service-1', 'service-3', 'service-4'],
+    serviceSlots: ['10:00', '11:00', '14:00', '15:00', '18:00'],
+    editablePermissions: [
+      { record: 'nail-booking', fieldKeys: ['status', 'preferenceNotes', 'depositPaid'] },
+      { record: 'nail-service', fieldKeys: ['price', 'styleDescription'] },
+    ],
+    notes: '负责高客单预约和复杂款式复购客户。',
+  },
+  {
+    id: 'employee-2',
+    employeeName: 'Momo',
+    age: 24,
+    level: 'middle',
+    hourlyRate: 190,
+    skills: ['猫眼渐变', '纯色快单', '手部护理'],
+    serviceIds: ['service-1', 'service-2'],
+    serviceSlots: ['08:00', '09:00', '12:00', '13:00', '16:00', '17:00'],
+    editablePermissions: [
+      { record: 'nail-booking', fieldKeys: ['bookingDate', 'serviceSlot', 'preferenceNotes'] },
+    ],
+    notes: '擅长午间快单和工作日高频预约。',
+  },
+  {
+    id: 'employee-3',
+    employeeName: 'Kiki',
+    age: 31,
+    level: 'senior',
+    hourlyRate: 280,
+    skills: ['法式延长', '婚礼定制', '低饱和设计'],
+    serviceIds: ['service-2', 'service-3', 'service-4'],
+    serviceSlots: ['09:00', '10:00', '13:00', '16:00', '19:00', '20:00'],
+    editablePermissions: [
+      { record: 'nail-employee', fieldKeys: ['serviceSlots', 'serviceIds'] },
+      { record: 'nail-booking', fieldKeys: ['status', 'serviceSlot'] },
+    ],
+    notes: '主要承接婚礼档期和节假日定制预约。',
+  },
+  {
+    id: 'employee-4',
+    employeeName: 'Nora',
+    age: 22,
+    level: 'junior',
+    hourlyRate: 150,
+    skills: ['基础护理', '卸甲修型', '手部保养'],
+    serviceIds: ['service-1'],
+    serviceSlots: ['08:00', '11:00', '12:00', '15:00', '17:00'],
+    editablePermissions: [
+      { record: 'nail-booking', fieldKeys: ['bookingDate', 'serviceId'] },
+    ],
+    notes: '负责基础护理和新客体验单。',
+  },
+] as const;
 
-function buildArticleSummary(index: number) {
-  return `第 ${index + 1} 篇示例文章，用于验证同一份 schema 在列表、筛选、表单和详情之间的联动行为。`;
-}
+const services = [
+  {
+    id: 'service-1',
+    serviceName: '日常纯色护理',
+    category: 'care',
+    durationMinutes: 60,
+    price: 168,
+    difficulty: 'standard',
+    styleDescription: '以纯色和基础修型为主，适合日常通勤和短时段预约。',
+    styleTags: ['通勤', '显手白', '高复购'],
+    employeeIds: ['employee-1', 'employee-2', 'employee-4'],
+    scenes: ['工作日快单', '新客体验'],
+    notes: '支持加购卸甲和基础手护。',
+  },
+  {
+    id: 'service-2',
+    serviceName: '猫眼渐变设计',
+    category: 'design',
+    durationMinutes: 90,
+    price: 238,
+    difficulty: 'advanced',
+    styleDescription: '猫眼、跳色和低饱和渐变结合，适合社交聚会和轻设计需求。',
+    styleTags: ['猫眼', '低饱和', '拍照好看'],
+    employeeIds: ['employee-2', 'employee-3'],
+    scenes: ['约会', '聚会'],
+    notes: '建议提前确认主色和跳色组合。',
+  },
+  {
+    id: 'service-3',
+    serviceName: '法式延长套餐',
+    category: 'extension',
+    durationMinutes: 120,
+    price: 328,
+    difficulty: 'advanced',
+    styleDescription: '提供法式延长和基础建构，适合长甲和宴会型造型需求。',
+    styleTags: ['法式', '长甲', '建构'],
+    employeeIds: ['employee-1', 'employee-3'],
+    scenes: ['宴会', '写真'],
+    notes: '到店前需确认手型和延长长度偏好。',
+  },
+  {
+    id: 'service-4',
+    serviceName: '节日定制礼盒款',
+    category: 'festival',
+    durationMinutes: 150,
+    price: 428,
+    difficulty: 'custom',
+    styleDescription: '结合节庆主题、手绘和立体装饰的高定款式，适合强主题预约。',
+    styleTags: ['节日', '高定', '手绘'],
+    employeeIds: ['employee-1', 'employee-3'],
+    scenes: ['节假日', '婚礼'],
+    notes: '建议至少提前两天锁定档期和设计图。',
+  },
+] as const;
 
-function buildArticleContent(index: number) {
-  return [
-    '这是一段用于 CMS 工作台验证的正文内容。',
-    '它会覆盖新增、编辑、详情回填以及本地 Dexie 持久化的完整闭环。',
-    `当前示例序号为 ${index + 1}，便于验证排序、分页与筛选是否稳定。`,
-  ].join('\n\n');
-}
+const bookingSeeds = [
+  {
+    customerName: '林晚',
+    serviceId: 'service-1',
+    employeeId: 'employee-2',
+    serviceSlot: '12:00',
+    status: 'draft',
+    depositPaid: false,
+    styleTags: ['通勤', '裸粉', '短甲'],
+    preferenceNotes: '希望一个小时内完成，优先选显手白纯色。',
+  },
+  {
+    customerName: '周周',
+    serviceId: 'service-2',
+    employeeId: 'employee-3',
+    serviceSlot: '13:00',
+    status: 'review',
+    depositPaid: true,
+    styleTags: ['猫眼', '低饱和', '约会'],
+    preferenceNotes: '已发参考图，想保留一点跳色层次。',
+  },
+  {
+    customerName: '陈雨',
+    serviceId: 'service-3',
+    employeeId: 'employee-1',
+    serviceSlot: '14:00',
+    status: 'published',
+    depositPaid: true,
+    styleTags: ['法式', '延长', '宴会'],
+    preferenceNotes: '周末参加宴会，需要偏成熟的法式延长款。',
+  },
+  {
+    customerName: 'Mia',
+    serviceId: 'service-4',
+    employeeId: 'employee-3',
+    serviceSlot: '19:00',
+    status: 'archived',
+    depositPaid: true,
+    styleTags: ['节日', '手绘', '闪片'],
+    preferenceNotes: '上次做的是圣诞礼盒款，这次想换成生日主题。',
+  },
+  {
+    customerName: 'Kiki',
+    serviceId: 'service-1',
+    employeeId: 'employee-4',
+    serviceSlot: '11:00',
+    status: 'review',
+    depositPaid: false,
+    styleTags: ['基础护理', '修型'],
+    preferenceNotes: '新客首次到店，先做基础护理和卸甲修型。',
+  },
+  {
+    customerName: '阿宁',
+    serviceId: 'service-2',
+    employeeId: 'employee-2',
+    serviceSlot: '16:00',
+    status: 'draft',
+    depositPaid: false,
+    styleTags: ['猫眼', '工作日', '显白'],
+    preferenceNotes: '希望下班前完成，颜色尽量低调但有层次。',
+  },
+  {
+    customerName: 'Yoyo',
+    serviceId: 'service-3',
+    employeeId: 'employee-3',
+    serviceSlot: '20:00',
+    status: 'review',
+    depositPaid: true,
+    styleTags: ['长甲', '写真', '法式'],
+    preferenceNotes: '要配合写真拍摄，需要偏冷调法式线条。',
+  },
+  {
+    customerName: '苏苏',
+    serviceId: 'service-4',
+    employeeId: 'employee-1',
+    serviceSlot: '18:00',
+    status: 'published',
+    depositPaid: true,
+    styleTags: ['高定', '婚礼', '珍珠'],
+    preferenceNotes: '婚礼试妆同步预约，希望先看两版主题方案。',
+  },
+] as const;
 
-export function createArticleSeeds(): ModelRecord[] {
-  return Array.from({ length: 12 }).map((_, index) => {
-    const createdAt = dayjs().subtract(14 - index, 'day').hour(9 + (index % 5)).minute(15).second(0);
-    const updatedAt = createdAt.add((index % 4) + 1, 'day').add(index * 7, 'minute');
-    const publishTime = createdAt.add(index % 3, 'day').format('YYYY-MM-DD');
+export function createNailEmployeeSeeds(): ModelRecord[] {
+  return employees.map((employee, index) => {
+    const createdAt = dayjs().subtract(20 - index * 2, 'day').hour(10).minute(0).second(0);
+    const updatedAt = createdAt.add(index + 2, 'day').add(index * 11, 'minute');
+
     return {
-      id: `article-${index + 1}`,
-      title: articleTitles[index],
-      status: statuses[index % statuses.length],
-      category: categories[index % categories.length],
-      author: authors[index % authors.length],
-      publishTime,
-      readingTime: 5 + (index % 7) * 2,
-      featured: index % 3 === 0,
-      tags: ['schema', 'cms', categories[index % categories.length], index % 2 === 0 ? 'projection' : 'runtime'],
-      summary: buildArticleSummary(index),
-      content: buildArticleContent(index),
+      ...employee,
+      hiredAt: createdAt.subtract(120 + index * 60, 'day').format('YYYY-MM-DD'),
+      active: true,
       createdAt: createdAt.toISOString(),
       updatedAt: updatedAt.toISOString(),
     } satisfies ModelRecord;
   });
 }
 
-export function createCampaignSeeds(): ModelRecord[] {
-  return Array.from({ length: 8 }).map((_, index) => {
-    const createdAt = dayjs().subtract(8 - index, 'day').hour(10 + (index % 3)).minute(30).second(0);
-    const updatedAt = createdAt.add((index % 3) + 1, 'day').add(index * 5, 'minute');
-    const launchDate = createdAt.add(index % 4, 'day').format('YYYY-MM-DD');
+export function createNailServiceSeeds(): ModelRecord[] {
+  return services.map((service, index) => {
+    const createdAt = dayjs().subtract(14 - index, 'day').hour(11).minute(20).second(0);
+    const updatedAt = createdAt.add(index + 1, 'day').add(index * 13, 'minute');
+
     return {
-      id: `campaign-${index + 1}`,
-      name: campaignNames[index],
-      status: statuses[index % statuses.length],
-      owner: owners[index % owners.length],
-      channel: channels[index % channels.length],
-      launchDate,
-      budget: 10 + index * 8,
-      active: index % 2 === 0,
-      tags: ['growth', channels[index % channels.length], index % 2 === 0 ? 'paid' : 'organic'],
-      targeting: {
-        region: campaignRegions[index % campaignRegions.length],
-        audienceType: campaignAudiences[index % campaignAudiences.length],
-        priority: campaignPriorities[index % campaignPriorities.length],
-        notes: `定向策略第 ${index + 1} 版，重点覆盖 ${index % 2 === 0 ? '新客拉新' : '老客激活'} 场景。`,
-      },
-      landingPage: `https://campaign.example.com/${index + 1}`,
-      trackingCode: `CMP-${String(index + 1).padStart(3, '0')}`,
-      syncCrm: index % 2 === 0,
-      deliveryNotes: `本轮活动由 ${owners[index % owners.length]} 跟进，渠道以 ${channels[index % channels.length]} 为主。`,
-      materials: [
-        {
-          name: `${campaignNames[index]} 主素材`,
-          format: materialFormats[index % materialFormats.length],
-          owner: owners[index % owners.length],
-          enabled: true,
-        },
-        {
-          name: `${campaignNames[index]} 备选素材`,
-          format: materialFormats[(index + 1) % materialFormats.length],
-          owner: owners[(index + 1) % owners.length],
-          enabled: index % 2 === 0,
-        },
-      ],
-      summary: `这是 ${campaignNames[index]} 的摘要，用于验证第二模型在同一工作台中的复用能力。`,
-      goal: ['验证模型切换体验', '检查不同字段投影', '确认数据层可复用'].join('\n\n'),
+      ...service,
       createdAt: createdAt.toISOString(),
       updatedAt: updatedAt.toISOString(),
     } satisfies ModelRecord;
@@ -126,47 +246,17 @@ export function createCampaignSeeds(): ModelRecord[] {
 }
 
 export function createNailBookingSeeds(): ModelRecord[] {
-  return Array.from({ length: 8 }).map((_, index) => {
-    const createdAt = dayjs().subtract(6 - index, 'day').hour(11 + (index % 4)).minute(20).second(0);
-    const updatedAt = createdAt.add((index % 2) + 1, 'day').add(index * 9, 'minute');
-    const bookingDate = createdAt.add((index % 5) + 1, 'day').format('YYYY-MM-DD');
-    const customerName = nailCustomerNames[index % nailCustomerNames.length];
-    const serviceType = nailServiceTypes[index % nailServiceTypes.length];
+  return bookingSeeds.map((booking, index) => {
+    const createdAt = dayjs().subtract(8 - index, 'day').hour(12 + (index % 3)).minute(15).second(0);
+    const updatedAt = createdAt.add((index % 2) + 1, 'day').add(index * 7, 'minute');
+    const slotIndex = serviceSlots.findIndex((slot) => slot === booking.serviceSlot);
+    const bookingDate = createdAt.add((slotIndex % 4) + 1, 'day').format('YYYY-MM-DD');
 
     return {
       id: `nail-booking-${index + 1}`,
-      customerName,
-      phone: `1380000${String(100 + index)}`,
+      ...booking,
+      phone: `1380000${String(200 + index)}`,
       bookingDate,
-      bookingSlot: nailSlots[index % nailSlots.length],
-      serviceType,
-      nailArtist: nailArtists[index % nailArtists.length],
-      branch: nailBranches[index % nailBranches.length],
-      status: statuses[index % statuses.length],
-      depositPaid: index % 2 === 0,
-      styleTags: [
-        serviceType,
-        index % 2 === 0 ? '通勤' : '节日',
-        index % 3 === 0 ? '显白' : '低饱和',
-      ],
-      preferences: {
-        shape: nailShapes[index % nailShapes.length],
-        colorTone: nailColorTones[index % nailColorTones.length],
-        specialNotes: `${customerName} 偏好 ${index % 2 === 0 ? '短甲自然款' : '微闪设计'}，希望控制整体时长。`,
-      },
-      serviceItems: [
-        {
-          name: serviceType === 'festival' ? '节日定制延长' : '基础建构',
-          duration: 40 + index * 5,
-          price: 168 + index * 20,
-        },
-        {
-          name: index % 2 === 0 ? '局部贴钻' : '手部护理',
-          duration: index % 2 === 0 ? 20 : 15,
-          price: index % 2 === 0 ? 59 : 39,
-        },
-      ],
-      remark: `${customerName} 已通过小程序提交预约，门店为 ${nailBranches[index % nailBranches.length]}，到店前需再次确认款式细节。`,
       createdAt: createdAt.toISOString(),
       updatedAt: updatedAt.toISOString(),
     } satisfies ModelRecord;

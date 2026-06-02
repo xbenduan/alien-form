@@ -1,7 +1,7 @@
 import type { CmsModelSchema } from '@alien-form/cms';
-import { schemaHandlers } from '@alien-form/cms';
 import type { ButtonProps } from 'antd';
 import { message } from 'antd';
+import { recordSchemaHandlers } from '../schema-handlers';
 import { FormActionContext, SchemaFormScene } from '../../../shared/form-renderer';
 
 interface SchemaFormViewProps {
@@ -60,7 +60,7 @@ export function SchemaFormView({
         <SchemaFormScene
           schema={schema}
           initialValues={initialValues}
-          handlers={schemaHandlers}
+          handlers={recordSchemaHandlers}
           loading={loading}
           onError={(error) => {
             if (error.scope === 'x-validate' || error.scope === 'expression') {
@@ -87,7 +87,7 @@ export function DetailSchemaView({
     <SchemaFormScene
       schema={schema}
       initialValues={initialValues}
-      handlers={schemaHandlers}
+      handlers={recordSchemaHandlers}
     />
   );
 }

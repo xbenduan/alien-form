@@ -382,6 +382,24 @@ body {
     color: #667085;
 }
 
+.readonly-tag-list {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.readonly-tag-item.ant-tag {
+    margin-inline-end: 0;
+    margin-bottom: 0;
+    padding: 2px 10px;
+    border: 1px solid rgba(22, 119, 255, 0.18);
+    border-radius: 999px;
+    background: rgba(22, 119, 255, 0.08);
+    color: #1554d1;
+    line-height: 20px;
+}
+
 .schema-form-layout {
     display: flex;
     flex-direction: column;

@@ -54,10 +54,11 @@ export function formatValue(
   }
 
   if (Array.isArray(value)) {
+    const items = value.map((item) => getLabel(item, dataSource) ?? String(item));
     return {
-      text: value.length > 0 ? value.join(", ") : "\u2014",
+      text: items.length > 0 ? items.join(", ") : "\u2014",
       type: "tags",
-      items: value.map(String),
+      items,
       raw: value,
     };
   }

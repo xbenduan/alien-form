@@ -78,9 +78,9 @@ function matches(record: Record<string, unknown>, filters: Record<string, unknow
 
 export class DexieRecordService {
   private readonly tableMap: Record<string, Table<ModelRecord, string>> = {
-    article: db.articles,
-    campaign: db.campaigns,
-    'nail-booking': db.nailBookings,
+    'nail-employee': db.employees,
+    'nail-service': db.services,
+    'nail-booking': db.bookings,
   };
 
   private getStaticTable(model: string) {

@@ -1,0 +1,405 @@
+{
+  "type": "object",
+  "title": "Nail Employee Workspace",
+  "description": "用于验证美甲门店员工、权限和可服务项目之间的联动管理。",
+  "x-model": {
+    "name": "nail-employee",
+    "title": "员工管理",
+    "subtitle": "Nail Employee",
+    "description": "围绕员工档案、服务能力和字段级权限的全流程案例模型。",
+    "singularLabel": "员工",
+    "pluralLabel": "员工",
+    "primaryField": "employeeName",
+    "defaultPageSize": 5,
+    "openMode": {
+      "add": "drawer",
+      "edit": "drawer",
+      "detail": "modal"
+    },
+    "filter": {
+      "count": 3
+    }
+  },
+  "properties": {
+    "employeeName": {
+      "type": "string",
+      "title": "员工姓名",
+      "component": "Input",
+      "decorator": "FormItem",
+      "required": true,
+      "order": 10,
+      "props": {
+        "placeholder": "请输入员工姓名"
+      },
+      "x-cms": {
+        "table": {
+          "width": 160
+        }
+      }
+    },
+    "age": {
+      "type": "number",
+      "title": "年龄",
+      "component": "NumberInput",
+      "decorator": "FormItem",
+      "required": true,
+      "order": 20,
+      "props": {
+        "placeholder": "请输入年龄",
+        "min": 18,
+        "max": 60
+      },
+      "x-cms": {
+        "table": {
+          "width": 100
+        }
+      }
+    },
+    "hiredAt": {
+      "type": "string",
+      "title": "入职时间",
+      "component": "DateInput",
+      "decorator": "FormItem",
+      "required": true,
+      "order": 30,
+      "props": {
+        "placeholder": "请选择入职时间"
+      },
+      "x-cms": {
+        "table": {
+          "width": 150,
+          "format": "date"
+        },
+        "detail": {
+          "format": "dateTime"
+        }
+      }
+    },
+    "hourlyRate": {
+      "type": "number",
+      "title": "工时计价",
+      "component": "NumberInput",
+      "decorator": "FormItem",
+      "required": true,
+      "order": 40,
+      "props": {
+        "placeholder": "请输入工时计价",
+        "min": 50
+      },
+      "x-cms": {
+        "table": {
+          "width": 120
+        }
+      }
+    },
+    "level": {
+      "type": "string",
+      "title": "员工等级",
+      "component": "Select",
+      "decorator": "FormItem",
+      "required": true,
+      "order": 50,
+      "dataSource": [
+        {
+          "label": "初级",
+          "value": "junior"
+        },
+        {
+          "label": "中级",
+          "value": "middle"
+        },
+        {
+          "label": "资深",
+          "value": "senior"
+        }
+      ],
+      "props": {
+        "placeholder": "请选择员工等级"
+      },
+      "x-cms": {
+        "table": {
+          "width": 120
+        }
+      }
+    },
+    "serviceIds": {
+      "type": "array",
+      "title": "可服务项目",
+      "component": "Select",
+      "decorator": "FormItem",
+      "order": 60,
+      "default": [],
+      "dataSource": [
+        {
+          "label": "日常纯色护理",
+          "value": "service-1"
+        },
+        {
+          "label": "猫眼渐变设计",
+          "value": "service-2"
+        },
+        {
+          "label": "法式延长套餐",
+          "value": "service-3"
+        },
+        {
+          "label": "节日定制礼盒款",
+          "value": "service-4"
+        }
+      ],
+      "x-reaction": {
+        "dataSource": "@modelRecordOptions"
+      },
+      "props": {
+        "mode": "multiple",
+        "placeholder": "请选择可服务项目"
+      },
+      "x-cms": {
+        "reactions": {
+          "dataSource": {
+            "model": "nail-service",
+            "labelField": "serviceName",
+            "valueField": "id"
+          }
+        },
+        "table": {
+          "width": 220,
+          "ellipsis": true
+        }
+      }
+    },
+    "serviceSlots": {
+      "type": "array",
+      "title": "服务时间段",
+      "component": "Select",
+      "decorator": "FormItem",
+      "order": 70,
+      "default": [],
+      "dataSource": [
+        {
+          "label": "08:00",
+          "value": "08:00"
+        },
+        {
+          "label": "09:00",
+          "value": "09:00"
+        },
+        {
+          "label": "10:00",
+          "value": "10:00"
+        },
+        {
+          "label": "11:00",
+          "value": "11:00"
+        },
+        {
+          "label": "12:00",
+          "value": "12:00"
+        },
+        {
+          "label": "13:00",
+          "value": "13:00"
+        },
+        {
+          "label": "14:00",
+          "value": "14:00"
+        },
+        {
+          "label": "15:00",
+          "value": "15:00"
+        },
+        {
+          "label": "16:00",
+          "value": "16:00"
+        },
+        {
+          "label": "17:00",
+          "value": "17:00"
+        },
+        {
+          "label": "18:00",
+          "value": "18:00"
+        },
+        {
+          "label": "19:00",
+          "value": "19:00"
+        },
+        {
+          "label": "20:00",
+          "value": "20:00"
+        }
+      ],
+      "props": {
+        "mode": "multiple",
+        "placeholder": "请选择可预约时间段"
+      },
+      "x-cms": {
+        "table": {
+          "width": 220,
+          "ellipsis": true
+        }
+      }
+    },
+    "editablePermissions": {
+      "type": "array",
+      "title": "权限列表",
+      "component": "ArrayCards",
+      "decorator": "FormItem",
+      "order": 80,
+      "default": [],
+      "props": {
+        "addText": "+ 添加可编辑权限"
+      },
+      "items": {
+        "type": "object",
+        "properties": {
+          "record": {
+            "type": "string",
+            "title": "业务表",
+            "component": "Select",
+            "decorator": "FormItem",
+            "required": true,
+            "order": 10,
+            "dataSource": [
+              {
+                "label": "员工管理",
+                "value": "nail-employee"
+              },
+              {
+                "label": "服务管理",
+                "value": "nail-service"
+              },
+              {
+                "label": "客户预约表",
+                "value": "nail-booking"
+              }
+            ],
+            "props": {
+              "placeholder": "请选择业务表"
+            }
+          },
+          "fieldKeys": {
+            "type": "array",
+            "title": "可编辑字段",
+            "component": "Select",
+            "decorator": "FormItem",
+            "required": true,
+            "order": 20,
+            "default": [],
+            "x-reaction": {
+              "dataSource": "@schemaFieldOptions"
+            },
+            "props": {
+              "mode": "multiple",
+              "showSearch": true,
+              "placeholder": "请选择可编辑字段"
+            },
+            "x-cms": {
+              "reactions": {
+                "dataSource": {
+                  "selector": "$row.record",
+                  "includeTypes": [
+                    "string",
+                    "number",
+                    "boolean"
+                  ],
+                  "valueMode": "name"
+                }
+              }
+            }
+          }
+        }
+      },
+      "x-cms": {
+        "table": {
+          "width": 260,
+          "inline": [
+            "record",
+            "fieldKeys"
+          ],
+          "expandable": true
+        }
+      }
+    },
+    "skills": {
+      "type": "array",
+      "title": "技能标签",
+      "component": "Select",
+      "decorator": "FormItem",
+      "order": 90,
+      "default": [],
+      "props": {
+        "mode": "tags",
+        "placeholder": "请输入技能标签"
+      },
+      "x-cms": {
+        "table": {
+          "width": 220,
+          "ellipsis": true
+        }
+      }
+    },
+    "active": {
+      "type": "boolean",
+      "title": "在职中",
+      "component": "Switch",
+      "decorator": "FormItem",
+      "order": 100,
+      "default": true,
+      "x-cms": {
+        "table": {
+          "width": 100,
+          "format": "boolean"
+        },
+        "detail": {
+          "format": "boolean"
+        }
+      }
+    },
+    "notes": {
+      "type": "string",
+      "title": "备注",
+      "component": "Textarea",
+      "decorator": "FormItem",
+      "order": 110,
+      "props": {
+        "rows": 4,
+        "placeholder": "请输入员工备注"
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "title": "创建时间",
+      "component": "DateInput",
+      "decorator": "FormItem",
+      "order": 120,
+      "x-cms": {
+        "form": {
+          "modes": []
+        },
+        "detail": {
+          "format": "dateTime"
+        }
+      }
+    },
+    "updatedAt": {
+      "type": "string",
+      "title": "更新时间",
+      "component": "DateInput",
+      "decorator": "FormItem",
+      "order": 130,
+      "x-cms": {
+        "form": {
+          "modes": []
+        },
+        "table": {
+          "width": 170,
+          "format": "dateTime"
+        },
+        "detail": {
+          "format": "dateTime"
+        }
+      }
+    }
+  }
+}

@@ -28,11 +28,13 @@ function renderSimpleValue(
 
   if (result.type === 'tags') {
     return (
-      <>
+      <span className="readonly-tag-list">
         {(result.items ?? []).map((item) => (
-          <Tag key={item}>{item}</Tag>
+          <Tag key={item} className="readonly-tag-item">
+            {item}
+          </Tag>
         ))}
-      </>
+      </span>
     );
   }
 

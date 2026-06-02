@@ -4,7 +4,7 @@ export default function SetingsPage() {
   return (
     <PlaceholderPage
       title="设置"
-      description="日志模块正在开发中，后续会补充运行日志、错误追踪与调试信息面板。"
+      description="设置模块正在开发中，主要针对 alien-cms.json 文件进行配置。"
     />
   );
 }

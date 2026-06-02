@@ -1,4 +1,4 @@
-import { Alert, Card, Typography } from 'antd';
+import { Alert, Card, Typography } from "antd";
 
 interface PlaceholderPageProps {
   title: string;
@@ -17,7 +17,7 @@ export function PlaceholderPage({ title, description }: PlaceholderPageProps) {
       </div>
 
       <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
-        <Alert type="info" showIcon message="开发中" description={description} />
+        {description}
       </Card>
     </>
   );
