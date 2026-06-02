@@ -1,6 +1,7 @@
-import type { TableColumn } from '../internal/types';
-
-export function projectTableColumns(schema: any): TableColumn[] {
+/**
+ * Project a CMS model schema into table column definitions.
+ */
+export function projectTableColumns(schema: any) {
   const properties: Record<string, any> = schema?.properties ?? {};
   let order = 0;
 
@@ -9,12 +10,12 @@ export function projectTableColumns(schema: any): TableColumn[] {
     .map(([key, field]) => ({
       key,
       title: field.title ?? key,
-      width: field['x-cms']?.table?.width,
-      ellipsis: field['x-cms']?.table?.ellipsis ?? true,
-      format: field['x-cms']?.table?.format,
-      dataSource: field.dataSource,
-      inline: field['x-cms']?.table?.inline,
-      expandable: field['x-cms']?.table?.expandable,
+      width: field['x-cms']?.table?.width as number | undefined,
+      ellipsis: (field['x-cms']?.table?.ellipsis ?? true) as boolean,
+      format: field['x-cms']?.table?.format as string | undefined,
+      dataSource: field.dataSource as Array<{ label: string; value: unknown }> | undefined,
+      inline: field['x-cms']?.table?.inline as string[] | undefined,
+      expandable: field['x-cms']?.table?.expandable as boolean | undefined,
       order: order++,
     }));
 }

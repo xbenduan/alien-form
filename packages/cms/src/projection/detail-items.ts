@@ -1,6 +1,7 @@
-import type { DetailItem } from '../internal/types';
-
-export function projectDetailItems(schema: any): DetailItem[] {
+/**
+ * Project a CMS model schema into detail view item definitions.
+ */
+export function projectDetailItems(schema: any) {
   const properties: Record<string, any> = schema?.properties ?? {};
   let order = 0;
 
@@ -9,8 +10,8 @@ export function projectDetailItems(schema: any): DetailItem[] {
     .map(([key, field]) => ({
       key,
       title: field.title ?? key,
-      format: field['x-cms']?.detail?.format,
-      dataSource: field.dataSource,
+      format: field['x-cms']?.detail?.format as string | undefined,
+      dataSource: field.dataSource as Array<{ label: string; value: unknown }> | undefined,
       order: order++,
     }));
 }

@@ -1,6 +1,5 @@
 /**
  * Internal types — NOT exported to consumers.
- * Consumers rely on TS inference from function return types.
  */
 
 export interface ModelSummary {
@@ -64,11 +63,6 @@ export interface DetailItem {
   order: number;
 }
 
-export interface FormProjection {
-  schema: any;
-  mode: 'add' | 'edit';
-}
-
 // ─── Provider Interfaces ──────────────────────────────────────
 
 export interface SchemaProvider {
@@ -92,3 +86,8 @@ export interface RecordProvider {
   delete(model: string, id: string): Promise<MutationResult>;
   batchDelete?(model: string, ids: string[]): Promise<MutationResult>;
 }
+
+export type ProviderFactory = (config: any) => {
+  schema: SchemaProvider;
+  record: RecordProvider;
+};

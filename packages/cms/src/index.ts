@@ -1,65 +1,46 @@
 /**
  * @alien-form/cms
  *
- * Functional CMS core powered by alien-signals.
- * No types exported — consumers rely on TS inference.
- * All state is managed internally; consumers only call functions and read signals.
+ * Minimal CMS core: pure async functions + projection utilities.
+ * No internal state management — let the UI layer (useQuery) handle caching.
+ * Provider is resolved from browser cache (localStorage key).
  */
 
-// ─── Init / Connection ──────────────────────────────────────
-export { connect, disconnect } from './store/connection';
-
-// ─── Schema Operations ──────────────────────────────────────
+// ─── Provider Management ────────────────────────────────────
 export {
-  loadSchemas,
-  loadSchema,
+  registerProvider,
+  initProvider,
+  switchProvider,
+  resetProvider,
+  getCurrentProviderType,
+} from './internal/provider';
+
+// ─── Schema API (async functions) ───────────────────────────
+export {
+  listSchemas,
   getSchema,
   createSchema,
   updateSchema,
   deleteSchema,
-} from './store/schema';
+} from './api/schema';
 
-// ─── Record Operations ──────────────────────────────────────
+// ─── Record API (async functions) ───────────────────────────
 export {
-  loadRecords,
-  setFilters,
-  setPagination,
-  setSorter,
-  refresh,
+  listRecords,
+  getRecord,
   createRecord,
   updateRecord,
-  removeRecord,
-  batchRemove,
-  openAdd,
-  openEdit,
-  openDetail,
-  closeAction,
-} from './store/record';
+  deleteRecord,
+  batchDeleteRecords,
+} from './api/record';
 
-// ─── Signals (read-only subscribe points for UI) ────────────
-export {
-  connected,
-  summaries,
-  schemaLoading,
-  tableColumns,
-  filterFields,
-  detailItems,
-  addFormSchema,
-  editFormSchema,
-  records,
-  total,
-  recordLoading,
-  filters,
-  pagination,
-  sorter,
-  actionMode,
-  activeRecordId,
-  activeRecord,
-  detailLoading,
-  submitting,
-} from './internal/signals';
+// ─── Projection (pure functions) ────────────────────────────
+export { projectTableColumns } from './projection/table-columns';
+export { projectFilterFields } from './projection/filter-fields';
+export { projectDetailItems } from './projection/detail-items';
+export { projectFormSchema } from './projection/form-schema';
 
-// ─── Schema Utilities (pure functions) ──────────────────────
+// ─── Schema Utilities ───────────────────────────────────────
 export { normalizeSchema } from './schema/normalize-schema';
 export { buildModelSchema } from './schema/build-model-schema';
 export { schemaToBuilderDraft } from './schema/schema-to-builder-draft';

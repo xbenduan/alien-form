@@ -1,7 +1,7 @@
 {
   "name": "@alien-form/cms",
-  "version": "0.2.0",
-  "description": "Functional CMS core — signals + pure functions, zero type exports.",
+  "version": "0.3.0",
+  "description": "Minimal CMS core: async API functions + projection utilities. Zero state, zero framework dependency.",
   "license": "MIT",
   "main": "src/index.ts",
   "types": "src/index.ts",
@@ -15,9 +15,7 @@
     "build": "tsup src/index.ts --format esm,cjs --dts",
     "test": "vitest run"
   },
-  "dependencies": {
-    "@alien-form/core": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",

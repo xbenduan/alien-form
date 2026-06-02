@@ -1,8 +1,8 @@
 /**
- * Projects a CMS model schema into a form-only schema for add/edit mode.
+ * Project a CMS model schema into a form-only schema for add/edit mode.
  * Strips table/filter/detail meta, keeps only form-relevant fields.
  */
-export function projectFormSchema(schema: any, mode: 'add' | 'edit'): any {
+export function projectFormSchema(schema: any, mode: 'add' | 'edit') {
   if (!schema?.properties) return undefined;
 
   const properties: Record<string, any> = {};
