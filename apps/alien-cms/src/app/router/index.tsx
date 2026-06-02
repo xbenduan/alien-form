@@ -1,13 +1,13 @@
-import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
-import WorkbenchLayout from '../layout/WorkbenchLayout';
-import { buildRecordPath } from './paths';
-import { getDefaultModelName } from '../../services/app-store/cms-app-store';
-import { useRecordModelSummaries } from '../../domains/record/hooks/use-record-model-summaries';
-import type { RecordRouteState } from '../../domains/record/types/record';
-import ModelPage from '../../domains/model/pages/ModelPage';
-import LogsPage from '../../domains/logs/pages/LogsPage';
-import RecordPage from '../../domains/record/pages/RecordPage';
-import SettingsPage from '../../domains/settings/pages/SettingsPage';
+import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
+import WorkbenchLayout from "../layout/WorkbenchLayout";
+import { buildRecordPath } from "./paths";
+import { getDefaultModelName } from "../../services/app-store/cms-app-store";
+import { useRecordModelSummaries } from "../../domains/record/hooks/use-record-model-summaries";
+import type { RecordRouteState } from "../../domains/record/types/record";
+import ModelPage from "../../domains/model/pages/ModelPage";
+import LogsPage from "../../domains/record-logs/pages/LogsPage";
+import RecordPage from "../../domains/record/pages/RecordPage";
+import SettingsPage from "../../domains/settings/pages/SettingsPage";
 
 function HomeRedirect() {
   const modelSummariesQuery = useRecordModelSummaries();
@@ -22,13 +22,13 @@ function HomeRedirect() {
 function RoutedRecordPage({ routeAction }: { routeAction: RecordRouteState }) {
   const navigate = useNavigate();
   const params = useParams();
-  const modelName = params.modelName ?? '';
+  const modelName = params.modelName ?? "";
 
   return (
     <RecordPage
       modelName={modelName}
       routeAction={
-        routeAction.mode === 'add'
+        routeAction.mode === "add"
           ? routeAction
           : {
               ...routeAction,
@@ -50,15 +50,21 @@ export function AppRouter() {
           <Route index element={<HomeRedirect />} />
           <Route path="models/new" element={<ModelPage />} />
           <Route path="models/:modelName/edit" element={<ModelPage />} />
-          <Route path="records/:modelName" element={<RoutedRecordPage routeAction={{ mode: 'closed' }} />} />
-          <Route path="records/:modelName/add" element={<RoutedRecordPage routeAction={{ mode: 'add' }} />} />
+          <Route
+            path="records/:modelName"
+            element={<RoutedRecordPage routeAction={{ mode: "closed" }} />}
+          />
+          <Route
+            path="records/:modelName/add"
+            element={<RoutedRecordPage routeAction={{ mode: "add" }} />}
+          />
           <Route
             path="records/:modelName/edit/:recordId"
-            element={<RoutedRecordPage routeAction={{ mode: 'edit' }} />}
+            element={<RoutedRecordPage routeAction={{ mode: "edit" }} />}
           />
           <Route
             path="records/:modelName/detail/:recordId"
-            element={<RoutedRecordPage routeAction={{ mode: 'detail' }} />}
+            element={<RoutedRecordPage routeAction={{ mode: "detail" }} />}
           />
           <Route path="logs" element={<LogsPage />} />
           <Route path="settings" element={<SettingsPage />} />
