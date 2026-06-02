@@ -1,9 +1,14 @@
-import type { IFieldSchema, IFormSchema } from '@alien-form/react';
-import { useFormValues } from '@alien-form/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import * as adapters from '../../../shared/form-renderer/adapters';
-import { FormActionContext, FormActions, SchemaFormScene, type FormActionContextValue } from '../../../shared/form-renderer';
-import type { FilterFieldProjection } from '../types/record';
+import type { IFieldSchema, IFormSchema } from "@alien-form/react";
+import { useFormValues } from "@alien-form/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as adapters from "../../../shared/form-renderer/adapters";
+import {
+  FormActionContext,
+  FormActions,
+  SchemaFormScene,
+  type FormActionContextValue,
+} from "../../../shared/form-renderer";
+import type { FilterFieldProjection } from "../types/record";
 
 interface RecordFilterBarProps {
   fields: FilterFieldProjection[];
@@ -16,7 +21,7 @@ interface RecordFilterBarProps {
 
 const filterComponents = {
   Input: adapters.Input,
-  Textarea: adapters.Textarea,
+  Textarea: adapters.Input,
   NumberInput: adapters.NumberInput,
   Select: adapters.Select,
   Switch: adapters.Switch,
@@ -38,25 +43,29 @@ const filterDecorators = {
 // ---- Schema builders ----
 
 function buildFilterField(field: FilterFieldProjection, visible: boolean): IFieldSchema {
-  const isBooleanField = field.component === 'Switch' || field.type === 'boolean';
+  const isBooleanField = field.component === "Switch" || field.type === "boolean";
   return {
     type: field.type,
     title: field.title,
-    component: isBooleanField ? 'Select' : field.component,
-    decorator: 'FilterItem',
+    component: isBooleanField ? "Select" : field.component,
+    decorator: "FilterItem",
     order: field.order,
-    display: visible ? 'visible' : 'none',
+    display: visible ? "visible" : "none",
     props: {
       ...(field.props ?? {}),
       placeholder: String(
         field.props?.placeholder ??
-          (isBooleanField ? `请选择${field.title}` : field.component === 'Select' ? `请选择${field.title}` : `请输入${field.title}`),
+          (isBooleanField
+            ? `请选择${field.title}`
+            : field.component === "Select"
+              ? `请选择${field.title}`
+              : `请输入${field.title}`),
       ),
     },
     dataSource: isBooleanField
       ? [
-          { label: '是', value: true },
-          { label: '否', value: false },
+          { label: "是", value: true },
+          { label: "否", value: false },
         ]
       : field.dataSource,
   };
@@ -69,13 +78,13 @@ function buildFilterSchema(fields: FilterFieldProjection[], expanded: boolean): 
   ]);
 
   return {
-    type: 'object',
+    type: "object",
     properties: {
       ...Object.fromEntries(fieldEntries),
       __filter_actions: {
-        type: 'void',
-        component: 'FormActions',
-        decorator: 'FilterItem',
+        type: "void",
+        component: "FormActions",
+        decorator: "FilterItem",
         order: 9999,
       },
     },
@@ -147,17 +156,20 @@ export function RecordFilterBar({ fields, values, loading, onSearch }: RecordFil
   }, []);
 
   // Context value updates on every render with latest loading state
-  const actionsCtx = useMemo<FormActionContextValue>(() => ({
-    kind: 'filter',
-    loading,
-    submitText: '查询',
-    showReset: true,
-    showExpandButton,
-    expanded,
-    onSubmit: handleSearch,
-    onReset: handleReset,
-    onToggleExpanded: handleToggleExpanded,
-  }), [loading, showExpandButton, expanded, handleSearch, handleReset, handleToggleExpanded]);
+  const actionsCtx = useMemo<FormActionContextValue>(
+    () => ({
+      kind: "filter",
+      loading,
+      submitText: "查询",
+      showReset: true,
+      showExpandButton,
+      expanded,
+      onSubmit: handleSearch,
+      onReset: handleReset,
+      onToggleExpanded: handleToggleExpanded,
+    }),
+    [loading, showExpandButton, expanded, handleSearch, handleReset, handleToggleExpanded],
+  );
 
   useEffect(() => {
     setDraftValues(values);
@@ -166,7 +178,7 @@ export function RecordFilterBar({ fields, values, loading, onSearch }: RecordFil
   return (
     <FormActionContext.Provider value={actionsCtx}>
       <FilterSchemaRenderer
-        key={expanded ? 'expanded' : 'collapsed'}
+        key={expanded ? "expanded" : "collapsed"}
         schema={filterSchema}
         initialValues={draftValues}
         loading={loading}
