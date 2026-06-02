@@ -42,7 +42,6 @@ export function projectDetailField(field: CmsFieldSchema): CmsFieldSchema {
   if ((field.type === "object" || field.type === "void") && field.properties) {
     nextField.properties = Object.fromEntries(
       sortSchemaEntries(field.properties as Record<string, CmsFieldSchema>)
-        .filter(([, child]) => child["x-cms"]?.detail?.visible !== false)
         .map(([key, child]) => [key, projectDetailField(child)]),
     );
   }
@@ -65,7 +64,6 @@ export function projectDetailSchema(schema: CmsModelSchema): CmsModelSchema {
     ...schema,
     properties: Object.fromEntries(
       sortSchemaEntries(schema.properties as Record<string, CmsFieldSchema>)
-        .filter(([, field]) => field["x-cms"]?.detail?.visible !== false)
         .map(([key, field]) => [key, projectDetailField(field)]),
     ),
   };

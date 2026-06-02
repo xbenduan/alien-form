@@ -10,12 +10,14 @@
     "singularLabel": "活动",
     "pluralLabel": "活动",
     "primaryField": "name",
-    "defaultFilterCount": 3,
     "defaultPageSize": 5,
     "openMode": {
       "add": "page",
       "edit": "page",
       "detail": "page"
+    },
+    "filter": {
+      "count": 3
     }
   },
   "properties": {
@@ -30,18 +32,9 @@
         "placeholder": "请输入活动名称"
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "defaultVisible": true,
-          "operator": "contains"
-        },
         "table": {
-          "visible": true,
           "width": 240,
           "ellipsis": true
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -53,27 +46,30 @@
       "required": true,
       "order": 20,
       "dataSource": [
-        { "label": "规划中", "value": "draft" },
-        { "label": "执行中", "value": "review" },
-        { "label": "已上线", "value": "published" },
-        { "label": "已结束", "value": "archived" }
+        {
+          "label": "规划中",
+          "value": "draft"
+        },
+        {
+          "label": "执行中",
+          "value": "review"
+        },
+        {
+          "label": "已上线",
+          "value": "published"
+        },
+        {
+          "label": "已结束",
+          "value": "archived"
+        }
       ],
       "props": {
         "placeholder": "请选择活动状态"
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "defaultVisible": true,
-          "operator": "eq"
-        },
         "table": {
-          "visible": true,
           "width": 120,
           "format": "status"
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -85,26 +81,29 @@
       "required": true,
       "order": 30,
       "dataSource": [
-        { "label": "搜索投放", "value": "search" },
-        { "label": "社媒分发", "value": "social" },
-        { "label": "邮件触达", "value": "email" },
-        { "label": "社区运营", "value": "community" }
+        {
+          "label": "搜索投放",
+          "value": "search"
+        },
+        {
+          "label": "社媒分发",
+          "value": "social"
+        },
+        {
+          "label": "邮件触达",
+          "value": "email"
+        },
+        {
+          "label": "社区运营",
+          "value": "community"
+        }
       ],
       "props": {
         "placeholder": "请选择投放渠道"
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "defaultVisible": true,
-          "operator": "eq"
-        },
         "table": {
-          "visible": true,
           "width": 140
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -119,16 +118,8 @@
         "placeholder": "请输入负责人"
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "operator": "contains"
-        },
         "table": {
-          "visible": true,
           "width": 140
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -143,17 +134,11 @@
         "placeholder": "请选择上线日期"
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "operator": "eq"
-        },
         "table": {
-          "visible": true,
           "width": 160,
           "format": "date"
         },
         "detail": {
-          "visible": true,
           "format": "dateTime"
         }
       }
@@ -171,16 +156,8 @@
         "max": 999
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "operator": "eq"
-        },
         "table": {
-          "visible": true,
           "width": 130
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -192,17 +169,11 @@
       "order": 70,
       "default": true,
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "operator": "eq"
-        },
         "table": {
-          "visible": true,
           "width": 120,
           "format": "boolean"
         },
         "detail": {
-          "visible": true,
           "format": "boolean"
         }
       }
@@ -215,16 +186,9 @@
       "order": 80,
       "default": [],
       "x-cms": {
-        "filter": {
-          "visible": false
-        },
         "table": {
-          "visible": true,
           "width": 220,
           "ellipsis": true
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -241,10 +205,22 @@
           "decorator": "FormItem",
           "order": 10,
           "dataSource": [
-            { "label": "华北", "value": "north" },
-            { "label": "华东", "value": "east" },
-            { "label": "华南", "value": "south" },
-            { "label": "全国", "value": "nationwide" }
+            {
+              "label": "华北",
+              "value": "north"
+            },
+            {
+              "label": "华东",
+              "value": "east"
+            },
+            {
+              "label": "华南",
+              "value": "south"
+            },
+            {
+              "label": "全国",
+              "value": "nationwide"
+            }
           ],
           "props": {
             "placeholder": "请选择区域"
@@ -257,10 +233,22 @@
           "decorator": "FormItem",
           "order": 20,
           "dataSource": [
-            { "label": "新客", "value": "new" },
-            { "label": "活跃老客", "value": "active" },
-            { "label": "沉默老客", "value": "inactive" },
-            { "label": "高潜线索", "value": "lead" }
+            {
+              "label": "新客",
+              "value": "new"
+            },
+            {
+              "label": "活跃老客",
+              "value": "active"
+            },
+            {
+              "label": "沉默老客",
+              "value": "inactive"
+            },
+            {
+              "label": "高潜线索",
+              "value": "lead"
+            }
           ],
           "props": {
             "placeholder": "请选择人群"
@@ -273,9 +261,18 @@
           "decorator": "FormItem",
           "order": 30,
           "dataSource": [
-            { "label": "高", "value": "high" },
-            { "label": "中", "value": "medium" },
-            { "label": "低", "value": "low" }
+            {
+              "label": "高",
+              "value": "high"
+            },
+            {
+              "label": "中",
+              "value": "medium"
+            },
+            {
+              "label": "低",
+              "value": "low"
+            }
           ],
           "props": {
             "placeholder": "请选择优先级"
@@ -294,17 +291,14 @@
         }
       },
       "x-cms": {
-        "filter": {
-          "visible": false
-        },
         "table": {
-          "visible": true,
           "width": 260,
-          "inline": ["region", "audienceType", "priority"],
+          "inline": [
+            "region",
+            "audienceType",
+            "priority"
+          ],
           "expandable": true
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -357,17 +351,6 @@
             "placeholder": "请输入投放说明"
           }
         }
-      },
-      "x-cms": {
-        "filter": {
-          "visible": false
-        },
-        "table": {
-          "visible": false
-        },
-        "detail": {
-          "visible": true
-        }
       }
     },
     "materials": {
@@ -400,9 +383,18 @@
             "decorator": "FormItem",
             "order": 20,
             "dataSource": [
-              { "label": "Banner", "value": "banner" },
-              { "label": "短视频", "value": "video" },
-              { "label": "落地页", "value": "landing" }
+              {
+                "label": "Banner",
+                "value": "banner"
+              },
+              {
+                "label": "短视频",
+                "value": "video"
+              },
+              {
+                "label": "落地页",
+                "value": "landing"
+              }
             ],
             "props": {
               "placeholder": "请选择素材类型"
@@ -434,17 +426,13 @@
       },
       "default": [],
       "x-cms": {
-        "filter": {
-          "visible": false
-        },
         "table": {
-          "visible": true,
           "width": 220,
-          "inline": ["name", "format"],
+          "inline": [
+            "name",
+            "format"
+          ],
           "expandable": true
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -458,17 +446,6 @@
       "props": {
         "rows": 4,
         "placeholder": "请输入活动摘要"
-      },
-      "x-cms": {
-        "filter": {
-          "visible": false
-        },
-        "table": {
-          "visible": false
-        },
-        "detail": {
-          "visible": true
-        }
       }
     },
     "goal": {
@@ -481,17 +458,6 @@
       "props": {
         "rows": 8,
         "placeholder": "请输入活动目标"
-      },
-      "x-cms": {
-        "filter": {
-          "visible": false
-        },
-        "table": {
-          "visible": false
-        },
-        "detail": {
-          "visible": true
-        }
       }
     },
     "createdAt": {
@@ -504,14 +470,7 @@
         "form": {
           "modes": []
         },
-        "filter": {
-          "visible": false
-        },
-        "table": {
-          "visible": false
-        },
         "detail": {
-          "visible": true,
           "format": "dateTime"
         }
       }
@@ -526,16 +485,11 @@
         "form": {
           "modes": []
         },
-        "filter": {
-          "visible": false
-        },
         "table": {
-          "visible": true,
           "width": 170,
           "format": "dateTime"
         },
         "detail": {
-          "visible": true,
           "format": "dateTime"
         }
       }

@@ -20,7 +20,6 @@ export type {
   ValueFormat,
   ModelActionKind,
   ModelActionOpenMode,
-  CmsFieldFilterMeta,
   CmsFieldTableMeta,
   CmsFieldFormMeta,
   CmsFieldDetailMeta,

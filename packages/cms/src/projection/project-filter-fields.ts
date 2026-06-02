@@ -2,50 +2,63 @@ import type { CmsModelSchema } from "../types/schema";
 import type { FilterFieldProjection } from "./types";
 import { sortSchemaEntries } from "./shared";
 
-export function projectFilterFields(schema: CmsModelSchema): FilterFieldProjection[] {
-  const entries = sortSchemaEntries(schema.properties);
-  const defaultVisibleCount = schema["x-model"]?.defaultFilterCount ?? 3;
-  let visibleIndex = 0;
+const FILTERABLE_FIELD_TYPES = new Set(["string", "number", "boolean"]);
 
-  const configuredFilters = entries.flatMap(([key, field]) => {
-    if (!field["x-cms"]?.filter?.visible) {
+function isObjectArrayField(field: {
+  type?: string;
+  items?: unknown;
+}) {
+  const items = field.items;
+  return field.type === "array"
+    && items != null
+    && !Array.isArray(items)
+    && typeof items === "object"
+    && "type" in items
+    && items.type === "object";
+}
+
+function collectFilterFields(
+  properties: CmsModelSchema["properties"],
+  parentKeys: string[] = [],
+): FilterFieldProjection[] {
+  const entries = sortSchemaEntries(properties);
+
+  return entries.flatMap(([key, field]) => {
+    const nextPath = [...parentKeys, key];
+
+    if (field.type === "object" || field.type === "void") {
+      return collectFilterFields(field.properties as CmsModelSchema["properties"], nextPath);
+    }
+
+    if (field.type === "array" || isObjectArrayField(field)) {
       return [];
     }
 
-    const projection: FilterFieldProjection = {
-      key,
-      title: field.title ?? key,
-      type: field.type,
-      component: field.component,
-      operator: field["x-cms"]?.filter?.operator ?? "eq",
-      props: field.props,
-      dataSource: field.dataSource,
-      defaultVisible:
-        field["x-cms"]?.filter?.defaultVisible ?? visibleIndex < defaultVisibleCount,
-      order: field.order ?? 0,
-    };
+    if (!FILTERABLE_FIELD_TYPES.has(field.type ?? "")) {
+      return [];
+    }
 
-    visibleIndex += 1;
-    return [projection];
+    return [
+      {
+        key: nextPath.join("."),
+        title: field.title ?? key,
+        type: field.type,
+        component: field.component,
+        operator: field.type === "string" ? "contains" : "eq",
+        props: field.props,
+        dataSource: field.dataSource,
+        defaultVisible: false,
+        order: field.order ?? 0,
+      },
+    ];
   });
+}
 
-  if (configuredFilters.length > 0) {
-    return configuredFilters;
-  }
+export function projectFilterFields(schema: CmsModelSchema): FilterFieldProjection[] {
+  const defaultVisibleCount = schema["x-model"]?.filter?.count ?? 3;
 
-  // Fallback: auto-generate filters from first N primitive fields
-  return entries
-    .filter(([, field]) => field.type !== "object" && field.type !== "void")
-    .slice(0, defaultVisibleCount)
-    .map(([key, field], index) => ({
-      key,
-      title: field.title ?? key,
-      type: field.type,
-      component: field.component,
-      operator: field.type === "string" ? "contains" : "eq",
-      props: field.props,
-      dataSource: field.dataSource,
-      defaultVisible: index < defaultVisibleCount,
-      order: field.order ?? 0,
-    }));
+  return collectFilterFields(schema.properties).map((field, index) => ({
+    ...field,
+    defaultVisible: index < defaultVisibleCount,
+  }));
 }

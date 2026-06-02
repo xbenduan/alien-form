@@ -63,11 +63,26 @@ export default function ModelPage() {
     store.resetDraft();
   }, [editModelName, isEditMode, store]);
 
+  useEffect(() => {
+    const validFieldKeys = new Set(draft.fields.map((field) => field.key).filter(Boolean));
+    const nextVisibleFields = draft.tableVisibleFields.filter((key) => validFieldKeys.has(key));
+    if (nextVisibleFields.length !== draft.tableVisibleFields.length) {
+      store.updateDraft((currentDraft) => ({
+        ...currentDraft,
+        tableVisibleFields: currentDraft.tableVisibleFields.filter((key) => validFieldKeys.has(key)),
+      }));
+    }
+  }, [draft.fields, draft.tableVisibleFields, store]);
+
   const existingModelNames = existingModels.map((item) => item.name);
+  const tableFieldOptions = draft.fields.map((field) => ({
+    label: `${field.title || field.key} (${field.key})`,
+    value: field.key,
+  }));
 
   const stepItems = [
-    { title: '模型信息', description: '配置模型基础信息与打开方式' },
     { title: '模型字段', description: '配置字段、容器字段与 handlers' },
+    { title: 'x-model 配置', description: '配置模型信息、列表白名单与打开方式' },
     { title: '预览保存', description: '预览 schema 效果并最终保存' },
   ];
 
@@ -127,15 +142,6 @@ export default function ModelPage() {
 
       <div className="builder-step-body">
         {currentStep === 0 ? (
-          <ModelMetaForm
-            draft={draft}
-            onChange={(nextDraft) => store.updateDraft(() => nextDraft)}
-            hideTitle
-            modelNameDisabled={isEditMode}
-          />
-        ) : null}
-
-        {currentStep === 1 ? (
           <Row gutter={[20, 20]}>
             <Col span={12}>
               <FieldListEditor
@@ -156,6 +162,16 @@ export default function ModelPage() {
           </Row>
         ) : null}
 
+        {currentStep === 1 ? (
+          <ModelMetaForm
+            draft={draft}
+            onChange={(nextDraft) => store.updateDraft(() => nextDraft)}
+            hideTitle
+            modelNameDisabled={isEditMode}
+            tableFieldOptions={tableFieldOptions}
+          />
+        ) : null}
+
         {currentStep === 2 ? <ModelPreviewPanel schema={previewSchema} error={previewError} hideTitle /> : null}
       </div>
 
@@ -171,7 +187,7 @@ export default function ModelPage() {
             <Button
               type="primary"
               onClick={() => {
-                if (currentStep === 0) {
+                if (currentStep === 1) {
                   try {
                     validateModelMeta(draft, existingModelNames, isEditMode);
                   } catch (error) {

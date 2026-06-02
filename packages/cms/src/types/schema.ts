@@ -1,5 +1,5 @@
 import type { IFieldSchema, IFormSchema } from "@alien-form/core";
-import type { FilterOperator, MutationResult, PaginatedResult, Pagination } from "./common";
+import type { MutationResult, PaginatedResult, Pagination } from "./common";
 
 // ─── Value Formatting ────────────────────────────────────────
 export type ValueFormat = "boolean" | "date" | "dateTime" | "status" | "image" | "link";
@@ -9,14 +9,7 @@ export type ModelActionKind = "add" | "edit" | "detail";
 export type ModelActionOpenMode = "modal" | "drawer" | "page";
 
 // ─── Field UI Metadata (x-cms) ──────────────────────────────
-export interface CmsFieldFilterMeta {
-  visible?: boolean;
-  defaultVisible?: boolean;
-  operator?: FilterOperator;
-}
-
 export interface CmsFieldTableMeta {
-  visible?: boolean;
   width?: number;
   ellipsis?: boolean;
   format?: ValueFormat;
@@ -30,7 +23,6 @@ export interface CmsFieldFormMeta {
 }
 
 export interface CmsFieldDetailMeta {
-  visible?: boolean;
   format?: ValueFormat;
 }
 
@@ -44,7 +36,6 @@ export interface CmsFieldMobileMeta {
 }
 
 export interface CmsFieldUiMeta {
-  filter?: CmsFieldFilterMeta;
   table?: CmsFieldTableMeta;
   form?: CmsFieldFormMeta;
   detail?: CmsFieldDetailMeta;
@@ -57,6 +48,14 @@ export interface CmsFieldSchema extends IFieldSchema {
 }
 
 // ─── Model Metadata (x-model) ───────────────────────────────
+export interface CmsModelFilterMeta {
+  count?: number;
+}
+
+export interface CmsModelTableMeta {
+  visible?: string[];
+}
+
 export interface CmsModelMeta {
   name: string;
   title?: string;
@@ -65,7 +64,8 @@ export interface CmsModelMeta {
   singularLabel?: string;
   pluralLabel?: string;
   primaryField?: string;
-  defaultFilterCount?: number;
+  filter?: CmsModelFilterMeta;
+  table?: CmsModelTableMeta;
   defaultPageSize?: number;
   openMode?: Partial<Record<ModelActionKind, ModelActionOpenMode>>;
   actions?: {

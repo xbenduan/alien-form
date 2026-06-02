@@ -44,12 +44,9 @@ export interface ModelBuilderFieldDraft {
   defaultValueText: string;
   propsText: string;
   dataSourceText: string;
-  filterVisible: boolean;
-  filterDefaultVisible: boolean;
-  tableVisible: boolean;
   tableWidthText: string;
   tableEllipsis: boolean;
-  detailVisible: boolean;
+  tableInlineFields: string[];
   reactions: ModelBuilderReactionDraft[];
   children?: ModelBuilderFieldDraft[];
   arrayMode?: "tags" | "object";
@@ -64,7 +61,8 @@ export interface ModelBuilderDraft {
   singularLabel: string;
   pluralLabel: string;
   defaultPageSize: number;
-  defaultFilterCount: number;
+  filterCount: number;
+  tableVisibleFields: string[];
   openMode: Partial<Record<"add" | "edit" | "detail", ModelActionOpenMode>>;
   fields: ModelBuilderFieldDraft[];
 }

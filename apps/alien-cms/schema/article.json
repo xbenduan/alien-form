@@ -10,12 +10,14 @@
     "singularLabel": "文章",
     "pluralLabel": "文章",
     "primaryField": "title",
-    "defaultFilterCount": 3,
     "defaultPageSize": 5,
     "openMode": {
       "add": "drawer",
       "edit": "drawer",
       "detail": "modal"
+    },
+    "filter": {
+      "count": 3
     }
   },
   "properties": {
@@ -31,18 +33,9 @@
         "placeholder": "请输入文章标题"
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "defaultVisible": true,
-          "operator": "contains"
-        },
         "table": {
-          "visible": true,
           "width": 260,
           "ellipsis": true
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -54,27 +47,30 @@
       "required": true,
       "order": 20,
       "dataSource": [
-        { "label": "草稿", "value": "draft" },
-        { "label": "待发布", "value": "review" },
-        { "label": "已发布", "value": "published" },
-        { "label": "已归档", "value": "archived" }
+        {
+          "label": "草稿",
+          "value": "draft"
+        },
+        {
+          "label": "待发布",
+          "value": "review"
+        },
+        {
+          "label": "已发布",
+          "value": "published"
+        },
+        {
+          "label": "已归档",
+          "value": "archived"
+        }
       ],
       "props": {
         "placeholder": "请选择状态"
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "defaultVisible": true,
-          "operator": "eq"
-        },
         "table": {
-          "visible": true,
           "width": 120,
           "format": "status"
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -86,26 +82,29 @@
       "required": true,
       "order": 30,
       "dataSource": [
-        { "label": "产品设计", "value": "product" },
-        { "label": "工程实践", "value": "engineering" },
-        { "label": "增长运营", "value": "growth" },
-        { "label": "团队协作", "value": "team" }
+        {
+          "label": "产品设计",
+          "value": "product"
+        },
+        {
+          "label": "工程实践",
+          "value": "engineering"
+        },
+        {
+          "label": "增长运营",
+          "value": "growth"
+        },
+        {
+          "label": "团队协作",
+          "value": "team"
+        }
       ],
       "props": {
         "placeholder": "请选择分类"
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "defaultVisible": true,
-          "operator": "eq"
-        },
         "table": {
-          "visible": true,
           "width": 140
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -120,16 +119,8 @@
         "placeholder": "请输入作者"
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "operator": "contains"
-        },
         "table": {
-          "visible": true,
           "width": 140
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -144,17 +135,11 @@
         "placeholder": "请选择发布时间"
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "operator": "eq"
-        },
         "table": {
-          "visible": true,
           "width": 160,
           "format": "date"
         },
         "detail": {
-          "visible": true,
           "format": "dateTime"
         }
       }
@@ -172,16 +157,8 @@
         "max": 60
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "operator": "eq"
-        },
         "table": {
-          "visible": true,
           "width": 140
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -193,17 +170,11 @@
       "order": 70,
       "default": false,
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "operator": "eq"
-        },
         "table": {
-          "visible": true,
           "width": 120,
           "format": "boolean"
         },
         "detail": {
-          "visible": true,
           "format": "boolean"
         }
       }
@@ -216,16 +187,9 @@
       "order": 80,
       "default": [],
       "x-cms": {
-        "filter": {
-          "visible": false
-        },
         "table": {
-          "visible": true,
           "width": 220,
           "ellipsis": true
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -239,17 +203,6 @@
       "props": {
         "rows": 4,
         "placeholder": "请输入摘要"
-      },
-      "x-cms": {
-        "filter": {
-          "visible": false
-        },
-        "table": {
-          "visible": false
-        },
-        "detail": {
-          "visible": true
-        }
       }
     },
     "content": {
@@ -262,17 +215,6 @@
       "props": {
         "rows": 8,
         "placeholder": "请输入正文内容"
-      },
-      "x-cms": {
-        "filter": {
-          "visible": false
-        },
-        "table": {
-          "visible": false
-        },
-        "detail": {
-          "visible": true
-        }
       }
     },
     "createdAt": {
@@ -285,14 +227,7 @@
         "form": {
           "modes": []
         },
-        "filter": {
-          "visible": false
-        },
-        "table": {
-          "visible": false
-        },
         "detail": {
-          "visible": true,
           "format": "dateTime"
         }
       }
@@ -307,16 +242,11 @@
         "form": {
           "modes": []
         },
-        "filter": {
-          "visible": false
-        },
         "table": {
-          "visible": true,
           "width": 170,
           "format": "dateTime"
         },
         "detail": {
-          "visible": true,
           "format": "dateTime"
         }
       }

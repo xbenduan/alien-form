@@ -42,6 +42,63 @@ const filterDecorators = {
 
 // ---- Schema builders ----
 
+function isEmptyFilterValue(value: unknown) {
+  return value === undefined
+    || value === null
+    || value === ""
+    || (Array.isArray(value) && value.length === 0);
+}
+
+function setNestedValue(target: Record<string, unknown>, path: string[], value: unknown) {
+  const [currentKey, ...restKeys] = path;
+  if (!currentKey) {
+    return;
+  }
+
+  if (restKeys.length === 0) {
+    target[currentKey] = value;
+    return;
+  }
+
+  const currentValue = target[currentKey];
+  const nextTarget =
+    currentValue && typeof currentValue === "object" && !Array.isArray(currentValue)
+      ? (currentValue as Record<string, unknown>)
+      : {};
+  target[currentKey] = nextTarget;
+  setNestedValue(nextTarget, restKeys, value);
+}
+
+function nestFilterValues(values: Record<string, unknown>) {
+  return Object.entries(values).reduce<Record<string, unknown>>((result, [key, value]) => {
+    if (isEmptyFilterValue(value)) {
+      return result;
+    }
+
+    setNestedValue(result, key.split("."), value);
+    return result;
+  }, {});
+}
+
+function flattenFilterValues(
+  values: Record<string, unknown>,
+  parentKeys: string[] = [],
+): Record<string, unknown> {
+  return Object.entries(values).reduce<Record<string, unknown>>((result, [key, value]) => {
+    const nextKeys = [...parentKeys, key];
+
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return {
+        ...result,
+        ...flattenFilterValues(value as Record<string, unknown>, nextKeys),
+      };
+    }
+
+    result[nextKeys.join(".")] = value;
+    return result;
+  }, {});
+}
+
 function buildFilterField(field: FilterFieldProjection, visible: boolean): IFieldSchema {
   const isBooleanField = field.component === "Switch" || field.type === "boolean";
   return {
@@ -133,7 +190,7 @@ function FilterSchemaRenderer({
 
 export function RecordFilterBar({ fields, values, loading, onSearch }: RecordFilterBarProps) {
   const [expanded, setExpanded] = useState(false);
-  const [draftValues, setDraftValues] = useState<Record<string, unknown>>(values);
+  const [draftValues, setDraftValues] = useState<Record<string, unknown>>(() => flattenFilterValues(values));
   const defaultFields = useMemo(() => fields.filter((field) => field.defaultVisible), [fields]);
   const showExpandButton = fields.length > defaultFields.length;
   const filterSchema = useMemo(() => buildFilterSchema(fields, expanded), [fields, expanded]);
@@ -143,7 +200,7 @@ export function RecordFilterBar({ fields, values, loading, onSearch }: RecordFil
   onSearchRef.current = onSearch;
 
   const handleSearch = useCallback((vals: Record<string, unknown>) => {
-    onSearchRef.current(vals);
+    onSearchRef.current(nestFilterValues(vals));
   }, []);
 
   const handleReset = useCallback(() => {
@@ -172,7 +229,7 @@ export function RecordFilterBar({ fields, values, loading, onSearch }: RecordFil
   );
 
   useEffect(() => {
-    setDraftValues(values);
+    setDraftValues(flattenFilterValues(values));
   }, [values]);
 
   return (

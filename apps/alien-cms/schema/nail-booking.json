@@ -10,12 +10,14 @@
     "singularLabel": "预约",
     "pluralLabel": "预约",
     "primaryField": "customerName",
-    "defaultFilterCount": 3,
     "defaultPageSize": 5,
     "openMode": {
       "add": "modal",
       "edit": "modal",
       "detail": "modal"
+    },
+    "filter": {
+      "count": 3
     }
   },
   "properties": {
@@ -30,17 +32,8 @@
         "placeholder": "请输入预约人姓名"
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "defaultVisible": true,
-          "operator": "contains"
-        },
         "table": {
-          "visible": true,
           "width": 160
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -55,17 +48,8 @@
         "placeholder": "请输入联系电话"
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "defaultVisible": true,
-          "operator": "contains"
-        },
         "table": {
-          "visible": true,
           "width": 160
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -80,18 +64,11 @@
         "placeholder": "请选择预约日期"
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "defaultVisible": true,
-          "operator": "eq"
-        },
         "table": {
-          "visible": true,
           "width": 150,
           "format": "date"
         },
         "detail": {
-          "visible": true,
           "format": "dateTime"
         }
       }
@@ -104,26 +81,33 @@
       "required": true,
       "order": 40,
       "dataSource": [
-        { "label": "10:00", "value": "10:00" },
-        { "label": "12:00", "value": "12:00" },
-        { "label": "14:00", "value": "14:00" },
-        { "label": "16:00", "value": "16:00" },
-        { "label": "18:00", "value": "18:00" }
+        {
+          "label": "10:00",
+          "value": "10:00"
+        },
+        {
+          "label": "12:00",
+          "value": "12:00"
+        },
+        {
+          "label": "14:00",
+          "value": "14:00"
+        },
+        {
+          "label": "16:00",
+          "value": "16:00"
+        },
+        {
+          "label": "18:00",
+          "value": "18:00"
+        }
       ],
       "props": {
         "placeholder": "请选择预约时段"
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "operator": "eq"
-        },
         "table": {
-          "visible": true,
           "width": 120
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -135,25 +119,29 @@
       "required": true,
       "order": 50,
       "dataSource": [
-        { "label": "单色基础款", "value": "basic" },
-        { "label": "法式轻设计", "value": "french" },
-        { "label": "猫眼跳色款", "value": "cat-eye" },
-        { "label": "节日定制款", "value": "festival" }
+        {
+          "label": "单色基础款",
+          "value": "basic"
+        },
+        {
+          "label": "法式轻设计",
+          "value": "french"
+        },
+        {
+          "label": "猫眼跳色款",
+          "value": "cat-eye"
+        },
+        {
+          "label": "节日定制款",
+          "value": "festival"
+        }
       ],
       "props": {
         "placeholder": "请选择服务类型"
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "operator": "eq"
-        },
         "table": {
-          "visible": true,
           "width": 150
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -165,25 +153,29 @@
       "required": true,
       "order": 60,
       "dataSource": [
-        { "label": "Luna", "value": "luna" },
-        { "label": "Momo", "value": "momo" },
-        { "label": "Kiki", "value": "kiki" },
-        { "label": "Nora", "value": "nora" }
+        {
+          "label": "Luna",
+          "value": "luna"
+        },
+        {
+          "label": "Momo",
+          "value": "momo"
+        },
+        {
+          "label": "Kiki",
+          "value": "kiki"
+        },
+        {
+          "label": "Nora",
+          "value": "nora"
+        }
       ],
       "props": {
         "placeholder": "请选择美甲师"
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "operator": "eq"
-        },
         "table": {
-          "visible": true,
           "width": 120
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -195,24 +187,25 @@
       "required": true,
       "order": 70,
       "dataSource": [
-        { "label": "国贸店", "value": "guomao" },
-        { "label": "静安店", "value": "jingan" },
-        { "label": "万象城店", "value": "mixc" }
+        {
+          "label": "国贸店",
+          "value": "guomao"
+        },
+        {
+          "label": "静安店",
+          "value": "jingan"
+        },
+        {
+          "label": "万象城店",
+          "value": "mixc"
+        }
       ],
       "props": {
         "placeholder": "请选择预约门店"
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "operator": "eq"
-        },
         "table": {
-          "visible": true,
           "width": 140
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -224,26 +217,30 @@
       "required": true,
       "order": 80,
       "dataSource": [
-        { "label": "待确认", "value": "draft" },
-        { "label": "已确认", "value": "review" },
-        { "label": "已到店", "value": "published" },
-        { "label": "已取消", "value": "archived" }
+        {
+          "label": "待确认",
+          "value": "draft"
+        },
+        {
+          "label": "已确认",
+          "value": "review"
+        },
+        {
+          "label": "已到店",
+          "value": "published"
+        },
+        {
+          "label": "已取消",
+          "value": "archived"
+        }
       ],
       "props": {
         "placeholder": "请选择预约状态"
       },
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "operator": "eq"
-        },
         "table": {
-          "visible": true,
           "width": 120,
           "format": "status"
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -255,17 +252,11 @@
       "order": 90,
       "default": false,
       "x-cms": {
-        "filter": {
-          "visible": true,
-          "operator": "eq"
-        },
         "table": {
-          "visible": true,
           "width": 120,
           "format": "boolean"
         },
         "detail": {
-          "visible": true,
           "format": "boolean"
         }
       }
@@ -278,16 +269,9 @@
       "order": 100,
       "default": [],
       "x-cms": {
-        "filter": {
-          "visible": false
-        },
         "table": {
-          "visible": true,
           "width": 220,
           "ellipsis": true
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -304,9 +288,18 @@
           "decorator": "FormItem",
           "order": 10,
           "dataSource": [
-            { "label": "圆形", "value": "round" },
-            { "label": "方圆", "value": "squoval" },
-            { "label": "杏仁", "value": "almond" }
+            {
+              "label": "圆形",
+              "value": "round"
+            },
+            {
+              "label": "方圆",
+              "value": "squoval"
+            },
+            {
+              "label": "杏仁",
+              "value": "almond"
+            }
           ],
           "props": {
             "placeholder": "请选择甲型偏好"
@@ -319,9 +312,18 @@
           "decorator": "FormItem",
           "order": 20,
           "dataSource": [
-            { "label": "奶油裸色", "value": "nude" },
-            { "label": "酒红系", "value": "red" },
-            { "label": "低饱和跳色", "value": "mix" }
+            {
+              "label": "奶油裸色",
+              "value": "nude"
+            },
+            {
+              "label": "酒红系",
+              "value": "red"
+            },
+            {
+              "label": "低饱和跳色",
+              "value": "mix"
+            }
           ],
           "props": {
             "placeholder": "请选择颜色偏好"
@@ -340,17 +342,13 @@
         }
       },
       "x-cms": {
-        "filter": {
-          "visible": false
-        },
         "table": {
-          "visible": true,
           "width": 220,
-          "inline": ["shape", "colorTone"],
+          "inline": [
+            "shape",
+            "colorTone"
+          ],
           "expandable": true
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -401,17 +399,13 @@
       },
       "default": [],
       "x-cms": {
-        "filter": {
-          "visible": false
-        },
         "table": {
-          "visible": true,
           "width": 220,
-          "inline": ["name", "duration"],
+          "inline": [
+            "name",
+            "duration"
+          ],
           "expandable": true
-        },
-        "detail": {
-          "visible": true
         }
       }
     },
@@ -424,17 +418,6 @@
       "props": {
         "rows": 4,
         "placeholder": "请输入预约备注"
-      },
-      "x-cms": {
-        "filter": {
-          "visible": false
-        },
-        "table": {
-          "visible": false
-        },
-        "detail": {
-          "visible": true
-        }
       }
     },
     "createdAt": {
@@ -447,14 +430,7 @@
         "form": {
           "modes": []
         },
-        "filter": {
-          "visible": false
-        },
-        "table": {
-          "visible": false
-        },
         "detail": {
-          "visible": true,
           "format": "dateTime"
         }
       }
@@ -469,16 +445,11 @@
         "form": {
           "modes": []
         },
-        "filter": {
-          "visible": false
-        },
         "table": {
-          "visible": true,
           "width": 170,
           "format": "dateTime"
         },
         "detail": {
-          "visible": true,
           "format": "dateTime"
         }
       }

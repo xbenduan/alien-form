@@ -60,17 +60,10 @@ function buildFieldSchema(
     dataSource: Array.isArray(dataSource) ? dataSource : undefined,
     "x-reaction": xReaction,
     "x-cms": {
-      filter: {
-        visible: draftField.filterVisible,
-        defaultVisible: draftField.filterDefaultVisible,
-      },
       table: {
-        visible: draftField.tableVisible,
         width: draftField.tableWidthText.trim() ? Number(draftField.tableWidthText) : undefined,
         ellipsis: draftField.tableEllipsis,
-      },
-      detail: {
-        visible: draftField.detailVisible,
+        inline: draftField.tableInlineFields.length > 0 ? draftField.tableInlineFields : undefined,
       },
       ...(reactionConfigs ? { reactions: reactionConfigs } : {}),
     },
@@ -129,7 +122,14 @@ export function buildModelSchema(draft: ModelBuilderDraft): CmsModelSchema {
       description: draft.description || undefined,
       singularLabel: draft.singularLabel || "Record",
       pluralLabel: draft.pluralLabel || "Records",
-      defaultFilterCount: draft.defaultFilterCount,
+      filter: {
+        count: draft.filterCount,
+      },
+      table: draft.tableVisibleFields.length > 0
+        ? {
+            visible: draft.tableVisibleFields,
+          }
+        : undefined,
       defaultPageSize: draft.defaultPageSize,
       openMode: {
         add: draft.openMode.add,

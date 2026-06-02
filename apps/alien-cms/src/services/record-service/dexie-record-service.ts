@@ -7,6 +7,10 @@ import { dexieSchemaService } from '../schema-service/dexie-schema-service';
 
 type SortOrder = 'ascend' | 'descend' | undefined;
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
 function compareValues(left: unknown, right: unknown, order: SortOrder) {
   const leftValue = left ?? '';
   const rightValue = right ?? '';
@@ -24,32 +28,51 @@ function compareValues(left: unknown, right: unknown, order: SortOrder) {
   return order === 'descend' ? 1 : -1;
 }
 
-function matches(record: ModelRecord, filters: Record<string, unknown>) {
-  return Object.entries(filters).every(([key, rawFilterValue]) => {
+function matchesValue(recordValue: unknown, filterValue: unknown): boolean {
+  if (
+    filterValue === undefined ||
+    filterValue === null ||
+    filterValue === '' ||
+    (Array.isArray(filterValue) && filterValue.length === 0)
+  ) {
+    return true;
+  }
+
+  if (typeof filterValue === 'string') {
+    return String(recordValue ?? '').toLowerCase().includes(filterValue.toLowerCase());
+  }
+
+  if (typeof filterValue === 'boolean' || typeof filterValue === 'number') {
+    return recordValue === filterValue;
+  }
+
+  if (Array.isArray(filterValue)) {
+    return filterValue.every((item) => Array.isArray(recordValue) && recordValue.includes(item));
+  }
+
+  return recordValue === filterValue;
+}
+
+function matches(record: Record<string, unknown>, filters: Record<string, unknown>): boolean {
+  return Object.entries(filters).every(([key, filterValue]) => {
     if (
-      rawFilterValue === undefined ||
-      rawFilterValue === null ||
-      rawFilterValue === '' ||
-      (Array.isArray(rawFilterValue) && rawFilterValue.length === 0)
+      filterValue === undefined ||
+      filterValue === null ||
+      filterValue === '' ||
+      (Array.isArray(filterValue) && filterValue.length === 0)
     ) {
       return true;
     }
 
     const recordValue = record[key];
-
-    if (typeof rawFilterValue === 'string') {
-      return String(recordValue ?? '').toLowerCase().includes(rawFilterValue.toLowerCase());
+    if (isPlainObject(filterValue)) {
+      if (!isPlainObject(recordValue)) {
+        return false;
+      }
+      return matches(recordValue, filterValue);
     }
 
-    if (typeof rawFilterValue === 'boolean' || typeof rawFilterValue === 'number') {
-      return recordValue === rawFilterValue;
-    }
-
-    if (Array.isArray(rawFilterValue)) {
-      return rawFilterValue.every((item) => Array.isArray(recordValue) && recordValue.includes(item));
-    }
-
-    return recordValue === rawFilterValue;
+    return matchesValue(recordValue, filterValue);
   });
 }
 

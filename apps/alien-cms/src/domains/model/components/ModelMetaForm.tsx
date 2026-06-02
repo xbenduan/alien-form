@@ -6,14 +6,15 @@ interface ModelMetaFormProps {
   onChange: (nextDraft: ModelBuilderDraft) => void;
   hideTitle?: boolean;
   modelNameDisabled?: boolean;
+  tableFieldOptions: Array<{ label: string; value: string }>;
 }
 
-export function ModelMetaForm({ draft, onChange, hideTitle, modelNameDisabled }: ModelMetaFormProps) {
+export function ModelMetaForm({ draft, onChange, hideTitle, modelNameDisabled, tableFieldOptions }: ModelMetaFormProps) {
   return (
     <Card className="model-query-card" styles={{ body: { padding: 20 } }}>
       {hideTitle ? null : (
         <Typography.Title level={5} style={{ marginTop: 0 }}>
-          模型基础信息
+          x-model 配置
         </Typography.Title>
       )}
       <Form layout="vertical" size="middle">
@@ -73,8 +74,18 @@ export function ModelMetaForm({ draft, onChange, hideTitle, modelNameDisabled }:
           <InputNumber
             min={1}
             max={10}
-            value={draft.defaultFilterCount}
-            onChange={(value) => onChange({ ...draft, defaultFilterCount: value ?? 3 })}
+            value={draft.filterCount}
+            onChange={(value) => onChange({ ...draft, filterCount: value ?? 3 })}
+          />
+        </Form.Item>
+        <Form.Item label="表格展示字段">
+          <Select
+            mode="multiple"
+            allowClear
+            value={draft.tableVisibleFields}
+            options={tableFieldOptions}
+            placeholder="为空时默认展示全部第一层字段"
+            onChange={(value) => onChange({ ...draft, tableVisibleFields: value })}
           />
         </Form.Item>
         <Form.Item label="新增打开方式">

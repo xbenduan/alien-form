@@ -36,6 +36,11 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
   const isArrayField = field?.type === 'array';
   const isObjectArray = isArrayField && field?.arrayMode === 'object';
   const supportsPrimitiveConfig = field && !isContainerField && !isObjectArray;
+  const supportsSummaryConfig = Boolean(field) && (isContainerField || isObjectArray);
+  const summaryFieldOptions = (field?.children ?? []).map((child) => ({
+    label: `${child.title || child.key} (${child.key})`,
+    value: child.key,
+  }));
   const currentComponentOptions = !field
     ? componentOptions
     : field.type === 'object' || field.type === 'void'
@@ -52,8 +57,7 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
         component: 'SectionCard',
         decorator: undefined,
         required: false,
-        filterVisible: false,
-        tableVisible: false,
+        tableInlineFields: currentField.tableInlineFields ?? [],
         children: currentField.children ?? [],
         arrayMode: undefined,
       };
@@ -68,6 +72,7 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
         required: false,
         arrayMode: currentField.arrayMode ?? 'tags',
         children: currentField.arrayMode === 'object' ? currentField.children ?? [] : [],
+        tableInlineFields: currentField.arrayMode === 'object' ? currentField.tableInlineFields : [],
       };
     }
 
@@ -84,6 +89,7 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
               ? 'Input'
               : currentField.component,
       arrayMode: undefined,
+      tableInlineFields: [],
       children: undefined,
     };
   };
@@ -98,6 +104,7 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
         component: nextComponent,
         arrayMode: nextComponent === 'ArrayCards' ? 'object' : 'tags',
         children: nextComponent === 'ArrayCards' ? currentField.children ?? [] : [],
+        tableInlineFields: nextComponent === 'ArrayCards' ? currentField.tableInlineFields : [],
       };
     }
 
@@ -204,6 +211,18 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
               onChange={(event) => onChange({ ...field, tableWidthText: event.target.value })}
             />
           </Form.Item>
+          {supportsSummaryConfig ? (
+            <Form.Item label="摘要字段">
+              <Select
+                mode="multiple"
+                allowClear
+                value={field.tableInlineFields}
+                options={summaryFieldOptions}
+                placeholder="选择摘要中展示的子字段"
+                onChange={(value) => onChange({ ...field, tableInlineFields: value })}
+              />
+            </Form.Item>
+          ) : null}
 
           <div className="builder-switch-grid">
             {!isContainerField ? (
@@ -213,30 +232,11 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
               </div>
             ) : null}
             <div className="builder-switch-row">
-              <span>筛选可见</span>
-              <Switch checked={field.filterVisible} onChange={(checked) => onChange({ ...field, filterVisible: checked })} />
-            </div>
-            <div className="builder-switch-row">
-              <span>默认筛选展示</span>
-              <Switch
-                checked={field.filterDefaultVisible}
-                onChange={(checked) => onChange({ ...field, filterDefaultVisible: checked })}
-              />
-            </div>
-            <div className="builder-switch-row">
-              <span>表格可见</span>
-              <Switch checked={field.tableVisible} onChange={(checked) => onChange({ ...field, tableVisible: checked })} />
-            </div>
-            <div className="builder-switch-row">
               <span>表格省略</span>
               <Switch
                 checked={field.tableEllipsis}
                 onChange={(checked) => onChange({ ...field, tableEllipsis: checked })}
               />
-            </div>
-            <div className="builder-switch-row">
-              <span>详情可见</span>
-              <Switch checked={field.detailVisible} onChange={(checked) => onChange({ ...field, detailVisible: checked })} />
             </div>
           </div>
 

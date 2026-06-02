@@ -18,13 +18,7 @@ function normalizeField(key: string, field: CmsFieldSchema): CmsFieldSchema {
     props: field.props ?? {},
     "x-cms": {
       ...field["x-cms"],
-      filter: {
-        visible: field["x-cms"]?.filter?.visible ?? false,
-        defaultVisible: field["x-cms"]?.filter?.defaultVisible,
-        operator: field["x-cms"]?.filter?.operator ?? (field.type === "string" ? "contains" : "eq"),
-      },
       table: {
-        visible: field["x-cms"]?.table?.visible ?? false,
         width: field["x-cms"]?.table?.width,
         ellipsis: field["x-cms"]?.table?.ellipsis,
         format: field["x-cms"]?.table?.format,
@@ -35,7 +29,6 @@ function normalizeField(key: string, field: CmsFieldSchema): CmsFieldSchema {
         modes: field["x-cms"]?.form?.modes,
       },
       detail: {
-        visible: field["x-cms"]?.detail?.visible ?? true,
         format: field["x-cms"]?.detail?.format ?? field["x-cms"]?.table?.format,
       },
       mobile: field["x-cms"]?.mobile,
@@ -85,7 +78,14 @@ export function normalizeSchema(rawSchema: CmsModelSchema): CmsModelSchema {
       singularLabel: rawSchema["x-model"]?.singularLabel ?? "Record",
       pluralLabel: rawSchema["x-model"]?.pluralLabel ?? "Records",
       primaryField: rawSchema["x-model"]?.primaryField ?? "id",
-      defaultFilterCount: rawSchema["x-model"]?.defaultFilterCount ?? 3,
+      filter: {
+        count: rawSchema["x-model"]?.filter?.count ?? 3,
+      },
+      table: rawSchema["x-model"]?.table
+        ? {
+            visible: rawSchema["x-model"]?.table?.visible,
+          }
+        : undefined,
       defaultPageSize: rawSchema["x-model"]?.defaultPageSize ?? 10,
       openMode: {
         add: rawSchema["x-model"]?.openMode?.add ?? "drawer",
