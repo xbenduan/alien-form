@@ -1,108 +1,65 @@
 /**
- * @alien-form/cms — Framework-agnostic CMS business core
+ * @alien-form/cms
  *
- * Provides types, data providers, stores, and schema projections.
- * UI frameworks (React/Vue/Solid) only need to
- * subscribe to store signals and render.
+ * Functional CMS core powered by alien-signals.
+ * No types exported — consumers rely on TS inference.
+ * All state is managed internally; consumers only call functions and read signals.
  */
 
-// ─── Types ────────────────────────────────────────────────────
-export type {
-  Pagination,
-  PaginatedResult,
-  Sorter,
-  FilterOperator,
-  FilterItem,
-  MutationResult,
-} from "./types/common";
+// ─── Init / Connection ──────────────────────────────────────
+export { connect, disconnect } from './store/connection';
 
-export type {
-  ValueFormat,
-  ModelActionKind,
-  ModelActionOpenMode,
-  CmsFieldTableMeta,
-  CmsFieldFormMeta,
-  CmsFieldDetailMeta,
-  CmsFieldMobileMeta,
-  CmsFieldUiMeta,
-  CmsFieldSchema,
-  CmsModelMeta,
-  CmsModelSchema,
-  ModelSummary,
-  SchemaListParams,
-  SchemaDetailParams,
-  SchemaCreateParams,
-  SchemaUpdateParams,
-  SchemaDeleteParams,
-  SchemaListResult,
-  SchemaDetailResult,
-  SchemaCreateResult,
-  SchemaUpdateResult,
-  SchemaDeleteResult,
-} from "./types/schema";
+// ─── Schema Operations ──────────────────────────────────────
+export {
+  loadSchemas,
+  loadSchema,
+  getSchema,
+  createSchema,
+  updateSchema,
+  deleteSchema,
+} from './store/schema';
 
-export type {
-  ModelRecord,
-  RecordListParams,
-  RecordDetailParams,
-  RecordCreateParams,
-  RecordUpdateParams,
-  RecordDeleteParams,
-  RecordBatchDeleteParams,
-  RecordListResult,
-  RecordDetailResult,
-  RecordCreateResult,
-  RecordUpdateResult,
-  RecordDeleteResult,
-  RecordBatchDeleteResult,
-} from "./types/record";
+// ─── Record Operations ──────────────────────────────────────
+export {
+  loadRecords,
+  setFilters,
+  setPagination,
+  setSorter,
+  refresh,
+  createRecord,
+  updateRecord,
+  removeRecord,
+  batchRemove,
+  openAdd,
+  openEdit,
+  openDetail,
+  closeAction,
+} from './store/record';
 
-export type {
-  AlienCmsConfig,
-  AuthType,
-  AuthConfig,
-  OAuth2Config,
-  ApiKeyConfig,
-  BasicAuthConfig,
-  BearerConfig,
-  CustomAuthConfig,
-  EndpointConfig,
-  AdapterConfig,
-  SchemaSourceConfig,
-  ConnectionOptions,
-} from "./types/config";
+// ─── Signals (read-only subscribe points for UI) ────────────
+export {
+  connected,
+  summaries,
+  schemaLoading,
+  tableColumns,
+  filterFields,
+  detailItems,
+  addFormSchema,
+  editFormSchema,
+  records,
+  total,
+  recordLoading,
+  filters,
+  pagination,
+  sorter,
+  actionMode,
+  activeRecordId,
+  activeRecord,
+  detailLoading,
+  submitting,
+} from './internal/signals';
 
-export type {
-  ModelBuilderDraft,
-  ModelBuilderFieldDraft,
-  ModelBuilderReactionDraft,
-  BuilderFieldType,
-  BuilderComponentName,
-  BuilderReactionTarget,
-} from "./types/builder";
-
-// ─── Provider Interfaces ──────────────────────────────────────
-export type { SchemaProvider } from "./provider/schema-provider";
-export type { RecordProvider } from "./provider/record-provider";
-
-// ─── Stores ───────────────────────────────────────────────────
-export { ModelPageStore } from "./store/model-page-store";
-export type { ModelPageStoreConfig, ModelActionMode } from "./store/model-page-store";
-export { ModelBuilderStore } from "./store/model-builder-store";
-export { AppStore } from "./store/app-store";
-export type { ConnectionMode } from "./store/app-store";
-
-// ─── Projections ──────────────────────────────────────────────
-export { projectTableColumns } from "./projection/project-table-columns";
-export { projectFilterSchema } from "./projection/project-filter-schema";
-export { projectMobileCard } from "./projection/project-mobile-card";
-export type {
-  TableColumnProjection,
-  FilterSchemaProjection,
-  MobileCardProjection,
-} from "./projection/types";
-
-// ─── Schema Utilities ─────────────────────────────────────────
-export { normalizeSchema } from "./schema/normalize-schema";
-export { buildModelSchema } from "./schema/build-model-schema";
-export { schemaToBuilderDraft } from "./schema/schema-to-builder-draft";
+// ─── Schema Utilities (pure functions) ──────────────────────
+export { normalizeSchema } from './schema/normalize-schema';
+export { buildModelSchema } from './schema/build-model-schema';
+export { schemaToBuilderDraft } from './schema/schema-to-builder-draft';
