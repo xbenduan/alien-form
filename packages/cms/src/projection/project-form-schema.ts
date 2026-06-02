@@ -11,6 +11,13 @@ export function projectFormSchema(
       .map(([key, field]) => [key, field]),
   );
 
+  properties.__form_actions = {
+    type: "void",
+    component: "FormActions",
+    decorator: "FormItem",
+    order: 9999,
+  };
+
   return {
     ...schema,
     properties,
