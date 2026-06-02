@@ -1,48 +1,70 @@
-import { formatValue } from '@alien-form/cms';
 import { ProfileOutlined } from '@ant-design/icons';
 import { Button, Tag, Tooltip, Typography } from 'antd';
 import type { CmsFieldSchema, ModelRecord, TableColumnProjection } from '../types/record';
+import { canUseSharedDisplayComponent } from '../../../shared/form-renderer';
+import { getDisplaySummary } from '../../../shared/form-renderer/adapters';
 
-function formatDisplayText(value: unknown, format?: string, dataSource?: CmsFieldSchema['dataSource']) {
-  const result = formatValue(value, format as never, dataSource);
-  if (typeof value === 'boolean') {
-    return value ? '是' : '否';
-  }
-  return result.text;
-}
+type ScalarDisplayProps = {
+  value?: unknown;
+  dataSource?: CmsFieldSchema['dataSource'];
+  format?: string;
+  ellipsis?: boolean;
+};
 
 function renderSimpleValue(
   value: unknown,
   options: {
+    column: TableColumnProjection;
     format?: string;
     dataSource?: CmsFieldSchema['dataSource'];
     ellipsis?: boolean;
   } = {},
 ) {
-  const result = formatValue(value, options.format as never, options.dataSource);
-  const text = formatDisplayText(value, options.format, options.dataSource);
+  const summary = getDisplaySummary({
+    value,
+    format: options.format,
+    dataSource: options.dataSource,
+  });
 
-  if (result.type === 'status') {
-    return <Tag color={result.color}>{text}</Tag>;
+  if (summary.kind === 'status') {
+    return <Tag color={summary.color}>{summary.text}</Tag>;
   }
 
-  if (result.type === 'tags') {
-    return (
-      <span className="readonly-tag-list">
-        {(result.items ?? []).map((item) => (
-          <Tag key={item} className="readonly-tag-item">
-            {item}
-          </Tag>
-        ))}
-      </span>
-    );
+  return (
+    <Typography.Text
+      style={{ display: 'block', width: '100%' }}
+      ellipsis={options.ellipsis ? { tooltip: summary.fullText ?? summary.text } : false}
+    >
+      {summary.text}
+    </Typography.Text>
+  );
+}
+
+function getInlineDisplayText(value: unknown, format?: string, dataSource?: CmsFieldSchema['dataSource']) {
+  if (value === null || value === undefined || value === '') {
+    return null;
   }
 
-  if (options.ellipsis && typeof text === 'string') {
-    return <Typography.Text ellipsis={{ tooltip: text }}>{text}</Typography.Text>;
+  if (typeof value === 'boolean' || format === 'boolean') {
+    return value ? '是' : '否';
   }
 
-  return text;
+  if (Array.isArray(value)) {
+    const items = value
+      .map((item) => dataSource?.find((option) => option.value === item)?.label ?? item)
+      .filter((item) => item !== null && item !== undefined && item !== '');
+    return items.length > 0 ? items.join(', ') : null;
+  }
+
+  if (format === 'date') {
+    return String(value).slice(0, 10);
+  }
+
+  if (format === 'dateTime') {
+    return String(value).slice(0, 16).replace('T', ' ');
+  }
+
+  return String(dataSource?.find((option) => option.value === value)?.label ?? value);
 }
 
 function isComplexColumn(column: TableColumnProjection) {
@@ -100,13 +122,13 @@ function buildInlineTokens(
         return null;
       }
 
-      return formatDisplayText(
+      return getInlineDisplayText(
         childValue,
         childField?.['x-cms']?.table?.format ?? childField?.['x-cms']?.detail?.format,
         childField?.dataSource,
       );
     })
-    .filter(Boolean);
+    .filter((item): item is string => Boolean(item));
 
   return tokens;
 }
@@ -225,12 +247,36 @@ export function renderTableCell(
   record: ModelRecord,
   onOpenFieldDetail: (column: TableColumnProjection, record: ModelRecord) => void,
 ) {
-  if (!isComplexColumn(column)) {
-    return renderSimpleValue(value, {
+  if (canUseSharedDisplayComponent(column.field)) {
+    const summary = getDisplaySummary({
+      value,
       format: column.format,
       dataSource: column.dataSource,
-      ellipsis: column.ellipsis,
     });
+
+    return (
+      <div className="table-cell-complex">
+        <div className="table-cell-summary">
+          {renderSimpleValue(value, {
+            column,
+            format: column.format,
+            dataSource: column.dataSource,
+            ellipsis: column.ellipsis,
+          })}
+        </div>
+        {summary.expandable ? (
+          <Tooltip title={`点击查看${column.title}全部内容`}>
+            <Button
+              type="link"
+              size="small"
+              icon={<ProfileOutlined />}
+              aria-label={`查看${column.title}全部内容`}
+              onClick={() => onOpenFieldDetail(column, record)}
+            />
+          </Tooltip>
+        ) : null}
+      </div>
+    );
   }
 
   const summary =

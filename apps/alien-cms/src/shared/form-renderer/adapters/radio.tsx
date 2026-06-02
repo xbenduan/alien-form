@@ -1,6 +1,5 @@
 import { Radio as AntRadio } from 'antd';
 import type { DataSourceItem } from '@alien-form/react';
-import { FormatValue } from './format-value';
 
 export function Radio({
   value,
@@ -17,10 +16,6 @@ export function Radio({
   readOnly?: boolean;
   format?: string;
 }) {
-  if (readOnly) {
-    return <FormatValue value={value} dataSource={dataSource} format={format} />;
-  }
-
   return (
     <AntRadio.Group value={value} onChange={(event) => onChange?.(event.target.value)} disabled={disabled}>
       {dataSource.map((item) => (

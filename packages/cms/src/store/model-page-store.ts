@@ -4,11 +4,9 @@ import type { RecordProvider } from "../provider/record-provider";
 import type { CmsModelSchema, ModelActionKind, ModelActionOpenMode } from "../types/schema";
 import type { ModelRecord } from "../types/record";
 import type { Pagination, Sorter } from "../types/common";
-import type { FilterFieldProjection, MobileCardProjection, TableColumnProjection } from "../projection/types";
-import { projectFilterFields } from "../projection/project-filter-fields";
+import type { FilterSchemaProjection, MobileCardProjection, TableColumnProjection } from "../projection/types";
+import { projectFilterSchema } from "../projection/project-filter-schema";
 import { projectTableColumns } from "../projection/project-table-columns";
-import { projectFormSchema } from "../projection/project-form-schema";
-import { projectDetailSchema } from "../projection/project-detail-schema";
 import { projectMobileCard } from "../projection/project-mobile-card";
 
 export type ModelActionMode = "closed" | ModelActionKind;
@@ -29,11 +27,9 @@ export class ModelPageStore {
   private readonly provider: RecordProvider;
 
   // ─── Static projections (computed once) ─────────────────────
-  readonly filterFields: FilterFieldProjection[];
+  readonly filterSchema: FilterSchemaProjection["schema"];
+  readonly filterDefaultVisibleKeys: FilterSchemaProjection["defaultVisibleKeys"];
   readonly tableColumns: TableColumnProjection[];
-  readonly addSchema: CmsModelSchema;
-  readonly editSchema: CmsModelSchema;
-  readonly detailSchema: CmsModelSchema;
   readonly mobileCard: MobileCardProjection;
   readonly singularLabel: string;
   readonly pluralLabel: string;
@@ -62,11 +58,10 @@ export class ModelPageStore {
     this.provider = config.recordProvider;
 
     // Projections
-    this.filterFields = projectFilterFields(config.schema);
+    const filterProjection = projectFilterSchema(config.schema);
+    this.filterSchema = filterProjection.schema;
+    this.filterDefaultVisibleKeys = filterProjection.defaultVisibleKeys;
     this.tableColumns = projectTableColumns(config.schema);
-    this.addSchema = projectFormSchema(config.schema, "add");
-    this.editSchema = projectFormSchema(config.schema, "edit");
-    this.detailSchema = projectDetailSchema(config.schema);
     this.mobileCard = projectMobileCard(config.schema);
     this.singularLabel = config.schema["x-model"]?.singularLabel ?? "Record";
     this.pluralLabel = config.schema["x-model"]?.pluralLabel ?? "Records";

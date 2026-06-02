@@ -11,6 +11,15 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
+function getValueByPath(record: Record<string, unknown>, path: string) {
+  return path.split('.').reduce<unknown>((currentValue, key) => {
+    if (!isPlainObject(currentValue)) {
+      return undefined;
+    }
+    return currentValue[key];
+  }, record);
+}
+
 function compareValues(left: unknown, right: unknown, order: SortOrder) {
   const leftValue = left ?? '';
   const rightValue = right ?? '';
@@ -64,15 +73,7 @@ function matches(record: Record<string, unknown>, filters: Record<string, unknow
       return true;
     }
 
-    const recordValue = record[key];
-    if (isPlainObject(filterValue)) {
-      if (!isPlainObject(recordValue)) {
-        return false;
-      }
-      return matches(recordValue, filterValue);
-    }
-
-    return matchesValue(recordValue, filterValue);
+    return matchesValue(getValueByPath(record, key), filterValue);
   });
 }
 

@@ -1,6 +1,8 @@
 export {
-  SchemaFormScene,
+  canUseSharedDisplayComponent,
   recordFormComponents,
   recordFormDecorators,
-} from './components/schema-form-scene';
+  detailFormComponents,
+  resolveSharedDisplayComponent,
+} from './components/component-registry';
 export { FormActions, FormActionContext, type FormActionContextValue } from './components/form-actions';

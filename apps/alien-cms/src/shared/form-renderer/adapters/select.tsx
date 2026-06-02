@@ -1,6 +1,5 @@
 import { Select as AntSelect } from 'antd';
 import type { DataSourceItem } from '@alien-form/react';
-import { FormatValue } from './format-value';
 
 export function Select({
   value,
@@ -23,10 +22,6 @@ export function Select({
   mode?: 'multiple' | 'tags';
   format?: string;
 }) {
-  if (readOnly) {
-    return <FormatValue value={value} dataSource={dataSource} format={format} />;
-  }
-
   return (
     <AntSelect
       style={{ width: '100%' }}

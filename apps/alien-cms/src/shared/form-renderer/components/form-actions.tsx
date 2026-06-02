@@ -1,5 +1,5 @@
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
-import { useForm } from '@alien-form/react';
+import type { FormInstance } from '@alien-form/react';
 import type { ButtonProps } from 'antd';
 import { Button, Space } from 'antd';
 import { createContext, useContext } from 'react';
@@ -22,9 +22,8 @@ export interface FormActionContextValue {
 
 export const FormActionContext = createContext<FormActionContextValue | null>(null);
 
-export function FormActions() {
+export function FormActions({ form }: { form: FormInstance }) {
   const ctx = useContext(FormActionContext);
-  const form = useForm();
 
   if (!ctx) return null;
 

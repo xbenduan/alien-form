@@ -1,6 +1,5 @@
 import { Checkbox } from 'antd';
 import type { DataSourceItem } from '@alien-form/react';
-import { FormatValue } from './format-value';
 
 export function CheckboxGroup({
   value,
@@ -17,10 +16,6 @@ export function CheckboxGroup({
   readOnly?: boolean;
   format?: string;
 }) {
-  if (readOnly) {
-    return <FormatValue value={value} dataSource={dataSource} format={format} />;
-  }
-
   return (
     <Checkbox.Group
       value={value}

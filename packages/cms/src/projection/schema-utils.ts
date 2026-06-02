@@ -5,11 +5,3 @@ export function sortSchemaEntries<T extends CmsFieldSchema>(fields: Record<strin
     ([, left], [, right]) => (left.order ?? 0) - (right.order ?? 0),
   );
 }
-
-export function canUseInMode(field: CmsFieldSchema, mode: "add" | "edit") {
-  const modes = field["x-cms"]?.form?.modes;
-  if (!modes) {
-    return true;
-  }
-  return modes.includes(mode);
-}

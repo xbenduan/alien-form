@@ -1,6 +1,6 @@
 import type { CmsModelSchema } from "../types/schema";
 import type { MobileCardProjection } from "./types";
-import { sortSchemaEntries } from "./shared";
+import { sortSchemaEntries } from "./schema-utils";
 
 /**
  * Projects a CmsModelSchema into a mobile card layout descriptor.

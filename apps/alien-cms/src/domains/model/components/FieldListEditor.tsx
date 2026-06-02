@@ -94,8 +94,8 @@ export function FieldListEditor({
             <Typography.Text strong>{field.title || '未命名字段'}</Typography.Text>
             <div className="builder-field-item-meta">
               <span>{field.key || '未设置 key'}</span>
-              <Tag bordered={false}>{field.type}</Tag>
-              <Tag bordered={false}>{field.component}</Tag>
+              <Tag variant="filled">{field.type}</Tag>
+              <Tag variant="filled">{field.component}</Tag>
             </div>
           </div>
         </Space>

@@ -1,7 +1,7 @@
-import { schemaHandlers } from '@alien-form/cms';
 import type { DataSourceItem, RuntimeRuleHandler } from '@alien-form/core';
 import type { CmsFieldSchema, CmsModelSchema, ModelRecord } from '../types/record';
 import { cmsAppStore } from '../../services/app-store/cms-app-store';
+import { schemaHandlers } from '../../shared/schema-handlers';
 
 type HandlerValueSource =
   | unknown

@@ -47,7 +47,7 @@ export function RecordWorkbenchHeader({
               label: (
                 <span className="model-global-nav-item">
                   <span>日志</span>
-                  <Tag bordered={false} color="processing">
+                  <Tag variant="filled" color="processing">
                     开发中
                   </Tag>
                 </span>
@@ -59,7 +59,7 @@ export function RecordWorkbenchHeader({
               label: (
                 <span className="model-global-nav-item">
                   <span>设置</span>
-                  <Tag bordered={false} color="processing">
+                  <Tag variant="filled" color="processing">
                     开发中
                   </Tag>
                 </span>

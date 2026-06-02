@@ -25,11 +25,9 @@ interface UseRecordPageResult {
   schema?: CmsModelSchema;
   schemaLoading: boolean;
   schemaError?: Error | null;
-  filterFields: ModelPageStore['filterFields'];
+  filterSchema?: ModelPageStore['filterSchema'];
+  filterDefaultVisibleKeys: ModelPageStore['filterDefaultVisibleKeys'];
   tableColumns: ModelPageStore['tableColumns'];
-  addSchema?: CmsModelSchema;
-  editSchema?: CmsModelSchema;
-  detailSchema?: CmsModelSchema;
   records: ModelRecord[];
   total: number;
   listLoading: boolean;
@@ -186,11 +184,9 @@ export function useRecordPage(modelName: string, options: UseRecordPageOptions):
     schema,
     schemaLoading: schemaQuery.isLoading || schemaQuery.isFetching,
     schemaError: schemaQuery.error,
-    filterFields: store?.filterFields ?? [],
+    filterSchema: store?.filterSchema,
+    filterDefaultVisibleKeys: store?.filterDefaultVisibleKeys ?? [],
     tableColumns: store?.tableColumns ?? [],
-    addSchema: store?.addSchema,
-    editSchema: store?.editSchema,
-    detailSchema: store?.detailSchema,
     records: records ?? [],
     total: total ?? 0,
     listLoading: Boolean(listLoading),

@@ -1,6 +1,5 @@
 import { DatePicker } from 'antd';
 import dayjs from 'dayjs';
-import { FormatValue } from './format-value';
 
 export function DateInput({
   value,
@@ -17,10 +16,6 @@ export function DateInput({
   placeholder?: string;
   format?: string;
 }) {
-  if (readOnly) {
-    return <FormatValue value={value} format={format ?? 'date'} />;
-  }
-
   return (
     <DatePicker
       style={{ width: '100%' }}

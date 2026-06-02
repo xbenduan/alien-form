@@ -1,8 +1,6 @@
-import { Alert, Card, Drawer, Empty, Modal, Spin } from 'antd';
-import type { ReactNode } from 'react';
-import { useMemo } from 'react';
 import type { CmsModelSchema, ModelActionMode, ModelActionOpenMode, ModelRecord } from '../types/record';
-import { DetailSchemaView, SchemaFormView } from './SchemaRenderer';
+import { RecordActionContent } from './RecordActionContent';
+import { RecordActionFrame } from './RecordActionFrame';
 
 function buildActionMeta(mode: ModelActionMode, singularLabel: string) {
   switch (mode) {
@@ -37,9 +35,7 @@ interface RecordActionHostProps {
   mode: ModelActionMode;
   openMode: ModelActionOpenMode;
   singularLabel: string;
-  addSchema: CmsModelSchema;
-  editSchema: CmsModelSchema;
-  detailSchema: CmsModelSchema;
+  schema: CmsModelSchema;
   record?: ModelRecord;
   loading?: boolean;
   submitting?: boolean;
@@ -52,9 +48,7 @@ export function RecordActionHost({
   mode,
   openMode,
   singularLabel,
-  addSchema,
-  editSchema,
-  detailSchema,
+  schema,
   record,
   loading,
   submitting,
@@ -62,94 +56,35 @@ export function RecordActionHost({
   onSubmitAdd,
   onSubmitEdit,
 }: RecordActionHostProps) {
-  const open = mode !== 'closed';
-  const meta = buildActionMeta(mode, singularLabel);
-  const formKey = useMemo(() => `${mode}:${record?.id ?? 'new'}`, [mode, record?.id]);
-
-  let content: ReactNode = null;
-
-  if (mode === 'detail') {
-    if (loading) {
-      content = <Spin className="drawer-loading" />;
-    } else if (!record) {
-      content = <Empty description="暂无详情数据" />;
-    } else {
-      content = <DetailSchemaView key={formKey} schema={detailSchema} initialValues={record} />;
-    }
-  }
-
-  if (mode === 'edit') {
-    if (loading) {
-      content = <Spin className="drawer-loading" />;
-    } else if (!record) {
-      content = <Alert type="warning" showIcon message="记录不存在或加载失败" />;
-    } else {
-      content = (
-        <SchemaFormView
-          key={formKey}
-          schema={editSchema}
-          initialValues={record}
-          submitText="保存修改"
-          loading={submitting}
-          layout={openMode === 'page' ? 'page' : 'overlay'}
-          onCancel={onClose}
-          onSubmit={onSubmitEdit}
-        />
-      );
-    }
-  }
-
-  if (mode === 'add') {
-    content = (
-      <SchemaFormView
-        key={formKey}
-        schema={addSchema}
-        submitText="创建记录"
-        loading={submitting}
-        layout={openMode === 'page' ? 'page' : 'overlay'}
-        onCancel={onClose}
-        onSubmit={onSubmitAdd}
-      />
-    );
-  }
-
   if (mode === 'closed') {
     return null;
   }
 
-  if (openMode === 'page') {
-    return (
-      <Card className="model-action-page" styles={{ body: { padding: 24 } }}>
-        <div className="model-action-page-body">{content}</div>
-      </Card>
-    );
-  }
-
-  if (openMode === 'modal') {
-    return (
-      <Modal
-        centered
-        destroyOnHidden
-        footer={null}
-        title={meta.title}
-        open={open}
-        width={meta.modalWidth}
-        onCancel={onClose}
-      >
-        {content}
-      </Modal>
-    );
-  }
+  const open = mode !== 'closed';
+  const meta = buildActionMeta(mode, singularLabel);
+  const formKey = `${mode}:${record?.id ?? 'new'}`;
 
   return (
-    <Drawer
-      destroyOnHidden
-      title={meta.title}
+    <RecordActionFrame
+      openMode={openMode}
       open={open}
-      width={meta.drawerWidth}
+      title={meta.title}
+      drawerWidth={meta.drawerWidth}
+      modalWidth={meta.modalWidth}
       onClose={onClose}
     >
-      {content}
-    </Drawer>
+      <RecordActionContent
+        mode={mode}
+        openMode={openMode}
+        formKey={formKey}
+        schema={schema}
+        record={record}
+        loading={loading}
+        submitting={submitting}
+        onClose={onClose}
+        onSubmitAdd={onSubmitAdd}
+        onSubmitEdit={onSubmitEdit}
+      />
+    </RecordActionFrame>
   );
 }

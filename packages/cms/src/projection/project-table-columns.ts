@@ -1,6 +1,6 @@
 import type { CmsModelSchema } from "../types/schema";
 import type { TableColumnProjection } from "./types";
-import { sortSchemaEntries } from "./shared";
+import { sortSchemaEntries } from "./schema-utils";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);

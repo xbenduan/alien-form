@@ -54,7 +54,7 @@ export default function RecordPage({
     );
   }
 
-  if (page.schemaError || !page.schema || !page.addSchema || !page.editSchema || !page.detailSchema) {
+  if (page.schemaError || !page.schema || !page.filterSchema) {
     return (
       <>
         <div className="model-breadcrumb-bar">
@@ -95,7 +95,8 @@ export default function RecordPage({
             <Row gutter={[20, 20]} align="top" wrap={false} className="model-toolbar-row">
               <Col flex="auto">
                 <RecordFilterBar
-                  fields={page.filterFields}
+                  schema={page.filterSchema}
+                  defaultVisibleKeys={page.filterDefaultVisibleKeys}
                   values={page.filters}
                   loading={page.listLoading}
                   onSearch={page.setFilters}
@@ -162,9 +163,7 @@ export default function RecordPage({
         mode={page.actionMode}
         openMode={page.actionOpenMode ?? 'drawer'}
         singularLabel={singularLabel}
-        addSchema={page.addSchema}
-        editSchema={page.editSchema}
-        detailSchema={page.detailSchema}
+        schema={page.schema}
         record={page.activeRecord}
         loading={page.detailLoading}
         submitting={page.submitting}

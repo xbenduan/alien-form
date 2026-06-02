@@ -1,8 +1,15 @@
-import type { CmsModelSchema } from '@alien-form/cms';
 import type { ButtonProps } from 'antd';
 import { message } from 'antd';
-import { recordSchemaHandlers } from '../schema-handlers';
-import { FormActionContext, SchemaFormScene } from '../../../shared/form-renderer';
+import type { CmsModelSchema } from '../types/record';
+import { RecordActionFormScene } from './RecordActionFormScene';
+import {
+  FormActionContext,
+  FormActions,
+  detailFormComponents,
+  recordFormComponents,
+  recordFormDecorators,
+  type FormActionContextValue,
+} from '../../../shared/form-renderer';
 
 interface SchemaFormViewProps {
   schema: CmsModelSchema;
@@ -29,11 +36,10 @@ export function SchemaFormView({
 }: SchemaFormViewProps) {
   const layoutClassName =
     layout === 'page' ? 'schema-form-layout schema-form-layout-page' : 'schema-form-layout';
-  const [messageApi, messageContextHolder] = message.useMessage();
-  const actionsCtx = hideActions
+  const actionsCtx: FormActionContextValue | null = hideActions
     ? null
     : {
-        kind: 'submit' as const,
+        kind: 'submit',
         loading,
         submitText,
         submitButtonProps,
@@ -46,35 +52,37 @@ export function SchemaFormView({
             ? (error as { messages?: string[] }).messages
             : undefined;
           if (messages?.length) {
-            messageApi.warning(messages[0]);
+            message.warning(messages[0]);
             return;
           }
-          messageApi.warning('请先修正表单校验错误');
+          message.warning('请先修正表单校验错误');
         },
       };
 
   return (
     <div className={layoutClassName}>
-      {messageContextHolder}
       <FormActionContext.Provider value={actionsCtx}>
-        <SchemaFormScene
+        <RecordActionFormScene
           schema={schema}
           initialValues={initialValues}
-          handlers={recordSchemaHandlers}
+          components={recordFormComponents}
+          decorators={recordFormDecorators}
           loading={loading}
-          onError={(error) => {
-            if (error.scope === 'x-validate' || error.scope === 'expression') {
-              return;
-            }
-            messageApi.warning(error.message);
-          }}
+          contentClassName="schema-form-content"
+          footer={(form) => (
+            hideActions
+              ? null
+              : (
+                  <div className="schema-form-footer-actions">
+                    <FormActions form={form} />
+                  </div>
+                )
+          )}
         />
       </FormActionContext.Provider>
     </div>
   );
 }
-
-export const DrawerSchemaForm = SchemaFormView;
 
 export function DetailSchemaView({
   schema,
@@ -84,10 +92,12 @@ export function DetailSchemaView({
   initialValues?: Record<string, unknown>;
 }) {
   return (
-    <SchemaFormScene
+    <RecordActionFormScene
       schema={schema}
       initialValues={initialValues}
-      handlers={recordSchemaHandlers}
+      components={detailFormComponents}
+      decorators={recordFormDecorators}
+      contentClassName="schema-form-content"
     />
   );
 }

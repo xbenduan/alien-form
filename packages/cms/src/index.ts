@@ -1,8 +1,8 @@
 /**
  * @alien-form/cms — Framework-agnostic CMS business core
  *
- * Provides types, data providers, stores, projections, format utilities,
- * and schema handlers. UI frameworks (React/Vue/Solid) only need to
+ * Provides types, data providers, stores, and schema projections.
+ * UI frameworks (React/Vue/Solid) only need to
  * subscribe to store signals and render.
  */
 
@@ -94,16 +94,11 @@ export type { ConnectionMode } from "./store/app-store";
 
 // ─── Projections ──────────────────────────────────────────────
 export { projectTableColumns } from "./projection/project-table-columns";
-export { projectFilterFields } from "./projection/project-filter-fields";
-export { projectFormSchema } from "./projection/project-form-schema";
-export { projectDetailSchema, projectFieldDetailSchema, projectDetailField } from "./projection/project-detail-schema";
-export { projectDetailItems } from "./projection/project-detail-items";
+export { projectFilterSchema } from "./projection/project-filter-schema";
 export { projectMobileCard } from "./projection/project-mobile-card";
-export { sortSchemaEntries, canUseInMode } from "./projection/shared";
 export type {
   TableColumnProjection,
-  FilterFieldProjection,
-  DetailItemProjection,
+  FilterSchemaProjection,
   MobileCardProjection,
 } from "./projection/types";
 
@@ -111,11 +106,3 @@ export type {
 export { normalizeSchema } from "./schema/normalize-schema";
 export { buildModelSchema } from "./schema/build-model-schema";
 export { schemaToBuilderDraft } from "./schema/schema-to-builder-draft";
-
-// ─── Format ───────────────────────────────────────────────────
-export { formatValue } from "./format/format-value";
-export type { FormattedResult } from "./format/format-value";
-
-// ─── Handlers ─────────────────────────────────────────────────
-export { schemaHandlers, schemaHandlerCatalog } from "./handlers/schema-handlers";
-export type { SchemaHandlerCatalogItem } from "./handlers/schema-handlers";

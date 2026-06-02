@@ -1,5 +1,5 @@
 import type { DataSourceItem } from "@alien-form/core";
-import type { CmsFieldSchema, ValueFormat } from "../types/schema";
+import type { CmsFieldSchema, CmsModelSchema, ValueFormat } from "../types/schema";
 
 export interface TableColumnProjection {
   key: string;
@@ -15,25 +15,9 @@ export interface TableColumnProjection {
   field: CmsFieldSchema;
 }
 
-export interface FilterFieldProjection {
-  key: string;
-  title: string;
-  type?: string;
-  component?: string;
-  operator: string;
-  props?: Record<string, unknown>;
-  dataSource?: DataSourceItem[];
-  defaultVisible: boolean;
-  order: number;
-}
-
-export interface DetailItemProjection {
-  key: string;
-  title: string;
-  format?: ValueFormat;
-  dataSource?: DataSourceItem[];
-  type?: string;
-  order: number;
+export interface FilterSchemaProjection {
+  schema: CmsModelSchema;
+  defaultVisibleKeys: string[];
 }
 
 export interface MobileCardProjection {
