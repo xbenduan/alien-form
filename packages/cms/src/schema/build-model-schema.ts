@@ -125,9 +125,10 @@ export function buildModelSchema(draft: ModelBuilderDraft): CmsModelSchema {
       filter: {
         count: draft.filterCount,
       },
-      table: draft.tableVisibleFields.length > 0
+      table: draft.tableVisibleFields.length > 0 || draft.tableDefaultWidth != null
         ? {
-            visible: draft.tableVisibleFields,
+            width: draft.tableDefaultWidth,
+            visible: draft.tableVisibleFields.length > 0 ? draft.tableVisibleFields : undefined,
           }
         : undefined,
       defaultPageSize: draft.defaultPageSize,

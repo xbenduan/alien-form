@@ -83,6 +83,7 @@ export function normalizeSchema(rawSchema: CmsModelSchema): CmsModelSchema {
       },
       table: rawSchema["x-model"]?.table
         ? {
+            width: rawSchema["x-model"]?.table?.width,
             visible: rawSchema["x-model"]?.table?.visible,
           }
         : undefined,

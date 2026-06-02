@@ -55,6 +55,7 @@ function createInitialDraft(): ModelBuilderDraft {
     pluralLabel: "记录",
     defaultPageSize: 10,
     filterCount: 3,
+    tableDefaultWidth: undefined,
     tableVisibleFields: [],
     openMode: { add: "drawer", edit: "drawer", detail: "drawer" },
     fields: [createFieldDraft("string", "Input")],

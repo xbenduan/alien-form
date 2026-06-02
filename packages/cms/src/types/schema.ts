@@ -53,6 +53,7 @@ export interface CmsModelFilterMeta {
 }
 
 export interface CmsModelTableMeta {
+  width?: number;
   visible?: string[];
 }
 

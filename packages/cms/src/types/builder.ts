@@ -62,6 +62,7 @@ export interface ModelBuilderDraft {
   pluralLabel: string;
   defaultPageSize: number;
   filterCount: number;
+  tableDefaultWidth?: number;
   tableVisibleFields: string[];
   openMode: Partial<Record<"add" | "edit" | "detail", ModelActionOpenMode>>;
   fields: ModelBuilderFieldDraft[];

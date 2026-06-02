@@ -119,6 +119,7 @@ export function schemaToBuilderDraft(schema: CmsModelSchema): ModelBuilderDraft 
     pluralLabel: meta.pluralLabel ?? "Records",
     defaultPageSize: meta.defaultPageSize ?? 10,
     filterCount: meta.filter?.count ?? 3,
+    tableDefaultWidth: meta.table?.width,
     tableVisibleFields: meta.table?.visible ?? [],
     openMode: {
       add: meta.openMode?.add ?? "drawer",

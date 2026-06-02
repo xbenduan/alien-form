@@ -78,6 +78,15 @@ export function ModelMetaForm({ draft, onChange, hideTitle, modelNameDisabled, t
             onChange={(value) => onChange({ ...draft, filterCount: value ?? 3 })}
           />
         </Form.Item>
+        <Form.Item label="表格默认宽度">
+          <InputNumber
+            min={80}
+            max={480}
+            value={draft.tableDefaultWidth}
+            placeholder="为空时走渲染层默认公式"
+            onChange={(value) => onChange({ ...draft, tableDefaultWidth: value ?? undefined })}
+          />
+        </Form.Item>
         <Form.Item label="表格展示字段">
           <Select
             mode="multiple"
