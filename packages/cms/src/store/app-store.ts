@@ -135,11 +135,16 @@ export class AppStore {
 
   // ─── Child Store Factories ──────────────────────────────────
 
-  createModelPageStore(modelName: string, schema: CmsModelSchema): ModelPageStore {
+  createModelPageStore(
+    modelName: string,
+    schema: CmsModelSchema,
+    options?: { tableVisibleKeys?: string[] },
+  ): ModelPageStore {
     return new ModelPageStore({
       modelName,
       schema,
       recordProvider: this.recordProvider(),
+      tableVisibleKeys: options?.tableVisibleKeys,
     });
   }
 

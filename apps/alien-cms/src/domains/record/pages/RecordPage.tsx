@@ -1,4 +1,4 @@
-import { ArrowLeftOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, SettingOutlined } from '@ant-design/icons';
 import { Alert, Breadcrumb, Button, Card, Col, Row, Spin, Tooltip, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { buildModelEditPath } from '../../../app/router/paths';
@@ -6,6 +6,7 @@ import { useRecordPage } from '../hooks/use-record-page';
 import type { RecordRouteState } from '../types/record';
 import { RecordActionHost } from '../components/RecordActionHost';
 import { RecordFilterBar } from '../components/RecordFilterBar';
+import { RecordToolbarActions } from '../components/RecordToolbarActions';
 import { RecordTable } from '../components/RecordTable';
 
 interface RecordPageProps {
@@ -112,15 +113,14 @@ export default function RecordPage({
                       onClick={() => navigate(buildModelEditPath(modelName))}
                     />
                   </Tooltip>
-                  <Button
-                    type="primary"
-                    size="large"
-                    className="model-add-button"
-                    icon={<PlusOutlined />}
-                    onClick={page.openAdd}
-                  >
-                    新增{singularLabel}
-                  </Button>
+                  <RecordToolbarActions
+                    singularLabel={singularLabel}
+                    tableFieldOptions={page.tableFieldOptions}
+                    tableVisibleKeys={page.tableVisibleKeys}
+                    onOpenAdd={page.openAdd}
+                    onChangeTableVisibleKeys={page.setTableVisibleKeys}
+                    onResetTableVisibleKeys={page.resetTableVisibleKeys}
+                  />
                 </div>
               </Col>
             </Row>

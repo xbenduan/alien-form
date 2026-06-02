@@ -1,9 +1,30 @@
 import dayjs from 'dayjs';
 import { normalizeSchema } from '@alien-form/cms';
-import type { CmsModelSchema, ModelSummary, RuntimeModelSchemaRecord } from '../../domains/record/types/record';
+import type {
+  CmsModelSchema,
+  LocalSchemaRecordSource,
+  ModelSource,
+  ModelSummary,
+  RuntimeModelSchemaRecord,
+} from '../../domains/record/types/record';
 import { db, ensureDatabaseReady } from '../db/dexie';
 
-function toRecord(schema: CmsModelSchema, existing?: RuntimeModelSchemaRecord): RuntimeModelSchemaRecord {
+interface SaveSchemaOptions {
+  source?: LocalSchemaRecordSource;
+}
+
+interface DeleteSchemaOptions {
+  source?: ModelSource;
+  title?: string;
+  subtitle?: string;
+  description?: string;
+}
+
+function toRecord(
+  schema: CmsModelSchema,
+  existing?: RuntimeModelSchemaRecord,
+  options: SaveSchemaOptions = {},
+): RuntimeModelSchemaRecord {
   const normalized = normalizeSchema(schema as never) as unknown as CmsModelSchema;
   const modelName = normalized['x-model']?.name ?? 'unknown';
   const now = dayjs().toISOString();
@@ -15,53 +36,92 @@ function toRecord(schema: CmsModelSchema, existing?: RuntimeModelSchemaRecord): 
     subtitle: normalized['x-model']?.subtitle,
     description: normalized['x-model']?.description ?? normalized.description,
     schema: normalized,
-    source: 'runtime',
+    source: options.source ?? existing?.source ?? 'runtime',
+    deleted: false,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+}
+
+function toDeletedRecord(
+  modelName: string,
+  existing?: RuntimeModelSchemaRecord,
+  options: DeleteSchemaOptions = {},
+): RuntimeModelSchemaRecord {
+  const now = dayjs().toISOString();
+
+  return {
+    id: modelName,
+    modelName,
+    title: options.title ?? existing?.title ?? modelName,
+    subtitle: options.subtitle ?? existing?.subtitle,
+    description: options.description ?? existing?.description,
+    source: options.source === 'static' ? 'static-override' : existing?.source ?? 'runtime',
+    deleted: true,
+    schema: undefined,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   };
 }
 
 export class DexieSchemaService {
-  async list(): Promise<RuntimeModelSchemaRecord[]> {
+  async listRecords(): Promise<RuntimeModelSchemaRecord[]> {
     await ensureDatabaseReady();
     return db.modelSchemas.orderBy('updatedAt').reverse().toArray();
   }
 
+  async getRecord(modelName: string): Promise<RuntimeModelSchemaRecord | undefined> {
+    await ensureDatabaseReady();
+    return db.modelSchemas.get(modelName);
+  }
+
   async listSummaries(): Promise<ModelSummary[]> {
-    const rows = await this.list();
-    return rows.map((item) => ({
+    const rows = await this.listRecords();
+    return rows
+      .filter((item) => !item.deleted && item.schema)
+      .map((item) => ({
       name: item.modelName,
       title: item.title,
       subtitle: item.subtitle,
       description: item.description,
       source: 'runtime',
-    }));
+      updatedAt: item.updatedAt,
+      fieldCount: Object.keys(item.schema?.properties ?? {}).length,
+      }));
   }
 
   async get(modelName: string): Promise<CmsModelSchema | undefined> {
-    await ensureDatabaseReady();
-    const row = await db.modelSchemas.get(modelName);
-    return row ? (normalizeSchema(row.schema as never) as unknown as CmsModelSchema) : undefined;
+    const row = await this.getRecord(modelName);
+    if (!row || row.deleted || !row.schema) {
+      return undefined;
+    }
+
+    return normalizeSchema(row.schema as never) as unknown as CmsModelSchema;
   }
 
   async exists(modelName: string): Promise<boolean> {
-    await ensureDatabaseReady();
-    return Boolean(await db.modelSchemas.get(modelName));
+    const row = await this.getRecord(modelName);
+    return Boolean(row && !row.deleted && row.schema);
   }
 
-  async save(schema: CmsModelSchema): Promise<RuntimeModelSchemaRecord> {
+  async save(schema: CmsModelSchema, options: SaveSchemaOptions = {}): Promise<RuntimeModelSchemaRecord> {
     await ensureDatabaseReady();
     const modelName = schema['x-model']?.name ?? 'unknown';
     const existing = await db.modelSchemas.get(modelName);
-    const record = toRecord(schema, existing);
+    const record = toRecord(schema, existing, options);
     await db.modelSchemas.put(record);
     return record;
   }
 
-  async delete(modelName: string): Promise<void> {
+  async delete(modelName: string, options: DeleteSchemaOptions = {}): Promise<void> {
     await ensureDatabaseReady();
     await db.transaction('rw', db.modelSchemas, db.modelRecords, async () => {
-      await db.modelSchemas.delete(modelName);
+      if (options.source === 'static') {
+        const existing = await db.modelSchemas.get(modelName);
+        await db.modelSchemas.put(toDeletedRecord(modelName, existing, options));
+      } else {
+        await db.modelSchemas.delete(modelName);
+      }
       await db.modelRecords.where('modelName').equals(modelName).delete();
     });
   }

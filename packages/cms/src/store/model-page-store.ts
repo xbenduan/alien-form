@@ -15,6 +15,7 @@ export interface ModelPageStoreConfig {
   modelName: string;
   schema: CmsModelSchema;
   recordProvider: RecordProvider;
+  tableVisibleKeys?: string[];
 }
 
 /**
@@ -61,7 +62,9 @@ export class ModelPageStore {
     const filterProjection = projectFilterSchema(config.schema);
     this.filterSchema = filterProjection.schema;
     this.filterDefaultVisibleKeys = filterProjection.defaultVisibleKeys;
-    this.tableColumns = projectTableColumns(config.schema);
+    this.tableColumns = projectTableColumns(config.schema, {
+      visibleKeysOverride: config.tableVisibleKeys,
+    });
     this.mobileCard = projectMobileCard(config.schema);
     this.singularLabel = config.schema["x-model"]?.singularLabel ?? "Record";
     this.pluralLabel = config.schema["x-model"]?.pluralLabel ?? "Records";

@@ -11,11 +11,11 @@ export class AlienCmsDatabase extends Dexie {
 
   constructor() {
     super('alien-cms');
-    this.version(6).stores({
+    this.version(7).stores({
       employees: 'id, level, hiredAt, updatedAt, createdAt',
       services: 'id, category, difficulty, updatedAt, createdAt',
       bookings: 'id, status, serviceId, employeeId, bookingDate, updatedAt, createdAt',
-      modelSchemas: 'id, modelName, updatedAt, createdAt',
+      modelSchemas: 'id, modelName, source, deleted, updatedAt, createdAt',
       modelRecords: 'id, modelName, updatedAt, createdAt',
     });
   }

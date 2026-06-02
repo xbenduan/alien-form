@@ -2,6 +2,10 @@ import type { CmsModelSchema } from "../types/schema";
 import type { TableColumnProjection } from "./types";
 import { sortSchemaEntries } from "./schema-utils";
 
+interface ProjectTableColumnsOptions {
+  visibleKeysOverride?: string[];
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
@@ -30,9 +34,12 @@ function getDefaultColumnWidth(column: {
   return clamp(titleWidth, 120, 240);
 }
 
-export function projectTableColumns(schema: CmsModelSchema): TableColumnProjection[] {
+export function projectTableColumns(
+  schema: CmsModelSchema,
+  options: ProjectTableColumnsOptions = {},
+): TableColumnProjection[] {
   const entries = sortSchemaEntries(schema.properties);
-  const visibleKeys = schema["x-model"]?.table?.visible;
+  const visibleKeys = options.visibleKeysOverride ?? schema["x-model"]?.table?.visible;
   const defaultModelWidth = schema["x-model"]?.table?.width;
   const visibleKeySet = Array.isArray(visibleKeys) && visibleKeys.length > 0
     ? new Set(visibleKeys)

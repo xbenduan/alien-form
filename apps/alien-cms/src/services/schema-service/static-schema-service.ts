@@ -23,6 +23,10 @@ function getStaticSchemas() {
     .sort((left, right) => left.modelName.localeCompare(right.modelName));
 }
 
+export function listStaticSchemas() {
+  return getStaticSchemas();
+}
+
 export function listStaticModelSummaries(): ModelSummary[] {
   return getStaticSchemas().map(({ modelName, schema }) => ({
     name: modelName,

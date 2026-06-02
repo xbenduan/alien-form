@@ -1,5 +1,5 @@
 import { signal } from '@alien-form/core';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSignalValue } from '@alien-form/react';
 import type {
   CmsModelSchema,
@@ -14,6 +14,13 @@ import type {
 import { cmsAppStore } from '../../../services/app-store/cms-app-store';
 import { useRecordSchema } from './use-record-schema';
 import type { RecordRouteState } from '../types/record';
+import {
+  clearTableVisibleKeys,
+  getDefaultVisibleKeys,
+  readTableVisibleKeys,
+  sanitizeVisibleKeys,
+  writeTableVisibleKeys,
+} from '../utils/table-column-preference';
 
 interface UseRecordPageOptions {
   routeAction: RecordRouteState;
@@ -42,6 +49,10 @@ interface UseRecordPageResult {
   setFilters: (values: Record<string, unknown>) => void;
   setPagination: (values: { current: number; pageSize: number }) => void;
   setSorter: (values?: { field?: string; order?: 'ascend' | 'descend' }) => void;
+  tableVisibleKeys: string[];
+  tableFieldOptions: Array<{ label: string; value: string }>;
+  setTableVisibleKeys: (values: string[]) => void;
+  resetTableVisibleKeys: () => void;
   openAdd: () => void;
   openEdit: (id: string) => void;
   openDetail: (id: string) => void;
@@ -68,9 +79,24 @@ export function useRecordPage(modelName: string, options: UseRecordPageOptions):
   const { routeAction, onRouteActionChange } = options;
   const schemaQuery = useRecordSchema(modelName);
   const schema = schemaQuery.data;
+  const [tableVisibleKeys, setTableVisibleKeysState] = useState<string[] | undefined>(undefined);
+
+  useEffect(() => {
+    setTableVisibleKeysState(readTableVisibleKeys(modelName, schema as CmsModelSchema | undefined));
+  }, [modelName, schema]);
+
+  const mergedTableVisibleKeys = useMemo(
+    () => sanitizeVisibleKeys(schema as CmsModelSchema | undefined, tableVisibleKeys ?? getDefaultVisibleKeys(schema as CmsModelSchema | undefined)),
+    [schema, tableVisibleKeys],
+  );
+
   const store = useMemo(
-    () => (schema ? cmsAppStore.createModelPageStore(modelName, schema as CmsModelSchema) : undefined),
-    [modelName, schema],
+    () => (schema
+      ? cmsAppStore.createModelPageStore(modelName, schema as CmsModelSchema, {
+          tableVisibleKeys: mergedTableVisibleKeys,
+        })
+      : undefined),
+    [mergedTableVisibleKeys, modelName, schema],
   );
   const filters = useSignalValue<Record<string, unknown>>(store?.filters ?? emptyFiltersSignal);
   const pagination = useSignalValue<Pagination>(store?.pagination ?? defaultPaginationSignal);
@@ -213,6 +239,22 @@ export function useRecordPage(modelName: string, options: UseRecordPageOptions):
         return;
       }
       store?.setSorter(undefined);
+    },
+    tableVisibleKeys: mergedTableVisibleKeys,
+    tableFieldOptions: Object.entries(schema?.properties ?? {}).map(([key, field]) => ({
+      value: key,
+      label: `${field.title ?? key} (${key})`,
+    })),
+    setTableVisibleKeys: (values) => {
+      const nextVisibleKeys = sanitizeVisibleKeys(schema as CmsModelSchema | undefined, values);
+      setTableVisibleKeysState(nextVisibleKeys);
+      if (schema) {
+        writeTableVisibleKeys(modelName, schema as CmsModelSchema, nextVisibleKeys);
+      }
+    },
+    resetTableVisibleKeys: () => {
+      clearTableVisibleKeys(modelName);
+      setTableVisibleKeysState(undefined);
     },
     openAdd: () => {
       openAction('add');

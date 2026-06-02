@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from "
 import WorkbenchLayout from "../layout/WorkbenchLayout";
 import { buildRecordPath } from "./paths";
 import { getDefaultModelName } from "../../services/app-store/cms-app-store";
+import ModelManagementPage from "../../domains/model/pages/ModelManagementPage";
 import { useRecordModelSummaries } from "../../domains/record/hooks/use-record-model-summaries";
 import type { RecordRouteState } from "../../domains/record/types/record";
 import ModelPage from "../../domains/model/pages/ModelPage";
@@ -48,6 +49,7 @@ export function AppRouter() {
       <Routes>
         <Route path="/" element={<WorkbenchLayout />}>
           <Route index element={<HomeRedirect />} />
+          <Route path="models" element={<ModelManagementPage />} />
           <Route path="models/new" element={<ModelPage />} />
           <Route path="models/:modelName/edit" element={<ModelPage />} />
           <Route

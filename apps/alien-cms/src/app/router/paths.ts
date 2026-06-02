@@ -3,6 +3,10 @@ import type { RecordRouteState } from '../../domains/record/types/record';
 export const RECORD_ROUTE_PREFIX = '/records';
 export const MODEL_ROUTE_PREFIX = '/models';
 
+export function buildModelListPath() {
+  return MODEL_ROUTE_PREFIX;
+}
+
 function normalizeRouteState(routeState?: RecordRouteState): RecordRouteState {
   if (!routeState || routeState.mode === 'closed') {
     return { mode: 'closed' };

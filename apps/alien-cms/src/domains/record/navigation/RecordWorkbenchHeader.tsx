@@ -2,12 +2,12 @@ import type { ModelSummary } from '@alien-form/cms';
 import { DatabaseOutlined, SettingOutlined } from '@ant-design/icons';
 import { Card, Menu, Tag, Tooltip, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { buildModelNewPath, buildRecordPath } from '../../../app/router/paths';
+import { buildModelListPath, buildRecordPath } from '../../../app/router/paths';
 
 interface RecordWorkbenchHeaderProps {
   modelSummaries: ModelSummary[];
   activeModel: string;
-  activeGlobalKey?: 'new-model' | 'logs' | 'settings';
+  activeGlobalKey?: 'models' | 'logs' | 'settings';
 }
 
 export function RecordWorkbenchHeader({
@@ -37,9 +37,9 @@ export function RecordWorkbenchHeader({
           selectedKeys={activeGlobalKey ? [activeGlobalKey] : []}
           items={[
             {
-              key: 'new-model',
+              key: 'models',
               icon: <DatabaseOutlined />,
-              label: '新增模型',
+              label: '模型管理',
             },
             {
               key: 'logs',
@@ -67,8 +67,8 @@ export function RecordWorkbenchHeader({
             },
           ]}
           onClick={({ key }) => {
-            if (key === 'new-model') {
-              navigate(buildModelNewPath());
+            if (key === 'models') {
+              navigate(buildModelListPath());
               return;
             }
 

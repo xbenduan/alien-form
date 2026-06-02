@@ -21,8 +21,8 @@ export default function WorkbenchLayout() {
         ? decodeURIComponent(modelEditMatch[1])
         : '';
   const activeGlobalKey =
-    pathname === '/models/new'
-      ? 'new-model'
+    pathname === '/models' || pathname === '/models/new'
+      ? 'models'
       : pathname.startsWith('/logs')
         ? 'logs'
         : pathname.startsWith('/settings')

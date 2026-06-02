@@ -22,6 +22,7 @@ export interface RecordRouteState {
 }
 
 export type ModelSource = 'static' | 'runtime';
+export type LocalSchemaRecordSource = 'runtime' | 'static-override';
 
 export interface RuntimeModelSchemaRecord {
   id: string;
@@ -29,8 +30,9 @@ export interface RuntimeModelSchemaRecord {
   title: string;
   subtitle?: string;
   description?: string;
-  schema: CmsModelSchema;
-  source: 'runtime';
+  schema?: CmsModelSchema;
+  source: LocalSchemaRecordSource;
+  deleted?: boolean;
   createdAt: string;
   updatedAt: string;
 }
