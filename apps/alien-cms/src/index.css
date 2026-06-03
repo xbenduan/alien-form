@@ -272,6 +272,12 @@ body {
     gap: 12px;
 }
 
+.model-add-layout {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
 .model-add-button {
     min-width: 132px;
 }
@@ -574,39 +580,42 @@ body {
 
 /* Builder bottom actions - reuses breadcrumb-bar card */
 .builder-bottom-actions {
-  position: sticky;
-  bottom: 12px;
-  margin-top: 12px;
+    position: sticky;
+    bottom: 12px;
+    margin-top: 12px;
 }
 
 .builder-bottom-actions .model-breadcrumb-content {
-  justify-content: flex-end;
+    justify-content: flex-end;
 }
 
 /* Settings button hover */
 .model-settings-button {
-  transition: color 0.2s, border-color 0.2s, background 0.2s;
+    transition:
+        color 0.2s,
+        border-color 0.2s,
+        background 0.2s;
 }
 
 .model-settings-button:hover {
-  color: #1677ff !important;
-  border-color: #1677ff !important;
-  background: rgba(22, 119, 255, 0.06) !important;
+    color: #1677ff !important;
+    border-color: #1677ff !important;
+    background: rgba(22, 119, 255, 0.06) !important;
 }
 
 .builder-step-body {
-  flex: 1;
-  padding-bottom: 12px;
+    flex: 1;
+    padding-bottom: 12px;
 }
 
 .builder-json-preview {
-  max-height: 520px;
-  overflow: auto;
-  padding: 16px;
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.6;
-  background: #fafafa;
-  border: 1px solid #f0f0f0;
-  border-radius: 6px;
+    max-height: 520px;
+    overflow: auto;
+    padding: 16px;
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.6;
+    background: #fafafa;
+    border: 1px solid #f0f0f0;
+    border-radius: 6px;
 }

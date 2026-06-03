@@ -1,7 +1,7 @@
-import { EllipsisOutlined } from '@ant-design/icons';
-import { Button, Dropdown, Space, message } from 'antd';
-import { useMemo, useState } from 'react';
-import { ColumnVisibilityModal } from './ColumnVisibilityModal';
+import { EllipsisOutlined } from "@ant-design/icons";
+import { Button, Dropdown, Space, message } from "antd";
+import { useMemo, useState } from "react";
+import { ColumnVisibilityModal } from "./ColumnVisibilityModal";
 
 interface RecordToolbarActionsProps {
   singularLabel: string;
@@ -24,32 +24,32 @@ export function RecordToolbarActions({
   const menu = useMemo(
     () => ({
       items: [
-        { key: 'columns', label: '自定义列' },
-        { key: 'import', label: '导入（开发中）' },
-        { key: 'export', label: '导出（开发中）' },
+        { key: "columns", label: "自定义列" },
+        { key: "import", label: "导入（开发中）" },
+        { key: "export", label: "导出（开发中）" },
       ],
       onClick: ({ key }: { key: string }) => {
-        if (key === 'columns') {
+        if (key === "columns") {
           setColumnModalOpen(true);
           return;
         }
 
-        message.info('开发中');
+        message.info("开发中");
       },
     }),
     [],
   );
 
   return (
-    <>
-      <Space.Compact>
+    <div className="model-add-layout">
+      <Space>
         <Button type="primary" size="large" className="model-add-button" onClick={onOpenAdd}>
           新增{singularLabel}
         </Button>
         <Dropdown menu={menu} placement="bottomRight">
           <Button size="large" icon={<EllipsisOutlined />} aria-label="更多操作" />
         </Dropdown>
-      </Space.Compact>
+      </Space>
       <ColumnVisibilityModal
         open={columnModalOpen}
         options={tableFieldOptions}
@@ -58,6 +58,6 @@ export function RecordToolbarActions({
         onReset={onResetTableVisibleKeys}
         onClose={() => setColumnModalOpen(false)}
       />
-    </>
+    </div>
   );
 }
