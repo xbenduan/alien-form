@@ -1,0 +1,344 @@
+{
+  "type": "object",
+  "title": "Nail Booking Workspace",
+  "description": "用于验证客户预约和员工服务时段之间的联动预约场景。",
+  "x-model": {
+    "name": "nail-booking",
+    "title": "客户预约表",
+    "subtitle": "Nail Booking",
+    "description": "围绕具体服务、服务员工筛选和预约状态流转的全流程案例模型。",
+    "singularLabel": "预约",
+    "pluralLabel": "预约",
+    "primaryField": "customerName",
+    "defaultPageSize": 5,
+    "openMode": {
+      "add": "modal",
+      "edit": "modal",
+      "detail": "modal"
+    },
+    "filter": {
+      "count": 3
+    }
+  },
+  "properties": {
+    "customerName": {
+      "type": "string",
+      "title": "客户姓名",
+      "component": "Input",
+      "decorator": "FormItem",
+      "required": true,
+      "order": 10,
+      "props": {
+        "placeholder": "请输入客户姓名"
+      },
+      "x-cms": {
+        "table": {
+          "width": 160
+        }
+      }
+    },
+    "phone": {
+      "type": "string",
+      "title": "联系电话",
+      "component": "Input",
+      "decorator": "FormItem",
+      "required": true,
+      "order": 20,
+      "props": {
+        "placeholder": "请输入联系电话"
+      },
+      "x-cms": {
+        "table": {
+          "width": 160
+        }
+      }
+    },
+    "serviceId": {
+      "type": "string",
+      "title": "服务项目",
+      "component": "Select",
+      "decorator": "FormItem",
+      "required": true,
+      "order": 30,
+      "x-reaction": {
+        "dataSource": "@loadDataSource"
+      },
+      "props": {
+        "placeholder": "请选择服务项目"
+      },
+      "x-cms": {
+        "reactions": {
+          "dataSource": {
+            "model": "nail-service",
+            "labelField": "serviceName",
+            "valueField": "id"
+          }
+        },
+        "table": {
+          "width": 180
+        }
+      }
+    },
+    "employeeId": {
+      "type": "string",
+      "title": "服务员工",
+      "component": "Select",
+      "decorator": "FormItem",
+      "required": true,
+      "order": 40,
+      "dataSource": [
+        {
+          "label": "Luna",
+          "value": "employee-1"
+        },
+        {
+          "label": "Momo",
+          "value": "employee-2"
+        },
+        {
+          "label": "Kiki",
+          "value": "employee-3"
+        },
+        {
+          "label": "Nora",
+          "value": "employee-4"
+        }
+      ],
+      "props": {
+        "placeholder": "请选择服务员工"
+      },
+      "x-cms": {
+        "reactions": {
+          "dataSource": {
+            "model": "nail-employee",
+            "requireSelector": true,
+            "labelField": "employeeName",
+            "valueField": "id",
+            "filters": [
+              {
+                "field": "serviceIds",
+                "operator": "includes",
+                "selector": "serviceId"
+              }
+            ]
+          }
+        },
+        "table": {
+          "width": 140
+        }
+      }
+    },
+    "bookingDate": {
+      "type": "string",
+      "title": "预约日期",
+      "component": "DateInput",
+      "decorator": "FormItem",
+      "required": true,
+      "order": 50,
+      "props": {
+        "placeholder": "请选择预约日期"
+      },
+      "x-cms": {
+        "table": {
+          "width": 150,
+          "format": "date"
+        },
+        "detail": {
+          "format": "dateTime"
+        }
+      }
+    },
+    "serviceSlot": {
+      "type": "string",
+      "title": "预约时段",
+      "component": "Select",
+      "decorator": "FormItem",
+      "required": true,
+      "order": 60,
+      "dataSource": [
+        {
+          "label": "08:00",
+          "value": "08:00"
+        },
+        {
+          "label": "09:00",
+          "value": "09:00"
+        },
+        {
+          "label": "10:00",
+          "value": "10:00"
+        },
+        {
+          "label": "11:00",
+          "value": "11:00"
+        },
+        {
+          "label": "12:00",
+          "value": "12:00"
+        },
+        {
+          "label": "13:00",
+          "value": "13:00"
+        },
+        {
+          "label": "14:00",
+          "value": "14:00"
+        },
+        {
+          "label": "15:00",
+          "value": "15:00"
+        },
+        {
+          "label": "16:00",
+          "value": "16:00"
+        },
+        {
+          "label": "17:00",
+          "value": "17:00"
+        },
+        {
+          "label": "18:00",
+          "value": "18:00"
+        },
+        {
+          "label": "19:00",
+          "value": "19:00"
+        },
+        {
+          "label": "20:00",
+          "value": "20:00"
+        }
+      ],
+      "props": {
+        "placeholder": "请先选择服务员工"
+      },
+      "x-cms": {
+        "reactions": {
+          "dataSource": {
+            "model": "nail-employee",
+            "selector": "employeeId",
+            "sourceField": "serviceSlots"
+          }
+        },
+        "table": {
+          "width": 120
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "title": "预约状态",
+      "component": "Select",
+      "decorator": "FormItem",
+      "required": true,
+      "order": 70,
+      "dataSource": [
+        {
+          "label": "待确认",
+          "value": "draft"
+        },
+        {
+          "label": "已确认",
+          "value": "review"
+        },
+        {
+          "label": "已到店",
+          "value": "published"
+        },
+        {
+          "label": "已取消",
+          "value": "archived"
+        }
+      ],
+      "props": {
+        "placeholder": "请选择预约状态"
+      },
+      "x-cms": {
+        "table": {
+          "width": 120,
+          "format": "status"
+        }
+      }
+    },
+    "depositPaid": {
+      "type": "boolean",
+      "title": "已付定金",
+      "component": "Switch",
+      "decorator": "FormItem",
+      "order": 80,
+      "default": false,
+      "x-cms": {
+        "table": {
+          "width": 120,
+          "format": "boolean"
+        },
+        "detail": {
+          "format": "boolean"
+        }
+      }
+    },
+    "styleTags": {
+      "type": "array",
+      "title": "款式偏好",
+      "component": "Select",
+      "decorator": "FormItem",
+      "order": 90,
+      "default": [],
+      "props": {
+        "mode": "tags",
+        "placeholder": "请输入款式偏好"
+      },
+      "x-cms": {
+        "table": {
+          "width": 220,
+          "ellipsis": true
+        }
+      }
+    },
+    "preferenceNotes": {
+      "type": "string",
+      "title": "备注偏好",
+      "component": "Textarea",
+      "decorator": "FormItem",
+      "order": 100,
+      "props": {
+        "rows": 4,
+        "placeholder": "请输入客户偏好和备注"
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "title": "创建时间",
+      "component": "DateInput",
+      "decorator": "FormItem",
+      "order": 110,
+      "x-cms": {
+        "form": {
+          "modes": []
+        },
+        "detail": {
+          "format": "dateTime"
+        }
+      }
+    },
+    "updatedAt": {
+      "type": "string",
+      "title": "更新时间",
+      "component": "DateInput",
+      "decorator": "FormItem",
+      "order": 120,
+      "x-cms": {
+        "form": {
+          "modes": []
+        },
+        "table": {
+          "width": 170,
+          "format": "dateTime"
+        },
+        "detail": {
+          "format": "dateTime"
+        }
+      }
+    }
+  }
+}

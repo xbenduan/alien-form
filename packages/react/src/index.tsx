@@ -65,12 +65,11 @@ export type {
 } from "@alien-form/core";
 
 export function useSignalValue<T>(sig: Signal<T> | Computed<T>): T {
-  const sigRef = useRef(sig);
-  sigRef.current = sig;
   const subscribe = useCallback((notify: () => void) => {
-    return effect(() => { sigRef.current(); notify(); });
-  }, []);
-  return useSyncExternalStore(subscribe, () => sigRef.current());
+    return effect(() => { sig(); notify(); });
+  }, [sig]);
+  const getSnapshot = useCallback(() => sig(), [sig]);
+  return useSyncExternalStore(subscribe, getSnapshot);
 }
 
 export type ComponentMap = Record<string, React.ComponentType<any>>;
