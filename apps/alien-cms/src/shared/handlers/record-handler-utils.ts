@@ -1,23 +1,22 @@
 import type { DataSourceItem, RuntimeRuleHandler } from '@alien-form/core';
 import { getRecord, getSchema, listRecords } from '@alien-form/cms';
-import type { CmsFieldSchema, CmsModelSchema, ModelRecord } from './types/record';
-import { schemaHandlers } from '../../shared/schema-handlers';
+import type { CmsFieldSchema, CmsModelSchema, ModelRecord } from '../../domains/record/types/record';
 
-type HandlerValueSource =
+export type HandlerValueSource =
   | unknown
   | {
       selector?: string;
       value?: unknown;
     };
 
-interface RecordFilterConfig {
+export interface RecordFilterConfig {
   field: string;
   operator?: 'eq' | 'includes' | 'intersects';
   selector?: string;
   value?: unknown;
 }
 
-interface ModelRecordOptionsConfig {
+export interface ModelRecordOptionsConfig {
   model?: string;
   selector?: string;
   requireSelector?: boolean;
@@ -26,7 +25,7 @@ interface ModelRecordOptionsConfig {
   filters?: RecordFilterConfig[];
 }
 
-interface SchemaFieldOptionsConfig {
+export interface SchemaFieldOptionsConfig {
   model?: string;
   selector?: string;
   includeTypes?: string[];
@@ -35,7 +34,7 @@ interface SchemaFieldOptionsConfig {
   valueMode?: 'key' | 'name';
 }
 
-interface RelatedRecordFieldOptionsConfig {
+export interface RelatedRecordFieldOptionsConfig {
   model: string;
   selector: string;
   sourceField: string;
@@ -43,12 +42,7 @@ interface RelatedRecordFieldOptionsConfig {
   valueField?: string;
 }
 
-function getHandlerConfig<T>(schema: CmsFieldSchema | CmsModelSchema, key?: string): T {
-  const config = (schema as CmsFieldSchema | undefined)?.['x-cms']?.reactions?.[key ?? ''];
-  return (config && typeof config === 'object' ? config : {}) as T;
-}
-
-function getValueByPath(source: unknown, path?: string): unknown {
+export function getValueByPath(source: unknown, path?: string): unknown {
   if (!path) return source;
   return path.split('.').reduce<unknown>((current, segment) => {
     if (!current || typeof current !== 'object') return undefined;
@@ -56,7 +50,7 @@ function getValueByPath(source: unknown, path?: string): unknown {
   }, source);
 }
 
-function resolveValueSource(ctx: Parameters<RuntimeRuleHandler>[0], source: HandlerValueSource) {
+export function resolveValueSource(ctx: Parameters<RuntimeRuleHandler>[0], source: HandlerValueSource) {
   if (source && typeof source === 'object' && !Array.isArray(source)) {
     const selector = (source as { selector?: string }).selector;
     if (selector) return ctx.get(selector);
@@ -65,7 +59,7 @@ function resolveValueSource(ctx: Parameters<RuntimeRuleHandler>[0], source: Hand
   return source;
 }
 
-async function loadModelSchema(modelName: string): Promise<CmsModelSchema | undefined> {
+export async function loadModelSchema(modelName: string): Promise<CmsModelSchema | undefined> {
   try {
     return (await getSchema(modelName)) as CmsModelSchema;
   } catch {
@@ -73,7 +67,7 @@ async function loadModelSchema(modelName: string): Promise<CmsModelSchema | unde
   }
 }
 
-async function listModelRecords(modelName: string): Promise<ModelRecord[]> {
+export async function listModelRecords(modelName: string): Promise<ModelRecord[]> {
   const result = await listRecords({
     model: modelName,
     pagination: { current: 1, pageSize: 500 },
@@ -81,12 +75,16 @@ async function listModelRecords(modelName: string): Promise<ModelRecord[]> {
   return result.list;
 }
 
-function toArray(value: unknown) {
+export function toArray(value: unknown) {
   return Array.isArray(value) ? value : [];
 }
 
-function buildLabel(record: ModelRecord, labelField?: string | string[]) {
-  const fields = Array.isArray(labelField) ? labelField : labelField ? [labelField] : ['name', 'title', 'employeeName', 'serviceName', 'customerName'];
+export function buildLabel(record: ModelRecord, labelField?: string | string[]) {
+  const fields = Array.isArray(labelField)
+    ? labelField
+    : labelField
+      ? [labelField]
+      : ['name', 'title', 'employeeName', 'serviceName', 'customerName'];
   const parts = fields
     .map((field) => getValueByPath(record, field))
     .filter((item) => item !== undefined && item !== null && item !== '');
@@ -96,7 +94,7 @@ function buildLabel(record: ModelRecord, labelField?: string | string[]) {
   return String(record.id ?? '');
 }
 
-function matchesRecordFilter(record: ModelRecord, filter: RecordFilterConfig, ctx: Parameters<RuntimeRuleHandler>[0]) {
+export function matchesRecordFilter(record: ModelRecord, filter: RecordFilterConfig, ctx: Parameters<RuntimeRuleHandler>[0]) {
   const actual = getValueByPath(record, filter.field);
   const expected = resolveValueSource(ctx, filter.selector ? { selector: filter.selector } : { value: filter.value });
   if (expected === undefined || expected === null || expected === '') {
@@ -121,7 +119,7 @@ function matchesRecordFilter(record: ModelRecord, filter: RecordFilterConfig, ct
   return actual === expected;
 }
 
-function toDataSourceItems(items: unknown, labelField?: string, valueField?: string): DataSourceItem[] {
+export function toDataSourceItems(items: unknown, labelField?: string, valueField?: string): DataSourceItem[] {
   if (!Array.isArray(items)) return [];
   return items
     .map((item) => {
@@ -142,7 +140,7 @@ function toDataSourceItems(items: unknown, labelField?: string, valueField?: str
     .filter((item) => item.label !== 'undefined');
 }
 
-function collectSchemaFields(
+export function collectSchemaFields(
   fields: Record<string, CmsFieldSchema>,
   options: DataSourceItem[],
   config: SchemaFieldOptionsConfig,
@@ -179,62 +177,3 @@ function collectSchemaFields(
     }
   }
 }
-
-const appSchemaHandlers: Record<string, RuntimeRuleHandler> = {
-  modelRecordOptions: async (ctx) => {
-    const config = getHandlerConfig<ModelRecordOptionsConfig>(ctx.schema as CmsFieldSchema, ctx.key);
-    const selectorValue = config.selector ? ctx.get(config.selector) : undefined;
-    const modelName = String(config.model ?? selectorValue ?? '');
-    if (!modelName || (config.requireSelector && !selectorValue)) {
-      return [];
-    }
-
-    const records = await listModelRecords(modelName);
-    return records
-      .filter((record) => (config.filters ?? []).every((filter) => matchesRecordFilter(record, filter, ctx)))
-      .map((record) => ({
-        label: buildLabel(record, config.labelField),
-        value: getValueByPath(record, config.valueField ?? 'id'),
-      }))
-      .filter((item) => item.value !== undefined);
-  },
-
-  schemaFieldOptions: async (ctx) => {
-    const config = getHandlerConfig<SchemaFieldOptionsConfig>(ctx.schema as CmsFieldSchema, ctx.key);
-    const selectorValue = config.selector ? ctx.get(config.selector) : undefined;
-    const modelName = String(config.model ?? selectorValue ?? '');
-    if (!modelName) {
-      return [];
-    }
-
-    const schema = await loadModelSchema(modelName);
-    if (!schema?.properties) {
-      return [];
-    }
-
-    const options: DataSourceItem[] = [];
-    collectSchemaFields(schema.properties, options, {
-      includeContainers: false,
-      excludeTypes: ['object', 'array', 'void'],
-      valueMode: 'key',
-      ...config,
-    });
-    return options;
-  },
-
-  relatedRecordFieldOptions: async (ctx) => {
-    const config = getHandlerConfig<RelatedRecordFieldOptionsConfig>(ctx.schema as CmsFieldSchema, ctx.key);
-    const recordId = config.selector ? ctx.get(config.selector) : undefined;
-    if (!config.model || !recordId) {
-      return [];
-    }
-
-    const record = await getRecord(config.model, String(recordId));
-    return toDataSourceItems(getValueByPath(record, config.sourceField), config.labelField, config.valueField);
-  },
-};
-
-export const recordSchemaHandlers: Record<string, RuntimeRuleHandler> = {
-  ...schemaHandlers,
-  ...appSchemaHandlers,
-};

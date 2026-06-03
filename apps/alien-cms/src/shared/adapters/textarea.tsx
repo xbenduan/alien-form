@@ -1,0 +1,44 @@
+import { defineAdapter } from '@alien-form/cms';
+import { Input as AntInput } from 'antd';
+
+const { TextArea } = AntInput;
+
+function Textarea({
+    value,
+    onChange,
+    disabled,
+    readOnly,
+    placeholder,
+    rows = 4,
+    format,
+  }: {
+    value?: string;
+    onChange?: (nextValue: string) => void;
+    disabled?: boolean;
+    readOnly?: boolean;
+    placeholder?: string;
+    rows?: number;
+    format?: string;
+  }) {
+    return (
+      <TextArea
+        value={value ?? ''}
+        onChange={(event) => onChange?.(event.target.value)}
+        disabled={disabled}
+        placeholder={placeholder}
+        rows={rows}
+      />
+    );
+}
+
+export default defineAdapter({
+  component: Textarea,
+  config: {
+    key: 'Textarea',
+    label: 'Textarea',
+    description: '多行文本输入组件。',
+    kind: 'component',
+    scenes: ['recordForm', 'recordFilter'],
+    meta: { fieldType: 'string' },
+  },
+});

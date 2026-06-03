@@ -1,13 +1,12 @@
-import { Checkbox } from 'antd';
-import type { DataSourceItem } from '@alien-form/react';
+import { defineAdapter } from "@alien-form/cms";
+import type { DataSourceItem } from "@alien-form/react";
+import { Checkbox } from "antd";
 
-export function CheckboxGroup({
+function CheckboxGroup({
   value,
   onChange,
   disabled,
   dataSource = [],
-  readOnly,
-  format,
 }: {
   value?: unknown[];
   onChange?: (nextValue: unknown[]) => void;
@@ -25,3 +24,15 @@ export function CheckboxGroup({
     />
   );
 }
+
+export default defineAdapter({
+  component: CheckboxGroup,
+  config: {
+    key: "CheckboxGroup",
+    label: "CheckboxGroup",
+    description: "多选组件。",
+    kind: "component",
+    scenes: ["recordForm", "recordFilter"],
+    meta: { fieldType: "array" },
+  },
+});

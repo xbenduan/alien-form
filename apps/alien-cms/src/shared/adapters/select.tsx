@@ -1,16 +1,15 @@
-import { Select as AntSelect } from 'antd';
-import type { DataSourceItem } from '@alien-form/react';
+import { defineAdapter } from "@alien-form/cms";
+import type { DataSourceItem } from "@alien-form/react";
+import { Select as AntSelect } from "antd";
 
-export function Select({
+function Select({
   value,
   onChange,
   disabled,
   loading,
   dataSource = [],
-  readOnly,
   placeholder,
   mode,
-  format,
 }: {
   value?: unknown;
   onChange?: (nextValue: unknown) => void;
@@ -19,12 +18,12 @@ export function Select({
   dataSource?: DataSourceItem[];
   readOnly?: boolean;
   placeholder?: string;
-  mode?: 'multiple' | 'tags';
+  mode?: "multiple" | "tags";
   format?: string;
 }) {
   return (
     <AntSelect
-      style={{ width: '100%' }}
+      style={{ width: "100%" }}
       value={value}
       onChange={(nextValue) => onChange?.(nextValue)}
       disabled={disabled}
@@ -36,3 +35,15 @@ export function Select({
     />
   );
 }
+
+export default defineAdapter({
+  component: Select,
+  config: {
+    key: "Select",
+    label: "Select",
+    description: "下拉选择组件。",
+    kind: "component",
+    scenes: ["recordForm", "recordFilter"],
+    meta: { fieldType: "string" },
+  },
+});

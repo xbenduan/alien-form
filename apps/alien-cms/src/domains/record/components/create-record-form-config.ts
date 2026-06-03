@@ -1,7 +1,7 @@
 import type { FormConfig } from '@alien-form/react';
 import { message } from 'antd';
+import { recordSchemaHandlers } from '../../../shared/handlers';
 import type { CmsModelSchema } from '../types/record';
-import { recordSchemaHandlers } from '../schema-handlers';
 
 interface CreateRecordFormConfigOptions {
   schema: CmsModelSchema;

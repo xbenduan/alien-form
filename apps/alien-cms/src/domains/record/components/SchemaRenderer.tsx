@@ -3,13 +3,15 @@ import { message } from 'antd';
 import type { CmsModelSchema } from '../types/record';
 import { RecordActionFormScene } from './RecordActionFormScene';
 import {
-  FormActionContext,
-  FormActions,
   detailFormComponents,
   recordFormComponents,
   recordFormDecorators,
+} from '../../../shared/adapters';
+import {
+  FormActionContext,
+  FormActions,
   type FormActionContextValue,
-} from '../../../shared/form-renderer';
+} from '../../../shared/ui';
 
 interface SchemaFormViewProps {
   schema: CmsModelSchema;

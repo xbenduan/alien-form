@@ -124,3 +124,15 @@ export { projectFormSchema } from './projection/form-schema';
 export { normalizeSchema } from './schema/normalize-schema';
 export { buildModelSchema } from './schema/build-model-schema';
 export { schemaToBuilderDraft } from './schema/schema-to-builder-draft';
+export {
+  defineHandler,
+  defineHandlers,
+  createHandlerRegistry,
+  createHandlerCatalog,
+} from "./define/handlers";
+export {
+  defineAdapter,
+  defineAdapters,
+  createAdapterRegistry,
+  createAdapterCatalog,
+} from "./define/adapters";

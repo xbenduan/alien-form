@@ -1,8 +1,7 @@
 import { ProfileOutlined } from '@ant-design/icons';
 import { Button, Tag, Tooltip, Typography } from 'antd';
 import type { CmsFieldSchema, ModelRecord, TableColumnProjection } from '../types/record';
-import { canUseSharedDisplayComponent } from '../../../shared/form-renderer';
-import { getDisplaySummary } from '../../../shared/form-renderer/adapters';
+import { canUseSharedDisplayComponent, map as adapterMap } from '../../../shared/adapters';
 
 function renderSimpleValue(
   value: unknown,
@@ -13,7 +12,7 @@ function renderSimpleValue(
     ellipsis?: boolean;
   } = {},
 ) {
-  const summary = getDisplaySummary({
+  const summary = adapterMap.getDisplaySummary({
     value,
     format: options.format,
     dataSource: options.dataSource,
@@ -241,7 +240,7 @@ export function renderTableCell(
   onOpenFieldDetail: (column: TableColumnProjection, record: ModelRecord) => void,
 ) {
   if (canUseSharedDisplayComponent(column.field)) {
-    const summary = getDisplaySummary({
+    const summary = adapterMap.getDisplaySummary({
       value,
       format: column.format,
       dataSource: column.dataSource,

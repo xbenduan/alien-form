@@ -1,29 +1,19 @@
-import type { BuilderComponentName, BuilderFieldType, ModelBuilderFieldDraft } from '@alien-form/cms';
-import { Card, Empty, Form, Input, Select, Switch, Typography } from 'antd';
-import { HandlerSelectEditor } from './HandlerSelectEditor';
+import type {
+  BuilderComponentName,
+  BuilderFieldType,
+  ModelBuilderFieldDraft,
+} from "@alien-form/cms";
+import { Card, Empty, Form, Input, Select, Switch, Typography } from "antd";
+import { options as adapterOptions } from "../../../shared/adapters";
+import { HandlerSelectEditor } from "./HandlerSelectEditor";
 
 const fieldTypeOptions: Array<{ label: string; value: BuilderFieldType }> = [
-  { label: 'string', value: 'string' },
-  { label: 'number', value: 'number' },
-  { label: 'boolean', value: 'boolean' },
-  { label: 'object', value: 'object' },
-  { label: 'void', value: 'void' },
-  { label: 'array', value: 'array' },
-];
-
-const componentOptions: Array<{ label: string; value: BuilderComponentName }> = [
-  { label: 'Input', value: 'Input' },
-  { label: 'Textarea', value: 'Textarea' },
-  { label: 'NumberInput', value: 'NumberInput' },
-  { label: 'Select', value: 'Select' },
-  { label: 'Switch', value: 'Switch' },
-  { label: 'DateInput', value: 'DateInput' },
-  { label: 'Radio', value: 'Radio' },
-  { label: 'CheckboxGroup', value: 'CheckboxGroup' },
-  { label: 'Rate', value: 'Rate' },
-  { label: 'TagsInput', value: 'TagsInput' },
-  { label: 'SectionCard', value: 'SectionCard' },
-  { label: 'ArrayCards', value: 'ArrayCards' },
+  { label: "string", value: "string" },
+  { label: "number", value: "number" },
+  { label: "boolean", value: "boolean" },
+  { label: "object", value: "object" },
+  { label: "void", value: "void" },
+  { label: "array", value: "array" },
 ];
 
 interface FieldConfigPanelProps {
@@ -32,9 +22,9 @@ interface FieldConfigPanelProps {
 }
 
 export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
-  const isContainerField = field?.type === 'object' || field?.type === 'void';
-  const isArrayField = field?.type === 'array';
-  const isObjectArray = isArrayField && field?.arrayMode === 'object';
+  const isContainerField = field?.type === "object" || field?.type === "void";
+  const isArrayField = field?.type === "array";
+  const isObjectArray = isArrayField && field?.arrayMode === "object";
   const supportsPrimitiveConfig = field && !isContainerField && !isObjectArray;
   const supportsSummaryConfig = Boolean(field) && (isContainerField || isObjectArray);
   const summaryFieldOptions = (field?.children ?? []).map((child) => ({
@@ -42,19 +32,26 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
     value: child.key,
   }));
   const currentComponentOptions = !field
-    ? componentOptions
-    : field.type === 'object' || field.type === 'void'
-      ? componentOptions.filter((option) => option.value === 'SectionCard')
-      : field.type === 'array'
-        ? componentOptions.filter((option) => option.value === 'TagsInput' || option.value === 'ArrayCards')
-        : componentOptions.filter((option) => option.value !== 'SectionCard' && option.value !== 'ArrayCards');
+    ? adapterOptions
+    : field.type === "object" || field.type === "void"
+      ? adapterOptions.filter((option) => option.value === "SectionCard")
+      : field.type === "array"
+        ? adapterOptions.filter(
+            (option) => option.value === "TagsInput" || option.value === "ArrayCards",
+          )
+        : adapterOptions.filter(
+            (option) => option.value !== "SectionCard" && option.value !== "ArrayCards",
+          );
 
-  const buildTypePreset = (nextType: BuilderFieldType, currentField: ModelBuilderFieldDraft): ModelBuilderFieldDraft => {
-    if (nextType === 'object' || nextType === 'void') {
+  const buildTypePreset = (
+    nextType: BuilderFieldType,
+    currentField: ModelBuilderFieldDraft,
+  ): ModelBuilderFieldDraft => {
+    if (nextType === "object" || nextType === "void") {
       return {
         ...currentField,
         type: nextType,
-        component: 'SectionCard',
+        component: "SectionCard",
         decorator: undefined,
         required: false,
         tableInlineFields: currentField.tableInlineFields ?? [],
@@ -63,30 +60,31 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
       };
     }
 
-    if (nextType === 'array') {
+    if (nextType === "array") {
       return {
         ...currentField,
-        type: 'array',
-        component: currentField.arrayMode === 'object' ? 'ArrayCards' : 'TagsInput',
-        decorator: 'FormItem',
+        type: "array",
+        component: currentField.arrayMode === "object" ? "ArrayCards" : "TagsInput",
+        decorator: "FormItem",
         required: false,
-        arrayMode: currentField.arrayMode ?? 'tags',
-        children: currentField.arrayMode === 'object' ? currentField.children ?? [] : [],
-        tableInlineFields: currentField.arrayMode === 'object' ? currentField.tableInlineFields : [],
+        arrayMode: currentField.arrayMode ?? "tags",
+        children: currentField.arrayMode === "object" ? (currentField.children ?? []) : [],
+        tableInlineFields:
+          currentField.arrayMode === "object" ? currentField.tableInlineFields : [],
       };
     }
 
     return {
       ...currentField,
       type: nextType,
-      decorator: 'FormItem',
+      decorator: "FormItem",
       component:
-        nextType === 'number'
-          ? 'NumberInput'
-          : nextType === 'boolean'
-            ? 'Switch'
-            : currentField.component === 'SectionCard' || currentField.component === 'ArrayCards'
-              ? 'Input'
+        nextType === "number"
+          ? "NumberInput"
+          : nextType === "boolean"
+            ? "Switch"
+            : currentField.component === "SectionCard" || currentField.component === "ArrayCards"
+              ? "Input"
               : currentField.component,
       arrayMode: undefined,
       tableInlineFields: [],
@@ -98,20 +96,20 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
     nextComponent: BuilderComponentName,
     currentField: ModelBuilderFieldDraft,
   ): ModelBuilderFieldDraft => {
-    if (currentField.type === 'array') {
+    if (currentField.type === "array") {
       return {
         ...currentField,
         component: nextComponent,
-        arrayMode: nextComponent === 'ArrayCards' ? 'object' : 'tags',
-        children: nextComponent === 'ArrayCards' ? currentField.children ?? [] : [],
-        tableInlineFields: nextComponent === 'ArrayCards' ? currentField.tableInlineFields : [],
+        arrayMode: nextComponent === "ArrayCards" ? "object" : "tags",
+        children: nextComponent === "ArrayCards" ? (currentField.children ?? []) : [],
+        tableInlineFields: nextComponent === "ArrayCards" ? currentField.tableInlineFields : [],
       };
     }
 
-    if (currentField.type === 'object' || currentField.type === 'void') {
+    if (currentField.type === "object" || currentField.type === "void") {
       return {
         ...currentField,
-        component: 'SectionCard',
+        component: "SectionCard",
         children: currentField.children ?? [],
       };
     }
@@ -128,18 +126,30 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
         字段配置
       </Typography.Title>
 
-      {!field ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请先选择一个字段" /> : null}
+      {!field ? (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请先选择一个字段" />
+      ) : null}
 
       {field ? (
         <Form layout="vertical">
           <Form.Item label="字段 key">
-            <Input value={field.key} onChange={(event) => onChange({ ...field, key: event.target.value })} />
+            <Input
+              value={field.key}
+              onChange={(event) => onChange({ ...field, key: event.target.value })}
+            />
           </Form.Item>
           <Form.Item label="标题">
-            <Input value={field.title} onChange={(event) => onChange({ ...field, title: event.target.value })} />
+            <Input
+              value={field.title}
+              onChange={(event) => onChange({ ...field, title: event.target.value })}
+            />
           </Form.Item>
           <Form.Item label="字段类型">
-            <Select value={field.type} options={fieldTypeOptions} onChange={(value) => onChange(buildTypePreset(value, field))} />
+            <Select
+              value={field.type}
+              options={fieldTypeOptions}
+              onChange={(value) => onChange(buildTypePreset(value, field))}
+            />
           </Form.Item>
           <Form.Item label="组件">
             <Select
@@ -151,17 +161,17 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
           {isArrayField ? (
             <Form.Item label="数组模式">
               <Select
-                value={field.arrayMode ?? 'tags'}
+                value={field.arrayMode ?? "tags"}
                 options={[
-                  { label: '标签数组', value: 'tags' },
-                  { label: '对象数组', value: 'object' },
+                  { label: "标签数组", value: "tags" },
+                  { label: "对象数组", value: "object" },
                 ]}
                 onChange={(value) =>
                   onChange({
                     ...field,
                     arrayMode: value,
-                    component: value === 'object' ? 'ArrayCards' : 'TagsInput',
-                    children: value === 'object' ? field.children ?? [] : [],
+                    component: value === "object" ? "ArrayCards" : "TagsInput",
+                    children: value === "object" ? (field.children ?? []) : [],
                   })
                 }
               />
@@ -228,7 +238,10 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
             {!isContainerField ? (
               <div className="builder-switch-row">
                 <span>必填</span>
-                <Switch checked={field.required} onChange={(checked) => onChange({ ...field, required: checked })} />
+                <Switch
+                  checked={field.required}
+                  onChange={(checked) => onChange({ ...field, required: checked })}
+                />
               </div>
             ) : null}
             <div className="builder-switch-row">
@@ -241,7 +254,10 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
           </div>
 
           {supportsPrimitiveConfig ? (
-            <HandlerSelectEditor reactions={field.reactions} onChange={(reactions) => onChange({ ...field, reactions })} />
+            <HandlerSelectEditor
+              reactions={field.reactions}
+              onChange={(reactions) => onChange({ ...field, reactions })}
+            />
           ) : null}
         </Form>
       ) : null}

@@ -1,7 +1,7 @@
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import type { BuilderReactionTarget, ModelBuilderReactionDraft } from '@alien-form/cms';
 import { Button, Empty, Input, Select, Space, Typography } from 'antd';
-import { schemaHandlerCatalog } from '../../../shared/schema-handlers';
+import { schemaHandlerCatalog } from '../../../shared/handlers';
 
 const reactionTargetOptions: Array<{ label: string; value: BuilderReactionTarget }> = [
   { label: 'value', value: 'value' },
@@ -35,6 +35,12 @@ export function HandlerSelectEditor({ reactions, onChange }: HandlerSelectEditor
           }));
 
         const selectedHandler = schemaHandlerCatalog.find((item) => item.name === reaction.handler);
+        const paramsHint = selectedHandler?.params
+          .map((param) => {
+            const requiredText = param.required ? '必填' : '可选';
+            return `${param.name} (${param.type}, ${requiredText})${param.description ? `: ${param.description}` : ''}`;
+          })
+          .join('；');
 
         return (
           <div key={reaction.id} className="builder-reaction-card">
@@ -63,7 +69,11 @@ export function HandlerSelectEditor({ reactions, onChange }: HandlerSelectEditor
               <Input.TextArea
                 value={reaction.paramsText}
                 autoSize={{ minRows: 3, maxRows: 6 }}
-                placeholder='{"selector":"status","equals":"draft"}'
+                placeholder={
+                  selectedHandler
+                    ? JSON.stringify(selectedHandler.defaultConfig, null, 2)
+                    : '{"selector":"status","equals":"draft"}'
+                }
                 onChange={(event) =>
                   onChange(
                     reactions.map((item) =>
@@ -77,6 +87,7 @@ export function HandlerSelectEditor({ reactions, onChange }: HandlerSelectEditor
                   配置写入 x-cms.reactions，handler 通过 schema 读取
                   {selectedHandler ? `（${selectedHandler.description}）` : ''}
                 </Typography.Text>
+                {paramsHint ? <Typography.Text type="secondary">参数：{paramsHint}</Typography.Text> : null}
                 <Button
                   danger
                   type="text"

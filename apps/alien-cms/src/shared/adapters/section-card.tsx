@@ -1,7 +1,8 @@
 import type React from "react";
+import { defineAdapter } from "@alien-form/cms";
 import { Card, Typography } from "antd";
 
-export function SectionCard({
+function SectionCard({
   title,
   description,
   children,
@@ -20,3 +21,15 @@ export function SectionCard({
     </Card>
   );
 }
+
+export default defineAdapter({
+  component: SectionCard,
+  config: {
+    key: "SectionCard",
+    label: "SectionCard",
+    description: "分组卡片容器组件。",
+    kind: "component",
+    scenes: ["recordForm", "recordDetail", "recordFilter"],
+    meta: { fieldType: "object" },
+  },
+});

@@ -4,12 +4,15 @@ import {
   useCreateForm,
 } from '@alien-form/react';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import * as adapters from '../../../shared/form-renderer/adapters';
 import {
   FormActionContext,
   FormActions,
   type FormActionContextValue,
-} from '../../../shared/form-renderer';
+} from '../../../shared/ui';
+import {
+  filterFormComponents,
+  filterFormDecorators,
+} from '../../../shared/adapters';
 import type { CmsModelSchema } from '../types/record';
 import { createRecordFormConfig } from './create-record-form-config';
 
@@ -20,26 +23,6 @@ interface RecordFilterBarProps {
   loading?: boolean;
   onSearch: (values: Record<string, unknown>) => void;
 }
-
-const filterComponents = {
-  Input: adapters.Input,
-  Textarea: adapters.Input,
-  NumberInput: adapters.NumberInput,
-  Select: adapters.Select,
-  Switch: adapters.Select,
-  DateInput: adapters.DateInput,
-  Radio: adapters.Radio,
-  CheckboxGroup: adapters.CheckboxGroup,
-  Rate: adapters.Rate,
-  ArrayCards: adapters.ArrayCards,
-  SectionCard: adapters.SectionCard,
-  TagsInput: adapters.TagsInput,
-  SkuTable: adapters.SkuTable,
-};
-
-const filterDecorators = {
-  FilterItem: adapters.FilterItem,
-};
 
 function applyFilterVisibility(
   schema: CmsModelSchema,
@@ -81,7 +64,11 @@ function FilterFormScene({
     <FormActionContext.Provider value={actionsCtx}>
       <div className="model-filter-panel">
         <div className="model-filter-form">
-          <FormProvider form={form} components={filterComponents as never} decorators={filterDecorators as never}>
+          <FormProvider
+            form={form}
+            components={filterFormComponents as never}
+            decorators={filterFormDecorators as never}
+          >
             <SchemaField />
           </FormProvider>
           <div className="filter-form-item">
