@@ -15,7 +15,7 @@ export const fieldPresets: FieldPreset[] = [
   { key: 'select', label: '下拉选择', type: 'string', component: 'Select' },
   { key: 'switch', label: '布尔开关', type: 'boolean', component: 'Switch' },
   { key: 'date', label: '日期', type: 'string', component: 'DateInput' },
-  { key: 'tags', label: '标签数组', type: 'array', component: 'TagsInput' },
+  { key: 'tags', label: '标签数组', type: 'tags', component: 'TagsInput' },
   { key: 'array-cards', label: '对象数组', type: 'array', component: 'ArrayCards' },
   { key: 'object', label: '对象分组', type: 'object', component: 'SectionCard' },
   { key: 'void', label: '布局分组', type: 'void', component: 'SectionCard' },

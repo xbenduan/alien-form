@@ -33,6 +33,6 @@ export default defineAdapter(
     description: "多选组件。",
     kind: "component",
     scenes: ["recordForm", "recordFilter"],
-    meta: { fieldType: "array" },
+    meta: { fieldType: "tags" },
   },
 );

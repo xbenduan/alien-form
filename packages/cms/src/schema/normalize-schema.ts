@@ -4,7 +4,8 @@ function getDefaultComponent(field: CmsFieldSchema): string {
   if (field.component) return field.component;
   if (field.type === "number") return "NumberInput";
   if (field.type === "boolean") return "Switch";
-  if (field.type === "array") return "TagsInput";
+  if (field.type === "array") return "ArrayCards";
+  if (field.type === "tags") return "TagsInput";
   return "Input";
 }
 

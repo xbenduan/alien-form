@@ -64,7 +64,7 @@ function buildFieldSchema(
 
   const children = draftField.children ?? [];
   const isContainer = draftField.type === "object" || draftField.type === "void";
-  const isObjectArray = draftField.type === "array" && draftField.arrayMode === "object";
+  const isObjectArray = draftField.type === "array";
 
   const baseSchema: CmsFieldSchema = {
     type: draftField.type,
@@ -108,7 +108,7 @@ function buildFieldSchema(
     };
   }
 
-  if (draftField.type === "array") {
+  if (draftField.type === "tags") {
     return {
       ...baseSchema,
       component: draftField.component || "TagsInput",

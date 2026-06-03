@@ -58,7 +58,7 @@ export function FieldListEditor({
         description: '该组件内部提供布局插槽，用于承载一组展示/录入字段。',
       };
     }
-    if (field.type === 'array' && field.arrayMode === 'object') {
+    if (field.type === 'array') {
       return {
         label: field.itemTitle || '数组项插槽',
         description: '该组件内部提供数组项插槽，用于定义每一行对象的字段结构。',

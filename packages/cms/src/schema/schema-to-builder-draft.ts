@@ -11,7 +11,15 @@ let draftFieldCounter = 0;
 
 function inferFieldType(field: CmsFieldSchema): BuilderFieldType {
   const type = field.type;
-  if (type === "string" || type === "number" || type === "boolean" || type === "object" || type === "void" || type === "array") {
+  if (
+    type === "string" ||
+    type === "number" ||
+    type === "boolean" ||
+    type === "object" ||
+    type === "void" ||
+    type === "array" ||
+    type === "tags"
+  ) {
     return type as BuilderFieldType;
   }
   return "string";
@@ -28,7 +36,8 @@ function inferComponent(field: CmsFieldSchema, fieldType: BuilderFieldType): Bui
     boolean: "Switch",
     object: "SectionCard",
     void: "SectionCard",
-    array: "TagsInput",
+    array: "ArrayCards",
+    tags: "TagsInput",
   };
 
   return defaults[fieldType] ?? "Input";
@@ -87,7 +96,7 @@ function fieldSchemaToDraft(key: string, field: CmsFieldSchema): ModelBuilderFie
   const fieldType = inferFieldType(field);
   const component = inferComponent(field, fieldType);
   const isContainer = fieldType === "object" || fieldType === "void";
-  const isObjectArray = fieldType === "array" && component === "ArrayCards";
+  const isObjectArray = fieldType === "array";
   const cms = field["x-cms"] ?? {};
 
   let children: ModelBuilderFieldDraft[] | undefined;
@@ -127,7 +136,7 @@ function fieldSchemaToDraft(key: string, field: CmsFieldSchema): ModelBuilderFie
     tableInlineFields: cms.table?.inline ?? [],
     reactions: buildReactions(field),
     children,
-    arrayMode: fieldType === "array" ? (component === "ArrayCards" ? "object" : "tags") : undefined,
+    arrayMode: fieldType === "array" ? "object" : undefined,
     itemTitle: isObjectArray ? ((field.items as { title?: string } | undefined)?.title ?? "Item") : undefined,
   };
 }

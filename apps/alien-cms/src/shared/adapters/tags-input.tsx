@@ -22,6 +22,6 @@ export default defineAdapter(
     description: "标签输入组件，基于 Select 的 tags 模式。",
     kind: "component",
     scenes: ["recordForm", "recordFilter"],
-    meta: { fieldType: "array" },
+    meta: { fieldType: "tags" },
   },
 );

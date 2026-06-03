@@ -272,7 +272,7 @@ export function renderTableCell(
   }
 
   const summary =
-    column.type === 'array'
+    column.type === 'array' || column.type === 'tags'
       ? buildArraySummary(column, value)
       : buildObjectSummary(column, value, record);
 

@@ -30,9 +30,10 @@ function createFieldDraft(type: BuilderFieldType, component: BuilderComponentNam
     object: 'Object Group',
     void: 'Layout Group',
     array: 'Array Field',
+    tags: 'Tags Field',
   };
   const isContainer = type === 'object' || type === 'void';
-  const isObjectArray = type === 'array' && component === 'ArrayCards';
+  const isObjectArray = type === 'array';
 
   return {
     id: `field-${timestamp}-${suffix}`,
@@ -50,7 +51,7 @@ function createFieldDraft(type: BuilderFieldType, component: BuilderComponentNam
     tableInlineFields: [],
     reactions: [],
     children: isContainer || isObjectArray ? [] : undefined,
-    arrayMode: type === 'array' ? (component === 'ArrayCards' ? 'object' : 'tags') : undefined,
+    arrayMode: type === 'array' ? 'object' : undefined,
     itemTitle: isObjectArray ? 'Item' : undefined,
   };
 }
@@ -146,7 +147,7 @@ function validateDraft(draft: ModelBuilderDraft, existingModelNames: string[], e
       const needsChildren =
         field.type === 'object' ||
         field.type === 'void' ||
-        (field.type === 'array' && field.arrayMode === 'object');
+        field.type === 'array';
       if (needsChildren && (!field.children || field.children.length === 0)) {
         errors.push(`${label} 需要至少一个子字段`);
       }

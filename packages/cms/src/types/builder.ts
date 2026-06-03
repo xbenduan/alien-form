@@ -1,6 +1,6 @@
 import type { ModelActionOpenMode } from "./schema";
 
-export type BuilderFieldType = "string" | "number" | "boolean" | "object" | "void" | "array";
+export type BuilderFieldType = "string" | "number" | "boolean" | "object" | "void" | "array" | "tags";
 
 export type BuilderComponentName =
   | "Input"
@@ -53,7 +53,7 @@ export interface ModelBuilderFieldDraft {
   tableInlineFields: string[];
   reactions: ModelBuilderReactionDraft[];
   children?: ModelBuilderFieldDraft[];
-  arrayMode?: "tags" | "object";
+  arrayMode?: "object";
   itemTitle?: string;
 }
 

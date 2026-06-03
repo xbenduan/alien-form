@@ -18,6 +18,7 @@ const fieldTypeOptions: Array<{ label: string; value: BuilderFieldType }> = [
   { label: "object", value: "object" },
   { label: "void", value: "void" },
   { label: "array", value: "array" },
+  { label: "tags", value: "tags" },
 ];
 
 interface FieldConfigPanelProps {
@@ -27,8 +28,7 @@ interface FieldConfigPanelProps {
 
 export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
   const isContainerField = field?.type === "object" || field?.type === "void";
-  const isArrayField = field?.type === "array";
-  const isObjectArray = isArrayField && field?.arrayMode === "object";
+  const isObjectArray = field?.type === "array";
   const supportsPrimitiveConfig = field && !isContainerField && !isObjectArray;
   const supportsSummaryConfig = Boolean(field) && (isContainerField || isObjectArray);
   const summaryFieldOptions = (field?.children ?? []).map((child) => ({
@@ -52,6 +52,9 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
     nextType: BuilderFieldType,
     currentField: ModelBuilderFieldDraft,
   ): ModelBuilderFieldDraft => {
+    const nextTypeOptions = getBuilderComponentOptions(nextType);
+    const nextDefaultComponent = nextTypeOptions[0]?.value ?? "Input";
+
     if (nextType === "object" || nextType === "void") {
       return {
         ...currentField,
@@ -69,13 +72,28 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
       return {
         ...currentField,
         type: "array",
-        component: currentField.arrayMode === "object" ? "ArrayCards" : "TagsInput",
+        component: "ArrayCards",
         decorator: "FormItem",
         required: false,
-        arrayMode: currentField.arrayMode ?? "tags",
-        children: currentField.arrayMode === "object" ? (currentField.children ?? []) : [],
-        tableInlineFields:
-          currentField.arrayMode === "object" ? currentField.tableInlineFields : [],
+        arrayMode: "object",
+        children: currentField.children ?? [],
+        tableInlineFields: currentField.tableInlineFields ?? [],
+      };
+    }
+
+    if (nextType === "tags") {
+      return {
+        ...currentField,
+        type: "tags",
+        component:
+          currentField.component === "TagsInput" || currentField.component === "CheckboxGroup"
+            ? currentField.component
+            : "TagsInput",
+        decorator: "FormItem",
+        required: false,
+        arrayMode: undefined,
+        tableInlineFields: [],
+        children: undefined,
       };
     }
 
@@ -84,13 +102,12 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
       type: nextType,
       decorator: "FormItem",
       component:
-        nextType === "number"
-          ? "NumberInput"
-          : nextType === "boolean"
-            ? "Switch"
-            : currentField.component === "SectionCard" || currentField.component === "ArrayCards"
-              ? "Input"
-              : currentField.component,
+        currentField.component === "SectionCard" ||
+        currentField.component === "ArrayCards" ||
+        currentField.component === "TagsInput" ||
+        currentField.component === "CheckboxGroup"
+          ? nextDefaultComponent
+          : currentField.component,
       arrayMode: undefined,
       tableInlineFields: [],
       children: undefined,
@@ -105,9 +122,19 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
       return {
         ...currentField,
         component: nextComponent,
-        arrayMode: nextComponent === "ArrayCards" ? "object" : "tags",
-        children: nextComponent === "ArrayCards" ? (currentField.children ?? []) : [],
-        tableInlineFields: nextComponent === "ArrayCards" ? currentField.tableInlineFields : [],
+        arrayMode: "object",
+        children: currentField.children ?? [],
+        tableInlineFields: currentField.tableInlineFields,
+      };
+    }
+
+    if (currentField.type === "tags") {
+      return {
+        ...currentField,
+        component: nextComponent,
+        arrayMode: undefined,
+        children: undefined,
+        tableInlineFields: [],
       };
     }
 
@@ -163,25 +190,6 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
               onChange={(value) => onChange(buildComponentPreset(value, field))}
             />
           </Form.Item>
-          {isArrayField ? (
-            <Form.Item label="数组模式">
-              <Select
-                value={field.arrayMode ?? "tags"}
-                options={[
-                  { label: "标签数组", value: "tags" },
-                  { label: "对象数组", value: "object" },
-                ]}
-                onChange={(value) =>
-                  onChange({
-                    ...field,
-                    arrayMode: value,
-                    component: value === "object" ? "ArrayCards" : "TagsInput",
-                    children: value === "object" ? (field.children ?? []) : [],
-                  })
-                }
-              />
-            </Form.Item>
-          ) : null}
           {isObjectArray ? (
             <Form.Item label="数组项标题">
               <Input
