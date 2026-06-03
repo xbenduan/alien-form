@@ -1,7 +1,9 @@
 import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
-import { Alert, Breadcrumb, Button, Card, Input, Popconfirm, Space, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Input, Popconfirm, Space, Table, Tag, Typography, message } from 'antd';
 import type { TableProps } from 'antd';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useWorkbenchLayout } from '../../../app/layout/WorkbenchLayout';
 import type { ModelSummary } from '@alien-form/cms';
 import { useSchemaStore } from '../../../hooks/use-schema-store';
 import { buildModelEditPath, buildModelNewPath } from '../../../app/router/paths';
@@ -21,6 +23,7 @@ function renderSourceTag(source: ModelSummary['source']) {
 
 export default function ModelManagementPage() {
   const navigate = useNavigate();
+  const { setBreadcrumb } = useWorkbenchLayout();
   const {
     keyword,
     setKeyword,
@@ -38,6 +41,19 @@ export default function ModelManagementPage() {
     getSummary,
     deleteModel,
   } = useSchemaStore();
+
+  useEffect(() => {
+    setBreadcrumb({
+      items: [{ title: '模型管理' }, { title: '模型列表' }],
+      extra: (
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate(buildModelNewPath())}>
+          新增模型
+        </Button>
+      ),
+    });
+
+    return () => setBreadcrumb(null);
+  }, [navigate, setBreadcrumb]);
 
   const columns: TableProps<ModelSummary>['columns'] = [
     {
@@ -104,15 +120,6 @@ export default function ModelManagementPage() {
 
   return (
     <>
-      <div className="model-breadcrumb-bar">
-        <div className="model-breadcrumb-content">
-          <Breadcrumb items={[{ title: '模型管理' }, { title: '模型列表' }]} />
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate(buildModelNewPath())}>
-            新增模型
-          </Button>
-        </div>
-      </div>
-
       <Card className="model-query-card" styles={{ body: { padding: 20 } }}>
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
           <Input.Search

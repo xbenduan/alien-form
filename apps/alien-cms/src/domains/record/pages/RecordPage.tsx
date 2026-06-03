@@ -1,5 +1,7 @@
 import { ArrowLeftOutlined } from "@ant-design/icons";
-import { Alert, Breadcrumb, Button, Card, Col, Row, Spin, message } from "antd";
+import { Alert, Button, Card, Col, Row, Spin, message } from "antd";
+import { useEffect } from "react";
+import { useWorkbenchLayout } from "../../../app/layout/WorkbenchLayout";
 import { useRecordStore } from "../../../hooks/use-record-store";
 import type { RecordRouteState } from "../types/record";
 import { RecordActionHost } from "../components/RecordActionHost";
@@ -18,6 +20,7 @@ export default function RecordPage({
   routeAction,
   onRouteActionChange,
 }: RecordPageProps) {
+  const { setBreadcrumb } = useWorkbenchLayout();
   const page = useRecordStore(modelName, {
     routeAction,
     onRouteActionChange,
@@ -34,64 +37,64 @@ export default function RecordPage({
           ? `${singularLabel}详情`
           : "列表";
 
+  useEffect(() => {
+    setBreadcrumb({
+      items: [
+        { title: "模型管理" },
+        { title: page.schema?.["x-model"]?.title ?? modelName },
+        {
+          title: page.schemaLoading
+            ? "加载中"
+            : page.schemaError || !page.schema || !page.filterSchema
+              ? "未找到模型"
+              : currentActionLabel,
+        },
+      ],
+      extra: isStandaloneActionPage ? (
+        <Button type="link" icon={<ArrowLeftOutlined />} onClick={page.closeAction}>
+          返回列表
+        </Button>
+      ) : undefined,
+    });
+
+    return () => setBreadcrumb(null);
+  }, [
+    currentActionLabel,
+    isStandaloneActionPage,
+    modelName,
+    page.closeAction,
+    page.filterSchema,
+    page.schema,
+    page.schemaError,
+    page.schemaLoading,
+    setBreadcrumb,
+  ]);
+
   if (page.schemaLoading) {
     return (
-      <>
-        <div className="model-breadcrumb-bar">
-          <div className="model-breadcrumb-content">
-            <Breadcrumb
-              items={[{ title: "模型管理" }, { title: modelName }, { title: "加载中" }]}
-            />
-          </div>
+      <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
+        <div className="model-page-loading">
+          <Spin size="large" />
         </div>
-
-        <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
-          <div className="model-page-loading">
-            <Spin size="large" />
-          </div>
-        </Card>
-      </>
+      </Card>
     );
   }
 
   if (page.schemaError || !page.schema || !page.filterSchema) {
     return (
-      <>
-        <div className="model-breadcrumb-bar">
-          <div className="model-breadcrumb-content">
-            <Breadcrumb
-              items={[{ title: "模型管理" }, { title: modelName }, { title: "未找到模型" }]}
-            />
-          </div>
-        </div>
-
-        <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
-          <Alert
-            type="error"
-            showIcon
-            message="模型不存在或加载失败"
-            description={page.schemaError?.message}
-          />
-        </Card>
-      </>
+      <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
+        <Alert
+          type="error"
+          showIcon
+          message="模型不存在或加载失败"
+          description={page.schemaError?.message}
+        />
+      </Card>
     );
   }
 
   return (
     <>
-      <div className="model-breadcrumb-bar">
-        <div className="model-breadcrumb-content">
-          <Breadcrumb
-            items={[{ title: "模型管理" }, { title: modelTitle }, { title: currentActionLabel }]}
-          />
-          {isStandaloneActionPage ? (
-            <Button type="link" icon={<ArrowLeftOutlined />} onClick={page.closeAction}>
-              返回列表
-            </Button>
-          ) : null}
-        </div>
-      </div>
-
       {isStandaloneActionPage ? null : (
         <>
           <Card className="model-query-card" styles={{ body: { padding: 24 } }}>

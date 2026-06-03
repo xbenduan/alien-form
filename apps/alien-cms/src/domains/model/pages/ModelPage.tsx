@@ -1,5 +1,5 @@
 import { ArrowLeftOutlined, EyeOutlined, SaveOutlined } from '@ant-design/icons';
-import { Alert, Breadcrumb, Button, Card, Col, Modal, Row, Space, Spin, Steps, message } from 'antd';
+import { Alert, Button, Card, Col, Modal, Row, Space, Spin, Steps, message } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { buildModelSchema, schemaToBuilderDraft } from '@alien-form/cms';
@@ -9,6 +9,7 @@ import type {
   ModelBuilderDraft,
   ModelBuilderFieldDraft,
 } from '@alien-form/cms';
+import { useWorkbenchLayout } from '../../../app/layout/WorkbenchLayout';
 import { buildModelListPath } from '../../../app/router/paths';
 import { useModelSummaries, useSchemaDetail, useSchemaMutations } from '../../../hooks/use-schema-store';
 import { FieldConfigPanel } from '../components/FieldConfigPanel';
@@ -175,9 +176,16 @@ function validateModelMeta(draft: ModelBuilderDraft, existingModelNames: string[
   }
 }
 
+const STEP_ITEMS = [
+  { title: '模型字段', description: '配置字段、容器字段与 handlers' },
+  { title: 'x-model 配置', description: '配置模型信息、列表白名单与打开方式' },
+  { title: '预览保存', description: '预览 schema 效果并最终保存' },
+];
+
 export default function ModelPage() {
   const navigate = useNavigate();
   const params = useParams();
+  const { setBreadcrumb } = useWorkbenchLayout();
   const editModelName = params.modelName;
   const isEditMode = Boolean(editModelName);
   const existingModelsQuery = useModelSummaries();
@@ -242,64 +250,55 @@ export default function ModelPage() {
     value: field.key,
   }));
 
-  const stepItems = [
-    { title: '模型字段', description: '配置字段、容器字段与 handlers' },
-    { title: 'x-model 配置', description: '配置模型信息、列表白名单与打开方式' },
-    { title: '预览保存', description: '预览 schema 效果并最终保存' },
-  ];
-
   const pageTitle = isEditMode ? '编辑模型' : '新增模型';
+
+  useEffect(() => {
+    setBreadcrumb({
+      items: [
+        { title: '模型管理' },
+        { title: pageTitle },
+        {
+          title: isEditMode && loadingSchema
+            ? '加载中'
+            : isEditMode && loadingError
+              ? '加载失败'
+              : STEP_ITEMS[currentStep]?.title ?? '设计器',
+        },
+      ],
+      extra: isEditMode ? (
+        <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => navigate(buildModelListPath())}>
+          返回
+        </Button>
+      ) : undefined,
+    });
+
+    return () => setBreadcrumb(null);
+  }, [currentStep, isEditMode, loadingError, loadingSchema, navigate, pageTitle, setBreadcrumb]);
 
   // Show loading state when in edit mode and schema is still loading
   if (isEditMode && loadingSchema) {
     return (
-      <>
-        <div className="model-breadcrumb-bar">
-          <div className="model-breadcrumb-content">
-            <Breadcrumb items={[{ title: '模型管理' }, { title: pageTitle }, { title: '加载中' }]} />
-          </div>
+      <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
+        <div className="model-page-loading">
+          <Spin size="large" />
         </div>
-        <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
-          <div className="model-page-loading">
-            <Spin size="large" />
-          </div>
-        </Card>
-      </>
+      </Card>
     );
   }
 
   if (isEditMode && loadingError) {
     return (
-      <>
-        <div className="model-breadcrumb-bar">
-          <div className="model-breadcrumb-content">
-            <Breadcrumb items={[{ title: '模型管理' }, { title: pageTitle }, { title: '加载失败' }]} />
-          </div>
-        </div>
-        <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
-          <Alert type="error" showIcon message="模型加载失败" description={loadingError} />
-        </Card>
-      </>
+      <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
+        <Alert type="error" showIcon message="模型加载失败" description={loadingError} />
+      </Card>
     );
   }
 
   return (
     <>
       {contextHolder}
-      <div className="model-breadcrumb-bar">
-        <div className="model-breadcrumb-content">
-          <Breadcrumb
-            items={[{ title: '模型管理' }, { title: pageTitle }, { title: stepItems[currentStep]?.title ?? '设计器' }]}
-          />
-          {isEditMode ? (
-            <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => navigate(buildModelListPath())}>
-              返回
-            </Button>
-          ) : null}
-        </div>
-      </div>
       <Card className="model-query-card" styles={{ body: { padding: 20 } }}>
-        <Steps current={currentStep} items={stepItems} />
+        <Steps current={currentStep} items={STEP_ITEMS} />
       </Card>
 
       <div className="builder-step-body">
