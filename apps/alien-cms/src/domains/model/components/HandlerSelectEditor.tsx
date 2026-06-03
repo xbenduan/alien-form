@@ -68,6 +68,7 @@ export function HandlerSelectEditor({ reactions, onChange }: HandlerSelectEditor
               <Select
                 value={reaction.target}
                 options={reactionTargetOptions}
+                style={{ width: "100%" }}
                 onChange={(target) =>
                   updateReaction(reaction.id, (currentReaction) => {
                     if (currentReaction.mode !== 'handler' || !currentReaction.handler) {
@@ -87,6 +88,7 @@ export function HandlerSelectEditor({ reactions, onChange }: HandlerSelectEditor
               />
               <Select
                 value={reaction.mode}
+                style={{ width: "100%" }}
                 options={reactionModeOptions.map((option) => ({
                   label: option.label,
                   value: option.value,
@@ -123,6 +125,7 @@ export function HandlerSelectEditor({ reactions, onChange }: HandlerSelectEditor
               ) : (
                 <>
                   <Select
+                    style={{ width: "100%" }}
                     value={reaction.handler || undefined}
                     placeholder="选择全局 handler"
                     options={handlerOptions.map((item) => ({

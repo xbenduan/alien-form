@@ -83,7 +83,8 @@ body {
     flex-direction: column;
     min-width: 0;
     min-height: 0;
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .model-breadcrumb-bar {
@@ -583,7 +584,9 @@ body {
 
 /* Builder bottom actions - reuses breadcrumb-bar card */
 .builder-bottom-actions {
-    margin-top: 12px;
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
 }
 
 .builder-bottom-actions .model-breadcrumb-content {
@@ -606,7 +609,6 @@ body {
 
 .builder-step-body {
     flex: 1;
-    padding-bottom: 12px;
 }
 
 .builder-json-preview {
