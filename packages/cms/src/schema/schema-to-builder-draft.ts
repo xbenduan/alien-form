@@ -77,7 +77,7 @@ function buildReactions(field: CmsFieldSchema): ModelBuilderReactionDraft[] {
       target: target as ModelBuilderReactionDraft["target"],
       mode: isHandler ? "handler" : "expression",
       handler: isHandler ? ruleText.replace(/^@/, "") : "",
-      expressionText: !isHandler && isExpressionReaction(ruleText) ? unwrapExpression(ruleText) : "",
+      expressionText: !isHandler ? (isExpressionReaction(ruleText) ? unwrapExpression(ruleText) : ruleText) : "",
       handlerParams: isHandler ? normalizeHandlerParams(config) : {},
     };
   });

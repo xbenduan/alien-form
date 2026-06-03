@@ -99,7 +99,6 @@ export function getBuilderComponentMeta(componentName?: BuilderComponentName) {
 export function isBuilderCompatibleComponent(
   fieldType: BuilderFieldType,
   componentName: BuilderComponentName,
-  arrayMode?: "tags" | "object",
 ) {
   const component = getBuilderComponentMeta(componentName);
   const componentFieldType = component?.meta?.fieldType;
@@ -111,18 +110,15 @@ export function isBuilderCompatibleComponent(
     if (componentFieldType !== "array") {
       return false;
     }
-    return arrayMode === "object" ? componentName === "ArrayCards" : componentName !== "ArrayCards";
+    return true;
   }
 
   return componentFieldType === normalizeBuilderFieldType(fieldType);
 }
 
-export function getBuilderComponentOptions(
-  fieldType: BuilderFieldType,
-  arrayMode?: "tags" | "object",
-) {
+export function getBuilderComponentOptions(fieldType: BuilderFieldType) {
   return componentCatalog.filter((item) =>
-    isBuilderCompatibleComponent(fieldType, item.value, arrayMode),
+    isBuilderCompatibleComponent(fieldType, item.value),
   );
 }
 

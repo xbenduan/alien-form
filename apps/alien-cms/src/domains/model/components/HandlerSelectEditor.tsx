@@ -1,7 +1,7 @@
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import type { BuilderReactionTarget, ModelBuilderReactionDraft } from '@alien-form/cms';
 import { Button, Empty, Input, Select, Space, Typography } from 'antd';
-import { registry as schemaHandlerCatalog } from '../../../shared/handlers/index.ts';
+import { getHandlerMeta, getHandlerOptions } from '../../../shared/handlers';
 
 const reactionTargetOptions: Array<{ label: string; value: BuilderReactionTarget }> = [
   { label: 'value', value: 'value' },
@@ -14,12 +14,38 @@ const reactionTargetOptions: Array<{ label: string; value: BuilderReactionTarget
   { label: 'dataSource', value: 'dataSource' },
 ];
 
+const reactionModeOptions = [
+  { label: '表达式', value: 'expression' },
+  { label: 'Handler', value: 'handler' },
+] as const;
+
 interface HandlerSelectEditorProps {
   reactions: ModelBuilderReactionDraft[];
   onChange: (nextReactions: ModelBuilderReactionDraft[]) => void;
 }
 
+function buildHandlerParams(
+  handlerName: string,
+  previousParams: Record<string, string> = {},
+): Record<string, string> {
+  const handlerMeta = getHandlerMeta(handlerName);
+  if (!handlerMeta) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    handlerMeta.params.map((param) => [param.name, previousParams[param.name] ?? '']),
+  );
+}
+
 export function HandlerSelectEditor({ reactions, onChange }: HandlerSelectEditorProps) {
+  const updateReaction = (
+    reactionId: string,
+    updater: (reaction: ModelBuilderReactionDraft) => ModelBuilderReactionDraft,
+  ) => {
+    onChange(reactions.map((reaction) => (reaction.id === reactionId ? updater(reaction) : reaction)));
+  };
+
   return (
     <div className="builder-reaction-list">
       <div className="builder-panel-subtitle">Handlers / Reactions</div>
@@ -27,14 +53,8 @@ export function HandlerSelectEditor({ reactions, onChange }: HandlerSelectEditor
       {reactions.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂未配置 reaction" /> : null}
 
       {reactions.map((reaction) => {
-        const handlerOptions = schemaHandlerCatalog
-          .filter((item) => item.supportedTargets.includes(reaction.target))
-          .map((item) => ({
-            label: item.label,
-            value: item.name,
-          }));
-
-        const selectedHandler = schemaHandlerCatalog.find((item) => item.name === reaction.handler);
+        const handlerOptions = getHandlerOptions(reaction.target);
+        const selectedHandler = getHandlerMeta(reaction.handler);
         const paramsHint = selectedHandler?.params
           .map((param) => {
             const requiredText = param.required ? '必填' : '可选';
@@ -49,45 +69,106 @@ export function HandlerSelectEditor({ reactions, onChange }: HandlerSelectEditor
                 value={reaction.target}
                 options={reactionTargetOptions}
                 onChange={(target) =>
-                  onChange(reactions.map((item) => (item.id === reaction.id ? { ...item, target } : item)))
+                  updateReaction(reaction.id, (currentReaction) => {
+                    if (currentReaction.mode !== 'handler' || !currentReaction.handler) {
+                      return { ...currentReaction, target };
+                    }
+
+                    const nextHandlerOptions = getHandlerOptions(target);
+                    const canKeepHandler = nextHandlerOptions.some(
+                      (option) => option.name === currentReaction.handler,
+                    );
+
+                    return canKeepHandler
+                      ? { ...currentReaction, target }
+                      : { ...currentReaction, target, handler: '', handlerParams: {} };
+                  })
                 }
               />
               <Select
-                value={reaction.handler || undefined}
-                placeholder="选择全局 handler"
-                options={handlerOptions}
-                onChange={(handler) => {
-                  const catalog = schemaHandlerCatalog.find((item) => item.name === handler);
-                  const defaultText = catalog ? JSON.stringify(catalog.defaultConfig, null, 2) : '{}';
-                  onChange(
-                    reactions.map((item) =>
-                      item.id === reaction.id ? { ...item, handler, paramsText: defaultText } : item,
-                    ),
-                  );
-                }}
-              />
-              <Input.TextArea
-                value={reaction.paramsText}
-                autoSize={{ minRows: 3, maxRows: 6 }}
-                placeholder={
-                  selectedHandler
-                    ? JSON.stringify(selectedHandler.defaultConfig, null, 2)
-                    : '{"selector":"status","equals":"draft"}'
-                }
-                onChange={(event) =>
-                  onChange(
-                    reactions.map((item) =>
-                      item.id === reaction.id ? { ...item, paramsText: event.target.value } : item,
-                    ),
+                value={reaction.mode}
+                options={reactionModeOptions.map((option) => ({
+                  label: option.label,
+                  value: option.value,
+                }))}
+                onChange={(mode) =>
+                  updateReaction(reaction.id, (currentReaction) =>
+                    mode === 'expression'
+                      ? {
+                          ...currentReaction,
+                          mode,
+                          handler: '',
+                          handlerParams: {},
+                        }
+                      : {
+                          ...currentReaction,
+                          mode,
+                          expressionText: '',
+                        },
                   )
                 }
               />
+              {reaction.mode === 'expression' ? (
+                <Input.TextArea
+                  value={reaction.expressionText}
+                  autoSize={{ minRows: 3, maxRows: 6 }}
+                  placeholder='$values.status === "draft"'
+                  onChange={(event) =>
+                    updateReaction(reaction.id, (currentReaction) => ({
+                      ...currentReaction,
+                      expressionText: event.target.value,
+                    }))
+                  }
+                />
+              ) : (
+                <>
+                  <Select
+                    value={reaction.handler || undefined}
+                    placeholder="选择全局 handler"
+                    options={handlerOptions.map((item) => ({
+                      label: item.label,
+                      value: item.value,
+                    }))}
+                    onChange={(handler) =>
+                      updateReaction(reaction.id, (currentReaction) => ({
+                        ...currentReaction,
+                        handler,
+                        handlerParams: buildHandlerParams(handler, currentReaction.handlerParams),
+                      }))
+                    }
+                  />
+                  {selectedHandler?.params.map((param) => (
+                    <div key={param.name}>
+                      <Typography.Text type="secondary">
+                        {param.name}
+                        {param.description ? `: ${param.description}` : ''}
+                      </Typography.Text>
+                      <Input
+                        value={reaction.handlerParams[param.name] ?? ''}
+                        placeholder={`例如 $row.${param.name}`}
+                        onChange={(event) =>
+                          updateReaction(reaction.id, (currentReaction) => ({
+                            ...currentReaction,
+                            handlerParams: {
+                              ...currentReaction.handlerParams,
+                              [param.name]: event.target.value,
+                            },
+                          }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </>
+              )}
               <div className="builder-reaction-card-footer">
                 <Typography.Text type="secondary">
-                  配置写入 x-cms.reactions，handler 通过 schema 读取
-                  {selectedHandler ? `（${selectedHandler.description}）` : ''}
+                  {reaction.mode === 'expression'
+                    ? '表达式会写入 x-reaction'
+                    : `配置写入 x-cms.reactions.params${selectedHandler ? `（${selectedHandler.description}）` : ''}`}
                 </Typography.Text>
-                {paramsHint ? <Typography.Text type="secondary">参数：{paramsHint}</Typography.Text> : null}
+                {reaction.mode === 'handler' && paramsHint ? (
+                  <Typography.Text type="secondary">参数：{paramsHint}</Typography.Text>
+                ) : null}
                 <Button
                   danger
                   type="text"
@@ -111,8 +192,10 @@ export function HandlerSelectEditor({ reactions, onChange }: HandlerSelectEditor
             {
               id: `reaction-${Date.now()}`,
               target: 'value',
+              mode: 'expression',
               handler: '',
-              paramsText: '{}',
+              expressionText: '',
+              handlerParams: {},
             },
           ])
         }

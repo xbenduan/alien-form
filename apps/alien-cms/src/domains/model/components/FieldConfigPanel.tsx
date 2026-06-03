@@ -4,7 +4,11 @@ import type {
   ModelBuilderFieldDraft,
 } from "@alien-form/cms";
 import { Card, Empty, Form, Input, Select, Switch, Typography } from "antd";
-import { options as adapterOptions } from "../../../shared/adapters";
+import {
+  builderComponentOptions,
+  getBuilderComponentMeta,
+  getBuilderComponentOptions,
+} from "../../../shared/adapters";
 import { HandlerSelectEditor } from "./HandlerSelectEditor";
 
 const fieldTypeOptions: Array<{ label: string; value: BuilderFieldType }> = [
@@ -31,17 +35,18 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
     label: `${child.title || child.key} (${child.key})`,
     value: child.key,
   }));
-  const currentComponentOptions = !field
-    ? adapterOptions
-    : field.type === "object" || field.type === "void"
-      ? adapterOptions.filter((option) => option.value === "SectionCard")
-      : field.type === "array"
-        ? adapterOptions.filter(
-            (option) => option.value === "TagsInput" || option.value === "ArrayCards",
-          )
-        : adapterOptions.filter(
-            (option) => option.value !== "SectionCard" && option.value !== "ArrayCards",
-          );
+  const currentComponentOptions = field
+    ? getBuilderComponentOptions(field.type)
+    : builderComponentOptions;
+  const currentComponentMeta = field ? getBuilderComponentMeta(field.component) : undefined;
+  const currentComponentHint = currentComponentMeta?.params?.length
+    ? currentComponentMeta.params
+        .map((param) => {
+          const requiredText = param.required ? "必填" : "可选";
+          return `${param.name} (${param.type}, ${requiredText})${param.description ? `: ${param.description}` : ""}`;
+        })
+        .join("；")
+    : currentComponentMeta?.description;
 
   const buildTypePreset = (
     nextType: BuilderFieldType,
@@ -196,11 +201,18 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
               />
             </Form.Item>
           ) : null}
-          <Form.Item label="组件 props JSON">
+          <Form.Item
+            label="组件 props JSON"
+            extra={currentComponentHint ? `组件说明：${currentComponentHint}` : undefined}
+          >
             <Input.TextArea
               autoSize={{ minRows: 3, maxRows: 6 }}
               value={field.propsText}
-              placeholder='例如 {"placeholder":"请输入"}'
+              placeholder={
+                currentComponentMeta?.description
+                  ? `例如 ${JSON.stringify({ placeholder: currentComponentMeta.description })}`
+                  : '例如 {"placeholder":"请输入"}'
+              }
               onChange={(event) => onChange({ ...field, propsText: event.target.value })}
             />
           </Form.Item>

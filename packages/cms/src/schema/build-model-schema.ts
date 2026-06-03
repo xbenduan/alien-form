@@ -45,22 +45,22 @@ function buildFieldSchema(
       )
     : undefined;
 
-  const reactionConfigs = validReactions.length > 0
-    ? Object.fromEntries(
-        validReactions
-          .map((reaction) => {
-            if (reaction.mode !== "handler") {
-              return [reaction.target, undefined] as const;
-            }
+  const reactionConfigs = validReactions.reduce<Record<string, Record<string, unknown>>>(
+    (configs, reaction) => {
+      if (reaction.mode !== "handler") {
+        return configs;
+      }
 
-            const params = Object.fromEntries(
-              Object.entries(reaction.handlerParams).filter(([, value]) => value.trim()),
-            );
-            return [reaction.target, Object.keys(params).length > 0 ? { params } : undefined] as const;
-          })
-          .filter(([, config]) => config !== undefined),
-      )
-    : undefined;
+      const params = Object.fromEntries(
+        Object.entries(reaction.handlerParams).filter(([, value]) => value.trim()),
+      );
+      if (Object.keys(params).length > 0) {
+        configs[reaction.target] = { params };
+      }
+      return configs;
+    },
+    {},
+  );
 
   const children = draftField.children ?? [];
   const isContainer = draftField.type === "object" || draftField.type === "void";
@@ -83,7 +83,7 @@ function buildFieldSchema(
         ellipsis: draftField.tableEllipsis,
         inline: draftField.tableInlineFields.length > 0 ? draftField.tableInlineFields : undefined,
       },
-      ...(reactionConfigs ? { reactions: reactionConfigs } : {}),
+      ...(Object.keys(reactionConfigs).length > 0 ? { reactions: reactionConfigs } : {}),
     },
   };
 
