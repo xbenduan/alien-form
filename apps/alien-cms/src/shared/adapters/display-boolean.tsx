@@ -19,9 +19,9 @@ function DisplayBoolean({ value, ellipsis }: DisplayValueProps) {
   );
 }
 
-export default defineAdapter({
-  component: DisplayBoolean,
-  config: {
+export default defineAdapter(
+  DisplayBoolean,
+  {
     key: "DisplayBoolean",
     label: "DisplayBoolean",
     description: "布尔值只读展示组件。",
@@ -29,4 +29,4 @@ export default defineAdapter({
     scenes: ["recordDetail", "tableCell"],
     meta: { displayType: "boolean" },
   },
-});
+);

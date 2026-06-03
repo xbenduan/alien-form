@@ -30,15 +30,6 @@ export type DefinedHandler<
   config: HandlerConfig<TDefaultConfig, TTarget>;
 };
 
-export interface DefineHandlerProps<
-  THandler extends AnyHandler,
-  TDefaultConfig extends Record<string, unknown> = Record<string, unknown>,
-  TTarget extends BuilderReactionTarget = BuilderReactionTarget,
-> {
-  function: THandler;
-  config: HandlerConfig<TDefaultConfig, TTarget>;
-}
-
 export interface HandlerCatalogItem<
   TDefaultConfig extends Record<string, unknown> = Record<string, unknown>,
   TTarget extends BuilderReactionTarget = BuilderReactionTarget,
@@ -64,9 +55,12 @@ export function defineHandlers<
   THandler extends AnyHandler,
   TDefaultConfig extends Record<string, unknown> = Record<string, unknown>,
   TTarget extends BuilderReactionTarget = BuilderReactionTarget,
->(props: DefineHandlerProps<THandler, TDefaultConfig, TTarget>): DefinedHandler<THandler, TDefaultConfig, TTarget> {
-  const handler = props.function as DefinedHandler<THandler, TDefaultConfig, TTarget>;
-  handler.config = props.config;
+>(
+  handlerFn: THandler,
+  config: HandlerConfig<TDefaultConfig, TTarget>,
+): DefinedHandler<THandler, TDefaultConfig, TTarget> {
+  const handler = handlerFn as DefinedHandler<THandler, TDefaultConfig, TTarget>;
+  handler.config = config;
   return handler;
 }
 

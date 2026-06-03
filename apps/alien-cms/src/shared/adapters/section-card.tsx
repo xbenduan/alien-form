@@ -22,9 +22,9 @@ function SectionCard({
   );
 }
 
-export default defineAdapter({
-  component: SectionCard,
-  config: {
+export default defineAdapter(
+  SectionCard,
+  {
     key: "SectionCard",
     label: "SectionCard",
     description: "分组卡片容器组件。",
@@ -32,4 +32,4 @@ export default defineAdapter({
     scenes: ["recordForm", "recordDetail", "recordFilter"],
     meta: { fieldType: "object" },
   },
-});
+);

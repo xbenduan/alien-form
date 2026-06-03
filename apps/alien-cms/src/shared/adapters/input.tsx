@@ -25,9 +25,9 @@ function Input({
   );
 }
 
-export default defineAdapter({
-  component: Input,
-  config: {
+export default defineAdapter(
+  Input,
+  {
     key: "Input",
     label: "Input",
     description: "基础文本输入组件。",
@@ -35,4 +35,4 @@ export default defineAdapter({
     scenes: ["recordForm", "recordFilter"],
     meta: { fieldType: "string" },
   },
-});
+);

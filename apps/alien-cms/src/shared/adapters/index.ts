@@ -1,5 +1,5 @@
 import React from "react";
-import type { CmsFieldSchema } from "@alien-form/cms";
+import type { BuilderComponentName, BuilderFieldType, CmsFieldSchema } from "@alien-form/cms";
 import { createAdapterCatalog, createAdapterRegistry } from "@alien-form/cms";
 
 type AdapterValue = ((...args: any[]) => any) & {
@@ -61,19 +61,87 @@ export const map = createAdapterRegistry(rawMap as any);
 
 export const registry = createAdapterCatalog(map as any);
 
-export const options = registry
-  .filter((item) => item.kind === "component")
-  .sort((left, right) => {
+type ComponentCatalogItem = (typeof registry)[number] & {
+  value: BuilderComponentName;
+};
+
+function sortComponentCatalog<T extends { key: string }>(items: T[]) {
+  return items.sort((left, right) => {
     const leftRank = componentOrderMap.get(left.key) ?? Number.MAX_SAFE_INTEGER;
     const rightRank = componentOrderMap.get(right.key) ?? Number.MAX_SAFE_INTEGER;
     if (leftRank !== rightRank) {
       return leftRank - rightRank;
     }
     return left.key.localeCompare(right.key);
-  })
+  });
+}
+
+function normalizeBuilderFieldType(fieldType: BuilderFieldType) {
+  return fieldType === "void" ? "object" : fieldType;
+}
+
+export const componentCatalog: ComponentCatalogItem[] = sortComponentCatalog(
+  registry
+    .filter((item) => item.kind === "component")
+    .map((item) => ({
+      ...item,
+      value: item.key as BuilderComponentName,
+    })),
+);
+
+export function getBuilderComponentMeta(componentName?: BuilderComponentName) {
+  if (!componentName) {
+    return undefined;
+  }
+  return componentCatalog.find((item) => item.key === componentName);
+}
+
+export function isBuilderCompatibleComponent(
+  fieldType: BuilderFieldType,
+  componentName: BuilderComponentName,
+  arrayMode?: "tags" | "object",
+) {
+  const component = getBuilderComponentMeta(componentName);
+  const componentFieldType = component?.meta?.fieldType;
+  if (!component || typeof componentFieldType !== "string") {
+    return false;
+  }
+
+  if (fieldType === "array") {
+    if (componentFieldType !== "array") {
+      return false;
+    }
+    return arrayMode === "object" ? componentName === "ArrayCards" : componentName !== "ArrayCards";
+  }
+
+  return componentFieldType === normalizeBuilderFieldType(fieldType);
+}
+
+export function getBuilderComponentOptions(
+  fieldType: BuilderFieldType,
+  arrayMode?: "tags" | "object",
+) {
+  return componentCatalog.filter((item) =>
+    isBuilderCompatibleComponent(fieldType, item.value, arrayMode),
+  );
+}
+
+export const options = componentCatalog
   .map((item) => ({
     label: item.label,
-    value: item.key,
+    value: item.value,
+  }));
+
+export const builderComponentOptions = componentCatalog
+  .filter((item) => item.kind === "component")
+  .map((item) => ({
+    label: item.label,
+    value: item.value,
+    description: item.description,
+    params: item.params,
+    meta: item.meta,
+    scenes: item.scenes,
+    kind: item.kind,
   }));
 
 export const recordFormComponents = buildSceneMap("recordForm", "component");

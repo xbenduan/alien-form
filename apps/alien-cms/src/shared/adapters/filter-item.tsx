@@ -5,9 +5,9 @@ function FilterItem({ children }: { children?: React.ReactNode }) {
   return <div className="filter-form-item">{children}</div>;
 }
 
-export default defineAdapter({
-  component: FilterItem,
-  config: {
+export default defineAdapter(
+  FilterItem,
+  {
     key: "FilterItem",
     label: "FilterItem",
     description: "筛选栏表单项装饰器。",
@@ -15,4 +15,4 @@ export default defineAdapter({
     scenes: ["recordFilter"],
     meta: { decorator: true },
   },
-});
+);

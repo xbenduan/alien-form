@@ -30,9 +30,9 @@ function Radio({
   );
 }
 
-export default defineAdapter({
-  component: Radio,
-  config: {
+export default defineAdapter(
+  Radio,
+  {
     key: "Radio",
     label: "Radio",
     description: "单选组件。",
@@ -40,4 +40,4 @@ export default defineAdapter({
     scenes: ["recordForm", "recordFilter"],
     meta: { fieldType: "string" },
   },
-});
+);

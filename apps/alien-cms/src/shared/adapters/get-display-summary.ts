@@ -149,9 +149,9 @@ export function getDisplaySummary({
   };
 }
 
-export default defineAdapter({
-  component: getDisplaySummary,
-  config: {
+export default defineAdapter(
+  getDisplaySummary,
+  {
     key: "getDisplaySummary",
     label: "getDisplaySummary",
     description: "根据值和 format 计算展示摘要。",
@@ -159,4 +159,4 @@ export default defineAdapter({
     scenes: ["recordDetail", "tableCell"],
     meta: { utility: true },
   },
-});
+);

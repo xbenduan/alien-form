@@ -38,15 +38,6 @@ export type DefinedAdapter<
   config: AdapterConfig<TMeta, TScene>;
 };
 
-export interface DefineAdapterProps<
-  TAdapter extends AnyAdapter,
-  TMeta extends Record<string, unknown> = Record<string, unknown>,
-  TScene extends AdapterScene = AdapterScene,
-> {
-  component: TAdapter;
-  config: AdapterConfig<TMeta, TScene>;
-}
-
 export interface AdapterCatalogItem<
   TMeta extends Record<string, unknown> = Record<string, unknown>,
   TScene extends AdapterScene = AdapterScene,
@@ -73,9 +64,12 @@ export function defineAdapters<
   TAdapter extends AnyAdapter,
   TMeta extends Record<string, unknown> = Record<string, unknown>,
   TScene extends AdapterScene = AdapterScene,
->(props: DefineAdapterProps<TAdapter, TMeta, TScene>): DefinedAdapter<TAdapter, TMeta, TScene> {
-  const adapter = props.component as DefinedAdapter<TAdapter, TMeta, TScene>;
-  adapter.config = props.config;
+>(
+  component: TAdapter,
+  config: AdapterConfig<TMeta, TScene>,
+): DefinedAdapter<TAdapter, TMeta, TScene> {
+  const adapter = component as DefinedAdapter<TAdapter, TMeta, TScene>;
+  adapter.config = config;
   return adapter;
 }
 

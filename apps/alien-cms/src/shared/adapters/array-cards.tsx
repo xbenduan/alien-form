@@ -87,9 +87,9 @@ function ArrayCards({
   );
 }
 
-export default defineAdapter({
-  component: ArrayCards,
-  config: {
+export default defineAdapter(
+  ArrayCards,
+  {
     key: "ArrayCards",
     label: "ArrayCards",
     description: "对象数组卡片编辑组件。",
@@ -97,4 +97,4 @@ export default defineAdapter({
     scenes: ["recordForm", "recordDetail"],
     meta: { fieldType: "array" },
   },
-});
+);

@@ -76,6 +76,7 @@ export type {
   ModelBuilderDraft,
   ModelBuilderFieldDraft,
   ModelBuilderReactionDraft,
+  ModelBuilderReactionMode,
   BuilderFieldType,
   BuilderComponentName,
   BuilderReactionTarget,

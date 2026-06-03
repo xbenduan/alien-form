@@ -1,3 +1,4 @@
+import type { BuilderReactionTarget } from "@alien-form/cms";
 import { createHandlerCatalog, createHandlerRegistry } from "@alien-form/cms";
 
 type HandlerValue = ((...args: any[]) => any) & {
@@ -28,3 +29,24 @@ const rawMap = Object.fromEntries(
 export const map = createHandlerRegistry(rawMap as any);
 
 export const registry = createHandlerCatalog(map as any);
+
+export const handlerCatalog = registry.map((item) => ({
+  ...item,
+  value: item.name,
+}));
+
+export function getHandlerMeta(handlerName?: string) {
+  if (!handlerName) {
+    return undefined;
+  }
+  return handlerCatalog.find((item) => item.name === handlerName);
+}
+
+export function getHandlerOptions(target: BuilderReactionTarget) {
+  return handlerCatalog.filter((item) => item.supportedTargets.includes(target));
+}
+
+export function getHandlerDefaultParamsText(handlerName?: string) {
+  const handler = getHandlerMeta(handlerName);
+  return handler ? JSON.stringify(handler.defaultConfig, null, 2) : "{}";
+}

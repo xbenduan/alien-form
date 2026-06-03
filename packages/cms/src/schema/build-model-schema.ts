@@ -28,17 +28,35 @@ function buildFieldSchema(
   const dataSource = parseJsonText(draftField.dataSourceText, `${draftField.title || draftField.key} dataSource`);
   const defaultValue = parseJsonText(draftField.defaultValueText, `${draftField.title || draftField.key} default`);
 
-  const validReactions = draftField.reactions.filter((r) => r.handler);
+  const validReactions = draftField.reactions.filter((reaction) => {
+    if (reaction.mode === "expression") {
+      return Boolean(reaction.expressionText.trim());
+    }
+    return Boolean(reaction.handler);
+  });
   const xReaction = validReactions.length > 0
-    ? Object.fromEntries(validReactions.map((r) => [r.target, `@${r.handler}`]))
+    ? Object.fromEntries(
+        validReactions.map((reaction) => [
+          reaction.target,
+          reaction.mode === "expression"
+            ? `{{ ${reaction.expressionText.trim()} }}`
+            : `@${reaction.handler}`,
+        ]),
+      )
     : undefined;
 
   const reactionConfigs = validReactions.length > 0
     ? Object.fromEntries(
         validReactions
-          .map((r) => {
-            const config = parseJsonText(r.paramsText, `${draftField.title || draftField.key} reaction config`);
-            return [r.target, config];
+          .map((reaction) => {
+            if (reaction.mode !== "handler") {
+              return [reaction.target, undefined] as const;
+            }
+
+            const params = Object.fromEntries(
+              Object.entries(reaction.handlerParams).filter(([, value]) => value.trim()),
+            );
+            return [reaction.target, Object.keys(params).length > 0 ? { params } : undefined] as const;
           })
           .filter(([, config]) => config !== undefined),
       )

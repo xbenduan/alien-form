@@ -31,9 +31,9 @@ function NumberInput({
   );
 }
 
-export default defineAdapter({
-  component: NumberInput,
-  config: {
+export default defineAdapter(
+  NumberInput,
+  {
     key: "NumberInput",
     label: "NumberInput",
     description: "数字输入组件。",
@@ -41,4 +41,4 @@ export default defineAdapter({
     scenes: ["recordForm", "recordFilter"],
     meta: { fieldType: "number" },
   },
-});
+);

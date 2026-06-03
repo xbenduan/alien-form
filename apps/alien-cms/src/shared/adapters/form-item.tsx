@@ -64,9 +64,9 @@ function FormItem({
   );
 }
 
-export default defineAdapter({
-  component: FormItem,
-  config: {
+export default defineAdapter(
+  FormItem,
+  {
     key: "FormItem",
     label: "FormItem",
     description: "表单项装饰器。",
@@ -74,4 +74,4 @@ export default defineAdapter({
     scenes: ["recordForm", "recordDetail"],
     meta: { decorator: true },
   },
-});
+);

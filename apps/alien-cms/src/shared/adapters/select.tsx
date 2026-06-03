@@ -36,9 +36,9 @@ function Select({
   );
 }
 
-export default defineAdapter({
-  component: Select,
-  config: {
+export default defineAdapter(
+  Select,
+  {
     key: "Select",
     label: "Select",
     description: "下拉选择组件。",
@@ -46,4 +46,4 @@ export default defineAdapter({
     scenes: ["recordForm", "recordFilter"],
     meta: { fieldType: "string" },
   },
-});
+);

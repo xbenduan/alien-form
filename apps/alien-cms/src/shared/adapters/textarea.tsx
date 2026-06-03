@@ -31,9 +31,9 @@ function Textarea({
     );
 }
 
-export default defineAdapter({
-  component: Textarea,
-  config: {
+export default defineAdapter(
+  Textarea,
+  {
     key: 'Textarea',
     label: 'Textarea',
     description: '多行文本输入组件。',
@@ -41,4 +41,4 @@ export default defineAdapter({
     scenes: ['recordForm', 'recordFilter'],
     meta: { fieldType: 'string' },
   },
-});
+);

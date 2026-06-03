@@ -13,9 +13,9 @@ function DisplayDate(props: DisplayValueProps) {
   return <DisplayText {...props} format={props.format ?? "date"} />;
 }
 
-export default defineAdapter({
-  component: DisplayDate,
-  config: {
+export default defineAdapter(
+  DisplayDate,
+  {
     key: "DisplayDate",
     label: "DisplayDate",
     description: "日期只读展示组件。",
@@ -23,4 +23,4 @@ export default defineAdapter({
     scenes: ["recordDetail", "tableCell"],
     meta: { displayType: "date" },
   },
-});
+);

@@ -14,9 +14,9 @@ function TagsInput(props: {
   return <Select {...props} mode="tags" />;
 }
 
-export default defineAdapter({
-  component: TagsInput,
-  config: {
+export default defineAdapter(
+  TagsInput,
+  {
     key: "TagsInput",
     label: "TagsInput",
     description: "标签输入组件，基于 Select 的 tags 模式。",
@@ -24,4 +24,4 @@ export default defineAdapter({
     scenes: ["recordForm", "recordFilter"],
     meta: { fieldType: "array" },
   },
-});
+);

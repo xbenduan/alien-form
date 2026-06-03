@@ -25,9 +25,9 @@ function CheckboxGroup({
   );
 }
 
-export default defineAdapter({
-  component: CheckboxGroup,
-  config: {
+export default defineAdapter(
+  CheckboxGroup,
+  {
     key: "CheckboxGroup",
     label: "CheckboxGroup",
     description: "多选组件。",
@@ -35,4 +35,4 @@ export default defineAdapter({
     scenes: ["recordForm", "recordFilter"],
     meta: { fieldType: "array" },
   },
-});
+);

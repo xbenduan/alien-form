@@ -13,9 +13,9 @@ function DisplayChoice(props: DisplayValueProps) {
   return <DisplayText {...props} />;
 }
 
-export default defineAdapter({
-  component: DisplayChoice,
-  config: {
+export default defineAdapter(
+  DisplayChoice,
+  {
     key: "DisplayChoice",
     label: "DisplayChoice",
     description: "选项值只读展示组件。",
@@ -23,4 +23,4 @@ export default defineAdapter({
     scenes: ["recordDetail", "tableCell"],
     meta: { displayType: "choice" },
   },
-});
+);

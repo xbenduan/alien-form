@@ -21,9 +21,9 @@ function Switch({
   );
 }
 
-export default defineAdapter({
-  component: Switch,
-  config: {
+export default defineAdapter(
+  Switch,
+  {
     key: "Switch",
     label: "Switch",
     description: "布尔开关组件。",
@@ -31,4 +31,4 @@ export default defineAdapter({
     scenes: ["recordForm", "recordFilter"],
     meta: { fieldType: "boolean" },
   },
-});
+);

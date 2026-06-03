@@ -26,9 +26,9 @@ function DateInput({
   );
 }
 
-export default defineAdapter({
-  component: DateInput,
-  config: {
+export default defineAdapter(
+  DateInput,
+  {
     key: "DateInput",
     label: "DateInput",
     description: "日期输入组件。",
@@ -36,4 +36,4 @@ export default defineAdapter({
     scenes: ["recordForm", "recordFilter"],
     meta: { fieldType: "string" },
   },
-});
+);

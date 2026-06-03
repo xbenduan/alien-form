@@ -26,11 +26,15 @@ export type BuilderReactionTarget =
   | "props"
   | "dataSource";
 
+export type ModelBuilderReactionMode = "expression" | "handler";
+
 export interface ModelBuilderReactionDraft {
   id: string;
   target: BuilderReactionTarget;
+  mode: ModelBuilderReactionMode;
   handler: string;
-  paramsText: string;
+  expressionText: string;
+  handlerParams: Record<string, string>;
 }
 
 export interface ModelBuilderFieldDraft {

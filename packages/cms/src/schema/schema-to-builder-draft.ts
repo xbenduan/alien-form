@@ -34,21 +34,51 @@ function inferComponent(field: CmsFieldSchema, fieldType: BuilderFieldType): Bui
   return defaults[fieldType] ?? "Input";
 }
 
+function isExpressionReaction(value: string) {
+  const trimmed = value.trim();
+  return trimmed.startsWith("{{") && trimmed.endsWith("}}");
+}
+
+function unwrapExpression(value: string) {
+  return value.trim().slice(2, -2).trim();
+}
+
+function normalizeHandlerParams(config: unknown) {
+  if (!config || typeof config !== "object") {
+    return {};
+  }
+
+  const rawParams =
+    "params" in config && config.params && typeof config.params === "object"
+      ? (config.params as Record<string, unknown>)
+      : (config as Record<string, unknown>);
+
+  return Object.fromEntries(
+    Object.entries(rawParams).map(([key, value]) => [
+      key,
+      typeof value === "string" ? value : JSON.stringify(value),
+    ]),
+  );
+}
+
 function buildReactions(field: CmsFieldSchema): ModelBuilderReactionDraft[] {
   const reactions = field["x-reaction"];
   if (!reactions || typeof reactions !== "object") return [];
 
   const reactionConfigs = field["x-cms"]?.reactions ?? {};
 
-  return Object.entries(reactions as Record<string, unknown>).map(([target, handler]) => {
-    const handlerName = typeof handler === "string" ? handler.replace(/^@/, "") : "";
+  return Object.entries(reactions as Record<string, unknown>).map(([target, reactionRule]) => {
     const config = reactionConfigs[target];
+    const ruleText = typeof reactionRule === "string" ? reactionRule : "";
+    const isHandler = ruleText.startsWith("@");
 
     return {
       id: `reaction-${Date.now()}-${(++draftFieldCounter).toString(36)}`,
       target: target as ModelBuilderReactionDraft["target"],
-      handler: handlerName,
-      paramsText: config ? JSON.stringify(config, null, 2) : "",
+      mode: isHandler ? "handler" : "expression",
+      handler: isHandler ? ruleText.replace(/^@/, "") : "",
+      expressionText: !isHandler && isExpressionReaction(ruleText) ? unwrapExpression(ruleText) : "",
+      handlerParams: isHandler ? normalizeHandlerParams(config) : {},
     };
   });
 }

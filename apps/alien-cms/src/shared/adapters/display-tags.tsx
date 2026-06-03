@@ -21,9 +21,9 @@ function DisplayTags({ value }: { value?: unknown }) {
   );
 }
 
-export default defineAdapter({
-  component: DisplayTags,
-  config: {
+export default defineAdapter(
+  DisplayTags,
+  {
     key: "DisplayTags",
     label: "DisplayTags",
     description: "标签列表只读展示组件。",
@@ -31,4 +31,4 @@ export default defineAdapter({
     scenes: ["recordDetail", "tableCell"],
     meta: { displayType: "tags" },
   },
-});
+);
