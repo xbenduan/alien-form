@@ -1,4 +1,4 @@
-import { Checkbox, Modal, Space } from 'antd';
+import { Checkbox, Modal, Space } from "antd";
 
 interface ColumnVisibilityModalProps {
   open: boolean;
@@ -26,18 +26,18 @@ export function ColumnVisibilityModal({
       onOk={onClose}
       onCancel={onClose}
     >
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Space orientation="vertical" size={16} style={{ width: "100%" }}>
         <Space>
           <a onClick={() => onChange(options.map((item) => item.value))}>全选</a>
           <a onClick={() => onChange([])}>清空</a>
           <a onClick={onReset}>恢复默认</a>
         </Space>
         <Checkbox.Group
-          style={{ width: '100%' }}
+          style={{ width: "100%" }}
           value={values}
           onChange={(nextValues) => onChange(nextValues as string[])}
         >
-          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Space orientation="vertical" size={12} style={{ width: "100%" }}>
             {options.map((option) => (
               <Checkbox key={option.value} value={option.value}>
                 {option.label}

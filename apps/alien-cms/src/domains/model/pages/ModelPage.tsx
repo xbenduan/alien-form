@@ -5,7 +5,7 @@ import { Alert, Breadcrumb, Button, Card, Col, Modal, Row, Space, Spin, Steps, m
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { ModelBuilderDraft } from '@alien-form/cms';
-import { buildRecordPath } from '../../../app/router/paths';
+import { buildModelListPath } from '../../../app/router/paths';
 import { cmsAppStore } from '../../../services/app-store/cms-app-store';
 import { FieldConfigPanel } from '../components/FieldConfigPanel';
 import { FieldListEditor } from '../components/FieldListEditor';
@@ -130,7 +130,7 @@ export default function ModelPage() {
             items={[{ title: '模型管理' }, { title: pageTitle }, { title: stepItems[currentStep]?.title ?? '设计器' }]}
           />
           {isEditMode ? (
-            <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => navigate(buildRecordPath(editModelName!))}>
+            <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => navigate(buildModelListPath())}>
               返回
             </Button>
           ) : null}
@@ -231,7 +231,7 @@ export default function ModelPage() {
                       queryClient.invalidateQueries({ queryKey: ['model-list', nextModelName] }),
                     ]);
                     messageApi.success(isEditMode ? '模型保存成功' : '模型创建成功');
-                    navigate(buildRecordPath(nextModelName));
+                    navigate(buildModelListPath());
                   } catch (error) {
                     messageApi.error(error instanceof Error ? error.message : (isEditMode ? '模型保存失败' : '模型创建失败'));
                   }

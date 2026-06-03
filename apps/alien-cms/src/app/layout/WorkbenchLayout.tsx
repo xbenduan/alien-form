@@ -13,15 +13,12 @@ export default function WorkbenchLayout() {
   const modelSummariesQuery = useRecordModelSummaries();
   const modelSummaries: ModelSummary[] = modelSummariesQuery.data ?? [];
   const pathname = location.pathname;
-  const modelEditMatch = pathname.match(/^\/models\/([^/]+)\/edit$/);
   const activeModel =
     pathname.startsWith('/records/')
       ? decodeURIComponent(pathname.split('/')[2] ?? '')
-      : modelEditMatch
-        ? decodeURIComponent(modelEditMatch[1])
-        : '';
+      : '';
   const activeGlobalKey =
-    pathname === '/models' || pathname === '/models/new'
+    pathname === '/models' || pathname.startsWith('/models/')
       ? 'models'
       : pathname.startsWith('/logs')
         ? 'logs'
