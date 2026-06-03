@@ -60,26 +60,8 @@
       "decorator": "FormItem",
       "required": true,
       "order": 30,
-      "dataSource": [
-        {
-          "label": "日常纯色护理",
-          "value": "service-1"
-        },
-        {
-          "label": "猫眼渐变设计",
-          "value": "service-2"
-        },
-        {
-          "label": "法式延长套餐",
-          "value": "service-3"
-        },
-        {
-          "label": "节日定制礼盒款",
-          "value": "service-4"
-        }
-      ],
       "x-reaction": {
-        "dataSource": "@modelRecordOptions"
+        "dataSource": "@loadDataSource"
       },
       "props": {
         "placeholder": "请选择服务项目"
@@ -122,9 +104,6 @@
           "value": "employee-4"
         }
       ],
-      "x-reaction": {
-        "dataSource": "@modelRecordOptions"
-      },
       "props": {
         "placeholder": "请选择服务员工"
       },
@@ -230,9 +209,6 @@
           "value": "20:00"
         }
       ],
-      "x-reaction": {
-        "dataSource": "@relatedRecordFieldOptions"
-      },
       "props": {
         "placeholder": "请先选择服务员工"
       },

@@ -147,9 +147,6 @@
           "value": "service-4"
         }
       ],
-      "x-reaction": {
-        "dataSource": "@modelRecordOptions"
-      },
       "props": {
         "mode": "multiple",
         "placeholder": "请选择可服务项目"
@@ -286,9 +283,6 @@
             "required": true,
             "order": 20,
             "default": [],
-            "x-reaction": {
-              "dataSource": "@schemaFieldOptions"
-            },
             "props": {
               "mode": "multiple",
               "showSearch": true,

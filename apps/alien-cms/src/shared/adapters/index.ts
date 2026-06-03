@@ -130,20 +130,6 @@ export function canUseSharedDisplayComponent(
   return field.component in detailFieldDisplayComponents;
 }
 
-export function resolveSharedDisplayComponent(field: Pick<CmsFieldSchema, "type" | "component">) {
-  if (field.component && field.component in detailFieldDisplayComponents) {
-    return detailFieldDisplayComponents[
-      field.component as keyof typeof detailFieldDisplayComponents
-    ];
-  }
-
-  if (field.type === "boolean") {
-    return map.DisplayBoolean;
-  }
-
-  return map.DisplayText;
-}
-
 function ReadonlyArrayCards(props: Record<string, unknown>) {
   const ArrayCards = map.ArrayCards;
   return React.createElement(ArrayCards as never, {
@@ -157,7 +143,3 @@ export const detailFormComponents = {
   ArrayCards: ReadonlyArrayCards,
   SectionCard: map.SectionCard,
 };
-
-export const adapters = map;
-
-export const adapterCatalog = registry;
