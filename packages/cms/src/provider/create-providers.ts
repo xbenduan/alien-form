@@ -13,6 +13,8 @@ import {
 } from "./health";
 import type { HealthCheckResult } from "./health";
 
+declare const require: (path: string) => any;
+
 // ─── Provider Set ────────────────────────────────────────────
 
 export interface ProviderSet {
@@ -37,7 +39,7 @@ export interface SdkDependencies {
 /**
  * Create a ProviderSet from an AlienCmsConfig.
  *
- * - provider = undefined or "local" → localStorage-based (demo mode)
+ * - provider = undefined or "local" → in-memory demo mode
  * - provider = "tcb" → Tencent CloudBase
  * - provider = "supabase" → Supabase (PostgreSQL)
  * - provider = "http" → Generic REST API
@@ -64,10 +66,10 @@ export function createProviders(config: AlienCmsConfig | undefined, sdks?: SdkDe
 
 // ─── Local ───────────────────────────────────────────────────
 
-function createLocalProviders(): ProviderSet {
+function createLocalProviders(options?: { seedDemo?: boolean }): ProviderSet {
   return {
-    schemaProvider: new LocalSchemaProvider(),
-    recordProvider: new LocalRecordProvider(),
+    schemaProvider: new LocalSchemaProvider({ seedDemo: options?.seedDemo ?? true }),
+    recordProvider: new LocalRecordProvider({ seedDemo: options?.seedDemo ?? true }),
     logProvider: new LocalLogProvider(),
     healthCheck: checkLocalHealth,
   };

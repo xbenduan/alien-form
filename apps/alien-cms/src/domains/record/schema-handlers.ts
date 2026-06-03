@@ -1,6 +1,6 @@
 import type { DataSourceItem, RuntimeRuleHandler } from '@alien-form/core';
-import type { CmsFieldSchema, CmsModelSchema, ModelRecord } from '../types/record';
-import { cmsAppStore } from '../../services/app-store/cms-app-store';
+import { getRecord, getSchema, listRecords } from '@alien-form/cms';
+import type { CmsFieldSchema, CmsModelSchema, ModelRecord } from './types/record';
 import { schemaHandlers } from '../../shared/schema-handlers';
 
 type HandlerValueSource =
@@ -44,7 +44,7 @@ interface RelatedRecordFieldOptionsConfig {
 }
 
 function getHandlerConfig<T>(schema: CmsFieldSchema | CmsModelSchema, key?: string): T {
-  const config = schema?.['x-cms']?.reactions?.[key ?? ''];
+  const config = (schema as CmsFieldSchema | undefined)?.['x-cms']?.reactions?.[key ?? ''];
   return (config && typeof config === 'object' ? config : {}) as T;
 }
 
@@ -67,14 +67,14 @@ function resolveValueSource(ctx: Parameters<RuntimeRuleHandler>[0], source: Hand
 
 async function loadModelSchema(modelName: string): Promise<CmsModelSchema | undefined> {
   try {
-    return (await cmsAppStore.schemaProvider().detail({ modelName })) as CmsModelSchema;
+    return (await getSchema(modelName)) as CmsModelSchema;
   } catch {
     return undefined;
   }
 }
 
 async function listModelRecords(modelName: string): Promise<ModelRecord[]> {
-  const result = await cmsAppStore.recordProvider().list({
+  const result = await listRecords({
     model: modelName,
     pagination: { current: 1, pageSize: 500 },
   });
@@ -229,10 +229,7 @@ const appSchemaHandlers: Record<string, RuntimeRuleHandler> = {
       return [];
     }
 
-    const record = await cmsAppStore.recordProvider().detail({
-      model: config.model,
-      id: String(recordId),
-    });
+    const record = await getRecord(config.model, String(recordId));
     return toDataSourceItems(getValueByPath(record, config.sourceField), config.labelField, config.valueField);
   },
 };

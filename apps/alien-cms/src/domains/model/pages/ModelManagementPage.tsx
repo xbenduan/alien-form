@@ -3,9 +3,9 @@ import { Alert, Breadcrumb, Button, Card, Input, Popconfirm, Space, Table, Tag, 
 import type { TableProps } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import type { ModelSummary } from '@alien-form/cms';
+import { useSchemaStore } from '../../../hooks/use-schema-store';
 import { buildModelEditPath, buildModelNewPath } from '../../../app/router/paths';
 import { ModelSchemaJsonModal } from '../components/ModelSchemaJsonModal';
-import { useModelManagement } from '../hooks/use-model-management';
 
 function renderSourceTag(source: ModelSummary['source']) {
   if (source === 'static') {
@@ -37,7 +37,7 @@ export default function ModelManagementPage() {
     previewError,
     getSummary,
     deleteModel,
-  } = useModelManagement();
+  } = useSchemaStore();
 
   const columns: TableProps<ModelSummary>['columns'] = [
     {

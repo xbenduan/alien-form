@@ -54,7 +54,7 @@ export class TcbSchemaProvider implements SchemaProvider {
     const total = countResult.total;
 
     const current = params?.pagination?.current ?? 1;
-    const pageSize = params?.pagination?.pageSize ?? total || 1;
+    const pageSize = (params?.pagination?.pageSize ?? total) || 1;
     const skip = (current - 1) * pageSize;
 
     const { data } = await query

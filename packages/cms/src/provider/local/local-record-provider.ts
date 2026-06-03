@@ -14,141 +14,157 @@ import type {
   RecordBatchDeleteResult,
   ModelRecord,
 } from "../../types/record";
+import {
+  batchDeleteRecordEntries,
+  deleteRecordEntry,
+  ensureLocalMemory,
+  getRecordEntry,
+  hasSchemaEntry,
+  listRecordEntries,
+  upsertRecordEntry,
+} from "./memory-store";
 
-const STORAGE_KEY = "alien-cms:local-records";
-
-function readStore(): ModelRecord[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function writeStore(records: ModelRecord[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-}
-
-function matchesFilter(record: ModelRecord, filters: Record<string, unknown>): boolean {
-  for (const [key, value] of Object.entries(filters)) {
-    if (value === undefined || value === null || value === "") continue;
-    if (Array.isArray(value) && value.length === 0) continue;
-
-    const recordValue = record[key];
-
-    if (typeof value === "string") {
-      if (!String(recordValue ?? "").toLowerCase().includes(value.toLowerCase())) return false;
-    } else if (typeof value === "boolean" || typeof value === "number") {
-      if (recordValue !== value) return false;
-    } else if (Array.isArray(value)) {
-      if (!Array.isArray(recordValue) || !value.every((v) => recordValue.includes(v))) return false;
-    } else {
-      if (recordValue !== value) return false;
+function getValueByPath(record: Record<string, unknown>, path: string) {
+  return path.split(".").reduce<unknown>((currentValue, key) => {
+    if (!isPlainObject(currentValue)) {
+      return undefined;
     }
-  }
-  return true;
+    return currentValue[key];
+  }, record);
 }
 
-/**
- * Local (localStorage-based) RecordProvider for demo/offline mode.
- * Records are stored as a flat array with a `_modelName` field for filtering.
- */
+function compareValues(left: unknown, right: unknown, order: "ascend" | "descend" | undefined) {
+  const leftValue = left ?? "";
+  const rightValue = right ?? "";
+  const normalizedLeft = typeof leftValue === "string" ? leftValue.toLowerCase() : leftValue;
+  const normalizedRight = typeof rightValue === "string" ? rightValue.toLowerCase() : rightValue;
+
+  if (normalizedLeft === normalizedRight) {
+    return 0;
+  }
+
+  if (normalizedLeft > normalizedRight) {
+    return order === "descend" ? -1 : 1;
+  }
+
+  return order === "descend" ? 1 : -1;
+}
+
+function matchesValue(recordValue: unknown, filterValue: unknown): boolean {
+  if (
+    filterValue === undefined ||
+    filterValue === null ||
+    filterValue === "" ||
+    (Array.isArray(filterValue) && filterValue.length === 0)
+  ) {
+    return true;
+  }
+
+  if (typeof filterValue === "string") {
+    return String(recordValue ?? "").toLowerCase().includes(filterValue.toLowerCase());
+  }
+
+  if (typeof filterValue === "boolean" || typeof filterValue === "number") {
+    return recordValue === filterValue;
+  }
+
+  if (Array.isArray(filterValue)) {
+    return filterValue.every((item) => Array.isArray(recordValue) && recordValue.includes(item));
+  }
+
+  return recordValue === filterValue;
+}
+
+function matches(record: Record<string, unknown>, filters: Record<string, unknown>) {
+  return Object.entries(filters).every(([key, filterValue]) => matchesValue(getValueByPath(record, key), filterValue));
+}
+
+function createRecordId(model: string) {
+  return `${model}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export interface LocalRecordProviderOptions {
+  seedDemo?: boolean;
+}
+
 export class LocalRecordProvider implements RecordProvider {
+  constructor(options: LocalRecordProviderOptions = {}) {
+    ensureLocalMemory(options.seedDemo ?? true);
+  }
+
   async list(params: RecordListParams): Promise<RecordListResult> {
-    const allRecords = readStore();
-    let records = allRecords.filter((r) => (r as any)._modelName === params.model);
-
-    // Apply filters
-    if (params.filters) {
-      records = records.filter((r) => matchesFilter(r, params.filters!));
+    if (!hasSchemaEntry(params.model)) {
+      throw new Error(`Unknown model: ${params.model}`);
     }
 
-    // Sorting
-    if (params.sorter?.field) {
-      const field = params.sorter.field;
-      const desc = params.sorter.order === "descend";
-      records.sort((a, b) => {
-        const av = String(a[field] ?? "");
-        const bv = String(b[field] ?? "");
-        const cmp = av.localeCompare(bv);
-        return desc ? -cmp : cmp;
-      });
+    const filters = params.filters ?? {};
+    const pagination = params.pagination ?? { current: 1, pageSize: 10 };
+    const records = listRecordEntries(params.model).filter((record) => matches(record, filters));
+
+    if (params.sorter?.field && params.sorter.order) {
+      records.sort((left, right) => compareValues(left[params.sorter!.field], right[params.sorter!.field], params.sorter!.order));
     } else {
-      records.sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+      records.sort((left, right) => compareValues(left.updatedAt, right.updatedAt, "descend"));
     }
 
-    const total = records.length;
-    const current = params.pagination?.current ?? 1;
-    const pageSize = params.pagination?.pageSize ?? 10;
-    const start = (current - 1) * pageSize;
-
+    const start = (pagination.current - 1) * pagination.pageSize;
     return {
-      list: records.slice(start, start + pageSize),
-      total,
+      list: records.slice(start, start + pagination.pageSize),
+      total: records.length,
     };
   }
 
   async detail(params: RecordDetailParams): Promise<RecordDetailResult> {
-    const records = readStore();
-    const record = records.find((r) => r.id === params.id && (r as any)._modelName === params.model);
-
+    const record = getRecordEntry(params.model, params.id);
     if (!record) {
       throw new Error(`Record not found: ${params.id}`);
     }
-
     return record;
   }
 
   async create(params: RecordCreateParams): Promise<RecordCreateResult> {
-    const records = readStore();
-    const now = new Date().toISOString();
-    const id = `${params.model}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    if (!hasSchemaEntry(params.model)) {
+      throw new Error(`Unknown model: ${params.model}`);
+    }
 
+    const now = new Date().toISOString();
     const record: ModelRecord = {
-      id,
+      id: createRecordId(params.model),
       ...params.values,
-      _modelName: params.model,
       createdAt: now,
       updatedAt: now,
-    } as any;
-
-    records.push(record);
-    writeStore(records);
-
+    };
+    upsertRecordEntry(params.model, record);
     return { success: true, data: record };
   }
 
   async update(params: RecordUpdateParams): Promise<RecordUpdateResult> {
-    const records = readStore();
-    const index = records.findIndex((r) => r.id === params.id && (r as any)._modelName === params.model);
-
-    if (index === -1) {
+    const current = getRecordEntry(params.model, params.id);
+    if (!current) {
       throw new Error(`Record not found: ${params.id}`);
     }
 
-    const now = new Date().toISOString();
-    records[index] = { ...records[index], ...params.values, updatedAt: now };
-    writeStore(records);
-
-    return { success: true, data: records[index] };
+    const nextRecord: ModelRecord = {
+      ...current,
+      ...params.values,
+      id: params.id,
+      updatedAt: new Date().toISOString(),
+    };
+    upsertRecordEntry(params.model, nextRecord);
+    return { success: true, data: nextRecord };
   }
 
   async delete(params: RecordDeleteParams): Promise<RecordDeleteResult> {
-    const records = readStore();
-    const filtered = records.filter((r) => !(r.id === params.id && (r as any)._modelName === params.model));
-    writeStore(filtered);
-
+    deleteRecordEntry(params.model, params.id);
     return { success: true };
   }
 
   async batchDelete(params: RecordBatchDeleteParams): Promise<RecordBatchDeleteResult> {
-    const records = readStore();
-    const idSet = new Set(params.ids);
-    const filtered = records.filter((r) => !((r as any)._modelName === params.model && idSet.has(r.id)));
-    const deleted = records.length - filtered.length;
-    writeStore(filtered);
-
+    const deleted = batchDeleteRecordEntries(params.model, params.ids);
     return { success: true, data: { deleted } };
   }
 }

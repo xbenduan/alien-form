@@ -1,9 +1,8 @@
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import WorkbenchLayout from "../layout/WorkbenchLayout";
 import { buildRecordPath } from "./paths";
-import { getDefaultModelName } from "../../services/app-store/cms-app-store";
+import { useModelSummaries } from "../../hooks/use-schema-store";
 import ModelManagementPage from "../../domains/model/pages/ModelManagementPage";
-import { useRecordModelSummaries } from "../../domains/record/hooks/use-record-model-summaries";
 import type { RecordRouteState } from "../../domains/record/types/record";
 import ModelPage from "../../domains/model/pages/ModelPage";
 import LogsPage from "../../domains/record-logs/pages/LogsPage";
@@ -11,12 +10,12 @@ import RecordPage from "../../domains/record/pages/RecordPage";
 import SettingsPage from "../../domains/settings/pages/SettingsPage";
 
 function HomeRedirect() {
-  const modelSummariesQuery = useRecordModelSummaries();
+  const modelSummariesQuery = useModelSummaries();
   if (modelSummariesQuery.isLoading) {
     return null;
   }
 
-  const defaultModelName = modelSummariesQuery.data?.[0]?.name ?? getDefaultModelName();
+  const defaultModelName = modelSummariesQuery.data?.[0]?.name ?? "nail-booking";
   return <Navigate replace to={buildRecordPath(defaultModelName)} />;
 }
 

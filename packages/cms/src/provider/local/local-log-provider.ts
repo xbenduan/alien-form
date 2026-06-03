@@ -1,43 +1,39 @@
 import type { LogProvider, LogEntry, LogListParams } from "../log-provider";
 import type { PaginatedResult } from "../../types/common";
 
-const STORAGE_KEY = "alien-cms:local-logs";
 const MAX_LOGS = 500;
-
-function readStore(): LogEntry[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+declare global {
+  var __alienCmsLocalLogs__: LogEntry[] | undefined;
 }
 
-function writeStore(logs: LogEntry[]): void {
-  // Keep only the most recent MAX_LOGS entries
-  const trimmed = logs.slice(0, MAX_LOGS);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
+function getStore() {
+  if (!globalThis.__alienCmsLocalLogs__) {
+    globalThis.__alienCmsLocalLogs__ = [];
+  }
+  return globalThis.__alienCmsLocalLogs__;
 }
 
 /**
- * Local (localStorage-based) LogProvider for demo/offline mode.
- * Stores up to 500 most recent log entries.
+ * Local in-memory LogProvider for demo/offline mode.
+ * Stores up to 500 most recent log entries for the current session only.
  */
 export class LocalLogProvider implements LogProvider {
   async append(entry: Omit<LogEntry, "id" | "timestamp">): Promise<LogEntry> {
-    const logs = readStore();
+    const logs = getStore();
     const id = `log-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const timestamp = new Date().toISOString();
 
     const logEntry: LogEntry = { id, ...entry, timestamp };
     logs.unshift(logEntry); // newest first
-    writeStore(logs);
+    if (logs.length > MAX_LOGS) {
+      logs.length = MAX_LOGS;
+    }
 
     return logEntry;
   }
 
   async list(params?: LogListParams): Promise<PaginatedResult<LogEntry>> {
-    let logs = readStore();
+    let logs = [...getStore()];
 
     if (params?.modelName) {
       logs = logs.filter((l) => l.modelName === params.modelName);

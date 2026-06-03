@@ -1,8 +1,6 @@
-import { ArrowLeftOutlined, SettingOutlined } from "@ant-design/icons";
-import { Alert, Breadcrumb, Button, Card, Col, Row, Spin, Tooltip, message } from "antd";
-import { useNavigate } from "react-router-dom";
-import { buildModelEditPath } from "../../../app/router/paths";
-import { useRecordPage } from "../hooks/use-record-page";
+import { ArrowLeftOutlined } from "@ant-design/icons";
+import { Alert, Breadcrumb, Button, Card, Col, Row, Spin, message } from "antd";
+import { useRecordStore } from "../../../hooks/use-record-store";
 import type { RecordRouteState } from "../types/record";
 import { RecordActionHost } from "../components/RecordActionHost";
 import { RecordFilterBar } from "../components/RecordFilterBar";
@@ -20,8 +18,7 @@ export default function RecordPage({
   routeAction,
   onRouteActionChange,
 }: RecordPageProps) {
-  const navigate = useNavigate();
-  const page = useRecordPage(modelName, {
+  const page = useRecordStore(modelName, {
     routeAction,
     onRouteActionChange,
   });

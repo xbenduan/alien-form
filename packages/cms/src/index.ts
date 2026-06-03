@@ -6,6 +6,81 @@
  * Provider is resolved from browser cache (localStorage key).
  */
 
+// ─── Types ───────────────────────────────────────────────────
+export type {
+  Pagination,
+  PaginatedResult,
+  Sorter,
+  FilterOperator,
+  FilterItem,
+  MutationResult,
+} from "./types/common";
+
+export type {
+  ValueFormat,
+  ModelActionKind,
+  ModelActionOpenMode,
+  CmsFieldTableMeta,
+  CmsFieldFormMeta,
+  CmsFieldDetailMeta,
+  CmsFieldMobileMeta,
+  CmsFieldUiMeta,
+  CmsFieldSchema,
+  CmsModelMeta,
+  CmsModelSchema,
+  ModelSummary,
+  SchemaListParams,
+  SchemaDetailParams,
+  SchemaCreateParams,
+  SchemaUpdateParams,
+  SchemaDeleteParams,
+  SchemaListResult,
+  SchemaDetailResult,
+  SchemaCreateResult,
+  SchemaUpdateResult,
+  SchemaDeleteResult,
+} from "./types/schema";
+
+export type {
+  ModelRecord,
+  RecordListParams,
+  RecordDetailParams,
+  RecordCreateParams,
+  RecordUpdateParams,
+  RecordDeleteParams,
+  RecordBatchDeleteParams,
+  RecordListResult,
+  RecordDetailResult,
+  RecordCreateResult,
+  RecordUpdateResult,
+  RecordDeleteResult,
+  RecordBatchDeleteResult,
+} from "./types/record";
+
+export type {
+  AlienCmsConfig,
+  AuthType,
+  AuthConfig,
+  OAuth2Config,
+  ApiKeyConfig,
+  BasicAuthConfig,
+  BearerConfig,
+  CustomAuthConfig,
+  EndpointConfig,
+  AdapterConfig,
+  SchemaSourceConfig,
+  ConnectionOptions,
+} from "./types/config";
+
+export type {
+  ModelBuilderDraft,
+  ModelBuilderFieldDraft,
+  ModelBuilderReactionDraft,
+  BuilderFieldType,
+  BuilderComponentName,
+  BuilderReactionTarget,
+} from "./types/builder";
+
 // ─── Provider Management ────────────────────────────────────
 export {
   registerProvider,
@@ -14,6 +89,11 @@ export {
   resetProvider,
   getCurrentProviderType,
 } from './internal/provider';
+export { createProviders } from "./provider/create-providers";
+export type { SchemaProvider } from "./provider/schema-provider";
+export type { RecordProvider } from "./provider/record-provider";
+export type { LogProvider, LogEntry, LogListParams } from "./provider/log-provider";
+export { LocalSchemaProvider, LocalRecordProvider, LocalLogProvider } from "./provider/local";
 
 // ─── Schema API (async functions) ───────────────────────────
 export {

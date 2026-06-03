@@ -4,17 +4,10 @@ import type { CmsFieldSchema, ModelRecord, TableColumnProjection } from '../type
 import { canUseSharedDisplayComponent } from '../../../shared/form-renderer';
 import { getDisplaySummary } from '../../../shared/form-renderer/adapters';
 
-type ScalarDisplayProps = {
-  value?: unknown;
-  dataSource?: CmsFieldSchema['dataSource'];
-  format?: string;
-  ellipsis?: boolean;
-};
-
 function renderSimpleValue(
   value: unknown,
   options: {
-    column: TableColumnProjection;
+    column?: TableColumnProjection;
     format?: string;
     dataSource?: CmsFieldSchema['dataSource'];
     ellipsis?: boolean;

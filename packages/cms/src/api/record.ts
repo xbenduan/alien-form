@@ -16,28 +16,28 @@ export function listRecords(params: {
  * Get a single record by id.
  */
 export function getRecord(model: string, id: string) {
-  return getRecordProvider().detail(model, id);
+  return getRecordProvider().detail({ model, id });
 }
 
 /**
  * Create a new record.
  */
 export function createRecord(model: string, values: Record<string, unknown>) {
-  return getRecordProvider().create(model, values);
+  return getRecordProvider().create({ model, values });
 }
 
 /**
  * Update a record (merge mode).
  */
 export function updateRecord(model: string, id: string, values: Record<string, unknown>) {
-  return getRecordProvider().update(model, id, values);
+  return getRecordProvider().update({ model, id, values });
 }
 
 /**
  * Delete a record.
  */
 export function deleteRecord(model: string, id: string) {
-  return getRecordProvider().delete(model, id);
+  return getRecordProvider().delete({ model, id });
 }
 
 /**
@@ -46,10 +46,10 @@ export function deleteRecord(model: string, id: string) {
 export function batchDeleteRecords(model: string, ids: string[]) {
   const provider = getRecordProvider();
   if (provider.batchDelete) {
-    return provider.batchDelete(model, ids);
+    return provider.batchDelete({ model, ids });
   }
   // Fallback: sequential
-  return Promise.all(ids.map((id) => provider.delete(model, id))).then(() => ({
+  return Promise.all(ids.map((id) => provider.delete({ model, id }))).then(() => ({
     success: true as const,
   }));
 }

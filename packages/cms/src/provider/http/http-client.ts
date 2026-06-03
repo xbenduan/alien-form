@@ -1,6 +1,25 @@
 import type { AuthAdapter } from "../auth-adapter";
 import type { AdapterConfig } from "../../types/config";
 
+declare const URL: new (path: string, base?: string) => {
+  searchParams: { set(key: string, value: string): void };
+  toString(): string;
+};
+declare const AbortController: new () => { signal: unknown; abort(): void };
+declare const fetch: (input: string, init?: {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
+  signal?: unknown;
+}) => Promise<{
+  ok: boolean;
+  status: number;
+  text(): Promise<string>;
+  json(): Promise<any>;
+}>;
+declare function setTimeout(callback: () => void, delay: number): unknown;
+declare function clearTimeout(handle: unknown): void;
+
 export interface HttpClientOptions {
   /** Base URL of the remote API. */
   baseUrl: string;

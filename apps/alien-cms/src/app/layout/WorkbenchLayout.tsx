@@ -1,7 +1,7 @@
 import type { ModelSummary } from '@alien-form/cms';
 import { Alert, Spin } from 'antd';
 import { Outlet, useLocation } from 'react-router-dom';
-import { useRecordModelSummaries } from '../../domains/record/hooks/use-record-model-summaries';
+import { useModelSummaries } from '../../hooks/use-schema-store';
 import { RecordWorkbenchHeader } from '../../domains/record/navigation/RecordWorkbenchHeader';
 
 export interface WorkbenchOutletContext {
@@ -10,7 +10,7 @@ export interface WorkbenchOutletContext {
 
 export default function WorkbenchLayout() {
   const location = useLocation();
-  const modelSummariesQuery = useRecordModelSummaries();
+  const modelSummariesQuery = useModelSummaries();
   const modelSummaries: ModelSummary[] = modelSummariesQuery.data ?? [];
   const pathname = location.pathname;
   const activeModel =

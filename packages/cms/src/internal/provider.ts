@@ -1,6 +1,13 @@
-import type { SchemaProvider, RecordProvider, ProviderFactory } from './types';
+import type { SchemaProvider } from '../provider/schema-provider';
+import type { RecordProvider } from '../provider/record-provider';
 
 const PROVIDER_KEY = 'alien-cms-provider';
+
+interface StorageLike {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
 
 // ─── Factory Registry ─────────────────────────────────────────
 const factories = new Map<string, ProviderFactory>();
@@ -9,6 +16,11 @@ const factories = new Map<string, ProviderFactory>();
 let schemaProvider: SchemaProvider | null = null;
 let recordProvider: RecordProvider | null = null;
 let localFactory: ProviderFactory | null = null;
+
+type ProviderFactory = (config: any) => {
+  schema: SchemaProvider;
+  record: RecordProvider;
+};
 
 /**
  * Register a provider factory.
@@ -45,7 +57,7 @@ export function initProvider(local: ProviderFactory) {
   }
 
   // Fallback: local provider
-  const providers = local({});
+  const providers = local({ seedDemo: shouldSeedLocalDemo(cached) });
   schemaProvider = providers.schema;
   recordProvider = providers.record;
 }
@@ -76,7 +88,7 @@ export function resetProvider() {
   }
 
   clearCache();
-  const providers = localFactory({});
+  const providers = localFactory({ seedDemo: true });
   schemaProvider = providers.schema;
   recordProvider = providers.record;
 }
@@ -109,7 +121,7 @@ export function getRecordProvider(): RecordProvider {
 
 function readCache(): { type: string; config: any } | null {
   try {
-    const raw = localStorage.getItem(PROVIDER_KEY);
+    const raw = getStorage()?.getItem(PROVIDER_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed?.type && typeof parsed.type === 'string') return parsed;
@@ -120,9 +132,17 @@ function readCache(): { type: string; config: any } | null {
 }
 
 function writeCache(type: string, config: any) {
-  localStorage.setItem(PROVIDER_KEY, JSON.stringify({ type, config }));
+  getStorage()?.setItem(PROVIDER_KEY, JSON.stringify({ type, config }));
 }
 
 function clearCache() {
-  localStorage.removeItem(PROVIDER_KEY);
+  getStorage()?.removeItem(PROVIDER_KEY);
+}
+
+function shouldSeedLocalDemo(cached: { type: string; config: any } | null) {
+  return !cached || cached.type === 'local';
+}
+
+function getStorage(): StorageLike | undefined {
+  return (globalThis as { localStorage?: StorageLike }).localStorage;
 }

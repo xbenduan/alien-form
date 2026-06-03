@@ -2,6 +2,21 @@ import type { TcbClient } from "./tcb/tcb-client";
 import type { SupabaseProvider } from "./supabase/supabase-client";
 import type { HttpClient } from "./http/http-client";
 
+interface StorageLike {
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
+
+declare const AbortController: new () => { signal: unknown; abort(): void };
+declare const fetch: (input: string, init?: { signal?: unknown }) => Promise<{
+  ok: boolean;
+  status: number;
+  statusText: string;
+  json(): Promise<any>;
+}>;
+declare function setTimeout(callback: () => void, delay: number): unknown;
+declare function clearTimeout(handle: unknown): void;
+
 // ─── Health Check Result ─────────────────────────────────────
 
 export interface HealthCheckResult {
@@ -25,8 +40,9 @@ export interface HealthCheckResult {
 export async function checkLocalHealth(): Promise<HealthCheckResult> {
   const start = Date.now();
   try {
-    localStorage.setItem("alien-cms:health", "ok");
-    localStorage.removeItem("alien-cms:health");
+    const storage = getStorage();
+    storage?.setItem("alien-cms:health", "ok");
+    storage?.removeItem("alien-cms:health");
     return {
       ok: true,
       provider: "local",
@@ -38,7 +54,7 @@ export async function checkLocalHealth(): Promise<HealthCheckResult> {
       ok: false,
       provider: "local",
       latency: Date.now() - start,
-      message: error instanceof Error ? error.message : "localStorage unavailable",
+      message: error instanceof Error ? error.message : "local storage unavailable",
     };
   }
 }
@@ -167,4 +183,8 @@ export async function checkHttpHealth(client: HttpClient, baseUrl: string): Prom
       message: error instanceof Error ? error.message : "Connection failed",
     };
   }
+}
+
+function getStorage(): StorageLike | undefined {
+  return (globalThis as { localStorage?: StorageLike }).localStorage;
 }

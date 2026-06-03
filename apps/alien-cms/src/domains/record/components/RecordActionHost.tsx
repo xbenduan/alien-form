@@ -60,14 +60,13 @@ export function RecordActionHost({
     return null;
   }
 
-  const open = mode !== 'closed';
   const meta = buildActionMeta(mode, singularLabel);
   const formKey = `${mode}:${record?.id ?? 'new'}`;
 
   return (
     <RecordActionFrame
       openMode={openMode}
-      open={open}
+      open
       title={meta.title}
       drawerWidth={meta.drawerWidth}
       modalWidth={meta.modalWidth}

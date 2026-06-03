@@ -52,7 +52,7 @@ function applyFilterVisibility(
       key,
       {
         ...field,
-        display: expanded || visibleKeySet.has(key) ? 'visible' : 'none',
+        display: expanded || visibleKeySet.has(key) ? ('visible' as const) : ('none' as const),
       },
     ]),
   );
@@ -66,12 +66,10 @@ function applyFilterVisibility(
 function FilterFormScene({
   schema,
   initialValues,
-  loading,
   actionsCtx,
 }: {
   schema: CmsModelSchema;
   initialValues: Record<string, unknown>;
-  loading?: boolean;
   actionsCtx: FormActionContextValue;
 }) {
   const form = useCreateForm(createRecordFormConfig({
@@ -147,7 +145,6 @@ export function RecordFilterBar({
       key={renderKey}
       schema={visibleSchema}
       initialValues={values}
-      loading={loading}
       actionsCtx={actionsCtx}
     />
   );
