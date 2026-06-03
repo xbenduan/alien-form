@@ -1,30 +1,26 @@
 import { normalizeSchema } from "../../schema/normalize-schema";
 import type { CmsModelSchema, ModelSummary } from "../../types/schema";
-
-const schemaModules = import.meta.glob("./schema/*.json", { eager: true });
-
-function extractModelName(filePath: string) {
-  return filePath.match(/\/([^/]+)\.json$/)?.[1];
-}
-
-function getRawSchema(mod: unknown) {
-  return ((mod as { default?: CmsModelSchema }).default ?? mod) as CmsModelSchema;
-}
+import nailBookingSchema from "./schema/nail-booking.json";
+import nailEmployeeSchema from "./schema/nail-employee.json";
+import nailServiceSchema from "./schema/nail-service.json";
 
 export interface DemoSchemaEntry {
   modelName: string;
   schema: CmsModelSchema;
 }
 
+const demoSchemas: DemoSchemaEntry[] = [
+  { modelName: "nail-booking", schema: nailBookingSchema as CmsModelSchema },
+  { modelName: "nail-employee", schema: nailEmployeeSchema as CmsModelSchema },
+  { modelName: "nail-service", schema: nailServiceSchema as CmsModelSchema },
+];
+
 export function listDemoSchemas(): DemoSchemaEntry[] {
-  return Object.entries(schemaModules)
-    .map(([filePath, mod]) => {
-      const schema = normalizeSchema(getRawSchema(mod) as never) as unknown as CmsModelSchema;
-      return {
-        modelName: extractModelName(filePath) ?? schema["x-model"]?.name ?? "unknown",
-        schema,
-      };
-    })
+  return demoSchemas
+    .map(({ modelName, schema }) => ({
+      modelName,
+      schema: normalizeSchema(schema as never) as unknown as CmsModelSchema,
+    }))
     .sort((left, right) => left.modelName.localeCompare(right.modelName));
 }
 

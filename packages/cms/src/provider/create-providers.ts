@@ -5,6 +5,18 @@ import type { AlienCmsConfig } from "../types/config";
 import { LocalSchemaProvider } from "./local/local-schema-provider";
 import { LocalRecordProvider } from "./local/local-record-provider";
 import { LocalLogProvider } from "./local/local-log-provider";
+import { createTcbClient } from "./tcb/tcb-client";
+import { TcbSchemaProvider } from "./tcb/tcb-schema-provider";
+import { TcbRecordProvider } from "./tcb/tcb-record-provider";
+import { TcbLogProvider } from "./tcb/tcb-log-provider";
+import { createSupabaseProvider } from "./supabase/supabase-client";
+import { SupabaseSchemaProvider } from "./supabase/supabase-schema-provider";
+import { SupabaseRecordProvider } from "./supabase/supabase-record-provider";
+import { SupabaseLogProvider } from "./supabase/supabase-log-provider";
+import { HttpClient } from "./http/http-client";
+import { HttpSchemaProvider } from "./http/http-schema-provider";
+import { HttpRecordProvider } from "./http/http-record-provider";
+import { HttpLogProvider } from "./http/http-log-provider";
 import {
   checkLocalHealth,
   checkTcbHealth,
@@ -70,11 +82,6 @@ function createTcbProviders(config: AlienCmsConfig): ProviderSet {
     throw new Error("TCB provider requires tcb.envId in config.");
   }
 
-  const { createTcbClient } = require("./tcb/tcb-client");
-  const { TcbSchemaProvider } = require("./tcb/tcb-schema-provider");
-  const { TcbRecordProvider } = require("./tcb/tcb-record-provider");
-  const { TcbLogProvider } = require("./tcb/tcb-log-provider");
-
   const client = createTcbClient({
     envId: tcbConfig.envId,
     region: tcbConfig.region,
@@ -99,11 +106,6 @@ function createSupabaseProviders(config: AlienCmsConfig): ProviderSet {
     throw new Error("Supabase provider requires supabase.url and supabase.anonKey in config.");
   }
 
-  const { createSupabaseProvider } = require("./supabase/supabase-client");
-  const { SupabaseSchemaProvider } = require("./supabase/supabase-schema-provider");
-  const { SupabaseRecordProvider } = require("./supabase/supabase-record-provider");
-  const { SupabaseLogProvider } = require("./supabase/supabase-log-provider");
-
   const provider = createSupabaseProvider({
     url: supaConfig.url,
     anonKey: supaConfig.anonKey,
@@ -125,11 +127,6 @@ function createHttpProviders(config: AlienCmsConfig): ProviderSet {
   if (!httpConfig?.baseUrl) {
     throw new Error("HTTP provider requires http.baseUrl in config.");
   }
-
-  const { HttpClient } = require("./http/http-client");
-  const { HttpSchemaProvider } = require("./http/http-schema-provider");
-  const { HttpRecordProvider } = require("./http/http-record-provider");
-  const { HttpLogProvider } = require("./http/http-log-provider");
 
   const client = new HttpClient({
     baseUrl: httpConfig.baseUrl,
