@@ -5,9 +5,7 @@ import { useModelSummaries } from "../../hooks/use-schema-store";
 import ModelManagementPage from "../../domains/model/pages/ModelManagementPage";
 import type { RecordRouteState } from "../../domains/record/types/record";
 import ModelPage from "../../domains/model/pages/ModelPage";
-import LogsPage from "../../domains/record-logs/pages/LogsPage";
 import RecordPage from "../../domains/record/pages/RecordPage";
-import SettingsPage from "../../domains/settings/pages/SettingsPage";
 
 function HomeRedirect() {
   const modelSummariesQuery = useModelSummaries();
@@ -67,8 +65,6 @@ export function AppRouter() {
             path="records/:modelName/detail/:recordId"
             element={<RoutedRecordPage routeAction={{ mode: "detail" }} />}
           />
-          <Route path="logs" element={<LogsPage />} />
-          <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<HomeRedirect />} />
         </Route>
       </Routes>

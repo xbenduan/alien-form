@@ -1,19 +1,17 @@
 import type { ModelSummary } from '@alien-form/cms';
-import { DatabaseOutlined, SettingOutlined } from '@ant-design/icons';
-import { Card, Menu, Tag, Tooltip, Typography } from 'antd';
+import { DatabaseOutlined } from '@ant-design/icons';
+import { Card, Menu, Tooltip, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { buildModelListPath, buildRecordPath } from '../../../app/router/paths';
 
 interface RecordWorkbenchHeaderProps {
   modelSummaries: ModelSummary[];
   activeModel: string;
-  activeGlobalKey?: 'models' | 'logs' | 'settings';
 }
 
 export function RecordWorkbenchHeader({
   modelSummaries,
   activeModel,
-  activeGlobalKey,
 }: RecordWorkbenchHeaderProps) {
   const navigate = useNavigate();
 
@@ -34,45 +32,18 @@ export function RecordWorkbenchHeader({
       <div className="model-side-panel-menu-block">
         <Menu
           mode="inline"
-          selectedKeys={activeGlobalKey ? [activeGlobalKey] : []}
+          selectedKeys={[]}
           items={[
             {
               key: 'models',
               icon: <DatabaseOutlined />,
               label: '模型管理',
             },
-            {
-              key: 'logs',
-              icon: <DatabaseOutlined />,
-              label: (
-                <span className="model-global-nav-item">
-                  <span>日志</span>
-                  <Tag variant="filled" color="processing">
-                    开发中
-                  </Tag>
-                </span>
-              ),
-            },
-            {
-              key: 'settings',
-              icon: <SettingOutlined />,
-              label: (
-                <span className="model-global-nav-item">
-                  <span>设置</span>
-                  <Tag variant="filled" color="processing">
-                    开发中
-                  </Tag>
-                </span>
-              ),
-            },
           ]}
           onClick={({ key }) => {
             if (key === 'models') {
               navigate(buildModelListPath());
-              return;
             }
-
-            navigate(`/${String(key)}`);
           }}
         />
       </div>

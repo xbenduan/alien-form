@@ -193,14 +193,6 @@ body {
     font-size: 12px;
 }
 
-.model-global-nav-item {
-    display: inline-flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    gap: 8px;
-}
-
 .current-model-path {
     display: inline-block;
     padding: 4px 10px;

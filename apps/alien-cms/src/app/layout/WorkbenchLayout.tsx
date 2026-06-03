@@ -17,14 +17,6 @@ export default function WorkbenchLayout() {
     pathname.startsWith('/records/')
       ? decodeURIComponent(pathname.split('/')[2] ?? '')
       : '';
-  const activeGlobalKey =
-    pathname === '/models' || pathname.startsWith('/models/')
-      ? 'models'
-      : pathname.startsWith('/logs')
-        ? 'logs'
-        : pathname.startsWith('/settings')
-          ? 'settings'
-          : undefined;
 
   if (modelSummariesQuery.isError) {
     return <Alert type="error" showIcon message="模型列表加载失败" description={modelSummariesQuery.error.message} />;
@@ -37,7 +29,6 @@ export default function WorkbenchLayout() {
           <RecordWorkbenchHeader
             modelSummaries={modelSummaries}
             activeModel={activeModel}
-            activeGlobalKey={activeGlobalKey}
           />
         </aside>
 
