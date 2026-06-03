@@ -13,8 +13,6 @@ import {
 } from "./health";
 import type { HealthCheckResult } from "./health";
 
-declare const require: (path: string) => any;
-
 // ─── Provider Set ────────────────────────────────────────────
 
 export interface ProviderSet {
@@ -23,15 +21,6 @@ export interface ProviderSet {
   logProvider: LogProvider;
   /** Run a health check against the configured backend. */
   healthCheck(): Promise<HealthCheckResult>;
-}
-
-// ─── SDK Injection (avoid hard dependencies) ─────────────────
-
-export interface SdkDependencies {
-  /** Pass `cloudbase` from `@cloudbase/js-sdk` if using TCB. */
-  cloudbase?: any;
-  /** Pass `createClient` from `@supabase/supabase-js` if using Supabase. */
-  supabaseCreateClient?: any;
 }
 
 // ─── Factory Function ────────────────────────────────────────
@@ -43,10 +32,8 @@ export interface SdkDependencies {
  * - provider = "tcb" → Tencent CloudBase
  * - provider = "supabase" → Supabase (PostgreSQL)
  * - provider = "http" → Generic REST API
- *
- * SDK dependencies must be passed in via `sdks` to avoid hard imports.
  */
-export function createProviders(config: AlienCmsConfig | undefined, sdks?: SdkDependencies): ProviderSet {
+export function createProviders(config?: AlienCmsConfig): ProviderSet {
   // Default: local mode
   if (!config || !config.provider || config.provider === ("local" as any)) {
     return createLocalProviders();
@@ -54,9 +41,9 @@ export function createProviders(config: AlienCmsConfig | undefined, sdks?: SdkDe
 
   switch (config.provider) {
     case "tcb":
-      return createTcbProviders(config, sdks);
+      return createTcbProviders(config);
     case "supabase":
-      return createSupabaseProviders(config, sdks);
+      return createSupabaseProviders(config);
     case "http":
       return createHttpProviders(config);
     default:
@@ -77,28 +64,18 @@ function createLocalProviders(options?: { seedDemo?: boolean }): ProviderSet {
 
 // ─── TCB ─────────────────────────────────────────────────────
 
-function createTcbProviders(config: AlienCmsConfig, sdks?: SdkDependencies): ProviderSet {
-  const cloudbase = sdks?.cloudbase;
-  if (!cloudbase) {
-    throw new Error(
-      "TCB provider requires @cloudbase/js-sdk. " +
-      "Install it and pass the module via sdks.cloudbase."
-    );
-  }
-
+function createTcbProviders(config: AlienCmsConfig): ProviderSet {
   const tcbConfig = (config as any).tcb;
   if (!tcbConfig?.envId) {
     throw new Error("TCB provider requires tcb.envId in config.");
   }
 
-  // Lazy import to avoid bundling when not used
   const { createTcbClient } = require("./tcb/tcb-client");
   const { TcbSchemaProvider } = require("./tcb/tcb-schema-provider");
   const { TcbRecordProvider } = require("./tcb/tcb-record-provider");
   const { TcbLogProvider } = require("./tcb/tcb-log-provider");
 
   const client = createTcbClient({
-    cloudbase,
     envId: tcbConfig.envId,
     region: tcbConfig.region,
     authType: config.auth?.type === "anonymous" ? "anonymous" : "custom",
@@ -116,15 +93,7 @@ function createTcbProviders(config: AlienCmsConfig, sdks?: SdkDependencies): Pro
 
 // ─── Supabase ────────────────────────────────────────────────
 
-function createSupabaseProviders(config: AlienCmsConfig, sdks?: SdkDependencies): ProviderSet {
-  const createClient = sdks?.supabaseCreateClient;
-  if (!createClient) {
-    throw new Error(
-      "Supabase provider requires @supabase/supabase-js. " +
-      "Install it and pass createClient via sdks.supabaseCreateClient."
-    );
-  }
-
+function createSupabaseProviders(config: AlienCmsConfig): ProviderSet {
   const supaConfig = (config as any).supabase;
   if (!supaConfig?.url || !supaConfig?.anonKey) {
     throw new Error("Supabase provider requires supabase.url and supabase.anonKey in config.");
@@ -136,7 +105,6 @@ function createSupabaseProviders(config: AlienCmsConfig, sdks?: SdkDependencies)
   const { SupabaseLogProvider } = require("./supabase/supabase-log-provider");
 
   const provider = createSupabaseProvider({
-    createClient,
     url: supaConfig.url,
     anonKey: supaConfig.anonKey,
     tables: supaConfig.tables,

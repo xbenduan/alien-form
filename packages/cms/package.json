@@ -15,7 +15,10 @@
     "build": "tsup src/index.ts --format esm,cjs --dts",
     "test": "vitest run"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@cloudbase/js-sdk": "^3.0.0",
+    "@supabase/supabase-js": "^2.0.0"
+  },
   "devDependencies": {
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",

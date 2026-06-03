@@ -1,21 +1,15 @@
 /**
  * Tencent CloudBase (TCB) client initialization and authentication.
  *
- * Requires: @cloudbase/js-sdk (peerDependency, optional)
- *
  * Usage:
- *   import cloudbase from "@cloudbase/js-sdk";
- *   const client = createTcbClient({ cloudbase, envId: "your-env-id" });
+ *   const client = createTcbClient({ envId: "your-env-id" });
  *   await client.auth();
  *   const db = client.database();
  */
 
+import cloudbase from "@cloudbase/js-sdk";
+
 export interface TcbClientOptions {
-  /**
-   * The cloudbase module instance (from `import cloudbase from "@cloudbase/js-sdk"`).
-   * Passed in to avoid hard dependency on the SDK.
-   */
-  cloudbase: any;
   /** CloudBase environment ID. */
   envId: string;
   /** Region, e.g. "ap-shanghai". Optional. */
@@ -50,7 +44,7 @@ const DEFAULT_COLLECTIONS = {
 };
 
 export function createTcbClient(options: TcbClientOptions): TcbClient {
-  const { cloudbase, envId, region, authType = "anonymous", ticket, collections } = options;
+  const { envId, region, authType = "anonymous", ticket, collections } = options;
 
   const app = cloudbase.init({ env: envId, region });
   const resolvedCollections = { ...DEFAULT_COLLECTIONS, ...collections };

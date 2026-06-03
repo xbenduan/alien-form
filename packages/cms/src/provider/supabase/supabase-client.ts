@@ -1,19 +1,13 @@
 /**
  * Supabase client initialization.
  *
- * Requires: @supabase/supabase-js (peerDependency, optional)
- *
  * Usage:
- *   import { createClient } from "@supabase/supabase-js";
- *   const provider = createSupabaseProvider({ createClient, url, anonKey });
+ *   const provider = createSupabaseProvider({ url, anonKey });
  */
 
+import { createClient } from "@supabase/supabase-js";
+
 export interface SupabaseProviderOptions {
-  /**
-   * The createClient function from `@supabase/supabase-js`.
-   * Passed in to avoid hard dependency on the SDK.
-   */
-  createClient: any;
   /** Supabase project URL. */
   url: string;
   /** Supabase anon key. */
@@ -40,7 +34,7 @@ const DEFAULT_TABLES = {
 };
 
 export function createSupabaseProvider(options: SupabaseProviderOptions): SupabaseProvider {
-  const { createClient, url, anonKey, tables } = options;
+  const { url, anonKey, tables } = options;
 
   const client = createClient(url, anonKey, {
     auth: { persistSession: true, autoRefreshToken: true },
