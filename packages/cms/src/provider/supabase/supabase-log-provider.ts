@@ -3,10 +3,12 @@ import type { PaginatedResult } from "../../types/common";
 import type { SupabaseProvider } from "./supabase-client";
 
 export class SupabaseLogProvider implements LogProvider {
+  private readonly provider: SupabaseProvider;
   private readonly client: any;
   private readonly table: string;
 
-  constructor(private readonly provider: SupabaseProvider) {
+  constructor(provider: SupabaseProvider) {
+    this.provider = provider;
     this.client = provider.client;
     this.table = provider.tables.logs;
   }

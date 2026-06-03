@@ -55,10 +55,12 @@ function toRecord(row: any): ModelRecord {
 }
 
 export class SupabaseRecordProvider implements RecordProvider {
+  private readonly provider: SupabaseProvider;
   private readonly client: any;
   private readonly table: string;
 
-  constructor(private readonly provider: SupabaseProvider) {
+  constructor(provider: SupabaseProvider) {
+    this.provider = provider;
     this.client = provider.client;
     this.table = provider.tables.records;
   }

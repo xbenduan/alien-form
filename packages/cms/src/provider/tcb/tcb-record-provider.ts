@@ -83,10 +83,12 @@ function toRecord(doc: any): ModelRecord {
 }
 
 export class TcbRecordProvider implements RecordProvider {
+  private readonly client: TcbClient;
   private readonly db: any;
   private readonly collection: string;
 
-  constructor(private readonly client: TcbClient) {
+  constructor(client: TcbClient) {
+    this.client = client;
     this.db = client.database();
     this.collection = client.collections.records;
   }

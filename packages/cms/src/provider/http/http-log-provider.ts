@@ -3,12 +3,14 @@ import type { PaginatedResult } from "../../types/common";
 import type { HttpClient } from "./http-client";
 
 export class HttpLogProvider implements LogProvider {
+  private readonly client: HttpClient;
   private readonly endpoint: string;
 
   constructor(
-    private readonly client: HttpClient,
+    client: HttpClient,
     endpoint?: string,
   ) {
+    this.client = client;
     this.endpoint = endpoint ?? "/api/logs";
   }
 

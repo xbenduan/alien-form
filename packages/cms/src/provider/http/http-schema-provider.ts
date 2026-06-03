@@ -14,12 +14,14 @@ import type {
 import type { HttpClient } from "./http-client";
 
 export class HttpSchemaProvider implements SchemaProvider {
+  private readonly client: HttpClient;
   private readonly endpoint: string;
 
   constructor(
-    private readonly client: HttpClient,
+    client: HttpClient,
     endpoint?: string,
   ) {
+    this.client = client;
     this.endpoint = endpoint ?? "/api/schemas";
   }
 

@@ -3,10 +3,12 @@ import type { PaginatedResult } from "../../types/common";
 import type { TcbClient } from "./tcb-client";
 
 export class TcbLogProvider implements LogProvider {
+  private readonly client: TcbClient;
   private readonly db: any;
   private readonly collection: string;
 
-  constructor(private readonly client: TcbClient) {
+  constructor(client: TcbClient) {
+    this.client = client;
     this.db = client.database();
     this.collection = client.collections.logs;
   }
