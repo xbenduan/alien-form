@@ -1,10 +1,14 @@
-import { defineHandler } from "@alien-form/cms";
+import { defineHandler, listRecords } from "@alien-form/cms";
 
 export default defineHandler(
-  (ctx) => {
-    console.log("debugger", ctx);
-
-    return [{ value: "test", label: "测试" }];
+  async (ctx) => {
+    const params = ctx.schema?.["x-cms"]?.reactions?.dataSource || {};
+    if (!params.model) return [];
+    const data = await listRecords({ model: params.model });
+    if (!data?.list?.length) return []
+    return (
+      data.list.map((item) => ({ value: item[params.value], label: item[params.label] }))
+    );
   },
   {
     key: "loadDataSource",
@@ -14,6 +18,20 @@ export default defineHandler(
     defaultConfig: { model: "" },
     params: [
       { name: "model", type: "string", required: false, default: "", description: "固定模型名。" },
+      {
+        name: "value",
+        type: "string",
+        required: false,
+        default: "",
+        description: "要获取的值的 key",
+      },
+      {
+        name: "label",
+        type: "string",
+        required: false,
+        default: "",
+        description: "要获取的名的 key",
+      },
     ],
   },
 );

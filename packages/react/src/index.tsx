@@ -7,6 +7,7 @@ import {
   useContext,
   useMemo,
   useEffect,
+  useLayoutEffect,
   useRef,
   useCallback,
   useSyncExternalStore,
@@ -86,8 +87,29 @@ export { FormContext };
 
 export function useCreateForm(config: FormConfig = {}): FormInstance {
   const formRef = useRef<FormInstance | null>(null);
-  if (!formRef.current) formRef.current = createForm(config);
-  useEffect(() => () => { formRef.current?.destroy(); }, []);
+  const pendingDestroyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  if (!formRef.current) {
+    const form = createForm(config);
+    pendingDestroyTimerRef.current = globalThis.setTimeout(() => {
+      form.destroy();
+    }, 0);
+    formRef.current = form;
+  }
+  useLayoutEffect(() => {
+    if (pendingDestroyTimerRef.current != null) {
+      globalThis.clearTimeout(pendingDestroyTimerRef.current);
+      pendingDestroyTimerRef.current = null;
+    }
+    const form = formRef.current;
+    return () => {
+      if (pendingDestroyTimerRef.current != null) {
+        globalThis.clearTimeout(pendingDestroyTimerRef.current);
+        pendingDestroyTimerRef.current = null;
+      }
+      form?.destroy();
+      if (formRef.current === form) formRef.current = null;
+    };
+  }, []);
   return formRef.current;
 }
 

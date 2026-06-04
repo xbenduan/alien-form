@@ -483,8 +483,12 @@ function installReactions(ctx: FieldContext, field: FieldNode) {
           let alive = true;
           const cancel = () => { alive = false; };
           field._disposers.push(cancel);
-          result.then((value: any) => { if (alive) applyReactionValue(ctx, field, key, value); })
-            .catch((err: any) => ctx.emitError({ scope: "x-reaction", path: field.path, key, message: errorMessage(err), cause: err }));
+          result.then((value: any) => {
+            if (alive) applyReactionValue(ctx, field, key, value);
+          })
+            .catch((err: any) => {
+              ctx.emitError({ scope: "x-reaction", path: field.path, key, message: errorMessage(err), cause: err });
+            });
         } else {
           applyReactionValue(ctx, field, key, result);
         }
