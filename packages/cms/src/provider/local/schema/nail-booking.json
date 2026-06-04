@@ -70,8 +70,8 @@
         "reactions": {
           "dataSource": {
             "model": "nail-service",
-            "labelField": "serviceName",
-            "valueField": "id"
+            "value": "id",
+            "label": "serviceName"
           }
         },
         "table": {

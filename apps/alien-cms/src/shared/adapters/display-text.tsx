@@ -79,14 +79,11 @@ function DisplayText({ value, dataSource, format, ellipsis }: DisplayValueProps)
   return renderText(summary.text, ellipsis);
 }
 
-export default defineAdapter(
-  DisplayText,
-  {
-    key: "DisplayText",
-    label: "DisplayText",
-    description: "通用只读文本展示组件。",
-    kind: "display",
-    scenes: ["recordDetail", "tableCell"],
-    meta: { displayType: "text" },
-  },
-);
+export default defineAdapter(DisplayText, {
+  key: "DisplayText",
+  label: "文本展示组件",
+  description: "通用只读文本展示组件。",
+  kind: "display",
+  scenes: ["recordDetail", "tableCell"],
+  meta: { displayType: "text" },
+});

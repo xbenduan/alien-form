@@ -21,14 +21,11 @@ function Switch({
   );
 }
 
-export default defineAdapter(
-  Switch,
-  {
-    key: "Switch",
-    label: "Switch",
-    description: "布尔开关组件。",
-    kind: "component",
-    scenes: ["recordForm", "recordFilter"],
-    meta: { fieldType: "boolean" },
-  },
-);
+export default defineAdapter(Switch, {
+  key: "Switch",
+  label: "开关",
+  description: "布尔开关组件。",
+  kind: "component",
+  scenes: ["recordForm", "recordFilter"],
+  meta: { fieldType: "boolean" },
+});

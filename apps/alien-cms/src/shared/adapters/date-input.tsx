@@ -26,14 +26,11 @@ function DateInput({
   );
 }
 
-export default defineAdapter(
-  DateInput,
-  {
-    key: "DateInput",
-    label: "DateInput",
-    description: "日期输入组件。",
-    kind: "component",
-    scenes: ["recordForm", "recordFilter"],
-    meta: { fieldType: "string" },
-  },
-);
+export default defineAdapter(DateInput, {
+  key: "DateInput",
+  label: "选择日期",
+  description: "日期输入组件。",
+  kind: "component",
+  scenes: ["recordForm", "recordFilter"],
+  meta: { fieldType: "string" },
+});

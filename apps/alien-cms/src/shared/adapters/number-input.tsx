@@ -31,14 +31,11 @@ function NumberInput({
   );
 }
 
-export default defineAdapter(
-  NumberInput,
-  {
-    key: "NumberInput",
-    label: "NumberInput",
-    description: "数字输入组件。",
-    kind: "component",
-    scenes: ["recordForm", "recordFilter"],
-    meta: { fieldType: "number" },
-  },
-);
+export default defineAdapter(NumberInput, {
+  key: "NumberInput",
+  label: "数字输入",
+  description: "数字输入组件。",
+  kind: "component",
+  scenes: ["recordForm", "recordFilter"],
+  meta: { fieldType: "number" },
+});

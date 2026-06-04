@@ -30,14 +30,11 @@ function Radio({
   );
 }
 
-export default defineAdapter(
-  Radio,
-  {
-    key: "Radio",
-    label: "Radio",
-    description: "单选组件。",
-    kind: "component",
-    scenes: ["recordForm", "recordFilter"],
-    meta: { fieldType: "string" },
-  },
-);
+export default defineAdapter(Radio, {
+  key: "Radio",
+  label: "单选组件",
+  description: "单选组件。",
+  kind: "component",
+  scenes: ["recordForm", "recordFilter"],
+  meta: { fieldType: "string" },
+});

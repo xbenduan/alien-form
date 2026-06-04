@@ -22,14 +22,11 @@ function DisplayRate({ value }: DisplayValueProps) {
   return <Rate disabled value={numericValue} />;
 }
 
-export default defineAdapter(
-  DisplayRate,
-  {
-    key: "DisplayRate",
-    label: "DisplayRate",
-    description: "评分只读展示组件。",
-    kind: "display",
-    scenes: ["recordDetail", "tableCell"],
-    meta: { displayType: "rate" },
-  },
-);
+export default defineAdapter(DisplayRate, {
+  key: "DisplayRate",
+  label: "DisplayRate",
+  description: "评分只读展示组件。",
+  kind: "display",
+  scenes: ["recordDetail", "tableCell"],
+  meta: { displayType: "rate" },
+});

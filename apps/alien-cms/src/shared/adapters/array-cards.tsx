@@ -87,14 +87,11 @@ function ArrayCards({
   );
 }
 
-export default defineAdapter(
-  ArrayCards,
-  {
-    key: "ArrayCards",
-    label: "ArrayCards",
-    description: "对象数组卡片编辑组件。",
-    kind: "component",
-    scenes: ["recordForm", "recordDetail"],
-    meta: { fieldType: "array" },
-  },
-);
+export default defineAdapter(ArrayCards, {
+  key: "ArrayCards",
+  label: "ArrayCards",
+  description: "对象数组卡片编辑组件。",
+  kind: "component",
+  scenes: ["recordForm", "recordDetail"],
+  meta: { fieldType: "array" },
+});

@@ -64,14 +64,11 @@ function FormItem({
   );
 }
 
-export default defineAdapter(
-  FormItem,
-  {
-    key: "FormItem",
-    label: "FormItem",
-    description: "表单项装饰器。",
-    kind: "decorator",
-    scenes: ["recordForm", "recordDetail"],
-    meta: { decorator: true },
-  },
-);
+export default defineAdapter(FormItem, {
+  key: "FormItem",
+  label: "FormItem",
+  description: "表单项装饰器。",
+  kind: "decorator",
+  scenes: ["recordForm", "recordDetail"],
+  meta: { decorator: true },
+});

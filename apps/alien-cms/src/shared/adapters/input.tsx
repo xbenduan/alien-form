@@ -25,14 +25,11 @@ function Input({
   );
 }
 
-export default defineAdapter(
-  Input,
-  {
-    key: "Input",
-    label: "Input",
-    description: "基础文本输入组件。",
-    kind: "component",
-    scenes: ["recordForm", "recordFilter"],
-    meta: { fieldType: "string" },
-  },
-);
+export default defineAdapter(Input, {
+  key: "Input",
+  label: "文本输入",
+  description: "基础文本输入组件。",
+  kind: "component",
+  scenes: ["recordForm", "recordFilter"],
+  meta: { fieldType: "string" },
+});

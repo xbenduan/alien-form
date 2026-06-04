@@ -25,14 +25,11 @@ function CheckboxGroup({
   );
 }
 
-export default defineAdapter(
-  CheckboxGroup,
-  {
-    key: "CheckboxGroup",
-    label: "CheckboxGroup",
-    description: "多选组件。",
-    kind: "component",
-    scenes: ["recordForm", "recordFilter"],
-    meta: { fieldType: "tags" },
-  },
-);
+export default defineAdapter(CheckboxGroup, {
+  key: "CheckboxGroup",
+  label: "多选组件",
+  description: "多选组件。",
+  kind: "component",
+  scenes: ["recordForm", "recordFilter"],
+  meta: { fieldType: "tags" },
+});

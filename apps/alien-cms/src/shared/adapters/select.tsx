@@ -36,14 +36,11 @@ function Select({
   );
 }
 
-export default defineAdapter(
-  Select,
-  {
-    key: "Select",
-    label: "Select",
-    description: "下拉选择组件。",
-    kind: "component",
-    scenes: ["recordForm", "recordFilter"],
-    meta: { fieldType: "string" },
-  },
-);
+export default defineAdapter(Select, {
+  key: "Select",
+  label: "下拉选择组件",
+  description: "下拉选择组件。",
+  kind: "component",
+  scenes: ["recordForm", "recordFilter"],
+  meta: { fieldType: "string" },
+});

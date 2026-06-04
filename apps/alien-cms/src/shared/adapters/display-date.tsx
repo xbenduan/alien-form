@@ -13,14 +13,11 @@ function DisplayDate(props: DisplayValueProps) {
   return <DisplayText {...props} format={props.format ?? "date"} />;
 }
 
-export default defineAdapter(
-  DisplayDate,
-  {
-    key: "DisplayDate",
-    label: "DisplayDate",
-    description: "日期只读展示组件。",
-    kind: "display",
-    scenes: ["recordDetail", "tableCell"],
-    meta: { displayType: "date" },
-  },
-);
+export default defineAdapter(DisplayDate, {
+  key: "DisplayDate",
+  label: "日期展示",
+  description: "日期只读展示组件。",
+  kind: "display",
+  scenes: ["recordDetail", "tableCell"],
+  meta: { displayType: "date" },
+});

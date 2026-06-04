@@ -15,14 +15,11 @@ function Rate({
   return <AntRate value={value} onChange={(v) => onChange?.(v)} disabled={disabled} />;
 }
 
-export default defineAdapter(
-  Rate,
-  {
-    key: "Rate",
-    label: "Rate",
-    description: "评分组件。",
-    kind: "component",
-    scenes: ["recordForm", "recordFilter"],
-    meta: { fieldType: "number" },
-  },
-);
+export default defineAdapter(Rate, {
+  key: "Rate",
+  label: "评分组件",
+  description: "评分组件。",
+  kind: "component",
+  scenes: ["recordForm", "recordFilter"],
+  meta: { fieldType: "number" },
+});

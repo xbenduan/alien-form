@@ -117,16 +117,13 @@ export function isBuilderCompatibleComponent(
 }
 
 export function getBuilderComponentOptions(fieldType: BuilderFieldType) {
-  return componentCatalog.filter((item) =>
-    isBuilderCompatibleComponent(fieldType, item.value),
-  );
+  return componentCatalog.filter((item) => isBuilderCompatibleComponent(fieldType, item.value));
 }
 
-export const options = componentCatalog
-  .map((item) => ({
-    label: item.label,
-    value: item.value,
-  }));
+export const options = componentCatalog.map((item) => ({
+  label: item.label,
+  value: item.value,
+}));
 
 export const builderComponentOptions = componentCatalog
   .filter((item) => item.kind === "component")

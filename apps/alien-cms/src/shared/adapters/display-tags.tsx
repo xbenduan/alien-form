@@ -21,14 +21,11 @@ function DisplayTags({ value }: { value?: unknown }) {
   );
 }
 
-export default defineAdapter(
-  DisplayTags,
-  {
-    key: "DisplayTags",
-    label: "DisplayTags",
-    description: "标签列表只读展示组件。",
-    kind: "display",
-    scenes: ["recordDetail", "tableCell"],
-    meta: { displayType: "tags" },
-  },
-);
+export default defineAdapter(DisplayTags, {
+  key: "DisplayTags",
+  label: "标签展示",
+  description: "标签列表只读展示组件。",
+  kind: "display",
+  scenes: ["recordDetail", "tableCell"],
+  meta: { displayType: "tags" },
+});

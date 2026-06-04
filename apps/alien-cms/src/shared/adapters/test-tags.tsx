@@ -1,7 +1,7 @@
 import { defineAdapter } from "@alien-form/cms";
 import Select from "./select";
 
-function TagsInput(props: {
+function TestTags(props: {
   value?: unknown;
   onChange?: (nextValue: unknown) => void;
   disabled?: boolean;
@@ -14,9 +14,9 @@ function TagsInput(props: {
   return <Select {...props} mode="tags" />;
 }
 
-export default defineAdapter(TagsInput, {
-  key: "TagsInput",
-  label: "标签输入",
+export default defineAdapter(TestTags, {
+  key: "TestTags",
+  label: "测试标签",
   description: "标签输入组件，基于 Select 的 tags 模式。",
   kind: "component",
   scenes: ["recordForm", "recordFilter"],

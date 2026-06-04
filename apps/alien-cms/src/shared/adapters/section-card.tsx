@@ -22,14 +22,11 @@ function SectionCard({
   );
 }
 
-export default defineAdapter(
-  SectionCard,
-  {
-    key: "SectionCard",
-    label: "SectionCard",
-    description: "分组卡片容器组件。",
-    kind: "component",
-    scenes: ["recordForm", "recordDetail", "recordFilter"],
-    meta: { fieldType: "object" },
-  },
-);
+export default defineAdapter(SectionCard, {
+  key: "SectionCard",
+  label: "SectionCard",
+  description: "分组卡片容器组件。",
+  kind: "component",
+  scenes: ["recordForm", "recordDetail", "recordFilter"],
+  meta: { fieldType: "object" },
+});
