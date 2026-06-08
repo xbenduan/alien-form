@@ -3,7 +3,7 @@ import type {
   BuilderFieldType,
   ModelBuilderFieldDraft,
 } from "@alien-form/cms";
-import { Card, Empty, Form, Input, Select, Switch, Typography } from "antd";
+import { Card, Empty, Form, Input, Select, Switch } from "antd";
 import {
   builderComponentOptions,
   getBuilderComponentMeta,
@@ -155,11 +155,7 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
   };
 
   return (
-    <Card className="model-query-card" styles={{ body: { padding: 20 } }}>
-      <Typography.Title level={5} style={{ marginTop: 0 }}>
-        字段配置
-      </Typography.Title>
-
+    <Card className="model-query-card" title="字段配置" styles={{ body: { padding: 20 } }}>
       {!field ? (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请先选择一个字段" />
       ) : null}

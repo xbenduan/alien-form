@@ -6,6 +6,7 @@ import { buildModelSchema, schemaToBuilderDraft } from "@alien-form/cms";
 import type {
   BuilderComponentName,
   BuilderFieldType,
+  CmsModelSchema,
   ModelBuilderDraft,
   ModelBuilderFieldDraft,
 } from "@alien-form/cms";
@@ -19,6 +20,7 @@ import {
 import { FieldConfigPanel } from "../components/FieldConfigPanel";
 import { FieldListEditor } from "../components/FieldListEditor";
 import { ModelMetaForm } from "../components/ModelMetaForm";
+import { ModelSchemaImportModal } from "../components/ModelSchemaImportModal";
 import { ModelPreviewPanel } from "../components/ModelPreviewPanel";
 import type { FieldPreset } from "../components/FieldPalette";
 
@@ -343,6 +345,7 @@ export default function ModelPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [messageApi, contextHolder] = message.useMessage();
   const [previewJsonVisible, setPreviewJsonVisible] = useState(false);
+  const [schemaImportVisible, setSchemaImportVisible] = useState(false);
 
   const selectedField = useMemo(
     () => findFieldById(draft.fields, selectedFieldId),
@@ -406,6 +409,27 @@ export default function ModelPage() {
 
   const pageTitle = isEditMode ? "编辑模型" : "新增模型";
 
+  const applyImportedSchema = (schemaText: string) => {
+    let parsedSchema: CmsModelSchema;
+
+    try {
+      parsedSchema = JSON.parse(schemaText) as CmsModelSchema;
+    } catch {
+      messageApi.error("Schema JSON 解析失败，请检查格式");
+      return;
+    }
+
+    try {
+      const nextDraft = normalizeDraft(schemaToBuilderDraft(parsedSchema));
+      setDraft(nextDraft);
+      setSelectedFieldId(getPreferredSelectedFieldId(nextDraft.fields));
+      setSchemaImportVisible(false);
+      messageApi.success("Schema 解析成功");
+    } catch (error) {
+      messageApi.error(error instanceof Error ? `Schema 解析失败：${error.message}` : "Schema 解析失败");
+    }
+  };
+
   useEffect(() => {
     setBreadcrumb({
       items: [
@@ -467,6 +491,11 @@ export default function ModelPage() {
               <FieldListEditor
                 fields={draft.fields}
                 selectedFieldId={selectedFieldId}
+                extra={
+                  <Button type="link" size="small" onClick={() => setSchemaImportVisible(true)}>
+                    解析 Schema
+                  </Button>
+                }
                 isRemovable={(field) => !isSystemFieldKey(field.key)}
                 onSelect={(fieldId) => setSelectedFieldId(fieldId)}
                 onAddField={(preset: FieldPreset, parentId?: string) => {
@@ -610,6 +639,11 @@ export default function ModelPage() {
           {previewSchema ? JSON.stringify(previewSchema, null, 2) : (previewError ?? "无法生成")}
         </pre>
       </Modal>
+      <ModelSchemaImportModal
+        open={schemaImportVisible}
+        onClose={() => setSchemaImportVisible(false)}
+        onSubmit={applyImportedSchema}
+      />
     </Flex>
   );
 }

@@ -1,8 +1,8 @@
 import type { ModelSummary } from "@alien-form/cms";
-import { AppstoreOutlined } from "@ant-design/icons";
+import { AppstoreOutlined, SettingOutlined } from "@ant-design/icons";
 import { Card, Divider, Menu, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
-import { buildModelListPath, buildRecordPath } from "../../router/paths";
+import { buildModelListPath, buildRecordPath, buildSystemSettingsPath } from "../../router/paths";
 
 interface WorkbenchSidebarProps {
   modelSummaries: ModelSummary[];
@@ -31,17 +31,25 @@ export function WorkbenchSidebar({ modelSummaries, activeKey }: WorkbenchSidebar
         </Divider>
         <Menu
           mode="inline"
-          selectedKeys={activeKey === "models" ? ["models"] : []}
+          selectedKeys={activeKey === "models" || activeKey === "system-settings" ? [activeKey] : []}
           items={[
             {
               key: "models",
               icon: <AppstoreOutlined />,
               label: "模型管理",
             },
+            {
+              key: "system-settings",
+              icon: <SettingOutlined />,
+              label: "系统设置",
+            },
           ]}
           onClick={({ key }) => {
             if (key === "models") {
               navigate(buildModelListPath());
+            }
+            if (key === "system-settings") {
+              navigate(buildSystemSettingsPath());
             }
           }}
         />

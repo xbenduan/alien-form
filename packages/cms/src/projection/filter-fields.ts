@@ -6,7 +6,7 @@ export function projectFilterFields(schema: any) {
   let order = 0;
 
   return Object.entries(properties)
-    .filter(([_, field]) => field['x-cms']?.filter?.visible !== false)
+    .filter(([_, field]) => field.display !== 'none' && field['x-cms']?.filter?.visible !== false)
     .map(([key, field]) => ({
       key,
       title: field.title ?? key,

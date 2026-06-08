@@ -90,6 +90,7 @@ export {
   switchProvider,
   resetProvider,
   getCurrentProviderType,
+  getCurrentProviderSnapshot,
 } from './internal/provider';
 export { createProviders } from "./provider/create-providers";
 export type { SchemaProvider } from "./provider/schema-provider";

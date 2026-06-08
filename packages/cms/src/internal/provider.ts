@@ -101,6 +101,14 @@ export function getCurrentProviderType(): string | undefined {
   return readCache()?.type;
 }
 
+/**
+ * Get current provider snapshot from cache.
+ * Returns null if cache is absent or invalid.
+ */
+export function getCurrentProviderSnapshot(): { type: string; config: any } | null {
+  return readCache();
+}
+
 // ─── Getters ──────────────────────────────────────────────────
 
 export function getSchemaProvider(): SchemaProvider {

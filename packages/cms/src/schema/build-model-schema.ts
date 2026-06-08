@@ -135,6 +135,7 @@ function buildFieldSchema(
       type: "number",
       component: "NumberInput",
       decorator: "FormItem",
+      display: "none",
       "x-cms": {
         ...baseSchema["x-cms"],
         table: {

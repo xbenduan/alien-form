@@ -2,6 +2,7 @@ import type { RecordRouteState } from '../../domains/record/types/record';
 
 export const RECORD_ROUTE_PREFIX = '/records';
 export const MODEL_ROUTE_PREFIX = '/models';
+export const SYSTEM_ROUTE_PREFIX = '/system';
 
 export function buildModelListPath() {
   return MODEL_ROUTE_PREFIX;
@@ -46,4 +47,8 @@ export function buildModelNewPath() {
 
 export function buildModelEditPath(modelName: string) {
   return `${MODEL_ROUTE_PREFIX}/${modelName}/edit`;
+}
+
+export function buildSystemSettingsPath() {
+  return `${SYSTEM_ROUTE_PREFIX}/settings`;
 }

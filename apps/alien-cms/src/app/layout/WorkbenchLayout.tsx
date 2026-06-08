@@ -50,13 +50,11 @@ export default function WorkbenchLayout() {
   const activeSidebarKey =
     pathname === '/models' || pathname.startsWith('/models/')
       ? 'models'
+      : pathname === '/system/settings' || pathname.startsWith('/system/')
+        ? 'system-settings'
       : pathname.startsWith('/records/')
         ? decodeURIComponent(pathname.split('/')[2] ?? '')
         : '';
-
-  if (modelSummariesQuery.isError) {
-    return <Alert type="error" showIcon message="模型列表加载失败" description={modelSummariesQuery.error.message} />;
-  }
 
   return (
     <div className="model-page-shell">
@@ -78,6 +76,15 @@ export default function WorkbenchLayout() {
             </header>
 
             <div className="model-workbench-content">
+              {modelSummariesQuery.isError ? (
+                <Alert
+                  type="error"
+                  showIcon
+                  style={{ marginBottom: 16 }}
+                  message="模型列表加载失败"
+                  description={modelSummariesQuery.error.message}
+                />
+              ) : null}
               {modelSummariesQuery.isLoading && modelSummaries.length === 0 ? (
                 <div className="model-page-loading">
                   <Spin size="large" />

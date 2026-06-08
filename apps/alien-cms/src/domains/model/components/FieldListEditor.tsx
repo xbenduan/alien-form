@@ -1,12 +1,14 @@
 import { DeleteOutlined, DownOutlined, DragOutlined, PlusOutlined } from '@ant-design/icons';
 import type { ModelBuilderFieldDraft } from '@alien-form/cms';
 import { Button, Card, Dropdown, Empty, Space, Tag, Typography } from 'antd';
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { fieldPresets, type FieldPreset } from './FieldPalette';
 
 interface FieldListEditorProps {
   fields: ModelBuilderFieldDraft[];
   selectedFieldId?: string;
+  extra?: ReactNode;
   isRemovable?: (field: ModelBuilderFieldDraft) => boolean;
   onSelect: (fieldId: string) => void;
   onRemove: (fieldId: string) => void;
@@ -17,6 +19,7 @@ interface FieldListEditorProps {
 export function FieldListEditor({
   fields,
   selectedFieldId,
+  extra,
   isRemovable,
   onSelect,
   onRemove,
@@ -138,11 +141,7 @@ export function FieldListEditor({
   );
 
   return (
-    <Card className="model-query-card" styles={{ body: { padding: 20 } }}>
-      <Typography.Title level={5} style={{ marginTop: 0 }}>
-        字段列表
-      </Typography.Title>
-
+    <Card className="model-query-card" title="字段列表" extra={extra} styles={{ body: { padding: 20 } }}>
       {fields.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="先从左侧添加一个字段" /> : null}
 
       <div className="builder-field-list">

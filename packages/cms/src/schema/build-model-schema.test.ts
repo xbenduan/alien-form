@@ -98,6 +98,7 @@ describe("buildModelSchema", () => {
       type: "number",
       component: "NumberInput",
       decorator: "FormItem",
+      display: "none",
       "x-cms": {
         table: {
           format: "dateTime",
@@ -114,6 +115,7 @@ describe("buildModelSchema", () => {
       type: "number",
       component: "NumberInput",
       decorator: "FormItem",
+      display: "none",
       "x-cms": {
         table: {
           format: "dateTime",
