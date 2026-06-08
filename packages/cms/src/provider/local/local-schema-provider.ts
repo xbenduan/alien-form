@@ -1,6 +1,7 @@
 import type { SchemaProvider } from "../schema-provider";
 import type {
   SchemaListParams,
+  SchemaListFilters,
   SchemaListResult,
   SchemaDetailParams,
   SchemaDetailResult,
@@ -36,6 +37,29 @@ function toSummary(item: MemorySchemaEntry): ModelSummary {
   };
 }
 
+function matchesFilterValue(value: string | undefined, filterValue?: string): boolean {
+  const normalizedFilterValue = filterValue?.trim().toLowerCase();
+  if (!normalizedFilterValue) {
+    return true;
+  }
+
+  return String(value ?? "").toLowerCase().includes(normalizedFilterValue);
+}
+
+function matchesFilters(item: MemorySchemaEntry, filters?: SchemaListFilters): boolean {
+  if (!filters) {
+    return true;
+  }
+
+  const summary = toSummary(item);
+  return (
+    matchesFilterValue(summary.name, filters.name) &&
+    matchesFilterValue(summary.title, filters.title) &&
+    matchesFilterValue(summary.description, filters.description) &&
+    matchesFilterValue(summary.source, filters.source)
+  );
+}
+
 function toEntry(schema: CmsModelSchema, source: "static" | "runtime", existing?: MemorySchemaEntry): MemorySchemaEntry {
   const normalized = normalizeSchema(schema as never) as unknown as CmsModelSchema;
   const modelName = normalized["x-model"]?.name ?? "unknown";
@@ -61,7 +85,9 @@ export class LocalSchemaProvider implements SchemaProvider {
   async list(params?: SchemaListParams): Promise<SchemaListResult> {
     let items = listSchemaEntries();
 
-    if (params?.keyword) {
+    if (params?.filters) {
+      items = items.filter((item) => matchesFilters(item, params.filters));
+    } else if (params?.keyword) {
       const keyword = params.keyword.trim().toLowerCase();
       items = items.filter((item) =>
         [item.modelName, item.schema.title, item.schema["x-model"]?.title, item.schema.description, item.schema["x-model"]?.description]

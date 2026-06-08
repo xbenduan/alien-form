@@ -29,6 +29,7 @@ export type {
   CmsModelMeta,
   CmsModelSchema,
   ModelSummary,
+  SchemaListFilters,
   SchemaListParams,
   SchemaDetailParams,
   SchemaCreateParams,

@@ -148,7 +148,7 @@ export class HttpClient {
   buildListParams(options: {
     pagination?: { current: number; pageSize: number };
     sorter?: { field?: string; order?: "ascend" | "descend" };
-    filters?: Record<string, unknown>;
+    filters?: object;
     keyword?: string;
   }): Record<string, string | number | boolean | undefined> {
     const listConfig = this.adapter?.request?.list;

@@ -1,6 +1,7 @@
 import type { SchemaProvider } from "../schema-provider";
 import type {
   SchemaListParams,
+  SchemaListFilters,
   SchemaListResult,
   SchemaDetailParams,
   SchemaDetailResult,
@@ -27,6 +28,26 @@ function toSummary(row: any): ModelSummary {
   };
 }
 
+function applyListFilters(query: any, filters?: SchemaListFilters) {
+  if (filters?.name?.trim()) {
+    query = query.ilike("model_name", `%${filters.name.trim()}%`);
+  }
+
+  if (filters?.title?.trim()) {
+    query = query.ilike("title", `%${filters.title.trim()}%`);
+  }
+
+  if (filters?.description?.trim()) {
+    query = query.ilike("description", `%${filters.description.trim()}%`);
+  }
+
+  if (filters?.source?.trim()) {
+    query = query.ilike("source", `%${filters.source.trim()}%`);
+  }
+
+  return query;
+}
+
 export class SupabaseSchemaProvider implements SchemaProvider {
   private readonly provider: SupabaseProvider;
   private readonly client: any;
@@ -43,6 +64,8 @@ export class SupabaseSchemaProvider implements SchemaProvider {
       .from(this.table)
       .select("model_name, title, subtitle, description, source, schema, updated_at", { count: "exact" })
       .eq("deleted", false);
+
+    query = applyListFilters(query, params?.filters);
 
     if (params?.keyword) {
       query = query.or(

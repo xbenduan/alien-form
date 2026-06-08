@@ -1,11 +1,11 @@
-import { DeleteOutlined, EditOutlined, EyeOutlined } from '@ant-design/icons';
-import { Button, Popconfirm, Space, Table, Tag, Typography } from 'antd';
-import type { TableColumnsType, TablePaginationConfig } from 'antd';
-import type { FilterValue, SorterResult } from 'antd/es/table/interface';
-import { useState } from 'react';
-import type { ModelRecord, TableColumnProjection } from '../types/record';
-import { FieldDetailDrawer } from './FieldDetailDrawer';
-import { renderTableCell } from './TableCellRenderer';
+import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
+import { Button, Popconfirm, Space, Table, Tag, Typography } from "antd";
+import type { TableColumnsType, TablePaginationConfig } from "antd";
+import type { FilterValue, SorterResult } from "antd/es/table/interface";
+import { useState } from "react";
+import type { ModelRecord, TableColumnProjection } from "../types/record";
+import { FieldDetailDrawer } from "./FieldDetailDrawer";
+import { renderTableCell } from "./TableCellRenderer";
 
 interface RecordTableProps {
   columns: TableColumnProjection[];
@@ -13,7 +13,7 @@ interface RecordTableProps {
   total: number;
   loading?: boolean;
   pagination: { current: number; pageSize: number };
-  sorter?: { field?: string; order?: 'ascend' | 'descend' };
+  sorter?: { field?: string; order?: "ascend" | "descend" };
   onTableChange: (params: {
     pagination: TablePaginationConfig;
     sorter?: SorterResult<ModelRecord>;
@@ -48,7 +48,7 @@ export function RecordTable({
       key: column.key,
       width: column.width,
       ellipsis: column.ellipsis,
-      sorter: column.type !== 'array' && column.type !== 'object' && column.type !== 'void',
+      sorter: column.type !== "array" && column.type !== "object" && column.type !== "void",
       sortOrder: sorter?.field === column.key ? sorter.order : null,
       render: (value: unknown, record: ModelRecord) =>
         renderTableCell(column, value, record, (nextColumn, nextRecord) =>
@@ -56,16 +56,26 @@ export function RecordTable({
         ),
     })),
     {
-      title: '操作',
-      key: 'actions',
-      fixed: 'right',
+      title: "操作",
+      key: "actions",
+      fixed: "right",
       width: 180,
       render: (_, record) => (
         <Space size={4} wrap>
-          <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => onDetail(record.id)}>
+          <Button
+            type="link"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => onDetail(record.id)}
+          >
             详情
           </Button>
-          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => onEdit(record.id)}>
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => onEdit(record.id)}
+          >
             编辑
           </Button>
           <Popconfirm

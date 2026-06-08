@@ -1,6 +1,7 @@
 import type { SchemaProvider } from "../schema-provider";
 import type {
   SchemaListParams,
+  SchemaListFilters,
   SchemaListResult,
   SchemaDetailParams,
   SchemaDetailResult,
@@ -27,6 +28,36 @@ function toSummary(doc: any): ModelSummary {
   };
 }
 
+function buildListWhere(db: any, filters?: SchemaListFilters, keyword?: string) {
+  const _ = db.command;
+  const conditions: any[] = [{ deleted: _.neq(true) }];
+
+  const pushRegexCondition = (field: string, value?: string) => {
+    if (!value?.trim()) {
+      return;
+    }
+
+    conditions.push({
+      [field]: db.RegExp({
+        regexp: value.trim(),
+        options: "i",
+      }),
+    });
+  };
+
+  pushRegexCondition("modelName", filters?.name);
+  pushRegexCondition("title", filters?.title);
+  pushRegexCondition("description", filters?.description);
+  pushRegexCondition("source", filters?.source);
+
+  if (keyword?.trim()) {
+    const regex = db.RegExp({ regexp: keyword.trim(), options: "i" });
+    conditions.push(_.or([{ title: regex }, { modelName: regex }, { description: regex }]));
+  }
+
+  return conditions.length === 1 ? conditions[0] : _.and(conditions);
+}
+
 export class TcbSchemaProvider implements SchemaProvider {
   private readonly client: TcbClient;
   private readonly db: any;
@@ -39,18 +70,9 @@ export class TcbSchemaProvider implements SchemaProvider {
   }
 
   async list(params?: SchemaListParams): Promise<SchemaListResult> {
-    const _ = this.db.command;
-    let query = this.db.collection(this.collection).where({ deleted: _.neq(true) });
-
-    if (params?.keyword) {
-      const regex = this.db.RegExp({ regexp: params.keyword, options: "i" });
-      query = this.db.collection(this.collection).where(
-        _.and([
-          { deleted: _.neq(true) },
-          _.or([{ title: regex }, { modelName: regex }, { description: regex }]),
-        ])
-      );
-    }
+    const query = this.db
+      .collection(this.collection)
+      .where(buildListWhere(this.db, params?.filters, params?.keyword));
 
     const countResult = await query.count();
     const total = countResult.total;

@@ -93,8 +93,16 @@ export interface ModelSummary {
 }
 
 // ─── Schema CRUD Params ──────────────────────────────────────
+export interface SchemaListFilters {
+  name?: string;
+  title?: string;
+  description?: string;
+  source?: string;
+}
+
 export interface SchemaListParams {
   pagination?: Pagination;
+  filters?: SchemaListFilters;
   keyword?: string;
 }
 

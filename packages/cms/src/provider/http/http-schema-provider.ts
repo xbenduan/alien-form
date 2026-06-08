@@ -28,6 +28,7 @@ export class HttpSchemaProvider implements SchemaProvider {
   async list(params?: SchemaListParams): Promise<SchemaListResult> {
     const queryParams = this.client.buildListParams({
       pagination: params?.pagination,
+      filters: params?.filters,
       keyword: params?.keyword,
     });
 

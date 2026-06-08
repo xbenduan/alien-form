@@ -12,9 +12,9 @@
     "primaryField": "customerName",
     "defaultPageSize": 5,
     "openMode": {
-      "add": "modal",
-      "edit": "modal",
-      "detail": "modal"
+      "add": "page",
+      "edit": "page",
+      "detail": "page"
     },
     "filter": {
       "count": 3

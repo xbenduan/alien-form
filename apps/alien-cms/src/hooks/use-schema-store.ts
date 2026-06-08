@@ -1,13 +1,13 @@
 import { createSchema, deleteSchema, getSchema, listSchemas, updateSchema } from "@alien-form/cms";
-import type { CmsModelSchema } from "@alien-form/cms";
+import type { CmsModelSchema, SchemaListFilters } from "@alien-form/cms";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
 export const schemaQueryKeys = {
   all: ["schemas"] as const,
   summaries: ["schemas", "summaries"] as const,
-  list: (keyword: string, current: number, pageSize: number) =>
-    ["schemas", "list", keyword, current, pageSize] as const,
+  list: (filters: SchemaListFilters, current: number, pageSize: number) =>
+    ["schemas", "list", filters, current, pageSize] as const,
   detail: (modelName?: string) => ["schemas", "detail", modelName] as const,
 };
 
@@ -21,13 +21,17 @@ export function useModelSummaries() {
   });
 }
 
-export function useSchemaList(options: { keyword: string; current: number; pageSize: number }) {
-  const { keyword, current, pageSize } = options;
+export function useSchemaList(options: {
+  filters: SchemaListFilters;
+  current: number;
+  pageSize: number;
+}) {
+  const { filters, current, pageSize } = options;
   return useQuery({
-    queryKey: schemaQueryKeys.list(keyword, current, pageSize),
+    queryKey: schemaQueryKeys.list(filters, current, pageSize),
     queryFn: () =>
       listSchemas({
-        keyword,
+        filters,
         pagination: {
           current,
           pageSize,
@@ -91,11 +95,11 @@ export function useSchemaMutations() {
 }
 
 export function useSchemaStore() {
-  const [keyword, setKeyword] = useState("");
+  const [filters, setFilters] = useState<SchemaListFilters>({});
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
   const [previewModelName, setPreviewModelName] = useState<string>();
   const listQuery = useSchemaList({
-    keyword,
+    filters,
     current: pagination.current,
     pageSize: pagination.pageSize,
   });
@@ -109,8 +113,8 @@ export function useSchemaStore() {
   );
 
   return {
-    keyword,
-    setKeyword,
+    filters,
+    setFilters,
     pagination,
     setPagination,
     list: listQuery.data?.list ?? [],
@@ -126,4 +130,3 @@ export function useSchemaStore() {
     deleteModel: mutations.deleteModel,
   };
 }
-
