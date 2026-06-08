@@ -14,7 +14,7 @@
     "openMode": {
       "add": "drawer",
       "edit": "drawer",
-      "detail": "modal"
+      "detail": "drawer"
     },
     "filter": {
       "count": 3
@@ -292,11 +292,7 @@
               "reactions": {
                 "dataSource": {
                   "selector": "$row.record",
-                  "includeTypes": [
-                    "string",
-                    "number",
-                    "boolean"
-                  ],
+                  "includeTypes": ["string", "number", "boolean"],
                   "valueMode": "name"
                 }
               }
@@ -307,10 +303,7 @@
       "x-cms": {
         "table": {
           "width": 260,
-          "inline": [
-            "record",
-            "fieldKeys"
-          ],
+          "inline": ["record", "fieldKeys"],
           "expandable": true
         }
       }

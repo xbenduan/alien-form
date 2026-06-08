@@ -12,8 +12,8 @@
     "primaryField": "serviceName",
     "defaultPageSize": 5,
     "openMode": {
-      "add": "drawer",
-      "edit": "drawer",
+      "add": "modal",
+      "edit": "modal",
       "detail": "modal"
     },
     "filter": {

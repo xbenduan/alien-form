@@ -1,39 +1,46 @@
-import { ArrowLeftOutlined, EyeOutlined, SaveOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Col, Modal, Row, Space, Spin, Steps, message } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { buildModelSchema, schemaToBuilderDraft } from '@alien-form/cms';
+import { ArrowLeftOutlined, EyeOutlined, SaveOutlined } from "@ant-design/icons";
+import { Alert, Button, Card, Col, Flex, Modal, Row, Space, Spin, Steps, message } from "antd";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { buildModelSchema, schemaToBuilderDraft } from "@alien-form/cms";
 import type {
   BuilderComponentName,
   BuilderFieldType,
   ModelBuilderDraft,
   ModelBuilderFieldDraft,
-} from '@alien-form/cms';
-import { useWorkbenchLayout } from '../../../app/layout/WorkbenchLayout';
-import { buildModelListPath } from '../../../app/router/paths';
-import { useModelSummaries, useSchemaDetail, useSchemaMutations } from '../../../hooks/use-schema-store';
-import { FieldConfigPanel } from '../components/FieldConfigPanel';
-import { FieldListEditor } from '../components/FieldListEditor';
-import { ModelMetaForm } from '../components/ModelMetaForm';
-import { ModelPreviewPanel } from '../components/ModelPreviewPanel';
-import type { FieldPreset } from '../components/FieldPalette';
+} from "@alien-form/cms";
+import { useWorkbenchLayout } from "../../../app/layout/WorkbenchLayout";
+import { buildModelListPath } from "../../../app/router/paths";
+import {
+  useModelSummaries,
+  useSchemaDetail,
+  useSchemaMutations,
+} from "../../../hooks/use-schema-store";
+import { FieldConfigPanel } from "../components/FieldConfigPanel";
+import { FieldListEditor } from "../components/FieldListEditor";
+import { ModelMetaForm } from "../components/ModelMetaForm";
+import { ModelPreviewPanel } from "../components/ModelPreviewPanel";
+import type { FieldPreset } from "../components/FieldPalette";
 
 let fieldCounter = 0;
 
-function createFieldDraft(type: BuilderFieldType, component: BuilderComponentName): ModelBuilderFieldDraft {
+function createFieldDraft(
+  type: BuilderFieldType,
+  component: BuilderComponentName,
+): ModelBuilderFieldDraft {
   const timestamp = Date.now();
   const suffix = `${(++fieldCounter).toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   const defaultTitle: Record<BuilderFieldType, string> = {
-    string: 'Text Field',
-    number: 'Number Field',
-    boolean: 'Boolean Field',
-    object: 'Object Group',
-    void: 'Layout Group',
-    array: 'Array Field',
-    tags: 'Tags Field',
+    string: "Text Field",
+    number: "Number Field",
+    boolean: "Boolean Field",
+    object: "Object Group",
+    void: "Layout Group",
+    array: "Array Field",
+    tags: "Tags Field",
   };
-  const isContainer = type === 'object' || type === 'void';
-  const isObjectArray = type === 'array';
+  const isContainer = type === "object" || type === "void";
+  const isObjectArray = type === "array";
 
   return {
     id: `field-${timestamp}-${suffix}`,
@@ -41,39 +48,42 @@ function createFieldDraft(type: BuilderFieldType, component: BuilderComponentNam
     title: defaultTitle[type],
     type,
     component,
-    decorator: isContainer ? undefined : 'FormItem',
+    decorator: isContainer ? undefined : "FormItem",
     required: false,
-    defaultValueText: '',
-    propsText: '{}',
-    dataSourceText: '',
-    tableWidthText: '',
+    defaultValueText: "",
+    propsText: "{}",
+    dataSourceText: "",
+    tableWidthText: "",
     tableEllipsis: true,
     tableInlineFields: [],
     reactions: [],
     children: isContainer || isObjectArray ? [] : undefined,
-    arrayMode: type === 'array' ? 'object' : undefined,
-    itemTitle: isObjectArray ? 'Item' : undefined,
+    arrayMode: type === "array" ? "object" : undefined,
+    itemTitle: isObjectArray ? "Item" : undefined,
   };
 }
 
 function createInitialDraft(): ModelBuilderDraft {
   return {
-    modelName: '',
-    title: '新模型',
-    subtitle: '',
-    description: '',
-    singularLabel: '记录',
-    pluralLabel: '记录',
+    modelName: "",
+    title: "新模型",
+    subtitle: "",
+    description: "",
+    singularLabel: "记录",
+    pluralLabel: "记录",
     defaultPageSize: 10,
     filterCount: 3,
     tableDefaultWidth: undefined,
     tableVisibleFields: [],
-    openMode: { add: 'drawer', edit: 'drawer', detail: 'drawer' },
-    fields: [createFieldDraft('string', 'Input')],
+    openMode: { add: "drawer", edit: "drawer", detail: "drawer" },
+    fields: [createFieldDraft("string", "Input")],
   };
 }
 
-function findFieldById(fields: ModelBuilderFieldDraft[], id?: string): ModelBuilderFieldDraft | undefined {
+function findFieldById(
+  fields: ModelBuilderFieldDraft[],
+  id?: string,
+): ModelBuilderFieldDraft | undefined {
   for (const field of fields) {
     if (field.id === id) return field;
     if (field.children?.length) {
@@ -110,32 +120,42 @@ function updateFieldInTree(
 }
 
 function collectFieldIds(fields: ModelBuilderFieldDraft[]): string[] {
-  return fields.flatMap((field) => [field.id, ...(field.children ? collectFieldIds(field.children) : [])]);
+  return fields.flatMap((field) => [
+    field.id,
+    ...(field.children ? collectFieldIds(field.children) : []),
+  ]);
 }
 
-function validateDraft(draft: ModelBuilderDraft, existingModelNames: string[], editingModelName?: string) {
+function validateDraft(
+  draft: ModelBuilderDraft,
+  existingModelNames: string[],
+  editingModelName?: string,
+) {
   const errors: string[] = [];
 
   if (!draft.modelName.trim()) {
-    errors.push('请先填写模型名');
+    errors.push("请先填写模型名");
   } else if (!/^[a-z][a-z0-9-]*$/.test(draft.modelName.trim())) {
-    errors.push('模型名仅支持小写字母、数字和中划线，且必须以字母开头');
-  } else if (existingModelNames.includes(draft.modelName.trim()) && editingModelName !== draft.modelName.trim()) {
+    errors.push("模型名仅支持小写字母、数字和中划线，且必须以字母开头");
+  } else if (
+    existingModelNames.includes(draft.modelName.trim()) &&
+    editingModelName !== draft.modelName.trim()
+  ) {
     errors.push(`模型名 ${draft.modelName.trim()} 已存在`);
   }
 
   if (!draft.title.trim()) {
-    errors.push('请先填写模型标题');
+    errors.push("请先填写模型标题");
   }
 
   if (draft.fields.length === 0) {
-    errors.push('请至少添加一个字段');
+    errors.push("请至少添加一个字段");
   }
 
   const validateFields = (fields: ModelBuilderFieldDraft[], path: string) => {
     const keys = new Set<string>();
     for (const field of fields) {
-      const label = `${path} / ${field.title || '未命名字段'}`;
+      const label = `${path} / ${field.title || "未命名字段"}`;
       if (!field.key.trim()) {
         errors.push(`${label} 缺少 key`);
       }
@@ -145,9 +165,7 @@ function validateDraft(draft: ModelBuilderDraft, existingModelNames: string[], e
       keys.add(field.key.trim());
 
       const needsChildren =
-        field.type === 'object' ||
-        field.type === 'void' ||
-        field.type === 'array';
+        field.type === "object" || field.type === "void" || field.type === "array";
       if (needsChildren && (!field.children || field.children.length === 0)) {
         errors.push(`${label} 需要至少一个子字段`);
       }
@@ -158,29 +176,33 @@ function validateDraft(draft: ModelBuilderDraft, existingModelNames: string[], e
     }
   };
 
-  validateFields(draft.fields, draft.title.trim() || '模型');
+  validateFields(draft.fields, draft.title.trim() || "模型");
   return errors;
 }
 
-function validateModelMeta(draft: ModelBuilderDraft, existingModelNames: string[], isEditMode: boolean) {
+function validateModelMeta(
+  draft: ModelBuilderDraft,
+  existingModelNames: string[],
+  isEditMode: boolean,
+) {
   if (!draft.modelName.trim()) {
-    throw new Error('请先填写模型名');
+    throw new Error("请先填写模型名");
   }
   if (!/^[a-z][a-z0-9-]*$/.test(draft.modelName.trim())) {
-    throw new Error('模型名仅支持小写字母、数字和中划线，且必须以字母开头');
+    throw new Error("模型名仅支持小写字母、数字和中划线，且必须以字母开头");
   }
   if (!isEditMode && existingModelNames.includes(draft.modelName.trim())) {
     throw new Error(`模型名 ${draft.modelName.trim()} 已存在`);
   }
   if (!draft.title.trim()) {
-    throw new Error('请先填写模型标题');
+    throw new Error("请先填写模型标题");
   }
 }
 
 const STEP_ITEMS = [
-  { title: '模型字段', description: '配置字段、容器字段与 handlers' },
-  { title: 'x-model 配置', description: '配置模型信息、列表白名单与打开方式' },
-  { title: '预览保存', description: '预览 schema 效果并最终保存' },
+  { title: "模型字段", description: "配置字段、容器字段与 handlers" },
+  { title: "x-model 配置", description: "配置模型信息、列表白名单与打开方式" },
+  { title: "预览保存", description: "预览 schema 效果并最终保存" },
 ];
 
 export default function ModelPage() {
@@ -198,7 +220,10 @@ export default function ModelPage() {
   const [messageApi, contextHolder] = message.useMessage();
   const [previewJsonVisible, setPreviewJsonVisible] = useState(false);
 
-  const selectedField = useMemo(() => findFieldById(draft.fields, selectedFieldId), [draft.fields, selectedFieldId]);
+  const selectedField = useMemo(
+    () => findFieldById(draft.fields, selectedFieldId),
+    [draft.fields, selectedFieldId],
+  );
   const previewSchema = useMemo(() => {
     try {
       return buildModelSchema(draft);
@@ -211,13 +236,15 @@ export default function ModelPage() {
       buildModelSchema(draft);
       return undefined;
     } catch (error) {
-      return error instanceof Error ? error.message : 'Preview generation failed';
+      return error instanceof Error ? error.message : "Preview generation failed";
     }
   }, [draft]);
   const existingModels = existingModelsQuery.data ?? [];
   const saving = schemaMutations.creating || schemaMutations.updating;
-  const loadingSchema = isEditMode && (editingSchemaQuery.isLoading || editingSchemaQuery.isFetching);
-  const loadingError = editingSchemaQuery.error instanceof Error ? editingSchemaQuery.error.message : undefined;
+  const loadingSchema =
+    isEditMode && (editingSchemaQuery.isLoading || editingSchemaQuery.isFetching);
+  const loadingError =
+    editingSchemaQuery.error instanceof Error ? editingSchemaQuery.error.message : undefined;
 
   useEffect(() => {
     if (isEditMode && editingSchemaQuery.data) {
@@ -240,7 +267,9 @@ export default function ModelPage() {
     if (nextVisibleFields.length !== draft.tableVisibleFields.length) {
       setDraft((currentDraft) => ({
         ...currentDraft,
-        tableVisibleFields: currentDraft.tableVisibleFields.filter((key) => validFieldKeys.has(key)),
+        tableVisibleFields: currentDraft.tableVisibleFields.filter((key) =>
+          validFieldKeys.has(key),
+        ),
       }));
     }
   }, [draft.fields, draft.tableVisibleFields]);
@@ -251,23 +280,28 @@ export default function ModelPage() {
     value: field.key,
   }));
 
-  const pageTitle = isEditMode ? '编辑模型' : '新增模型';
+  const pageTitle = isEditMode ? "编辑模型" : "新增模型";
 
   useEffect(() => {
     setBreadcrumb({
       items: [
-        { title: '模型管理' },
+        { title: "模型管理" },
         { title: pageTitle },
         {
-          title: isEditMode && loadingSchema
-            ? '加载中'
-            : isEditMode && loadingError
-              ? '加载失败'
-              : STEP_ITEMS[currentStep]?.title ?? '设计器',
+          title:
+            isEditMode && loadingSchema
+              ? "加载中"
+              : isEditMode && loadingError
+                ? "加载失败"
+                : (STEP_ITEMS[currentStep]?.title ?? "设计器"),
         },
       ],
       extra: isEditMode ? (
-        <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => navigate(buildModelListPath())}>
+        <Button
+          type="link"
+          icon={<ArrowLeftOutlined />}
+          onClick={() => navigate(buildModelListPath())}
+        >
           返回
         </Button>
       ) : undefined,
@@ -296,7 +330,7 @@ export default function ModelPage() {
   }
 
   return (
-    <>
+    <Flex vertical gap={16}>
       {contextHolder}
       <Card className="model-query-card" styles={{ body: { padding: 20 } }}>
         <Steps current={currentStep} items={STEP_ITEMS} />
@@ -369,70 +403,73 @@ export default function ModelPage() {
           />
         ) : null}
 
-        {currentStep === 2 ? <ModelPreviewPanel schema={previewSchema} error={previewError} hideTitle /> : null}
+        {currentStep === 2 ? (
+          <ModelPreviewPanel schema={previewSchema} error={previewError} hideTitle />
+        ) : null}
       </div>
 
       <div className="model-breadcrumb-bar builder-bottom-actions">
         <div className="model-breadcrumb-content">
           <Space>
-          {currentStep > 0 ? (
-            <Button onClick={() => setCurrentStep((step) => step - 1)}>
-              上一步
-            </Button>
-          ) : null}
-          {currentStep < 2 ? (
-            <Button
-              type="primary"
-              onClick={() => {
-                if (currentStep === 1) {
-                  try {
-                    validateModelMeta(draft, existingModelNames, isEditMode);
-                  } catch (error) {
-                    messageApi.error(error instanceof Error ? error.message : '请完善模型信息');
-                    return;
-                  }
-                }
-                setCurrentStep((step) => step + 1);
-              }}
-            >
-              下一步
-            </Button>
-          ) : (
-            <>
-              <Button
-                icon={<EyeOutlined />}
-                onClick={() => setPreviewJsonVisible(true)}
-              >
-                预览提交
-              </Button>
+            {currentStep > 0 ? (
+              <Button onClick={() => setCurrentStep((step) => step - 1)}>上一步</Button>
+            ) : null}
+            {currentStep < 2 ? (
               <Button
                 type="primary"
-                icon={<SaveOutlined />}
-                loading={saving}
-                onClick={async () => {
-                  try {
-                    const errors = validateDraft(draft, existingModelNames, editModelName);
-                    if (errors.length > 0) {
-                      throw new Error(errors[0]);
+                onClick={() => {
+                  if (currentStep === 1) {
+                    try {
+                      validateModelMeta(draft, existingModelNames, isEditMode);
+                    } catch (error) {
+                      messageApi.error(error instanceof Error ? error.message : "请完善模型信息");
+                      return;
                     }
-
-                    const nextSchema = buildModelSchema(draft);
-                    if (isEditMode && editModelName) {
-                      await schemaMutations.updateModel(editModelName, nextSchema);
-                    } else {
-                      await schemaMutations.createModel(nextSchema);
-                    }
-                    messageApi.success(isEditMode ? '模型保存成功' : '模型创建成功');
-                    navigate(buildModelListPath());
-                  } catch (error) {
-                    messageApi.error(error instanceof Error ? error.message : (isEditMode ? '模型保存失败' : '模型创建失败'));
                   }
+                  setCurrentStep((step) => step + 1);
                 }}
               >
-                {isEditMode ? '保存模型' : '创建模型'}
+                下一步
               </Button>
-            </>
-          )}
+            ) : (
+              <>
+                <Button icon={<EyeOutlined />} onClick={() => setPreviewJsonVisible(true)}>
+                  预览提交
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<SaveOutlined />}
+                  loading={saving}
+                  onClick={async () => {
+                    try {
+                      const errors = validateDraft(draft, existingModelNames, editModelName);
+                      if (errors.length > 0) {
+                        throw new Error(errors[0]);
+                      }
+
+                      const nextSchema = buildModelSchema(draft);
+                      if (isEditMode && editModelName) {
+                        await schemaMutations.updateModel(editModelName, nextSchema);
+                      } else {
+                        await schemaMutations.createModel(nextSchema);
+                      }
+                      messageApi.success(isEditMode ? "模型保存成功" : "模型创建成功");
+                      navigate(buildModelListPath());
+                    } catch (error) {
+                      messageApi.error(
+                        error instanceof Error
+                          ? error.message
+                          : isEditMode
+                            ? "模型保存失败"
+                            : "模型创建失败",
+                      );
+                    }
+                  }}
+                >
+                  {isEditMode ? "保存模型" : "创建模型"}
+                </Button>
+              </>
+            )}
           </Space>
         </div>
       </div>
@@ -445,9 +482,9 @@ export default function ModelPage() {
         onCancel={() => setPreviewJsonVisible(false)}
       >
         <pre className="builder-json-preview">
-          {previewSchema ? JSON.stringify(previewSchema, null, 2) : previewError ?? '无法生成'}
+          {previewSchema ? JSON.stringify(previewSchema, null, 2) : (previewError ?? "无法生成")}
         </pre>
       </Modal>
-    </>
+    </Flex>
   );
 }
