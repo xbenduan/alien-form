@@ -66,6 +66,12 @@ function buildFieldSchema(
   const isContainer = draftField.type === "object" || draftField.type === "void";
   const isObjectArray = draftField.type === "array";
 
+  const baseTableMeta = {
+    width: draftField.tableWidthText.trim() ? Number(draftField.tableWidthText) : undefined,
+    ellipsis: draftField.tableEllipsis,
+    inline: draftField.tableInlineFields.length > 0 ? draftField.tableInlineFields : undefined,
+  };
+
   const baseSchema: CmsFieldSchema = {
     type: draftField.type,
     title: draftField.title,
@@ -78,11 +84,7 @@ function buildFieldSchema(
     dataSource: Array.isArray(dataSource) ? dataSource : undefined,
     "x-reaction": xReaction,
     "x-cms": {
-      table: {
-        width: draftField.tableWidthText.trim() ? Number(draftField.tableWidthText) : undefined,
-        ellipsis: draftField.tableEllipsis,
-        inline: draftField.tableInlineFields.length > 0 ? draftField.tableInlineFields : undefined,
-      },
+      table: baseTableMeta,
       ...(Object.keys(reactionConfigs).length > 0 ? { reactions: reactionConfigs } : {}),
     },
   };
@@ -114,6 +116,38 @@ function buildFieldSchema(
       component: draftField.component || "TagsInput",
       decorator: "FormItem",
       default: defaultValue ?? [],
+    };
+  }
+
+  if (draftField.key === "id") {
+    return {
+      ...baseSchema,
+      type: "string",
+      component: "Input",
+      decorator: "FormItem",
+      display: "none",
+    };
+  }
+
+  if (draftField.key === "createdAt" || draftField.key === "updatedAt") {
+    return {
+      ...baseSchema,
+      type: "number",
+      component: "NumberInput",
+      decorator: "FormItem",
+      "x-cms": {
+        ...baseSchema["x-cms"],
+        table: {
+          ...baseTableMeta,
+          format: "dateTime",
+        },
+        form: {
+          modes: [],
+        },
+        detail: {
+          format: "dateTime",
+        },
+      },
     };
   }
 

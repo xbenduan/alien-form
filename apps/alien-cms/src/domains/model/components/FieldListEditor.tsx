@@ -7,6 +7,7 @@ import { fieldPresets, type FieldPreset } from './FieldPalette';
 interface FieldListEditorProps {
   fields: ModelBuilderFieldDraft[];
   selectedFieldId?: string;
+  isRemovable?: (field: ModelBuilderFieldDraft) => boolean;
   onSelect: (fieldId: string) => void;
   onRemove: (fieldId: string) => void;
   onMove: (fromIndex: number, toIndex: number) => void;
@@ -16,6 +17,7 @@ interface FieldListEditorProps {
 export function FieldListEditor({
   fields,
   selectedFieldId,
+  isRemovable,
   onSelect,
   onRemove,
   onMove,
@@ -96,20 +98,23 @@ export function FieldListEditor({
               <span>{field.key || '未设置 key'}</span>
               <Tag variant="filled">{field.type}</Tag>
               <Tag variant="filled">{field.component}</Tag>
+              {isRemovable?.(field) === false ? <Tag color="gold">系统</Tag> : null}
             </div>
           </div>
         </Space>
-        <Space size={4}>
-          <Button
-            danger
-            type="text"
-            icon={<DeleteOutlined />}
-            onClick={(event) => {
-              event.stopPropagation();
-              onRemove(field.id);
-            }}
-          />
-        </Space>
+        {isRemovable?.(field) === false ? null : (
+          <Space size={4}>
+            <Button
+              danger
+              type="text"
+              icon={<DeleteOutlined />}
+              onClick={(event) => {
+                event.stopPropagation();
+                onRemove(field.id);
+              }}
+            />
+          </Space>
+        )}
       </div>
       {getSlotMeta(field) ? (
         <div className="builder-slot-panel">

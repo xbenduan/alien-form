@@ -20,6 +20,7 @@ const fieldTypeOptions: Array<{ label: string; value: BuilderFieldType }> = [
   { label: "array", value: "array" },
   { label: "tags", value: "tags" },
 ];
+const SYSTEM_FIELD_KEYS = new Set(["id", "createdAt", "updatedAt"]);
 
 interface FieldConfigPanelProps {
   field?: ModelBuilderFieldDraft;
@@ -27,9 +28,10 @@ interface FieldConfigPanelProps {
 }
 
 export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
+  const isSystemField = Boolean(field && SYSTEM_FIELD_KEYS.has(field.key));
   const isContainerField = field?.type === "object" || field?.type === "void";
   const isObjectArray = field?.type === "array";
-  const supportsPrimitiveConfig = field && !isContainerField && !isObjectArray;
+  const supportsPrimitiveConfig = field && !isContainerField && !isObjectArray && !isSystemField;
   const supportsSummaryConfig = Boolean(field) && (isContainerField || isObjectArray);
   const summaryFieldOptions = (field?.children ?? []).map((child) => ({
     label: `${child.title || child.key} (${child.key})`,
@@ -164,9 +166,13 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
 
       {field ? (
         <Form layout="vertical">
-          <Form.Item label="字段 key">
+          <Form.Item
+            label="字段 key"
+            extra={isSystemField ? "系统字段由后端生成，key / 类型 / 组件不可修改。" : undefined}
+          >
             <Input
               value={field.key}
+              disabled={isSystemField}
               onChange={(event) => onChange({ ...field, key: event.target.value })}
             />
           </Form.Item>
@@ -179,6 +185,7 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
           <Form.Item label="字段类型">
             <Select
               value={field.type}
+              disabled={isSystemField}
               options={fieldTypeOptions}
               onChange={(value) => onChange(buildTypePreset(value, field))}
             />
@@ -186,6 +193,7 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
           <Form.Item label="组件">
             <Select
               value={field.component}
+              disabled={isSystemField}
               options={currentComponentOptions}
               onChange={(value) => onChange(buildComponentPreset(value, field))}
             />
@@ -215,6 +223,7 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
           >
             <Input.TextArea
               autoSize={{ minRows: 3, maxRows: 6 }}
+              disabled={isSystemField}
               value={field.propsText}
               placeholder={
                 currentComponentMeta?.description
@@ -260,6 +269,7 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
                 <span>必填</span>
                 <Switch
                   checked={field.required}
+                  disabled={isSystemField}
                   onChange={(checked) => onChange({ ...field, required: checked })}
                 />
               </div>

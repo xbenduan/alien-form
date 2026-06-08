@@ -23,6 +23,18 @@ import { ModelPreviewPanel } from "../components/ModelPreviewPanel";
 import type { FieldPreset } from "../components/FieldPalette";
 
 let fieldCounter = 0;
+const SYSTEM_FIELD_KEYS = ["id", "createdAt", "updatedAt"] as const;
+type SystemFieldKey = (typeof SYSTEM_FIELD_KEYS)[number];
+
+function isSystemFieldKey(key: string): key is SystemFieldKey {
+  return SYSTEM_FIELD_KEYS.includes(key as SystemFieldKey);
+}
+
+function createDraftFieldId(prefix = "field") {
+  const timestamp = Date.now();
+  const suffix = `${(++fieldCounter).toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  return `${prefix}-${timestamp}-${suffix}`;
+}
 
 function createFieldDraft(
   type: BuilderFieldType,
@@ -63,8 +75,112 @@ function createFieldDraft(
   };
 }
 
-function createInitialDraft(): ModelBuilderDraft {
+function createSystemFieldDraft(key: SystemFieldKey): ModelBuilderFieldDraft {
+  if (key === "id") {
+    return {
+      id: createDraftFieldId("system-field"),
+      key: "id",
+      title: "ID",
+      type: "string",
+      component: "Input",
+      decorator: "FormItem",
+      required: false,
+      defaultValueText: "",
+      propsText: "{}",
+      dataSourceText: "",
+      tableWidthText: "",
+      tableEllipsis: true,
+      tableInlineFields: [],
+      reactions: [],
+    };
+  }
+
   return {
+    id: createDraftFieldId("system-field"),
+    key,
+    title: key === "createdAt" ? "创建时间" : "更新时间",
+    type: "number",
+    component: "NumberInput",
+    decorator: "FormItem",
+    required: false,
+    defaultValueText: "",
+    propsText: "{}",
+    dataSourceText: "",
+    tableWidthText: "",
+    tableEllipsis: true,
+    tableInlineFields: [],
+    reactions: [],
+  };
+}
+
+function normalizeSystemField(
+  field: ModelBuilderFieldDraft,
+  key: SystemFieldKey,
+): ModelBuilderFieldDraft {
+  const systemField = createSystemFieldDraft(key);
+  return {
+    ...field,
+    key: systemField.key,
+    title: field.title || systemField.title,
+    type: systemField.type,
+    component: systemField.component,
+    decorator: systemField.decorator,
+    required: false,
+    defaultValueText: "",
+    propsText: "{}",
+    dataSourceText: "",
+    tableInlineFields: [],
+    reactions: [],
+    children: undefined,
+    arrayMode: undefined,
+    itemTitle: undefined,
+  };
+}
+
+function ensureSystemFields(fields: ModelBuilderFieldDraft[]): ModelBuilderFieldDraft[] {
+  const nextFields = [...fields];
+
+  for (const key of SYSTEM_FIELD_KEYS) {
+    const index = nextFields.findIndex((field) => field.key === key);
+    if (index >= 0) {
+      nextFields[index] = normalizeSystemField(nextFields[index], key);
+      continue;
+    }
+    nextFields.push(createSystemFieldDraft(key));
+  }
+
+  return nextFields;
+}
+
+function orderFieldsWithSystemFieldsFirst(fields: ModelBuilderFieldDraft[]): ModelBuilderFieldDraft[] {
+  const systemFieldMap = new Map<SystemFieldKey, ModelBuilderFieldDraft>();
+  const normalFields: ModelBuilderFieldDraft[] = [];
+
+  for (const field of fields) {
+    if (isSystemFieldKey(field.key)) {
+      systemFieldMap.set(field.key, field);
+      continue;
+    }
+    normalFields.push(field);
+  }
+
+  return [
+    ...SYSTEM_FIELD_KEYS.map((key) => systemFieldMap.get(key)).filter(
+      (field): field is ModelBuilderFieldDraft => Boolean(field),
+    ),
+    ...normalFields,
+  ];
+}
+
+function normalizeDraft(nextDraft: ModelBuilderDraft): ModelBuilderDraft {
+  return {
+    ...nextDraft,
+    fields: orderFieldsWithSystemFieldsFirst(ensureSystemFields(nextDraft.fields)),
+  };
+}
+
+function createInitialDraft(): ModelBuilderDraft {
+  return normalizeDraft({
     modelName: "",
     title: "新模型",
     subtitle: "",
@@ -77,7 +193,7 @@ function createInitialDraft(): ModelBuilderDraft {
     tableVisibleFields: [],
     openMode: { add: "drawer", edit: "drawer", detail: "drawer" },
     fields: [createFieldDraft("string", "Input")],
-  };
+  });
 }
 
 function findFieldById(
@@ -95,6 +211,10 @@ function findFieldById(
 }
 
 function removeFieldById(fields: ModelBuilderFieldDraft[], id: string): ModelBuilderFieldDraft[] {
+  const targetField = findFieldById(fields, id);
+  if (targetField && isSystemFieldKey(targetField.key)) {
+    return fields;
+  }
   return fields
     .filter((field) => field.id !== id)
     .map((field) => ({
@@ -124,6 +244,10 @@ function collectFieldIds(fields: ModelBuilderFieldDraft[]): string[] {
     field.id,
     ...(field.children ? collectFieldIds(field.children) : []),
   ]);
+}
+
+function getPreferredSelectedFieldId(fields: ModelBuilderFieldDraft[]): string | undefined {
+  return fields.find((field) => !isSystemFieldKey(field.key))?.id ?? fields[0]?.id;
 }
 
 function validateDraft(
@@ -248,16 +372,16 @@ export default function ModelPage() {
 
   useEffect(() => {
     if (isEditMode && editingSchemaQuery.data) {
-      const nextDraft = schemaToBuilderDraft(editingSchemaQuery.data);
+      const nextDraft = normalizeDraft(schemaToBuilderDraft(editingSchemaQuery.data));
       setDraft(nextDraft);
-      setSelectedFieldId(nextDraft.fields[0]?.id);
+      setSelectedFieldId(getPreferredSelectedFieldId(nextDraft.fields));
       return;
     }
 
     if (!isEditMode) {
       const nextDraft = createInitialDraft();
       setDraft(nextDraft);
-      setSelectedFieldId(nextDraft.fields[0]?.id);
+      setSelectedFieldId(getPreferredSelectedFieldId(nextDraft.fields));
     }
   }, [editingSchemaQuery.data, isEditMode]);
 
@@ -343,39 +467,40 @@ export default function ModelPage() {
               <FieldListEditor
                 fields={draft.fields}
                 selectedFieldId={selectedFieldId}
+                isRemovable={(field) => !isSystemFieldKey(field.key)}
                 onSelect={(fieldId) => setSelectedFieldId(fieldId)}
                 onAddField={(preset: FieldPreset, parentId?: string) => {
                   const nextField = createFieldDraft(preset.type, preset.component);
                   setDraft((currentDraft) => {
                     if (parentId) {
-                      return {
+                      return normalizeDraft({
                         ...currentDraft,
                         fields: updateFieldInTree(currentDraft.fields, parentId, (field) => ({
                           ...field,
                           children: [...(field.children ?? []), nextField],
                         })),
-                      };
+                      });
                     }
-                    return {
+                    return normalizeDraft({
                       ...currentDraft,
                       fields: [...currentDraft.fields, nextField],
-                    };
+                    });
                   });
                   setSelectedFieldId(nextField.id);
                 }}
                 onRemove={(fieldId) => {
                   const nextFields = removeFieldById(draft.fields, fieldId);
-                  setDraft((currentDraft) => ({ ...currentDraft, fields: nextFields }));
+                  setDraft((currentDraft) => normalizeDraft({ ...currentDraft, fields: nextFields }));
                   const remainingIds = collectFieldIds(nextFields);
                   if (selectedFieldId && !remainingIds.includes(selectedFieldId)) {
-                    setSelectedFieldId(remainingIds[0]);
+                    setSelectedFieldId(getPreferredSelectedFieldId(nextFields));
                   }
                 }}
                 onMove={(fromIndex, toIndex) => {
                   const fields = [...draft.fields];
                   const [moved] = fields.splice(fromIndex, 1);
                   fields.splice(toIndex, 0, moved);
-                  setDraft((currentDraft) => ({ ...currentDraft, fields }));
+                  setDraft((currentDraft) => normalizeDraft({ ...currentDraft, fields }));
                 }}
               />
             </Col>
@@ -383,7 +508,7 @@ export default function ModelPage() {
               <FieldConfigPanel
                 field={selectedField}
                 onChange={(nextField) => {
-                  setDraft((currentDraft) => ({
+                  setDraft((currentDraft) => normalizeDraft({
                     ...currentDraft,
                     fields: updateFieldInTree(currentDraft.fields, nextField.id, () => nextField),
                   }));
