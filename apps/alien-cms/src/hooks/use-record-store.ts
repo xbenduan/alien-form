@@ -121,7 +121,7 @@ function buildTableFieldOptions(schema?: CmsModelSchema) {
 }
 
 function createOptimisticRecord(modelName: string, values: Record<string, unknown>): ModelRecord {
-  const now = new Date().toISOString();
+  const now = Date.now();
   return {
     id: `tmp-${modelName}-${Date.now()}`,
     ...values,
@@ -222,6 +222,7 @@ export function useRecordStore(modelName: string, options: UseRecordStoreOptions
     mutationFn: ({ id, values }: { id: string; values: Record<string, unknown> }) =>
       updateRecord(modelName, id, values),
     onMutate: async ({ id, values }) => {
+      const nextUpdatedAt = Date.now();
       await Promise.all([
         queryClient.cancelQueries({ queryKey: listQueryKey }),
         queryClient.cancelQueries({ queryKey: recordQueryKeys.detail(modelName, id) }),
@@ -235,13 +236,13 @@ export function useRecordStore(modelName: string, options: UseRecordStoreOptions
           ? {
               ...current,
               list: current.list.map((item) =>
-                item.id === id ? { ...item, ...values, updatedAt: new Date().toISOString() } : item,
+                item.id === id ? { ...item, ...values, updatedAt: nextUpdatedAt } : item,
               ),
             }
           : current,
       );
       queryClient.setQueryData(recordQueryKeys.detail(modelName, id), (current?: ModelRecord) =>
-        current ? { ...current, ...values, updatedAt: new Date().toISOString() } : current,
+        current ? { ...current, ...values, updatedAt: nextUpdatedAt } : current,
       );
 
       return { previousList, previousDetail };
@@ -410,4 +411,3 @@ export function useRecordStore(modelName: string, options: UseRecordStoreOptions
     batchDelete: async (ids: string[]) => batchDeleteRecords(modelName, ids),
   };
 }
-

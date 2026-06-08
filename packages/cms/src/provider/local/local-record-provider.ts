@@ -131,7 +131,7 @@ export class LocalRecordProvider implements RecordProvider {
       throw new Error(`Unknown model: ${params.model}`);
     }
 
-    const now = new Date().toISOString();
+    const now = Date.now();
     const record: ModelRecord = {
       id: createRecordId(params.model),
       ...params.values,
@@ -152,7 +152,7 @@ export class LocalRecordProvider implements RecordProvider {
       ...current,
       ...params.values,
       id: params.id,
-      updatedAt: new Date().toISOString(),
+      updatedAt: Date.now(),
     };
     upsertRecordEntry(params.model, nextRecord);
     return { success: true, data: nextRecord };

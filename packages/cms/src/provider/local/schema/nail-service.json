@@ -190,9 +190,6 @@
           "value": "employee-4"
         }
       ],
-      "x-reaction": {
-        "dataSource": "@modelRecordOptions"
-      },
       "props": {
         "mode": "multiple",
         "placeholder": "请选择服务员工"

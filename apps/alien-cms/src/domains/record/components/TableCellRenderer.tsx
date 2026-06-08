@@ -37,6 +37,9 @@ function getInlineDisplayText(value: unknown, format?: string, dataSource?: CmsF
     return null;
   }
 
+  const normalizedDateValue =
+    typeof value === 'number' && Number.isFinite(value) ? new Date(value).toISOString() : value;
+
   if (typeof value === 'boolean' || format === 'boolean') {
     return value ? '是' : '否';
   }
@@ -49,11 +52,11 @@ function getInlineDisplayText(value: unknown, format?: string, dataSource?: CmsF
   }
 
   if (format === 'date') {
-    return String(value).slice(0, 10);
+    return String(normalizedDateValue).slice(0, 10);
   }
 
   if (format === 'dateTime') {
-    return String(value).slice(0, 16).replace('T', ' ');
+    return String(normalizedDateValue).slice(0, 16).replace('T', ' ');
   }
 
   return String(dataSource?.find((option) => option.value === value)?.label ?? value);

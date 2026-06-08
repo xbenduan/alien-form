@@ -17,6 +17,17 @@ import type {
 import type { FilterItem } from "../../types/common";
 import type { TcbClient } from "./tcb-client";
 
+function toTimestamp(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+  return undefined;
+}
+
 function buildFilterCondition(db: any, filters?: Record<string, unknown>, typedFilters?: FilterItem[]) {
   const _ = db.command;
   const conditions: any[] = [];
@@ -77,8 +88,8 @@ function toRecord(doc: any): ModelRecord {
   return {
     id: doc._id,
     ...doc.data,
-    createdAt: doc.createdAt,
-    updatedAt: doc.updatedAt,
+    createdAt: toTimestamp(doc.createdAt),
+    updatedAt: toTimestamp(doc.updatedAt),
   };
 }
 
@@ -141,15 +152,16 @@ export class TcbRecordProvider implements RecordProvider {
   }
 
   async create(params: RecordCreateParams): Promise<RecordCreateResult> {
-    const now = new Date().toISOString();
+    const now = Date.now();
+    const nowText = new Date(now).toISOString();
     const id = `${params.model}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     await this.db.collection(this.collection).add({
       _id: id,
       modelName: params.model,
       data: params.values,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: nowText,
+      updatedAt: nowText,
     });
 
     return {

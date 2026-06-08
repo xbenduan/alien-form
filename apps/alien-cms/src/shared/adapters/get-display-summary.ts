@@ -36,8 +36,15 @@ function inferStatusColor(value: unknown) {
   return STATUS_COLORS[String(value).toLowerCase()] ?? "default";
 }
 
+function normalizeDateValue(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return new Date(value).toISOString();
+  }
+  return String(value);
+}
+
 function formatDateText(value: unknown, withTime: boolean) {
-  const text = String(value);
+  const text = normalizeDateValue(value);
   return withTime ? text.slice(0, 16).replace("T", " ") : text.slice(0, 10);
 }
 

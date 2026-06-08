@@ -1,11 +1,10 @@
-import { ArrowLeftOutlined } from "@ant-design/icons";
-import { Alert, Button, Card, Col, Row, Spin, message } from "antd";
+import { Alert, Card, Col, Flex, Row, Spin, message } from "antd";
 import { useEffect } from "react";
 import { useWorkbenchLayout } from "../../../app/layout/WorkbenchLayout";
 import { useRecordStore } from "../../../hooks/use-record-store";
 import type { RecordRouteState } from "../types/record";
-import { RecordActionHost } from "../components/RecordActionHost";
 import { RecordFilterBar } from "../components/RecordFilterBar";
+import RecordFormFrame from "../components/RecordFormFrame";
 import { RecordToolbarActions } from "../components/RecordToolbarActions";
 import { RecordTable } from "../components/RecordTable";
 
@@ -26,16 +25,6 @@ export default function RecordPage({
     onRouteActionChange,
   });
   const singularLabel = page.schema?.["x-model"]?.singularLabel ?? "记录";
-  const modelTitle = page.schema?.["x-model"]?.title ?? "模型工作台";
-  const isStandaloneActionPage = page.actionMode !== "closed" && page.actionOpenMode === "page";
-  const currentActionLabel =
-    page.actionMode === "add"
-      ? `新增${singularLabel}`
-      : page.actionMode === "edit"
-        ? `编辑${singularLabel}`
-        : page.actionMode === "detail"
-          ? `${singularLabel}详情`
-          : "列表";
 
   useEffect(() => {
     setBreadcrumb({
@@ -47,22 +36,14 @@ export default function RecordPage({
             ? "加载中"
             : page.schemaError || !page.schema || !page.filterSchema
               ? "未找到模型"
-              : currentActionLabel,
+              : "列表",
         },
       ],
-      extra: isStandaloneActionPage ? (
-        <Button type="link" icon={<ArrowLeftOutlined />} onClick={page.closeAction}>
-          返回列表
-        </Button>
-      ) : undefined,
     });
 
     return () => setBreadcrumb(null);
   }, [
-    currentActionLabel,
-    isStandaloneActionPage,
     modelName,
-    page.closeAction,
     page.filterSchema,
     page.schema,
     page.schemaError,
@@ -94,84 +75,80 @@ export default function RecordPage({
   }
 
   return (
-    <>
-      {isStandaloneActionPage ? null : (
-        <>
-          <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
-            <Row gutter={[20, 20]} align="top" wrap={false} className="model-toolbar-row">
-              <Col flex="auto">
-                <RecordFilterBar
-                  schema={page.filterSchema}
-                  defaultVisibleKeys={page.filterDefaultVisibleKeys}
-                  values={page.filters}
-                  loading={page.listLoading}
-                  onSearch={page.setFilters}
-                />
-              </Col>
-              <Col flex="220px">
-                <RecordToolbarActions
-                  singularLabel={singularLabel}
-                  tableFieldOptions={page.tableFieldOptions}
-                  tableVisibleKeys={page.tableVisibleKeys}
-                  onOpenAdd={page.openAdd}
-                  onChangeTableVisibleKeys={page.setTableVisibleKeys}
-                  onResetTableVisibleKeys={page.resetTableVisibleKeys}
-                />
-              </Col>
-            </Row>
-          </Card>
-
-          <div className="model-table-section">
-            <RecordTable
-              columns={page.tableColumns}
-              records={page.records}
-              total={page.total}
-              loading={page.listLoading || page.deleting}
-              pagination={page.pagination}
-              sorter={page.sorter}
-              onTableChange={({ pagination, sorter }) => {
-                page.setPagination({
-                  current: pagination.current ?? 1,
-                  pageSize: pagination.pageSize ?? page.pagination.pageSize,
-                });
-                page.setSorter(
-                  sorter?.field
-                    ? {
-                        field: String(sorter.field),
-                        order: sorter.order ?? undefined,
-                      }
-                    : undefined,
-                );
-              }}
-              onDetail={page.openDetail}
-              onEdit={page.openEdit}
-              onDelete={async (id) => {
-                await page.removeRecord(id);
-                message.success("删除成功");
-              }}
+    <Flex vertical gap={16}>
+      <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
+        <Row gutter={[20, 20]} align="top" wrap={false} className="model-toolbar-row">
+          <Col flex="auto">
+            <RecordFilterBar
+              schema={page.filterSchema}
+              defaultVisibleKeys={page.filterDefaultVisibleKeys}
+              values={page.filters}
+              loading={page.listLoading}
+              onSearch={page.setFilters}
             />
-          </div>
-        </>
-      )}
+          </Col>
+          <Col flex="220px">
+            <RecordToolbarActions
+              singularLabel={singularLabel}
+              tableFieldOptions={page.tableFieldOptions}
+              tableVisibleKeys={page.tableVisibleKeys}
+              onOpenAdd={page.openAdd}
+              onChangeTableVisibleKeys={page.setTableVisibleKeys}
+              onResetTableVisibleKeys={page.resetTableVisibleKeys}
+            />
+          </Col>
+        </Row>
+      </Card>
 
-      <RecordActionHost
-        mode={page.actionMode}
-        openMode={page.actionOpenMode ?? "drawer"}
-        singularLabel={singularLabel}
-        schema={page.schema}
-        record={page.activeRecord}
-        loading={page.detailLoading}
-        submitting={page.submitting}
-        onClose={page.closeAction}
-        onSubmitAdd={async (values) => {
-          await page.submitAdd(values);
-          message.success("新增成功");
+      <RecordTable
+        columns={page.tableColumns}
+        records={page.records}
+        total={page.total}
+        loading={page.listLoading || page.deleting}
+        pagination={page.pagination}
+        sorter={page.sorter}
+        onTableChange={({ pagination, sorter }) => {
+          page.setPagination({
+            current: pagination.current ?? 1,
+            pageSize: pagination.pageSize ?? page.pagination.pageSize,
+          });
+          page.setSorter(
+            sorter?.field
+              ? {
+                  field: String(sorter.field),
+                  order: sorter.order ?? undefined,
+                }
+              : undefined,
+          );
         }}
-        onSubmitEdit={async (values) => {
-          await page.submitEdit(values);
-          message.success("保存成功");
+        onDetail={page.openDetail}
+        onEdit={page.openEdit}
+        onDelete={async (id) => {
+          await page.removeRecord(id);
+          message.success("删除成功");
         }}
       />
-    </>
+
+      {page.actionMode !== "closed" && page.actionOpenMode && page.actionOpenMode !== "page" ? (
+        <RecordFormFrame
+          openMode={page.actionOpenMode}
+          mode={page.actionMode}
+          singularLabel={singularLabel}
+          schema={page.schema}
+          initialValues={page.activeRecord}
+          loading={page.detailLoading}
+          submitting={page.submitting}
+          onClose={page.closeAction}
+          onSubmitAdd={async (values) => {
+            await page.submitAdd(values);
+            message.success("新增成功");
+          }}
+          onSubmitEdit={async (values) => {
+            await page.submitEdit(values);
+            message.success("保存成功");
+          }}
+        />
+      ) : null}
+    </Flex>
   );
 }

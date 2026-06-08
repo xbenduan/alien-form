@@ -5,6 +5,7 @@ import { useModelSummaries } from "../../hooks/use-schema-store";
 import ModelManagementPage from "../../domains/model/pages/ModelManagementPage";
 import type { RecordRouteState } from "../../domains/record/types/record";
 import ModelPage from "../../domains/model/pages/ModelPage";
+import RecordActionPage from "../../domains/record/pages/RecordActionPage";
 import RecordPage from "../../domains/record/pages/RecordPage";
 
 function HomeRedirect() {
@@ -17,22 +18,45 @@ function HomeRedirect() {
   return <Navigate replace to={buildRecordPath(defaultModelName)} />;
 }
 
-function RoutedRecordPage({ routeAction }: { routeAction: RecordRouteState }) {
+function resolveRouteAction(routeAction: RecordRouteState, recordId?: string): RecordRouteState {
+  if (routeAction.mode === "add") {
+    return routeAction;
+  }
+
+  return {
+    ...routeAction,
+    recordId,
+  };
+}
+
+function RoutedRecordPage({
+  routeAction,
+  pageType,
+}: {
+  routeAction: RecordRouteState;
+  pageType: "list" | "action";
+}) {
   const navigate = useNavigate();
   const params = useParams();
   const modelName = params.modelName ?? "";
+  const resolvedRouteAction = resolveRouteAction(routeAction, params.recordId);
+
+  if (pageType === "action") {
+    return (
+      <RecordActionPage
+        modelName={modelName}
+        routeAction={resolvedRouteAction}
+        onRouteActionChange={(nextAction) => {
+          navigate(buildRecordPath(modelName, nextAction));
+        }}
+      />
+    );
+  }
 
   return (
     <RecordPage
       modelName={modelName}
-      routeAction={
-        routeAction.mode === "add"
-          ? routeAction
-          : {
-              ...routeAction,
-              recordId: params.recordId,
-            }
-      }
+      routeAction={resolvedRouteAction}
       onRouteActionChange={(nextAction) => {
         navigate(buildRecordPath(modelName, nextAction));
       }}
@@ -51,19 +75,19 @@ export function AppRouter() {
           <Route path="models/:modelName/edit" element={<ModelPage />} />
           <Route
             path="records/:modelName"
-            element={<RoutedRecordPage routeAction={{ mode: "closed" }} />}
+            element={<RoutedRecordPage routeAction={{ mode: "closed" }} pageType="list" />}
           />
           <Route
             path="records/:modelName/add"
-            element={<RoutedRecordPage routeAction={{ mode: "add" }} />}
+            element={<RoutedRecordPage routeAction={{ mode: "add" }} pageType="action" />}
           />
           <Route
             path="records/:modelName/edit/:recordId"
-            element={<RoutedRecordPage routeAction={{ mode: "edit" }} />}
+            element={<RoutedRecordPage routeAction={{ mode: "edit" }} pageType="action" />}
           />
           <Route
             path="records/:modelName/detail/:recordId"
-            element={<RoutedRecordPage routeAction={{ mode: "detail" }} />}
+            element={<RoutedRecordPage routeAction={{ mode: "detail" }} pageType="action" />}
           />
           <Route path="*" element={<HomeRedirect />} />
         </Route>

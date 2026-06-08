@@ -4,8 +4,8 @@ import type { FilterItem, MutationResult, PaginatedResult, Pagination, Sorter } 
 export interface ModelRecord {
   id: string;
   [key: string]: unknown;
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 // ─── Record CRUD Params ──────────────────────────────────────

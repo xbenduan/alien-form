@@ -12,8 +12,8 @@ export interface ModelSummary {
 
 export interface ModelRecord {
   id: string;
-  createdAt?: string;
-  updatedAt?: string;
+  createdAt?: number;
+  updatedAt?: number;
   [key: string]: unknown;
 }
 

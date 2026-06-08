@@ -4,13 +4,13 @@ function isoDaysAgo(daysAgo: number, hour: number, minute: number) {
   const date = new Date();
   date.setDate(date.getDate() - daysAgo);
   date.setHours(hour, minute, 0, 0);
-  return date.toISOString();
+  return date.getTime();
 }
 
-function withUpdatedAt(createdAt: string, minutesLater: number) {
+function withUpdatedAt(createdAt: number, minutesLater: number) {
   const date = new Date(createdAt);
   date.setMinutes(date.getMinutes() + minutesLater);
-  return date.toISOString();
+  return date.getTime();
 }
 
 export function createDemoRecords(): Record<string, ModelRecord[]> {

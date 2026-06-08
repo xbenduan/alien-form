@@ -17,6 +17,17 @@ import type {
 import type { FilterItem } from "../../types/common";
 import type { SupabaseProvider } from "./supabase-client";
 
+function toTimestamp(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  }
+  return undefined;
+}
+
 function applyTypedFilter(query: any, filter: FilterItem) {
   const field = `data->>${filter.field}`;
   const jsonField = `data->${filter.field}`;
@@ -49,8 +60,8 @@ function toRecord(row: any): ModelRecord {
   return {
     id: row.id,
     ...row.data,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
+    createdAt: toTimestamp(row.created_at),
+    updatedAt: toTimestamp(row.updated_at),
   };
 }
 

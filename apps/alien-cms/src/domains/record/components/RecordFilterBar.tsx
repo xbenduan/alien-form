@@ -14,7 +14,7 @@ import {
   filterFormDecorators,
 } from '../../../shared/adapters';
 import type { CmsModelSchema } from '../types/record';
-import { createRecordFormConfig } from './create-record-form-config';
+import { createRecordFormConfig } from '../../../shared/utils/create-record-form-config';
 
 interface RecordFilterBarProps {
   schema: CmsModelSchema;

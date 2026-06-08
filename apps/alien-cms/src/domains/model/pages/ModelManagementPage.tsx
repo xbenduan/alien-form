@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   Col,
+  Flex,
   Input,
   Popconfirm,
   Row,
@@ -153,7 +154,7 @@ export default function ModelManagementPage() {
   ];
 
   return (
-    <>
+    <Flex vertical gap={16}>
       <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
         <Row gutter={[20, 20]} align="top" className="model-toolbar-row">
           <Col flex="280px">
@@ -193,34 +194,32 @@ export default function ModelManagementPage() {
         </Row>
       </Card>
 
-      <div className="model-table-section">
-        {error ? (
-          <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
-            <Alert type="error" showIcon message="模型列表加载失败" description={error.message} />
-          </Card>
-        ) : (
-          <Table<ModelSummary>
-            rowKey="name"
-            className="model-data-table"
-            columns={columns}
-            dataSource={list}
-            loading={loading}
-            pagination={{
-              current: pagination.current,
-              pageSize: pagination.pageSize,
-              total,
-              showSizeChanger: true,
-              showTotal: (count) => `共 ${count} 个模型`,
-            }}
-            onChange={(nextPagination) => {
-              setPagination({
-                current: nextPagination.current ?? 1,
-                pageSize: nextPagination.pageSize ?? pagination.pageSize,
-              });
-            }}
-          />
-        )}
-      </div>
+      {error ? (
+        <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
+          <Alert type="error" showIcon title="模型列表加载失败" description={error.message} />
+        </Card>
+      ) : (
+        <Table<ModelSummary>
+          rowKey="name"
+          className="model-data-table"
+          columns={columns}
+          dataSource={list}
+          loading={loading}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total,
+            showSizeChanger: true,
+            showTotal: (count) => `共 ${count} 个模型`,
+          }}
+          onChange={(nextPagination) => {
+            setPagination({
+              current: nextPagination.current ?? 1,
+              pageSize: nextPagination.pageSize ?? pagination.pageSize,
+            });
+          }}
+        />
+      )}
 
       <ModelSchemaJsonModal
         open={Boolean(previewModelName)}
@@ -230,6 +229,6 @@ export default function ModelManagementPage() {
         error={previewError}
         onClose={() => setPreviewModelName(undefined)}
       />
-    </>
+    </Flex>
   );
 }
