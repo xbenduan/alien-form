@@ -1,12 +1,13 @@
 import { Hono } from "hono";
 import type { Env } from "../types";
+import { appendLog } from "../log-writer";
 
 const schemas = new Hono<{ Bindings: Env }>();
 
 // GET /api/schemas — list
 schemas.get("/", async (c) => {
   const current = parseInt(c.req.query("current") ?? "1");
-  const pageSize = parseInt(c.req.query("pageSize") ?? "20");
+  const pageSize = Math.min(Math.max(parseInt(c.req.query("pageSize") ?? "20"), 1), 100);
   const keyword = c.req.query("keyword") ?? "";
   const offset = (current - 1) * pageSize;
 
@@ -84,6 +85,15 @@ schemas.post("/", async (c) => {
     "INSERT INTO cms_schemas (model_name, schema_json, title, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)"
   ).bind(modelName, JSON.stringify(schema), title, description, now, now).run();
 
+  // Auto log
+  const operator = c.get("user" as never) as string | undefined;
+  await appendLog(c.env.DB, {
+    action: "schema.create",
+    modelName,
+    operator,
+    summary: `创建模型「${title}」`,
+  });
+
   return c.json({
     data: { success: true, data: { name: modelName, title, description, source: "remote", updatedAt: now } },
   });
@@ -106,6 +116,15 @@ schemas.put("/:modelName", async (c) => {
     return c.json({ error: "Schema not found" }, 404);
   }
 
+  // Auto log
+  const operator = c.get("user" as never) as string | undefined;
+  await appendLog(c.env.DB, {
+    action: "schema.update",
+    modelName,
+    operator,
+    summary: `更新模型「${title}」`,
+  });
+
   return c.json({
     data: { success: true, data: { name: modelName, title, description, source: "remote", updatedAt: now } },
   });
@@ -120,6 +139,15 @@ schemas.delete("/:modelName", async (c) => {
     c.env.DB.prepare("DELETE FROM cms_records WHERE model_name = ?").bind(modelName),
     c.env.DB.prepare("DELETE FROM cms_logs WHERE model_name = ?").bind(modelName),
   ]);
+
+  // Auto log (write after batch, since logs for this model are deleted)
+  const operator = c.get("user" as never) as string | undefined;
+  await appendLog(c.env.DB, {
+    action: "schema.delete",
+    modelName,
+    operator,
+    summary: `删除模型「${modelName}」及其所有记录和日志`,
+  });
 
   return c.json({ data: { success: true } });
 });
