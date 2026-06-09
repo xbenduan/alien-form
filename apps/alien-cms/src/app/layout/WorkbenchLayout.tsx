@@ -6,6 +6,7 @@ import { Outlet, useLocation, useOutletContext } from 'react-router-dom';
 import { useCallback, useState } from 'react';
 import { useModelSummaries } from '../../hooks/use-schema-store';
 import { WorkbenchSidebar } from './components/WorkbenchSidebar';
+import { resolveActiveKey } from '../router/routes';
 
 export interface WorkbenchBreadcrumb {
   items: BreadcrumbProps['items'];
@@ -46,17 +47,8 @@ export default function WorkbenchLayout() {
       return next;
     });
   }, []);
-  const pathname = location.pathname;
-  const activeSidebarKey =
-    pathname === '/models' || pathname.startsWith('/models/')
-      ? 'models'
-      : pathname === '/system/logs'
-        ? 'system-logs'
-        : pathname === '/system/settings' || pathname.startsWith('/system/')
-          ? 'system-settings'
-        : pathname.startsWith('/records/')
-          ? decodeURIComponent(pathname.split('/')[2] ?? '')
-          : '';
+
+  const activeSidebarKey = resolveActiveKey(location.pathname);
 
   return (
     <div className="model-page-shell">

@@ -1,58 +1,44 @@
+/**
+ * Path builder utilities.
+ * These are used by components to navigate programmatically.
+ * Route definitions live in ./routes.tsx — this file only builds URL strings.
+ */
 import type { RecordRouteState } from '../../domains/record/types/record';
 
-export const RECORD_ROUTE_PREFIX = '/records';
-export const MODEL_ROUTE_PREFIX = '/models';
-export const SYSTEM_ROUTE_PREFIX = '/system';
-
 export function buildModelListPath() {
-  return MODEL_ROUTE_PREFIX;
-}
-
-function normalizeRouteState(routeState?: RecordRouteState): RecordRouteState {
-  if (!routeState || routeState.mode === 'closed') {
-    return { mode: 'closed' };
-  }
-
-  if (routeState.mode === 'add') {
-    return { mode: 'add' };
-  }
-
-  if (!routeState.recordId) {
-    return { mode: 'closed' };
-  }
-
-  return {
-    mode: routeState.mode,
-    recordId: routeState.recordId,
-  };
-}
-
-export function buildRecordPath(modelName: string, routeState: RecordRouteState = { mode: 'closed' }) {
-  const normalizedRouteState = normalizeRouteState(routeState);
-
-  if (normalizedRouteState.mode === 'closed') {
-    return `${RECORD_ROUTE_PREFIX}/${modelName}`;
-  }
-
-  if (normalizedRouteState.mode === 'add') {
-    return `${RECORD_ROUTE_PREFIX}/${modelName}/add`;
-  }
-
-  return `${RECORD_ROUTE_PREFIX}/${modelName}/${normalizedRouteState.mode}/${normalizedRouteState.recordId}`;
+  return '/models';
 }
 
 export function buildModelNewPath() {
-  return `${MODEL_ROUTE_PREFIX}/new`;
+  return '/models/new';
 }
 
 export function buildModelEditPath(modelName: string) {
-  return `${MODEL_ROUTE_PREFIX}/${modelName}/edit`;
+  return `/models/${modelName}/edit`;
 }
 
 export function buildSystemSettingsPath() {
-  return `${SYSTEM_ROUTE_PREFIX}/settings`;
+  return '/system/settings';
 }
 
 export function buildSystemLogsPath() {
-  return `${SYSTEM_ROUTE_PREFIX}/logs`;
+  return '/system/logs';
+}
+
+export function buildRecordPath(modelName: string, routeState: RecordRouteState = { mode: 'closed' }) {
+  const base = `/records/${modelName}`;
+
+  if (!routeState || routeState.mode === 'closed') {
+    return base;
+  }
+
+  if (routeState.mode === 'add') {
+    return `${base}/add`;
+  }
+
+  if (!routeState.recordId) {
+    return base;
+  }
+
+  return `${base}/${routeState.mode}/${routeState.recordId}`;
 }

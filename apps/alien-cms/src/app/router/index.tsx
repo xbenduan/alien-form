@@ -1,14 +1,11 @@
+import { Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
+import { Spin } from "antd";
 import WorkbenchLayout from "../layout/WorkbenchLayout";
 import { buildRecordPath } from "./paths";
 import { useModelSummaries } from "../../hooks/use-schema-store";
-import ModelManagementPage from "../../domains/model/pages/ModelManagementPage";
+import { staticRoutes, recordRoutes } from "./routes";
 import type { RecordRouteState } from "../../domains/record/types/record";
-import ModelPage from "../../domains/model/pages/ModelPage";
-import RecordActionPage from "../../domains/record/pages/RecordActionPage";
-import RecordPage from "../../domains/record/pages/RecordPage";
-import SystemSettingsPage from "../../domains/system/pages/SystemSettingsPage";
-import LogPage from "../../domains/system/pages/LogPage";
 
 function HomeRedirect() {
   const modelSummariesQuery = useModelSummaries();
@@ -31,71 +28,78 @@ function resolveRouteAction(routeAction: RecordRouteState, recordId?: string): R
   };
 }
 
+/**
+ * Wrapper for record routes that injects modelName and navigation props.
+ */
 function RoutedRecordPage({
   routeAction,
   pageType,
+  Component,
 }: {
   routeAction: RecordRouteState;
   pageType: "list" | "action";
+  Component: React.LazyExoticComponent<React.ComponentType<any>>;
 }) {
   const navigate = useNavigate();
   const params = useParams();
   const modelName = params.modelName ?? "";
   const resolvedRouteAction = resolveRouteAction(routeAction, params.recordId);
 
-  if (pageType === "action") {
-    return (
-      <RecordActionPage
-        modelName={modelName}
-        routeAction={resolvedRouteAction}
-        onRouteActionChange={(nextAction) => {
-          navigate(buildRecordPath(modelName, nextAction));
-        }}
-      />
-    );
-  }
-
   return (
-    <RecordPage
+    <Component
       modelName={modelName}
       routeAction={resolvedRouteAction}
-      onRouteActionChange={(nextAction) => {
+      onRouteActionChange={(nextAction: RecordRouteState) => {
         navigate(buildRecordPath(modelName, nextAction));
       }}
     />
   );
 }
 
+function LazyFallback() {
+  return (
+    <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
+      <Spin size="large" />
+    </div>
+  );
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<WorkbenchLayout />}>
-          <Route index element={<HomeRedirect />} />
-          <Route path="models" element={<ModelManagementPage />} />
-          <Route path="system/settings" element={<SystemSettingsPage />} />
-          <Route path="system/logs" element={<LogPage />} />
-          <Route path="models/new" element={<ModelPage />} />
-          <Route path="models/:modelName/edit" element={<ModelPage />} />
-          <Route
-            path="records/:modelName"
-            element={<RoutedRecordPage routeAction={{ mode: "closed" }} pageType="list" />}
-          />
-          <Route
-            path="records/:modelName/add"
-            element={<RoutedRecordPage routeAction={{ mode: "add" }} pageType="action" />}
-          />
-          <Route
-            path="records/:modelName/edit/:recordId"
-            element={<RoutedRecordPage routeAction={{ mode: "edit" }} pageType="action" />}
-          />
-          <Route
-            path="records/:modelName/detail/:recordId"
-            element={<RoutedRecordPage routeAction={{ mode: "detail" }} pageType="action" />}
-          />
-          <Route path="*" element={<HomeRedirect />} />
-        </Route>
-      </Routes>
+      <Suspense fallback={<LazyFallback />}>
+        <Routes>
+          <Route path="/" element={<WorkbenchLayout />}>
+            <Route index element={<HomeRedirect />} />
+
+            {/* Static routes auto-generated from route config */}
+            {staticRoutes.map((route) => (
+              <Route
+                key={route.path}
+                path={route.path}
+                element={<route.component />}
+              />
+            ))}
+
+            {/* Record routes — need special wrapper for navigation props */}
+            {recordRoutes.map((route) => (
+              <Route
+                key={route.path}
+                path={route.path}
+                element={
+                  <RoutedRecordPage
+                    routeAction={route.props?.routeAction ?? { mode: "closed" }}
+                    pageType={route.props?.pageType ?? "list"}
+                    Component={route.component}
+                  />
+                }
+              />
+            ))}
+
+            <Route path="*" element={<HomeRedirect />} />
+          </Route>
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

@@ -1,8 +1,8 @@
 import type { ModelSummary } from "@alien-form/cms";
-import { AppstoreOutlined, FileTextOutlined, SettingOutlined } from "@ant-design/icons";
 import { Card, Divider, Menu, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
-import { buildModelListPath, buildRecordPath, buildSystemLogsPath, buildSystemSettingsPath } from "../../router/paths";
+import { getMenuRoutes } from "../../router/routes";
+import { buildRecordPath } from "../../router/paths";
 
 interface WorkbenchSidebarProps {
   modelSummaries: ModelSummary[];
@@ -11,6 +11,20 @@ interface WorkbenchSidebarProps {
 
 export function WorkbenchSidebar({ modelSummaries, activeKey }: WorkbenchSidebarProps) {
   const navigate = useNavigate();
+
+  // Auto-generate system menu items from route definitions
+  const systemMenuRoutes = getMenuRoutes("system");
+  const systemMenuItems = systemMenuRoutes.map((route) => ({
+    key: route.key,
+    icon: route.menu!.icon,
+    label: route.menu!.label,
+  }));
+
+  // Model list menu items (dynamic from model summaries)
+  const modelMenuItems = modelSummaries.map((item) => ({
+    key: item.name,
+    label: item.title,
+  }));
 
   return (
     <Card className="model-side-panel" styles={{ body: { padding: 20 } }}>
@@ -31,33 +45,12 @@ export function WorkbenchSidebar({ modelSummaries, activeKey }: WorkbenchSidebar
         </Divider>
         <Menu
           mode="inline"
-          selectedKeys={activeKey === "models" || activeKey === "system-settings" || activeKey === "system-logs" ? [activeKey] : []}
-          items={[
-            {
-              key: "models",
-              icon: <AppstoreOutlined />,
-              label: "模型管理",
-            },
-            {
-              key: "system-logs",
-              icon: <FileTextOutlined />,
-              label: "操作日志",
-            },
-            {
-              key: "system-settings",
-              icon: <SettingOutlined />,
-              label: "系统设置",
-            },
-          ]}
+          selectedKeys={systemMenuItems.some((item) => item.key === activeKey) ? [activeKey!] : []}
+          items={systemMenuItems}
           onClick={({ key }) => {
-            if (key === "models") {
-              navigate(buildModelListPath());
-            }
-            if (key === "system-settings") {
-              navigate(buildSystemSettingsPath());
-            }
-            if (key === "system-logs") {
-              navigate(buildSystemLogsPath());
+            const route = systemMenuRoutes.find((r) => r.key === key);
+            if (route) {
+              navigate(`/${route.path}`);
             }
           }}
         />
@@ -69,11 +62,12 @@ export function WorkbenchSidebar({ modelSummaries, activeKey }: WorkbenchSidebar
         </Divider>
         <Menu
           mode="inline"
-          selectedKeys={activeKey && activeKey !== "models" && activeKey !== "system-settings" && activeKey !== "system-logs" ? [activeKey] : []}
-          items={modelSummaries.map((item) => ({
-            key: item.name,
-            label: item.title,
-          }))}
+          selectedKeys={
+            activeKey && !systemMenuItems.some((item) => item.key === activeKey)
+              ? [activeKey]
+              : []
+          }
+          items={modelMenuItems}
           onClick={({ key }) => navigate(buildRecordPath(String(key)))}
         />
       </div>
