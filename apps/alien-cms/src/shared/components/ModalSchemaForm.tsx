@@ -1,18 +1,20 @@
-import type { FormInstance } from "@alien-form/react";
+import { useCreateForm } from "@alien-form/react";
 import { Button, Modal, Space } from "antd";
-import { useRef, type FC } from "react";
+import type { FC } from "react";
 import type {
   CmsModelSchema,
   ModelActionMode,
   ModelRecord,
 } from "../../domains/record/types/record";
 import {
+  getSchemaFormBodyKey,
   getSchemaFormSubmitText,
   handleSchemaFormSubmitError,
   renderPendingSchemaFormBody,
   SchemaFormBody,
   submitSchemaForm,
 } from "./SchemaFormShared";
+import { createRecordFormConfig } from "../utils/create-record-form-config";
 
 interface ModalSchemaFormProps {
   open: boolean;
@@ -41,8 +43,15 @@ const ModalSchemaForm: FC<ModalSchemaFormProps> = ({
   onSubmitAdd,
   onSubmitEdit,
 }) => {
-  const formRef = useRef<FormInstance | null>(null);
   const canRenderForm = mode === "add" || Boolean(initialValues);
+  const formKey = getSchemaFormBodyKey(mode, initialValues);
+  const form = useCreateForm(
+    createRecordFormConfig({
+      schema,
+      initialValues,
+    }),
+    [formKey, schema],
+  );
 
   const footer =
     mode === "detail" || !canRenderForm ? null : (
@@ -52,10 +61,6 @@ const ModalSchemaForm: FC<ModalSchemaFormProps> = ({
           type="primary"
           loading={submitting}
           onClick={() => {
-            const form = formRef.current;
-            if (!form) {
-              return;
-            }
             void submitSchemaForm(form, async (values) => {
                 if (mode === "add") {
                   await onSubmitAdd(values);
@@ -63,7 +68,7 @@ const ModalSchemaForm: FC<ModalSchemaFormProps> = ({
                 }
                 await onSubmitEdit(values);
               })
-              .catch(handleSchemaFormSubmitError);
+              .catch((error) => handleSchemaFormSubmitError(form, error));
           }}
         >
           {getSchemaFormSubmitText(mode)}
@@ -83,12 +88,7 @@ const ModalSchemaForm: FC<ModalSchemaFormProps> = ({
       maskClosable={false}
     >
       {canRenderForm ? (
-        <SchemaFormBody
-          mode={mode}
-          schema={schema}
-          initialValues={initialValues}
-          formRef={formRef}
-        />
+        <SchemaFormBody mode={mode} form={form} />
       ) : (
         renderPendingSchemaFormBody(mode, loading, initialValues)
       )}

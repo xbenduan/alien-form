@@ -1,6 +1,6 @@
-import type { FormInstance } from "@alien-form/react";
+import { useCreateForm } from "@alien-form/react";
 import { Button, Space } from "antd";
-import { useRef, type FC } from "react";
+import type { FC } from "react";
 import type {
   CmsModelSchema,
   ModelActionMode,
@@ -14,6 +14,7 @@ import {
   SchemaFormBody,
   submitSchemaForm,
 } from "./SchemaFormShared";
+import { createRecordFormConfig } from "../utils/create-record-form-config";
 
 interface PageSchemaFormProps {
   mode: Exclude<ModelActionMode, "closed">;
@@ -36,19 +37,20 @@ const PageSchemaForm: FC<PageSchemaFormProps> = ({
   onSubmitAdd,
   onSubmitEdit,
 }) => {
-  const formRef = useRef<FormInstance | null>(null);
   const canRenderForm = mode === "add" || Boolean(initialValues);
+  const formKey = getSchemaFormBodyKey(mode, initialValues);
+  const form = useCreateForm(
+    createRecordFormConfig({
+      schema,
+      initialValues,
+    }),
+    [formKey, schema],
+  );
 
   return (
     <div className="schema-form-layout schema-form-layout-page">
       {canRenderForm ? (
-        <SchemaFormBody
-          key={getSchemaFormBodyKey(mode, initialValues)}
-          mode={mode}
-          schema={schema}
-          initialValues={initialValues}
-          formRef={formRef}
-        />
+        <SchemaFormBody mode={mode} form={form} />
       ) : (
         renderPendingSchemaFormBody(mode, loading, initialValues)
       )}
@@ -60,10 +62,6 @@ const PageSchemaForm: FC<PageSchemaFormProps> = ({
               type="primary"
               loading={submitting}
               onClick={() => {
-                const form = formRef.current;
-                if (!form) {
-                  return;
-                }
                 void submitSchemaForm(form, async (values) => {
                     if (mode === "add") {
                       await onSubmitAdd(values);
@@ -71,7 +69,7 @@ const PageSchemaForm: FC<PageSchemaFormProps> = ({
                     }
                     await onSubmitEdit(values);
                   })
-                  .catch(handleSchemaFormSubmitError);
+                  .catch((error) => handleSchemaFormSubmitError(form, error));
               }}
             >
               {getSchemaFormSubmitText(mode)}

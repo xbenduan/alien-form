@@ -1,6 +1,5 @@
-import { FormProvider, SchemaField, useCreateForm, type FormInstance } from "@alien-form/react";
+import { FormProvider, SchemaField, type FormInstance } from "@alien-form/react";
 import { Alert, Empty, Spin, message } from "antd";
-import { useEffect } from "react";
 import { detailFormComponents, recordFormComponents, recordFormDecorators } from "../adapters";
 import { createRecordFormConfig } from "../utils/create-record-form-config";
 import type {
@@ -19,11 +18,78 @@ export function getSchemaFormSubmitText(mode: "add" | "edit") {
   return mode === "add" ? "创建记录" : "保存修改";
 }
 
-export function handleSchemaFormSubmitError(error: unknown) {
+function normalizeSubmitErrorMessage(messageText: string) {
+  return /is required$/i.test(messageText.trim()) ? "该字段为必填项" : messageText;
+}
+
+function parseSubmitErrorDetails(error: unknown) {
   const messages =
     error && typeof error === "object" && "messages" in error
       ? (error as { messages?: string[] }).messages
       : undefined;
+  if (messages?.length) {
+    return {
+      messages,
+      fieldErrors: [] as Array<{ field: string; message: string }>,
+    };
+  }
+
+  if (!(error instanceof Error)) {
+    return {
+      messages: undefined,
+      fieldErrors: [] as Array<{ field: string; message: string }>,
+    };
+  }
+
+  const payloadText = error.message.match(/^HTTP\s+\d+:\s*(\{.*\})$/s)?.[1];
+  if (!payloadText) {
+    return {
+      messages: undefined,
+      fieldErrors: [] as Array<{ field: string; message: string }>,
+    };
+  }
+
+  try {
+    const payload = JSON.parse(payloadText) as {
+      details?: Array<{ field?: string; message?: string }>;
+    };
+    const fieldErrors = (payload.details ?? [])
+      .filter(
+        (item): item is { field: string; message: string } =>
+          typeof item.field === "string" && typeof item.message === "string",
+      )
+      .map((item) => ({
+        field: item.field,
+        message: normalizeSubmitErrorMessage(item.message),
+      }));
+    return {
+      messages: fieldErrors.map((item) => item.message),
+      fieldErrors,
+    };
+  } catch {
+    return {
+      messages: undefined,
+      fieldErrors: [] as Array<{ field: string; message: string }>,
+    };
+  }
+}
+
+function applySubmitFieldErrors(
+  form: FormInstance,
+  fieldErrors: Array<{ field: string; message: string }>,
+) {
+  if (fieldErrors.length === 0) {
+    return;
+  }
+
+  for (const item of fieldErrors) {
+    form.field(item.field)?.setErrors([{ message: item.message, type: "server" }]);
+  }
+}
+
+export function handleSchemaFormSubmitError(form: FormInstance, error: unknown) {
+  const { messages, fieldErrors } = parseSubmitErrorDetails(error);
+  applySubmitFieldErrors(form, fieldErrors);
   if (messages?.length) {
     message.warning(messages[0]);
     return;
@@ -84,26 +150,10 @@ export function renderPendingSchemaFormBody(
 
 interface SchemaFormBodyProps {
   mode: SchemaFormMode;
-  schema: CmsModelSchema;
-  initialValues?: SchemaFormInitialValues;
-  formRef: React.MutableRefObject<FormInstance | null>;
+  form: FormInstance;
 }
 
-export function SchemaFormBody({ mode, schema, initialValues, formRef }: SchemaFormBodyProps) {
-  const form = useCreateForm(
-    createRecordFormConfig({
-      schema,
-      initialValues,
-    }),
-  );
-
-  useEffect(() => {
-    formRef.current = form;
-    return () => {
-      formRef.current = null;
-    };
-  }, [form, formRef]);
-
+export function SchemaFormBody({ mode, form }: SchemaFormBodyProps) {
   return (
     <FormProvider
       form={form}
