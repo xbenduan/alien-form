@@ -85,19 +85,17 @@ interface FormContextValue {
 const FormContext = createContext<FormContextValue | null>(null);
 export { FormContext };
 
-export function useCreateForm(config: FormConfig = {}): FormInstance {
-  const formRef = useRef<FormInstance | null>(null);
-  if (!formRef.current) {
-    formRef.current = createForm(config);
-  }
+export function useCreateForm(
+  config: FormConfig = {},
+  deps: React.DependencyList = [],
+): FormInstance {
+  const form = useMemo(() => createForm(config), deps);
   useLayoutEffect(() => {
-    const form = formRef.current;
     return () => {
-      form?.destroy();
-      if (formRef.current === form) formRef.current = null;
+      form.destroy();
     };
-  }, []);
-  return formRef.current;
+  }, [form]);
+  return form;
 }
 
 export function useForm(): FormInstance {
@@ -245,7 +243,13 @@ const PrimitiveFieldSlotInner: React.FC<{ field: PrimitiveFieldNode }> = memo(({
   const Component = components[componentName];
   const Decorator = decorators[decoratorName];
   if (!Component) return <div style={{ color: "red" }}>{`Unknown: ${componentName}`}</div>;
-  const props: Record<string, any> = { ...componentProps, value, onChange: (v: any) => field.setValue(v), disabled, loading };
+  const props: Record<string, any> = {
+    ...componentProps,
+    value,
+    onChange: (v: any) => field.setValue(v),
+    disabled,
+    loading,
+  };
   if (dataSource.length > 0) props.dataSource = dataSource;
   const rendered = <Component {...props} />;
   return Decorator ? <Decorator label={title} required={required} errors={errors} warnings={warnings} description={description} validateStatus={validateStatus} {...decoratorProps}>{rendered}</Decorator> : rendered;
