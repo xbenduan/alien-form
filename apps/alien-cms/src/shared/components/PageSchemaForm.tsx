@@ -1,6 +1,6 @@
 import type { FormInstance } from "@alien-form/react";
 import { Button, Space } from "antd";
-import { useState, type FC } from "react";
+import { useRef, type FC } from "react";
 import type { CmsModelSchema, ModelActionMode, ModelRecord } from "../../domains/record/types/record";
 import {
   getSchemaFormBodyKey,
@@ -31,7 +31,7 @@ const PageSchemaForm: FC<PageSchemaFormProps> = ({
   onSubmitAdd,
   onSubmitEdit,
 }) => {
-  const [form, setForm] = useState<FormInstance | null>(null);
+  const formRef = useRef<FormInstance | null>(null);
   const canRenderForm = mode === "add" || Boolean(initialValues);
 
   return (
@@ -42,17 +42,18 @@ const PageSchemaForm: FC<PageSchemaFormProps> = ({
           mode={mode}
           schema={schema}
           initialValues={initialValues}
-          onFormReady={setForm}
+          formRef={formRef}
         />
       ) : renderPendingSchemaFormBody(mode, loading, initialValues)}
       {mode === "detail" || !canRenderForm ? null : (
         <div className="schema-form-footer-actions">
           <Space size={8}>
-            <Button onClick={onClose}>取消</Button>
+            <Button onClick={onClose}>\u53d6\u6d88</Button>
             <Button
               type="primary"
               loading={submitting}
               onClick={() => {
+                const form = formRef.current;
                 if (!form) {
                   return;
                 }

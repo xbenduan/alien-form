@@ -12,7 +12,7 @@ export function getSchemaFormAdapters(mode: SchemaFormMode) {
 }
 
 export function getSchemaFormSubmitText(mode: "add" | "edit") {
-  return mode === "add" ? "创建记录" : "保存修改";
+  return mode === "add" ? "\u521b\u5efa\u8bb0\u5f55" : "\u4fdd\u5b58\u4fee\u6539";
 }
 
 export function handleSchemaFormSubmitError(error: unknown) {
@@ -23,7 +23,7 @@ export function handleSchemaFormSubmitError(error: unknown) {
     message.warning(messages[0]);
     return;
   }
-  message.warning("请先修正表单校验错误");
+  message.warning("\u8bf7\u5148\u4fee\u6b63\u8868\u5355\u6821\u9a8c\u9519\u8bef");
 }
 
 type SchemaFormInitialValues = Record<string, unknown> | ModelRecord;
@@ -44,7 +44,7 @@ export function renderPendingSchemaFormBody(
       return <Spin className="drawer-loading" />;
     }
     if (!initialValues) {
-      return <Empty description="暂无详情数据" />;
+      return <Empty description="\u6682\u65e0\u8be6\u60c5\u6570\u636e" />;
     }
   }
 
@@ -53,7 +53,7 @@ export function renderPendingSchemaFormBody(
       return <Spin className="drawer-loading" />;
     }
     if (!initialValues) {
-      return <Alert type="warning" showIcon message="记录不存在或加载失败" />;
+      return <Alert type="warning" showIcon message="\u8bb0\u5f55\u4e0d\u5b58\u5728\u6216\u52a0\u8f7d\u5931\u8d25" />;
     }
   }
 
@@ -64,14 +64,14 @@ interface SchemaFormBodyProps {
   mode: SchemaFormMode;
   schema: CmsModelSchema;
   initialValues?: SchemaFormInitialValues;
-  onFormReady: (form: FormInstance) => void;
+  formRef: React.MutableRefObject<FormInstance | null>;
 }
 
 export function SchemaFormBody({
   mode,
   schema,
   initialValues,
-  onFormReady,
+  formRef,
 }: SchemaFormBodyProps) {
   const form = useCreateForm(createRecordFormConfig({
     schema,
@@ -79,8 +79,11 @@ export function SchemaFormBody({
   }));
 
   useEffect(() => {
-    onFormReady(form);
-  }, [form, onFormReady]);
+    formRef.current = form;
+    return () => {
+      formRef.current = null;
+    };
+  }, [form, formRef]);
 
   return (
     <FormProvider
