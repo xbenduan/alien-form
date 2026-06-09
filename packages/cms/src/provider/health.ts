@@ -1,5 +1,3 @@
-import type { TcbClient } from "./tcb/tcb-client";
-import type { SupabaseProvider } from "./supabase/supabase-client";
 import type { HttpClient } from "./http/http-client";
 
 interface StorageLike {
@@ -21,7 +19,7 @@ declare function clearTimeout(handle: unknown): void;
 
 export interface HealthCheckResult {
   ok: boolean;
-  provider: "tcb" | "supabase" | "http" | "local";
+  provider: "http" | "local";
   latency: number;
   message?: string;
   capabilities?: {
@@ -31,12 +29,8 @@ export interface HealthCheckResult {
   };
 }
 
-// ─── Health Check Functions ──────────────────────────────────
+// ─── Local Health Check ─────────────────────────────────────
 
-/**
- * Health check for Local provider.
- * Always succeeds — localStorage is always available.
- */
 export async function checkLocalHealth(): Promise<HealthCheckResult> {
   const start = Date.now();
   try {
@@ -59,83 +53,11 @@ export async function checkLocalHealth(): Promise<HealthCheckResult> {
   }
 }
 
-/**
- * Health check for TCB provider.
- * Verifies: auth state + database read access.
- */
-export async function checkTcbHealth(client: TcbClient): Promise<HealthCheckResult> {
-  const start = Date.now();
-  try {
-    // Ensure authenticated
-    await client.auth();
+// ─── HTTP Health Check ──────────────────────────────────────
 
-    // Try a simple read (count schemas collection)
-    const db = client.database();
-    const { total } = await db.collection(client.collections.schemas).count();
-
-    return {
-      ok: true,
-      provider: "tcb",
-      latency: Date.now() - start,
-      message: `Connected. ${total} schema(s) found.`,
-      capabilities: { schemas: true, records: true, logs: true },
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      provider: "tcb",
-      latency: Date.now() - start,
-      message: error instanceof Error ? error.message : "TCB connection failed",
-    };
-  }
-}
-
-/**
- * Health check for Supabase provider.
- * Verifies: client connection + table access.
- */
-export async function checkSupabaseHealth(provider: SupabaseProvider): Promise<HealthCheckResult> {
-  const start = Date.now();
-  try {
-    // Try counting rows in schemas table
-    const { count, error } = await provider.client
-      .from(provider.tables.schemas)
-      .select("model_name", { count: "exact", head: true });
-
-    if (error) {
-      return {
-        ok: false,
-        provider: "supabase",
-        latency: Date.now() - start,
-        message: error.message,
-      };
-    }
-
-    return {
-      ok: true,
-      provider: "supabase",
-      latency: Date.now() - start,
-      message: `Connected. ${count ?? 0} schema(s) found.`,
-      capabilities: { schemas: true, records: true, logs: true },
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      provider: "supabase",
-      latency: Date.now() - start,
-      message: error instanceof Error ? error.message : "Supabase connection failed",
-    };
-  }
-}
-
-/**
- * Health check for HTTP provider.
- * Tries: GET {baseUrl}/health or GET {baseUrl}/.well-known/alien-cms.json
- */
 export async function checkHttpHealth(client: HttpClient, baseUrl: string): Promise<HealthCheckResult> {
   const start = Date.now();
 
-  // Try /health endpoint first
   try {
     const response = await client.request<any>("/health");
     return {

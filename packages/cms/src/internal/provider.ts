@@ -1,5 +1,6 @@
 import type { SchemaProvider } from '../provider/schema-provider';
 import type { RecordProvider } from '../provider/record-provider';
+import type { AlienCmsConfig } from '../types/config';
 
 const PROVIDER_KEY = 'alien-cms-provider';
 
@@ -24,10 +25,9 @@ type ProviderFactory = (config: any) => {
 
 /**
  * Register a provider factory.
- * Called by each provider implementation (supabase, tcb, http, etc.)
  *
  * @example
- * registerProvider('supabase', createSupabaseProviders);
+ * registerProvider('http', createHttpProviders);
  */
 export function registerProvider(type: string, factory: ProviderFactory) {
   factories.set(type, factory);

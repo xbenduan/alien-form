@@ -60,16 +60,7 @@ export type {
 
 export type {
   AlienCmsConfig,
-  AuthType,
-  AuthConfig,
-  OAuth2Config,
-  ApiKeyConfig,
-  BasicAuthConfig,
-  BearerConfig,
-  CustomAuthConfig,
-  EndpointConfig,
   AdapterConfig,
-  SchemaSourceConfig,
   ConnectionOptions,
 } from "./types/config";
 

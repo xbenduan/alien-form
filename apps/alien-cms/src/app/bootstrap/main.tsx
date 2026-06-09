@@ -14,17 +14,13 @@ import { AppRouter } from '../router';
 import '../../index.css';
 
 function registerBuiltinProviders() {
-  const createRegisteredProviders = (config: AlienCmsConfig) => {
+  registerProvider('http', (config: AlienCmsConfig) => {
     const providers = createProviders(config);
     return {
       schema: providers.schemaProvider,
       record: providers.recordProvider,
     };
-  };
-
-  registerProvider('supabase', createRegisteredProviders);
-  registerProvider('http', createRegisteredProviders);
-  registerProvider('tcb', createRegisteredProviders);
+  });
 }
 
 registerBuiltinProviders();
