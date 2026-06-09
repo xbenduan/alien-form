@@ -33,6 +33,7 @@ function buildActionMeta(mode: ModelActionMode, singularLabel: string) {
 }
 
 interface RecordFormFrameProps {
+  open: boolean;
   openMode: Exclude<ModelActionOpenMode, "page">;
   mode: Exclude<ModelActionMode, "closed">;
   singularLabel: string;
@@ -46,6 +47,7 @@ interface RecordFormFrameProps {
 }
 
 const RecordFormFrame: FC<RecordFormFrameProps> = ({
+  open,
   openMode,
   mode,
   singularLabel,
@@ -58,13 +60,11 @@ const RecordFormFrame: FC<RecordFormFrameProps> = ({
   onSubmitEdit,
 }) => {
   const meta = useMemo(() => buildActionMeta(mode, singularLabel), [mode, singularLabel]);
-  const formKey = `${mode}:${initialValues?.id ?? "new"}:${initialValues?.updatedAt ?? 0}`;
 
   if (openMode === "modal") {
     return (
       <ModalSchemaForm
-        key={formKey}
-        open
+        open={open}
         title={meta.title}
         width={meta.modalWidth}
         mode={mode}
@@ -81,8 +81,7 @@ const RecordFormFrame: FC<RecordFormFrameProps> = ({
 
   return (
     <DrawerSchemaForm
-      key={formKey}
-      open
+      open={open}
       title={meta.title}
       width={meta.drawerWidth}
       mode={mode}

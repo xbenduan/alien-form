@@ -3,11 +3,6 @@ import type { CmsModelSchema, SchemaListFilters } from "@alien-form/cms";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
-// 5 minutes stale time to reduce redundant large JSON fetches
-const SCHEMA_STALE_TIME = 5 * 60 * 1000;
-// Keep unused schema data in cache for 10 minutes
-const SCHEMA_GC_TIME = 10 * 60 * 1000;
-
 export const schemaQueryKeys = {
   all: ["schemas"] as const,
   summaries: ["schemas", "summaries"] as const,
@@ -23,8 +18,6 @@ export function useModelSummaries() {
       const result = await listSchemas();
       return result.list;
     },
-    staleTime: SCHEMA_STALE_TIME,
-    gcTime: SCHEMA_GC_TIME,
   });
 }
 
@@ -44,8 +37,6 @@ export function useSchemaList(options: {
           pageSize,
         },
       }),
-    staleTime: SCHEMA_STALE_TIME,
-    gcTime: SCHEMA_GC_TIME,
   });
 }
 
@@ -54,8 +45,6 @@ export function useSchemaDetail(modelName?: string) {
     queryKey: schemaQueryKeys.detail(modelName),
     enabled: Boolean(modelName),
     queryFn: () => getSchema(modelName!),
-    staleTime: SCHEMA_STALE_TIME,
-    gcTime: SCHEMA_GC_TIME,
   });
 }
 
@@ -64,13 +53,7 @@ export function useSchemaMutations() {
 
   const createMutation = useMutation({
     mutationFn: (schema: CmsModelSchema) => createSchema(schema),
-    onSuccess: async (_, schema) => {
-      const modelName = schema["x-model"]?.name;
-      // Optimistically set the detail cache with the schema we just created
-      if (modelName) {
-        queryClient.setQueryData(schemaQueryKeys.detail(modelName), schema);
-      }
-      // Invalidate list queries to refresh summaries
+    onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: schemaQueryKeys.summaries }),
         queryClient.invalidateQueries({ queryKey: ["schemas", "list"] }),
@@ -81,32 +64,9 @@ export function useSchemaMutations() {
   const updateMutation = useMutation({
     mutationFn: ({ modelName, schema }: { modelName: string; schema: CmsModelSchema }) =>
       updateSchema(modelName, schema),
-    onMutate: async ({ modelName, schema }) => {
-      // Cancel any outgoing refetches to avoid overwriting optimistic update
-      await queryClient.cancelQueries({ queryKey: schemaQueryKeys.detail(modelName) });
-
-      // Snapshot the previous value
-      const previousSchema = queryClient.getQueryData<CmsModelSchema>(
-        schemaQueryKeys.detail(modelName),
-      );
-
-      // Optimistically update the cache
-      queryClient.setQueryData(schemaQueryKeys.detail(modelName), schema);
-
-      return { previousSchema, modelName };
-    },
-    onError: (_error, _variables, context) => {
-      // Rollback on error
-      if (context?.previousSchema) {
-        queryClient.setQueryData(
-          schemaQueryKeys.detail(context.modelName),
-          context.previousSchema,
-        );
-      }
-    },
-    onSettled: async (_data, _error, variables) => {
-      // Always refetch list data after mutation settles
+    onSuccess: async (_data, variables) => {
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: schemaQueryKeys.detail(variables.modelName) }),
         queryClient.invalidateQueries({ queryKey: schemaQueryKeys.summaries }),
         queryClient.invalidateQueries({ queryKey: ["schemas", "list"] }),
       ]);
@@ -115,11 +75,8 @@ export function useSchemaMutations() {
 
   const deleteMutation = useMutation({
     mutationFn: (modelName: string) => deleteSchema(modelName),
-    onMutate: async (modelName) => {
-      // Remove detail from cache immediately
+    onSuccess: async (_data, modelName) => {
       queryClient.removeQueries({ queryKey: schemaQueryKeys.detail(modelName) });
-    },
-    onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: schemaQueryKeys.summaries }),
         queryClient.invalidateQueries({ queryKey: ["schemas", "list"] }),

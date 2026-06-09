@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Card, Flex, Table, Tag, Typography, Select, DatePicker, Space, Empty } from "antd";
+import { Button, Card, Col, Descriptions, Drawer, Empty, Flex, Row, Select, DatePicker, Table, Tag, Typography } from "antd";
+
 import type { ColumnsType } from "antd/es/table";
 import { useQuery } from "@tanstack/react-query";
 import { useWorkbenchLayout } from "../../../app/layout/WorkbenchLayout";
@@ -39,12 +40,26 @@ function useLogList(params: LogListParams) {
   });
 }
 
+function formatTimestamp(val: string | undefined): string {
+  if (!val) return "-";
+  const d = new Date(val);
+  return d.toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
 export default function LogPage() {
   const { setBreadcrumb } = useWorkbenchLayout();
   const [pagination, setPagination] = useState({ current: 1, pageSize: 20 });
   const [filterModel, setFilterModel] = useState<string | undefined>(undefined);
   const [filterAction, setFilterAction] = useState<string | undefined>(undefined);
   const [dateRange, setDateRange] = useState<{ start: string; end: string } | undefined>(undefined);
+  const [detailEntry, setDetailEntry] = useState<LogEntry | null>(null);
 
   useEffect(() => {
     setBreadcrumb({
@@ -72,18 +87,7 @@ export default function LogPage() {
         dataIndex: "timestamp",
         key: "timestamp",
         width: 180,
-        render: (val: string) => {
-          if (!val) return "-";
-          const d = new Date(val);
-          return d.toLocaleString("zh-CN", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          });
-        },
+        render: (val: string) => formatTimestamp(val),
       },
       {
         title: "操作类型",
@@ -111,18 +115,26 @@ export default function LogPage() {
         render: (val: string) => val || "-",
       },
       {
-        title: "操作者",
-        dataIndex: "operator",
-        key: "operator",
-        width: 100,
-        render: (val: string) => val || "-",
-      },
-      {
         title: "摘要",
         dataIndex: "summary",
         key: "summary",
         ellipsis: true,
         render: (val: string) => val || "-",
+      },
+      {
+        title: "操作",
+        key: "actions",
+        width: 80,
+        render: (_, record) => (
+          <Button
+            type="link"
+            size="small"
+
+            onClick={() => setDetailEntry(record)}
+          >
+            详情
+          </Button>
+        ),
       },
     ],
     [],
@@ -134,15 +146,12 @@ export default function LogPage() {
   if (!isConnected) {
     return (
       <Flex vertical gap={16}>
-        <Card className="model-query-card" styles={{ body: { padding: 20 } }}>
-          <Flex vertical gap={10}>
-            <Typography.Title level={4} style={{ marginBottom: 6 }}>
-              操作日志
-            </Typography.Title>
-            <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              记录所有模型与数据的变更操作，便于审计与追溯。
-            </Typography.Paragraph>
-          </Flex>
+        <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
+          <Row gutter={[20, 20]} align="top" className="model-toolbar-row">
+            <Col flex="auto">
+              <Select disabled placeholder="操作类型" style={{ width: 140 }} />
+            </Col>
+          </Row>
         </Card>
         <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
           <Empty description="请先连接远程服务后查看日志" />
@@ -153,28 +162,14 @@ export default function LogPage() {
 
   return (
     <Flex vertical gap={16}>
-      <Card className="model-query-card" styles={{ body: { padding: 20 } }}>
-        <Flex vertical gap={10}>
-          <Flex align="center" justify="space-between" wrap="wrap" gap={16}>
-            <div>
-              <Typography.Title level={4} style={{ marginBottom: 6 }}>
-                操作日志
-              </Typography.Title>
-              <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                记录所有模型与数据的变更操作，便于审计与追溯。
-              </Typography.Paragraph>
-            </div>
-          </Flex>
-        </Flex>
-      </Card>
-
-      <Card className="model-query-card" styles={{ body: { padding: 20 } }}>
-        <Flex vertical gap={16}>
-          <Space wrap size={12}>
+      {/* 筛选工具栏 */}
+      <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
+        <Row gutter={[20, 20]} align="top" className="model-toolbar-row">
+          <Col flex="140px">
             <Select
               allowClear
               placeholder="操作类型"
-              style={{ width: 140 }}
+              style={{ width: "100%" }}
               options={ACTION_OPTIONS}
               value={filterAction}
               onChange={(val) => {
@@ -182,10 +177,12 @@ export default function LogPage() {
                 setPagination((p) => ({ ...p, current: 1 }));
               }}
             />
+          </Col>
+          <Col flex="160px">
             <Select
               allowClear
               placeholder="模型名称"
-              style={{ width: 160 }}
+              style={{ width: "100%" }}
               showSearch
               value={filterModel}
               onChange={(val) => {
@@ -199,8 +196,11 @@ export default function LogPage() {
                   .map((name) => ({ value: name, label: name }))
               }
             />
+          </Col>
+          <Col flex="320px">
             <RangePicker
               showTime
+              style={{ width: "100%" }}
               onChange={(dates) => {
                 if (dates && dates[0] && dates[1]) {
                   setDateRange({
@@ -213,31 +213,91 @@ export default function LogPage() {
                 setPagination((p) => ({ ...p, current: 1 }));
               }}
             />
-          </Space>
-
-          <Table<LogEntry>
-            rowKey="id"
-            columns={columns}
-            dataSource={data?.list ?? []}
-            loading={isLoading}
-            pagination={{
-              current: pagination.current,
-              pageSize: pagination.pageSize,
-              total: data?.total ?? 0,
-              showSizeChanger: true,
-              showTotal: (total) => `共 ${total} 条`,
-            }}
-            onChange={(pag) => {
-              setPagination({
-                current: pag.current ?? 1,
-                pageSize: pag.pageSize ?? 20,
-              });
-            }}
-            scroll={{ x: 900 }}
-            size="middle"
-          />
-        </Flex>
+          </Col>
+        </Row>
       </Card>
+
+      {/* 数据表格 */}
+      <Table<LogEntry>
+        rowKey="id"
+        className="model-data-table"
+        columns={columns}
+        dataSource={data?.list ?? []}
+        loading={isLoading}
+        pagination={{
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total: data?.total ?? 0,
+          showSizeChanger: true,
+          showTotal: (total) => `共 ${total} 条`,
+        }}
+        onChange={(pag) => {
+          setPagination({
+            current: pag.current ?? 1,
+            pageSize: pag.pageSize ?? 20,
+          });
+        }}
+        scroll={{ x: 900 }}
+        size="middle"
+      />
+
+      {/* 详情 Drawer */}
+      <Drawer
+        title="日志详情"
+        open={Boolean(detailEntry)}
+        onClose={() => setDetailEntry(null)}
+        width={520}
+      >
+        {detailEntry ? (
+          <Flex vertical gap={20}>
+            <Descriptions column={1} size="small" bordered>
+              <Descriptions.Item label="时间">
+                {formatTimestamp(detailEntry.timestamp)}
+              </Descriptions.Item>
+              <Descriptions.Item label="操作类型">
+                {(() => {
+                  const meta = ACTION_LABELS[detailEntry.action];
+                  return meta ? <Tag color={meta.color}>{meta.label}</Tag> : <Tag>{detailEntry.action}</Tag>;
+                })()}
+              </Descriptions.Item>
+              <Descriptions.Item label="模型">
+                {detailEntry.modelName}
+              </Descriptions.Item>
+              <Descriptions.Item label="记录 ID">
+                {detailEntry.recordId || "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="操作者">
+                {detailEntry.operator || "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label="摘要">
+                {detailEntry.summary || "-"}
+              </Descriptions.Item>
+            </Descriptions>
+
+            {detailEntry.changes ? (
+              <div>
+                <Typography.Text strong style={{ display: "block", marginBottom: 8 }}>
+                  变更详情
+                </Typography.Text>
+                <pre style={{
+                  padding: 12,
+                  background: "#f8faff",
+                  border: "1px solid #f0f0f0",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  lineHeight: 1.6,
+                  overflow: "auto",
+                  maxHeight: 400,
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-all",
+                }}>
+                  {JSON.stringify(detailEntry.changes, null, 2)}
+                </pre>
+              </div>
+            ) : null}
+          </Flex>
+        ) : null}
+      </Drawer>
     </Flex>
   );
 }

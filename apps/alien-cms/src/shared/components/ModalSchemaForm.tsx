@@ -7,7 +7,6 @@ import type {
   ModelRecord,
 } from "../../domains/record/types/record";
 import {
-  getSchemaFormBodyKey,
   getSchemaFormSubmitText,
   handleSchemaFormSubmitError,
   renderPendingSchemaFormBody,
@@ -81,10 +80,10 @@ const ModalSchemaForm: FC<ModalSchemaFormProps> = ({
       open={open}
       width={width}
       onCancel={onClose}
+      maskClosable={false}
     >
       {canRenderForm ? (
         <SchemaFormBody
-          key={getSchemaFormBodyKey(mode, initialValues)}
           mode={mode}
           schema={schema}
           initialValues={initialValues}

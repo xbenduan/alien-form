@@ -1,5 +1,5 @@
 import { Alert, Card, Col, Flex, Row, Spin, message } from "antd";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useWorkbenchLayout } from "../../../app/layout/WorkbenchLayout";
 import { useRecordStore } from "../../../hooks/use-record-store";
 import type { RecordRouteState } from "../types/record";
@@ -25,6 +25,18 @@ export default function RecordPage({
     onRouteActionChange,
   });
   const singularLabel = page.schema?.["x-model"]?.singularLabel ?? "记录";
+
+  // Keep last valid mode/openMode so Modal/Drawer can show correctly during close animation
+  const lastModeRef = useRef<"add" | "edit" | "detail">("add");
+  const lastOpenModeRef = useRef<"modal" | "drawer">("drawer");
+
+  if (page.actionMode !== "closed" && page.actionOpenMode && page.actionOpenMode !== "page") {
+    lastModeRef.current = page.actionMode;
+    lastOpenModeRef.current = page.actionOpenMode;
+  }
+
+  const isFormOpen =
+    page.actionMode !== "closed" && page.actionOpenMode != null && page.actionOpenMode !== "page";
 
   useEffect(() => {
     setBreadcrumb({
@@ -129,26 +141,25 @@ export default function RecordPage({
         }}
       />
 
-      {page.actionMode !== "closed" && page.actionOpenMode && page.actionOpenMode !== "page" ? (
-        <RecordFormFrame
-          openMode={page.actionOpenMode}
-          mode={page.actionMode}
-          singularLabel={singularLabel}
-          schema={page.schema}
-          initialValues={page.activeRecord}
-          loading={page.detailLoading}
-          submitting={page.submitting}
-          onClose={page.closeAction}
-          onSubmitAdd={async (values) => {
-            await page.submitAdd(values);
-            message.success("新增成功");
-          }}
-          onSubmitEdit={async (values) => {
-            await page.submitEdit(values);
-            message.success("保存成功");
-          }}
-        />
-      ) : null}
+      <RecordFormFrame
+        open={isFormOpen}
+        openMode={lastOpenModeRef.current}
+        mode={lastModeRef.current}
+        singularLabel={singularLabel}
+        schema={page.schema}
+        initialValues={page.activeRecord}
+        loading={page.detailLoading}
+        submitting={page.submitting}
+        onClose={page.closeAction}
+        onSubmitAdd={async (values) => {
+          await page.submitAdd(values);
+          message.success("新增成功");
+        }}
+        onSubmitEdit={async (values) => {
+          await page.submitEdit(values);
+          message.success("保存成功");
+        }}
+      />
     </Flex>
   );
 }

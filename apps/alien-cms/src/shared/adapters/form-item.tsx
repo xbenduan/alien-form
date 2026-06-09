@@ -29,12 +29,16 @@ function FormItem({
   else if (validateStatus === "validating") status = "validating";
   else if (validateStatus === "success") status = "success";
 
-  const help =
+  const helpText =
     errors.length > 0
       ? errors.map((error) => error.message).join("; ")
       : warnings.length > 0
         ? warnings.map((warning) => warning.message).join("; ")
         : undefined;
+
+  // Always render help area with a zero-width space placeholder to prevent
+  // layout shift when validation errors appear (especially in Modal/Drawer)
+  const help = helpText ?? "​";
 
   const labelNode = label ? (
     <span className="cms-form-item-label">
@@ -51,7 +55,7 @@ function FormItem({
 
   return (
     <Form.Item
-      className="cms-form-item"
+      className={`cms-form-item${helpText ? "" : " cms-form-item-help-placeholder"}`}
       label={labelNode}
       colon={false}
       required={required}

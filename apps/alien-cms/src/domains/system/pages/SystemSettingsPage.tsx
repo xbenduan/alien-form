@@ -1,4 +1,4 @@
-import { App, Button, Card, Flex, Space, Tag, Typography } from "antd";
+import { App, Button, Space, Tag } from "antd";
 import { SettingOutlined, DisconnectOutlined } from "@ant-design/icons";
 import {
   createProviders,
@@ -148,37 +148,12 @@ export default function SystemSettingsPage() {
   }, [queryClient, message]);
 
   return (
-    <Flex vertical gap={16} className="system-settings-page">
-      <Card className="model-query-card system-settings-hero-card" styles={{ body: { padding: 20 } }}>
-        <Flex vertical gap={10}>
-          <Flex align="center" justify="space-between" wrap="wrap" gap={16}>
-            <div>
-              <Typography.Title level={4} style={{ marginBottom: 6 }}>
-                服务连接
-              </Typography.Title>
-              <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                配置后端 API 地址和认证信息，连接远程数据服务。未连接时使用本地演示模式。
-              </Typography.Paragraph>
-            </div>
-            <Space wrap size={10}>
-              <Tag icon={<SettingOutlined />} color={isConnected ? "green" : "default"}>
-                {isConnected ? "已连接" : "本地模式"}
-              </Tag>
-              {isConnected ? (
-                <Button icon={<DisconnectOutlined />} danger onClick={handleDisconnect}>
-                  断开连接
-                </Button>
-              ) : null}
-            </Space>
-          </Flex>
-        </Flex>
-      </Card>
-
-      <ProviderSettingsForm
-        initialValues={initialValues}
-        onFinish={handleSave}
-        submitting={submitting}
-      />
-    </Flex>
+    <ProviderSettingsForm
+      initialValues={initialValues}
+      onFinish={handleSave}
+      submitting={submitting}
+      isConnected={isConnected}
+      onDisconnect={handleDisconnect}
+    />
   );
 }

@@ -3,14 +3,16 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import { useState } from "react";
 
+const GLOBAL_GC_TIME = 10 * 60 * 1000; // 10 minutes
+
 export function AppProviders({ children }: PropsWithChildren) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 1_000,
-            refetchOnWindowFocus: false,
+            staleTime: Infinity,
+            gcTime: GLOBAL_GC_TIME,
           },
         },
       }),
@@ -19,11 +21,15 @@ export function AppProviders({ children }: PropsWithChildren) {
   return (
     <ConfigProvider
       theme={{
+        cssVar: true,
         algorithm: theme.defaultAlgorithm,
         token: {
           colorPrimary: "#1677ff",
           borderRadius: 6,
           colorBgLayout: "#f5f7fb",
+          colorText: "#172033",
+          fontFamily:
+            "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         },
         components: {
           Card: {
@@ -34,6 +40,9 @@ export function AppProviders({ children }: PropsWithChildren) {
           },
           Table: {
             headerBg: "#f8faff",
+          },
+          Form: {
+            itemMarginBottom: 16,
           },
         },
       }}

@@ -25,10 +25,12 @@ import {
   sanitizeVisibleKeys,
   writeTableVisibleKeys,
 } from "../domains/record/utils/table-column-preference";
-import { schemaQueryKeys, useSchemaDetail } from "./use-schema-store";
+import { useSchemaDetail } from "./use-schema-store";
 
 export const recordQueryKeys = {
   all: ["records"] as const,
+  model: (modelName: string) => ["records", modelName] as const,
+  lists: (modelName: string) => ["records", modelName, "list"] as const,
   list: (
     modelName: string,
     filters: Record<string, unknown>,
@@ -120,16 +122,6 @@ function buildTableFieldOptions(schema?: CmsModelSchema) {
   }));
 }
 
-function createOptimisticRecord(modelName: string, values: Record<string, unknown>): ModelRecord {
-  const now = Date.now();
-  return {
-    id: `tmp-${modelName}-${Date.now()}`,
-    ...values,
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
 export function useRecordStore(modelName: string, options: UseRecordStoreOptions) {
   const { routeAction, onRouteActionChange } = options;
   const queryClient = useQueryClient();
@@ -178,126 +170,47 @@ export function useRecordStore(modelName: string, options: UseRecordStoreOptions
     queryFn: () => getRecord(modelName, activeRecordId!),
   });
 
-  const setListCache = (
-    updater: (current: { list: ModelRecord[]; total: number } | undefined) => { list: ModelRecord[]; total: number } | undefined,
-  ) => {
-    queryClient.setQueryData(listQueryKey, updater);
-  };
+  // --- Mutations with fine-grained cache invalidation ---
 
   const createMutation = useMutation({
     mutationFn: (values: Record<string, unknown>) => createRecord(modelName, values),
-    onMutate: async (values) => {
-      await queryClient.cancelQueries({ queryKey: listQueryKey });
-      const previous = queryClient.getQueryData<{ list: ModelRecord[]; total: number }>(listQueryKey);
-      const optimisticRecord = createOptimisticRecord(modelName, values);
-
-      setListCache((current) => {
-        if (!current) return current;
-        const nextList =
-          pagination.current === 1
-            ? [optimisticRecord, ...current.list].slice(0, pagination.pageSize)
-            : current.list;
-        return {
-          list: nextList,
-          total: current.total + 1,
-        };
-      });
-
-      return { previous };
-    },
-    onError: (_error, _values, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(listQueryKey, context.previous);
-      }
-    },
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: recordQueryKeys.all }),
-        queryClient.invalidateQueries({ queryKey: schemaQueryKeys.all }),
-      ]);
+      // New record — invalidate list queries for this model
+      await queryClient.invalidateQueries({ queryKey: recordQueryKeys.lists(modelName) });
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, values }: { id: string; values: Record<string, unknown> }) =>
       updateRecord(modelName, id, values),
-    onMutate: async ({ id, values }) => {
-      const nextUpdatedAt = Date.now();
-      await Promise.all([
-        queryClient.cancelQueries({ queryKey: listQueryKey }),
-        queryClient.cancelQueries({ queryKey: recordQueryKeys.detail(modelName, id) }),
-      ]);
-
-      const previousList = queryClient.getQueryData<{ list: ModelRecord[]; total: number }>(listQueryKey);
-      const previousDetail = queryClient.getQueryData<ModelRecord>(recordQueryKeys.detail(modelName, id));
-
-      setListCache((current) =>
-        current
-          ? {
-              ...current,
-              list: current.list.map((item) =>
-                item.id === id ? { ...item, ...values, updatedAt: nextUpdatedAt } : item,
-              ),
-            }
-          : current,
-      );
-      queryClient.setQueryData(recordQueryKeys.detail(modelName, id), (current?: ModelRecord) =>
-        current ? { ...current, ...values, updatedAt: nextUpdatedAt } : current,
-      );
-
-      return { previousList, previousDetail };
-    },
-    onError: (_error, variables, context) => {
-      if (context?.previousList) {
-        queryClient.setQueryData(listQueryKey, context.previousList);
-      }
-      if (context?.previousDetail) {
-        queryClient.setQueryData(recordQueryKeys.detail(modelName, variables.id), context.previousDetail);
-      }
-    },
     onSuccess: async (_data, variables) => {
+      // Updated record — invalidate its detail + list queries
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: recordQueryKeys.detail(modelName, variables.id) }),
-        queryClient.invalidateQueries({ queryKey: recordQueryKeys.all }),
+        queryClient.invalidateQueries({ queryKey: recordQueryKeys.lists(modelName) }),
       ]);
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteRecord(modelName, id),
-    onMutate: async (id) => {
-      await Promise.all([
-        queryClient.cancelQueries({ queryKey: listQueryKey }),
-        queryClient.cancelQueries({ queryKey: recordQueryKeys.detail(modelName, id) }),
-      ]);
-
-      const previousList = queryClient.getQueryData<{ list: ModelRecord[]; total: number }>(listQueryKey);
-      const previousDetail = queryClient.getQueryData<ModelRecord>(recordQueryKeys.detail(modelName, id));
-
-      setListCache((current) =>
-        current
-          ? {
-              total: Math.max(0, current.total - 1),
-              list: current.list.filter((item) => item.id !== id),
-            }
-          : current,
-      );
+    onSuccess: async (_data, id) => {
       queryClient.removeQueries({ queryKey: recordQueryKeys.detail(modelName, id) });
-
-      return { previousList, previousDetail, id };
-    },
-    onError: (_error, id, context) => {
-      if (context?.previousList) {
-        queryClient.setQueryData(listQueryKey, context.previousList);
-      }
-      if (context?.previousDetail) {
-        queryClient.setQueryData(recordQueryKeys.detail(modelName, id), context.previousDetail);
-      }
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: recordQueryKeys.all });
+      await queryClient.invalidateQueries({ queryKey: recordQueryKeys.lists(modelName) });
     },
   });
+
+  const batchDeleteMutation = useMutation({
+    mutationFn: (ids: string[]) => batchDeleteRecords(modelName, ids),
+    onSuccess: async (_data, ids) => {
+      for (const id of ids) {
+        queryClient.removeQueries({ queryKey: recordQueryKeys.detail(modelName, id) });
+      }
+      await queryClient.invalidateQueries({ queryKey: recordQueryKeys.lists(modelName) });
+    },
+  });
+
+  // --- Action state management ---
 
   useEffect(() => {
     if (!schema) return;
@@ -407,7 +320,9 @@ export function useRecordStore(modelName: string, options: UseRecordStoreOptions
       await deleteMutation.mutateAsync(id);
     },
     submitting: createMutation.isPending || updateMutation.isPending,
-    deleting: deleteMutation.isPending,
-    batchDelete: async (ids: string[]) => batchDeleteRecords(modelName, ids),
+    deleting: deleteMutation.isPending || batchDeleteMutation.isPending,
+    batchDelete: async (ids: string[]) => {
+      await batchDeleteMutation.mutateAsync(ids);
+    },
   };
 }

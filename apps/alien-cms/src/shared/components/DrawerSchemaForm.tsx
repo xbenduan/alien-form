@@ -7,7 +7,6 @@ import type {
   ModelRecord,
 } from "../../domains/record/types/record";
 import {
-  getSchemaFormBodyKey,
   getSchemaFormSubmitText,
   handleSchemaFormSubmitError,
   renderPendingSchemaFormBody,
@@ -80,10 +79,10 @@ const DrawerSchemaForm: FC<DrawerSchemaFormProps> = ({
       width={width}
       footer={footer}
       onClose={onClose}
+      maskClosable={false}
     >
       {canRenderForm ? (
         <SchemaFormBody
-          key={getSchemaFormBodyKey(mode, initialValues)}
           mode={mode}
           schema={schema}
           initialValues={initialValues}

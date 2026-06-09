@@ -1,4 +1,5 @@
-import { Button, Card, Flex, Typography } from "antd";
+import { Button, Card, Space, Tag, Typography } from "antd";
+import { SettingOutlined, DisconnectOutlined } from "@ant-design/icons";
 import {
   FormProvider,
   SchemaField,
@@ -43,9 +44,17 @@ interface ProviderSettingsFormProps {
   initialValues?: ProviderSettingsFormValues;
   onFinish: (values: ProviderSettingsFormValues) => void | Promise<void>;
   submitting?: boolean;
+  isConnected?: boolean;
+  onDisconnect?: () => void;
 }
 
-export function ProviderSettingsForm({ initialValues, onFinish, submitting }: ProviderSettingsFormProps) {
+export function ProviderSettingsForm({
+  initialValues,
+  onFinish,
+  submitting,
+  isConnected,
+  onDisconnect,
+}: ProviderSettingsFormProps) {
   const formRef = useRef<FormInstance | null>(null);
 
   const config: FormConfig = {
@@ -67,31 +76,40 @@ export function ProviderSettingsForm({ initialValues, onFinish, submitting }: Pr
   }, [onFinish]);
 
   return (
-    <Flex vertical gap={16}>
-      <Card
-        className="model-query-card system-settings-section-card"
-        title="服务连接"
-        styles={{ body: { padding: 20 } }}
-      >
-        <div className="system-settings-section-header">
-          <Typography.Paragraph type="secondary">
-            填写后端 API 地址和登录凭据，保存后系统将自动切换到远程数据源。
-          </Typography.Paragraph>
-        </div>
-        <FormProvider
-          form={form}
-          components={recordFormComponents as never}
-          decorators={recordFormDecorators as never}
-        >
-          <SchemaField />
-        </FormProvider>
-      </Card>
+    <Card
+      className="model-query-card system-settings-section-card"
+      title="服务连接"
+      extra={
+        <Tag icon={<SettingOutlined />} color={isConnected ? "green" : "default"}>
+          {isConnected ? "已连接" : "本地模式"}
+        </Tag>
+      }
+      styles={{ body: { padding: 20 } }}
+    >
+      <div className="system-settings-section-header">
+        <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+          填写后端 API 地址和登录凭据，保存后系统将自动切换到远程数据源。
+        </Typography.Paragraph>
+      </div>
 
-      <Card className="model-query-card system-settings-action-card" styles={{ body: { padding: 20 } }}>
+      <FormProvider
+        form={form}
+        components={recordFormComponents as never}
+        decorators={recordFormDecorators as never}
+      >
+        <SchemaField />
+      </FormProvider>
+
+      <Space style={{ marginTop: 16 }}>
         <Button type="primary" loading={submitting} onClick={handleSubmit}>
           保存并连接
         </Button>
-      </Card>
-    </Flex>
+        {isConnected && onDisconnect ? (
+          <Button icon={<DisconnectOutlined />} danger onClick={onDisconnect}>
+            断开连接
+          </Button>
+        ) : null}
+      </Space>
+    </Card>
   );
 }
