@@ -27,8 +27,8 @@ export interface ProviderSet {
 /**
  * Create a ProviderSet from an AlienCmsConfig.
  *
- * - baseUrl absent → in-memory demo mode (local)
- * - baseUrl present → HTTP provider (remote server)
+ * - No baseUrl → in-memory local demo mode
+ * - baseUrl set → HTTP REST provider
  */
 export function createProviders(config?: AlienCmsConfig): ProviderSet {
   if (!config?.baseUrl) {

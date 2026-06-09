@@ -24,7 +24,7 @@ export interface HttpClientOptions {
   baseUrl: string;
   /** Adapter config for request/response mapping. */
   adapter?: AdapterConfig;
-  /** Default request headers (including Authorization). */
+  /** Default request headers (includes Authorization if already logged in). */
   headers?: Record<string, string>;
   /** Request timeout in milliseconds. Defaults to 10000. */
   timeout?: number;
@@ -57,6 +57,8 @@ function getByPath(obj: any, path: string): any {
 /**
  * HTTP client for generic REST API communication.
  * Zero external dependencies — uses native fetch.
+ *
+ * Token is passed via `headers` option (set at construction time after login).
  */
 export class HttpClient {
   private readonly baseUrl: string;

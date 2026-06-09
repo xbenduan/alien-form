@@ -30,11 +30,7 @@ export function formValuesToConfig(values: ProviderSettingsFormValues): AlienCms
   const baseUrl = values.baseUrl?.trim();
 
   if (!baseUrl) {
-    // Local mode — no baseUrl
-    return {
-      version: "1.0",
-      name: "Alien CMS",
-    };
+    throw new Error("请填写 API 地址。");
   }
 
   const config: AlienCmsConfig = {

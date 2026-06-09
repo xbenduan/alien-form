@@ -32,25 +32,21 @@ describe("getCurrentProviderSnapshot", () => {
   it("returns the cached provider snapshot when cache is valid", () => {
     (globalThis as { localStorage?: Storage }).localStorage = createStorage({
       [STORAGE_KEY]: JSON.stringify({
-        type: "supabase",
+        type: "http",
         config: {
-          provider: "supabase",
-          supabase: {
-            url: "https://demo.supabase.co",
-            anonKey: "anon-key",
-          },
+          version: "1.0",
+          name: "Alien CMS",
+          baseUrl: "https://api.example.com",
         },
       }),
     }) as Storage;
 
     expect(getCurrentProviderSnapshot()).toEqual({
-      type: "supabase",
+      type: "http",
       config: {
-        provider: "supabase",
-        supabase: {
-          url: "https://demo.supabase.co",
-          anonKey: "anon-key",
-        },
+        version: "1.0",
+        name: "Alien CMS",
+        baseUrl: "https://api.example.com",
       },
     });
   });
@@ -67,7 +63,7 @@ describe("getCurrentProviderSnapshot", () => {
     (globalThis as { localStorage?: Storage }).localStorage = createStorage({
       [STORAGE_KEY]: JSON.stringify({
         config: {
-          provider: "http",
+          baseUrl: "https://api.example.com",
         },
       }),
     }) as Storage;

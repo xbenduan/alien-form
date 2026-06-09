@@ -1,6 +1,9 @@
 /**
- * alien-cms configuration types.
- * Simplified: only local (demo) and http (remote) modes.
+ * Simplified AlienCmsConfig.
+ *
+ * Only two runtime modes:
+ * - local (no baseUrl) → in-memory demo
+ * - http  (baseUrl set) → remote REST API via HttpClient
  */
 
 export interface AdapterRequestListConfig {
@@ -39,6 +42,7 @@ export interface AdapterConfig {
 
 export interface ConnectionOptions {
   timeout?: number;
+  retries?: number;
   headers?: Record<string, string>;
 }
 
@@ -46,15 +50,25 @@ export interface AlienCmsConfig {
   version: "1.0";
   name: string;
   description?: string;
-  /** Server API base URL. When absent, uses local demo mode. */
+
+  /**
+   * Base URL of the remote backend API.
+   * If absent, the system runs in local demo mode.
+   */
   baseUrl?: string;
-  /** Authentication credentials for the remote server. */
+
+  /**
+   * Authentication credentials for login.
+   * The frontend will POST to `{baseUrl}/api/auth/login` with these.
+   */
   auth?: {
-    username: string;
-    password: string;
+    username?: string;
+    password?: string;
   };
-  /** Adapter config for request/response mapping (advanced). */
+
+  /** Adapter config for request/response field mapping. */
   adapter?: AdapterConfig;
-  /** Connection options. */
+
+  /** Connection-level options (timeout, retries, extra headers). */
   options?: ConnectionOptions;
 }

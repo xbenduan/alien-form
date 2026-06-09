@@ -1,5 +1,5 @@
 import { App, Alert, Button, Card, Flex, Space, Tag, Typography } from "antd";
-import { SettingOutlined } from "@ant-design/icons";
+import { SettingOutlined, DisconnectOutlined } from "@ant-design/icons";
 import { Form } from "antd";
 import {
   createProviders,
@@ -19,30 +19,57 @@ import {
 } from "../utils/provider-config";
 import type { ProviderSettingsFormValues } from "../utils/provider-config";
 
+declare const fetch: (input: string, init?: {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
+}) => Promise<{
+  ok: boolean;
+  status: number;
+  json(): Promise<any>;
+  text(): Promise<string>;
+}>;
+
 async function loginAndGetToken(baseUrl: string, username: string, password: string): Promise<string> {
-  const resp = await fetch(`${baseUrl}/api/auth/login`, {
+  const url = `${baseUrl.replace(/\/$/, "")}/api/auth/login`;
+  const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   });
 
-  if (!resp.ok) {
-    const error = await resp.json().catch(() => ({ error: resp.statusText }));
-    throw new Error(error.error ?? `登录失败: HTTP ${resp.status}`);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`登录失败 (${response.status}): ${text}`);
   }
 
-  const data = await resp.json();
-  return data.data?.token ?? data.token;
+  const data = await response.json();
+  const token = data?.data?.token ?? data?.token;
+
+  if (!token) {
+    throw new Error("登录响应中未找到 token。");
+  }
+
+  return token;
 }
 
 async function verifyConnection(config: AlienCmsConfig) {
-  if (!config.baseUrl) return;
-
   const providers = createProviders(config);
-  const health = await providers.healthCheck();
+  const healthResult = await providers.healthCheck();
 
-  if (!health.ok) {
-    throw new Error(health.message ?? "连接失败");
+  if (!healthResult.ok) {
+    throw new Error(healthResult.message ?? "服务连接失败");
+  }
+
+  // Try listing schemas to verify full access
+  try {
+    await providers.schemaProvider.list({
+      pagination: { current: 1, pageSize: 1 },
+    });
+  } catch (error) {
+    throw new Error(
+      `服务已连通，但 Schemas 接口不可访问：${error instanceof Error ? error.message : "未知错误"}`,
+    );
   }
 }
 
@@ -63,10 +90,12 @@ export default function SystemSettingsPage() {
   }, [setBreadcrumb]);
 
   useEffect(() => {
-    form.setFieldsValues(configToFormValues((snapshot?.config as AlienCmsConfig | undefined) ?? undefined));
+    form.setFieldsValue(configToFormValues((snapshot?.config as AlienCmsConfig | undefined) ?? undefined));
   }, [form, snapshot]);
 
-  const isRemote = useMemo(() => !!snapshot?.config?.baseUrl, [snapshot]);
+  const isConnected = useMemo(() => {
+    return snapshot?.type === "http";
+  }, [snapshot]);
 
   const handleSave = async (values: ProviderSettingsFormValues) => {
     setSubmitting(true);
@@ -74,29 +103,30 @@ export default function SystemSettingsPage() {
 
     try {
       const config = formValuesToConfig(values);
+      const baseUrl = config.baseUrl!;
 
-      if (!config.baseUrl) {
-        resetProvider();
-      } else {
-        // Login first to get token
-        const token = await loginAndGetToken(
-          config.baseUrl,
-          config.auth?.username ?? "",
-          config.auth?.password ?? "",
-        );
-
-        const finalConfig: AlienCmsConfig = {
-          ...config,
-          options: {
-            ...config.options,
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        };
-
-        await verifyConnection(finalConfig);
-        switchProvider("http", finalConfig);
+      // Step 1: Login to get JWT token
+      let token: string | undefined;
+      if (config.auth?.username && config.auth?.password) {
+        token = await loginAndGetToken(baseUrl, config.auth.username, config.auth.password);
       }
 
+      // Step 2: Build final config with token in headers
+      const finalConfig: AlienCmsConfig = {
+        ...config,
+        options: {
+          ...config.options,
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        },
+      };
+
+      // Step 3: Verify the connection works
+      await verifyConnection(finalConfig);
+
+      // Step 4: Switch provider
+      switchProvider("http", finalConfig);
+
+      // Step 5: Invalidate caches
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["schemas"] }),
         queryClient.invalidateQueries({ queryKey: ["records"] }),
@@ -104,27 +134,25 @@ export default function SystemSettingsPage() {
 
       const nextSnapshot = getCurrentProviderSnapshot();
       setSnapshot(nextSnapshot);
-      form.setFieldsValue(
-        !config.baseUrl
-          ? createDefaultFormValues()
-          : configToFormValues((nextSnapshot?.config as AlienCmsConfig | undefined) ?? config),
-      );
-      message.success("配置已保存并生效");
+      message.success("服务连接成功");
     } catch (error) {
-      const nextError = error instanceof Error ? error.message : "配置保存失败";
+      const nextError = error instanceof Error ? error.message : "连接失败";
       setSaveError(nextError);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleReset = () => {
+  const handleDisconnect = async () => {
     resetProvider();
-    queryClient.invalidateQueries({ queryKey: ["schemas"] });
-    queryClient.invalidateQueries({ queryKey: ["records"] });
-    setSnapshot(null);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["schemas"] }),
+      queryClient.invalidateQueries({ queryKey: ["records"] }),
+    ]);
+    setSnapshot(getCurrentProviderSnapshot());
     form.setFieldsValue(createDefaultFormValues());
-    message.success("已重置为本地演示模式");
+    setSaveError(undefined);
+    message.success("已断开连接，切换回本地模式");
   };
 
   return (
@@ -137,16 +165,16 @@ export default function SystemSettingsPage() {
                 服务连接
               </Typography.Title>
               <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                配置后端服务地址和登录凭证，或使用本地演示模式。
+                配置后端 API 地址和认证信息，连接远程数据服务。未连接时使用本地演示模式。
               </Typography.Paragraph>
             </div>
             <Space wrap size={10}>
-              <Tag icon={<SettingOutlined />} color={isRemote ? "green" : "blue"}>
-                {isRemote ? "远程模式" : "本地演示"}
+              <Tag icon={<SettingOutlined />} color={isConnected ? "green" : "default"}>
+                {isConnected ? "已连接" : "本地模式"}
               </Tag>
-              {isRemote ? (
-                <Button danger onClick={handleReset}>
-                  重置为本地模式
+              {isConnected ? (
+                <Button icon={<DisconnectOutlined />} danger onClick={handleDisconnect}>
+                  断开连接
                 </Button>
               ) : null}
             </Space>
