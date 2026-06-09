@@ -1,4 +1,4 @@
-import { App, Alert, Button, Card, Flex, Space, Tag, Typography } from "antd";
+import { App, Button, Card, Flex, Space, Tag, Typography } from "antd";
 import { SettingOutlined, DisconnectOutlined } from "@ant-design/icons";
 import { Form } from "antd";
 import {
@@ -79,7 +79,6 @@ export default function SystemSettingsPage() {
   const { setBreadcrumb } = useWorkbenchLayout();
   const [form] = Form.useForm<ProviderSettingsFormValues>();
   const [snapshot, setSnapshot] = useState(() => getCurrentProviderSnapshot());
-  const [saveError, setSaveError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -99,7 +98,6 @@ export default function SystemSettingsPage() {
 
   const handleSave = async (values: ProviderSettingsFormValues) => {
     setSubmitting(true);
-    setSaveError(undefined);
 
     try {
       const config = formValuesToConfig(values);
@@ -136,8 +134,7 @@ export default function SystemSettingsPage() {
       setSnapshot(nextSnapshot);
       message.success("服务连接成功");
     } catch (error) {
-      const nextError = error instanceof Error ? error.message : "连接失败";
-      setSaveError(nextError);
+      message.error(error instanceof Error ? error.message : "连接失败");
     } finally {
       setSubmitting(false);
     }
@@ -151,7 +148,6 @@ export default function SystemSettingsPage() {
     ]);
     setSnapshot(getCurrentProviderSnapshot());
     form.setFieldsValue(createDefaultFormValues());
-    setSaveError(undefined);
     message.success("已断开连接，切换回本地模式");
   };
 
@@ -179,8 +175,6 @@ export default function SystemSettingsPage() {
               ) : null}
             </Space>
           </Flex>
-
-          {saveError ? <Alert type="error" showIcon message="连接失败" description={saveError} /> : null}
         </Flex>
       </Card>
 

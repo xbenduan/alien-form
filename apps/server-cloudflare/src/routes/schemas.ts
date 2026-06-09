@@ -10,26 +10,39 @@ schemas.get("/", async (c) => {
   const keyword = c.req.query("keyword") ?? "";
   const offset = (current - 1) * pageSize;
 
-  let countSql = "SELECT COUNT(*) as total FROM cms_schemas";
-  let listSql = "SELECT model_name, title, description, created_at, updated_at FROM cms_schemas";
-  const params: string[] = [];
+  const db = c.env.DB;
+
+  let total = 0;
+  let results: any[] = [];
 
   if (keyword) {
-    const where = " WHERE model_name LIKE ?1 OR title LIKE ?1 OR description LIKE ?1";
-    countSql += where;
-    listSql += where;
-    params.push(`%${keyword}%`);
+    const like = `%${keyword}%`;
+    const countRow = await db
+      .prepare("SELECT COUNT(*) as total FROM cms_schemas WHERE model_name LIKE ? OR title LIKE ? OR description LIKE ?")
+      .bind(like, like, like)
+      .first<{ total: number }>();
+    total = countRow?.total ?? 0;
+
+    const listResult = await db
+      .prepare("SELECT model_name, title, description, created_at, updated_at FROM cms_schemas WHERE model_name LIKE ? OR title LIKE ? OR description LIKE ? ORDER BY updated_at DESC LIMIT ? OFFSET ?")
+      .bind(like, like, like, pageSize, offset)
+      .all();
+    results = listResult.results ?? [];
+  } else {
+    const countRow = await db
+      .prepare("SELECT COUNT(*) as total FROM cms_schemas")
+      .bind()
+      .first<{ total: number }>();
+    total = countRow?.total ?? 0;
+
+    const listResult = await db
+      .prepare("SELECT model_name, title, description, created_at, updated_at FROM cms_schemas ORDER BY updated_at DESC LIMIT ? OFFSET ?")
+      .bind(pageSize, offset)
+      .all();
+    results = listResult.results ?? [];
   }
 
-  listSql += " ORDER BY updated_at DESC LIMIT ?2 OFFSET ?3";
-
-  const db = c.env.DB;
-  const [countResult, listResult] = await Promise.all([
-    db.prepare(countSql).bind(...params).first<{ total: number }>(),
-    db.prepare(listSql).bind(...params, pageSize, offset).all(),
-  ]);
-
-  const list = (listResult.results ?? []).map((row: any) => ({
+  const list = results.map((row: any) => ({
     name: row.model_name,
     title: row.title ?? row.model_name,
     description: row.description ?? "",
@@ -37,7 +50,7 @@ schemas.get("/", async (c) => {
     updatedAt: row.updated_at,
   }));
 
-  return c.json({ data: { list, total: countResult?.total ?? 0 } });
+  return c.json({ data: { list, total } });
 });
 
 // GET /api/schemas/:modelName — detail

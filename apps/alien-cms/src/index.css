@@ -244,6 +244,12 @@ body {
     align-items: stretch;
 }
 
+.system-settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
 .system-settings-hero-card .ant-alert + .ant-alert,
 .system-settings-hero-card .ant-alert + .ant-alert {
     margin-top: 10px;
