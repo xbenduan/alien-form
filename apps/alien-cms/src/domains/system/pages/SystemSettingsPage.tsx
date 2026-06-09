@@ -1,6 +1,5 @@
 import { App, Button, Card, Flex, Space, Tag, Typography } from "antd";
 import { SettingOutlined, DisconnectOutlined } from "@ant-design/icons";
-import { Form } from "antd";
 import {
   createProviders,
   getCurrentProviderSnapshot,
@@ -8,13 +7,12 @@ import {
   switchProvider,
 } from "@alien-form/cms";
 import type { AlienCmsConfig } from "@alien-form/cms";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useWorkbenchLayout } from "../../../app/layout/WorkbenchLayout";
 import { ProviderSettingsForm } from "../components/ProviderSettingsForm";
 import {
   configToFormValues,
-  createDefaultFormValues,
   formValuesToConfig,
 } from "../utils/provider-config";
 import type { ProviderSettingsFormValues } from "../utils/provider-config";
@@ -77,7 +75,6 @@ export default function SystemSettingsPage() {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
   const { setBreadcrumb } = useWorkbenchLayout();
-  const [form] = Form.useForm<ProviderSettingsFormValues>();
   const [snapshot, setSnapshot] = useState(() => getCurrentProviderSnapshot());
   const [submitting, setSubmitting] = useState(false);
 
@@ -88,15 +85,16 @@ export default function SystemSettingsPage() {
     return () => setBreadcrumb(null);
   }, [setBreadcrumb]);
 
-  useEffect(() => {
-    form.setFieldsValue(configToFormValues((snapshot?.config as AlienCmsConfig | undefined) ?? undefined));
-  }, [form, snapshot]);
+  const initialValues = useMemo(
+    () => configToFormValues((snapshot?.config as AlienCmsConfig | undefined) ?? undefined),
+    [snapshot],
+  );
 
   const isConnected = useMemo(() => {
     return snapshot?.type === "http";
   }, [snapshot]);
 
-  const handleSave = async (values: ProviderSettingsFormValues) => {
+  const handleSave = useCallback(async (values: ProviderSettingsFormValues) => {
     setSubmitting(true);
 
     try {
@@ -130,26 +128,24 @@ export default function SystemSettingsPage() {
         queryClient.invalidateQueries({ queryKey: ["records"] }),
       ]);
 
-      const nextSnapshot = getCurrentProviderSnapshot();
-      setSnapshot(nextSnapshot);
+      setSnapshot(getCurrentProviderSnapshot());
       message.success("服务连接成功");
     } catch (error) {
       message.error(error instanceof Error ? error.message : "连接失败");
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [queryClient, message]);
 
-  const handleDisconnect = async () => {
+  const handleDisconnect = useCallback(async () => {
     resetProvider();
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["schemas"] }),
       queryClient.invalidateQueries({ queryKey: ["records"] }),
     ]);
     setSnapshot(getCurrentProviderSnapshot());
-    form.setFieldsValue(createDefaultFormValues());
     message.success("已断开连接，切换回本地模式");
-  };
+  }, [queryClient, message]);
 
   return (
     <Flex vertical gap={16} className="system-settings-page">
@@ -178,7 +174,11 @@ export default function SystemSettingsPage() {
         </Flex>
       </Card>
 
-      <ProviderSettingsForm form={form} onFinish={handleSave} submitting={submitting} />
+      <ProviderSettingsForm
+        initialValues={initialValues}
+        onFinish={handleSave}
+        submitting={submitting}
+      />
     </Flex>
   );
 }
