@@ -1,5 +1,7 @@
-import type { CmsModelSchema } from '../types/record';
-import { SchemaFormBody } from '../../../shared/components/SchemaFormShared';
+import type { FormInstance } from "@alien-form/react";
+import { useRef } from "react";
+import { SchemaFormBody } from "../../../shared/components/SchemaFormShared";
+import type { CmsModelSchema } from "../types/record";
 
 interface SchemaFormViewProps {
   schema: CmsModelSchema;
@@ -16,10 +18,11 @@ interface SchemaFormViewProps {
 export function SchemaFormView({
   schema,
   initialValues,
-  layout = 'overlay',
+  layout = "overlay",
 }: SchemaFormViewProps) {
+  const formRef = useRef<FormInstance | null>(null);
   const layoutClassName =
-    layout === 'page' ? 'schema-form-layout schema-form-layout-page' : 'schema-form-layout';
+    layout === "page" ? "schema-form-layout schema-form-layout-page" : "schema-form-layout";
 
   return (
     <div className={layoutClassName}>
@@ -27,7 +30,7 @@ export function SchemaFormView({
         mode="add"
         schema={schema}
         initialValues={initialValues}
-        onFormReady={() => {}}
+        formRef={formRef}
       />
     </div>
   );
@@ -40,12 +43,14 @@ export function DetailSchemaView({
   schema: CmsModelSchema;
   initialValues?: Record<string, unknown>;
 }) {
+  const formRef = useRef<FormInstance | null>(null);
+
   return (
     <SchemaFormBody
       mode="detail"
       schema={schema}
       initialValues={initialValues}
-      onFormReady={() => {}}
+      formRef={formRef}
     />
   );
 }

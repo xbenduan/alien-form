@@ -1,13 +1,18 @@
 import type { FormInstance } from "@alien-form/react";
 import { Button, Drawer, Space } from "antd";
 import { useRef, type FC } from "react";
-import type { CmsModelSchema, ModelActionMode, ModelRecord } from "../../domains/record/types/record";
+import type {
+  CmsModelSchema,
+  ModelActionMode,
+  ModelRecord,
+} from "../../domains/record/types/record";
 import {
   getSchemaFormBodyKey,
   getSchemaFormSubmitText,
   handleSchemaFormSubmitError,
   renderPendingSchemaFormBody,
   SchemaFormBody,
+  submitSchemaForm,
 } from "./SchemaFormShared";
 
 interface DrawerSchemaFormProps {
@@ -40,34 +45,32 @@ const DrawerSchemaForm: FC<DrawerSchemaFormProps> = ({
   const formRef = useRef<FormInstance | null>(null);
   const canRenderForm = mode === "add" || Boolean(initialValues);
 
-  const footer = mode === "detail" || !canRenderForm
-    ? null
-    : (
-        <Space size={8}>
-          <Button onClick={onClose}>\u53d6\u6d88</Button>
-          <Button
-            type="primary"
-            loading={submitting}
-            onClick={() => {
-              const form = formRef.current;
-              if (!form) {
-                return;
-              }
-              void form
-                .submit(async (values) => {
-                  if (mode === "add") {
-                    await onSubmitAdd(values);
-                    return;
-                  }
-                  await onSubmitEdit(values);
-                })
-                .catch(handleSchemaFormSubmitError);
-            }}
-          >
-            {getSchemaFormSubmitText(mode)}
-          </Button>
-        </Space>
-      );
+  const footer =
+    mode === "detail" || !canRenderForm ? null : (
+      <Space size={8}>
+        <Button onClick={onClose}>取消</Button>
+        <Button
+          type="primary"
+          loading={submitting}
+          onClick={() => {
+            const form = formRef.current;
+            if (!form) {
+              return;
+            }
+            void submitSchemaForm(form, async (values) => {
+                if (mode === "add") {
+                  await onSubmitAdd(values);
+                  return;
+                }
+                await onSubmitEdit(values);
+              })
+              .catch(handleSchemaFormSubmitError);
+          }}
+        >
+          {getSchemaFormSubmitText(mode)}
+        </Button>
+      </Space>
+    );
 
   return (
     <Drawer
@@ -86,7 +89,9 @@ const DrawerSchemaForm: FC<DrawerSchemaFormProps> = ({
           initialValues={initialValues}
           formRef={formRef}
         />
-      ) : renderPendingSchemaFormBody(mode, loading, initialValues)}
+      ) : (
+        renderPendingSchemaFormBody(mode, loading, initialValues)
+      )}
     </Drawer>
   );
 };
