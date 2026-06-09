@@ -28,7 +28,7 @@ async function loginAndGetToken(baseUrl: string, username: string, password: str
 
   if (!resp.ok) {
     const error = await resp.json().catch(() => ({ error: resp.statusText }));
-    throw new Error(error.error ?? `Login failed: HTTP ${resp.status}`);
+    throw new Error(error.error ?? `登录失败: HTTP ${resp.status}`);
   }
 
   const data = await resp.json();
@@ -42,7 +42,7 @@ async function verifyConnection(config: AlienCmsConfig) {
   const health = await providers.healthCheck();
 
   if (!health.ok) {
-    throw new Error(health.message ?? "\u8fde\u63a5\u5931\u8d25");
+    throw new Error(health.message ?? "连接失败");
   }
 }
 
@@ -57,13 +57,13 @@ export default function SystemSettingsPage() {
 
   useEffect(() => {
     setBreadcrumb({
-      items: [{ title: "\u7cfb\u7edf\u8bbe\u7f6e" }, { title: "\u670d\u52a1\u8fde\u63a5" }],
+      items: [{ title: "系统设置" }, { title: "服务连接" }],
     });
     return () => setBreadcrumb(null);
   }, [setBreadcrumb]);
 
   useEffect(() => {
-    form.setFieldsValue(configToFormValues((snapshot?.config as AlienCmsConfig | undefined) ?? undefined));
+    form.setFieldsValues(configToFormValues((snapshot?.config as AlienCmsConfig | undefined) ?? undefined));
   }, [form, snapshot]);
 
   const isRemote = useMemo(() => !!snapshot?.config?.baseUrl, [snapshot]);
@@ -76,10 +76,9 @@ export default function SystemSettingsPage() {
       const config = formValuesToConfig(values);
 
       if (!config.baseUrl) {
-        // Switch to local mode
         resetProvider();
       } else {
-        // Login first to get token, then store in headers
+        // Login first to get token
         const token = await loginAndGetToken(
           config.baseUrl,
           config.auth?.username ?? "",
@@ -94,10 +93,7 @@ export default function SystemSettingsPage() {
           },
         };
 
-        // Verify the connection works
         await verifyConnection(finalConfig);
-
-        // Switch provider
         switchProvider("http", finalConfig);
       }
 
@@ -113,9 +109,9 @@ export default function SystemSettingsPage() {
           ? createDefaultFormValues()
           : configToFormValues((nextSnapshot?.config as AlienCmsConfig | undefined) ?? config),
       );
-      message.success("\u914d\u7f6e\u5df2\u4fdd\u5b58\u5e76\u751f\u6548");
+      message.success("配置已保存并生效");
     } catch (error) {
-      const nextError = error instanceof Error ? error.message : "\u914d\u7f6e\u4fdd\u5b58\u5931\u8d25";
+      const nextError = error instanceof Error ? error.message : "配置保存失败";
       setSaveError(nextError);
     } finally {
       setSubmitting(false);
@@ -128,7 +124,7 @@ export default function SystemSettingsPage() {
     queryClient.invalidateQueries({ queryKey: ["records"] });
     setSnapshot(null);
     form.setFieldsValue(createDefaultFormValues());
-    message.success("\u5df2\u91cd\u7f6e\u4e3a\u672c\u5730\u6f14\u793a\u6a21\u5f0f");
+    message.success("已重置为本地演示模式");
   };
 
   return (
@@ -138,25 +134,25 @@ export default function SystemSettingsPage() {
           <Flex align="center" justify="space-between" wrap="wrap" gap={16}>
             <div>
               <Typography.Title level={4} style={{ marginBottom: 6 }}>
-                \u670d\u52a1\u8fde\u63a5
+                服务连接
               </Typography.Title>
               <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                \u914d\u7f6e\u540e\u7aef\u670d\u52a1\u5730\u5740\u548c\u767b\u5f55\u51ed\u8bc1\uff0c\u6216\u4f7f\u7528\u672c\u5730\u6f14\u793a\u6a21\u5f0f\u3002
+                配置后端服务地址和登录凭证，或使用本地演示模式。
               </Typography.Paragraph>
             </div>
             <Space wrap size={10}>
               <Tag icon={<SettingOutlined />} color={isRemote ? "green" : "blue"}>
-                {isRemote ? "\u8fdc\u7a0b\u6a21\u5f0f" : "\u672c\u5730\u6f14\u793a"}
+                {isRemote ? "远程模式" : "本地演示"}
               </Tag>
               {isRemote ? (
                 <Button danger onClick={handleReset}>
-                  \u91cd\u7f6e\u4e3a\u672c\u5730\u6a21\u5f0f
+                  重置为本地模式
                 </Button>
               ) : null}
             </Space>
           </Flex>
 
-          {saveError ? <Alert type="error" showIcon message="\u8fde\u63a5\u5931\u8d25" description={saveError} /> : null}
+          {saveError ? <Alert type="error" showIcon message="连接失败" description={saveError} /> : null}
         </Flex>
       </Card>
 
