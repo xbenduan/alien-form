@@ -142,7 +142,7 @@ function createBaseField(
       const value = projectNode(base as FieldNode);
       const staticErrors = runStaticValidate(schema.validate, value);
       if (base.required() && !schema.validate?.required && isEmptyValue(value)) {
-        staticErrors.push({ message: "Field is required", type: "required" });
+        staticErrors.push({ message: "该字段为必填项", type: "required" });
       }
       let dynamicErrors: FieldError[] = [];
       if (schema["x-validate"]) {

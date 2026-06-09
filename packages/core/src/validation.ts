@@ -21,7 +21,7 @@ export function runStaticValidate(validate: SchemaValidate | undefined, value: a
   const errors: FieldError[] = [];
   const msg = validate.message;
 
-  if (validate.required && isEmptyValue(value)) errors.push({ message: msg || "Field is required", type: "required" });
+  if (validate.required && isEmptyValue(value)) errors.push({ message: msg || "该字段为必填项", type: "required" });
   if (validate.minItems !== undefined && Array.isArray(value) && value.length < validate.minItems) errors.push({ message: msg || `Minimum ${validate.minItems} items`, type: "minItems" });
   if (validate.maxItems !== undefined && Array.isArray(value) && value.length > validate.maxItems) errors.push({ message: msg || `Maximum ${validate.maxItems} items`, type: "maxItems" });
   if (isEmptyValue(value)) return errors;
