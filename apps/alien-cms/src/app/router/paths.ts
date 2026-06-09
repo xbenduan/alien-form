@@ -52,3 +52,7 @@ export function buildModelEditPath(modelName: string) {
 export function buildSystemSettingsPath() {
   return `${SYSTEM_ROUTE_PREFIX}/settings`;
 }
+
+export function buildSystemLogsPath() {
+  return `${SYSTEM_ROUTE_PREFIX}/logs`;
+}

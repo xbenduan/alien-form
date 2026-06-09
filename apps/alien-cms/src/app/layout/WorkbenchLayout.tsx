@@ -50,11 +50,13 @@ export default function WorkbenchLayout() {
   const activeSidebarKey =
     pathname === '/models' || pathname.startsWith('/models/')
       ? 'models'
-      : pathname === '/system/settings' || pathname.startsWith('/system/')
-        ? 'system-settings'
-      : pathname.startsWith('/records/')
-        ? decodeURIComponent(pathname.split('/')[2] ?? '')
-        : '';
+      : pathname === '/system/logs'
+        ? 'system-logs'
+        : pathname === '/system/settings' || pathname.startsWith('/system/')
+          ? 'system-settings'
+        : pathname.startsWith('/records/')
+          ? decodeURIComponent(pathname.split('/')[2] ?? '')
+          : '';
 
   return (
     <div className="model-page-shell">

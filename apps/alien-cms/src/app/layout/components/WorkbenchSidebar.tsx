@@ -1,8 +1,8 @@
 import type { ModelSummary } from "@alien-form/cms";
-import { AppstoreOutlined, SettingOutlined } from "@ant-design/icons";
+import { AppstoreOutlined, FileTextOutlined, SettingOutlined } from "@ant-design/icons";
 import { Card, Divider, Menu, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
-import { buildModelListPath, buildRecordPath, buildSystemSettingsPath } from "../../router/paths";
+import { buildModelListPath, buildRecordPath, buildSystemLogsPath, buildSystemSettingsPath } from "../../router/paths";
 
 interface WorkbenchSidebarProps {
   modelSummaries: ModelSummary[];
@@ -31,12 +31,17 @@ export function WorkbenchSidebar({ modelSummaries, activeKey }: WorkbenchSidebar
         </Divider>
         <Menu
           mode="inline"
-          selectedKeys={activeKey === "models" || activeKey === "system-settings" ? [activeKey] : []}
+          selectedKeys={activeKey === "models" || activeKey === "system-settings" || activeKey === "system-logs" ? [activeKey] : []}
           items={[
             {
               key: "models",
               icon: <AppstoreOutlined />,
               label: "模型管理",
+            },
+            {
+              key: "system-logs",
+              icon: <FileTextOutlined />,
+              label: "操作日志",
             },
             {
               key: "system-settings",
@@ -51,6 +56,9 @@ export function WorkbenchSidebar({ modelSummaries, activeKey }: WorkbenchSidebar
             if (key === "system-settings") {
               navigate(buildSystemSettingsPath());
             }
+            if (key === "system-logs") {
+              navigate(buildSystemLogsPath());
+            }
           }}
         />
       </div>
@@ -61,7 +69,7 @@ export function WorkbenchSidebar({ modelSummaries, activeKey }: WorkbenchSidebar
         </Divider>
         <Menu
           mode="inline"
-          selectedKeys={activeKey && activeKey !== "models" ? [activeKey] : []}
+          selectedKeys={activeKey && activeKey !== "models" && activeKey !== "system-settings" && activeKey !== "system-logs" ? [activeKey] : []}
           items={modelSummaries.map((item) => ({
             key: item.name,
             label: item.title,

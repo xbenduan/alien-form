@@ -8,6 +8,7 @@ import ModelPage from "../../domains/model/pages/ModelPage";
 import RecordActionPage from "../../domains/record/pages/RecordActionPage";
 import RecordPage from "../../domains/record/pages/RecordPage";
 import SystemSettingsPage from "../../domains/system/pages/SystemSettingsPage";
+import LogPage from "../../domains/system/pages/LogPage";
 
 function HomeRedirect() {
   const modelSummariesQuery = useModelSummaries();
@@ -73,6 +74,7 @@ export function AppRouter() {
           <Route index element={<HomeRedirect />} />
           <Route path="models" element={<ModelManagementPage />} />
           <Route path="system/settings" element={<SystemSettingsPage />} />
+          <Route path="system/logs" element={<LogPage />} />
           <Route path="models/new" element={<ModelPage />} />
           <Route path="models/:modelName/edit" element={<ModelPage />} />
           <Route
