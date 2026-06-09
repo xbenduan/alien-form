@@ -1,4 +1,3 @@
-import type { AuthAdapter } from "../auth-adapter";
 import type { AdapterConfig } from "../../types/config";
 
 declare const URL: new (path: string, base?: string) => {
@@ -23,11 +22,9 @@ declare function clearTimeout(handle: unknown): void;
 export interface HttpClientOptions {
   /** Base URL of the remote API. */
   baseUrl: string;
-  /** Auth adapter for token management. */
-  authAdapter?: AuthAdapter;
   /** Adapter config for request/response mapping. */
   adapter?: AdapterConfig;
-  /** Default request headers. */
+  /** Default request headers (including Authorization). */
   headers?: Record<string, string>;
   /** Request timeout in milliseconds. Defaults to 10000. */
   timeout?: number;
@@ -59,19 +56,16 @@ function getByPath(obj: any, path: string): any {
 
 /**
  * HTTP client for generic REST API communication.
- * Covers: self-hosted backends, Alibaba Cloud FC, any REST-compliant service.
  * Zero external dependencies — uses native fetch.
  */
 export class HttpClient {
   private readonly baseUrl: string;
-  private readonly authAdapter?: AuthAdapter;
   private readonly adapter?: AdapterConfig;
   private readonly defaultHeaders: Record<string, string>;
   private readonly timeout: number;
 
   constructor(options: HttpClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, "");
-    this.authAdapter = options.authAdapter;
     this.adapter = options.adapter;
     this.defaultHeaders = options.headers ?? {};
     this.timeout = options.timeout ?? 10000;
@@ -80,12 +74,10 @@ export class HttpClient {
   async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const { method = "GET", body, params } = options;
     const url = buildUrl(this.baseUrl, path, params);
-    const token = this.authAdapter?.getToken();
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       ...this.defaultHeaders,
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 
     const controller = new AbortController();
@@ -98,15 +90,6 @@ export class HttpClient {
         body: body !== undefined ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });
-
-      // Handle 401 — try refresh once
-      if (response.status === 401 && this.authAdapter) {
-        const refreshResult = await this.authAdapter.refresh();
-        if (refreshResult.success) {
-          return this.request(path, options);
-        }
-        throw new Error("Authentication failed after token refresh.");
-      }
 
       if (!response.ok) {
         const errorText = await response.text();
