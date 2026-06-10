@@ -21,7 +21,6 @@ export function AppProviders({ children }: PropsWithChildren) {
   return (
     <ConfigProvider
       theme={{
-        cssVar: true,
         algorithm: theme.defaultAlgorithm,
         token: {
           colorPrimary: "#1677ff",
