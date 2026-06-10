@@ -6,12 +6,7 @@
     {
       "binding": "DB",
       "database_name": "alien-cms",
-      "database_id": "00000000-0000-0000-0000-000000000000"
+      "database_id": "f4c6db25-fafb-4968-89fd-29ef76095030"
     }
-  ],
-  "vars": {
-    "JWT_SECRET": "change-me-in-production",
-    "ADMIN_USERNAME": "admin",
-    "ADMIN_PASSWORD": "admin"
-  }
+  ]
 }

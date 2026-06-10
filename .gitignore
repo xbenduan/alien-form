@@ -21,3 +21,6 @@ package-lock.json
 .dbg
 debug**
 .wrangler
+**/.dev.vars
+**/.dev.vars.*
+!**/.dev.vars.example
