@@ -472,10 +472,9 @@ function resolveSelector(ctx: FieldContext, baseField: FieldNode, selector: stri
   if (selector === "$value") return isPrimitiveField(baseField) ? baseField.value() : projectNode(ctx, baseField, false);
   if (selector === "$path") return baseField.path;
   if (selector.startsWith("$row.")) {
-    const key = selector.slice(5);
     const row = baseField.row;
-    const field = row?.children.get(key);
-    return selectorValue(field);
+    if (!row) return undefined;
+    return selectorValue(resolveRowChild(row, selector.slice(5)));
   }
   const collectionMatch = selector.match(/^(.*)\[\]\.(.+)$/);
   if (collectionMatch) {
@@ -489,16 +488,23 @@ function resolveSelector(ctx: FieldContext, baseField: FieldNode, selector: stri
 }
 
 function resolveRowChild(row: RowNode, childPath: string): FieldNode | undefined {
-  const [first, ...rest] = childPath.split(".");
-  let node = row.children.get(first);
-  for (const segment of rest) {
-    if (isContainerField(node)) node = node.children.get(segment);
-    else if (isArrayField(node) && /^\d+$/.test(segment)) {
-      const next = node.rows()[Number(segment)];
-      node = next ? undefined : undefined;
-    } else return undefined;
+  return resolveChildSegments(row.children.get(childPath.split(".")[0]), childPath.split(".").slice(1));
+}
+
+function resolveChildSegments(node: FieldNode | undefined, segments: string[]): FieldNode | undefined {
+  if (!node) return undefined;
+  if (segments.length === 0) return node;
+
+  const [segment, ...rest] = segments;
+  if (isContainerField(node)) {
+    return resolveChildSegments(node.children.get(segment), rest);
   }
-  return node;
+  if (isArrayField(node) && /^\d+$/.test(segment)) {
+    const row = node.rows()[Number(segment)];
+    if (!row || rest.length === 0) return undefined;
+    return resolveChildSegments(row.children.get(rest[0]), rest.slice(1));
+  }
+  return undefined;
 }
 
 function resolveRelativeSelector(baseField: FieldNode, selector: string): string {
@@ -541,13 +547,48 @@ function buildRuntimeContext(ctx: FieldContext, field: FieldNode, kind: RuntimeR
   return runtime;
 }
 
-function setSelectorValue(ctx: FieldContext, baseField: FieldNode, selector: string, value: any) {
-  const resolved = selector.startsWith("$row.") && baseField.row
-    ? `${baseField.row.path}.${selector.slice(5)}`
-    : resolveRelativeSelector(baseField, selector);
-  const field = ctx.fieldsMap.get(resolved);
+function setFieldValue(ctx: FieldContext, baseField: FieldNode, selector: string, field: FieldNode | undefined, value: any) {
   if (isPrimitiveField(field)) field.setValue(value);
   else warnInvalid(ctx, field || baseField, "set", `Cannot set non-primitive selector "${selector}".`);
+}
+
+function setSelectorValue(ctx: FieldContext, baseField: FieldNode, selector: string, value: any) {
+  if (!selector) {
+    warnInvalid(ctx, baseField, "set", `Cannot set empty selector.`);
+    return;
+  }
+  // collection selector `<array>[].<child path>` — broadcast write to every row child,
+  // mirroring resolveSelector's read support (F1: get/set parity).
+  // Checked before the $row branch so `$row.arr[].child` is treated as a collection.
+  const collectionMatch = selector.match(/^(.*)\[\]\.(.+)$/);
+  if (collectionMatch) {
+    const arrayPath = collectionMatch[1];
+    const childPath = collectionMatch[2];
+    const array = arrayPath.startsWith("$row.") && baseField.row
+      ? resolveRowChild(baseField.row, arrayPath.slice(5))
+      : ctx.fieldsMap.get(resolveRelativeSelector(baseField, arrayPath));
+    if (!isArrayField(array)) {
+      warnInvalid(ctx, array || baseField, "set", `Cannot set collection "${selector}": "${arrayPath}" is not an array field.`);
+      return;
+    }
+    for (const row of array.rows()) {
+      setFieldValue(ctx, baseField, selector, resolveRowChild(row, childPath), value);
+    }
+    return;
+  }
+  // $row.<child path> — write into the current row, mirroring resolveSelector's read support
+  if (selector.startsWith("$row.")) {
+    const row = baseField.row;
+    if (!row) {
+      warnInvalid(ctx, baseField, "set", `Cannot set "${selector}": no enclosing row.`);
+      return;
+    }
+    setFieldValue(ctx, baseField, selector, resolveRowChild(row, selector.slice(5)), value);
+    return;
+  }
+  // absolute / relative ("./") selector via the flat fieldsMap
+  const resolved = resolveRelativeSelector(baseField, selector);
+  setFieldValue(ctx, baseField, selector, ctx.fieldsMap.get(resolved), value);
 }
 
 function installReactions(ctx: FieldContext, field: FieldNode) {

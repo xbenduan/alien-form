@@ -339,4 +339,377 @@ describe('createForm runtime and projection', () => {
 
     expect(form.get('role')).toBe('admin');
   });
+
+  it('reads primitive values from array item selectors', () => {
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        materials: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              format: { type: 'string' },
+            },
+          },
+        },
+      },
+    };
+
+    const form = createForm({
+      schema,
+      initialValues: {
+        materials: [
+          { name: '海报', format: 'image' },
+          { name: '视频', format: 'video' },
+        ],
+      },
+    });
+
+    expect(form.get('materials[].name')).toEqual(['海报', '视频']);
+  });
+
+  it('reads nested array item selectors', () => {
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        contacts: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              phones: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    number: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const form = createForm({
+      schema,
+      initialValues: {
+        contacts: [
+          {
+            name: 'Alice',
+            phones: [{ number: '111' }, { number: '222' }],
+          },
+          {
+            name: 'Bob',
+            phones: [{ number: '333' }],
+          },
+        ],
+      },
+    });
+
+    expect(form.get('contacts[].phones.0.number')).toEqual(['111', '333']);
+  });
+
+  it('reads $row first-level selectors inside row runtime', () => {
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        contacts: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              summary: {
+                type: 'string',
+                'x-reaction': {
+                  value: '@readRowName',
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const form = createForm({
+      schema,
+      initialValues: {
+        contacts: [
+          { name: 'Alice' },
+          { name: 'Bob' },
+        ],
+      },
+      handlers: {
+        readRowName(runtime) {
+          return runtime.get('$row.name');
+        },
+      },
+    });
+
+    form.mount();
+
+    expect(form.get('contacts.0.summary')).toBe('Alice');
+    expect(form.get('contacts.1.summary')).toBe('Bob');
+  });
+
+  it('reads $row nested selectors inside row runtime', () => {
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        contacts: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              profile: {
+                type: 'object',
+                properties: {
+                  city: { type: 'string' },
+                },
+              },
+              summary: {
+                type: 'string',
+                'x-reaction': {
+                  value: '@readRowCity',
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const form = createForm({
+      schema,
+      initialValues: {
+        contacts: [
+          { profile: { city: 'Shanghai' } },
+          { profile: { city: 'Beijing' } },
+        ],
+      },
+      handlers: {
+        readRowCity(runtime) {
+          return runtime.get('$row.profile.city');
+        },
+      },
+    });
+
+    form.mount();
+
+    expect(form.get('contacts.0.summary')).toBe('Shanghai');
+    expect(form.get('contacts.1.summary')).toBe('Beijing');
+  });
+});
+
+describe('set selector get/set parity', () => {
+  // ── direct: single absolute/index selector still writes correctly (regression guard) ──
+  it('direct: writes a single array-item primitive selector', async () => {
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        materials: {
+          type: 'array',
+          items: { type: 'object', properties: { name: { type: 'string' } } },
+        },
+      },
+    };
+    const form = createForm({
+      schema,
+      initialValues: { materials: [{ name: 'a' }, { name: 'b' }] },
+    });
+
+    form.set('materials.0.name', 'A0');
+
+    expect(form.get('materials.0.name')).toBe('A0');
+    expect(form.get('materials.1.name')).toBe('b');
+  });
+
+  // ── nested (collection): set('coll[].child') broadcasts to every row, mirroring get ──
+  it('nested: broadcasts a collection selector to every array row', async () => {
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        materials: {
+          type: 'array',
+          items: { type: 'object', properties: { name: { type: 'string' } } },
+        },
+      },
+    };
+    const form = createForm({
+      schema,
+      initialValues: { materials: [{ name: 'a' }, { name: 'b' }, { name: 'c' }] },
+    });
+
+    // read parity already exists; now the write must mirror it
+    expect(form.get('materials[].name')).toEqual(['a', 'b', 'c']);
+
+    form.set('materials[].name', 'Z');
+
+    expect(form.get('materials[].name')).toEqual(['Z', 'Z', 'Z']);
+    await expect(form.submit()).resolves.toEqual({
+      materials: [{ name: 'Z' }, { name: 'Z' }, { name: 'Z' }],
+    });
+  });
+
+  // ── nested ($row): writing a nested $row child path from inside row runtime ──
+  it('nested: writes a nested $row child selector inside row runtime', () => {
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        contacts: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              profile: { type: 'object', properties: { city: { type: 'string' } } },
+              trigger: { type: 'string', 'x-reaction': { value: '@writeCity' } },
+            },
+          },
+        },
+      },
+    };
+    const form = createForm({
+      schema,
+      initialValues: { contacts: [{ profile: { city: 'old' } }] },
+      handlers: {
+        writeCity(runtime) {
+          runtime.set('$row.profile.city', 'WRITTEN');
+          return 'done';
+        },
+      },
+    });
+
+    form.mount();
+
+    expect(form.get('contacts.0.profile.city')).toBe('WRITTEN');
+  });
+
+  // ── nested ($row collection): set('$row.arr[].child') broadcasts within the row ──
+  it('nested: broadcasts a $row collection selector within the row', () => {
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        contacts: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              phones: {
+                type: 'array',
+                items: { type: 'object', properties: { number: { type: 'string' } } },
+              },
+              trigger: { type: 'string', 'x-reaction': { value: '@maskPhones' } },
+            },
+          },
+        },
+      },
+    };
+    const form = createForm({
+      schema,
+      initialValues: { contacts: [{ phones: [{ number: 'P1' }, { number: 'P2' }] }] },
+      handlers: {
+        maskPhones(runtime) {
+          runtime.set('$row.phones[].number', '***');
+          return 'done';
+        },
+      },
+    });
+
+    form.mount();
+
+    expect(form.get('contacts.0.phones[].number')).toEqual(['***', '***']);
+  });
+
+  // ── invalid: collection selector against a non-array field reports error, no write ──
+  it('invalid: collection selector on a non-array field emits error and writes nothing', () => {
+    const errors: string[] = [];
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+      },
+    };
+    const form = createForm({
+      schema,
+      initialValues: { title: 'keep' },
+      onError: (e) => errors.push(e.message),
+    });
+
+    form.set('title[].name', 'X');
+
+    expect(form.get('title')).toBe('keep');
+    expect(errors.some((m) => m.includes('is not an array field'))).toBe(true);
+  });
+
+  // ── invalid: setting a non-primitive (object) selector reports error, no crash ──
+  it('invalid: setting a non-primitive object selector emits error and does not throw', () => {
+    const errors: string[] = [];
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        profile: { type: 'object', properties: { city: { type: 'string' } } },
+      },
+    };
+    const form = createForm({
+      schema,
+      initialValues: { profile: { city: 'sh' } },
+      onError: (e) => errors.push(e.message),
+    });
+
+    expect(() => form.set('profile', { city: 'bj' })).not.toThrow();
+    expect(form.get('profile.city')).toBe('sh');
+    expect(errors.some((m) => m.includes('Cannot set non-primitive selector'))).toBe(true);
+  });
+
+  // ── out-of-range: direct index past the end is a no-op (no ghost rows, no throw) ──
+  it('out-of-range: writing past the last array index is a safe no-op', async () => {
+    const errors: string[] = [];
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        materials: {
+          type: 'array',
+          items: { type: 'object', properties: { name: { type: 'string' } } },
+        },
+      },
+    };
+    const form = createForm({
+      schema,
+      initialValues: { materials: [{ name: 'a' }] },
+      onError: (e) => errors.push(e.message),
+    });
+
+    expect(() => form.set('materials.5.name', 'ghost')).not.toThrow();
+
+    // no ghost row created
+    const materials = form.field('materials');
+    if (!materials || materials.kind !== 'array') throw new Error('materials missing');
+    expect(materials.rows().length).toBe(1);
+    await expect(form.submit()).resolves.toEqual({ materials: [{ name: 'a' }] });
+  });
+
+  // ── out-of-range: empty collection broadcast writes nothing and does not throw ──
+  it('out-of-range: collection broadcast on an empty array writes nothing', () => {
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        materials: {
+          type: 'array',
+          items: { type: 'object', properties: { name: { type: 'string' } } },
+        },
+      },
+    };
+    const form = createForm({
+      schema,
+      initialValues: { materials: [] },
+    });
+
+    expect(() => form.set('materials[].name', 'Z')).not.toThrow();
+    expect(form.get('materials[].name')).toEqual([]);
+  });
 });
