@@ -5,26 +5,10 @@
 
 import type { Env } from "./types";
 
-// ─── Types matching @alien-form/core schema structure ─────────────────────────
-
-interface SchemaValidateRules {
-  required?: boolean;
-  minimum?: number;
-  maximum?: number;
-  minLength?: number;
-  maxLength?: number;
-  pattern?: string;
-  format?: string;
-  minItems?: number;
-  maxItems?: number;
-  message?: string;
-}
-
 interface FieldSchema {
   type?: string;
   title?: string;
   required?: boolean;
-  validate?: SchemaValidateRules;
   dataSource?: Array<{ label: string; value: any }>;
   properties?: Record<string, FieldSchema>;
   items?: FieldSchema;
@@ -75,9 +59,6 @@ function getRequiredFields(schema: ModelSchema): Set<string> {
       if (field.required === true) {
         required.add(name);
       }
-      if (field.validate?.required === true) {
-        required.add(name);
-      }
     }
   }
 
@@ -110,84 +91,6 @@ function validateFieldType(value: unknown, expectedType: string | undefined): st
       break;
     case "object":
       if (typeof value !== "object" || Array.isArray(value)) return `expected object, got ${typeof value}`;
-      break;
-  }
-  return null;
-}
-
-function validateFieldRules(
-  fieldName: string,
-  value: unknown,
-  field: FieldSchema,
-): ValidationError[] {
-  const errors: ValidationError[] = [];
-  const rules = field.validate;
-  const title = field.title ?? fieldName;
-
-  if (!rules) return errors;
-
-  // String rules
-  if (typeof value === "string") {
-    if (rules.minLength !== undefined && value.length < rules.minLength) {
-      errors.push({ field: fieldName, message: rules.message ?? `${title} must be at least ${rules.minLength} characters` });
-    }
-    if (rules.maxLength !== undefined && value.length > rules.maxLength) {
-      errors.push({ field: fieldName, message: rules.message ?? `${title} must not exceed ${rules.maxLength} characters` });
-    }
-    if (rules.pattern) {
-      try {
-        const re = new RegExp(rules.pattern);
-        if (!re.test(value)) {
-          errors.push({ field: fieldName, message: rules.message ?? `${title} does not match the required pattern` });
-        }
-      } catch {
-        // Invalid regex in schema — skip
-      }
-    }
-    if (rules.format) {
-      const formatError = validateFormat(value, rules.format);
-      if (formatError) {
-        errors.push({ field: fieldName, message: rules.message ?? `${title} ${formatError}` });
-      }
-    }
-  }
-
-  // Number rules
-  if (typeof value === "number") {
-    if (rules.minimum !== undefined && value < rules.minimum) {
-      errors.push({ field: fieldName, message: rules.message ?? `${title} must be >= ${rules.minimum}` });
-    }
-    if (rules.maximum !== undefined && value > rules.maximum) {
-      errors.push({ field: fieldName, message: rules.message ?? `${title} must be <= ${rules.maximum}` });
-    }
-  }
-
-  // Array rules
-  if (Array.isArray(value)) {
-    if (rules.minItems !== undefined && value.length < rules.minItems) {
-      errors.push({ field: fieldName, message: rules.message ?? `${title} must have at least ${rules.minItems} items` });
-    }
-    if (rules.maxItems !== undefined && value.length > rules.maxItems) {
-      errors.push({ field: fieldName, message: rules.message ?? `${title} must have at most ${rules.maxItems} items` });
-    }
-  }
-
-  return errors;
-}
-
-function validateFormat(value: string, format: string): string | null {
-  switch (format) {
-    case "email":
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "is not a valid email";
-      break;
-    case "url":
-      try { new URL(value); } catch { return "is not a valid URL"; }
-      break;
-    case "phone":
-      if (!/^\+?[\d\s\-()]{7,20}$/.test(value)) return "is not a valid phone number";
-      break;
-    case "integer":
-      if (!/^-?\d+$/.test(value)) return "is not a valid integer";
       break;
   }
   return null;
@@ -268,9 +171,6 @@ export function validateRecord(
       errors.push({ field: name, message: `${field.title ?? name}: ${typeError}` });
       continue; // Skip further checks if type is wrong
     }
-
-    // Rule-based validation
-    errors.push(...validateFieldRules(name, value, field));
 
     // DataSource enum validation
     const dsError = validateDataSource(name, value, field);
