@@ -5,15 +5,13 @@ export default defineHandler(
     const params = ctx.schema?.["x-cms"]?.reactions?.dataSource || {};
     if (!params.model) return [];
     const data = await listRecords({ model: params.model });
-    if (!data?.list?.length) return []
-    return (
-      data.list.map((item) => ({ value: item[params.value], label: item[params.label] }))
-    );
+    if (!data?.list?.length) return [];
+    return data.list.map((item) => ({ value: item[params.value], label: item[params.label] }));
   },
   {
     key: "loadDataSource",
-    label: "Load Data Source",
-    description: "Load data source from a model.",
+    label: "加载数据源",
+    description: "从模型加载数据源。",
     supportedTargets: ["dataSource"],
     defaultConfig: { model: "" },
     params: [

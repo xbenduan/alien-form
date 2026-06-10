@@ -55,7 +55,7 @@ function buildFieldSchema(
         Object.entries(reaction.handlerParams).filter(([, value]) => value.trim()),
       );
       if (Object.keys(params).length > 0) {
-        configs[reaction.target] = { params };
+        configs[reaction.target] = params;
       }
       return configs;
     },

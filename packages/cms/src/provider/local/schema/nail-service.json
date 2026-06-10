@@ -148,7 +148,7 @@
       }
     },
     "styleTags": {
-      "type": "array",
+      "type": "tags",
       "title": "风格标签",
       "component": "Select",
       "decorator": "FormItem",
@@ -166,7 +166,7 @@
       }
     },
     "employeeIds": {
-      "type": "array",
+      "type": "tags",
       "title": "服务员工",
       "component": "Select",
       "decorator": "FormItem",
@@ -209,7 +209,7 @@
       }
     },
     "scenes": {
-      "type": "array",
+      "type": "tags",
       "title": "适用场景",
       "component": "Select",
       "decorator": "FormItem",

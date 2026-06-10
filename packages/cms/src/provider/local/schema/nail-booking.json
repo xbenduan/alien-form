@@ -86,24 +86,6 @@
       "decorator": "FormItem",
       "required": true,
       "order": 40,
-      "dataSource": [
-        {
-          "label": "Luna",
-          "value": "employee-1"
-        },
-        {
-          "label": "Momo",
-          "value": "employee-2"
-        },
-        {
-          "label": "Kiki",
-          "value": "employee-3"
-        },
-        {
-          "label": "Nora",
-          "value": "employee-4"
-        }
-      ],
       "props": {
         "placeholder": "请选择服务员工"
       },
@@ -213,13 +195,6 @@
         "placeholder": "请先选择服务员工"
       },
       "x-cms": {
-        "reactions": {
-          "dataSource": {
-            "model": "nail-employee",
-            "selector": "employeeId",
-            "sourceField": "serviceSlots"
-          }
-        },
         "table": {
           "width": 120
         }
@@ -278,7 +253,7 @@
       }
     },
     "styleTags": {
-      "type": "array",
+      "type": "tags",
       "title": "款式偏好",
       "component": "Select",
       "decorator": "FormItem",

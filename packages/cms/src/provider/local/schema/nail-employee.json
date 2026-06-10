@@ -123,40 +123,25 @@
       }
     },
     "serviceIds": {
-      "type": "array",
+      "type": "tags",
       "title": "可服务项目",
       "component": "Select",
       "decorator": "FormItem",
       "order": 60,
       "default": [],
-      "dataSource": [
-        {
-          "label": "日常纯色护理",
-          "value": "service-1"
-        },
-        {
-          "label": "猫眼渐变设计",
-          "value": "service-2"
-        },
-        {
-          "label": "法式延长套餐",
-          "value": "service-3"
-        },
-        {
-          "label": "节日定制礼盒款",
-          "value": "service-4"
-        }
-      ],
       "props": {
         "mode": "multiple",
         "placeholder": "请选择可服务项目"
+      },
+      "x-reaction": {
+        "dataSource": "@loadDataSource"
       },
       "x-cms": {
         "reactions": {
           "dataSource": {
             "model": "nail-service",
-            "labelField": "serviceName",
-            "valueField": "id"
+            "label": "serviceName",
+            "value": "id"
           }
         },
         "table": {
@@ -166,7 +151,7 @@
       }
     },
     "serviceSlots": {
-      "type": "array",
+      "type": "tags",
       "title": "服务时间段",
       "component": "Select",
       "decorator": "FormItem",
@@ -276,7 +261,7 @@
             }
           },
           "fieldKeys": {
-            "type": "array",
+            "type": "tags",
             "title": "可编辑字段",
             "component": "Select",
             "decorator": "FormItem",
@@ -287,15 +272,6 @@
               "mode": "multiple",
               "showSearch": true,
               "placeholder": "请选择可编辑字段"
-            },
-            "x-cms": {
-              "reactions": {
-                "dataSource": {
-                  "selector": "$row.record",
-                  "includeTypes": ["string", "number", "boolean"],
-                  "valueMode": "name"
-                }
-              }
             }
           }
         }
@@ -309,7 +285,7 @@
       }
     },
     "skills": {
-      "type": "array",
+      "type": "tags",
       "title": "技能标签",
       "component": "Select",
       "decorator": "FormItem",
