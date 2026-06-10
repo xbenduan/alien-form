@@ -89,20 +89,15 @@
       "props": {
         "placeholder": "请选择服务员工"
       },
+      "x-reaction": {
+        "dataSource": "@loadDataSource"
+      },
       "x-cms": {
         "reactions": {
           "dataSource": {
             "model": "nail-employee",
-            "requireSelector": true,
-            "labelField": "employeeName",
-            "valueField": "id",
-            "filters": [
-              {
-                "field": "serviceIds",
-                "operator": "includes",
-                "selector": "serviceId"
-              }
-            ]
+            "label": "employeeName",
+            "value": "id"
           }
         },
         "table": {

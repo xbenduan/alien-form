@@ -622,11 +622,26 @@ function errorMessage(err: any): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+function mountFormRuntime(ctx: FieldContext, root: ObjectFieldNode, schema: IFormSchema) {
+  startBatch();
+  installFieldRuntime(ctx, root);
+  if (schema["x-effect"]) installEffects(ctx, root, schema["x-effect"]);
+  if (schema["x-reaction"]) installReactions(ctx, root);
+  endBatch();
+}
+
+function unmountFormRuntime(fields: Map<string, FieldNode>) {
+  for (const field of fields.values()) {
+    for (const dispose of field._disposers.splice(0)) dispose();
+  }
+}
+
 export function createForm(config: FormConfig = {}): FormInstance {
   const errorListeners = new Set<(e: FormError) => void>(config.onError ? [config.onError] : []);
   const fieldsMap = new Map<string, FieldNode>();
   const fieldsSignal = signal(fieldsMap);
   let destroyed = false;
+  let mounted = false;
   const effectDisposers = new Set<() => void>();
   const initialValues = config.initialValues ? { ...config.initialValues } : {};
   const schema: IFormSchema = config.schema || { type: "object", properties: {} };
@@ -684,6 +699,16 @@ export function createForm(config: FormConfig = {}): FormInstance {
     },
     setInitialValues(values: Record<string, any>) { (form as any)._initialValues = { ...values }; },
     reset() { startBatch(); root.reset(); for (const child of root.children.values()) child.reset(); endBatch(); },
+    mount() {
+      if (destroyed || mounted) return;
+      mounted = true;
+      mountFormRuntime(ctx, root, schema);
+    },
+    unmount() {
+      if (!mounted) return;
+      mounted = false;
+      unmountFormRuntime(fieldsSignal());
+    },
     async validate() {
       const results = await Promise.all(Array.from(fieldsSignal().values()).filter((f: FieldNode) => f.display() !== "none").map((f: FieldNode) => f.validate()));
       return results.every((errors) => errors.length === 0);
@@ -703,6 +728,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      form.unmount();
       root.dispose();
       for (const d of effectDisposers) d();
       effectDisposers.clear();
@@ -739,12 +765,6 @@ export function createForm(config: FormConfig = {}): FormInstance {
       return () => { dispose(); effectDisposers.delete(dispose); };
     },
   } as FormInstance);
-
-  startBatch();
-  installFieldRuntime(ctx, root);
-  if (schema["x-effect"]) installEffects(ctx, root, schema["x-effect"]);
-  if (schema["x-reaction"]) installReactions(ctx, root);
-  endBatch();
 
   return form;
 }

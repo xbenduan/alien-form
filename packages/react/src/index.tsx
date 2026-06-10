@@ -7,7 +7,6 @@ import {
   useContext,
   useMemo,
   useEffect,
-  useLayoutEffect,
   useRef,
   useCallback,
   useSyncExternalStore,
@@ -90,9 +89,10 @@ export function useCreateForm(
   deps: React.DependencyList = [],
 ): FormInstance {
   const form = useMemo(() => createForm(config), deps);
-  useLayoutEffect(() => {
+  useEffect(() => {
+    form.mount();
     return () => {
-      form.destroy();
+      form.unmount();
     };
   }, [form]);
   return form;

@@ -2,7 +2,70 @@ import { describe, expect, it } from 'vitest';
 import { createForm } from './form';
 import type { IFormSchema } from './types';
 
-describe('createForm submit projection', () => {
+describe('createForm runtime and projection', () => {
+  it('defers runtime reactions until mount', async () => {
+    let calls = 0;
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        serviceIds: {
+          type: 'tags',
+          'x-reaction': {
+            dataSource: '@loadDataSource',
+          },
+        },
+      },
+    };
+
+    const form = createForm({
+      schema,
+      handlers: {
+        loadDataSource() {
+          calls += 1;
+          return [];
+        },
+      },
+    });
+
+    expect(calls).toBe(0);
+
+    form.mount();
+
+    expect(calls).toBe(1);
+  });
+
+  it('can remount runtime after unmount without losing fields', () => {
+    let calls = 0;
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        serviceIds: {
+          type: 'tags',
+          'x-reaction': {
+            dataSource: '@loadDataSource',
+          },
+        },
+      },
+    };
+
+    const form = createForm({
+      schema,
+      handlers: {
+        loadDataSource() {
+          calls += 1;
+          return [];
+        },
+      },
+    });
+
+    form.mount();
+    form.unmount();
+    form.mount();
+
+    expect(form.field('serviceIds')).toBeDefined();
+    expect(calls).toBe(2);
+  });
+
   it('flattens void field children into parent values', async () => {
     const schema: IFormSchema = {
       type: 'object',

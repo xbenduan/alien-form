@@ -249,6 +249,8 @@ export interface FormInstance {
   setValues(values: Record<string, any>): void;
   setInitialValues(values: Record<string, any>): void;
   reset(): void;
+  mount(): void;
+  unmount(): void;
   validate(): Promise<boolean>;
   submit<T = any>(onSubmit?: (values: Record<string, any>) => T | Promise<T>): Promise<T>;
   destroy(): void;

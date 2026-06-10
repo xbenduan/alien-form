@@ -172,34 +172,19 @@
       "decorator": "FormItem",
       "order": 80,
       "default": [],
-      "dataSource": [
-        {
-          "label": "Luna",
-          "value": "employee-1"
-        },
-        {
-          "label": "Momo",
-          "value": "employee-2"
-        },
-        {
-          "label": "Kiki",
-          "value": "employee-3"
-        },
-        {
-          "label": "Nora",
-          "value": "employee-4"
-        }
-      ],
       "props": {
         "mode": "multiple",
         "placeholder": "请选择服务员工"
+      },
+      "x-reaction": {
+        "dataSource": "@loadDataSource"
       },
       "x-cms": {
         "reactions": {
           "dataSource": {
             "model": "nail-employee",
-            "labelField": "employeeName",
-            "valueField": "id"
+            "label": "employeeName",
+            "value": "id"
           }
         },
         "table": {

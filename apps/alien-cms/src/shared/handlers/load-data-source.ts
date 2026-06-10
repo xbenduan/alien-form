@@ -6,7 +6,8 @@ export default defineHandler(
     if (!params.model) return [];
     const data = await listRecords({ model: params.model });
     if (!data?.list?.length) return [];
-    return data.list.map((item) => ({ value: item[params.value], label: item[params.label] }));
+    const mapped = data.list.map((item) => ({ value: item[params.value], label: item[params.label] }));
+    return mapped;
   },
   {
     key: "loadDataSource",
