@@ -247,4 +247,96 @@ describe('createForm runtime and projection', () => {
       ],
     });
   });
+
+  it('applies x-format input on initialization only and output on submit', async () => {
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          'x-format': {
+            input: ({ value }) => typeof value === 'string' ? value.trim() : value,
+            output: '@wrapName',
+          },
+        },
+      },
+    };
+
+    const form = createForm({
+      schema,
+      initialValues: {
+        name: '  Alice  ',
+      },
+      handlers: {
+        wrapName({ value }) {
+          return typeof value === 'string' ? `[${value}]` : value;
+        },
+      },
+    });
+
+    expect(form.get('name')).toBe('Alice');
+
+    form.set('name', '  Bob  ');
+
+    expect(form.get('name')).toBe('  Bob  ');
+    await expect(form.submit()).resolves.toEqual({
+      name: '[  Bob  ]',
+    });
+  });
+
+  it('filters invalid multi-select values on initialization when dataSourcePolicy is filter', () => {
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        tags: {
+          type: 'tags',
+          dataSourcePolicy: 'filter',
+          dataSource: [
+            { label: 'A', value: 'a' },
+            { label: 'B', value: 'b' },
+          ],
+        },
+      },
+    };
+
+    const form = createForm({
+      schema,
+      initialValues: {
+        tags: ['a', 'x', 'b'],
+      },
+    });
+
+    expect(form.get('tags')).toEqual(['a', 'b']);
+  });
+
+  it('switches to the first option when dataSourcePolicy is first and current value becomes invalid', () => {
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        role: {
+          type: 'string',
+          dataSourcePolicy: 'first',
+        },
+      },
+    };
+
+    const form = createForm({
+      schema,
+      initialValues: {
+        role: 'ghost',
+      },
+    });
+
+    const role = form.field('role');
+    if (!role || role.kind !== 'primitive') {
+      throw new Error('role field missing');
+    }
+
+    role.setDataSource([
+      { label: 'Admin', value: 'admin' },
+      { label: 'User', value: 'user' },
+    ]);
+
+    expect(form.get('role')).toBe('admin');
+  });
 });

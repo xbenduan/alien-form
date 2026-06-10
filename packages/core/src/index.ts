@@ -36,16 +36,12 @@ export type {
   DataSourcePolicy,
   SchemaRuntimeValue,
   SchemaEffect,
-  SchemaXRule,
-  SchemaRuleSet,
   SchemaReactions,
   SchemaFormat,
   SchemaXValidate,
   SchemaReactionKey,
   RuntimeRuleHandler,
-  RuntimeRuleHandlerContext,
   RuntimeRuleContext,
-  SchemaValidate,
 } from "./types";
 
 export { resolveSchemaRef, resolveSchemaTree } from "./ref-resolve";

@@ -32,12 +32,3 @@ export function setDeepValue(obj: Record<string, any>, path: string, value: any)
 export function sortByOrder(properties: Record<string, IFieldSchema>): [string, IFieldSchema][] {
   return Object.entries(properties).sort(([, a], [, b]) => (a.order ?? Infinity) - (b.order ?? Infinity));
 }
-
-export function resolveFieldPath(depPath: string, selfPath: string): string {
-  if (depPath.startsWith(".")) {
-    const parts = selfPath.split(".");
-    parts.pop();
-    return parts.join(".") + depPath;
-  }
-  return depPath;
-}

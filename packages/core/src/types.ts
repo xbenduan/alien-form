@@ -37,26 +37,6 @@ export interface DataSourceItem {
 
 // ─── Schema Validate ──────────────────────────────────────────────────────────
 
-export interface SchemaValidate {
-  required?: boolean;
-  minimum?: number;
-  maximum?: number;
-  exclusiveMinimum?: number;
-  exclusiveMaximum?: number;
-  multipleOf?: number;
-  minLength?: number;
-  maxLength?: number;
-  pattern?: string;
-  format?: ValidatorFormats;
-  minItems?: number;
-  maxItems?: number;
-  uniqueItems?: boolean;
-  const?: any;
-  message?: string;
-}
-
-// ─── Runtime Context / Rule Values ────────────────────────────────────────────
-
 export type SchemaReactionKey =
   | "value" | "rows" | "display" | "disabled" | "required"
   | "title" | "description" | "props" | "decoratorProps"
@@ -88,12 +68,6 @@ export interface RuntimeRuleContext {
 
 export type RuntimeRuleHandler = RuntimeExecutable;
 
-// Compatibility aliases for old public names. The runtime no longer exposes
-// static/expression/match/computed rule objects to schema authors.
-export type SchemaXRule = SchemaRuntimeValue;
-export type SchemaRuleSet = SchemaRuntimeValue | SchemaRuntimeValue[];
-export type RuntimeRuleHandlerContext = RuntimeRuleContext;
-
 // ─── IFieldSchema ─────────────────────────────────────────────────────────────
 
 export interface IFieldSchema {
@@ -108,7 +82,6 @@ export interface IFieldSchema {
   required?: boolean | string[];
   display?: FieldDisplayTypes;
   disabled?: boolean;
-  validate?: SchemaValidate;
   decorator?: string;
   decoratorProps?: Record<string, any>;
   component?: string;
@@ -118,6 +91,7 @@ export interface IFieldSchema {
   "x-format"?: SchemaFormat;
   "x-validate"?: SchemaXValidate;
   dataSource?: DataSourceItem[];
+  // 数据源策略：保留/清空/过滤/第一个选项
   dataSourcePolicy?: DataSourcePolicy;
 }
 
@@ -225,7 +199,6 @@ export interface FormError {
 export interface FormConfig {
   schema?: IFormSchema;
   initialValues?: Record<string, any>;
-  validateFirst?: boolean;
   scope?: Record<string, any>;
   handlers?: Record<string, RuntimeRuleHandler>;
   onError?: (error: FormError) => void;
