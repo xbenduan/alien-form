@@ -25,6 +25,10 @@ export function buildSystemLogsPath() {
   return '/system/logs';
 }
 
+export function buildAboutPath() {
+  return '/system/about';
+}
+
 export function buildRecordPath(modelName: string, routeState: RecordRouteState = { mode: 'closed' }) {
   const base = `/records/${modelName}`;
 

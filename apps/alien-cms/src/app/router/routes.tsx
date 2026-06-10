@@ -9,6 +9,7 @@ import type { ReactNode } from "react";
 import {
   AppstoreOutlined,
   FileTextOutlined,
+  InfoCircleOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
 
@@ -48,6 +49,7 @@ const ModelManagementPage = lazy(() => import("../../domains/model/pages/ModelMa
 const ModelPage = lazy(() => import("../../domains/model/pages/ModelPage"));
 const SystemSettingsPage = lazy(() => import("../../domains/system/pages/SystemSettingsPage"));
 const LogPage = lazy(() => import("../../domains/system/pages/LogPage"));
+const AboutPage = lazy(() => import("../../domains/system/pages/AboutPage"));
 const RecordPage = lazy(() => import("../../domains/record/pages/RecordPage"));
 const RecordActionPage = lazy(() => import("../../domains/record/pages/RecordActionPage"));
 
@@ -90,6 +92,17 @@ export const staticRoutes: RouteMeta[] = [
       order: 3,
     },
     component: SystemSettingsPage,
+  },
+  {
+    path: "system/about",
+    key: "system-about",
+    menu: {
+      group: "system",
+      label: "关于",
+      icon: <InfoCircleOutlined />,
+      order: 4,
+    },
+    component: AboutPage,
   },
   // Hidden routes (no menu entry)
   {
@@ -156,6 +169,9 @@ export function resolveActiveKey(pathname: string): string {
   }
   if (pathname === "/system/logs") {
     return "system-logs";
+  }
+  if (pathname === "/system/about") {
+    return "system-about";
   }
   if (pathname === "/system/settings" || pathname.startsWith("/system/")) {
     return "system-settings";

@@ -1,0 +1,704 @@
+import { useEffect, useMemo, useState } from "react";
+import {
+  Button,
+  Card,
+  Divider,
+  Flex,
+  Space,
+  Tag,
+  Typography,
+  message,
+} from "antd";
+import { GithubOutlined } from "@ant-design/icons";
+import {
+  FormProvider,
+  SchemaField,
+  useCreateForm,
+  type FormConfig,
+  type FormInstance,
+  type IFormSchema,
+} from "@alien-form/react";
+import { useWorkbenchLayout } from "../../../app/layout/WorkbenchLayout";
+import {
+  recordFormComponents,
+  recordFormDecorators,
+} from "../../../shared/adapters";
+
+const { Title, Paragraph, Text, Link } = Typography;
+
+const GITHUB_URL = "https://github.com/xbenduan/alien-form";
+
+/**
+ * AboutPage
+ *
+ * 内置的轻量教程,采用「左侧真实运行组件 + 右侧源码」的对照形式:
+ * - alien-form:schema 驱动的无头表单运行时(用法)
+ * - alien-cms:基于 alien-form 的 CMS 工作台(简单代码与示例)
+ *
+ * 左侧示例使用项目真实的 adapters(recordFormComponents / recordFormDecorators)
+ * 通过 useCreateForm + FormProvider + SchemaField 实时渲染,可直接交互。
+ */
+
+// 代码块
+const codeBlockStyle: React.CSSProperties = {
+  margin: 0,
+  padding: 16,
+  background: "#0f172a",
+  color: "#e2e8f0",
+  border: "1px solid #1e293b",
+  borderRadius: 8,
+  fontSize: 12,
+  lineHeight: 1.7,
+  overflow: "auto",
+  whiteSpace: "pre",
+  wordBreak: "normal",
+  height: "100%",
+};
+
+function CodeBlock({ children }: { children: string }) {
+  return (
+    <pre style={codeBlockStyle}>
+      <code>{children}</code>
+    </pre>
+  );
+}
+
+// 左右对照布局:左=真实组件,右=代码
+interface LiveExampleProps {
+  title: string;
+  description?: React.ReactNode;
+  live: React.ReactNode;
+  code: string;
+}
+
+function LiveExample({ title, description, live, code }: LiveExampleProps) {
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <Title level={5} style={{ marginTop: 8, marginBottom: 8 }}>
+        {title}
+      </Title>
+      {description ? (
+        <Paragraph type="secondary" style={{ marginTop: -4 }}>
+          {description}
+        </Paragraph>
+      ) : null}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(280px, 1fr) minmax(320px, 1.1fr)",
+          gap: 16,
+          alignItems: "stretch",
+        }}
+      >
+        {/* 左:真实运行的组件 */}
+        <Card
+          size="small"
+          title="实时预览"
+          styles={{ body: { padding: 16 } }}
+          style={{ background: "#fafcff" }}
+        >
+          {live}
+        </Card>
+        {/* 右:对应源码 */}
+        <CodeBlock>{code}</CodeBlock>
+      </div>
+    </div>
+  );
+}
+
+// 通用:用项目真实 adapters 渲染一个可交互表单
+function useDemoForm(schema: IFormSchema, initialValues?: Record<string, unknown>) {
+  const config: FormConfig = useMemo(
+    () => ({ schema, initialValues }),
+    [schema, initialValues],
+  );
+  return useCreateForm(config, [schema]);
+}
+
+function LiveSchemaForm({
+  form,
+  footer,
+}: {
+  form: FormInstance;
+  footer?: React.ReactNode;
+}) {
+  return (
+    <FormProvider
+      form={form}
+      components={recordFormComponents as never}
+      decorators={recordFormDecorators as never}
+    >
+      <SchemaField />
+      {footer}
+    </FormProvider>
+  );
+}
+
+// 示例 1:基础表单 + 校验 + 提交
+const BASIC_SCHEMA: IFormSchema = {
+  type: "object",
+  properties: {
+    name: {
+      type: "string",
+      title: "姓名",
+      component: "Input",
+      required: true,
+      decorator: "FormItem",
+    },
+    role: {
+      type: "string",
+      title: "角色",
+      component: "Select",
+      decorator: "FormItem",
+      dataSource: [
+        { label: "管理员", value: "admin" },
+        { label: "普通用户", value: "user" },
+      ],
+    },
+  },
+};
+
+const BASIC_CODE = `import {
+  useCreateForm,
+  FormProvider,
+  SchemaField,
+} from "@alien-form/react";
+import { recordFormComponents, recordFormDecorators } from "@/shared/adapters";
+
+const schema = {
+  type: "object",
+  properties: {
+    name: {
+      type: "string", title: "姓名",
+      component: "Input", decorator: "FormItem",
+      required: true,
+    },
+    role: {
+      type: "string", title: "角色",
+      component: "Select", decorator: "FormItem",
+      dataSource: [
+        { label: "管理员", value: "admin" },
+        { label: "普通用户", value: "user" },
+      ],
+    },
+  },
+};
+
+function BasicForm() {
+  const form = useCreateForm({ schema });
+  return (
+    <FormProvider
+      form={form}
+      components={recordFormComponents}
+      decorators={recordFormDecorators}
+    >
+      <SchemaField />
+      <button onClick={async () => {
+        if (await form.validate()) console.log(form.values());
+      }}>
+        提交
+      </button>
+    </FormProvider>
+  );
+}`;
+
+function BasicFormDemo() {
+  const form = useDemoForm(BASIC_SCHEMA, { role: "user" });
+  return (
+    <LiveSchemaForm
+      form={form}
+      footer={
+        <Space style={{ marginTop: 12 }}>
+          <Button
+            type="primary"
+            onClick={async () => {
+              if (await form.validate()) {
+                message.success(`提交成功:${JSON.stringify(form.values())}`);
+              } else {
+                message.warning("请先填写姓名");
+              }
+            }}
+          >
+            提交
+          </Button>
+          <Button onClick={() => form.reset()}>重置</Button>
+        </Space>
+      }
+    />
+  );
+}
+
+// 示例 2:x-reaction 联动 + dataSourcePolicy
+const REACTION_SCHEMA: IFormSchema = {
+  type: "object",
+  properties: {
+    account: {
+      type: "string",
+      title: "账号类型",
+      component: "Select",
+      decorator: "FormItem",
+      dataSource: [
+        { label: "管理员", value: "admin" },
+        { label: "普通用户", value: "user" },
+      ],
+    },
+    permission: {
+      type: "string",
+      title: "权限",
+      component: "Select",
+      decorator: "FormItem",
+      dataSourcePolicy: "first",
+      "x-reaction": {
+        dataSource:
+          "{{ account === 'admin' ? [{ label: '全部', value: '*' }] : [{ label: '只读', value: 'read' }] }}",
+        display: "{{ account ? 'visible' : 'none' }}",
+      },
+    },
+  },
+};
+
+const REACTION_CODE = `const schema = {
+  type: "object",
+  properties: {
+    account: {
+      type: "string", title: "账号类型",
+      component: "Select", decorator: "FormItem",
+      dataSource: [
+        { label: "管理员", value: "admin" },
+        { label: "普通用户", value: "user" },
+      ],
+    },
+    permission: {
+      type: "string", title: "权限",
+      component: "Select", decorator: "FormItem",
+      // 选项变化后,当前值落到第一个可用选项
+      dataSourcePolicy: "first",
+      // 表达式联动:根据 account 动态切换选项与显隐
+      "x-reaction": {
+        dataSource:
+          "{{ account === 'admin' " +
+          "? [{ label: '全部', value: '*' }] " +
+          ": [{ label: '只读', value: 'read' }] }}",
+        display: "{{ account ? 'visible' : 'none' }}",
+      },
+    },
+  },
+};`;
+
+function ReactionFormDemo() {
+  const form = useDemoForm(REACTION_SCHEMA);
+  return (
+    <LiveSchemaForm
+      form={form}
+      footer={
+        <Paragraph type="secondary" style={{ marginTop: 8, marginBottom: 0, fontSize: 12 }}>
+          切换「账号类型」,观察下方「权限」选项与显隐的实时联动。
+        </Paragraph>
+      }
+    />
+  );
+}
+
+// 示例 3:x-validate 自定义校验
+const VALIDATE_SCHEMA: IFormSchema = {
+  type: "object",
+  properties: {
+    nickname: {
+      type: "string",
+      title: "昵称(至少 3 个字符)",
+      component: "Input",
+      decorator: "FormItem",
+      "x-validate":
+        "{{ $value && $value.length >= 3 ? true : '昵称至少需要 3 个字符' }}",
+    },
+  },
+};
+
+const VALIDATE_CODE = `const schema = {
+  type: "object",
+  properties: {
+    nickname: {
+      type: "string", title: "昵称",
+      component: "Input", decorator: "FormItem",
+      // 自定义校验:返回 true 通过;返回 string / { message } 失败
+      "x-validate":
+        "{{ $value && $value.length >= 3 " +
+        "? true : '昵称至少需要 3 个字符' }}",
+    },
+  },
+};
+
+// 触发校验
+const ok = await form.validate(); // false 时字段下方显示错误`;
+
+function ValidateFormDemo() {
+  const form = useDemoForm(VALIDATE_SCHEMA);
+  return (
+    <LiveSchemaForm
+      form={form}
+      footer={
+        <Button style={{ marginTop: 12 }} onClick={() => form.validate()}>
+          触发校验
+        </Button>
+      }
+    />
+  );
+}
+
+// alien-cms 代码示例(纯代码)
+const ALIEN_CMS_PROVIDER = `import {
+  createProviders,
+  listSchemas,
+  listRecords,
+  createRecord,
+} from "@alien-form/cms";
+
+// 方式一:统一 providers(schema / record / log)
+const providers = createProviders({
+  type: "http",
+  baseUrl: "https://api.example.com",
+});
+const { list } = await providers.recordProvider.list({
+  modelName: "article",
+  pagination: { current: 1, pageSize: 20 },
+});
+
+// 方式二:直接调用异步 API 函数(由浏览器缓存解析当前 provider)
+const models = await listSchemas();
+const records = await listRecords({
+  modelName: "article",
+  pagination: { current: 1, pageSize: 20 },
+});
+await createRecord({
+  modelName: "article",
+  data: { title: "Hello AlienForm", status: "draft" },
+});`;
+
+const ALIEN_CMS_PROJECTION = `import {
+  getSchema,
+  projectFormSchema,
+  projectTableColumns,
+  projectFilterFields,
+  projectDetailItems,
+} from "@alien-form/cms";
+
+// 同一份模型 schema,投影出多种视图所需的配置
+const { schema } = await getSchema({ modelName: "article" });
+
+const formSchema   = projectFormSchema(schema);    // 新增 / 编辑表单
+const tableColumns = projectTableColumns(schema);  // 列表表格列
+const filterFields = projectFilterFields(schema);  // 筛选条件表单
+const detailItems  = projectDetailItems(schema);   // 只读详情项
+
+// 把 formSchema 交给 @alien-form/react 渲染即可得到一个表单,
+// 这正是「一份 schema 同时驱动 filter / table / add / edit / detail」的核心。`;
+
+// 页面
+export default function AboutPage() {
+  const { setBreadcrumb } = useWorkbenchLayout();
+  const [, force] = useState(0);
+  useEffect(() => {
+    setBreadcrumb({ items: [{ title: "系统设置" }, { title: "关于" }] });
+    force((n) => n);
+    return () => setBreadcrumb(null);
+  }, [setBreadcrumb]);
+
+  const [activeTabKey, setActiveTabKey] = useState<string>("philosophy");
+
+  const tabList = [
+    { key: "philosophy", tab: "理念" },
+    { key: "alien-form", tab: "alien-form" },
+    { key: "alien-cms", tab: "alien-cms" },
+  ];
+
+  const contentList: Record<string, React.ReactNode> = {
+    "alien-form": (
+      <Flex vertical gap={4}>
+        <Paragraph type="secondary">
+          alien-form 由 <Text code>@alien-form/core</Text>(无头运行时)与{" "}
+          <Text code>@alien-form/react</Text>(React 绑定)组成。core 从一份 schema 构建
+          字段树,运行 <Text code>x-reaction</Text>(联动)、<Text code>x-format</Text>
+          (格式化)、<Text code>x-validate</Text>(校验),并按需投影出可提交的值;react
+          则把它接到组件树上 —— <Text code>useCreateForm</Text> 创建实例、
+          <Text code>FormProvider</Text> 注入组件/装饰器映射、<Text code>SchemaField</Text>{" "}
+          按 schema 自动渲染。下面每个示例<Text strong>左侧是真实运行、可交互的组件</Text>,
+          右侧是对应源码。
+        </Paragraph>
+
+        <LiveExample
+          title="1. 基础表单 + 必填校验 + 提交(core + react)"
+          description={
+            <>
+              用 <Text code>useCreateForm</Text> 创建实例,<Text code>FormProvider</Text>{" "}
+              注入组件/装饰器映射,<Text code>SchemaField</Text> 按 schema 自动渲染。
+            </>
+          }
+          live={<BasicFormDemo />}
+          code={BASIC_CODE}
+        />
+
+        <LiveExample
+          title="2. x-reaction 表达式联动 + dataSourcePolicy"
+          description={
+            <>
+              通过 <Text code>{"{{ ... }}"}</Text> 表达式驱动 <Text code>dataSource</Text> 与{" "}
+              <Text code>display</Text>;<Text code>dataSourcePolicy</Text>{" "}
+              控制选项变化后当前值的落点。
+            </>
+          }
+          live={<ReactionFormDemo />}
+          code={REACTION_CODE}
+        />
+
+        <LiveExample
+          title="3. x-validate 自定义校验"
+          description={
+            <>
+              <Text code>x-validate</Text> 返回 <Text code>true</Text> 通过,返回{" "}
+              <Text code>string</Text> 或 <Text code>{"{ message }"}</Text> 失败。
+            </>
+          }
+          live={<ValidateFormDemo />}
+          code={VALIDATE_CODE}
+        />
+      </Flex>
+    ),
+    "alien-cms": (
+      <Flex vertical gap={4}>
+        <Paragraph type="secondary">
+          alien-cms 是基于 alien-form 的 schema-driven CMS 工作台。核心思路是
+          <Text strong>「一份 schema,多种视图」</Text>:同一份模型 schema 通过投影
+          (projection)分别得到筛选表单、列表表格、新增/编辑表单与只读详情,数据访问统一走
+          provider / API 函数,便于在本地 IndexedDB 与远端服务之间切换。
+        </Paragraph>
+
+        <Title level={5} style={{ marginTop: 8, marginBottom: 8 }}>
+          1. 数据访问:provider 与 API 函数
+        </Title>
+        <CodeBlock>{ALIEN_CMS_PROVIDER}</CodeBlock>
+
+        <Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>
+          2. 一份 schema 投影出多视图
+        </Title>
+        <CodeBlock>{ALIEN_CMS_PROJECTION}</CodeBlock>
+
+        <Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>
+          更多
+        </Title>
+        <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+          CMS 工作台设计与目录结构见 <Text code>apps/alien-cms/README.md</Text>;也可在左侧
+          「模型管理」中创建模型,并在「模型列表」里直接体验 filter / table / add / edit /
+          detail 全流程。
+        </Paragraph>
+      </Flex>
+    ),
+    philosophy: (
+      <Flex vertical gap={4}>
+        <Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
+          AlienForm:用一份 Schema 驱动整个后台
+        </Title>
+        <Paragraph type="secondary" italic style={{ marginBottom: 16 }}>
+          这不是又一个表单库,也不是又一个低代码平台。AlienForm 想要回答一个更朴素的问题:
+          <Text strong>当我们写后台的时候,究竟在重复什么?能不能只写一次?</Text>
+        </Paragraph>
+
+        <Title level={5} style={{ marginTop: 8, marginBottom: 8 }}>
+          一、为什么会有 AlienForm
+        </Title>
+        <Paragraph type="secondary">
+          任何一个稍具规模的后台,都会反复出现同一组视图:筛选条件、列表表格、新增弹窗、
+          编辑表单、只读详情。它们看起来形态各异,本质却共享同一份业务模型 ——
+          <Text strong>字段叫什么、是什么类型、有什么约束、用什么组件展示</Text>。
+          但在传统实现里,这份模型被拆散在四五个文件中:列定义在 <Text code>columns.tsx</Text>,
+          校验写在 <Text code>schema.ts</Text>,筛选写在 <Text code>FilterForm.tsx</Text>,
+          详情又抄一份在 <Text code>DetailPage.tsx</Text>。结果就是,同一个字段每改一次,
+          都要在 N 个文件里同步修改;改漏一处,线上就会出现「列表能搜、详情看不到」的灵异 bug。
+        </Paragraph>
+        <Paragraph type="secondary">
+          AlienForm 的出发点很简单:<Text strong>把业务模型当作一等公民</Text>,
+          其他视图都只是它的投影(projection)。一份 schema 进去,filter / table / add /
+          edit / detail 出来 —— 这就是项目想要验证的核心命题。
+        </Paragraph>
+
+        <Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>
+          二、项目分层:从无头内核到完整工作台
+        </Title>
+        <Paragraph type="secondary">
+          整个仓库是一个 pnpm monorepo,自下而上分成三层,每一层都可以独立使用:
+        </Paragraph>
+        <Paragraph type="secondary" style={{ marginBottom: 4 }}>
+          <Text strong>1. <Text code>@alien-form/core</Text> —— 无头运行时</Text>
+        </Paragraph>
+        <Paragraph type="secondary" style={{ marginLeft: 16, marginBottom: 8 }}>
+          完全不依赖任何 UI 框架。它只做一件事:把 JSON Schema 编译成响应式的字段树,
+          运行 <Text code>x-reaction</Text>(联动)、<Text code>x-format</Text>(双向格式化)、
+          <Text code>x-validate</Text>(校验),并按需投影出可提交的值。
+          它可以跑在浏览器、Node.js、甚至小程序里,也可以接到任何渲染框架。
+        </Paragraph>
+        <Paragraph type="secondary" style={{ marginBottom: 4 }}>
+          <Text strong>2. <Text code>@alien-form/react</Text> —— React 绑定层</Text>
+        </Paragraph>
+        <Paragraph type="secondary" style={{ marginLeft: 16, marginBottom: 8 }}>
+          只负责把 core 接到 React 组件树:<Text code>useCreateForm</Text> 创建实例、
+          <Text code>FormProvider</Text> 注入组件/装饰器映射、<Text code>SchemaField</Text>{" "}
+          按 schema 自动渲染。UI 组件来自哪里完全由用户决定 —— 可以是 Ant Design、
+          Arco、Material UI,也可以是自研组件库。
+        </Paragraph>
+        <Paragraph type="secondary" style={{ marginBottom: 4 }}>
+          <Text strong>3. <Text code>@alien-form/cms</Text> + <Text code>apps/alien-cms</Text> —— 工作台样例</Text>
+        </Paragraph>
+        <Paragraph type="secondary" style={{ marginLeft: 16, marginBottom: 0 }}>
+          在 core / react 之上,补齐了「模型注册、数据 provider、视图投影」三件套,
+          再用一个真实可跑的 CMS 应用把它们串起来,作为整个理念的活靶子和参考实现。
+        </Paragraph>
+
+        <Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>
+          三、四个核心理念
+        </Title>
+
+        <Paragraph type="secondary" strong style={{ marginBottom: 4 }}>
+          1. Schema 是唯一真相源(Single Source of Truth)
+        </Paragraph>
+        <Paragraph type="secondary">
+          字段的类型、标题、组件、校验、联动、格式化,统统写在一份 schema 里。
+          视图差异不是通过「再写一份配置」来表达,而是通过<Text strong>投影函数</Text>:
+          <Text code>projectFormSchema</Text>、<Text code>projectTableColumns</Text>、
+          <Text code>projectFilterFields</Text>、<Text code>projectDetailItems</Text>{" "}
+          各自从同一份 schema 中抽取自己需要的部分。
+          字段改名时只改一处,所有视图同步生效;新增字段时也只需在一个地方追加。
+        </Paragraph>
+
+        <Paragraph type="secondary" strong style={{ marginBottom: 4 }}>
+          2. 无头内核 + 可替换绑定(Headless Core)
+        </Paragraph>
+        <Paragraph type="secondary">
+          受 Headless UI、TanStack Table 等项目的启发,AlienForm 把「逻辑」和「外观」彻底解耦。
+          core 不知道按钮长什么样、表单项如何排版,它只关心字段树、值变化、依赖追踪与校验结果。
+          这意味着:同一份 schema,既可以渲染成 Ant Design 风格的后台,也可以渲染成移动端
+          H5 表单,甚至可以在没有 DOM 的环境下做服务端校验。
+        </Paragraph>
+
+        <Paragraph type="secondary" strong style={{ marginBottom: 4 }}>
+          3. 小而一致的运行时值模型(One Value Model)
+        </Paragraph>
+        <Paragraph type="secondary">
+          为了让 schema 里的「值」既能写死、又能联动、还能扩展,AlienForm 收敛出一套统一的值模型 ——
+          任意位置(<Text code>value</Text>、<Text code>display</Text>、
+          <Text code>dataSource</Text>、<Text code>x-validate</Text> 等)都接受同一组形态:
+        </Paragraph>
+        <Paragraph type="secondary" style={{ marginLeft: 16, marginBottom: 8 }}>
+          • <Text strong>字面量</Text>(字符串、数字、对象、数组)<br />
+          • <Text strong>表达式字符串</Text> <Text code>{"{{ a === 'admin' ? 'all' : 'read' }}"}</Text><br />
+          • <Text strong>handler 字符串</Text> <Text code>@handlerName</Text>{" "}
+          (引用注册到 form 的副作用函数)<br />
+          • <Text strong>直接函数</Text>(在编程式调用场景下使用)<br />
+          • 以及上述形态组成的<Text strong>数组</Text>
+        </Paragraph>
+        <Paragraph type="secondary">
+          一套写法贯穿所有位置,意味着学一次就够了 —— 不会再出现「这里支持表达式、那里只支持字符串」
+          的认知断裂,也不会再有「读取支持嵌套路径、写入只支持一级」的语义不对称。
+        </Paragraph>
+
+        <Paragraph type="secondary" strong style={{ marginBottom: 4 }}>
+          4. 安全的表达式运行时(Safe Expression)
+        </Paragraph>
+        <Paragraph type="secondary">
+          schema 里允许写表达式,但<Text strong>不使用</Text> <Text code>eval</Text> 或{" "}
+          <Text code>new Function</Text>。AlienForm 自带一个受限的解释器:
+          只允许属性访问、二元运算、三元运算、字面量与逻辑运算,
+          <Text strong>拒绝</Text>函数调用、赋值、模板字符串以及{" "}
+          <Text code>window</Text> / <Text code>document</Text> / <Text code>__proto__</Text> 等
+          危险访问。这让 schema 既能从远端动态下发,也不会把整个页面的攻击面打开。
+        </Paragraph>
+
+        <Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>
+          四、工程约定:让协议保持「精简而完整」
+        </Title>
+        <Paragraph type="secondary">
+          AlienForm 在长期演进中沉淀了几条工程纪律,共同作用,才能让一份 schema 真正「能用」:
+        </Paragraph>
+        <Paragraph type="secondary" style={{ marginLeft: 16, marginBottom: 8 }}>
+          • <Text strong>奥卡姆剃刀</Text>:<Text code>packages/core</Text> 严禁保留零引用代码或
+          「声明但未实现」的协议。每砍掉一行死代码,理解成本就少一分。<br />
+          • <Text strong>语义对称</Text>:get/set、read/write、enter/leave 必须行为一致,
+          不允许出现「读取支持嵌套但写入只支持一级」这种半截实现。<br />
+          • <Text strong>模型驱动</Text>:UI 配置应当能从注册元数据自动生成,
+          而不是再写一份「配置的配置」。<br />
+          • <Text strong>架构分层</Text>:shell / layout 与业务 domain 必须保持清晰边界,
+          业务页面只通过 provider 操作数据,不直接接触持久层。
+        </Paragraph>
+
+        <Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>
+          五、数据层解耦:本地与远端可互换
+        </Title>
+        <Paragraph type="secondary">
+          所有数据访问统一走 provider / API 函数,页面层不直接操作数据源。
+          默认实现支持<Text strong>本地 IndexedDB(Dexie)</Text>和{" "}
+          <Text strong>远端 HTTP(Cloudflare Workers + D1)</Text>两种 provider,
+          可以在不改页面层一行代码的前提下互换。这不仅让本地开发与离线演示成为可能,
+          也让整个仓库具备「先本地跑通,再无痛上云」的部署路径。
+        </Paragraph>
+
+        <Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>
+          六、它适合谁
+        </Title>
+        <Paragraph type="secondary">
+          AlienForm 不是要替代 Ant Design Form 或 Formily,也不是要做又一个低代码平台。
+          它更像一个<Text strong>实验性的「后台运行时」</Text>:
+          如果你正在为一个数据驱动的中后台项目做选型,厌倦了「列表抄一份、详情抄一份、编辑再抄一份」,
+          想要一种 schema 即真相、视图皆投影的写法 —— 那么 AlienForm 提供的内核与约定,
+          可以直接拿来用,也可以作为参考自己实现一套。
+        </Paragraph>
+        <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+          源码、文档与示例全部开放在{" "}
+          <Link href={GITHUB_URL} target="_blank" rel="noreferrer">
+            {GITHUB_URL}
+          </Link>
+          ,欢迎一起把这个朴素的命题继续推下去。
+        </Paragraph>
+      </Flex>
+    ),
+  };
+
+  return (
+    <Flex vertical gap={16}>
+      {/* 概览 */}
+      <Card styles={{ body: { padding: 24 } }}>
+        <Flex justify="space-between" align="flex-start" wrap="wrap" gap={12}>
+          <div>
+            <Title level={4} style={{ marginTop: 0 }}>
+              关于 AlienForm
+            </Title>
+            <Paragraph type="secondary" style={{ marginBottom: 8, maxWidth: 720 }}>
+              AlienForm 是一个以 <Text code>schema</Text> 驱动的表单工作区,采用 pnpm
+              monorepo 组织。一份业务 schema 即可同时驱动筛选、列表、新增、编辑、详情等多种后台视图。
+            </Paragraph>
+            <Flex gap={8} wrap="wrap">
+              <Tag color="blue">@alien-form/core 无头运行时</Tag>
+              <Tag color="cyan">@alien-form/react React 绑定</Tag>
+              <Tag color="geekblue">@alien-form/cms CMS 能力</Tag>
+            </Flex>
+          </div>
+          <Button
+            icon={<GithubOutlined />}
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            GitHub
+          </Button>
+        </Flex>
+      </Card>
+
+      {/* 内容:Card.tabList —— alien-form / alien-cms / 理念 */}
+      <Card
+        style={{ width: "100%" }}
+        tabList={tabList}
+        activeTabKey={activeTabKey}
+        onTabChange={setActiveTabKey}
+      >
+        {contentList[activeTabKey]}
+      </Card>
+    </Flex>
+  );
+}
