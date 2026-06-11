@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Button,
   Card,
-  Divider,
   Flex,
   Space,
   Tag,
@@ -398,104 +397,25 @@ export default function AboutPage() {
   const { setBreadcrumb } = useWorkbenchLayout();
   const [, force] = useState(0);
   useEffect(() => {
-    setBreadcrumb({ items: [{ title: "系统设置" }, { title: "关于" }] });
+    setBreadcrumb({ items: [{ title: "系统设置" }, { title: "学习中心" }] });
     force((n) => n);
     return () => setBreadcrumb(null);
   }, [setBreadcrumb]);
 
-  const [activeTabKey, setActiveTabKey] = useState<string>("philosophy");
+  const [activeTabKey, setActiveTabKey] = useState<string>("guide");
 
   const tabList = [
-    { key: "philosophy", tab: "理念" },
-    { key: "alien-form", tab: "alien-form" },
-    { key: "alien-cms", tab: "alien-cms" },
+    { key: "overview", tab: "项目介绍" },
+    { key: "guide", tab: "指南" },
+    { key: "scenarios", tab: "场景案例" },
+    { key: "advanced", tab: "进阶指南" },
   ];
 
   const contentList: Record<string, React.ReactNode> = {
-    "alien-form": (
-      <Flex vertical gap={4}>
-        <Paragraph type="secondary">
-          alien-form 由 <Text code>@alien-form/core</Text>(无头运行时)与{" "}
-          <Text code>@alien-form/react</Text>(React 绑定)组成。core 从一份 schema 构建
-          字段树,运行 <Text code>x-reaction</Text>(联动)、<Text code>x-format</Text>
-          (格式化)、<Text code>x-validate</Text>(校验),并按需投影出可提交的值;react
-          则把它接到组件树上 —— <Text code>useCreateForm</Text> 创建实例、
-          <Text code>FormProvider</Text> 注入组件/装饰器映射、<Text code>SchemaField</Text>{" "}
-          按 schema 自动渲染。下面每个示例<Text strong>左侧是真实运行、可交互的组件</Text>,
-          右侧是对应源码。
-        </Paragraph>
-
-        <LiveExample
-          title="1. 基础表单 + 必填校验 + 提交(core + react)"
-          description={
-            <>
-              用 <Text code>useCreateForm</Text> 创建实例,<Text code>FormProvider</Text>{" "}
-              注入组件/装饰器映射,<Text code>SchemaField</Text> 按 schema 自动渲染。
-            </>
-          }
-          live={<BasicFormDemo />}
-          code={BASIC_CODE}
-        />
-
-        <LiveExample
-          title="2. x-reaction 表达式联动 + dataSourcePolicy"
-          description={
-            <>
-              通过 <Text code>{"{{ ... }}"}</Text> 表达式驱动 <Text code>dataSource</Text> 与{" "}
-              <Text code>display</Text>;<Text code>dataSourcePolicy</Text>{" "}
-              控制选项变化后当前值的落点。
-            </>
-          }
-          live={<ReactionFormDemo />}
-          code={REACTION_CODE}
-        />
-
-        <LiveExample
-          title="3. x-validate 自定义校验"
-          description={
-            <>
-              <Text code>x-validate</Text> 返回 <Text code>true</Text> 通过,返回{" "}
-              <Text code>string</Text> 或 <Text code>{"{ message }"}</Text> 失败。
-            </>
-          }
-          live={<ValidateFormDemo />}
-          code={VALIDATE_CODE}
-        />
-      </Flex>
-    ),
-    "alien-cms": (
-      <Flex vertical gap={4}>
-        <Paragraph type="secondary">
-          alien-cms 是基于 alien-form 的 schema-driven CMS 工作台。核心思路是
-          <Text strong>「一份 schema,多种视图」</Text>:同一份模型 schema 通过投影
-          (projection)分别得到筛选表单、列表表格、新增/编辑表单与只读详情,数据访问统一走
-          provider / API 函数,便于在本地 IndexedDB 与远端服务之间切换。
-        </Paragraph>
-
-        <Title level={5} style={{ marginTop: 8, marginBottom: 8 }}>
-          1. 数据访问:provider 与 API 函数
-        </Title>
-        <CodeBlock>{ALIEN_CMS_PROVIDER}</CodeBlock>
-
-        <Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>
-          2. 一份 schema 投影出多视图
-        </Title>
-        <CodeBlock>{ALIEN_CMS_PROJECTION}</CodeBlock>
-
-        <Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>
-          更多
-        </Title>
-        <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-          CMS 工作台设计与目录结构见 <Text code>apps/alien-cms/README.md</Text>;也可在左侧
-          「模型管理」中创建模型,并在「模型列表」里直接体验 filter / table / add / edit /
-          detail 全流程。
-        </Paragraph>
-      </Flex>
-    ),
-    philosophy: (
+    overview: (
       <Flex vertical gap={4}>
         <Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
-          AlienForm:用一份 Schema 驱动整个后台
+          AlienForm: 用一份 Schema 驱动整个后台
         </Title>
         <Paragraph type="secondary" italic style={{ marginBottom: 16 }}>
           这不是又一个表单库,也不是又一个低代码平台。AlienForm 想要回答一个更朴素的问题:
@@ -658,6 +578,105 @@ export default function AboutPage() {
         </Paragraph>
       </Flex>
     ),
+    guide: (
+      <Flex vertical gap={4}>
+        <Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
+          按 Formily 学习路径快速入门
+        </Title>
+        <Paragraph type="secondary">
+          这一部分参考 Formily 官方“学习建议”的组织方式来写:先理解为什么需要 schema 驱动,
+          再从一个最小可运行表单开始,随后补上联动、校验和组件映射。AlienForm 与 Formily
+          一样,都强调<Text strong>先理解领域模型,再查具体组件文档</Text>。
+        </Paragraph>
+        <Card size="small" title="推荐阅读顺序" styles={{ body: { padding: 16 } }}>
+          <Paragraph style={{ marginBottom: 8 }}>
+            1. <Text strong>先看理念</Text>:理解表单不只是输入框集合,而是字段状态、校验、联动、布局共同组成的领域模型。
+          </Paragraph>
+          <Paragraph style={{ marginBottom: 8 }}>
+            2. <Text strong>再看最小示例</Text>:先掌握 <Text code>useCreateForm</Text>、<Text code>FormProvider</Text>、<Text code>SchemaField</Text> 这三件套。
+          </Paragraph>
+          <Paragraph style={{ marginBottom: 8 }}>
+            3. <Text strong>然后看协议驱动</Text>:把字段标题、组件、校验、联动都收敛到一份 schema 中。
+          </Paragraph>
+          <Paragraph style={{ marginBottom: 0 }}>
+            4. <Text strong>遇到细节再查字典</Text>:组件能力、装饰器能力、字段协议都按需查文档,不要一上来把所有 API 背完。
+          </Paragraph>
+        </Card>
+
+        <LiveExample
+          title="快速开始: 创建表单实例并提交"
+          description={
+            <>
+              先只掌握最核心的渲染链路: <Text code>schema</Text> 描述字段, <Text code>useCreateForm</Text> 创建表单实例, <Text code>FormProvider</Text> 注入上下文, <Text code>SchemaField</Text> 负责递归渲染。
+            </>
+          }
+          live={<BasicFormDemo />}
+          code={BASIC_CODE}
+        />
+      </Flex>
+    ),
+    scenarios: (
+      <Flex vertical gap={4}>
+        <Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
+          场景案例
+        </Title>
+        <Paragraph type="secondary">
+          Formily 官方推荐从具体业务场景里理解协议驱动的价值。AlienForm 这里提供两个常见场景: 
+          字段联动与自定义校验。你不必先记住所有协议,先从“这个场景为什么适合 schema 驱动”开始看。
+        </Paragraph>
+
+        <LiveExample
+          title="场景 1: 角色权限联动"
+          description={
+            <>
+              当一个字段的选项、显隐、可编辑态依赖另一个字段时,不要把逻辑散落在多个组件状态里,而是直接把依赖写进协议。<Text code>{"{{ ... }}"}</Text> 表达式描述字段之间的依赖关系。
+            </>
+          }
+          live={<ReactionFormDemo />}
+          code={REACTION_CODE}
+        />
+
+        <LiveExample
+          title="场景 2: 自定义校验"
+          description={
+            <>
+              <Text code>x-validate</Text> 返回 <Text code>true</Text> 表示通过,返回 <Text code>string</Text> 或 <Text code>{"{ message }"}</Text> 表示失败。先把规则放进 schema,再考虑抽成复用函数。
+            </>
+          }
+          live={<ValidateFormDemo />}
+          code={VALIDATE_CODE}
+        />
+      </Flex>
+    ),
+    advanced: (
+      <Flex vertical gap={4}>
+        <Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
+          进阶指南
+        </Title>
+        <Paragraph type="secondary">
+          当你已经能写基础 schema 后,下一步不是机械堆字段,而是把组件抽象、数据访问和多视图投影串起来。
+          真正的进阶点不在于多写几个 <Text code>x-*</Text> 属性,而在于能否把一份模型协议稳定地投影到多个界面中,并保持语义一致。
+        </Paragraph>
+
+        <Title level={5} style={{ marginTop: 8, marginBottom: 8 }}>
+          1. 数据访问抽象: provider 与 API 函数
+        </Title>
+        <Paragraph type="secondary">
+          复杂后台通常不止有表单渲染,还要处理列表查询、详情读取、保存提交。AlienForm 把这些访问统一收敛到 provider / API
+          函数层,避免页面组件直接耦合具体数据源。
+        </Paragraph>
+        <CodeBlock>{ALIEN_CMS_PROVIDER}</CodeBlock>
+
+        <Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>
+          2. 协议投影: 一份 schema 驱动多种后台视图
+        </Title>
+        <Paragraph type="secondary" style={{ marginBottom: 8 }}>
+          这是 AlienForm 最贴近 Formily“协议复用”思想的场景。不是只渲染一个表单,而是让同一份模型 schema
+          同时驱动筛选、表格、编辑和详情,避免多份配置长期漂移。
+        </Paragraph>
+        <CodeBlock>{ALIEN_CMS_PROJECTION}</CodeBlock>
+      </Flex>
+    ),
   };
 
   return (
@@ -667,16 +686,16 @@ export default function AboutPage() {
         <Flex justify="space-between" align="flex-start" wrap="wrap" gap={12}>
           <div>
             <Title level={4} style={{ marginTop: 0 }}>
-              关于 AlienForm
+              AlienForm 学习中心
             </Title>
             <Paragraph type="secondary" style={{ marginBottom: 8, maxWidth: 720 }}>
-              AlienForm 是一个以 <Text code>schema</Text> 驱动的表单工作区,采用 pnpm
-              monorepo 组织。一份业务 schema 即可同时驱动筛选、列表、新增、编辑、详情等多种后台视图。
+              这里集中放置 AlienForm 的项目介绍、入门教程、场景案例与进阶指南。学习顺序参考 Formily
+              文档:先理解 schema 驱动,再从最小示例入门,最后进入联动、校验与多视图投影。
             </Paragraph>
             <Flex gap={8} wrap="wrap">
-              <Tag color="blue">@alien-form/core 无头运行时</Tag>
-              <Tag color="cyan">@alien-form/react React 绑定</Tag>
-              <Tag color="geekblue">@alien-form/cms CMS 能力</Tag>
+              <Tag color="blue">指南</Tag>
+              <Tag color="cyan">场景案例</Tag>
+              <Tag color="geekblue">进阶指南</Tag>
             </Flex>
           </div>
           <Button
@@ -690,7 +709,7 @@ export default function AboutPage() {
         </Flex>
       </Card>
 
-      {/* 内容:Card.tabList —— alien-form / alien-cms / 理念 */}
+      {/* 内容:Card.tabList —— 项目介绍 / 指南 / 场景案例 / 进阶指南 */}
       <Card
         style={{ width: "100%" }}
         tabList={tabList}

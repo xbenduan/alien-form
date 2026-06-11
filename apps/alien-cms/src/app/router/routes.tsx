@@ -98,7 +98,7 @@ export const staticRoutes: RouteMeta[] = [
     key: "system-about",
     menu: {
       group: "system",
-      label: "关于",
+      label: "学习中心",
       icon: <InfoCircleOutlined />,
       order: 4,
     },

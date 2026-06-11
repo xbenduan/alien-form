@@ -3,8 +3,20 @@
   "version": "1.0.0",
   "description": "React bindings for AlienForm — the only dependency React projects need",
   "license": "MIT",
-  "main": "src/index.tsx",
-  "types": "src/index.tsx",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
   "scripts": {
     "build": "tsup src/index.tsx --format esm,cjs --dts --external react --external react-dom",
     "test": "vitest run"
