@@ -7,6 +7,7 @@ import {
   Tag,
   Typography,
   message,
+  Input,
 } from "antd";
 import { GithubOutlined } from "@ant-design/icons";
 import {
@@ -141,6 +142,7 @@ const BASIC_SCHEMA: IFormSchema = {
       type: "string",
       title: "姓名",
       component: "Input",
+      props: { placeholder: "请输入姓名" },
       required: true,
       decorator: "FormItem",
     },
@@ -148,6 +150,7 @@ const BASIC_SCHEMA: IFormSchema = {
       type: "string",
       title: "角色",
       component: "Select",
+      props: { placeholder: "请选择角色" },
       decorator: "FormItem",
       dataSource: [
         { label: "管理员", value: "admin" },
@@ -170,11 +173,13 @@ const schema = {
     name: {
       type: "string", title: "姓名",
       component: "Input", decorator: "FormItem",
+      props: { placeholder: "请输入姓名" },
       required: true,
     },
     role: {
       type: "string", title: "角色",
       component: "Select", decorator: "FormItem",
+      props: { placeholder: "请选择角色" },
       dataSource: [
         { label: "管理员", value: "admin" },
         { label: "普通用户", value: "user" },
@@ -235,6 +240,7 @@ const REACTION_SCHEMA: IFormSchema = {
       type: "string",
       title: "账号类型",
       component: "Select",
+      props: { placeholder: "请选择账号类型" },
       decorator: "FormItem",
       dataSource: [
         { label: "管理员", value: "admin" },
@@ -245,6 +251,7 @@ const REACTION_SCHEMA: IFormSchema = {
       type: "string",
       title: "权限",
       component: "Select",
+      props: { placeholder: "请选择权限" },
       decorator: "FormItem",
       dataSourcePolicy: "first",
       "x-reaction": {
@@ -262,6 +269,7 @@ const REACTION_CODE = `const schema = {
     account: {
       type: "string", title: "账号类型",
       component: "Select", decorator: "FormItem",
+      props: { placeholder: "请选择账号类型" },
       dataSource: [
         { label: "管理员", value: "admin" },
         { label: "普通用户", value: "user" },
@@ -270,6 +278,7 @@ const REACTION_CODE = `const schema = {
     permission: {
       type: "string", title: "权限",
       component: "Select", decorator: "FormItem",
+      props: { placeholder: "请选择权限" },
       // 选项变化后,当前值落到第一个可用选项
       dataSourcePolicy: "first",
       // 表达式联动:根据 account 动态切换选项与显隐
@@ -306,6 +315,7 @@ const VALIDATE_SCHEMA: IFormSchema = {
       type: "string",
       title: "昵称(至少 3 个字符)",
       component: "Input",
+      props: { placeholder: "请输入昵称" },
       decorator: "FormItem",
       "x-validate":
         "{{ $value && $value.length >= 3 ? true : '昵称至少需要 3 个字符' }}",
@@ -319,6 +329,7 @@ const VALIDATE_CODE = `const schema = {
     nickname: {
       type: "string", title: "昵称",
       component: "Input", decorator: "FormItem",
+      props: { placeholder: "请输入昵称" },
       // 自定义校验:返回 true 通过;返回 string / { message } 失败
       "x-validate":
         "{{ $value && $value.length >= 3 " +
@@ -392,6 +403,76 @@ const detailItems  = projectDetailItems(schema);   // 只读详情项
 // 把 formSchema 交给 @alien-form/react 渲染即可得到一个表单,
 // 这正是「一份 schema 同时驱动 filter / table / add / edit / detail」的核心。`;
 
+function PlaygroundDemo() {
+  const [schemaStr, setSchemaStr] = useState(() => JSON.stringify(BASIC_SCHEMA, null, 2));
+  const [schema, setSchema] = useState<IFormSchema>(BASIC_SCHEMA);
+  const [submitData, setSubmitData] = useState<string>("");
+  const [error, setError] = useState<string>("");
+
+  useEffect(() => {
+    try {
+      const parsed = JSON.parse(schemaStr);
+      setSchema(parsed);
+      setError("");
+    } catch (e) {
+      setError(String(e));
+    }
+  }, [schemaStr]);
+
+  const form = useDemoForm(schema);
+
+  return (
+    <Flex vertical gap={16}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <Card title="实时预览" size="small" styles={{ body: { padding: 16 } }} style={{ background: "#fafcff" }}>
+          <LiveSchemaForm
+            form={form}
+            footer={
+              <Space style={{ marginTop: 12 }}>
+                <Button
+                  type="primary"
+                  onClick={async () => {
+                    if (await form.validate()) {
+                      setSubmitData(JSON.stringify(form.values(), null, 2));
+                    } else {
+                      setSubmitData("校验失败，请检查表单填写");
+                    }
+                  }}
+                >
+                  提交
+                </Button>
+                <Button onClick={() => {
+                  form.reset();
+                  setSubmitData("");
+                }}>重置</Button>
+              </Space>
+            }
+          />
+        </Card>
+        <Card title="Schema 编辑" size="small" styles={{ body: { padding: 0 } }}>
+          <Input.TextArea
+            value={schemaStr}
+            onChange={(e) => setSchemaStr(e.target.value)}
+            style={{ 
+              fontFamily: "monospace", 
+              minHeight: 400, 
+              border: "none", 
+              resize: "none",
+              padding: 16,
+              background: "#0f172a",
+              color: "#e2e8f0",
+            }}
+          />
+          {error && <div style={{ color: "red", padding: "8px 16px", background: "#fff1f0", borderTop: "1px solid #ffa39e" }}>{error}</div>}
+        </Card>
+      </div>
+      <Card title="提交数据" size="small" styles={{ body: { padding: 16 } }}>
+        <CodeBlock>{submitData || "暂无数据"}</CodeBlock>
+      </Card>
+    </Flex>
+  );
+}
+
 // 页面
 export default function AboutPage() {
   const { setBreadcrumb } = useWorkbenchLayout();
@@ -402,13 +483,14 @@ export default function AboutPage() {
     return () => setBreadcrumb(null);
   }, [setBreadcrumb]);
 
-  const [activeTabKey, setActiveTabKey] = useState<string>("guide");
+  const [activeTabKey, setActiveTabKey] = useState<string>("playground");
 
   const tabList = [
     { key: "overview", tab: "项目介绍" },
     { key: "guide", tab: "指南" },
     { key: "scenarios", tab: "场景案例" },
     { key: "advanced", tab: "进阶指南" },
+    { key: "playground", tab: "演练场" },
   ];
 
   const contentList: Record<string, React.ReactNode> = {
@@ -677,6 +759,17 @@ export default function AboutPage() {
         <CodeBlock>{ALIEN_CMS_PROJECTION}</CodeBlock>
       </Flex>
     ),
+    playground: (
+      <Flex vertical gap={4}>
+        <Title level={4} style={{ marginTop: 0, marginBottom: 8 }}>
+          演练场
+        </Title>
+        <Paragraph type="secondary">
+          你可以在这里实时修改 Schema，左侧的表单会即时热更新。填写表单并点击「提交」后，下方会展示导出的 JSON 数据。
+        </Paragraph>
+        <PlaygroundDemo />
+      </Flex>
+    ),
   };
 
   return (
@@ -696,6 +789,7 @@ export default function AboutPage() {
               <Tag color="blue">指南</Tag>
               <Tag color="cyan">场景案例</Tag>
               <Tag color="geekblue">进阶指南</Tag>
+              <Tag color="purple">演练场</Tag>
             </Flex>
           </div>
           <Button
