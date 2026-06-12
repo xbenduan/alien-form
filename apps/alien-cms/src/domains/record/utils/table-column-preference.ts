@@ -1,3 +1,4 @@
+import { isSystemField } from '@alien-form/cms';
 import type { CmsModelSchema } from '../types/record';
 
 const TABLE_VISIBLE_KEY_PREFIX = 'alien-cms:table-visible:';
@@ -16,7 +17,7 @@ export function getDefaultVisibleKeys(schema?: CmsModelSchema) {
     return schemaVisibleKeys.filter((key) => getSchemaFieldKeys(schema).includes(key));
   }
 
-  return getSchemaFieldKeys(schema);
+  return getSchemaFieldKeys(schema).filter((key) => !isSystemField(key));
 }
 
 export function sanitizeVisibleKeys(schema: CmsModelSchema | undefined, visibleKeys?: string[]) {

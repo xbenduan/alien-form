@@ -1,9 +1,7 @@
 import { FormProvider, SchemaField, type FormInstance } from "@alien-form/react";
 import { Alert, Empty, Spin, message } from "antd";
 import { detailFormComponents, recordFormComponents, recordFormDecorators } from "../adapters";
-import { createRecordFormConfig } from "../utils/create-record-form-config";
 import type {
-  CmsModelSchema,
   ModelActionMode,
   ModelRecord,
 } from "../../domains/record/types/record";

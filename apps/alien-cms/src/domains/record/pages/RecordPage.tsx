@@ -94,7 +94,7 @@ export default function RecordPage({
             <RecordFilterBar
               schema={page.filterSchema}
               defaultVisibleKeys={page.filterDefaultVisibleKeys}
-              values={page.filters}
+              values={page.filterInitialValues}
               loading={page.listLoading}
               onSearch={page.setFilters}
             />

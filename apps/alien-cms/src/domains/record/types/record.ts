@@ -24,6 +24,8 @@ export interface TableColumnProjection {
   dataSource?: CmsFieldSchema['dataSource'];
   inline?: string[];
   expandable?: boolean;
+  visible?: boolean;
+  defaultVisible?: boolean;
   order: number;
   field: CmsFieldSchema;
   type?: CmsFieldSchema['type'];
@@ -31,6 +33,7 @@ export interface TableColumnProjection {
 
 export interface FilterFieldProjection {
   key: string;
+  path: string;
   title: string;
   component?: string;
   operator?: string;

@@ -1,5 +1,6 @@
 import {
   batchDeleteRecords,
+  countAtomicFields,
   createRecord,
   deleteRecord,
   getRecord,
@@ -25,6 +26,10 @@ import {
   sanitizeVisibleKeys,
   writeTableVisibleKeys,
 } from "../domains/record/utils/table-column-preference";
+import {
+  flattenFilterValues,
+  restoreFilterValues,
+} from "../domains/record/utils/filter-values";
 import { useSchemaDetail } from "./use-schema-store";
 
 export const recordQueryKeys = {
@@ -45,24 +50,66 @@ interface UseRecordStoreOptions {
   onRouteActionChange: (nextAction: RecordRouteState) => void;
 }
 
+/** 把扁平 filter key（`$root.a.b` 或顶层 `x`）转换为不含点的安全字段 key。*/
+function toSafeKey(flatKey: string): string {
+  return flatKey.replace(/\$root\./, "").replace(/\./g, "__");
+}
+
+/** 沿真实点路径从 schema.properties 读取叶子字段 schema。*/
+function getLeafFieldByPath(schema: CmsModelSchema, path: string): CmsFieldSchema | undefined {
+  const segments = path.split(".");
+  let current: Record<string, CmsFieldSchema> | undefined = schema.properties;
+  let field: CmsFieldSchema | undefined;
+
+  for (const segment of segments) {
+    if (!current) return undefined;
+    field = current[segment];
+    if (!field) return undefined;
+
+    if (field.type === "array" && field.items && !Array.isArray(field.items) && field.items.properties) {
+      current = field.items.properties as Record<string, CmsFieldSchema>;
+    } else {
+      current = field.properties as Record<string, CmsFieldSchema> | undefined;
+    }
+  }
+
+  return field;
+}
+
 function buildFilterSchema(schema?: CmsModelSchema) {
   if (!schema?.properties) {
     return undefined;
   }
 
-  const fields = (projectFilterFields(schema) as Array<Omit<FilterFieldProjection, "field">>).map((item) => ({
-    ...item,
-    field: schema.properties?.[item.key] as CmsFieldSchema,
-  }));
+  const fields = (projectFilterFields(schema) as Array<Omit<FilterFieldProjection, "field">>).map((item) => {
+    const field = getLeafFieldByPath(schema, item.path);
+    const safeKey = toSafeKey(item.key);
+    return {
+      ...item,
+      safeKey,
+      field: (field ?? { type: "string", title: item.title }) as CmsFieldSchema,
+    };
+  });
+
+  const keyToPath = Object.fromEntries(fields.map((item) => [item.safeKey, item.path]));
 
   const properties = Object.fromEntries(
-    fields.map((item) => [
-      item.key,
-      {
-        ...item.field,
-        decorator: "FilterItem",
-      },
-    ]),
+    fields.map((item) => {
+      const { required: _required, ...rest } = item.field;
+      return [
+        item.safeKey,
+        {
+          ...rest,
+          title: item.title,
+          decorator: "FilterItem",
+          props: {
+            ...(item.field.props ?? {}),
+            ...(item.props ?? {}),
+            placeholder: item.props?.placeholder ?? `请输入${item.title}`,
+          },
+        },
+      ];
+    }),
   );
 
   const defaultVisibleKeys = resolveFilterDefaultVisibleKeys(schema, fields);
@@ -73,14 +120,15 @@ function buildFilterSchema(schema?: CmsModelSchema) {
       properties,
     } satisfies CmsModelSchema,
     defaultVisibleKeys,
+    keyToPath,
   };
 }
 
 function resolveFilterDefaultVisibleKeys(
   schema: CmsModelSchema,
-  fields: FilterFieldProjection[],
+  fields: Array<FilterFieldProjection & { safeKey: string }>,
 ) {
-  const explicitKeys = fields.filter((item) => item.defaultVisible).map((item) => item.key);
+  const explicitKeys = fields.filter((item) => item.defaultVisible).map((item) => item.safeKey);
   if (explicitKeys.length > 0) {
     return explicitKeys;
   }
@@ -90,14 +138,25 @@ function resolveFilterDefaultVisibleKeys(
     .slice()
     .sort((left, right) => left.order - right.order)
     .slice(0, count)
-    .map((item) => item.key);
+    .map((item) => item.safeKey);
+}
+
+function resolveOpenMode(
+  schema: CmsModelSchema | undefined,
+  mode: ModelActionKind,
+): ModelActionOpenMode {
+  const explicit = schema?.["x-model"]?.openMode?.[mode];
+  if (explicit) return explicit;
+  const count = countAtomicFields(schema);
+  if (count <= 6) return "modal";
+  if (count <= 12) return "drawer";
+  return "page";
 }
 
 function buildTableColumns(schema?: CmsModelSchema, visibleKeys?: string[]) {
   if (!schema?.properties) {
     return [];
   }
-
   const visibleKeySet = new Set(
     sanitizeVisibleKeys(schema, visibleKeys ?? getDefaultVisibleKeys(schema)),
   );
@@ -146,6 +205,12 @@ export function useRecordStore(modelName: string, options: UseRecordStoreOptions
   );
 
   const filterMeta = useMemo(() => buildFilterSchema(schema), [schema]);
+  const filterInitialValues = useMemo(() => {
+    const flat = flattenFilterValues(filters);
+    return Object.fromEntries(
+      Object.entries(flat).map(([flatKey, value]) => [toSafeKey(flatKey), value]),
+    );
+  }, [filters]);
   const tableColumns = useMemo(
     () => buildTableColumns(schema, tableVisibleKeys),
     [schema, tableVisibleKeys],
@@ -224,7 +289,7 @@ export function useRecordStore(modelName: string, options: UseRecordStoreOptions
       return;
     }
 
-    const nextOpenMode = schema["x-model"]?.openMode?.[routeAction.mode] ?? "drawer";
+    const nextOpenMode = resolveOpenMode(schema, routeAction.mode);
     if (nextOpenMode !== "page") {
       onRouteActionChange({ mode: "closed" });
       return;
@@ -236,7 +301,7 @@ export function useRecordStore(modelName: string, options: UseRecordStoreOptions
   }, [actionOpenMode, onRouteActionChange, routeAction, schema]);
 
   const openAction = (mode: ModelActionKind, recordId?: string) => {
-    const nextOpenMode = schema?.["x-model"]?.openMode?.[mode] ?? "drawer";
+    const nextOpenMode = resolveOpenMode(schema, mode);
     if (nextOpenMode === "page") {
       onRouteActionChange(mode === "add" ? { mode } : { mode, recordId });
       return;
@@ -264,6 +329,7 @@ export function useRecordStore(modelName: string, options: UseRecordStoreOptions
     schemaError: schemaQuery.error,
     filterSchema: filterMeta?.schema,
     filterDefaultVisibleKeys: filterMeta?.defaultVisibleKeys ?? [],
+    filterInitialValues,
     tableColumns,
     records: listQuery.data?.list ?? [],
     total: listQuery.data?.total ?? 0,
@@ -277,7 +343,12 @@ export function useRecordStore(modelName: string, options: UseRecordStoreOptions
     activeRecord: detailQuery.data,
     detailLoading: detailQuery.isLoading || detailQuery.isFetching,
     setFilters: (values: Record<string, unknown>) => {
-      setFiltersState(values);
+      // values 使用 filter 表单的 safeKey，先映射回真实点路径再还原为嵌套对象
+      const keyToPath = filterMeta?.keyToPath ?? {};
+      const flat = Object.fromEntries(
+        Object.entries(values).map(([safeKey, value]) => [keyToPath[safeKey] ?? safeKey, value]),
+      );
+      setFiltersState(restoreFilterValues(flat));
       setPaginationState((current) => ({ ...current, current: 1 }));
     },
     setPagination: setPaginationState,

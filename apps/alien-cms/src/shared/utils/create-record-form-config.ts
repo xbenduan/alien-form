@@ -17,26 +17,6 @@ export function createRecordFormConfig({
     initialValues,
     handlers: recordSchemaHandlers,
     onError: (error) => {
-      // #region debug-point B:form-on-error
-      fetch("http://127.0.0.1:7777/event", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: "required-field-rollback",
-          runId: "pre-fix",
-          hypothesisId: "B",
-          location: "create-record-form-config.ts:onError",
-          msg: "[DEBUG] form onError triggered",
-          data: {
-            scope: error.scope,
-            path: error.path,
-            key: error.key,
-            message: error.message,
-          },
-          ts: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       if (error.scope === 'x-validate' || error.scope === 'expression') {
         return;
       }
