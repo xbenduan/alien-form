@@ -386,21 +386,17 @@ await createRecord({
 
 const ALIEN_CMS_PROJECTION = `import {
   getSchema,
-  projectFormSchema,
   projectTableColumns,
   projectFilterFields,
-  projectDetailItems,
 } from "@alien-form/cms";
 
 // 同一份模型 schema,投影出多种视图所需的配置
 const { schema } = await getSchema({ modelName: "article" });
 
-const formSchema   = projectFormSchema(schema);    // 新增 / 编辑表单
 const tableColumns = projectTableColumns(schema);  // 列表表格列
 const filterFields = projectFilterFields(schema);  // 筛选条件表单
-const detailItems  = projectDetailItems(schema);   // 只读详情项
 
-// 把 formSchema 交给 @alien-form/react 渲染即可得到一个表单,
+// add / edit / detail 表单直接复用同一份 schema,
 // 这正是「一份 schema 同时驱动 filter / table / add / edit / detail」的核心。`;
 
 function PlaygroundDemo() {
@@ -564,9 +560,9 @@ export default function AboutPage() {
         <Paragraph type="secondary">
           字段的类型、标题、组件、校验、联动、格式化,统统写在一份 schema 里。
           视图差异不是通过「再写一份配置」来表达,而是通过<Text strong>投影函数</Text>:
-          <Text code>projectFormSchema</Text>、<Text code>projectTableColumns</Text>、
-          <Text code>projectFilterFields</Text>、<Text code>projectDetailItems</Text>{" "}
-          各自从同一份 schema 中抽取自己需要的部分。
+          <Text code>projectTableColumns</Text>、
+          <Text code>projectFilterFields</Text>{" "}
+          各自从同一份 schema 中抽取自己需要的部分(表单则直接复用 schema)。
           字段改名时只改一处,所有视图同步生效;新增字段时也只需在一个地方追加。
         </Paragraph>
 
