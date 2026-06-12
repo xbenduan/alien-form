@@ -36,6 +36,6 @@ export default defineAdapter(NumberInput, {
   label: "数字输入",
   description: "数字输入组件。",
   kind: "component",
-  scenes: ["recordForm", "recordFilter"],
+  scenes: { recordForm: { mode: "edit" }, recordFilter: { mode: "filter" }, recordDetail: { renderAs: "DisplayText" }, tableCell: { renderAs: "DisplayText", summary: true } },
   meta: { fieldType: "number" },
 });

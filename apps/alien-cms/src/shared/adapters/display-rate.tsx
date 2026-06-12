@@ -27,6 +27,6 @@ export default defineAdapter(DisplayRate, {
   label: "DisplayRate",
   description: "评分只读展示组件。",
   kind: "display",
-  scenes: ["recordDetail", "tableCell"],
+  scenes: { recordDetail: { mode: "readonly" }, tableCell: { mode: "cell" } },
   meta: { displayType: "rate" },
 });

@@ -24,6 +24,6 @@ export default defineAdapter(DisplayBoolean, {
   label: "开关展示",
   description: "布尔值只读展示组件。",
   kind: "display",
-  scenes: ["recordDetail", "tableCell"],
+  scenes: { recordDetail: { mode: "readonly" }, tableCell: { mode: "cell" } },
   meta: { displayType: "boolean" },
 });

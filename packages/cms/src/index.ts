@@ -112,6 +112,12 @@ export {
 // ─── Projection (pure functions) ────────────────────────────
 export { projectTableColumns } from './projection/table-columns';
 export { projectFilterFields } from './projection/filter-fields';
+export {
+  resolveSceneRender,
+  buildSceneComponents,
+  defaultMode,
+} from './projection/scene-resolver';
+export type { ResolvedSceneRender } from './projection/scene-resolver';
 
 // ─── Schema Utilities ───────────────────────────────────────
 export { normalizeSchema } from './schema/normalize-schema';
@@ -130,4 +136,11 @@ export {
   defineAdapters,
   createAdapterRegistry,
   createAdapterCatalog,
+} from "./define/adapters";
+export type {
+  SceneMode,
+  SceneVariant,
+  SceneMap,
+  AdapterScene,
+  AdapterCatalogItem,
 } from "./define/adapters";

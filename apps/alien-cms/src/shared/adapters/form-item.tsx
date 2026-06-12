@@ -73,6 +73,6 @@ export default defineAdapter(FormItem, {
   label: "FormItem",
   description: "表单项装饰器。",
   kind: "decorator",
-  scenes: ["recordForm", "recordDetail"],
+  scenes: { recordForm: {}, recordDetail: {} },
   meta: { decorator: true },
 });

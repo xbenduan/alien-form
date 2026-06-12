@@ -31,6 +31,6 @@ export default defineAdapter(DateInput, {
   label: "选择日期",
   description: "日期输入组件。",
   kind: "component",
-  scenes: ["recordForm", "recordFilter"],
+  scenes: { recordForm: { mode: "edit" }, recordFilter: { mode: "filter" }, recordDetail: { renderAs: "DisplayDate" }, tableCell: { renderAs: "DisplayDate", summary: true } },
   meta: { fieldType: "string" },
 });

@@ -1,6 +1,11 @@
 import { FormProvider, SchemaField, type FormInstance } from "@alien-form/react";
 import { Alert, Empty, Spin, message } from "antd";
-import { detailFormComponents, recordFormComponents, recordFormDecorators } from "../adapters";
+import {
+  detailFormComponents,
+  detailFormDecorators,
+  recordFormComponents,
+  recordFormDecorators,
+} from "../adapters";
 import type {
   ModelActionMode,
   ModelRecord,
@@ -156,7 +161,9 @@ export function SchemaFormBody({ mode, form }: SchemaFormBodyProps) {
     <FormProvider
       form={form}
       components={getSchemaFormAdapters(mode) as never}
-      decorators={recordFormDecorators as never}
+      decorators={
+        (mode === "detail" ? detailFormDecorators : recordFormDecorators) as never
+      }
     >
       <div className="schema-form-content">
         <SchemaField />

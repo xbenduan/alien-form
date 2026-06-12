@@ -30,6 +30,6 @@ export default defineAdapter(Input, {
   label: "文本输入",
   description: "基础文本输入组件。",
   kind: "component",
-  scenes: ["recordForm", "recordFilter"],
+  scenes: { recordForm: { mode: "edit" }, recordFilter: { mode: "filter", operator: "contains" }, recordDetail: { renderAs: "DisplayText" }, tableCell: { renderAs: "DisplayText", summary: true } },
   meta: { fieldType: "string" },
 });

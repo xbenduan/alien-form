@@ -34,6 +34,6 @@ export default defineAdapter(Textarea, {
   label: "多行文本",
   description: "多行文本输入组件。",
   kind: "component",
-  scenes: ["recordForm", "recordFilter"],
+  scenes: { recordForm: { mode: "edit" }, recordFilter: { renderAs: "Input", operator: "contains" }, recordDetail: { renderAs: "DisplayText" }, tableCell: { renderAs: "DisplayText", summary: true } },
   meta: { fieldType: "string" },
 });

@@ -26,6 +26,6 @@ export default defineAdapter(DisplayTags, {
   label: "标签展示",
   description: "标签列表只读展示组件。",
   kind: "display",
-  scenes: ["recordDetail", "tableCell"],
+  scenes: { recordDetail: { mode: "readonly" }, tableCell: { mode: "cell" } },
   meta: { displayType: "tags" },
 });

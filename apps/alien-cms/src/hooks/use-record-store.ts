@@ -31,6 +31,7 @@ import {
   restoreFilterValues,
 } from "../domains/record/utils/filter-values";
 import { useSchemaDetail } from "./use-schema-store";
+import { registry } from "../shared/adapters";
 
 export const recordQueryKeys = {
   all: ["records"] as const,
@@ -81,7 +82,7 @@ function buildFilterSchema(schema?: CmsModelSchema) {
     return undefined;
   }
 
-  const fields = (projectFilterFields(schema) as Array<Omit<FilterFieldProjection, "field">>).map((item) => {
+  const fields = (projectFilterFields(schema, registry) as Array<Omit<FilterFieldProjection, "field">>).map((item) => {
     const field = getLeafFieldByPath(schema, item.path);
     const safeKey = toSafeKey(item.key);
     return {

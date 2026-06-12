@@ -19,6 +19,6 @@ export default defineAdapter(TestTags, {
   label: "测试标签",
   description: "标签输入组件，基于 Select 的 tags 模式。",
   kind: "component",
-  scenes: ["recordForm", "recordFilter"],
+  scenes: { recordForm: { mode: "edit" }, recordFilter: { mode: "filter" } },
   meta: { fieldType: "tags" },
 });

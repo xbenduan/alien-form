@@ -18,6 +18,6 @@ export default defineAdapter(DisplayDate, {
   label: "日期展示",
   description: "日期只读展示组件。",
   kind: "display",
-  scenes: ["recordDetail", "tableCell"],
+  scenes: { recordDetail: { mode: "readonly" }, tableCell: { mode: "cell" } },
   meta: { displayType: "date" },
 });

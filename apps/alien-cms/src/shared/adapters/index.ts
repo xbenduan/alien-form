@@ -1,13 +1,22 @@
 import React from "react";
-import type { BuilderComponentName, BuilderFieldType, CmsFieldSchema } from "@alien-form/cms";
-import { createAdapterCatalog, createAdapterRegistry } from "@alien-form/cms";
+import type {
+  AdapterScene,
+  BuilderComponentName,
+  BuilderFieldType,
+  SceneMode,
+} from "@alien-form/cms";
+import {
+  buildSceneComponents,
+  createAdapterCatalog,
+  createAdapterRegistry,
+} from "@alien-form/cms";
 
 type AdapterValue = ((...args: any[]) => any) & {
   config: {
     key: string;
     label: string;
     kind: string;
-    scenes: string[];
+    scenes: Record<string, unknown>;
   };
 };
 
@@ -41,14 +50,6 @@ const componentOrderMap = new Map<string, number>(
 
 function isAdapterModule(value: unknown): value is AdapterModule {
   return value !== null && typeof value === "object" && "default" in value;
-}
-
-function buildSceneMap(scene: string, kind: string) {
-  return Object.fromEntries(
-    registry
-      .filter((item) => item.kind === kind && item.scenes.includes(scene as never))
-      .map((item) => [item.key, map[item.key as keyof typeof map]]),
-  );
 }
 
 const rawMap = Object.fromEntries(
@@ -137,70 +138,49 @@ export const builderComponentOptions = componentCatalog
     kind: item.kind,
   }));
 
-export const recordFormComponents = buildSceneMap("recordForm", "component");
+function withSceneMode<P extends Record<string, unknown>>(
+  Component: (props: any) => React.ReactNode,
+  mode: SceneMode,
+  defaultProps: Record<string, unknown>,
+) {
+  function SceneComponent(props: P) {
+    return React.createElement(Component as never, { ...defaultProps, mode, ...props });
+  }
+  return SceneComponent;
+}
 
-export const recordFormDecorators = buildSceneMap("recordForm", "decorator");
-
-export const filterFormComponents = {
-  ...buildSceneMap("recordFilter", "component"),
-  Textarea: map.Input,
-  Switch: map.Select,
-};
-
-export const filterFormDecorators = buildSceneMap("recordFilter", "decorator");
-
-export const detailFieldDisplayComponents = {
-  Input: map.DisplayText,
-  Textarea: map.DisplayText,
-  NumberInput: map.DisplayText,
-  Select: map.DisplayChoice,
-  Switch: map.DisplayBoolean,
-  DateInput: map.DisplayDate,
-  Radio: map.DisplayChoice,
-  CheckboxGroup: map.DisplayChoice,
-  Rate: map.DisplayRate,
-  TagsInput: map.DisplayTags,
-};
-
-function isObjectItemsArray(field: Pick<CmsFieldSchema, "type" | "items">) {
-  return (
-    field.type === "array" &&
-    Boolean(field.items) &&
-    !Array.isArray(field.items) &&
-    typeof field.items === "object" &&
-    "type" in field.items &&
-    field.items.type === "object"
+function sceneComponentsByKind(scene: AdapterScene, kinds: string[]) {
+  const all = buildSceneComponents(
+    scene,
+    registry,
+    map as Record<string, any>,
+    withSceneMode,
+  );
+  const allowed = new Set(
+    registry.filter((item) => kinds.includes(item.kind)).map((item) => item.key),
+  );
+  return Object.fromEntries(
+    Object.entries(all).filter(([key]) => allowed.has(key)),
   );
 }
 
-export function canUseSharedDisplayComponent(
-  field: Pick<CmsFieldSchema, "type" | "component" | "items">,
-) {
-  if (field.type === "object" || field.type === "void") {
-    return false;
-  }
+export const recordFormComponents = sceneComponentsByKind("recordForm", [
+  "component",
+  "display",
+]);
 
-  if (isObjectItemsArray(field)) {
-    return false;
-  }
+export const recordFormDecorators = sceneComponentsByKind("recordForm", ["decorator"]);
 
-  if (!field.component) {
-    return field.type !== "array";
-  }
+export const filterFormComponents = sceneComponentsByKind("recordFilter", [
+  "component",
+  "display",
+]);
 
-  return field.component in detailFieldDisplayComponents;
-}
+export const filterFormDecorators = sceneComponentsByKind("recordFilter", ["decorator"]);
 
-function ReadonlyArrayCards(props: Record<string, unknown>) {
-  const ArrayCards = map.ArrayCards;
-  return React.createElement(ArrayCards as never, {
-    ...props,
-    disabled: true,
-  });
-}
+export const detailFormComponents = sceneComponentsByKind("recordDetail", [
+  "component",
+  "display",
+]);
 
-export const detailFormComponents = {
-  ...detailFieldDisplayComponents,
-  ArrayCards: ReadonlyArrayCards,
-  SectionCard: map.SectionCard,
-};
+export const detailFormDecorators = sceneComponentsByKind("recordDetail", ["decorator"]);

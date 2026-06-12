@@ -41,6 +41,6 @@ export default defineAdapter(Select, {
   label: "下拉选择组件",
   description: "下拉选择组件。",
   kind: "component",
-  scenes: ["recordForm", "recordFilter"],
+  scenes: { recordForm: { mode: "edit" }, recordFilter: { mode: "filter", operator: "in" }, recordDetail: { renderAs: "DisplayChoice" }, tableCell: { renderAs: "DisplayChoice", summary: true } },
   meta: { fieldType: "string" },
 });

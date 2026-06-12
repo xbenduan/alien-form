@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { projectFilterFields } from "./filter-fields";
+import type { AdapterCatalogItem } from "../define/adapters";
 
 describe("projectFilterFields", () => {
   it('skips fields with display: "none"', () => {
@@ -71,5 +72,33 @@ describe("projectFilterFields", () => {
     });
 
     expect(result.map((field) => field.key)).toEqual(["name"]);
+  });
+
+  it("derives the operator default from the resolver variant when a catalog is provided", () => {
+    const catalog: AdapterCatalogItem[] = [
+      {
+        name: "Select",
+        key: "Select",
+        label: "Select",
+        description: "Select adapter",
+        kind: "component",
+        scenes: {
+          recordFilter: { mode: "filter", operator: "in" },
+        },
+        meta: {},
+        params: [],
+      },
+    ];
+
+    const [field] = projectFilterFields(
+      {
+        properties: {
+          status: { title: "状态", component: "Select" },
+        },
+      },
+      catalog,
+    );
+
+    expect(field.operator).toBe("in");
   });
 });

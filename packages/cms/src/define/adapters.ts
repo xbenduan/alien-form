@@ -1,3 +1,5 @@
+import type { FilterOperator } from "../types/common";
+
 export interface AdapterParam {
   name: string;
   type: string;
@@ -15,17 +17,33 @@ export type AdapterScene =
   | "tableCell"
   | "builder";
 
+export type SceneMode = "edit" | "readonly" | "cell" | "filter";
+
+export interface SceneVariant {
+  /** 该场景下组件渲染模式；缺省由 defaultMode(scene) 推导 */
+  mode?: SceneMode;
+  /** 委托给另一个 adapter key 渲染该场景（仅一跳委托） */
+  renderAs?: string;
+  /** 该场景注入的默认 props，优先级最低 */
+  props?: Record<string, unknown>;
+  /** 仅 recordFilter 场景：默认操作符 */
+  operator?: FilterOperator;
+  /** 仅 tableCell 场景：是否压缩为摘要 */
+  summary?: boolean;
+}
+
+export type SceneMap = Partial<Record<AdapterScene, SceneVariant>>;
+
 type AnyAdapter = (...args: any[]) => any;
 
 export interface AdapterConfig<
   TMeta extends Record<string, unknown> = Record<string, unknown>,
-  TScene extends AdapterScene = AdapterScene,
 > {
   key: string;
   label: string;
   description: string;
   kind: AdapterKind;
-  scenes: TScene[];
+  scenes: SceneMap;
   meta?: TMeta;
   params?: AdapterParam[];
 }
@@ -33,42 +51,35 @@ export interface AdapterConfig<
 export type DefinedAdapter<
   TAdapter extends AnyAdapter,
   TMeta extends Record<string, unknown> = Record<string, unknown>,
-  TScene extends AdapterScene = AdapterScene,
 > = TAdapter & {
-  config: AdapterConfig<TMeta, TScene>;
+  config: AdapterConfig<TMeta>;
 };
 
 export interface AdapterCatalogItem<
   TMeta extends Record<string, unknown> = Record<string, unknown>,
-  TScene extends AdapterScene = AdapterScene,
 > {
   name: string;
   key: string;
   label: string;
   description: string;
   kind: AdapterKind;
-  scenes: TScene[];
+  scenes: SceneMap;
   meta: TMeta;
   params: AdapterParam[];
 }
 
-type InferAdapterMeta<TAdapter> = TAdapter extends DefinedAdapter<any, infer TMeta, any>
+type InferAdapterMeta<TAdapter> = TAdapter extends DefinedAdapter<any, infer TMeta>
   ? TMeta
   : Record<string, unknown>;
-
-type InferAdapterScene<TAdapter> = TAdapter extends DefinedAdapter<any, any, infer TScene>
-  ? TScene
-  : AdapterScene;
 
 export function defineAdapters<
   TAdapter extends AnyAdapter,
   TMeta extends Record<string, unknown> = Record<string, unknown>,
-  TScene extends AdapterScene = AdapterScene,
 >(
   component: TAdapter,
-  config: AdapterConfig<TMeta, TScene>,
-): DefinedAdapter<TAdapter, TMeta, TScene> {
-  const adapter = component as DefinedAdapter<TAdapter, TMeta, TScene>;
+  config: AdapterConfig<TMeta>,
+): DefinedAdapter<TAdapter, TMeta> {
+  const adapter = component as DefinedAdapter<TAdapter, TMeta>;
   adapter.config = config;
   return adapter;
 }
@@ -76,7 +87,7 @@ export function defineAdapters<
 export const defineAdapter = defineAdapters;
 
 export function createAdapterRegistry<
-  TAdapters extends Record<string, DefinedAdapter<AnyAdapter, Record<string, unknown>, AdapterScene>>,
+  TAdapters extends Record<string, DefinedAdapter<AnyAdapter, Record<string, unknown>>>,
 >(adapters: TAdapters): TAdapters {
   const keySet = new Set<string>();
 
@@ -98,10 +109,10 @@ export function createAdapterRegistry<
 }
 
 export function createAdapterCatalog<
-  TAdapters extends Record<string, DefinedAdapter<AnyAdapter, Record<string, unknown>, AdapterScene>>,
+  TAdapters extends Record<string, DefinedAdapter<AnyAdapter, Record<string, unknown>>>,
 >(
   adapters: TAdapters,
-): Array<AdapterCatalogItem<InferAdapterMeta<TAdapters[keyof TAdapters]>, InferAdapterScene<TAdapters[keyof TAdapters]>>> {
+): Array<AdapterCatalogItem<InferAdapterMeta<TAdapters[keyof TAdapters]>>> {
   return Object.entries(createAdapterRegistry(adapters)).map(([name, adapter]) => {
     const config = adapter.config;
     return {
@@ -110,7 +121,7 @@ export function createAdapterCatalog<
       label: config.label,
       description: config.description,
       kind: config.kind,
-      scenes: config.scenes as InferAdapterScene<TAdapters[keyof TAdapters]>[],
+      scenes: config.scenes,
       meta: (config.meta ?? {}) as InferAdapterMeta<TAdapters[keyof TAdapters]>,
       params: config.params ?? [],
     };

@@ -10,6 +10,6 @@ export default defineAdapter(FilterItem, {
   label: "FilterItem",
   description: "筛选栏表单项装饰器。",
   kind: "decorator",
-  scenes: ["recordFilter"],
+  scenes: { recordFilter: {} },
   meta: { decorator: true },
 });

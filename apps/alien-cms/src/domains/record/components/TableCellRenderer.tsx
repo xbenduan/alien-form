@@ -1,7 +1,8 @@
 import { ProfileOutlined } from '@ant-design/icons';
 import { Button, Tag, Tooltip, Typography } from 'antd';
+import { resolveSceneRender } from '@alien-form/cms';
 import type { CmsFieldSchema, ModelRecord, TableColumnProjection } from '../types/record';
-import { canUseSharedDisplayComponent, map as adapterMap } from '../../../shared/adapters';
+import { map as adapterMap, registry } from '../../../shared/adapters';
 
 function renderSimpleValue(
   value: unknown,
@@ -242,7 +243,7 @@ export function renderTableCell(
   record: ModelRecord,
   onOpenFieldDetail: (column: TableColumnProjection, record: ModelRecord) => void,
 ) {
-  if (canUseSharedDisplayComponent(column.field)) {
+  if (resolveSceneRender(column.field, 'tableCell', registry)) {
     const summary = adapterMap.getDisplaySummary({
       value,
       format: column.format,

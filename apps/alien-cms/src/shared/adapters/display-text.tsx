@@ -84,6 +84,6 @@ export default defineAdapter(DisplayText, {
   label: "文本展示组件",
   description: "通用只读文本展示组件。",
   kind: "display",
-  scenes: ["recordDetail", "tableCell"],
+  scenes: { recordDetail: { mode: "readonly" }, tableCell: { mode: "cell" } },
   meta: { displayType: "text" },
 });
