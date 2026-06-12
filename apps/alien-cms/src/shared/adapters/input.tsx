@@ -1,25 +1,23 @@
 import { defineAdapter } from "@alien-form/cms";
 import { Input as AntInput } from "antd";
+import type { BaseFieldProps } from "./types";
 
 function Input({
   value,
   onChange,
   disabled,
+  readOnly,
   placeholder,
-}: {
+}: BaseFieldProps & {
   value?: string;
   onChange?: (nextValue: string) => void;
-  disabled?: boolean;
-  readOnly?: boolean;
-  placeholder?: string;
   type?: string;
-  format?: string;
 }) {
   return (
     <AntInput
       value={value ?? ""}
       onChange={(event) => onChange?.(event.target.value)}
-      disabled={disabled}
+      disabled={disabled || readOnly}
       placeholder={placeholder}
     />
   );

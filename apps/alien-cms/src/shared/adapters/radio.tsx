@@ -1,25 +1,23 @@
 import { defineAdapter } from "@alien-form/cms";
 import type { DataSourceItem } from "@alien-form/react";
 import { Radio as AntRadio } from "antd";
+import type { BaseFieldProps } from "./types";
 
 function Radio({
   value,
   onChange,
   disabled,
+  readOnly,
   dataSource = [],
-}: {
-  value?: unknown;
+}: BaseFieldProps & {
   onChange?: (nextValue: unknown) => void;
-  disabled?: boolean;
   dataSource?: DataSourceItem[];
-  readOnly?: boolean;
-  format?: string;
 }) {
   return (
     <AntRadio.Group
       value={value}
       onChange={(event) => onChange?.(event.target.value)}
-      disabled={disabled}
+      disabled={disabled || readOnly}
     >
       {dataSource.map((item) => (
         <AntRadio key={String(item.value)} value={item.value}>

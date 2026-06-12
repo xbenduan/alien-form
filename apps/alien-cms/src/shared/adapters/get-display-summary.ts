@@ -5,7 +5,7 @@ const EMPTY_TEXT = "—";
 
 export interface DisplaySummary {
   text: string;
-  kind: "plain" | "status" | "image" | "link" | "rate";
+  kind: "plain" | "status" | "image" | "link";
   color?: string;
   fullText?: string;
   expandable?: boolean;

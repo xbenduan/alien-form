@@ -1,13 +1,6 @@
 import { defineAdapter } from "@alien-form/cms";
-import type { DataSourceItem } from "@alien-form/react";
 import DisplayText from "./display-text";
-
-interface DisplayValueProps {
-  value?: unknown;
-  dataSource?: DataSourceItem[];
-  format?: string;
-  ellipsis?: boolean;
-}
+import type { DisplayValueProps } from "./types";
 
 function DisplayChoice(props: DisplayValueProps) {
   return <DisplayText {...props} />;

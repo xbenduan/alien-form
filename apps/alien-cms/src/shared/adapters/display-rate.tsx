@@ -1,6 +1,7 @@
 import { defineAdapter } from "@alien-form/cms";
 import type { DataSourceItem } from "@alien-form/react";
 import { Rate } from "antd";
+import { EMPTY_TEXT } from "./display-utils";
 
 interface DisplayValueProps {
   value?: unknown;
@@ -11,7 +12,7 @@ interface DisplayValueProps {
 
 function DisplayRate({ value }: DisplayValueProps) {
   if (value === undefined || value === null || value === "") {
-    return <>—</>;
+    return <>{EMPTY_TEXT}</>;
   }
 
   const numericValue = typeof value === "number" ? value : Number(value);

@@ -1,18 +1,17 @@
 import { defineAdapter } from "@alien-form/cms";
 import { Rate as AntRate } from "antd";
+import type { BaseFieldProps } from "./types";
 
 function Rate({
   value,
   onChange,
   disabled,
-}: {
+  readOnly,
+}: BaseFieldProps & {
   value?: number;
   onChange?: (v: number) => void;
-  disabled?: boolean;
-  readOnly?: boolean;
-  format?: string;
 }) {
-  return <AntRate value={value} onChange={(v) => onChange?.(v)} disabled={disabled} />;
+  return <AntRate value={value} onChange={(v) => onChange?.(v)} disabled={disabled || readOnly} />;
 }
 
 export default defineAdapter(Rate, {

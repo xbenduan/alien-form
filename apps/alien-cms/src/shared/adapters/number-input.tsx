@@ -1,29 +1,27 @@
 import { defineAdapter } from "@alien-form/cms";
 import { InputNumber } from "antd";
+import type { BaseFieldProps } from "./types";
 
 function NumberInput({
   value,
   onChange,
   disabled,
+  readOnly,
   placeholder,
   min,
   max,
-}: {
+}: BaseFieldProps & {
   value?: number;
   onChange?: (nextValue: number | null) => void;
-  disabled?: boolean;
-  readOnly?: boolean;
-  placeholder?: string;
   min?: number;
   max?: number;
-  format?: string;
 }) {
   return (
     <InputNumber
       style={{ width: "100%" }}
       value={value}
       onChange={(nextValue) => onChange?.(nextValue)}
-      disabled={disabled}
+      disabled={disabled || readOnly}
       placeholder={placeholder}
       min={min}
       max={max}

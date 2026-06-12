@@ -1,25 +1,24 @@
 import { defineAdapter } from "@alien-form/cms";
 import type { DataSourceItem } from "@alien-form/react";
 import { Checkbox } from "antd";
+import type { BaseFieldProps } from "./types";
 
 function CheckboxGroup({
   value,
   onChange,
   disabled,
+  readOnly,
   dataSource = [],
-}: {
+}: BaseFieldProps & {
   value?: unknown[];
   onChange?: (nextValue: unknown[]) => void;
-  disabled?: boolean;
   dataSource?: DataSourceItem[];
-  readOnly?: boolean;
-  format?: string;
 }) {
   return (
     <Checkbox.Group
       value={value}
       onChange={(nextValue) => onChange?.(nextValue as unknown[])}
-      disabled={disabled}
+      disabled={disabled || readOnly}
       options={dataSource.map((item) => ({ label: item.label, value: item.value }))}
     />
   );

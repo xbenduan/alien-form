@@ -1,16 +1,8 @@
 import { defineAdapter } from "@alien-form/cms";
-import type { DataSourceItem } from "@alien-form/react";
 import { Typography } from "antd";
 import { getDisplaySummary } from "./get-display-summary";
 
-interface DisplayValueProps {
-  value?: unknown;
-  dataSource?: DataSourceItem[];
-  format?: string;
-  ellipsis?: boolean;
-}
-
-function DisplayBoolean({ value, ellipsis }: DisplayValueProps) {
+function DisplayBoolean({ value, ellipsis }: { value?: unknown; ellipsis?: boolean }) {
   const text = getDisplaySummary({ value, format: "boolean" }).text;
   return ellipsis ? (
     <Typography.Text ellipsis={{ tooltip: text }}>{text}</Typography.Text>

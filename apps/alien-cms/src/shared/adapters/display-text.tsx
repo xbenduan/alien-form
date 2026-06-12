@@ -1,41 +1,8 @@
 import { defineAdapter } from "@alien-form/cms";
-import type { DataSourceItem } from "@alien-form/react";
 import { Image, Tag, Typography } from "antd";
+import { normalizeArrayItems, renderTagList } from "./display-utils";
 import { getDisplaySummary } from "./get-display-summary";
-
-interface DisplayValueProps {
-  value?: unknown;
-  dataSource?: DataSourceItem[];
-  format?: string;
-  ellipsis?: boolean;
-}
-
-function normalizeArrayItems(value: unknown[], dataSource?: DataSourceItem[]) {
-  return value
-    .map((item) => {
-      if (item === undefined || item === null || item === "") {
-        return null;
-      }
-      return String(dataSource?.find((option) => option.value === item)?.label ?? item);
-    })
-    .filter((item): item is string => Boolean(item));
-}
-
-function renderTagList(items: string[]) {
-  if (items.length === 0) {
-    return <>—</>;
-  }
-
-  return (
-    <span className="readonly-tag-list">
-      {items.map((item) => (
-        <Tag key={item} className="readonly-tag-item">
-          {item}
-        </Tag>
-      ))}
-    </span>
-  );
-}
+import type { DisplayValueProps } from "./types";
 
 function renderText(text: string, ellipsis?: boolean) {
   if (!ellipsis && text.length > 120) {

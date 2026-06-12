@@ -1,22 +1,21 @@
 import { defineAdapter } from "@alien-form/cms";
 import { Switch as AntSwitch } from "antd";
+import type { BaseFieldProps } from "./types";
 
 function Switch({
   value,
   onChange,
   disabled,
-}: {
+  readOnly,
+}: BaseFieldProps & {
   value?: boolean;
   onChange?: (nextValue: boolean) => void;
-  disabled?: boolean;
-  readOnly?: boolean;
-  format?: string;
 }) {
   return (
     <AntSwitch
       checked={Boolean(value)}
       onChange={(nextValue) => onChange?.(nextValue)}
-      disabled={disabled}
+      disabled={disabled || readOnly}
     />
   );
 }

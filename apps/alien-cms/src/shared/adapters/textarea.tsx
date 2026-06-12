@@ -1,5 +1,6 @@
 import { defineAdapter } from "@alien-form/cms";
 import { Input as AntInput } from "antd";
+import type { BaseFieldProps } from "./types";
 
 const { TextArea } = AntInput;
 
@@ -7,22 +8,19 @@ function Textarea({
   value,
   onChange,
   disabled,
+  readOnly,
   placeholder,
   rows = 4,
-}: {
+}: BaseFieldProps & {
   value?: string;
   onChange?: (nextValue: string) => void;
-  disabled?: boolean;
-  readOnly?: boolean;
-  placeholder?: string;
   rows?: number;
-  format?: string;
 }) {
   return (
     <TextArea
       value={value ?? ""}
       onChange={(event) => onChange?.(event.target.value)}
-      disabled={disabled}
+      disabled={disabled || readOnly}
       placeholder={placeholder}
       rows={rows}
     />

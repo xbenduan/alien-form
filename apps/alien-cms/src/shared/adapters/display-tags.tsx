@@ -1,24 +1,13 @@
 import { defineAdapter } from "@alien-form/cms";
-import { Tag } from "antd";
+import { EMPTY_TEXT, normalizeArrayItems, renderTagList } from "./display-utils";
+import type { DisplayValueProps } from "./types";
 
-function DisplayTags({ value }: { value?: unknown }) {
+function DisplayTags({ value, dataSource }: DisplayValueProps) {
   if (!Array.isArray(value)) {
-    return <>—</>;
+    return <>{EMPTY_TEXT}</>;
   }
 
-  if (value.length === 0) {
-    return <>—</>;
-  }
-
-  return (
-    <span className="readonly-tag-list">
-      {value.map((item) => (
-        <Tag key={String(item)} className="readonly-tag-item">
-          {String(item)}
-        </Tag>
-      ))}
-    </span>
-  );
+  return renderTagList(normalizeArrayItems(value, dataSource));
 }
 
 export default defineAdapter(DisplayTags, {

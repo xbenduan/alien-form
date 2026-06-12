@@ -41,7 +41,10 @@ const COMPONENT_OPTION_ORDER = [
   "Rate",
   "TagsInput",
   "SectionCard",
+  "GridLayout",
+  "FlexLayout",
   "ArrayCards",
+  "EditableTable",
 ] as const;
 
 const componentOrderMap = new Map<string, number>(

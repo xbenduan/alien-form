@@ -1,32 +1,29 @@
 import { defineAdapter } from "@alien-form/cms";
 import type { DataSourceItem } from "@alien-form/react";
 import { Select as AntSelect } from "antd";
+import type { BaseFieldProps } from "./types";
 
 function Select({
   value,
   onChange,
   disabled,
+  readOnly,
   loading,
   dataSource = [],
   placeholder,
   mode,
-}: {
-  value?: unknown;
+}: BaseFieldProps & {
   onChange?: (nextValue: unknown) => void;
-  disabled?: boolean;
   loading?: boolean;
   dataSource?: DataSourceItem[];
-  readOnly?: boolean;
-  placeholder?: string;
   mode?: "multiple" | "tags";
-  format?: string;
 }) {
   return (
     <AntSelect
       style={{ width: "100%" }}
       value={value}
       onChange={(nextValue) => onChange?.(nextValue)}
-      disabled={disabled}
+      disabled={disabled || readOnly}
       loading={loading}
       placeholder={placeholder}
       mode={mode}
