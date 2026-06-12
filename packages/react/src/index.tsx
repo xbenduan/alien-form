@@ -83,8 +83,20 @@ export function useCreateForm(
   config: FormConfig = {},
   deps: React.DependencyList = [],
 ): FormInstance {
+  // 重建判断完全交给 useMemo(deps)，ref 不参与“是否重建”，避免历史上
+  // “ref 缓存旧 schema 导致校验失效”的问题复现。
   const form = useMemo(() => createForm(config), deps);
+  const prevRef = useRef<FormInstance | null>(null);
   useEffect(() => {
+    // deps 变化产生新实例时，在此销毁上一个实例（清理 effectDisposers /
+    // errorListeners / 整棵字段树）。destroy 必须放在 setup 而非 cleanup：
+    // StrictMode 会额外触发一次 cleanup，若在 cleanup 内 destroy 会误杀当前
+    // 仍存活的实例；而 setup 内仅销毁 prev !== form 的旧实例，重挂时
+    // prev === form 不会误销毁。
+    if (prevRef.current && prevRef.current !== form) {
+      prevRef.current.destroy();
+    }
+    prevRef.current = form;
     form.mount();
     return () => {
       form.unmount();
@@ -107,7 +119,10 @@ export function useFieldAtoms(path: string): FieldNode | undefined {
 
 export function useFieldValue(path: string): any {
   const field = useFieldAtoms(path);
-  return field?.kind === "primitive" ? useSignalValue(field.value) : undefined;
+  // 始终调用 useSignalValue，避免条件调用 Hook 违反 Rules of Hooks。
+  // 非 primitive 字段回退到稳定的 undefined signal。
+  const sig = field?.kind === "primitive" ? field.value : undefinedSignal;
+  return useSignalValue(sig);
 }
 
 export function useFieldErrors(path: string): FieldError[] {
@@ -385,3 +400,4 @@ const VoidFieldSlotInner: React.FC<{ field: FieldNode; schema: IFieldSchema }> =
 const emptyArraySignal = createSignal([]);
 const visibleSignal = createSignal("visible" as FieldDisplayTypes);
 const falseSignal = createSignal(false);
+const undefinedSignal = createSignal<any>(undefined);

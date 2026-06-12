@@ -21,10 +21,16 @@ const FORBIDDEN_IDS = new Set([
 ]);
 const FORBIDDEN_KEYS = new Set(["constructor", "prototype", "__proto__"]);
 
+const astCache = new Map<string, Node>();
+
 export function evaluateExpression(expr: string, scope: Record<string, any>): any {
-  const p = new Parser(expr);
-  const ast = p.parseExpression();
-  p.expectEnd();
+  let ast = astCache.get(expr);
+  if (!ast) {
+    const p = new Parser(expr);
+    ast = p.parseExpression();
+    p.expectEnd();
+    astCache.set(expr, ast);
+  }
   return evaluate(ast, scope);
 }
 

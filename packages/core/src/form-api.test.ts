@@ -112,6 +112,22 @@ describe('form.reset', () => {
     expect(form.get('a')).toBe(100);
     expect(form.get('b')).toBe('def');
   });
+
+  it('recursively resets fields nested inside an object field', () => {
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        group: {
+          type: 'object',
+          properties: { inner: { type: 'string', default: 'def' } },
+        },
+      },
+    };
+    const form = createForm({ schema, initialValues: { group: { inner: 'changed' } } });
+    form.set('group.inner', 'edited');
+    form.reset();
+    expect(form.get('group.inner')).toBe('def');
+  });
 });
 
 describe('form.project', () => {
@@ -128,6 +144,20 @@ describe('form.project', () => {
   it('returns undefined for an unknown selector', () => {
     const form = createForm({ schema: flat() });
     expect(form.project('nope')).toBeUndefined();
+  });
+
+  it('keeps an explicit object field as {} even when all children are empty', () => {
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        group: {
+          type: 'object',
+          properties: { inner: { type: 'string' } },
+        },
+      },
+    };
+    const form = createForm({ schema });
+    expect(form.project()).toEqual({ group: {} });
   });
 });
 

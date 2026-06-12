@@ -35,6 +35,8 @@ import { resolveSchemaTree } from "./ref-resolve";
 interface FieldContext {
   readonly fieldsMap: Map<string, FieldNode>;
   readonly config: FormConfig;
+  readonly definitions: Record<string, IFieldSchema>;
+  initialValues: Record<string, any>;
   emitError(error: FormError): void;
   notifyFieldsChanged(): void;
   form: FormInstance;
@@ -204,6 +206,9 @@ function createBaseField(
         primitive.setValue(schema.default);
       } else if (isArrayField(base as FieldNode)) {
         (base as ArrayFieldNode).setRows(Array.isArray(schema.default) ? schema.default : []);
+      } else if (isContainerField(base as FieldNode)) {
+        // object / void 容器递归重置子节点，否则深层嵌套字段不会被还原
+        for (const child of (base as ObjectFieldNode | VoidFieldNode).children.values()) child.reset();
       }
       base.setErrors([]);
       base.setWarnings([]);
@@ -273,14 +278,14 @@ function buildFieldTree(
   initialValue?: any,
   options: BuildOptions = {},
 ): FieldNode {
-  const definitions = (ctx.form as any)._definitions as Record<string, IFieldSchema>;
+  const definitions = ctx.definitions;
   const resolved = resolveSchemaTree(rawSchema, definitions, (_ref, msg) => {
     ctx.emitError({ scope: "ref-resolve", path, message: msg });
   });
   const key = path.split(".").pop() || path;
   const required = resolved.required === true || (Array.isArray(options.parentRequired) && options.parentRequired.includes(key));
   const schema = { ...resolved, required };
-  const iv = initialValue !== undefined ? initialValue : getDeepValue((ctx.form as any)._initialValues, path);
+  const iv = initialValue !== undefined ? initialValue : getDeepValue(ctx.initialValues, path);
 
   if (schema.type === "array" && schema.items && !Array.isArray(schema.items)) {
     return createArrayField(ctx, path, schema, iv, options);
@@ -309,7 +314,7 @@ function buildChildren(ctx: FieldContext, parent: ObjectFieldNode | VoidFieldNod
       ? (parent.path.includes(".") ? parent.path.slice(0, parent.path.lastIndexOf(".")) : "")
       : parent.path;
     const childPath = childContainerPath ? `${childContainerPath}.${childKey}` : childKey;
-    const childIv = initialValue != null ? initialValue[childKey] : getDeepValue((ctx.form as any)._initialValues, childPath);
+    const childIv = initialValue != null ? initialValue[childKey] : getDeepValue(ctx.initialValues, childPath);
     const child = buildFieldTree(ctx, childPath, childSchema, childIv, { parent, row: parent.row, parentRequired: required });
     parent.children.set(childKey, child);
   }
@@ -442,7 +447,8 @@ function projectNode(ctx: FieldContext, node: FieldNode, applyOutput = true): an
   if (node.display() === "none") return undefined;
   let value: any;
   if (isPrimitiveField(node)) value = node.value();
-  else if (node.kind === "object") value = projectChildren(ctx, node.children, applyOutput);
+  // 显式 object 字段即使所有子节点为空也保留 {}，避免合法空分组从投影值中丢失
+  else if (node.kind === "object") value = projectChildren(ctx, node.children, applyOutput) ?? {};
   else if (node.kind === "array") value = node.rows().map((row) => projectChildren(ctx, row.children, applyOutput) || {});
   else if (node.kind === "void") value = projectChildren(ctx, node.children, applyOutput);
   else value = undefined;
@@ -771,12 +777,12 @@ export function createForm(config: FormConfig = {}): FormInstance {
   const ctx: FieldContext = {
     fieldsMap,
     config,
+    definitions,
+    initialValues,
     emitError(error) { for (const listener of errorListeners) listener(error); },
     notifyFieldsChanged() { fieldsSignal(fieldsMap); },
     form,
   };
-  (form as any)._definitions = definitions;
-  (form as any)._initialValues = initialValues;
 
   const root = createObjectField(ctx, "", { ...schema, type: "object" }, { parentRequired: schema.required });
   buildChildren(ctx, root, schema, initialValues, schema.required);
@@ -818,8 +824,8 @@ export function createForm(config: FormConfig = {}): FormInstance {
       }
       endBatch();
     },
-    setInitialValues(values: Record<string, any>) { (form as any)._initialValues = { ...values }; },
-    reset() { startBatch(); root.reset(); for (const child of root.children.values()) child.reset(); endBatch(); },
+    setInitialValues(values: Record<string, any>) { ctx.initialValues = { ...values }; },
+    reset() { startBatch(); root.reset(); endBatch(); },
     mount() {
       if (destroyed || mounted) return;
       mounted = true;
