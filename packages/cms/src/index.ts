@@ -21,6 +21,7 @@ export type {
   ModelActionKind,
   ModelActionOpenMode,
   CmsFieldTableMeta,
+  CmsFieldFilterMeta,
   CmsFieldFormMeta,
   CmsFieldDetailMeta,
   CmsFieldMobileMeta,
@@ -111,13 +112,13 @@ export {
 // ─── Projection (pure functions) ────────────────────────────
 export { projectTableColumns } from './projection/table-columns';
 export { projectFilterFields } from './projection/filter-fields';
-export { projectDetailItems } from './projection/detail-items';
-export { projectFormSchema } from './projection/form-schema';
 
 // ─── Schema Utilities ───────────────────────────────────────
 export { normalizeSchema } from './schema/normalize-schema';
 export { buildModelSchema } from './schema/build-model-schema';
 export { schemaToBuilderDraft } from './schema/schema-to-builder-draft';
+export { isSystemField } from './schema/system-fields';
+export { countAtomicFields } from './schema/count-atomic-fields';
 export {
   defineHandler,
   defineHandlers,

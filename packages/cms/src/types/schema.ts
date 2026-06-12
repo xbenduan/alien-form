@@ -16,6 +16,15 @@ export interface CmsFieldTableMeta {
   inline?: string[];
   expandable?: boolean;
   sortable?: boolean;
+  visible?: boolean;
+  order?: number;
+}
+
+export interface CmsFieldFilterMeta {
+  visible?: boolean;
+  operator?: string;
+  defaultVisible?: boolean;
+  props?: Record<string, unknown>;
 }
 
 export interface CmsFieldFormMeta {
@@ -37,6 +46,7 @@ export interface CmsFieldMobileMeta {
 
 export interface CmsFieldUiMeta {
   table?: CmsFieldTableMeta;
+  filter?: CmsFieldFilterMeta;
   form?: CmsFieldFormMeta;
   detail?: CmsFieldDetailMeta;
   mobile?: CmsFieldMobileMeta;

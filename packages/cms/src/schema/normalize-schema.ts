@@ -25,7 +25,10 @@ function normalizeField(key: string, field: CmsFieldSchema): CmsFieldSchema {
         format: field["x-cms"]?.table?.format,
         inline: field["x-cms"]?.table?.inline,
         expandable: field["x-cms"]?.table?.expandable,
+        visible: field["x-cms"]?.table?.visible,
+        order: field["x-cms"]?.table?.order,
       },
+      filter: field["x-cms"]?.filter,
       form: {
         modes: field["x-cms"]?.form?.modes,
       },
@@ -89,11 +92,7 @@ export function normalizeSchema(rawSchema: CmsModelSchema): CmsModelSchema {
           }
         : undefined,
       defaultPageSize: rawSchema["x-model"]?.defaultPageSize ?? 10,
-      openMode: {
-        add: rawSchema["x-model"]?.openMode?.add ?? "drawer",
-        edit: rawSchema["x-model"]?.openMode?.edit ?? "drawer",
-        detail: rawSchema["x-model"]?.openMode?.detail ?? "drawer",
-      },
+      openMode: rawSchema["x-model"]?.openMode,
       actions: rawSchema["x-model"]?.actions,
     },
   };
