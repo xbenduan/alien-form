@@ -101,7 +101,7 @@ function buildFieldSchema(
   if (isObjectArray) {
     return {
       ...baseSchema,
-      component: "ArrayCards",
+      component: draftField.component || "ArrayCards",
       decorator: "FormItem",
       items: {
         type: "object",

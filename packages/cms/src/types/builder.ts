@@ -14,7 +14,10 @@ export type BuilderComponentName =
   | "Rate"
   | "TagsInput"
   | "SectionCard"
-  | "ArrayCards";
+  | "GridLayout"
+  | "FlexLayout"
+  | "ArrayCards"
+  | "EditableTable";
 
 export type BuilderReactionTarget =
   | "value"

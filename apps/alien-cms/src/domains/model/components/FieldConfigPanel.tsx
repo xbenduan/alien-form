@@ -143,7 +143,7 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
     if (currentField.type === "object" || currentField.type === "void") {
       return {
         ...currentField,
-        component: "SectionCard",
+        component: nextComponent,
         children: currentField.children ?? [],
       };
     }
