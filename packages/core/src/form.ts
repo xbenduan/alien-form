@@ -35,7 +35,7 @@ import { resolveSchemaTree } from "./ref-resolve";
 interface FieldContext {
   readonly fieldsMap: Map<string, FieldNode>;
   readonly config: FormConfig;
-  readonly definitions: Record<string, IFieldSchema>;
+  readonly refDefinitions: Record<string, IFieldSchema>;
   initialValues: Record<string, any>;
   emitError(error: FormError): void;
   notifyFieldsChanged(): void;
@@ -278,8 +278,7 @@ function buildFieldTree(
   initialValue?: any,
   options: BuildOptions = {},
 ): FieldNode {
-  const definitions = ctx.definitions;
-  const resolved = resolveSchemaTree(rawSchema, definitions, (_ref, msg) => {
+  const resolved = resolveSchemaTree(rawSchema, ctx.refDefinitions, (_ref, msg) => {
     ctx.emitError({ scope: "ref-resolve", path, message: msg });
   });
   const key = path.split(".").pop() || path;
@@ -771,13 +770,19 @@ export function createForm(config: FormConfig = {}): FormInstance {
   let mounted = false;
   const effectDisposers = new Set<() => void>();
   const initialValues = config.initialValues ? { ...config.initialValues } : {};
-  const schema: IFormSchema = config.schema || { type: "object", properties: {} };
-  const definitions: Record<string, IFieldSchema> = schema.definitions || {};
+  const baseSchema: IFormSchema = config.schema || { type: "object", properties: {} };
+  const refDefinitions: Record<string, IFieldSchema> = {
+    ...(baseSchema.definitions || {}),
+    ...(config.definitions || {}),
+  };
+  const schema: IFormSchema = Object.keys(refDefinitions).length > 0
+    ? { ...baseSchema, definitions: refDefinitions }
+    : baseSchema;
   const form: FormInstance = {} as FormInstance;
   const ctx: FieldContext = {
     fieldsMap,
     config,
-    definitions,
+    refDefinitions,
     initialValues,
     emitError(error) { for (const listener of errorListeners) listener(error); },
     notifyFieldsChanged() { fieldsSignal(fieldsMap); },

@@ -35,13 +35,9 @@ const schema = {
   type: "object",
   properties: {
     name: {
-      type: "string",
+      $ref: "#/definitions/textInput",
       title: "姓名",
       required: true,
-      component: "Input",
-      props: {
-        placeholder: "请输入姓名",
-      },
     },
   },
 };
@@ -89,7 +85,22 @@ const decorators = {
 };
 
 export function App() {
-  const form = useCreateForm({ schema }, [schema]);
+  const form = useCreateForm(
+    {
+      schema,
+      definitions: {
+        textInput: {
+          type: "string",
+          component: "Input",
+          decorator: "FormItem",
+          props: {
+            placeholder: "请输入姓名",
+          },
+        },
+      },
+    },
+    [schema],
+  );
 
   return (
     <FormProvider form={form} components={components} decorators={decorators}>
@@ -269,9 +280,37 @@ const form = useCreateForm(
 
 - `deps` 不变时复用同一个表单实例。
 - `deps` 变化时创建新实例，并销毁旧实例。
+- 如果 `config.schema`、`config.definitions`、`config.handlers` 或 `initialValues` 来自组件状态、props 或 `useMemo`，请把对应引用放进 `deps`。
 - 组件挂载时调用 `form.mount()`。
 - 组件卸载时调用 `form.unmount()`。
 - 兼容 React StrictMode 重挂载场景。
+
+`useCreateForm` 接收完整 `FormConfig`，因此也可以传入 `definitions`：
+
+```tsx
+const fieldDefinitions = {
+  textInput: {
+    type: "string",
+    component: "Input",
+    decorator: "FormItem",
+    props: { placeholder: "请输入昵称" },
+  },
+  memberName: {
+    type: "string",
+    component: "Input",
+    decorator: "FormItem",
+  },
+};
+
+const form = useCreateForm(
+  {
+    schema,
+    definitions: fieldDefinitions,
+    handlers,
+  },
+  [schema, fieldDefinitions, handlers],
+);
+```
 
 ### `FormProvider`
 
@@ -397,6 +436,13 @@ import type { IFormSchema } from "@alien-form/react";
 
 const schema: IFormSchema = {
   type: "object",
+  definitions: {
+    textInput: {
+      type: "string",
+      component: "Input",
+      decorator: "FormItem",
+    },
+  },
   properties: {
     role: {
       type: "string",
@@ -424,12 +470,28 @@ const schema: IFormSchema = {
       component: "SectionCard",
       properties: {
         nickname: {
-          type: "string",
+          $ref: "#/definitions/textInput",
           title: "昵称",
-          component: "Input",
         },
       },
     },
+  },
+};
+
+const fieldDefinitions = {
+  textInput: {
+    type: "string",
+    component: "Input",
+    decorator: "FormItem",
+    props: { placeholder: "请输入昵称" },
+  },
+};
+
+const handlers = {
+  loadPermissions(ctx) {
+    return ctx.get("role") === "admin"
+      ? [{ label: "全部权限", value: "*" }]
+      : [{ label: "只读", value: "read" }];
   },
 };
 
@@ -437,15 +499,10 @@ export function UserForm() {
   const form = useCreateForm(
     {
       schema,
-      handlers: {
-        loadPermissions(ctx) {
-          return ctx.get("role") === "admin"
-            ? [{ label: "全部权限", value: "*" }]
-            : [{ label: "只读", value: "read" }];
-        },
-      },
+      definitions: fieldDefinitions,
+      handlers,
     },
-    [],
+    [schema, fieldDefinitions, handlers],
   );
 
   return (
@@ -455,6 +512,13 @@ export function UserForm() {
   );
 }
 ```
+
+这里同时展示了两类 `definitions`：
+
+- `schema.definitions` 是 `$ref` 的引用字典，`profile.nickname` 通过 `#/definitions/textInput` 复用字段结构。
+- `config.definitions` 由 `useCreateForm` 传给 core，并合并到 `schema.definitions` 供 `$ref` 显式引用。
+- 只有 schema 写了对应 `$ref` 的字段才会获得 `config.definitions` 中的定义。
+- 当两者包含同名定义时，`config.definitions` 会覆盖 `schema.definitions` 中的同名定义，引用位置的本地属性仍优先生效。
 
 ## 与 `@alien-form/core` 的关系
 

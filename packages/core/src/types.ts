@@ -198,6 +198,7 @@ export interface FormError {
 
 export interface FormConfig {
   schema?: IFormSchema;
+  definitions?: Record<string, IFieldSchema>;
   initialValues?: Record<string, any>;
   scope?: Record<string, any>;
   handlers?: Record<string, RuntimeRuleHandler>;

@@ -70,4 +70,27 @@ describe("useCreateForm", () => {
     const { unmount } = renderHook(() => useCreateForm(configFor(schemaA), [1]));
     expect(() => unmount()).not.toThrow();
   });
+
+  it("透传 config.definitions 到 core createForm，并仅通过显式 $ref 生效", async () => {
+    const { result } = renderHook(() =>
+      useCreateForm(
+        {
+          schema: {
+            type: "object",
+            properties: {
+              name: { $ref: "#/definitions/HookName" },
+            },
+          },
+          initialValues: { name: "alien" },
+          definitions: {
+            HookName: { type: "string", "x-validate": () => ({ message: "from hook definitions" }) },
+          },
+        },
+        [1],
+      ),
+    );
+
+    await expect(result.current.validate()).resolves.toBe(false);
+    expect(result.current.field("name")?.errors()).toEqual([{ message: "from hook definitions", type: "x-validate" }]);
+  });
 });

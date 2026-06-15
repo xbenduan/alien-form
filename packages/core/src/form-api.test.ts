@@ -174,6 +174,98 @@ describe('form.setInitialValues + reset interaction', () => {
   });
 });
 
+describe('config.definitions $ref merge', () => {
+  it('does not apply config.definitions by field path without an explicit $ref', async () => {
+    const form = createForm({
+      schema: flat(),
+      definitions: {
+        a: { 'x-validate': () => ({ message: 'from config definition' }) },
+      },
+    });
+
+    await expect(form.validate()).resolves.toBe(true);
+    expect(form.field('a')?.errors()).toEqual([]);
+    expect(form.field('b')?.errors()).toEqual([]);
+  });
+
+  it('resolves config.definitions only through an explicit $ref', async () => {
+    const form = createForm({
+      schema: {
+        type: 'object',
+        properties: {
+          a: { $ref: '#/definitions/InjectedNumber' },
+        },
+      },
+      definitions: {
+        InjectedNumber: {
+          type: 'number',
+          component: 'NumberInput',
+          'x-validate': () => ({ message: 'from config definition' }),
+        },
+      },
+    });
+
+    await expect(form.validate()).resolves.toBe(false);
+    expect(form.field('a')?.component()).toBe('NumberInput');
+    expect(form.field('a')?.errors()).toEqual([{ message: 'from config definition', type: 'x-validate' }]);
+  });
+
+  it('lets config definitions override schema definitions with the same name', async () => {
+    const form = createForm({
+      schema: {
+        type: 'object',
+        definitions: {
+          Shared: {
+            type: 'string',
+            title: 'from schema',
+            component: 'Input',
+            'x-validate': () => ({ message: 'from schema definition' }),
+          },
+        },
+        properties: {
+          a: { $ref: '#/definitions/Shared' },
+        },
+      },
+      definitions: {
+        Shared: {
+          type: 'number',
+          title: 'from config',
+          component: 'NumberInput',
+          'x-validate': () => ({ message: 'from config definition' }),
+        },
+      },
+    });
+
+    await expect(form.validate()).resolves.toBe(false);
+    expect(form.schema.definitions?.Shared.title).toBe('from config');
+    expect(form.field('a')?.title()).toBe('from config');
+    expect(form.field('a')?.component()).toBe('NumberInput');
+    expect(form.field('a')?.errors()).toEqual([{ message: 'from config definition', type: 'x-validate' }]);
+  });
+
+  it('resolves nested fields from a config definition referenced by $ref', async () => {
+    const form = createForm({
+      schema: {
+        type: 'object',
+        properties: {
+          profile: { $ref: '#/definitions/Profile' },
+        },
+      },
+      definitions: {
+        Profile: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', 'x-validate': () => ({ message: 'ref child resolved' }) },
+          },
+        },
+      },
+    });
+
+    await expect(form.validate()).resolves.toBe(false);
+    expect(form.field('profile.name')?.errors()).toEqual([{ message: 'ref child resolved', type: 'x-validate' }]);
+  });
+});
+
 describe('form.onError listener registration', () => {
   it('invokes added listeners and stops after unsubscribe', () => {
     const schema: IFormSchema = {

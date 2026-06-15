@@ -274,7 +274,7 @@ const form = createForm({
 
 ### `$ref`
 
-Schema 支持通过 `definitions` 和 `$ref` 复用字段定义：
+Schema 支持通过 `schema.definitions` 和 `$ref` 复用字段定义：
 
 ```ts
 const schema = {
@@ -294,6 +294,70 @@ const schema = {
   },
 };
 ```
+
+`schema.definitions` 是 Schema 自身的引用字典：
+
+- 只能通过 `$ref: "#/definitions/name"` 显式引用。
+- 适合描述协议内可复用的字段结构，例如地址、用户、树节点等。
+- `$ref` 解析后会继续递归解析子级 `properties` / `items` 中的 `$ref`，并检测循环引用。
+- 引用位置写的本地属性会覆盖被引用定义中的同名属性。
+
+### `config.definitions`
+
+`createForm(config)` 也支持 `config.definitions`，它会在表单创建时合并到 `schema.definitions`，作为 `$ref` 可引用的运行时定义字典：
+
+```ts
+const form = createForm({
+  schema: {
+    type: "object",
+    properties: {
+      email: {
+        $ref: "#/definitions/emailInput",
+        title: "邮箱",
+      },
+      members: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            name: {
+              $ref: "#/definitions/memberName",
+              title: "成员姓名",
+            },
+          },
+        },
+      },
+    },
+  },
+  definitions: {
+    emailInput: {
+      type: "string",
+      component: "Input",
+      decorator: "FormItem",
+      props: { placeholder: "请输入邮箱" },
+    },
+    memberName: {
+      type: "string",
+      component: "Input",
+      decorator: "FormItem",
+    },
+  },
+});
+```
+
+`config.definitions` 的规则：
+
+- key 是定义名，例如 `emailInput`、`memberName`，通过 `$ref: "#/definitions/name"` 显式引用。
+- value 是 `IFieldSchema`，可以包含函数等不适合放入 JSON Schema 的运行时规则。
+- 它会与 `schema.definitions` 合并后参与 `$ref` 解析；没有被 schema 显式 `$ref` 引用的定义不会影响任何字段。
+- 引用位置写的本地属性仍会覆盖被引用定义中的同名属性。
+
+两类 `definitions` 的区别：
+
+| 位置 | 作用 | key 形式 | 典型用途 |
+| --- | --- | --- | --- |
+| `schema.definitions` | Schema 内的 `$ref` 引用字典 | `userName`，通过 `#/definitions/userName` 引用 | 复用字段结构，随 Schema 一起下发或存储 |
+| `config.definitions` | 创建表单时合并进 `$ref` 引用字典 | `userName`，通过 `#/definitions/userName` 引用 | 在运行时补充函数、组件、装饰器、交互策略 |
 
 ## Runtime Value Model
 
@@ -416,6 +480,7 @@ const form = createForm({
 ```ts
 interface FormConfig {
   schema?: IFormSchema;
+  definitions?: Record<string, IFieldSchema>;
   initialValues?: Record<string, any>;
   scope?: Record<string, any>;
   handlers?: Record<string, RuntimeRuleHandler>;
