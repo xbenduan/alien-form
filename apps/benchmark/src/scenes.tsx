@@ -64,13 +64,13 @@ export function FormilyScene({ count }: SceneProps) {
         "x-component-props": { placeholder: "Please Input" },
       };
     }
-    return { type: "object", properties };
+    return { type: "object", properties: properties as never };
   }, [count]);
 
   return (
     <FormilyProvider form={form}>
       <AntForm layout="vertical">
-        <FormilySchemaField schema={schema} />
+        <FormilySchemaField schema={schema as never} />
       </AntForm>
     </FormilyProvider>
   );
