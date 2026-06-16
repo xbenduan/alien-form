@@ -67,6 +67,92 @@ export function useSignalValue<T>(sig: Signal<T> | Computed<T>): T {
   return useSyncExternalStore(subscribe, getSnapshot);
 }
 
+/**
+ * 聚合订阅：把一个字段在渲染中读取的所有 signal 合并为单个 useSyncExternalStore。
+ * 一个 effect 追踪 read(field) 读到的全部 signal，任意一个变化即 bump version；
+ * getSnapshot 只返回稳定的 version（基元），渲染期直接 untracked 读取最新值
+ * （React 渲染期间没有 active subscriber，signal 读取天然不建立依赖）。
+ *
+ * 相比逐属性 useSignalValue（单字段最多 14 个 effect + 14 个 store），
+ * 此处每字段仅 1 个 effect + 1 个 store，大幅降低超大表单的挂载开销与 GC 压力。
+ */
+function useFieldRender<F extends FieldNode, T>(field: F, read: (field: F) => T): T {
+  const versionRef = useRef(0);
+  const subscribe = useCallback((notify: () => void) => {
+    let mounted = false;
+    return effect(() => {
+      read(field);
+      if (mounted) { versionRef.current++; notify(); }
+      else mounted = true;
+    });
+  }, [field]);
+  const getSnapshot = useCallback(() => versionRef.current, []);
+  useSyncExternalStore(subscribe, getSnapshot);
+  return read(field);
+}
+
+function readPrimitive(field: PrimitiveFieldNode) {
+  return {
+    display: field.display(),
+    componentName: field.component(),
+    decoratorName: field.decorator(),
+    value: field.value(),
+    disabled: field.disabled(),
+    loading: field.loading(),
+    componentProps: field.componentProps(),
+    dataSource: field.dataSource(),
+    title: field.title(),
+    required: field.required(),
+    errors: field.errors(),
+    warnings: field.warnings(),
+    description: field.description(),
+    validateStatus: field.validateStatus(),
+    decoratorProps: field.decoratorProps(),
+  };
+}
+
+function readArray(field: ArrayFieldNode) {
+  return {
+    display: field.display(),
+    componentName: field.component(),
+    decoratorName: field.decorator(),
+    disabled: field.disabled(),
+    title: field.title(),
+    required: field.required(),
+    errors: field.errors(),
+    warnings: field.warnings(),
+    description: field.description(),
+    validateStatus: field.validateStatus(),
+    componentProps: field.componentProps(),
+    decoratorProps: field.decoratorProps(),
+    rowNodes: field.rows(),
+  };
+}
+
+function readObject(field: ObjectFieldNode) {
+  return {
+    display: field.display(),
+    componentName: field.component(),
+    decoratorName: field.decorator(),
+    componentProps: field.componentProps(),
+    title: field.title(),
+    description: field.description(),
+    required: field.required(),
+    errors: field.errors(),
+    decoratorProps: field.decoratorProps(),
+  };
+}
+
+function readVoid(field: FieldNode) {
+  return {
+    display: field.display(),
+    componentName: field.component(),
+    componentProps: field.componentProps(),
+    title: field.title(),
+    description: field.description(),
+  };
+}
+
 export type ComponentMap = Record<string, React.ComponentType<any>>;
 export type DecoratorMap = Record<string, React.ComponentType<any>>;
 
@@ -233,21 +319,12 @@ const PrimitiveFieldSlot: React.FC<{ path: string }> = memo(({ path }) => {
 const PrimitiveFieldSlotInner: React.FC<{ field: PrimitiveFieldNode }> = memo(({ field }) => {
   const ctx = useContext(FormContext)!;
   const { components, decorators } = ctx;
-  const display = useSignalValue(field.display);
-  const componentName = useSignalValue(field.component);
-  const decoratorName = useSignalValue(field.decorator);
-  const value = useSignalValue(field.value);
-  const disabled = useSignalValue(field.disabled);
-  const loading = useSignalValue(field.loading);
-  const componentProps = useSignalValue(field.componentProps);
-  const dataSource = useSignalValue(field.dataSource);
-  const title = useSignalValue(field.title);
-  const required = useSignalValue(field.required);
-  const errors = useSignalValue(field.errors);
-  const warnings = useSignalValue(field.warnings);
-  const description = useSignalValue(field.description);
-  const validateStatus = useSignalValue(field.validateStatus);
-  const decoratorProps = useSignalValue(field.decoratorProps);
+  const {
+    display, componentName, decoratorName, value, disabled, loading,
+    componentProps, dataSource, title, required, errors, warnings,
+    description, validateStatus, decoratorProps,
+  } = useFieldRender(field, readPrimitive);
+  const onChange = useCallback((v: any) => field.setValue(v), [field]);
   if (display === "none") return null;
   if (display === "hidden") return <div style={{ display: "none" }} />;
   const Component = components[componentName];
@@ -256,7 +333,7 @@ const PrimitiveFieldSlotInner: React.FC<{ field: PrimitiveFieldNode }> = memo(({
   const props: Record<string, any> = {
     ...componentProps,
     value,
-    onChange: (v: any) => field.setValue(v),
+    onChange,
     disabled,
     loading,
   };
@@ -275,19 +352,11 @@ const ArrayFieldSlot: React.FC<{ path: string; schema: IFieldSchema }> = memo(({
 const ArrayFieldSlotInner: React.FC<{ field: ArrayFieldNode; schema: IFieldSchema }> = memo(({ field, schema }) => {
   const ctx = useContext(FormContext)!;
   const { components, decorators } = ctx;
-  const display = useSignalValue(field.display);
-  const componentName = useSignalValue(field.component);
-  const decoratorName = useSignalValue(field.decorator);
-  const disabled = useSignalValue(field.disabled);
-  const title = useSignalValue(field.title);
-  const required = useSignalValue(field.required);
-  const errors = useSignalValue(field.errors);
-  const warnings = useSignalValue(field.warnings);
-  const description = useSignalValue(field.description);
-  const validateStatus = useSignalValue(field.validateStatus);
-  const componentProps = useSignalValue(field.componentProps);
-  const decoratorProps = useSignalValue(field.decoratorProps);
-  const rowNodes = useSignalValue(field.rows);
+  const {
+    display, componentName, decoratorName, disabled, title, required,
+    errors, warnings, description, validateStatus, componentProps,
+    decoratorProps, rowNodes,
+  } = useFieldRender(field, readArray);
   const componentDisabled = Boolean((componentProps as Record<string, any> | undefined)?.disabled);
   if (display === "none") return null;
   if (display === "hidden") return <div style={{ display: "none" }} />;
@@ -348,15 +417,10 @@ const ObjectFieldSlot: React.FC<{ path: string; schema: IFieldSchema }> = memo((
 const ObjectFieldSlotInner: React.FC<{ field: ObjectFieldNode; schema: IFieldSchema }> = memo(({ field, schema }) => {
   const ctx = useContext(FormContext)!;
   const { components, decorators } = ctx;
-  const display = useSignalValue(field.display);
-  const componentName = useSignalValue(field.component);
-  const decoratorName = useSignalValue(field.decorator);
-  const componentProps = useSignalValue(field.componentProps);
-  const title = useSignalValue(field.title);
-  const description = useSignalValue(field.description);
-  const required = useSignalValue(field.required);
-  const errors = useSignalValue(field.errors);
-  const decoratorProps = useSignalValue(field.decoratorProps);
+  const {
+    display, componentName, decoratorName, componentProps, title,
+    description, required, errors, decoratorProps,
+  } = useFieldRender(field, readObject);
   if (display === "none") return null;
   if (display === "hidden") return <div style={{ display: "none" }} />;
   const ObjectComponent = components[componentName];
@@ -383,11 +447,7 @@ const VoidFieldSlot: React.FC<{ path: string; schema: IFieldSchema; parentPath: 
 const VoidFieldSlotInner: React.FC<{ field: FieldNode; schema: IFieldSchema }> = memo(({ field, schema }) => {
   const ctx = useContext(FormContext)!;
   const { components } = ctx;
-  const display = useSignalValue(field.display);
-  const componentName = useSignalValue(field.component);
-  const componentProps = useSignalValue(field.componentProps);
-  const title = useSignalValue(field.title);
-  const description = useSignalValue(field.description);
+  const { display, componentName, componentProps, title, description } = useFieldRender(field, readVoid);
   if (display === "none") return null;
   if (display === "hidden") return <div style={{ display: "none" }} />;
   const sorted = schema.properties ? sortByOrder(schema.properties) : [];
