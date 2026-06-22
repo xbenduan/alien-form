@@ -1,7 +1,7 @@
 import type React from "react";
 import { QuestionCircleOutlined } from "@ant-design/icons";
 import type { FieldError, ValidateStatus } from "@alien-form/react";
-import { Form, Tooltip } from "antd";
+import { Tooltip } from "antd";
 
 interface FormItemProps {
   label?: string;
@@ -10,6 +10,7 @@ interface FormItemProps {
   warnings?: FieldError[];
   description?: string;
   validateStatus?: ValidateStatus;
+  layout?: "horizontal" | "vertical";
   children?: React.ReactNode;
 }
 
@@ -20,6 +21,7 @@ export function FormItem({
   warnings = [],
   description,
   validateStatus,
+  layout = "horizontal",
   children,
 }: FormItemProps) {
   let status: "" | "success" | "warning" | "error" | "validating" = "";
@@ -35,33 +37,44 @@ export function FormItem({
         ? warnings.map((warning) => warning.message).join("; ")
         : undefined;
 
-  const help = helpText ?? "​";
+  const statusClassName =
+    status === "error"
+      ? " cms-form-item-status-error"
+      : status === "warning"
+        ? " cms-form-item-status-warning"
+        : "";
 
-  const labelNode = label ? (
-    <span className="cms-form-item-label">
-      <Tooltip title={label}>
-        <span className="cms-form-item-label-text">{label}</span>
-      </Tooltip>
-      {description ? (
-        <Tooltip title={description}>
-          <QuestionCircleOutlined className="cms-form-item-label-icon" />
-        </Tooltip>
-      ) : null}
-    </span>
-  ) : undefined;
+  const layoutClassName =
+    layout === "vertical" ? " cms-form-item-vertical" : " cms-form-item-horizontal";
 
   return (
-    <Form.Item
-      className={`cms-form-item${helpText ? "" : " cms-form-item-help-placeholder"}`}
-      label={labelNode}
-      colon={false}
-      required={required}
-      validateStatus={status}
-      help={help}
-      style={{ marginBottom: 16 }}
-    >
-      {children}
-    </Form.Item>
+    <div className={`cms-form-item${layoutClassName}${statusClassName}`}>
+      {label ? (
+        <div className="cms-form-item-label-row">
+          <span className="cms-form-item-label">
+            {required ? (
+              <span className="cms-form-item-required" aria-hidden="true">
+                *
+              </span>
+            ) : null}
+            <Tooltip title={label}>
+              <span className="cms-form-item-label-text">{label}</span>
+            </Tooltip>
+            {description ? (
+              <Tooltip title={description}>
+                <QuestionCircleOutlined className="cms-form-item-label-icon" />
+              </Tooltip>
+            ) : null}
+          </span>
+        </div>
+      ) : null}
+      <div className="cms-form-item-control">
+        {children}
+        <div className="cms-form-item-help" role={status === "error" ? "alert" : undefined}>
+          {helpText ?? ""}
+        </div>
+      </div>
+    </div>
   );
 }
 

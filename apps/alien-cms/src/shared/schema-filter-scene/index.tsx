@@ -115,8 +115,11 @@ export function SchemaFilterBody({
     [schema, expanded, defaultVisibleKeys],
   );
   const renderKey = useMemo(
-    () => `${expanded ? "expanded" : "collapsed"}:${JSON.stringify(initialValues)}`,
-    [expanded, initialValues],
+    () => {
+      const schemaSignature = Object.keys(schema.properties ?? {}).join("|");
+      return `${expanded ? "expanded" : "collapsed"}:${schemaSignature}:${JSON.stringify(initialValues)}`;
+    },
+    [expanded, initialValues, schema],
   );
   const onSearchRef = useRef(onSearch);
   onSearchRef.current = onSearch;

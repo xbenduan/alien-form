@@ -259,6 +259,9 @@ body {
 
 .filter-form-item {
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .filter-form-item:last-child {
@@ -278,10 +281,6 @@ body {
 .filter-form-item .ant-select,
 .filter-form-item .ant-select .ant-select-selector {
     width: 100%;
-}
-
-.filter-form-item .ant-form-item {
-    margin-bottom: 0;
 }
 
 .model-toolbar-actions {
@@ -317,22 +316,60 @@ body {
     min-height: 100%;
 }
 
-.cms-form-item .ant-form-item-label > label {
-    position: relative;
-    justify-content: flex-start;
-    padding-left: 10px;
-    text-align: left;
+.cms-form-item {
+    margin-bottom: 8px;
 }
 
-.cms-form-item .ant-form-item-label > label.ant-form-item-required::before,
-.cms-form-item
-    .ant-form-item-label
-    > label.ant-form-item-required:not(
-        .ant-form-item-required-mark-optional
-    )::before {
+.cms-form-item-horizontal {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.cms-form-item-horizontal .cms-form-item-label-row {
+    flex: none;
+    width: calc(6em + 18px);
+    padding-left: 10px;
+    position: relative;
+    min-height: 32px;
+    line-height: 32px;
+    display: flex;
+    align-items: center;
+}
+
+.cms-form-item-horizontal .cms-form-item-required {
     position: absolute;
     left: 0;
-    margin-inline-end: 0;
+    color: #ff4d4f;
+    font-size: 14px;
+    line-height: 1;
+    user-select: none;
+}
+
+.cms-form-item-horizontal .cms-form-item-control {
+    flex: 1;
+    min-width: 0;
+}
+
+.cms-form-item-vertical {
+    display: flex;
+    flex-direction: column;
+}
+
+.cms-form-item-vertical .cms-form-item-label-row {
+    margin-bottom: 4px;
+    min-height: 18px;
+    line-height: 18px;
+    display: flex;
+    align-items: center;
+}
+
+.cms-form-item-vertical .cms-form-item-required {
+    color: #ff4d4f;
+    font-size: 14px;
+    line-height: 1;
+    margin-right: 2px;
+    user-select: none;
 }
 
 .cms-form-item-label {
@@ -340,6 +377,8 @@ body {
     align-items: center;
     gap: 6px;
     max-width: 100%;
+    color: rgba(0, 0, 0, 0.88);
+    font-size: 14px;
 }
 
 .cms-form-item-label-text {
@@ -350,6 +389,11 @@ body {
     white-space: nowrap;
     text-align: left;
     vertical-align: bottom;
+}
+
+.cms-form-item-vertical .cms-form-item-label-text {
+    width: auto;
+    max-width: 100%;
 }
 
 .cms-form-item-label-icon {
@@ -658,17 +702,24 @@ body {
     border-radius: 6px;
 }
 
-/* Fix: prevent form validation jitter in Modal/Drawer by stabilizing help text area */
-.cms-form-item-help-placeholder .ant-form-item-explain {
-    visibility: hidden;
+/* Fixed-height self-rendered help row to prevent form validation jitter. */
+.cms-form-item-help {
+    min-height: 18px;
+    line-height: 18px;
+    font-size: 12px;
+    color: transparent;
+    word-break: break-word;
+}
+
+.cms-form-item-status-error .cms-form-item-help {
+    color: #ff4d4f;
+}
+
+.cms-form-item-status-warning .cms-form-item-help {
+    color: #faad14;
 }
 
 .ant-modal .cms-form-item,
 .ant-drawer .cms-form-item {
-    margin-bottom: 0 !important;
-}
-
-.ant-modal .cms-form-item .ant-form-item-margin-offset,
-.ant-drawer .cms-form-item .ant-form-item-margin-offset {
     margin-bottom: 0 !important;
 }

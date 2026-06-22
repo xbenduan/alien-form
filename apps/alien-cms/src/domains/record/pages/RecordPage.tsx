@@ -1,8 +1,7 @@
 import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
 import { Alert, Button, Card, Flex, Popconfirm, Space, Spin, Typography, message } from "antd";
-import { useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
-import { recordQueryKeys, useRecordStore } from "../../../hooks/use-record-store";
+import { useRecordStore } from "../../../hooks/use-record-store";
 import { SchemaFilterBody } from "../../../shared/schema-filter-scene";
 import { ProTable } from "../../../shared/components/ProTable";
 import RecordFormFrame from "../components/RecordFormFrame";
@@ -23,7 +22,6 @@ export default function RecordPage({
     routeAction,
     onRouteActionChange,
   });
-  const queryClient = useQueryClient();
   const singularLabel = page.schema?.["x-model"]?.singularLabel ?? "记录";
 
   // Keep last valid mode/openMode so Modal/Drawer can show correctly during close animation
@@ -104,9 +102,7 @@ export default function RecordPage({
         }}
         onAdd={page.openAdd}
         addButtonText={`新增${singularLabel}`}
-        onRefresh={() => {
-          queryClient.invalidateQueries({ queryKey: recordQueryKeys.lists(modelName) });
-        }}
+        onRefresh={page.refresh}
         columnSetting={{
           options: page.tableFieldOptions,
           values: page.tableVisibleKeys,

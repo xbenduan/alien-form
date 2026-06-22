@@ -9,12 +9,7 @@ interface FilterItemProps {
 export function FilterItem({ label, required, children }: FilterItemProps) {
   return (
     <div className="filter-form-item">
-      {label ? (
-        <span className="cms-filter-item-label">
-          {label}
-          {required ? <span className="cms-filter-item-required"> *</span> : null}
-        </span>
-      ) : null}
+      {label ? ( <span> {label}： </span> ) : null}
       {children}
     </div>
   );

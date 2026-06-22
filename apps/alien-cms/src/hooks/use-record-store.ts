@@ -485,6 +485,9 @@ export function useRecordStore(modelName: string, options: UseRecordStoreOptions
     openEdit: (id: string) => openAction("edit", id),
     openDetail: (id: string) => openAction("detail", id),
     closeAction,
+    refresh: async () => {
+      await listQuery.refetch();
+    },
     submitAdd: async (values: Record<string, unknown>) => {
       await createMutation.mutateAsync(values);
       if (actionOpenMode === "page") {
