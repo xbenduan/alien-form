@@ -15,7 +15,7 @@ import type { ModelSummary } from "@alien-form/cms";
 import { schemaQueryKeys, useSchemaStore } from "../../../../hooks/use-schema-store";
 import { buildModelEditPath, buildModelNewPath } from "../../../../app/router/paths";
 import { ModelSchemaJsonModal } from "../../components/ModelSchemaJsonModal";
-import { FilterCard } from "../../../../shared/components/FilterCard";
+import { SchemaFilterBody } from "../../../../shared/schema-filter-scene";
 import { ProTable } from "../../../../shared/components/ProTable";
 import type { ModelRecord } from "../../../record/types/record";
 import { filterDefaultVisibleKeys, filterSchema, tableColumns } from "./schema";
@@ -52,23 +52,25 @@ export default function ModelManagementPage() {
 
   return (
     <Flex vertical gap={16}>
-      <FilterCard
-        schema={filterSchema}
-        initialValues={filterInitialValues}
-        loading={loading}
-        defaultVisibleKeys={filterDefaultVisibleKeys}
-        onSearch={(values) => {
-          const next: Record<string, string> = {};
-          const name = String(values.name ?? "").trim();
-          const title = String(values.title ?? "").trim();
-          const description = String(values.description ?? "").trim();
-          if (name) next.name = name;
-          if (title) next.title = title;
-          if (description) next.description = description;
-          setFilters(next);
-          setPagination((current) => ({ ...current, current: 1 }));
-        }}
-      />
+      <Card className="model-query-card" styles={{ body: { padding: 16 } }}>
+        <SchemaFilterBody
+          schema={filterSchema}
+          initialValues={filterInitialValues}
+          loading={loading}
+          defaultVisibleKeys={filterDefaultVisibleKeys}
+          onSearch={(values) => {
+            const next: Record<string, string> = {};
+            const name = String(values.name ?? "").trim();
+            const title = String(values.title ?? "").trim();
+            const description = String(values.description ?? "").trim();
+            if (name) next.name = name;
+            if (title) next.title = title;
+            if (description) next.description = description;
+            setFilters(next);
+            setPagination((current) => ({ ...current, current: 1 }));
+          }}
+        />
+      </Card>
 
       {error ? (
         <Card className="model-query-card" styles={{ body: { padding: 24 } }}>

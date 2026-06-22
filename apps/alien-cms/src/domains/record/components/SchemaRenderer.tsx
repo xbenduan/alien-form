@@ -2,7 +2,7 @@ import { useCreateForm } from "@alien-form/react";
 import {
   getSchemaFormBodyKey,
   SchemaFormBody,
-} from "../../../shared/components/SchemaFormShared";
+} from "../../../shared/schema-form-scene";
 import { createRecordFormConfig } from "../../../shared/utils/create-record-form-config";
 import type { CmsModelSchema } from "../types/record";
 

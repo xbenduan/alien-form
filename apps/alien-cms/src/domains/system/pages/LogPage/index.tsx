@@ -6,7 +6,7 @@ import { getCurrentProviderSnapshot, createProviders } from "@alien-form/cms";
 import type { LogEntry, LogListParams } from "@alien-form/cms";
 import type { AlienCmsConfig } from "@alien-form/cms";
 
-import { FilterCard } from "../../../../shared/components/FilterCard";
+import { SchemaFilterBody } from "../../../../shared/schema-filter-scene";
 import { ProTable } from "../../../../shared/components/ProTable";
 import type { ModelRecord } from "../../../record/types/record";
 import {
@@ -95,29 +95,31 @@ export default function LogPage() {
 
   return (
     <Flex vertical gap={16}>
-      <FilterCard
-        schema={filterSchema}
-        initialValues={filterInitialValues}
-        loading={isLoading}
-        defaultVisibleKeys={filterDefaultVisibleKeys}
-        onSearch={(values) => {
-          const action = (values.action as string | undefined) || undefined;
-          const modelName = (values.modelName as string | undefined) || undefined;
-          const start = values.dateStart as string | undefined;
-          const end = values.dateEnd as string | undefined;
-          setFilterAction(action);
-          setFilterModel(modelName);
-          if (start && end) {
-            setDateRange({
-              start: new Date(start).toISOString(),
-              end: new Date(end).toISOString(),
-            });
-          } else {
-            setDateRange(undefined);
-          }
-          setPagination((p) => ({ ...p, current: 1 }));
-        }}
-      />
+      <Card className="model-query-card" styles={{ body: { padding: 16 } }}>
+        <SchemaFilterBody
+          schema={filterSchema}
+          initialValues={filterInitialValues}
+          loading={isLoading}
+          defaultVisibleKeys={filterDefaultVisibleKeys}
+          onSearch={(values) => {
+            const action = (values.action as string | undefined) || undefined;
+            const modelName = (values.modelName as string | undefined) || undefined;
+            const start = values.dateStart as string | undefined;
+            const end = values.dateEnd as string | undefined;
+            setFilterAction(action);
+            setFilterModel(modelName);
+            if (start && end) {
+              setDateRange({
+                start: new Date(start).toISOString(),
+                end: new Date(end).toISOString(),
+              });
+            } else {
+              setDateRange(undefined);
+            }
+            setPagination((p) => ({ ...p, current: 1 }));
+          }}
+        />
+      </Card>
 
       <ProTable
         schema={filterSchema}

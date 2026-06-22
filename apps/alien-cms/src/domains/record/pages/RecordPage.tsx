@@ -3,7 +3,7 @@ import { Alert, Button, Card, Flex, Popconfirm, Space, Spin, Typography, message
 import { useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
 import { recordQueryKeys, useRecordStore } from "../../../hooks/use-record-store";
-import { FilterCard } from "../../../shared/components/FilterCard";
+import { SchemaFilterBody } from "../../../shared/schema-filter-scene";
 import { ProTable } from "../../../shared/components/ProTable";
 import RecordFormFrame from "../components/RecordFormFrame";
 import type { RecordRouteState } from "../types/record";
@@ -63,13 +63,15 @@ export default function RecordPage({
 
   return (
     <Flex vertical gap={16}>
-      <FilterCard
-        schema={page.filterSchema}
-        initialValues={page.filterInitialValues}
-        loading={page.listLoading}
-        defaultVisibleKeys={page.filterDefaultVisibleKeys}
-        onSearch={page.setFilters}
-      />
+      <Card className="model-query-card" styles={{ body: { padding: 16 } }}>
+        <SchemaFilterBody
+          schema={page.filterSchema}
+          initialValues={page.filterInitialValues}
+          loading={page.listLoading}
+          defaultVisibleKeys={page.filterDefaultVisibleKeys}
+          onSearch={page.setFilters}
+        />
+      </Card>
 
       <ProTable
         schema={page.schema}

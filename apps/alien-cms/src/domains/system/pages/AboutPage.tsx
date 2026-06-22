@@ -21,7 +21,7 @@ import {
 import {
   formComponents,
   formDecorators,
-} from "../../../shared/components/SchemaFormShared";
+} from "../../../shared/schema-form-scene";
 
 const { Title, Paragraph, Text, Link } = Typography;
 

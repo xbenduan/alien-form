@@ -13,7 +13,7 @@ import {
   renderPendingSchemaFormBody,
   SchemaFormBody,
   submitSchemaForm,
-} from "./SchemaFormShared";
+} from "../schema-form-scene";
 import { createRecordFormConfig } from "../utils/create-record-form-config";
 
 interface ModalSchemaFormProps {

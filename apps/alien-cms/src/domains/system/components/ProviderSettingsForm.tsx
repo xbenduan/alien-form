@@ -12,7 +12,7 @@ import { useCallback, useEffect, useRef } from "react";
 import {
   formComponents,
   formDecorators,
-} from "../../../shared/components/SchemaFormShared";
+} from "../../../shared/schema-form-scene";
 import type { ProviderSettingsFormValues } from "../utils/provider-config";
 
 const settingsSchema: IFormSchema = {
