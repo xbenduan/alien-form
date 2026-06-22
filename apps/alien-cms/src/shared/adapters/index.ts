@@ -1,15 +1,35 @@
-import React from "react";
 import type {
-  AdapterScene,
   BuilderComponentName,
   BuilderFieldType,
-  SceneMode,
 } from "@alien-form/cms";
 import {
-  buildSceneComponents,
   createAdapterCatalog,
   createAdapterRegistry,
 } from "@alien-form/cms";
+
+export { default as ArrayCardsAdapter } from "./array-cards";
+export { default as CheckboxGroupAdapter } from "./checkbox-group";
+export { default as DateInputAdapter } from "./date-input";
+export { default as DisplayBooleanAdapter } from "./display-boolean";
+export { default as DisplayChoiceAdapter } from "./display-choice";
+export { default as DisplayDateAdapter } from "./display-date";
+export { default as DisplayRateAdapter } from "./display-rate";
+export { default as DisplayTagsAdapter } from "./display-tags";
+export { default as DisplayTextAdapter } from "./display-text";
+export * from "./display-utils";
+export { default as EditableTableAdapter } from "./editable-table";
+export { default as FlexLayoutAdapter } from "./flex-layout";
+export { default as getDisplaySummaryAdapter } from "./get-display-summary";
+export { default as GridLayoutAdapter } from "./grid-layout";
+export { default as InputAdapter } from "./input";
+export { default as NumberInputAdapter } from "./number-input";
+export { default as RadioAdapter } from "./radio";
+export { default as RateAdapter } from "./rate";
+export { default as SectionCardAdapter } from "./section-card";
+export { default as SelectAdapter } from "./select";
+export { default as SwitchAdapter } from "./switch";
+export { default as TagsInputAdapter } from "./tags-input";
+export { default as TextareaAdapter } from "./textarea";
 
 type AdapterValue = ((...args: any[]) => any) & {
   config: {
@@ -140,50 +160,3 @@ export const builderComponentOptions = componentCatalog
     scenes: item.scenes,
     kind: item.kind,
   }));
-
-function withSceneMode<P extends Record<string, unknown>>(
-  Component: (props: any) => React.ReactNode,
-  mode: SceneMode,
-  defaultProps: Record<string, unknown>,
-) {
-  function SceneComponent(props: P) {
-    return React.createElement(Component as never, { ...defaultProps, mode, ...props });
-  }
-  return SceneComponent;
-}
-
-function sceneComponentsByKind(scene: AdapterScene, kinds: string[]) {
-  const all = buildSceneComponents(
-    scene,
-    registry,
-    map as Record<string, any>,
-    withSceneMode,
-  );
-  const allowed = new Set(
-    registry.filter((item) => kinds.includes(item.kind)).map((item) => item.key),
-  );
-  return Object.fromEntries(
-    Object.entries(all).filter(([key]) => allowed.has(key)),
-  );
-}
-
-export const recordFormComponents = sceneComponentsByKind("recordForm", [
-  "component",
-  "display",
-]);
-
-export const recordFormDecorators = sceneComponentsByKind("recordForm", ["decorator"]);
-
-export const filterFormComponents = sceneComponentsByKind("recordFilter", [
-  "component",
-  "display",
-]);
-
-export const filterFormDecorators = sceneComponentsByKind("recordFilter", ["decorator"]);
-
-export const detailFormComponents = sceneComponentsByKind("recordDetail", [
-  "component",
-  "display",
-]);
-
-export const detailFormDecorators = sceneComponentsByKind("recordDetail", ["decorator"]);

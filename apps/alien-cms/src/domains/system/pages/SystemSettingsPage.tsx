@@ -7,9 +7,8 @@ import {
   switchProvider,
 } from "@alien-form/cms";
 import type { AlienCmsConfig } from "@alien-form/cms";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useWorkbenchLayout } from "../../../app/layout/WorkbenchLayout";
 import { ProviderSettingsForm } from "../components/ProviderSettingsForm";
 import {
   configToFormValues,
@@ -74,16 +73,8 @@ async function verifyConnection(config: AlienCmsConfig) {
 export default function SystemSettingsPage() {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
-  const { setBreadcrumb } = useWorkbenchLayout();
   const [snapshot, setSnapshot] = useState(() => getCurrentProviderSnapshot());
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    setBreadcrumb({
-      items: [{ title: "系统设置" }, { title: "服务连接" }],
-    });
-    return () => setBreadcrumb(null);
-  }, [setBreadcrumb]);
 
   const initialValues = useMemo(
     () => configToFormValues((snapshot?.config as AlienCmsConfig | undefined) ?? undefined),

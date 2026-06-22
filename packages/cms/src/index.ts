@@ -115,6 +115,7 @@ export { projectFilterFields } from './projection/filter-fields';
 export {
   resolveSceneRender,
   buildSceneComponents,
+  buildScenes,
   defaultMode,
 } from './projection/scene-resolver';
 export type { ResolvedSceneRender } from './projection/scene-resolver';
@@ -136,10 +137,12 @@ export {
   defineAdapters,
   createAdapterRegistry,
   createAdapterCatalog,
+  getSceneVariant,
 } from "./define/adapters";
 export type {
   SceneMode,
   SceneVariant,
+  SceneEntry,
   SceneMap,
   AdapterScene,
   AdapterCatalogItem,

@@ -19,6 +19,6 @@ export default defineAdapter(Rate, {
   label: "评分组件",
   description: "评分组件。",
   kind: "component",
-  scenes: { recordForm: { mode: "edit" }, recordFilter: { mode: "filter" }, recordDetail: { renderAs: "DisplayRate" }, tableCell: { renderAs: "DisplayRate", summary: true } },
+  scenes: { form: {}, filter: {}, detail: "DisplayRate", table: { renderAs: "DisplayRate", summary: true } },
   meta: { fieldType: "number" },
 });

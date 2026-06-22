@@ -1,5 +1,4 @@
 import type React from "react";
-import { defineAdapter } from "@alien-form/cms";
 import { QuestionCircleOutlined } from "@ant-design/icons";
 import type { FieldError, ValidateStatus } from "@alien-form/react";
 import { Form, Tooltip } from "antd";
@@ -14,7 +13,7 @@ interface FormItemProps {
   children?: React.ReactNode;
 }
 
-function FormItem({
+export function FormItem({
   label,
   required,
   errors = [],
@@ -36,8 +35,6 @@ function FormItem({
         ? warnings.map((warning) => warning.message).join("; ")
         : undefined;
 
-  // Always render help area with a zero-width space placeholder to prevent
-  // layout shift when validation errors appear (especially in Modal/Drawer)
   const help = helpText ?? "​";
 
   const labelNode = label ? (
@@ -68,11 +65,4 @@ function FormItem({
   );
 }
 
-export default defineAdapter(FormItem, {
-  key: "FormItem",
-  label: "FormItem",
-  description: "表单项装饰器。",
-  kind: "decorator",
-  scenes: { recordForm: {}, recordDetail: {} },
-  meta: { decorator: true },
-});
+export default FormItem;

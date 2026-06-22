@@ -63,7 +63,7 @@ export function projectFilterFields(schema: any, catalog?: AdapterCatalogItem[])
     const lastSegment = pathSegments[pathSegments.length - 1];
     const title = field?.title ?? lastSegment;
 
-    const resolved = catalog ? resolveSceneRender(field, "recordFilter", catalog) : undefined;
+    const resolved = catalog ? resolveSceneRender(field, "filter", catalog) : undefined;
 
     const fallbackProps: Record<string, unknown> = {
       ...(field?.props as Record<string, unknown> | undefined),

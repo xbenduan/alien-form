@@ -26,8 +26,8 @@ export default defineAdapter(Switch, {
   description: "布尔开关组件。",
   kind: "component",
   scenes: {
-    recordForm: { mode: "edit" },
-    recordFilter: {
+    form: {},
+    filter: {
       renderAs: "Select",
       operator: "eq",
       props: {
@@ -37,8 +37,8 @@ export default defineAdapter(Switch, {
         ],
       },
     },
-    recordDetail: { renderAs: "DisplayBoolean" },
-    tableCell: { renderAs: "DisplayBoolean", summary: true },
+    detail: "DisplayBoolean",
+    table: { renderAs: "DisplayBoolean", summary: true },
   },
   meta: { fieldType: "boolean" },
 });

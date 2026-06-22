@@ -11,10 +11,10 @@ export interface AdapterParam {
 export type AdapterKind = "component" | "decorator" | "display" | "utility";
 
 export type AdapterScene =
-  | "recordForm"
-  | "recordDetail"
-  | "recordFilter"
-  | "tableCell"
+  | "form"
+  | "detail"
+  | "filter"
+  | "table"
   | "builder";
 
 export type SceneMode = "edit" | "readonly" | "cell" | "filter";
@@ -26,13 +26,26 @@ export interface SceneVariant {
   renderAs?: string;
   /** 该场景注入的默认 props，优先级最低 */
   props?: Record<string, unknown>;
-  /** 仅 recordFilter 场景：默认操作符 */
+  /** 仅 filter 场景：默认操作符 */
   operator?: FilterOperator;
-  /** 仅 tableCell 场景：是否压缩为摘要 */
+  /** 仅 table 场景：是否压缩为摘要 */
   summary?: boolean;
 }
 
-export type SceneMap = Partial<Record<AdapterScene, SceneVariant>>;
+export type SceneEntry = string | SceneVariant;
+
+export type SceneMap = Partial<Record<AdapterScene, SceneEntry>>;
+
+/**
+ * 把 SceneEntry 归一为 SceneVariant：字符串视为 { renderAs: <string> }。
+ */
+export function getSceneVariant(
+  entry: SceneEntry | undefined,
+): SceneVariant | undefined {
+  if (entry === undefined) return undefined;
+  if (typeof entry === "string") return { renderAs: entry };
+  return entry;
+}
 
 type AnyAdapter = (...args: any[]) => any;
 

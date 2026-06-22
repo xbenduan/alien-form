@@ -1,4 +1,4 @@
-import { ArrowLeftOutlined, EyeOutlined, SaveOutlined } from "@ant-design/icons";
+import { EyeOutlined, SaveOutlined } from "@ant-design/icons";
 import { Alert, Button, Card, Col, Flex, Modal, Row, Space, Spin, Steps, message } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -10,7 +10,6 @@ import type {
   ModelBuilderDraft,
   ModelBuilderFieldDraft,
 } from "@alien-form/cms";
-import { useWorkbenchLayout } from "../../../app/layout/WorkbenchLayout";
 import { buildModelListPath } from "../../../app/router/paths";
 import {
   useModelSummaries,
@@ -334,7 +333,6 @@ const STEP_ITEMS = [
 export default function ModelPage() {
   const navigate = useNavigate();
   const params = useParams();
-  const { setBreadcrumb } = useWorkbenchLayout();
   const editModelName = params.modelName;
   const isEditMode = Boolean(editModelName);
   const existingModelsQuery = useModelSummaries();
@@ -407,8 +405,6 @@ export default function ModelPage() {
     value: field.key,
   }));
 
-  const pageTitle = isEditMode ? "编辑模型" : "新增模型";
-
   const applyImportedSchema = (schemaText: string) => {
     let parsedSchema: CmsModelSchema;
 
@@ -429,34 +425,6 @@ export default function ModelPage() {
       messageApi.error(error instanceof Error ? `Schema 解析失败：${error.message}` : "Schema 解析失败");
     }
   };
-
-  useEffect(() => {
-    setBreadcrumb({
-      items: [
-        { title: "模型管理" },
-        { title: pageTitle },
-        {
-          title:
-            isEditMode && loadingSchema
-              ? "加载中"
-              : isEditMode && loadingError
-                ? "加载失败"
-                : (STEP_ITEMS[currentStep]?.title ?? "设计器"),
-        },
-      ],
-      extra: isEditMode ? (
-        <Button
-          type="link"
-          icon={<ArrowLeftOutlined />}
-          onClick={() => navigate(buildModelListPath())}
-        >
-          返回
-        </Button>
-      ) : undefined,
-    });
-
-    return () => setBreadcrumb(null);
-  }, [currentStep, isEditMode, loadingError, loadingSchema, navigate, pageTitle, setBreadcrumb]);
 
   // Show loading state when in edit mode and schema is still loading
   if (isEditMode && loadingSchema) {
@@ -562,8 +530,8 @@ export default function ModelPage() {
         ) : null}
       </div>
 
-      <div className="model-breadcrumb-bar builder-bottom-actions">
-        <div className="model-breadcrumb-content">
+      <div className="builder-bottom-actions">
+        <div className="builder-bottom-actions-content">
           <Space>
             {currentStep > 0 ? (
               <Button onClick={() => setCurrentStep((step) => step - 1)}>上一步</Button>

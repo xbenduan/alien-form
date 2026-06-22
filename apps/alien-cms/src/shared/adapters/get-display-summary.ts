@@ -161,6 +161,6 @@ export default defineAdapter(getDisplaySummary, {
   label: "getDisplaySummary",
   description: "根据值和 format 计算展示摘要。",
   kind: "utility",
-  scenes: { recordDetail: {}, tableCell: {} },
+  scenes: { detail: {}, table: {} },
   meta: { utility: true },
 });

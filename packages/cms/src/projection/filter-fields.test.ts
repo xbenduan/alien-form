@@ -83,7 +83,7 @@ describe("projectFilterFields", () => {
         description: "Select adapter",
         kind: "component",
         scenes: {
-          recordFilter: { mode: "filter", operator: "in" },
+          filter: { mode: "filter", operator: "in" },
         },
         meta: {},
         params: [],

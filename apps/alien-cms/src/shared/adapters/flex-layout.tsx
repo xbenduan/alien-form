@@ -38,6 +38,6 @@ export default defineAdapter(FlexLayout, {
   label: "弹性布局",
   description: "基于 Flex 的容器布局组件。",
   kind: "component",
-  scenes: { recordForm: { mode: "edit" }, recordDetail: { mode: "readonly" } },
+  scenes: { form: {}, detail: {} },
   meta: { fieldType: "object" },
 });

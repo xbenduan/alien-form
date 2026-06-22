@@ -9,7 +9,10 @@ import {
   type IFormSchema,
 } from "@alien-form/react";
 import { useCallback, useEffect, useRef } from "react";
-import { recordFormComponents, recordFormDecorators } from "../../../shared/adapters";
+import {
+  formComponents,
+  formDecorators,
+} from "../../../shared/components/SchemaFormShared";
 import type { ProviderSettingsFormValues } from "../utils/provider-config";
 
 const settingsSchema: IFormSchema = {
@@ -94,8 +97,8 @@ export function ProviderSettingsForm({
 
       <FormProvider
         form={form}
-        components={recordFormComponents as never}
-        decorators={recordFormDecorators as never}
+        components={formComponents as never}
+        decorators={formDecorators as never}
       >
         <SchemaField />
       </FormProvider>

@@ -18,11 +18,10 @@ import {
   type FormInstance,
   type IFormSchema,
 } from "@alien-form/react";
-import { useWorkbenchLayout } from "../../../app/layout/WorkbenchLayout";
 import {
-  recordFormComponents,
-  recordFormDecorators,
-} from "../../../shared/adapters";
+  formComponents,
+  formDecorators,
+} from "../../../shared/components/SchemaFormShared";
 
 const { Title, Paragraph, Text, Link } = Typography;
 
@@ -35,7 +34,7 @@ const GITHUB_URL = "https://github.com/xbenduan/alien-form";
  * - alien-form:schema 驱动的无头表单运行时(用法)
  * - alien-cms:基于 alien-form 的 CMS 工作台(简单代码与示例)
  *
- * 左侧示例使用项目真实的 adapters(recordFormComponents / recordFormDecorators)
+ * 左侧示例使用项目真实的 adapters(formComponents / formDecorators)
  * 通过 useCreateForm + FormProvider + SchemaField 实时渲染,可直接交互。
  */
 
@@ -125,8 +124,8 @@ function LiveSchemaForm({
   return (
     <FormProvider
       form={form}
-      components={recordFormComponents as never}
-      decorators={recordFormDecorators as never}
+      components={formComponents as never}
+      decorators={formDecorators as never}
     >
       <SchemaField />
       {footer}
@@ -165,7 +164,7 @@ const BASIC_CODE = `import {
   FormProvider,
   SchemaField,
 } from "@alien-form/react";
-import { recordFormComponents, recordFormDecorators } from "@/shared/adapters";
+import { formComponents, formDecorators } from "@/shared/components/SchemaFormShared";
 
 const schema = {
   type: "object",
@@ -193,8 +192,8 @@ function BasicForm() {
   return (
     <FormProvider
       form={form}
-      components={recordFormComponents}
-      decorators={recordFormDecorators}
+      components={formComponents}
+      decorators={formDecorators}
     >
       <SchemaField />
       <button onClick={async () => {
@@ -471,14 +470,6 @@ function PlaygroundDemo() {
 
 // 页面
 export default function AboutPage() {
-  const { setBreadcrumb } = useWorkbenchLayout();
-  const [, force] = useState(0);
-  useEffect(() => {
-    setBreadcrumb({ items: [{ title: "系统设置" }, { title: "学习中心" }] });
-    force((n) => n);
-    return () => setBreadcrumb(null);
-  }, [setBreadcrumb]);
-
   const [activeTabKey, setActiveTabKey] = useState<string>("playground");
 
   const tabList = [

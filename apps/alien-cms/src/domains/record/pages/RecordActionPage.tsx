@@ -1,7 +1,5 @@
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { Alert, Button, Card, Spin, message } from "antd";
-import { useEffect } from "react";
-import { useWorkbenchLayout } from "../../../app/layout/WorkbenchLayout";
 import { useRecordStore } from "../../../hooks/use-record-store";
 import PageSchemaForm from "../../../shared/components/PageSchemaForm";
 import type { RecordRouteState } from "../types/record";
@@ -30,7 +28,6 @@ export default function RecordActionPage({
   routeAction,
   onRouteActionChange,
 }: RecordActionPageProps) {
-  const { setBreadcrumb } = useWorkbenchLayout();
   const page = useRecordStore(modelName, {
     routeAction,
     onRouteActionChange,
@@ -38,37 +35,6 @@ export default function RecordActionPage({
   const singularLabel = page.schema?.["x-model"]?.singularLabel ?? "记录";
   const currentActionLabel = getActionLabel(page.actionMode, singularLabel);
   const contentKey = `${page.actionMode}:${page.activeRecord?.id ?? "new"}:${page.activeRecord?.updatedAt ?? 0}`;
-
-  useEffect(() => {
-    setBreadcrumb({
-      items: [
-        { title: "模型管理" },
-        { title: page.schema?.["x-model"]?.title ?? modelName },
-        {
-          title: page.schemaLoading
-            ? "加载中"
-            : page.schemaError || !page.schema
-              ? "未找到模型"
-              : currentActionLabel,
-        },
-      ],
-      extra: (
-        <Button type="link" icon={<ArrowLeftOutlined />} onClick={page.closeAction}>
-          返回列表
-        </Button>
-      ),
-    });
-
-    return () => setBreadcrumb(null);
-  }, [
-    currentActionLabel,
-    modelName,
-    page.closeAction,
-    page.schema,
-    page.schemaError,
-    page.schemaLoading,
-    setBreadcrumb,
-  ]);
 
   if (page.schemaLoading) {
     return (
@@ -99,6 +65,12 @@ export default function RecordActionPage({
 
   return (
     <Card className="model-action-page" styles={{ body: { padding: 24 } }}>
+      <div className="model-action-page-header">
+        <Button type="link" icon={<ArrowLeftOutlined />} onClick={page.closeAction}>
+          返回列表
+        </Button>
+        <span className="model-action-page-title">{currentActionLabel}</span>
+      </div>
       <div className="model-action-page-body">
         <PageSchemaForm
           key={contentKey}

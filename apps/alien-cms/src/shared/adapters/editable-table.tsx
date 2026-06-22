@@ -162,6 +162,6 @@ export default defineAdapter(EditableTable, {
   label: "可编辑表格",
   description: "对象数组表格编辑组件。",
   kind: "component",
-  scenes: { recordForm: { mode: "edit" }, recordDetail: { mode: "readonly", props: { disabled: true } } },
+  scenes: { form: {}, detail: { mode: "readonly", props: { disabled: true } } },
   meta: { fieldType: "array" },
 });

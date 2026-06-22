@@ -11,6 +11,6 @@ export default defineAdapter(DisplayDate, {
   label: "日期展示",
   description: "日期只读展示组件。",
   kind: "display",
-  scenes: { recordDetail: { mode: "readonly" }, tableCell: { mode: "cell" } },
+  scenes: { detail: {}, table: {} },
   meta: { displayType: "date" },
 });

@@ -1,12 +1,12 @@
-import { Alert, Card, Col, Flex, Row, Spin, message } from "antd";
-import { useEffect, useRef } from "react";
-import { useWorkbenchLayout } from "../../../app/layout/WorkbenchLayout";
-import { useRecordStore } from "../../../hooks/use-record-store";
-import type { RecordRouteState } from "../types/record";
-import { RecordFilterBar } from "../components/RecordFilterBar";
+import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
+import { Alert, Button, Card, Flex, Popconfirm, Space, Spin, Typography, message } from "antd";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRef } from "react";
+import { recordQueryKeys, useRecordStore } from "../../../hooks/use-record-store";
+import { FilterCard } from "../../../shared/components/FilterCard";
+import { ProTable } from "../../../shared/components/ProTable";
 import RecordFormFrame from "../components/RecordFormFrame";
-import { RecordToolbarActions } from "../components/RecordToolbarActions";
-import { RecordTable } from "../components/RecordTable";
+import type { RecordRouteState } from "../types/record";
 
 interface RecordPageProps {
   modelName: string;
@@ -19,11 +19,11 @@ export default function RecordPage({
   routeAction,
   onRouteActionChange,
 }: RecordPageProps) {
-  const { setBreadcrumb } = useWorkbenchLayout();
   const page = useRecordStore(modelName, {
     routeAction,
     onRouteActionChange,
   });
+  const queryClient = useQueryClient();
   const singularLabel = page.schema?.["x-model"]?.singularLabel ?? "记录";
 
   // Keep last valid mode/openMode so Modal/Drawer can show correctly during close animation
@@ -37,31 +37,6 @@ export default function RecordPage({
 
   const isFormOpen =
     page.actionMode !== "closed" && page.actionOpenMode != null && page.actionOpenMode !== "page";
-
-  useEffect(() => {
-    setBreadcrumb({
-      items: [
-        { title: "模型管理" },
-        { title: page.schema?.["x-model"]?.title ?? modelName },
-        {
-          title: page.schemaLoading
-            ? "加载中"
-            : page.schemaError || !page.schema || !page.filterSchema
-              ? "未找到模型"
-              : "列表",
-        },
-      ],
-    });
-
-    return () => setBreadcrumb(null);
-  }, [
-    modelName,
-    page.filterSchema,
-    page.schema,
-    page.schemaError,
-    page.schemaLoading,
-    setBreadcrumb,
-  ]);
 
   if (page.schemaLoading) {
     return (
@@ -88,56 +63,96 @@ export default function RecordPage({
 
   return (
     <Flex vertical gap={16}>
-      <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
-        <Row gutter={[20, 20]} align="top" wrap={false} className="model-toolbar-row">
-          <Col flex="auto">
-            <RecordFilterBar
-              schema={page.filterSchema}
-              defaultVisibleKeys={page.filterDefaultVisibleKeys}
-              values={page.filterInitialValues}
-              loading={page.listLoading}
-              onSearch={page.setFilters}
-            />
-          </Col>
-          <Col flex="220px">
-            <RecordToolbarActions
-              singularLabel={singularLabel}
-              tableFieldOptions={page.tableFieldOptions}
-              tableVisibleKeys={page.tableVisibleKeys}
-              onOpenAdd={page.openAdd}
-              onChangeTableVisibleKeys={page.setTableVisibleKeys}
-              onResetTableVisibleKeys={page.resetTableVisibleKeys}
-            />
-          </Col>
-        </Row>
-      </Card>
+      <FilterCard
+        schema={page.filterSchema}
+        initialValues={page.filterInitialValues}
+        loading={page.listLoading}
+        defaultVisibleKeys={page.filterDefaultVisibleKeys}
+        onSearch={page.setFilters}
+      />
 
-      <RecordTable
+      <ProTable
+        schema={page.schema}
         columns={page.tableColumns}
-        records={page.records}
-        total={page.total}
+        dataSource={page.records}
         loading={page.listLoading || page.deleting}
-        pagination={page.pagination}
+        total={page.total}
         sorter={page.sorter}
-        onTableChange={({ pagination, sorter }) => {
+        rowKey="id"
+        pagination={{
+          current: page.pagination.current,
+          pageSize: page.pagination.pageSize,
+          showSizeChanger: true,
+          showTotal: (count) => `共 ${count} 条`,
+        }}
+        onChange={(nextPagination, _filters, nextSorter) => {
           page.setPagination({
-            current: pagination.current ?? 1,
-            pageSize: pagination.pageSize ?? page.pagination.pageSize,
+            current: nextPagination.current ?? 1,
+            pageSize: nextPagination.pageSize ?? page.pagination.pageSize,
           });
+          const single = Array.isArray(nextSorter) ? nextSorter[0] : nextSorter;
           page.setSorter(
-            sorter?.field
+            single?.field
               ? {
-                  field: String(sorter.field),
-                  order: sorter.order ?? undefined,
+                  field: Array.isArray(single.field) ? single.field.join(".") : String(single.field),
+                  order: single.order ?? undefined,
                 }
               : undefined,
           );
         }}
-        onDetail={page.openDetail}
-        onEdit={page.openEdit}
-        onDelete={async (id) => {
-          await page.removeRecord(id);
-          message.success("删除成功");
+        onAdd={page.openAdd}
+        addButtonText={`新增${singularLabel}`}
+        onRefresh={() => {
+          queryClient.invalidateQueries({ queryKey: recordQueryKeys.lists(modelName) });
+        }}
+        columnSetting={{
+          options: page.tableFieldOptions,
+          values: page.tableVisibleKeys,
+          onChange: page.setTableVisibleKeys,
+          onReset: page.resetTableVisibleKeys,
+        }}
+        actionsColumn={{
+          title: "操作",
+          key: "actions",
+          fixed: "right",
+          width: 180,
+          render: (_, record) => (
+            <Space size={4} wrap>
+              <Button
+                type="link"
+                size="small"
+                icon={<EyeOutlined />}
+                onClick={() => page.openDetail(record.id)}
+              >
+                详情
+              </Button>
+              <Button
+                type="link"
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => page.openEdit(record.id)}
+              >
+                编辑
+              </Button>
+              <Popconfirm
+                title="确认删除这条记录吗？"
+                description={
+                  <Typography.Text type="secondary">删除后会立即刷新表格数据。</Typography.Text>
+                }
+                okText="删除"
+                cancelText="取消"
+                okButtonProps={{ danger: true }}
+                onConfirm={async () => {
+                  await page.removeRecord(record.id);
+                  message.success("删除成功");
+                }}
+              >
+                <Button danger type="link" size="small" icon={<DeleteOutlined />}>
+                  删除
+                </Button>
+              </Popconfirm>
+            </Space>
+          ),
         }}
       />
 

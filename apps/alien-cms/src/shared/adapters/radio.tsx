@@ -33,6 +33,6 @@ export default defineAdapter(Radio, {
   label: "单选组件",
   description: "单选组件。",
   kind: "component",
-  scenes: { recordForm: { mode: "edit" }, recordFilter: { mode: "filter" }, recordDetail: { renderAs: "DisplayChoice" }, tableCell: { renderAs: "DisplayChoice", summary: true } },
+  scenes: { form: {}, filter: {}, detail: "DisplayChoice", table: { renderAs: "DisplayChoice", summary: true } },
   meta: { fieldType: "string" },
 });

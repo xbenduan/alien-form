@@ -16,7 +16,7 @@ import type {
   ModelActionOpenMode,
   ModelRecord,
 } from "@alien-form/cms";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import type { RecordRouteState, FilterFieldProjection, ModelActionMode, TableColumnProjection } from "../domains/record/types/record";
 import {
@@ -32,6 +32,15 @@ import {
 } from "../domains/record/utils/filter-values";
 import { useSchemaDetail } from "./use-schema-store";
 import { registry } from "../shared/adapters";
+
+type DataSourceOption = NonNullable<CmsFieldSchema["dataSource"]>[number];
+
+interface DynamicDataSourceRequest {
+  path: string;
+  model: string;
+  valueKey: string;
+  labelKey: string;
+}
 
 export const recordQueryKeys = {
   all: ["records"] as const,
@@ -77,7 +86,71 @@ function getLeafFieldByPath(schema: CmsModelSchema, path: string): CmsFieldSchem
   return field;
 }
 
-function buildFilterSchema(schema?: CmsModelSchema) {
+function readDynamicDataSourceRequest(
+  path: string,
+  field: CmsFieldSchema,
+): DynamicDataSourceRequest | undefined {
+  const config = field["x-cms"]?.reactions?.dataSource;
+  const model = config?.model;
+  if (typeof model !== "string" || !model) {
+    return undefined;
+  }
+  const value = typeof config.value === "string" && config.value ? config.value : "id";
+  const label =
+    typeof config.label === "string" && config.label
+      ? config.label
+      : value;
+
+  return {
+    path,
+    model,
+    valueKey: value,
+    labelKey: label,
+  };
+}
+
+function collectDynamicDataSourceRequests(schema?: CmsModelSchema) {
+  const requests: DynamicDataSourceRequest[] = [];
+
+  const visit = (pathSegments: string[], field: CmsFieldSchema) => {
+    const path = pathSegments.join(".");
+    const request = readDynamicDataSourceRequest(path, field);
+    if (request) {
+      requests.push(request);
+    }
+
+    if (field.type === "array" && field.items && !Array.isArray(field.items) && field.items.properties) {
+      for (const [childKey, childField] of Object.entries(field.items.properties)) {
+        visit([...pathSegments, childKey], childField as CmsFieldSchema);
+      }
+      return;
+    }
+
+    for (const [childKey, childField] of Object.entries(field.properties ?? {})) {
+      visit([...pathSegments, childKey], childField as CmsFieldSchema);
+    }
+  };
+
+  for (const [key, field] of Object.entries(schema?.properties ?? {})) {
+    visit([key], field as CmsFieldSchema);
+  }
+
+  return requests;
+}
+
+function buildDynamicDataSourceMap(
+  requests: DynamicDataSourceRequest[],
+  queryResults: Array<{ data?: DataSourceOption[] }>,
+) {
+  return Object.fromEntries(
+    requests.map((request, index) => [request.path, queryResults[index]?.data ?? []]),
+  );
+}
+
+function buildFilterSchema(
+  schema?: CmsModelSchema,
+  dynamicDataSources: Record<string, DataSourceOption[]> = {},
+) {
   if (!schema?.properties) {
     return undefined;
   }
@@ -96,11 +169,13 @@ function buildFilterSchema(schema?: CmsModelSchema) {
 
   const properties = Object.fromEntries(
     fields.map((item) => {
-      const { required: _required, ...rest } = item.field;
+      const { default: _default, required: _required, ...rest } = item.field;
+      const dataSource = dynamicDataSources[item.path] ?? item.dataSource ?? item.field.dataSource;
       return [
         item.safeKey,
         {
           ...rest,
+          dataSource,
           title: item.title,
           decorator: "FilterItem",
           props: {
@@ -154,7 +229,11 @@ function resolveOpenMode(
   return "page";
 }
 
-function buildTableColumns(schema?: CmsModelSchema, visibleKeys?: string[]) {
+function buildTableColumns(
+  schema?: CmsModelSchema,
+  visibleKeys?: string[],
+  dynamicDataSources: Record<string, DataSourceOption[]> = {},
+) {
   if (!schema?.properties) {
     return [];
   }
@@ -167,6 +246,7 @@ function buildTableColumns(schema?: CmsModelSchema, visibleKeys?: string[]) {
       const field = schema.properties?.[item.key] as CmsFieldSchema | undefined;
       return {
         ...item,
+        dataSource: dynamicDataSources[item.key] ?? item.dataSource,
         field: field ?? { type: "string", title: item.title },
         type: field?.type,
       } satisfies TableColumnProjection;
@@ -199,13 +279,47 @@ export function useRecordStore(modelName: string, options: UseRecordStoreOptions
     setTableVisibleKeysState(readTableVisibleKeys(modelName, schema));
   }, [modelName, schema]);
 
+  const dynamicDataSourceRequests = useMemo(
+    () => collectDynamicDataSourceRequests(schema),
+    [schema],
+  );
+  const dynamicDataSourceQueries = useQueries({
+    queries: dynamicDataSourceRequests.map((request) => ({
+      queryKey: [
+        "records",
+        request.model,
+        "dataSource",
+        request.valueKey,
+        request.labelKey,
+      ],
+      enabled: Boolean(schema),
+      queryFn: async () => {
+        const data = await listRecords({
+          model: request.model,
+          pagination: { current: 1, pageSize: 1000 },
+        });
+        return data.list.map((item) => ({
+          value: item[request.valueKey],
+          label: String(item[request.labelKey] ?? item[request.valueKey] ?? ""),
+        }));
+      },
+    })),
+  });
+  const dynamicDataSources = useMemo(
+    () => buildDynamicDataSourceMap(dynamicDataSourceRequests, dynamicDataSourceQueries),
+    [dynamicDataSourceRequests, dynamicDataSourceQueries],
+  );
+
   const tableVisibleKeys = useMemo(
     () =>
       sanitizeVisibleKeys(schema, tableVisibleKeysState ?? getDefaultVisibleKeys(schema)),
     [schema, tableVisibleKeysState],
   );
 
-  const filterMeta = useMemo(() => buildFilterSchema(schema), [schema]);
+  const filterMeta = useMemo(
+    () => buildFilterSchema(schema, dynamicDataSources),
+    [schema, dynamicDataSources],
+  );
   const filterInitialValues = useMemo(() => {
     const flat = flattenFilterValues(filters);
     return Object.fromEntries(
@@ -213,8 +327,8 @@ export function useRecordStore(modelName: string, options: UseRecordStoreOptions
     );
   }, [filters]);
   const tableColumns = useMemo(
-    () => buildTableColumns(schema, tableVisibleKeys),
-    [schema, tableVisibleKeys],
+    () => buildTableColumns(schema, tableVisibleKeys, dynamicDataSources),
+    [schema, tableVisibleKeys, dynamicDataSources],
   );
 
   const listQueryKey = recordQueryKeys.list(modelName, filters, pagination, sorter);

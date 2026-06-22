@@ -1,38 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import AboutPage from "./AboutPage";
-
-const { setBreadcrumbMock } = vi.hoisted(() => ({
-  setBreadcrumbMock: vi.fn(),
-}));
-
-vi.mock("../../../app/layout/WorkbenchLayout", () => ({
-  useWorkbenchLayout: () => ({
-    setBreadcrumb: setBreadcrumbMock,
-  }),
-}));
 
 function renderPage() {
   return render(<AboutPage />);
 }
 
 describe("AboutPage", () => {
-  beforeEach(() => {
-    setBreadcrumbMock.mockReset();
-  });
-
-  it("默认展示演练场并设置面包屑", async () => {
+  it("默认展示演练场", async () => {
     renderPage();
 
     expect(screen.getByText("AlienForm 学习中心")).toBeTruthy();
     expect(screen.getByRole("tab", { name: "演练场" })).toBeTruthy();
     expect(screen.getByText(/实时修改 Schema/)).toBeTruthy();
-
-    await waitFor(() => {
-      expect(setBreadcrumbMock).toHaveBeenCalledWith({
-        items: [{ title: "系统设置" }, { title: "学习中心" }],
-      });
-    });
   });
 
   it("支持切换多个学习标签页", async () => {

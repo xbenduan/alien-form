@@ -29,6 +29,6 @@ export default defineAdapter(CheckboxGroup, {
   label: "多选组件",
   description: "多选组件。",
   kind: "component",
-  scenes: { recordForm: { mode: "edit" }, recordFilter: { mode: "filter" }, recordDetail: { renderAs: "DisplayChoice" }, tableCell: { renderAs: "DisplayChoice", summary: true } },
+  scenes: { form: {}, filter: {}, detail: "DisplayChoice", table: { renderAs: "DisplayChoice", summary: true } },
   meta: { fieldType: "tags" },
 });

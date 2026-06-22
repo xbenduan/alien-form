@@ -27,6 +27,6 @@ export default defineAdapter(SectionCard, {
   label: "SectionCard",
   description: "分组卡片容器组件。",
   kind: "component",
-  scenes: { recordForm: { mode: "edit" }, recordDetail: { mode: "readonly" }, recordFilter: { mode: "filter" } },
+  scenes: { form: {}, detail: {}, filter: {} },
   meta: { fieldType: "object" },
 });

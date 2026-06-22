@@ -92,6 +92,6 @@ export default defineAdapter(ArrayCards, {
   label: "ArrayCards",
   description: "对象数组卡片编辑组件。",
   kind: "component",
-  scenes: { recordForm: { mode: "edit" }, recordDetail: { mode: "readonly", props: { disabled: true } } },
+  scenes: { form: {}, detail: { mode: "readonly", props: { disabled: true } } },
   meta: { fieldType: "array" },
 });

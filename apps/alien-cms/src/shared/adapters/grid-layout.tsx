@@ -38,6 +38,6 @@ export default defineAdapter(GridLayout, {
   label: "栅格布局",
   description: "基于栅格的容器布局组件。",
   kind: "component",
-  scenes: { recordForm: { mode: "edit" }, recordDetail: { mode: "readonly" } },
+  scenes: { form: {}, detail: {} },
   meta: { fieldType: "object" },
 });
