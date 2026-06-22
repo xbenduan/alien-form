@@ -4,11 +4,7 @@ import { Button, Table, Tag, Tooltip, Typography } from "antd";
 import type { TableColumnsType, TablePaginationConfig, TableProps } from "antd";
 import type { ColumnType } from "antd/es/table";
 import type { TableRowSelection } from "antd/es/table/interface";
-import {
-  createAdapterCatalog,
-  createAdapterRegistry,
-  resolveSceneRender,
-} from "@alien-form/cms";
+import { createAdapterCatalog, createAdapterRegistry, resolveSceneRender } from "@alien-form/cms";
 import type {
   CmsFieldSchema,
   CmsModelSchema,
@@ -120,11 +116,7 @@ function isExpandableColumn(column: TableColumnProjection) {
   return isComplexColumn(column);
 }
 
-function getObjectSource(
-  column: TableColumnProjection,
-  value: unknown,
-  record: ModelRecord,
-) {
+function getObjectSource(column: TableColumnProjection, value: unknown, record: ModelRecord) {
   if (column.type === "void") {
     return record;
   }
@@ -172,11 +164,7 @@ function buildInlineTokens(
     .filter((item): item is string => Boolean(item));
 }
 
-function buildObjectSummary(
-  column: TableColumnProjection,
-  value: unknown,
-  record: ModelRecord,
-) {
+function buildObjectSummary(column: TableColumnProjection, value: unknown, record: ModelRecord) {
   const source = getObjectSource(column, value, record);
   if (!source) {
     return "—";
@@ -396,8 +384,7 @@ export function SchemaTableBody({
     key: column.key,
     width: column.width,
     ellipsis: column.ellipsis,
-    sorter:
-      column.type !== "array" && column.type !== "object" && column.type !== "void",
+    sorter: column.type !== "array" && column.type !== "object" && column.type !== "void",
     sortOrder: sorter?.field === column.key ? sorter.order : null,
     render: (value: unknown, record: ModelRecord) =>
       renderTableCell(column, value, record, (nextColumn, nextRecord) =>
@@ -423,7 +410,6 @@ export function SchemaTableBody({
     <>
       <Table<ModelRecord>
         rowKey={rowKey}
-        className="model-data-table"
         columns={antdColumns}
         dataSource={dataSource}
         loading={loading}

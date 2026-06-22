@@ -101,7 +101,6 @@ export function RecordTable({
     <>
       <Table<ModelRecord>
         rowKey="id"
-        className="model-data-table"
         columns={antdColumns}
         dataSource={records}
         loading={loading}

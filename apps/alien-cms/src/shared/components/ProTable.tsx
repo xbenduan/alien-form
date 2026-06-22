@@ -125,10 +125,7 @@ export function ProTable({
   };
 
   return (
-    <Card
-      className="protable-card"
-      styles={{ body: { padding: 0 } }}
-    >
+    <div className="protable-body">
       <div className="protable-toolbar">
         <div className="protable-toolbar-left">
           <BatchActions selectedRowKeys={selectedRowKeys} onBatchDelete={onBatchDelete} />
@@ -138,11 +135,7 @@ export function ProTable({
           <Space size={8}>
             {toolbarRightExtra}
             <Tooltip title="刷新">
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={onRefresh}
-                aria-label="刷新"
-              />
+              <Button icon={<ReloadOutlined />} onClick={onRefresh} aria-label="刷新" />
             </Tooltip>
             {columnSetting ? (
               <Tooltip title="列设置">
@@ -167,7 +160,7 @@ export function ProTable({
           </Space>
         </div>
       </div>
-      <div className={bodyClassName ?? "protable-body"}>
+      <div style={{ padding: "0 16px" }}>
         <SchemaTableBody
           schema={schema}
           columns={columns}
@@ -192,7 +185,7 @@ export function ProTable({
           onClose={() => setColumnModalOpen(false)}
         />
       ) : null}
-    </Card>
+    </div>
   );
 }
 
