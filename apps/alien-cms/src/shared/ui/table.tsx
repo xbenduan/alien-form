@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type Key, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type Key, type ReactNode } from "react";
 import { Button } from "./button";
 import { cn } from "./cn";
 import { Empty, Spin } from "./display";
@@ -52,11 +52,6 @@ type ResolvedColumn<T> = ColumnType<T> & {
   isFirstRightFixed?: boolean;
 };
 
-type FixedShadowState = {
-  left: boolean;
-  right: boolean;
-};
-
 function resolveColumns<T>(columns: ColumnType<T>[], leftBaseOffset = 0) {
   const resolved = columns.map<ResolvedColumn<T>>((column) => {
     const fixed = column.fixed ?? (isActionColumn(column) ? "right" : undefined);
@@ -90,22 +85,14 @@ function resolveColumns<T>(columns: ColumnType<T>[], leftBaseOffset = 0) {
   return resolved;
 }
 
-function getFixedCellClass<T>(
-  column: ResolvedColumn<T>,
-  isHeader = false,
-  fixedShadow: FixedShadowState = { left: true, right: true },
-) {
+function getFixedCellClass<T>(column: ResolvedColumn<T>, isHeader = false) {
   if (!column.fixed) return undefined;
   return cn(
     "sticky bg-[rgba(255,252,248,0.96)]",
     isHeader && "z-30 bg-[rgba(244,236,227,0.96)]",
     !isHeader && "z-20",
-    column.isLastLeftFixed &&
-      fixedShadow.left &&
-      "before:pointer-events-none before:absolute before:bottom-[-1px] before:right-0 before:top-0 before:w-7 before:translate-x-full before:shadow-[inset_10px_0_8px_-8px_rgba(68,49,33,0.28)] before:content-['']",
-    column.isFirstRightFixed &&
-      fixedShadow.right &&
-      "before:pointer-events-none before:absolute before:bottom-[-1px] before:left-0 before:top-0 before:w-7 before:-translate-x-full before:shadow-[inset_-10px_0_8px_-8px_rgba(68,49,33,0.28)] before:content-['']",
+    column.isLastLeftFixed && "shadow-[8px_0_14px_-14px_rgba(68,49,33,0.5)]",
+    column.isFirstRightFixed && "shadow-[-8px_0_14px_-14px_rgba(68,49,33,0.5)]",
   );
 }
 
@@ -176,8 +163,6 @@ export function Table<T extends object>({
     pagination === false ? dataSource.length || 10 : (pagination.pageSize ?? 10),
   );
   const [internalSorter, setInternalSorter] = useState<SorterResult<T>>();
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-  const [fixedShadow, setFixedShadow] = useState<FixedShadowState>({ left: false, right: false });
 
   useEffect(() => {
     if (pagination !== false) {
@@ -263,44 +248,11 @@ export function Table<T extends object>({
   const selectionColumnStyle: CSSProperties | undefined = shouldFixSelectionColumn
     ? { left: 0, width: selectionColumnWidth, minWidth: selectionColumnWidth }
     : undefined;
-  const fixedSelectionHeaderClass = shouldFixSelectionColumn
-    ? cn(
-        "sticky left-0 z-30 bg-[rgba(244,236,227,0.96)]",
-        fixedShadow.left && "shadow-[8px_0_14px_-14px_rgba(68,49,33,0.5)]",
-      )
-    : undefined;
-  const fixedSelectionBodyClass = shouldFixSelectionColumn
-    ? cn(
-        "sticky left-0 z-20 bg-[rgba(255,252,248,0.96)]",
-        fixedShadow.left && "shadow-[8px_0_14px_-14px_rgba(68,49,33,0.5)]",
-      )
-    : undefined;
-
-  const updateFixedShadow = (element: HTMLDivElement | null) => {
-    if (!element) return;
-    const maxScrollLeft = element.scrollWidth - element.clientWidth;
-    const next = {
-      left: element.scrollLeft > 0,
-      right: element.scrollLeft < maxScrollLeft - 1,
-    };
-    setFixedShadow((current) =>
-      current.left === next.left && current.right === next.right ? current : next,
-    );
-  };
-
-  useEffect(() => {
-    updateFixedShadow(scrollContainerRef.current);
-  }, [tableMinWidth, currentData.length, resolvedColumns.length]);
 
   return (
     <div className="ant-table-wrapper">
       <div className="overflow-hidden rounded-[14px] border border-[rgba(120,98,79,0.12)] bg-[rgba(255,252,248,0.82)]">
-        <div
-          ref={scrollContainerRef}
-          className="overflow-auto"
-          style={{ maxHeight: toPixel(scroll?.y) }}
-          onScroll={(event) => updateFixedShadow(event.currentTarget)}
-        >
+        <div className="overflow-auto" style={{ maxHeight: toPixel(scroll?.y) }}>
           <table
             className="ant-table border-collapse"
             style={{ width: tableWidth, minWidth: tableMinWidth }}
@@ -322,7 +274,8 @@ export function Table<T extends object>({
                       "relative w-11 whitespace-nowrap border-b border-[rgba(120,98,79,0.12)] px-3 py-2.5 text-left",
                       resolvedColumns.length > 0 &&
                         "after:absolute after:right-0 after:top-1/2 after:h-4 after:w-px after:-translate-y-1/2 after:bg-[rgba(120,98,79,0.18)] after:content-['']",
-                      fixedSelectionHeaderClass,
+                      shouldFixSelectionColumn &&
+                        "sticky left-0 z-30 bg-[rgba(244,236,227,0.96)] shadow-[8px_0_14px_-14px_rgba(68,49,33,0.5)]",
                     )}
                     style={selectionColumnStyle}
                   >
@@ -354,7 +307,7 @@ export function Table<T extends object>({
                         column.sorter && "cursor-pointer select-none",
                         index < resolvedColumns.length - 1 &&
                           "after:absolute after:right-0 after:top-1/2 after:h-4 after:w-px after:-translate-y-1/2 after:bg-[rgba(120,98,79,0.18)] after:content-['']",
-                        getFixedCellClass(column, true, fixedShadow),
+                        getFixedCellClass(column, true),
                       )}
                       style={getFixedCellStyle(column)}
                       onClick={() => toggleSort(column)}
@@ -404,7 +357,8 @@ export function Table<T extends object>({
                         <td
                           className={cn(
                             "relative px-3 py-2.5 align-top after:absolute after:bottom-0 after:left-3 after:right-3 after:h-px after:bg-[rgba(120,98,79,0.08)] after:content-['']",
-                            fixedSelectionBodyClass,
+                            shouldFixSelectionColumn &&
+                              "sticky left-0 z-20 bg-[rgba(255,252,248,0.96)] shadow-[8px_0_14px_-14px_rgba(68,49,33,0.5)]",
                           )}
                           style={selectionColumnStyle}
                         >
@@ -431,7 +385,7 @@ export function Table<T extends object>({
                             key={String(column.key ?? column.dataIndex ?? columnIndex)}
                             className={cn(
                               "relative px-3 py-2.5 align-top text-sm text-[var(--af-text,#2f261f)] after:absolute after:bottom-0 after:left-3 after:right-3 after:h-px after:bg-[rgba(120,98,79,0.08)] after:content-['']",
-                              getFixedCellClass(column, false, fixedShadow),
+                              getFixedCellClass(column),
                             )}
                             style={getFixedCellStyle(column)}
                             title={
