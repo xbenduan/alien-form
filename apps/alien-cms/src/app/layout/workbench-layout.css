@@ -79,7 +79,7 @@
 }
 
 .model-side-panel-divider.ant-divider-horizontal.ant-divider-with-text-left {
-    margin: 16px 0 12px;
+    margin: 16px 0;
     color: var(--cms-text-secondary);
     font-size: 12px;
     font-weight: 600;
