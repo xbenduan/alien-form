@@ -42,10 +42,10 @@ const GITHUB_URL = "https://github.com/xbenduan/alien-form";
 const codeBlockStyle: React.CSSProperties = {
   margin: 0,
   padding: 16,
-  background: "#0f172a",
-  color: "#e2e8f0",
-  border: "1px solid #1e293b",
-  borderRadius: 8,
+  background: "#2f261f",
+  color: "#f6efe4",
+  border: "1px solid rgba(120, 98, 79, 0.28)",
+  borderRadius: 16,
   fontSize: 12,
   lineHeight: 1.7,
   overflow: "auto",
@@ -94,7 +94,7 @@ function LiveExample({ title, description, live, code }: LiveExampleProps) {
           size="small"
           title="实时预览"
           styles={{ body: { padding: 16 } }}
-          style={{ background: "#fafcff" }}
+          style={{ background: "rgba(255, 251, 246, 0.9)" }}
         >
           {live}
         </Card>
@@ -419,7 +419,12 @@ function PlaygroundDemo() {
   return (
     <Flex vertical gap={16}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <Card title="实时预览" size="small" styles={{ body: { padding: 16 } }} style={{ background: "#fafcff" }}>
+        <Card
+          title="实时预览"
+          size="small"
+          styles={{ body: { padding: 16 } }}
+          style={{ background: "rgba(255, 251, 246, 0.9)" }}
+        >
           <LiveSchemaForm
             form={form}
             footer={
@@ -449,16 +454,27 @@ function PlaygroundDemo() {
             value={schemaStr}
             onChange={(e) => setSchemaStr(e.target.value)}
             style={{ 
-              fontFamily: "monospace", 
+              fontFamily: "'SF Mono', 'Geist Mono', 'JetBrains Mono', Menlo, monospace", 
               minHeight: 400, 
               border: "none", 
               resize: "none",
               padding: 16,
-              background: "#0f172a",
-              color: "#e2e8f0",
+              background: "#2f261f",
+              color: "#f6efe4",
             }}
           />
-          {error && <div style={{ color: "red", padding: "8px 16px", background: "#fff1f0", borderTop: "1px solid #ffa39e" }}>{error}</div>}
+          {error && (
+            <div
+              style={{
+                color: "#A24E31",
+                padding: "8px 16px",
+                background: "rgba(201, 100, 66, 0.08)",
+                borderTop: "1px solid rgba(201, 100, 66, 0.22)",
+              }}
+            >
+              {error}
+            </div>
+          )}
         </Card>
       </div>
       <Card title="提交数据" size="small" styles={{ body: { padding: 16 } }}>

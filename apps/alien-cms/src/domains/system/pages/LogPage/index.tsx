@@ -200,9 +200,9 @@ export default function LogPage() {
                 </Typography.Text>
                 <pre style={{
                   padding: 12,
-                  background: "#f8faff",
-                  border: "1px solid #f0f0f0",
-                  borderRadius: 8,
+                  background: "rgba(246, 239, 228, 0.78)",
+                  border: "1px solid rgba(120, 98, 79, 0.16)",
+                  borderRadius: 16,
                   fontSize: 12,
                   lineHeight: 1.6,
                   overflow: "auto",

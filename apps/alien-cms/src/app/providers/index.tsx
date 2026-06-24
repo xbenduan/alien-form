@@ -23,22 +23,22 @@ export function AppProviders({ children }: PropsWithChildren) {
       theme={{
         algorithm: theme.defaultAlgorithm,
         token: {
-          colorPrimary: "#1677ff",
-          borderRadius: 6,
-          colorBgLayout: "#f5f7fb",
-          colorText: "#172033",
+          colorPrimary: "#C96442",
+          borderRadius: 18,
+          colorBgLayout: "#f4ede3",
+          colorText: "#2f261f",
           fontFamily:
-            "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            "Inter, Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         },
         components: {
           Card: {
-            borderRadiusLG: 12,
+            borderRadiusLG: 24,
           },
           Drawer: {
-            borderRadiusLG: 20,
+            borderRadiusLG: 28,
           },
           Table: {
-            headerBg: "#f8faff",
+            headerBg: "#f6efe4",
           },
           Form: {
             itemMarginBottom: 16,

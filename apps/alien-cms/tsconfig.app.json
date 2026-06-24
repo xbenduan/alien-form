@@ -14,6 +14,14 @@
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "antd": ["./src/vendor/antd/index.tsx"],
+      "@ant-design/icons": ["./src/vendor/ant-design-icons.tsx"],
+      "antd/es/table": ["./src/vendor/antd/table-types.ts"],
+      "antd/es/table/interface": ["./src/vendor/antd/table-types.ts"]
+    },
 
     /* Linting */
     "noUnusedLocals": false,
