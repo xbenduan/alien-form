@@ -4,7 +4,7 @@ import {
   SchemaField,
   type FormInstance,
 } from "@alien-form/react";
-import { Alert, Empty, Spin, message } from "antd";
+import { Alert, Empty, Spin, message } from "../ui";
 import type {
   ModelActionMode,
   ModelRecord,
@@ -12,6 +12,7 @@ import type {
 import { buildRenderableScenes } from "../utils/build-renderable-scenes";
 import FormItem from "./form-item";
 import * as adapters from "../adapters";
+import "./schema-form-scene.css";
 
 export type SchemaFormMode = Exclude<ModelActionMode, "closed">;
 

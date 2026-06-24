@@ -4,7 +4,7 @@ import type {
   FilterValue,
   SorterResult,
   TablePaginationConfig,
-} from "antd/es/table/interface";
+} from "../ui";
 
 export interface TableSorter {
   field?: string;

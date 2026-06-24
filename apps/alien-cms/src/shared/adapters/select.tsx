@@ -1,6 +1,6 @@
 import { defineAdapter } from "@alien-form/cms";
 import type { DataSourceItem } from "@alien-form/react";
-import { Select as AntSelect } from "antd";
+import { Select as AntSelect } from "../ui";
 import type { BaseFieldProps } from "./types";
 
 function Select({

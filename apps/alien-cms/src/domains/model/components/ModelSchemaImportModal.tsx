@@ -1,4 +1,4 @@
-import { Input, Modal, Typography } from "antd";
+import { Input, Modal, Typography } from "../../../shared/ui";
 import { useEffect, useState } from "react";
 
 interface ModelSchemaImportModalProps {

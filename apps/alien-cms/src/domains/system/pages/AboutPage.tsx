@@ -8,8 +8,8 @@ import {
   Typography,
   message,
   Input,
-} from "antd";
-import { GithubOutlined } from "@ant-design/icons";
+} from "../../../shared/ui";
+import { GithubOutlined } from "../../../shared/ui";
 import {
   FormProvider,
   SchemaField,

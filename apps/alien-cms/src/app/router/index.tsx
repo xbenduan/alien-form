@@ -1,5 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
-import { Spin } from "antd";
+import { Spin } from "../../shared/ui";
 import WorkbenchLayout from "../layout/WorkbenchLayout";
 import { buildRecordPath } from "./paths";
 import { useModelSummaries } from "../../hooks/use-schema-store";

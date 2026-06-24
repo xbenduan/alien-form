@@ -11,7 +11,7 @@ import {
   FileTextOutlined,
   InfoCircleOutlined,
   SettingOutlined,
-} from "@ant-design/icons";
+} from "../../shared/ui";
 
 // ─── Types ───────────────────────────────────────────────────
 

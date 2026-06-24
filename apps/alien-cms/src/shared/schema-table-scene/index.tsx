@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { ProfileOutlined } from "@ant-design/icons";
-import { Button, Table, Tag, Tooltip, Typography } from "antd";
-import type { TableColumnsType, TablePaginationConfig, TableProps } from "antd";
-import type { ColumnType } from "antd/es/table";
-import type { TableRowSelection } from "antd/es/table/interface";
+import { ProfileOutlined } from "../ui";
+import { Button, Table, Tag, Tooltip, Typography } from "../ui";
+import type { TableColumnsType, TablePaginationConfig, TableProps } from "../ui";
+import type { ColumnType } from "../ui";
+import type { TableRowSelection } from "../ui";
 import { createAdapterCatalog, createAdapterRegistry, resolveSceneRender } from "@alien-form/cms";
 import type {
   CmsFieldSchema,
@@ -13,6 +13,7 @@ import type {
 } from "../../domains/record/types/record";
 import { FieldDetailDrawer } from "../../domains/record/components/FieldDetailDrawer";
 import * as adapters from "../adapters";
+import "./schema-table-scene.css";
 
 const tableAdapters = {
   DisplayText: adapters.DisplayTextAdapter,

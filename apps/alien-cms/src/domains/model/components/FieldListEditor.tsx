@@ -1,6 +1,6 @@
-import { DeleteOutlined, DownOutlined, DragOutlined, PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, DownOutlined, DragOutlined, PlusOutlined } from "../../../shared/ui";
 import type { ModelBuilderFieldDraft } from '@alien-form/cms';
-import { Button, Card, Dropdown, Empty, Space, Tag, Typography } from 'antd';
+import { Button, Card, Dropdown, Empty, Space, Tag, Typography } from "../../../shared/ui";
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { fieldPresets, type FieldPreset } from './FieldPalette';

@@ -1,6 +1,6 @@
 import { defineAdapter } from "@alien-form/cms";
 import type { DataSourceItem } from "@alien-form/react";
-import { Radio as AntRadio } from "antd";
+import { Radio as AntRadio } from "../ui";
 import type { BaseFieldProps } from "./types";
 
 function Radio({

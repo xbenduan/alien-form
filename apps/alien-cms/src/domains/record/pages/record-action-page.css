@@ -1,0 +1,21 @@
+.model-action-page {
+    border: 1px solid var(--cms-border);
+    box-shadow: var(--cms-shadow-md);
+    background: rgba(255, 251, 246, 0.94);
+}
+
+.model-action-page-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.model-action-page-title {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.model-action-page-body {
+    min-height: 320px;
+}

@@ -1,6 +1,6 @@
 import type React from "react";
 import { defineAdapter } from "@alien-form/cms";
-import { Card, Typography } from "antd";
+import { Card, Typography } from "../ui";
 
 function SectionCard({
   title,

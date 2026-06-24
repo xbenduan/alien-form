@@ -1,5 +1,5 @@
 import { defineAdapter } from "@alien-form/cms";
-import { Switch as AntSwitch } from "antd";
+import { Switch as AntSwitch } from "../ui";
 import type { BaseFieldProps } from "./types";
 
 function Switch({

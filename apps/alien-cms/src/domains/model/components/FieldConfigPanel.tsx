@@ -3,7 +3,7 @@ import type {
   BuilderFieldType,
   ModelBuilderFieldDraft,
 } from "@alien-form/cms";
-import { Card, Empty, Form, Input, Select, Switch } from "antd";
+import { Card, Empty, Form, Input, Select, Switch } from "../../../shared/ui";
 import {
   builderComponentOptions,
   getBuilderComponentMeta,

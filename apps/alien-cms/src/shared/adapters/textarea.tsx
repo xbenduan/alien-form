@@ -1,5 +1,5 @@
 import { defineAdapter } from "@alien-form/cms";
-import { Input as AntInput } from "antd";
+import { Input as AntInput } from "../ui";
 import type { BaseFieldProps } from "./types";
 
 const { TextArea } = AntInput;

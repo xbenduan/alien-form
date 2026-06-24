@@ -1,0 +1,20 @@
+.table-cell-complex {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+}
+
+.table-cell-summary {
+    flex: 1;
+    min-width: 0;
+}
+
+.table-empty-state {
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+    padding: 28px 0;
+    color: var(--cms-text-secondary);
+}

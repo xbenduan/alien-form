@@ -1,5 +1,5 @@
 import { defineAdapter } from "@alien-form/cms";
-import { Typography } from "antd";
+import { Typography } from "../ui";
 import { getDisplaySummary } from "./get-display-summary";
 
 function DisplayBoolean({ value, ellipsis }: { value?: unknown; ellipsis?: boolean }) {

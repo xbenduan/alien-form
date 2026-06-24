@@ -1,5 +1,5 @@
 import { useCreateForm } from "@alien-form/react";
-import { Button, Drawer, Space } from "antd";
+import { Button, Drawer, Space } from "../ui";
 import type { FC } from "react";
 import type {
   CmsModelSchema,

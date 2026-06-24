@@ -5,8 +5,8 @@ import {
   ArrowUpOutlined,
   DeleteOutlined,
   PlusOutlined,
-} from "@ant-design/icons";
-import { Button, Card, Empty, Space } from "antd";
+} from "../ui";
+import { Button, Card, Empty, Space } from "../ui";
 
 interface ArrayCardsProps {
   rows: React.ReactNode[];

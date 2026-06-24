@@ -1,6 +1,6 @@
 import { defineAdapter } from "@alien-form/cms";
 import type { DataSourceItem } from "@alien-form/react";
-import { Checkbox } from "antd";
+import { Checkbox } from "../ui";
 import type { BaseFieldProps } from "./types";
 
 function CheckboxGroup({

@@ -1,7 +1,7 @@
 import type React from "react";
-import { QuestionCircleOutlined } from "@ant-design/icons";
+import { QuestionCircleOutlined } from "../ui";
 import type { FieldError, ValidateStatus } from "@alien-form/react";
-import { Tooltip } from "antd";
+import { Tooltip } from "../ui";
 
 interface FormItemProps {
   label?: string;

@@ -1,5 +1,5 @@
-import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
-import { Alert, Button, Card, Flex, Popconfirm, Space, Spin, Typography, message } from "antd";
+import { DeleteOutlined, EditOutlined, EyeOutlined } from "../../../shared/ui";
+import { Alert, Button, Card, Flex, Popconfirm, Space, Spin, Typography, message } from "../../../shared/ui";
 import { useRef } from "react";
 import { useRecordStore } from "../../../hooks/use-record-store";
 import { SchemaFilterBody } from "../../../shared/schema-filter-scene";

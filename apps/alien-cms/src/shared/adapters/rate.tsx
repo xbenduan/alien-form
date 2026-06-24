@@ -1,5 +1,5 @@
 import { defineAdapter } from "@alien-form/cms";
-import { Rate as AntRate } from "antd";
+import { Rate as AntRate } from "../ui";
 import type { BaseFieldProps } from "./types";
 
 function Rate({

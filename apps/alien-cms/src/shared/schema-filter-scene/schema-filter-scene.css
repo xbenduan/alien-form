@@ -1,0 +1,37 @@
+.model-filter-panel {
+    display: block;
+    height: 100%;
+}
+
+.model-filter-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+    align-items: end;
+}
+
+.filter-form-item {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.filter-form-item:last-child {
+    justify-self: end;
+    grid-column: -1 / -2;
+}
+
+.filter-form-item > .ant-input,
+.filter-form-item > .ant-input-affix-wrapper,
+.filter-form-item > .ant-input-number,
+.filter-form-item > .ant-picker,
+.filter-form-item > .ant-select,
+.filter-form-item .ant-input,
+.filter-form-item .ant-input-affix-wrapper,
+.filter-form-item .ant-input-number,
+.filter-form-item .ant-picker,
+.filter-form-item .ant-select,
+.filter-form-item .ant-select .ant-select-selector {
+    width: 100%;
+}

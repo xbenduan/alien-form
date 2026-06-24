@@ -1,5 +1,5 @@
 import type { BuilderComponentName, BuilderFieldType } from '@alien-form/cms';
-import { Button, Card, Space, Typography } from 'antd';
+import { Button, Card, Space, Typography } from "../../../shared/ui";
 
 export interface FieldPreset {
   key: string;

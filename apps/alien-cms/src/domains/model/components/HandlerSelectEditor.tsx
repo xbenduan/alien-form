@@ -1,6 +1,6 @@
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, PlusOutlined } from "../../../shared/ui";
 import type { BuilderReactionTarget, ModelBuilderReactionDraft } from '@alien-form/cms';
-import { Button, Empty, Input, Select, Space, Typography } from 'antd';
+import { Button, Empty, Input, Select, Space, Typography } from "../../../shared/ui";
 import { getHandlerMeta, getHandlerOptions } from '../../../shared/handlers';
 
 const reactionTargetOptions: Array<{ label: string; value: BuilderReactionTarget }> = [

@@ -1,5 +1,5 @@
 import { defineAdapter } from "@alien-form/cms";
-import { InputNumber } from "antd";
+import { InputNumber } from "../ui";
 import type { BaseFieldProps } from "./types";
 
 function NumberInput({

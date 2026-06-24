@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App as AntdApp } from 'antd';
+import { App as AntdApp } from "../../shared/ui";
 import {
   createProviders,
   initProvider,

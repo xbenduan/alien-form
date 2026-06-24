@@ -4,15 +4,16 @@ import {
   ReloadOutlined,
   SettingOutlined,
   UploadOutlined,
-} from "@ant-design/icons";
-import { Button, Card, Space, Tooltip, message } from "antd";
-import type { TableProps } from "antd";
-import type { ColumnType } from "antd/es/table";
-import type { TableRowSelection } from "antd/es/table/interface";
+} from "../ui";
+import { Button, Card, Space, Tooltip, message } from "../ui";
+import type { TableProps } from "../ui";
+import type { ColumnType } from "../ui";
+import type { TableRowSelection } from "../ui";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { ColumnVisibilityModal } from "./ColumnVisibilityModal";
 import { SchemaTableBody } from "../schema-table-scene";
+import "./protable.css";
 import type {
   CmsModelSchema,
   ModelRecord,
@@ -160,7 +161,7 @@ export function ProTable({
           </Space>
         </div>
       </div>
-      <div style={{ padding: "0 16px" }}>
+      <div className="px-4 pb-4">
         <SchemaTableBody
           schema={schema}
           columns={columns}

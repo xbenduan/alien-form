@@ -1,4 +1,4 @@
-import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined } from "../../../../shared/ui";
 import {
   Alert,
   Button,
@@ -7,7 +7,7 @@ import {
   Popconfirm,
   Space,
   message,
-} from "antd";
+} from "../../../../shared/ui";
 import { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";

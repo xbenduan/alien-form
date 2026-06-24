@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Button, Card, Col, Descriptions, Drawer, Empty, Flex, Row, Select, Tag, Typography } from "antd";
+import { Button, Card, Col, Descriptions, Drawer, Empty, Flex, Row, Select, Tag, Typography } from "../../../../shared/ui";
 
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentProviderSnapshot, createProviders } from "@alien-form/cms";
@@ -80,7 +80,7 @@ export default function LogPage() {
     return (
       <Flex vertical gap={16}>
         <Card className="model-query-card" styles={{ body: { padding: 24 } }}>
-          <Row gutter={[20, 20]} align="top" className="model-toolbar-row">
+          <Row gutter={[20, 20]} align="top" className="mb-0">
             <Col flex="auto">
               <Select disabled placeholder="操作类型" style={{ width: 140 }} />
             </Col>

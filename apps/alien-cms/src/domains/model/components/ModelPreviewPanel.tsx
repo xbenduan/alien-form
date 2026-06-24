@@ -1,5 +1,5 @@
 import type { CmsModelSchema } from '@alien-form/cms';
-import { Alert, Card } from 'antd';
+import { Alert, Card } from "../../../shared/ui";
 import { SchemaFormView } from '../../record/components/SchemaRenderer';
 
 interface ModelPreviewPanelProps {

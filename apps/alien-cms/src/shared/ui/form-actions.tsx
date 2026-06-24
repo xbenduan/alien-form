@@ -1,11 +1,11 @@
-import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
-import type { FormInstance } from '@alien-form/react';
-import type { ButtonProps } from 'antd';
-import { Button, Space } from 'antd';
-import { createContext, useContext } from 'react';
+import type { FormInstance } from "@alien-form/react";
+import { createContext, useContext } from "react";
+import { Button, type ButtonProps } from "./button";
+import { ReloadOutlined, SearchOutlined } from "./icons";
+import { Space } from "./typography";
 
 export interface FormActionContextValue {
-  kind: 'filter' | 'submit';
+  kind: "filter" | "submit";
   loading?: boolean;
   submitText?: string;
   submitButtonProps?: ButtonProps;
@@ -47,7 +47,7 @@ export function FormActions({ form }: { form: FormInstance }) {
     <Space size={8}>
       <Button
         type="primary"
-        icon={kind === 'filter' ? <SearchOutlined /> : undefined}
+        icon={kind === "filter" ? <SearchOutlined /> : undefined}
         loading={loading}
         onClick={() => {
           void form
@@ -60,7 +60,7 @@ export function FormActions({ form }: { form: FormInstance }) {
         }}
         {...submitButtonProps}
       >
-        {submitText ?? (kind === 'filter' ? '查询' : '提交')}
+        {submitText ?? (kind === "filter" ? "查询" : "提交")}
       </Button>
       {showReset ? (
         <Button
@@ -77,7 +77,7 @@ export function FormActions({ form }: { form: FormInstance }) {
       {showCancel ? <Button onClick={onCancel}>取消</Button> : null}
       {showExpandButton ? (
         <Button type="link" onClick={onToggleExpanded} style={{ paddingInline: 4 }}>
-          {expanded ? '收起' : '展开'}
+          {expanded ? "收起" : "展开"}
         </Button>
       ) : null}
     </Space>

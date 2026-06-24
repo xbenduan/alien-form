@@ -1,5 +1,5 @@
 import type { ModelSummary } from "@alien-form/cms";
-import { Card, Divider, Menu, Typography } from "antd";
+import { Card, Divider, Menu, Typography } from "../../../shared/ui";
 import { useNavigate } from "react-router-dom";
 import { getMenuRoutes } from "../../router/routes";
 import { buildRecordPath } from "../../router/paths";

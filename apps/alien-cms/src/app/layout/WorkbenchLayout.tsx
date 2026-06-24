@@ -1,10 +1,11 @@
 import { Suspense } from "react";
 import type { ModelSummary } from "@alien-form/cms";
-import { Alert, Spin } from "antd";
+import { Alert, Spin } from "../../shared/ui";
 import { Outlet, useLocation, useOutletContext } from "react-router-dom";
 import { useModelSummaries } from "../../hooks/use-schema-store";
 import { WorkbenchSidebar } from "./components/WorkbenchSidebar";
 import { resolveActiveKey } from "../router/routes";
+import "./workbench-layout.css";
 
 export interface WorkbenchOutletContext {
   modelSummaries: ModelSummary[];

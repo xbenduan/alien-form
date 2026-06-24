@@ -1,4 +1,4 @@
-import { Empty, Modal } from 'antd';
+import { Empty, Modal } from "../../../shared/ui";
 import { useMemo } from 'react';
 import type { CmsModelSchema, ModelRecord, TableColumnProjection } from '../types/record';
 import { DetailSchemaView } from './SchemaRenderer';

@@ -1,5 +1,5 @@
 import { defineAdapter } from "@alien-form/cms";
-import { DatePicker } from "antd";
+import { DatePicker } from "../ui";
 import dayjs from "dayjs";
 import type { BaseFieldProps } from "./types";
 

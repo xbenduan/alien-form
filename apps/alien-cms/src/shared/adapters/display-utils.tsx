@@ -1,5 +1,6 @@
 import type { DataSourceItem } from "@alien-form/react";
-import { Tag } from "antd";
+import { Tag } from "../ui";
+import "./display-utils.css";
 
 export const EMPTY_TEXT = "—";
 

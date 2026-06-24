@@ -1,8 +1,9 @@
-import { ArrowLeftOutlined } from "@ant-design/icons";
-import { Alert, Button, Card, Spin, message } from "antd";
+import { ArrowLeftOutlined } from "../../../shared/ui";
+import { Alert, Button, Card, Spin, message } from "../../../shared/ui";
 import { useRecordStore } from "../../../hooks/use-record-store";
 import PageSchemaForm from "../../../shared/components/PageSchemaForm";
 import type { RecordRouteState } from "../types/record";
+import "./record-action-page.css";
 
 interface RecordActionPageProps {
   modelName: string;

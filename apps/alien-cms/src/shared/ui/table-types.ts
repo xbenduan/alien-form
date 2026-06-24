@@ -61,4 +61,3 @@ export interface TableProps<T> {
     sorter: SorterResult<T> | SorterResult<T>[],
   ) => void;
 }
-

@@ -1,5 +1,5 @@
-import { EyeOutlined, SaveOutlined } from "@ant-design/icons";
-import { Alert, Button, Card, Col, Flex, Modal, Row, Space, Spin, Steps, message } from "antd";
+import { EyeOutlined, SaveOutlined } from "../../../shared/ui";
+import { Alert, Button, Card, Col, Flex, Modal, Row, Space, Spin, Steps, message } from "../../../shared/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { buildModelSchema, schemaToBuilderDraft } from "@alien-form/cms";
@@ -22,6 +22,7 @@ import { ModelMetaForm } from "../components/ModelMetaForm";
 import { ModelSchemaImportModal } from "../components/ModelSchemaImportModal";
 import { ModelPreviewPanel } from "../components/ModelPreviewPanel";
 import type { FieldPreset } from "../components/FieldPalette";
+import "../model-builder.css";
 
 let fieldCounter = 0;
 const SYSTEM_FIELD_KEYS = ["id", "createdAt", "updatedAt"] as const;

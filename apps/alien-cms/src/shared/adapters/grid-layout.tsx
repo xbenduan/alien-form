@@ -1,6 +1,6 @@
 import React from "react";
 import { defineAdapter } from "@alien-form/cms";
-import { Col, Row, Typography } from "antd";
+import { Col, Row, Typography } from "../ui";
 
 function GridLayout({
   title,

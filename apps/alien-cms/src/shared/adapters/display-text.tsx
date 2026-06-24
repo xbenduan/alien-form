@@ -1,5 +1,5 @@
 import { defineAdapter } from "@alien-form/cms";
-import { Image, Tag, Typography } from "antd";
+import { Image, Tag, Typography } from "../ui";
 import { normalizeArrayItems, renderTagList } from "./display-utils";
 import { getDisplaySummary } from "./get-display-summary";
 import type { DisplayValueProps } from "./types";

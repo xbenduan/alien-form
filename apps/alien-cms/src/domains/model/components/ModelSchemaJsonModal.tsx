@@ -1,4 +1,4 @@
-import { Alert, Modal, Spin } from 'antd';
+import { Alert, Modal, Spin } from "../../../shared/ui";
 import type { CmsModelSchema } from '@alien-form/cms';
 
 interface ModelSchemaJsonModalProps {

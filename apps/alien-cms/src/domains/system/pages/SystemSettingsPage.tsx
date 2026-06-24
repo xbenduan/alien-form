@@ -1,5 +1,5 @@
-import { App, Button, Space, Tag } from "antd";
-import { SettingOutlined, DisconnectOutlined } from "@ant-design/icons";
+import { App, Button, Space, Tag } from "../../../shared/ui";
+import { SettingOutlined, DisconnectOutlined } from "../../../shared/ui";
 import {
   createProviders,
   getCurrentProviderSnapshot,

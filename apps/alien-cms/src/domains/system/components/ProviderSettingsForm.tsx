@@ -1,5 +1,5 @@
-import { Button, Card, Space, Tag, Typography } from "antd";
-import { SettingOutlined, DisconnectOutlined } from "@ant-design/icons";
+import { Button, Card, Space, Tag, Typography } from "../../../shared/ui";
+import { SettingOutlined, DisconnectOutlined } from "../../../shared/ui";
 import {
   FormProvider,
   SchemaField,
@@ -14,6 +14,7 @@ import {
   formDecorators,
 } from "../../../shared/schema-form-scene";
 import type { ProviderSettingsFormValues } from "../utils/provider-config";
+import "./provider-settings-form.css";
 
 const settingsSchema: IFormSchema = {
   type: "object",

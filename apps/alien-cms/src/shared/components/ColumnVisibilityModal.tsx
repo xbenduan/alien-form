@@ -1,4 +1,4 @@
-import { Checkbox, Modal, Space } from "antd";
+import { Checkbox, Modal, Space } from "../ui";
 
 interface ColumnVisibilityModalProps {
   open: boolean;

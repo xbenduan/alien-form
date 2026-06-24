@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { defineAdapter } from "@alien-form/cms";
-import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
-import { Button, Modal, Table } from "antd";
-import type { ColumnsType } from "antd/es/table";
+import { DeleteOutlined, EditOutlined, PlusOutlined } from "../ui";
+import { Button, Modal, Table } from "../ui";
+import type { ColumnsType } from "../ui";
 
 interface ChildSchema {
   type?: string;

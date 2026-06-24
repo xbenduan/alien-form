@@ -1,11 +1,12 @@
-import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
-import { Button, Popconfirm, Space, Table, Tag, Typography } from "antd";
-import type { TableColumnsType, TablePaginationConfig } from "antd";
-import type { FilterValue, SorterResult } from "antd/es/table/interface";
+import { DeleteOutlined, EditOutlined, EyeOutlined } from "../../../shared/ui";
+import { Button, Popconfirm, Space, Table, Tag, Typography } from "../../../shared/ui";
+import type { TableColumnsType, TablePaginationConfig } from "../../../shared/ui";
+import type { FilterValue, SorterResult } from "../../../shared/ui";
 import { useState } from "react";
 import type { ModelRecord, TableColumnProjection } from "../types/record";
 import { FieldDetailDrawer } from "./FieldDetailDrawer";
 import { renderTableCell } from "./TableCellRenderer";
+import "../../../shared/schema-table-scene/schema-table-scene.css";
 
 interface RecordTableProps {
   columns: TableColumnProjection[];

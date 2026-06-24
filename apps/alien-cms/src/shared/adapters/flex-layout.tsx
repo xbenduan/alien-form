@@ -1,6 +1,6 @@
 import type React from "react";
 import { defineAdapter } from "@alien-form/cms";
-import { Flex } from "antd";
+import { Flex } from "../ui";
 
 function FlexLayout({
   vertical = true,

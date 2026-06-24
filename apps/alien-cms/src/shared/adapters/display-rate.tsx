@@ -1,6 +1,6 @@
 import { defineAdapter } from "@alien-form/cms";
 import type { DataSourceItem } from "@alien-form/react";
-import { Rate } from "antd";
+import { Rate } from "../ui";
 import { EMPTY_TEXT } from "./display-utils";
 
 interface DisplayValueProps {

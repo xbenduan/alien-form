@@ -1,0 +1,17 @@
+.readonly-tag-list {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.readonly-tag-item.ant-tag {
+    margin-inline-end: 0;
+    margin-bottom: 0;
+    padding: 2px 10px;
+    border: 1px solid rgba(var(--cms-accent-rgb), 0.22);
+    border-radius: 999px;
+    background: rgba(var(--cms-accent-rgb), 0.08);
+    color: var(--cms-accent-strong);
+    line-height: 20px;
+}

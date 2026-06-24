@@ -1,4 +1,4 @@
-import { ConfigProvider, theme } from "antd";
+import { ConfigProvider, theme, TooltipProvider } from "../../shared/ui";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import { useState } from "react";
@@ -46,7 +46,9 @@ export function AppProviders({ children }: PropsWithChildren) {
         },
       }}
     >
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>{children}</TooltipProvider>
+      </QueryClientProvider>
     </ConfigProvider>
   );
 }
