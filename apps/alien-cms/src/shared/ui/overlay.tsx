@@ -98,7 +98,7 @@ export function Modal({
             if (!maskClosable) event.preventDefault();
           }}
           className={cn(
-            "fixed left-1/2 top-12 z-[1001] -translate-x-1/2 rounded-[16px] border border-[rgba(120,98,79,0.16)] bg-[rgba(252,248,242,0.98)] shadow-[0_18px_42px_rgba(68,49,33,0.18)] outline-none",
+            "fixed left-1/2 top-12 z-[1001] -translate-x-1/2 overflow-hidden rounded-[16px] border border-[rgba(120,98,79,0.16)] bg-[rgba(252,248,242,0.98)] shadow-[0_18px_42px_rgba(68,49,33,0.18)] outline-none",
             "max-w-[calc(100vw-2rem)]",
             centered && "top-1/2 -translate-y-1/2",
           )}

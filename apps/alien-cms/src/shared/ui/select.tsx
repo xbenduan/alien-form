@@ -133,7 +133,11 @@ function SingleSelect({
         {allowClear && stringValue !== undefined && !disabled ? (
           <button
             type="button"
-            className="absolute right-8 inline-flex h-5 w-5 items-center justify-center rounded-full text-[rgba(80,63,50,0.55)] hover:bg-[rgba(201,100,66,0.08)] hover:text-[#A24E31]"
+            className="absolute right-8 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full text-[rgba(80,63,50,0.55)] hover:bg-[rgba(201,100,66,0.08)] hover:text-[#A24E31]"
+            onPointerDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
@@ -219,6 +223,10 @@ function MultipleSelect({
                         role="button"
                         tabIndex={-1}
                         className="inline-flex h-3 w-3 cursor-pointer items-center justify-center text-[10px] hover:text-[#7A2E14]"
+                        onPointerDown={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                        }}
                         onClick={(event) => {
                           event.preventDefault();
                           event.stopPropagation();
@@ -241,6 +249,10 @@ function MultipleSelect({
                 role="button"
                 tabIndex={-1}
                 className="inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-full text-[rgba(80,63,50,0.55)] hover:bg-[rgba(201,100,66,0.08)] hover:text-[#A24E31]"
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();

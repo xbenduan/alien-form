@@ -264,21 +264,37 @@ export function Flex({
 export function Divider({
   children,
   className,
+  titlePlacement = "center",
 }: {
   children?: ReactNode;
   className?: string;
-  titlePlacement?: "start" | "center" | "end";
+  titlePlacement?: "left" | "center" | "right" | "start" | "end";
 }) {
+  const placement =
+    titlePlacement === "start" ? "left" : titlePlacement === "end" ? "right" : titlePlacement;
+  const lineClass = "h-px bg-[rgba(120,98,79,0.12)]";
+
+  if (!children) {
+    return (
+      <div className={cn("ant-divider ant-divider-horizontal", className)}>
+        <span className={cn(lineClass, "block w-full")} />
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
-        "ant-divider ant-divider-horizontal flex items-center gap-3 text-xs uppercase tracking-[0.14em] text-[rgba(80,63,50,0.58)]",
+        "ant-divider ant-divider-horizontal ant-divider-with-text flex items-center gap-3 text-xs uppercase tracking-[0.14em] text-[rgba(80,63,50,0.58)]",
+        placement === "left" && "ant-divider-with-text-left",
+        placement === "center" && "ant-divider-with-text-center",
+        placement === "right" && "ant-divider-with-text-right",
         className,
       )}
     >
-      <span className="h-px flex-1 bg-[rgba(120,98,79,0.12)]" />
-      {children ? <span>{children}</span> : null}
-      <span className="h-px flex-1 bg-[rgba(120,98,79,0.12)]" />
+      <span className={cn(lineClass, placement === "left" ? "w-4 shrink-0" : "flex-1")} />
+      <span className="shrink-0">{children}</span>
+      <span className={cn(lineClass, placement === "right" ? "w-4 shrink-0" : "flex-1")} />
     </div>
   );
 }

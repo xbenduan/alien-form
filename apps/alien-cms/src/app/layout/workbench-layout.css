@@ -78,7 +78,7 @@
     padding-top: 0;
 }
 
-.model-side-panel-divider.ant-divider-horizontal.ant-divider-with-text-start {
+.model-side-panel-divider.ant-divider-horizontal.ant-divider-with-text-left {
     margin: 16px 0 12px;
     color: var(--cms-text-secondary);
     font-size: 12px;

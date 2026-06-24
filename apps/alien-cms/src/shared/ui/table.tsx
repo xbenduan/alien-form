@@ -91,8 +91,10 @@ function getFixedCellClass<T>(column: ResolvedColumn<T>, isHeader = false) {
     "sticky bg-[rgba(255,252,248,0.96)]",
     isHeader && "z-30 bg-[rgba(244,236,227,0.96)]",
     !isHeader && "z-20",
-    column.isLastLeftFixed && "shadow-[8px_0_14px_-14px_rgba(68,49,33,0.5)]",
-    column.isFirstRightFixed && "shadow-[-8px_0_14px_-14px_rgba(68,49,33,0.5)]",
+    column.isLastLeftFixed &&
+      "before:pointer-events-none before:absolute before:bottom-[-1px] before:right-0 before:top-0 before:w-7 before:translate-x-full before:shadow-[inset_10px_0_8px_-8px_rgba(68,49,33,0.28)] before:content-['']",
+    column.isFirstRightFixed &&
+      "before:pointer-events-none before:absolute before:bottom-[-1px] before:left-0 before:top-0 before:w-7 before:-translate-x-full before:shadow-[inset_-10px_0_8px_-8px_rgba(68,49,33,0.28)] before:content-['']",
   );
 }
 
@@ -243,7 +245,7 @@ export function Table<T extends object>({
     allPageRowKeys.length > 0 && allPageRowKeys.every((key) => selectedRowKeys.includes(key));
   const computedColumnWidth = sumNumericColumnWidths(resolvedColumns, selectionColumnWidth);
   const horizontalScrollWidth = toPixel(scroll?.x);
-  const tableWidth = horizontalScrollWidth ?? "100%";
+  const tableWidth = "100%";
   const tableMinWidth = horizontalScrollWidth ?? (computedColumnWidth ? `${computedColumnWidth}px` : "100%");
   const selectionColumnStyle: CSSProperties | undefined = shouldFixSelectionColumn
     ? { left: 0, width: selectionColumnWidth, minWidth: selectionColumnWidth }

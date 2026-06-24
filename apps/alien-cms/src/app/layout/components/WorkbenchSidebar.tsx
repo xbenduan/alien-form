@@ -40,7 +40,7 @@ export function WorkbenchSidebar({ modelSummaries, activeKey }: WorkbenchSidebar
       </div>
 
       <div className="model-side-panel-menu-block">
-        <Divider className="model-side-panel-divider" titlePlacement="start">
+        <Divider className="model-side-panel-divider" titlePlacement="left">
           系统菜单
         </Divider>
         <Menu
@@ -57,7 +57,7 @@ export function WorkbenchSidebar({ modelSummaries, activeKey }: WorkbenchSidebar
       </div>
 
       <div className="model-side-panel-menu-block">
-        <Divider className="model-side-panel-divider" titlePlacement="start">
+        <Divider className="model-side-panel-divider" titlePlacement="left">
           模型列表
         </Divider>
         <Menu
