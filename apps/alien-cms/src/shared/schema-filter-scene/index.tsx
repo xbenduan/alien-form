@@ -4,7 +4,6 @@ import {
   SchemaField,
   useCreateForm,
 } from "@alien-form/react";
-import { buildScenes, type SceneMode } from "@alien-form/cms";
 import {
   FormActionContext,
   FormActions,
@@ -12,25 +11,11 @@ import {
 } from "../ui";
 import type { CmsModelSchema } from "../../domains/record/types/record";
 import { createRecordFormConfig } from "../utils/create-record-form-config";
+import { buildRenderableScenes } from "../utils/build-renderable-scenes";
 import FilterItem from "./form-item";
 import * as adapters from "../adapters";
 
-function withSceneMode<P extends Record<string, unknown>>(
-  Component: (props: any) => React.ReactNode,
-  mode: SceneMode,
-  defaultProps: Record<string, unknown>,
-) {
-  function SceneComponent(props: P) {
-    return React.createElement(Component as never, { ...defaultProps, mode, ...props });
-  }
-  return SceneComponent;
-}
-
-const filterComponents = buildScenes(
-  adapters as unknown as Record<string, unknown>,
-  "filter",
-  withSceneMode,
-);
+const filterComponents = buildRenderableScenes(adapters, "filter");
 
 const filterDecorators = {
   FilterItem,

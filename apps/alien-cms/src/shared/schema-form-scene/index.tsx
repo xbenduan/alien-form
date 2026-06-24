@@ -5,38 +5,19 @@ import {
   type FormInstance,
 } from "@alien-form/react";
 import { Alert, Empty, Spin, message } from "antd";
-import { buildScenes, type SceneMode } from "@alien-form/cms";
 import type {
   ModelActionMode,
   ModelRecord,
 } from "../../domains/record/types/record";
+import { buildRenderableScenes } from "../utils/build-renderable-scenes";
 import FormItem from "./form-item";
 import * as adapters from "../adapters";
 
 export type SchemaFormMode = Exclude<ModelActionMode, "closed">;
 
-function withSceneMode<P extends Record<string, unknown>>(
-  Component: (props: any) => React.ReactNode,
-  mode: SceneMode,
-  defaultProps: Record<string, unknown>,
-) {
-  function SceneComponent(props: P) {
-    return React.createElement(Component as never, { ...defaultProps, mode, ...props });
-  }
-  return SceneComponent;
-}
+export const formComponents = buildRenderableScenes(adapters, "form");
 
-export const formComponents = buildScenes(
-  adapters as unknown as Record<string, unknown>,
-  "form",
-  withSceneMode,
-);
-
-const detailComponents = buildScenes(
-  adapters as unknown as Record<string, unknown>,
-  "detail",
-  withSceneMode,
-);
+const detailComponents = buildRenderableScenes(adapters, "detail");
 
 export const formDecorators = {
   FormItem,
