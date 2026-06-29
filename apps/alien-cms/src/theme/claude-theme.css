@@ -19,7 +19,7 @@
   --cms-paper-soft: #f6efe4;
   --cms-paper-muted: #efe4d5;
   --cms-panel: rgba(255, 251, 246, 0.88);
-  --cms-panel-strong: rgba(252, 247, 241, 0.96);
+  --cms-panel-strong: rgba(246, 239, 228, 0.96);
   --cms-border: rgba(120, 98, 79, 0.16);
   --cms-border-strong: rgba(120, 98, 79, 0.24);
   --cms-text: #2f261f;
@@ -68,7 +68,7 @@ h6 {
 .ant-card-head,
 .ant-modal-header,
 .ant-drawer-header {
-  background: linear-gradient(180deg, rgba(255, 253, 249, 0.96), rgba(249, 243, 236, 0.92));
+  background: var(--cms-panel);
 }
 
 .ant-card-body,
@@ -115,4 +115,3 @@ code {
     "Menlo",
     monospace;
 }
-

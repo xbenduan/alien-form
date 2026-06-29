@@ -27,7 +27,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "ant-card overflow-hidden rounded-[14px] border border-[rgba(120,98,79,0.14)] bg-[rgba(255,251,246,0.88)] shadow-[0_10px_26px_rgba(91,68,47,0.07)] backdrop-blur",
+        "ant-card overflow-hidden rounded-[14px] border border-[rgba(120,98,79,0.14)] bg-[rgba(255,251,246,0.88)] backdrop-blur",
         className,
       )}
       style={style}

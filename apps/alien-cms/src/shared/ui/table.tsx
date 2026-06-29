@@ -243,7 +243,7 @@ export function Table<T extends object>({
     allPageRowKeys.length > 0 && allPageRowKeys.every((key) => selectedRowKeys.includes(key));
   const computedColumnWidth = sumNumericColumnWidths(resolvedColumns, selectionColumnWidth);
   const horizontalScrollWidth = toPixel(scroll?.x);
-  const tableWidth = "100%";
+  const tableWidth = horizontalScrollWidth ?? "100%";
   const tableMinWidth = horizontalScrollWidth ?? (computedColumnWidth ? `${computedColumnWidth}px` : "100%");
   const selectionColumnStyle: CSSProperties | undefined = shouldFixSelectionColumn
     ? { left: 0, width: selectionColumnWidth, minWidth: selectionColumnWidth }

@@ -2,7 +2,6 @@
     border-radius: 16px;
     border: 1px solid var(--cms-border);
     background: var(--cms-panel);
-    box-shadow: var(--cms-shadow-sm);
 }
 
 .protable-toolbar {

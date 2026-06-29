@@ -1,6 +1,5 @@
 .model-action-page {
     border: 1px solid var(--cms-border);
-    box-shadow: var(--cms-shadow-md);
     background: rgba(255, 251, 246, 0.94);
 }
 
