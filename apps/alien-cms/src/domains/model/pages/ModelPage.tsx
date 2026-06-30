@@ -544,7 +544,7 @@ export default function ModelPage() {
   return (
     <Flex vertical gap={16}>
       {contextHolder}
-      <Card className="model-query-card" styles={{ body: { padding: 20 } }}>
+      <Card className="model-query-card builder-steps-card" styles={{ body: { padding: '14px 20px' } }}>
         <Steps current={currentStep} items={STEP_ITEMS} />
       </Card>
 

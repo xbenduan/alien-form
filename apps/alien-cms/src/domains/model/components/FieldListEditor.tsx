@@ -346,7 +346,7 @@ export function FieldListEditor({
       className="model-query-card"
       title="字段列表"
       extra={extra}
-      styles={{ body: { padding: 20 } }}
+      styles={{ body: { padding: 16 } }}
     >
       {fields.length === 0 ? (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="先从左侧添加一个字段" />

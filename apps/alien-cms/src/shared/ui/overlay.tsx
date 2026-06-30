@@ -163,13 +163,13 @@ export function Drawer({
             if (!maskClosable) event.preventDefault();
           }}
           className={cn(
-            "ant-drawer fixed inset-y-3 right-3 z-1001 overflow-hidden rounded-[14px] border border-[rgba(120,98,79,0.14)] bg-(--cms-panel-strong) outline-none",
+            "ant-drawer fixed inset-y-3 right-3 z-1001 overflow-hidden rounded-[14px] border border-[rgba(120,98,79,0.14)] bg-[rgba(252,248,242,0.98)] outline-none",
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
           )}
           style={{ width: toPixel(width), maxWidth: "calc(100vw - 24px)" }}
         >
           <div className="flex h-full flex-col">
-            <div className="ant-drawer-header flex items-center justify-between gap-3 border-b border-[rgba(120,98,79,0.12)] px-5 py-4">
+            <div className="flex items-center justify-between gap-3 border-b border-[rgba(120,98,79,0.12)] px-5 py-4">
               <RadixDialog.Title className="font-serif text-lg text-[#2E251E]">
                 {title}
               </RadixDialog.Title>

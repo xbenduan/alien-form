@@ -28,7 +28,7 @@ interface FieldPaletteProps {
 
 export function FieldPalette({ onAddField }: FieldPaletteProps) {
   return (
-    <Card className="model-query-card" title="添加字段" styles={{ body: { padding: 12 } }}>
+    <Card className="model-query-card" title="添加字段" styles={{ body: { padding: 14 } }}>
       <ul className="builder-palette-list">
         {fieldPresets.map((preset) => (
           <li key={preset.key} className="builder-palette-item">

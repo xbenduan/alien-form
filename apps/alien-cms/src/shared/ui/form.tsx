@@ -17,25 +17,30 @@ function FormItem({
   children,
   required,
   extra,
+  right,
 }: {
   label?: ReactNode;
   children?: ReactNode;
   required?: boolean;
   extra?: ReactNode;
+  right?: ReactNode;
 }) {
   const { layout } = useContext(FormContext);
   return (
     <div className="ant-form-item mb-3">
       {label ? (
-        <RadixLabel
-          className={cn(
-            "ant-form-item-label mb-1.5 block text-sm font-medium text-[rgba(47,38,31,0.88)]",
-            layout === "horizontal" && "mb-1",
-          )}
-        >
-          {required ? <span className="mr-1 text-[#C96442]">*</span> : null}
-          {label}
-        </RadixLabel>
+        <div className="flex items-center justify-between mb-1.5">
+          <RadixLabel
+            className={cn(
+              "text-sm font-medium text-[rgba(47,38,31,0.88)]",
+              layout === "horizontal" && "mb-1",
+            )}
+          >
+            {required ? <span className="mr-1 text-[#C96442]">*</span> : null}
+            {label}
+          </RadixLabel>
+          {right ? <div className="flex items-center">{right}</div> : null}
+        </div>
       ) : null}
       <div className="ant-form-item-control">{children}</div>
       {extra ? <div className="mt-1 text-xs text-[rgba(80,63,50,0.62)]">{extra}</div> : null}

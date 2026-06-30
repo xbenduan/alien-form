@@ -189,6 +189,7 @@ export function Spin({
 
 function EmptyComponent({
   description = "暂无数据",
+  image,
   className,
   style,
 }: {
@@ -200,19 +201,50 @@ function EmptyComponent({
   return (
     <div
       className={cn(
-        "ant-empty grid justify-items-center gap-2 py-6 text-center text-[rgba(80,63,50,0.62)]",
+        "ant-empty flex flex-col items-center justify-center gap-3 py-6 text-center",
         className,
       )}
       style={style}
     >
-      <div className="h-10 w-10 rounded-[12px] border border-dashed border-[rgba(120,98,79,0.22)] bg-[rgba(248,243,236,0.75)]" />
-      <div className="text-sm">{description}</div>
+      <div className="ant-empty-image flex items-center justify-center">
+        {image !== undefined ? image : Empty.PRESENTED_IMAGE_SIMPLE}
+      </div>
+      <div className="ant-empty-description text-sm text-[rgba(80,63,50,0.55)]">
+        {description}
+      </div>
     </div>
   );
 }
 
+const SimpleEmptyImage = (
+  <svg width="100" height="88" viewBox="0 0 100 88" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M22 24L50 12L78 24V64C78 67.3137 75.3137 70 72 70H28C24.6863 70 22 67.3137 22 64V24Z"
+      fill="#F5EEE2"
+      stroke="#DDD0BC"
+      strokeWidth="1.5"
+    />
+    <path
+      d="M22 24L50 36L78 24"
+      stroke="#DDD0BC"
+      strokeWidth="1.5"
+    />
+    <path
+      d="M50 36V70"
+      stroke="#DDD0BC"
+      strokeWidth="1.5"
+    />
+    <ellipse cx="50" cy="49" rx="14" ry="6" fill="#EDE3D1" />
+    <path
+      d="M36 49C36 52.3137 42.268 55 50 55C57.732 55 64 52.3137 64 49"
+      stroke="#DDD0BC"
+      strokeWidth="1.5"
+    />
+  </svg>
+);
+
 export const Empty = Object.assign(EmptyComponent, {
-  PRESENTED_IMAGE_SIMPLE: null as ReactNode,
+  PRESENTED_IMAGE_SIMPLE: SimpleEmptyImage,
 });
 
 export function Image({

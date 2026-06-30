@@ -212,7 +212,7 @@ export function FieldConfigPanel({ field, onChange, withCard = true }: FieldConf
         <Form layout="vertical">
           <Form.Item
             label="字段 key"
-            extra={isSystemField ? "系统字段由后端生成，key / 类型 / 组件不可修改。" : undefined}
+            extra={isSystemField ? "系统字段不可修改" : undefined}
           >
             <Input
               value={field.key}
@@ -263,7 +263,7 @@ export function FieldConfigPanel({ field, onChange, withCard = true }: FieldConf
           ) : null}
           <Form.Item
             label="组件 props JSON"
-            extra={currentComponentHint ? `组件说明：${currentComponentHint}` : undefined}
+            extra={currentComponentMeta?.description ? currentComponentMeta.description : undefined}
           >
             <Input.TextArea
               autoSize={{ minRows: 3, maxRows: 6 }}
@@ -279,8 +279,21 @@ export function FieldConfigPanel({ field, onChange, withCard = true }: FieldConf
           </Form.Item>
           {supportsPrimitiveConfig ? (
             <Form.Item
-              label="数据源 dataSource"
-              extra="按选项的展示文本（label）与提交值（value）维护"
+              label="数据源"
+              right={
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<PlusOutlined />}
+                  onClick={() => {
+                    const items = parseDataSourceItems(field.dataSourceText);
+                    const nextItems = [...items, { label: "", value: "" }];
+                    onChange({ ...field, dataSourceText: serializeDataSourceItems(nextItems) });
+                  }}
+                >
+                  添加
+                </Button>
+              }
             >
               <DataSourceEditor
                 value={field.dataSourceText}
@@ -329,10 +342,39 @@ export function FieldConfigPanel({ field, onChange, withCard = true }: FieldConf
           </div>
 
           {supportsPrimitiveConfig ? (
-            <HandlerSelectEditor
-              reactions={field.reactions}
-              onChange={(reactions) => onChange({ ...field, reactions })}
-            />
+            <Form.Item
+              label="Handlers / Reactions"
+              right={
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<PlusOutlined />}
+                  onClick={() =>
+                    onChange({
+                      ...field,
+                      reactions: [
+                        ...field.reactions,
+                        {
+                          id: `reaction-${Date.now()}`,
+                          target: 'value',
+                          mode: 'expression',
+                          handler: '',
+                          expressionText: '',
+                          handlerParams: {},
+                        },
+                      ],
+                    })
+                  }
+                >
+                  添加
+                </Button>
+              }
+            >
+              <HandlerSelectEditor
+                reactions={field.reactions}
+                onChange={(reactions) => onChange({ ...field, reactions })}
+              />
+            </Form.Item>
           ) : null}
         </Form>
       ) : null}
@@ -353,9 +395,10 @@ export function FieldConfigPanel({ field, onChange, withCard = true }: FieldConf
 interface DataSourceEditorProps {
   value: string;
   onChange: (nextText: string) => void;
+  onAdd?: () => void;
 }
 
-function DataSourceEditor({ value, onChange }: DataSourceEditorProps) {
+function DataSourceEditor({ value, onChange, onAdd }: DataSourceEditorProps) {
   const items = parseDataSourceItems(value);
 
   const commit = (nextItems: DataSourceItem[]) => {
@@ -369,10 +412,6 @@ function DataSourceEditor({ value, onChange }: DataSourceEditorProps) {
     commit(nextItems);
   };
 
-  const addItem = () => {
-    commit([...items, { label: "", value: "" }]);
-  };
-
   const removeItem = (index: number) => {
     commit(items.filter((_, itemIndex) => itemIndex !== index));
   };
@@ -380,44 +419,46 @@ function DataSourceEditor({ value, onChange }: DataSourceEditorProps) {
   return (
     <div className="builder-datasource-editor">
       {items.length === 0 ? (
-        <Typography.Text type="secondary" className="builder-datasource-empty">
-          暂无选项，点击下方按钮新增
-        </Typography.Text>
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据，点击右上角「添加」" />
       ) : (
-        <div className="builder-datasource-list">
-          <div className="builder-datasource-header">
-            <span>label（展示文本）</span>
-            <span>value（提交值）</span>
-            <span />
+        <div className="builder-datasource-table">
+          <div className="builder-datasource-table-head">
+            <div className="builder-datasource-table-th">label</div>
+            <div className="builder-datasource-table-th">value</div>
+            <div className="builder-datasource-table-th builder-datasource-table-action" />
           </div>
-          {items.map((item, index) => (
-            <div key={index} className="builder-datasource-row">
-              <Input
-                value={item.label}
-                placeholder="例如 草稿"
-                onChange={(event) => updateItem(index, { label: event.target.value })}
-              />
-              <Input
-                value={item.value}
-                placeholder="例如 draft"
-                onChange={(event) => updateItem(index, { value: event.target.value })}
-              />
-              <Button
-                type="text"
-                danger
-                icon={<DeleteOutlined />}
-                aria-label="删除选项"
-                onClick={() => removeItem(index)}
-              />
-            </div>
-          ))}
+          <div className="builder-datasource-table-body">
+            {items.map((item, index) => (
+              <div key={index} className="builder-datasource-table-row">
+                <div className="builder-datasource-table-td">
+                  <Input
+                    value={item.label}
+                    placeholder="请输入"
+                    onChange={(event) => updateItem(index, { label: event.target.value })}
+                  />
+                </div>
+                <div className="builder-datasource-table-td">
+                  <Input
+                    value={item.value}
+                    placeholder="请输入"
+                    onChange={(event) => updateItem(index, { value: event.target.value })}
+                  />
+                </div>
+                <div className="builder-datasource-table-td builder-datasource-table-action">
+                  <Button
+                    type="text"
+                    danger
+                    size="small"
+                    icon={<DeleteOutlined />}
+                    aria-label="删除"
+                    onClick={() => removeItem(index)}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
-      <Space size={8} className="builder-datasource-actions">
-        <Button type="dashed" icon={<PlusOutlined />} onClick={addItem}>
-          新增选项
-        </Button>
-      </Space>
     </div>
   );
 }
