@@ -1,7 +1,47 @@
-.builder-palette-grid {
+.builder-step-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+@media (max-width: 1024px) {
+    .builder-step-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.builder-palette-list {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.builder-palette-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 12px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+}
+
+.builder-palette-item:hover {
+    background: rgba(var(--cms-accent-rgb), 0.08);
+}
+
+.builder-palette-item-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.builder-palette-item-hint {
+    font-size: 12px;
 }
 
 .builder-field-list {
@@ -42,6 +82,7 @@
 }
 
 .builder-field-item {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -52,13 +93,47 @@
     cursor: pointer;
     transition:
         border-color 0.2s ease,
-        box-shadow 0.2s ease;
+        box-shadow 0.2s ease,
+        opacity 0.15s ease;
 }
 
 .builder-field-item:hover,
 .builder-field-item.is-active {
     border-color: rgba(var(--cms-accent-rgb), 0.42);
     box-shadow: 0 14px 28px rgba(91, 68, 47, 0.1);
+}
+
+.builder-field-item.is-dragging {
+    opacity: 0.4;
+}
+
+.builder-field-item.is-drop-before::before,
+.builder-field-item.is-drop-after::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--cms-accent);
+    pointer-events: none;
+}
+
+.builder-field-item.is-drop-before::before {
+    top: -5px;
+}
+
+.builder-field-item.is-drop-after::after {
+    bottom: -5px;
+}
+
+.builder-field-item-handle {
+    cursor: grab;
+    color: var(--cms-text-secondary);
+}
+
+.builder-field-item.is-dragging .builder-field-item-handle {
+    cursor: grabbing;
 }
 
 .builder-field-item-meta {
@@ -114,6 +189,42 @@
 
 .builder-step-body {
     flex: 1;
+}
+
+.builder-datasource-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.builder-datasource-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.builder-datasource-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--cms-text-secondary);
+    padding: 0 2px;
+}
+
+.builder-datasource-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px;
+    gap: 8px;
+    align-items: center;
+}
+
+.builder-datasource-empty {
+    font-size: 12px;
+}
+
+.builder-datasource-actions {
+    align-self: flex-start;
 }
 
 .builder-bottom-actions {

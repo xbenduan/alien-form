@@ -14,7 +14,7 @@ function CloseButton({ onClick }: { onClick?: () => void }) {
     <button
       type="button"
       aria-label="关闭"
-      className="inline-flex h-8 w-8 items-center justify-center rounded-[8px] text-[rgba(80,63,50,0.65)] transition hover:bg-[rgba(201,100,66,0.08)] hover:text-[#A24E31]"
+      className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[rgba(80,63,50,0.65)] transition hover:bg-[rgba(201,100,66,0.08)] hover:text-[#A24E31]"
       onClick={onClick}
     >
       ×
@@ -163,13 +163,13 @@ export function Drawer({
             if (!maskClosable) event.preventDefault();
           }}
           className={cn(
-            "ant-drawer fixed right-0 top-0 z-[1001] h-full border-l border-[rgba(120,98,79,0.12)] bg-[rgba(252,248,242,0.98)] shadow-[-18px_0_44px_rgba(68,49,33,0.16)] outline-none",
+            "ant-drawer fixed inset-y-3 right-3 z-1001 overflow-hidden rounded-[14px] border border-[rgba(120,98,79,0.14)] bg-(--cms-panel-strong) outline-none",
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
           )}
           style={{ width: toPixel(width), maxWidth: "calc(100vw - 24px)" }}
         >
           <div className="flex h-full flex-col">
-            <div className="flex items-center justify-between gap-3 border-b border-[rgba(120,98,79,0.12)] px-5 py-4">
+            <div className="ant-drawer-header flex items-center justify-between gap-3 border-b border-[rgba(120,98,79,0.12)] px-5 py-4">
               <RadixDialog.Title className="font-serif text-lg text-[#2E251E]">
                 {title}
               </RadixDialog.Title>
@@ -177,9 +177,11 @@ export function Drawer({
                 <CloseButton onClick={onClose} />
               </RadixDialog.Close>
             </div>
-            <div className="flex-1 overflow-auto px-5 py-4">{children}</div>
+            <div className="ant-drawer-body flex-1 overflow-auto px-5 py-4">{children}</div>
             {footer !== null && footer !== undefined ? (
-              <div className="border-t border-[rgba(120,98,79,0.12)] px-5 py-3">{footer}</div>
+              <div className="ant-drawer-footer border-t border-[rgba(120,98,79,0.12)] px-5 py-3">
+                {footer}
+              </div>
             ) : null}
           </div>
         </RadixDialog.Content>

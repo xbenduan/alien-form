@@ -1,7 +1,18 @@
 import { EyeOutlined, SaveOutlined } from "../../../shared/ui";
-import { Alert, Button, Card, Col, Flex, Modal, Row, Space, Spin, Steps, message } from "../../../shared/ui";
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import {
+  Alert,
+  Button,
+  Card,
+  Drawer,
+  Flex,
+  Modal,
+  Space,
+  Spin,
+  Steps,
+  message,
+} from "../../../shared/ui";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { buildModelSchema, schemaToBuilderDraft } from "@alien-form/cms";
 import type {
   BuilderComponentName,
@@ -18,10 +29,10 @@ import {
 } from "../../../hooks/use-schema-store";
 import { FieldConfigPanel } from "../components/FieldConfigPanel";
 import { FieldListEditor } from "../components/FieldListEditor";
+import { FieldPalette, type FieldPreset } from "../components/FieldPalette";
 import { ModelMetaForm } from "../components/ModelMetaForm";
 import { ModelSchemaImportModal } from "../components/ModelSchemaImportModal";
 import { ModelPreviewPanel } from "../components/ModelPreviewPanel";
-import type { FieldPreset } from "../components/FieldPalette";
 import "../model-builder.css";
 
 let fieldCounter = 0;
@@ -154,7 +165,9 @@ function ensureSystemFields(fields: ModelBuilderFieldDraft[]): ModelBuilderField
   return nextFields;
 }
 
-function orderFieldsWithSystemFieldsFirst(fields: ModelBuilderFieldDraft[]): ModelBuilderFieldDraft[] {
+function orderFieldsWithSystemFieldsFirst(
+  fields: ModelBuilderFieldDraft[],
+): ModelBuilderFieldDraft[] {
   const systemFieldMap = new Map<SystemFieldKey, ModelBuilderFieldDraft>();
   const normalFields: ModelBuilderFieldDraft[] = [];
 
@@ -334,6 +347,7 @@ const STEP_ITEMS = [
 export default function ModelPage() {
   const navigate = useNavigate();
   const params = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const editModelName = params.modelName;
   const isEditMode = Boolean(editModelName);
   const existingModelsQuery = useModelSummaries();
@@ -345,10 +359,11 @@ export default function ModelPage() {
   const [messageApi, contextHolder] = message.useMessage();
   const [previewJsonVisible, setPreviewJsonVisible] = useState(false);
   const [schemaImportVisible, setSchemaImportVisible] = useState(false);
-
-  const selectedField = useMemo(
-    () => findFieldById(draft.fields, selectedFieldId),
-    [draft.fields, selectedFieldId],
+  const [fieldConfigDraft, setFieldConfigDraft] = useState<ModelBuilderFieldDraft | undefined>();
+  const editingFieldId = searchParams.get("field") ?? undefined;
+  const editingField = useMemo(
+    () => findFieldById(draft.fields, editingFieldId),
+    [draft.fields, editingFieldId],
   );
   const previewSchema = useMemo(() => {
     try {
@@ -371,21 +386,104 @@ export default function ModelPage() {
     isEditMode && (editingSchemaQuery.isLoading || editingSchemaQuery.isFetching);
   const loadingError =
     editingSchemaQuery.error instanceof Error ? editingSchemaQuery.error.message : undefined;
+  const existingModelNames = existingModels.map((item) => item.name);
+  const tableFieldOptions = draft.fields.map((field) => ({
+    label: `${field.title || field.key} (${field.key})`,
+    value: field.key,
+  }));
 
+  const setFieldConfigSearchParamRef = useRef(setSearchParams);
   useEffect(() => {
-    if (isEditMode && editingSchemaQuery.data) {
-      const nextDraft = normalizeDraft(schemaToBuilderDraft(editingSchemaQuery.data));
-      setDraft(nextDraft);
-      setSelectedFieldId(getPreferredSelectedFieldId(nextDraft.fields));
+    setFieldConfigSearchParamRef.current = setSearchParams;
+  }, [setSearchParams]);
+
+  const setFieldConfigSearchParam = useCallback((fieldId?: string) => {
+    setFieldConfigSearchParamRef.current(
+      (currentSearchParams) => {
+        if ((currentSearchParams.get("field") ?? undefined) === fieldId) {
+          return currentSearchParams;
+        }
+
+        const nextSearchParams = new URLSearchParams(currentSearchParams);
+        if (fieldId) {
+          nextSearchParams.set("field", fieldId);
+        } else {
+          nextSearchParams.delete("field");
+        }
+        return nextSearchParams;
+      },
+      { replace: true },
+    );
+  }, []);
+
+  const closeFieldConfigDrawer = useCallback(() => {
+    setFieldConfigSearchParam(undefined);
+    setFieldConfigDraft(undefined);
+  }, [setFieldConfigSearchParam]);
+
+  const openFieldConfigDrawer = useCallback(
+    (fieldId: string, fieldOverride?: ModelBuilderFieldDraft) => {
+      const nextField = fieldOverride ?? findFieldById(draft.fields, fieldId);
+      setSelectedFieldId(fieldId);
+      if (!nextField) {
+        return;
+      }
+      setFieldConfigDraft(nextField);
+      setFieldConfigSearchParam(fieldId);
+    },
+    [draft.fields, setFieldConfigSearchParam],
+  );
+
+  const saveFieldConfig = useCallback(() => {
+    if (!fieldConfigDraft) {
       return;
     }
 
+    const nextField = fieldConfigDraft;
+    setDraft((currentDraft) =>
+      normalizeDraft({
+        ...currentDraft,
+        fields: updateFieldInTree(currentDraft.fields, nextField.id, () => nextField),
+      }),
+    );
+    setSelectedFieldId(nextField.id);
+    closeFieldConfigDrawer();
+  }, [closeFieldConfigDrawer, fieldConfigDraft]);
+
+  useEffect(() => {
     if (!isEditMode) {
-      const nextDraft = createInitialDraft();
-      setDraft(nextDraft);
-      setSelectedFieldId(getPreferredSelectedFieldId(nextDraft.fields));
+      return;
     }
-  }, [editingSchemaQuery.data, isEditMode]);
+    if (!editingSchemaQuery.data) {
+      return;
+    }
+    const nextDraft = normalizeDraft(schemaToBuilderDraft(editingSchemaQuery.data));
+    setDraft(nextDraft);
+    setSelectedFieldId(getPreferredSelectedFieldId(nextDraft.fields));
+    closeFieldConfigDrawer();
+  }, [closeFieldConfigDrawer, editingSchemaQuery.data, isEditMode]);
+
+  useEffect(() => {
+    if (!editingFieldId) {
+      setFieldConfigDraft(undefined);
+      return;
+    }
+
+    if (editingField) {
+      setSelectedFieldId(editingField.id);
+      setFieldConfigDraft((currentDraft) =>
+        currentDraft?.id === editingField.id ? currentDraft : editingField,
+      );
+      return;
+    }
+
+    if (fieldConfigDraft?.id === editingFieldId) {
+      setSelectedFieldId(editingFieldId);
+      return;
+    }
+
+    setFieldConfigSearchParam(undefined);
+  }, [editingField, editingFieldId, fieldConfigDraft?.id, setFieldConfigSearchParam]);
 
   useEffect(() => {
     const validFieldKeys = new Set(draft.fields.map((field) => field.key).filter(Boolean));
@@ -399,12 +497,6 @@ export default function ModelPage() {
       }));
     }
   }, [draft.fields, draft.tableVisibleFields]);
-
-  const existingModelNames = existingModels.map((item) => item.name);
-  const tableFieldOptions = draft.fields.map((field) => ({
-    label: `${field.title || field.key} (${field.key})`,
-    value: field.key,
-  }));
 
   const applyImportedSchema = (schemaText: string) => {
     let parsedSchema: CmsModelSchema;
@@ -420,10 +512,13 @@ export default function ModelPage() {
       const nextDraft = normalizeDraft(schemaToBuilderDraft(parsedSchema));
       setDraft(nextDraft);
       setSelectedFieldId(getPreferredSelectedFieldId(nextDraft.fields));
+      closeFieldConfigDrawer();
       setSchemaImportVisible(false);
       messageApi.success("Schema 解析成功");
     } catch (error) {
-      messageApi.error(error instanceof Error ? `Schema 解析失败：${error.message}` : "Schema 解析失败");
+      messageApi.error(
+        error instanceof Error ? `Schema 解析失败：${error.message}` : "Schema 解析失败",
+      );
     }
   };
 
@@ -455,65 +550,48 @@ export default function ModelPage() {
 
       <div className="builder-step-body">
         {currentStep === 0 ? (
-          <Row gutter={[20, 20]}>
-            <Col span={12}>
-              <FieldListEditor
-                fields={draft.fields}
-                selectedFieldId={selectedFieldId}
-                extra={
-                  <Button type="link" size="small" onClick={() => setSchemaImportVisible(true)}>
-                    解析 Schema
-                  </Button>
-                }
-                isRemovable={(field) => !isSystemFieldKey(field.key)}
-                onSelect={(fieldId) => setSelectedFieldId(fieldId)}
-                onAddField={(preset: FieldPreset, parentId?: string) => {
-                  const nextField = createFieldDraft(preset.type, preset.component);
-                  setDraft((currentDraft) => {
-                    if (parentId) {
-                      return normalizeDraft({
-                        ...currentDraft,
-                        fields: updateFieldInTree(currentDraft.fields, parentId, (field) => ({
-                          ...field,
-                          children: [...(field.children ?? []), nextField],
-                        })),
-                      });
-                    }
-                    return normalizeDraft({
-                      ...currentDraft,
-                      fields: [...currentDraft.fields, nextField],
-                    });
-                  });
-                  setSelectedFieldId(nextField.id);
-                }}
-                onRemove={(fieldId) => {
-                  const nextFields = removeFieldById(draft.fields, fieldId);
-                  setDraft((currentDraft) => normalizeDraft({ ...currentDraft, fields: nextFields }));
-                  const remainingIds = collectFieldIds(nextFields);
-                  if (selectedFieldId && !remainingIds.includes(selectedFieldId)) {
-                    setSelectedFieldId(getPreferredSelectedFieldId(nextFields));
-                  }
-                }}
-                onMove={(fromIndex, toIndex) => {
-                  const fields = [...draft.fields];
-                  const [moved] = fields.splice(fromIndex, 1);
-                  fields.splice(toIndex, 0, moved);
-                  setDraft((currentDraft) => normalizeDraft({ ...currentDraft, fields }));
-                }}
-              />
-            </Col>
-            <Col span={12}>
-              <FieldConfigPanel
-                field={selectedField}
-                onChange={(nextField) => {
-                  setDraft((currentDraft) => normalizeDraft({
+          <div className="builder-step-grid">
+            <FieldPalette
+              onAddField={(preset: FieldPreset) => {
+                const nextField = createFieldDraft(preset.type, preset.component);
+                setDraft((currentDraft) =>
+                  normalizeDraft({
                     ...currentDraft,
-                    fields: updateFieldInTree(currentDraft.fields, nextField.id, () => nextField),
-                  }));
-                }}
-              />
-            </Col>
-          </Row>
+                    fields: [...currentDraft.fields, nextField],
+                  }),
+                );
+                openFieldConfigDrawer(nextField.id, nextField);
+              }}
+            />
+            <FieldListEditor
+              fields={draft.fields}
+              selectedFieldId={selectedFieldId}
+              extra={
+                <Button type="link" size="small" onClick={() => setSchemaImportVisible(true)}>
+                  解析 Schema
+                </Button>
+              }
+              isRemovable={(field) => !isSystemFieldKey(field.key)}
+              onSelect={(fieldId) => openFieldConfigDrawer(fieldId)}
+              onRemove={(fieldId) => {
+                const nextFields = removeFieldById(draft.fields, fieldId);
+                setDraft((currentDraft) => normalizeDraft({ ...currentDraft, fields: nextFields }));
+                const remainingIds = collectFieldIds(nextFields);
+                if (selectedFieldId && !remainingIds.includes(selectedFieldId)) {
+                  setSelectedFieldId(getPreferredSelectedFieldId(nextFields));
+                }
+                if (editingFieldId && !remainingIds.includes(editingFieldId)) {
+                  closeFieldConfigDrawer();
+                }
+              }}
+              onMove={(fromIndex, toIndex) => {
+                const fields = [...draft.fields];
+                const [moved] = fields.splice(fromIndex, 1);
+                fields.splice(toIndex, 0, moved);
+                setDraft((currentDraft) => normalizeDraft({ ...currentDraft, fields }));
+              }}
+            />
+          </div>
         ) : null}
 
         {currentStep === 1 ? (
@@ -613,6 +691,34 @@ export default function ModelPage() {
         onClose={() => setSchemaImportVisible(false)}
         onSubmit={applyImportedSchema}
       />
+      <Drawer
+        destroyOnHidden
+        title={
+          fieldConfigDraft
+            ? `字段配置 · ${fieldConfigDraft.title || fieldConfigDraft.key || "未命名字段"}`
+            : "字段配置"
+        }
+        open={Boolean(editingFieldId)}
+        width={560}
+        footer={
+          fieldConfigDraft ? (
+            <Space size={8}>
+              <Button onClick={closeFieldConfigDrawer}>取消</Button>
+              <Button type="primary" onClick={saveFieldConfig}>
+                保存配置
+              </Button>
+            </Space>
+          ) : null
+        }
+        onClose={closeFieldConfigDrawer}
+        maskClosable={false}
+      >
+        <FieldConfigPanel
+          field={fieldConfigDraft}
+          withCard={false}
+          onChange={(nextField) => setFieldConfigDraft(nextField)}
+        />
+      </Drawer>
     </Flex>
   );
 }

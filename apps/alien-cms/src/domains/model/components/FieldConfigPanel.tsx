@@ -3,13 +3,60 @@ import type {
   BuilderFieldType,
   ModelBuilderFieldDraft,
 } from "@alien-form/cms";
-import { Card, Empty, Form, Input, Select, Switch } from "../../../shared/ui";
+import {
+  Button,
+  Card,
+  DeleteOutlined,
+  Empty,
+  Form,
+  Input,
+  PlusOutlined,
+  Select,
+  Space,
+  Switch,
+  Typography,
+} from "../../../shared/ui";
 import {
   builderComponentOptions,
   getBuilderComponentMeta,
   getBuilderComponentOptions,
 } from "../../../shared/adapters";
 import { HandlerSelectEditor } from "./HandlerSelectEditor";
+
+interface DataSourceItem {
+  label: string;
+  value: string;
+}
+
+function parseDataSourceItems(text: string): DataSourceItem[] {
+  if (!text || !text.trim()) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(text);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed
+      .filter(
+        (item): item is { label?: unknown; value?: unknown } =>
+          Boolean(item) && typeof item === "object",
+      )
+      .map((item) => ({
+        label: typeof item.label === "string" ? item.label : String(item.label ?? ""),
+        value: typeof item.value === "string" ? item.value : String(item.value ?? ""),
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function serializeDataSourceItems(items: DataSourceItem[]): string {
+  if (items.length === 0) {
+    return "";
+  }
+  return JSON.stringify(items, null, 2);
+}
 
 const fieldTypeOptions: Array<{ label: string; value: BuilderFieldType }> = [
   { label: "string", value: "string" },
@@ -25,9 +72,10 @@ const SYSTEM_FIELD_KEYS = new Set(["id", "createdAt", "updatedAt"]);
 interface FieldConfigPanelProps {
   field?: ModelBuilderFieldDraft;
   onChange: (nextField: ModelBuilderFieldDraft) => void;
+  withCard?: boolean;
 }
 
-export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
+export function FieldConfigPanel({ field, onChange, withCard = true }: FieldConfigPanelProps) {
   const isSystemField = Boolean(field && SYSTEM_FIELD_KEYS.has(field.key));
   const isContainerField = field?.type === "object" || field?.type === "void";
   const isObjectArray = field?.type === "array";
@@ -154,8 +202,8 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
     };
   };
 
-  return (
-    <Card className="model-query-card" title="字段配置" styles={{ body: { padding: 20 } }}>
+  const content = (
+    <>
       {!field ? (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="请先选择一个字段" />
       ) : null}
@@ -230,12 +278,13 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
             />
           </Form.Item>
           {supportsPrimitiveConfig ? (
-            <Form.Item label="数据源 dataSource JSON">
-              <Input.TextArea
-                autoSize={{ minRows: 3, maxRows: 6 }}
+            <Form.Item
+              label="数据源 dataSource"
+              extra="按选项的展示文本（label）与提交值（value）维护"
+            >
+              <DataSourceEditor
                 value={field.dataSourceText}
-                placeholder='例如 [{"label":"草稿","value":"draft"}]'
-                onChange={(event) => onChange({ ...field, dataSourceText: event.target.value })}
+                onChange={(nextText) => onChange({ ...field, dataSourceText: nextText })}
               />
             </Form.Item>
           ) : null}
@@ -287,6 +336,88 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
           ) : null}
         </Form>
       ) : null}
+    </>
+  );
+
+  if (!withCard) {
+    return content;
+  }
+
+  return (
+    <Card className="model-query-card" title="字段配置" styles={{ body: { padding: 20 } }}>
+      {content}
     </Card>
+  );
+}
+
+interface DataSourceEditorProps {
+  value: string;
+  onChange: (nextText: string) => void;
+}
+
+function DataSourceEditor({ value, onChange }: DataSourceEditorProps) {
+  const items = parseDataSourceItems(value);
+
+  const commit = (nextItems: DataSourceItem[]) => {
+    onChange(serializeDataSourceItems(nextItems));
+  };
+
+  const updateItem = (index: number, patch: Partial<DataSourceItem>) => {
+    const nextItems = items.map((item, itemIndex) =>
+      itemIndex === index ? { ...item, ...patch } : item,
+    );
+    commit(nextItems);
+  };
+
+  const addItem = () => {
+    commit([...items, { label: "", value: "" }]);
+  };
+
+  const removeItem = (index: number) => {
+    commit(items.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  return (
+    <div className="builder-datasource-editor">
+      {items.length === 0 ? (
+        <Typography.Text type="secondary" className="builder-datasource-empty">
+          暂无选项，点击下方按钮新增
+        </Typography.Text>
+      ) : (
+        <div className="builder-datasource-list">
+          <div className="builder-datasource-header">
+            <span>label（展示文本）</span>
+            <span>value（提交值）</span>
+            <span />
+          </div>
+          {items.map((item, index) => (
+            <div key={index} className="builder-datasource-row">
+              <Input
+                value={item.label}
+                placeholder="例如 草稿"
+                onChange={(event) => updateItem(index, { label: event.target.value })}
+              />
+              <Input
+                value={item.value}
+                placeholder="例如 draft"
+                onChange={(event) => updateItem(index, { value: event.target.value })}
+              />
+              <Button
+                type="text"
+                danger
+                icon={<DeleteOutlined />}
+                aria-label="删除选项"
+                onClick={() => removeItem(index)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      <Space size={8} className="builder-datasource-actions">
+        <Button type="dashed" icon={<PlusOutlined />} onClick={addItem}>
+          新增选项
+        </Button>
+      </Space>
+    </div>
   );
 }
