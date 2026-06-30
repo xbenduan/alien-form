@@ -89,7 +89,11 @@ export function Tag({
 }) {
   const palette: Record<string, { bg: string; text: string; border: string }> = {
     default: { bg: "rgba(117, 96, 77, 0.08)", text: "#6B5B4D", border: "rgba(117, 96, 77, 0.18)" },
-    green: { bg: "rgba(103, 133, 103, 0.12)", text: "#56704A", border: "rgba(103, 133, 103, 0.24)" },
+    green: {
+      bg: "rgba(103, 133, 103, 0.12)",
+      text: "#56704A",
+      border: "rgba(103, 133, 103, 0.24)",
+    },
     gold: { bg: "rgba(185, 135, 64, 0.12)", text: "#8C642B", border: "rgba(185, 135, 64, 0.24)" },
     blue: { bg: "rgba(140, 118, 92, 0.12)", text: "#7A5E43", border: "rgba(140, 118, 92, 0.22)" },
     cyan: { bg: "rgba(115, 136, 128, 0.12)", text: "#596E68", border: "rgba(115, 136, 128, 0.22)" },
@@ -98,7 +102,11 @@ export function Tag({
       text: "#6A5D79",
       border: "rgba(128, 112, 139, 0.22)",
     },
-    purple: { bg: "rgba(145, 108, 132, 0.12)", text: "#7A5B70", border: "rgba(145, 108, 132, 0.22)" },
+    purple: {
+      bg: "rgba(145, 108, 132, 0.12)",
+      text: "#7A5B70",
+      border: "rgba(145, 108, 132, 0.22)",
+    },
     red: { bg: "rgba(201, 100, 66, 0.12)", text: "#A64B2C", border: "rgba(201, 100, 66, 0.24)" },
   };
   const tone = !color
@@ -209,37 +217,24 @@ function EmptyComponent({
       <div className="ant-empty-image flex items-center justify-center">
         {image !== undefined ? image : Empty.PRESENTED_IMAGE_SIMPLE}
       </div>
-      <div className="ant-empty-description text-sm text-[rgba(80,63,50,0.55)]">
-        {description}
-      </div>
+      <div className="ant-empty-description text-sm text-[rgba(80,63,50,0.55)]">{description}</div>
     </div>
   );
 }
 
 const SimpleEmptyImage = (
-  <svg width="100" height="88" viewBox="0 0 100 88" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path
-      d="M22 24L50 12L78 24V64C78 67.3137 75.3137 70 72 70H28C24.6863 70 22 67.3137 22 64V24Z"
-      fill="#F5EEE2"
-      stroke="#DDD0BC"
-      strokeWidth="1.5"
-    />
-    <path
-      d="M22 24L50 36L78 24"
-      stroke="#DDD0BC"
-      strokeWidth="1.5"
-    />
-    <path
-      d="M50 36V70"
-      stroke="#DDD0BC"
-      strokeWidth="1.5"
-    />
-    <ellipse cx="50" cy="49" rx="14" ry="6" fill="#EDE3D1" />
-    <path
-      d="M36 49C36 52.3137 42.268 55 50 55C57.732 55 64 52.3137 64 49"
-      stroke="#DDD0BC"
-      strokeWidth="1.5"
-    />
+  <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24">
+    <path d="M0 0h24v24H0z" fill="none" />
+    <g
+      fill="none"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="1.5"
+    >
+      <path d="M4 21.4V2.6a.6.6 0 0 1 .6-.6h11.652a.6.6 0 0 1 .424.176l3.148 3.148A.6.6 0 0 1 20 5.75V21.4a.6.6 0 0 1-.6.6H4.6a.6.6 0 0 1-.6-.6" />
+      <path d="M16 2v3.4a.6.6 0 0 0 .6.6H20" />
+    </g>
   </svg>
 );
 
