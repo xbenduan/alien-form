@@ -28,15 +28,17 @@ interface FieldPaletteProps {
 
 export function FieldPalette({ onAddField }: FieldPaletteProps) {
   return (
-    <Card className="model-query-card" title="添加字段" styles={{ body: { padding: 14 } }}>
+    <Card
+      className="builder-palette-card model-query-card"
+      title="添加字段"
+      styles={{ body: { padding: 8 } }}
+    >
       <ul className="builder-palette-list">
         {fieldPresets.map((preset) => (
           <li key={preset.key} className="builder-palette-item">
             <div className="builder-palette-item-meta">
               <Typography.Text strong>{preset.label}</Typography.Text>
-              <Typography.Text type="secondary" className="builder-palette-item-hint">
-                {preset.component}
-              </Typography.Text>
+              <span className="builder-palette-item-hint">{preset.component}</span>
             </div>
             <Tooltip title="添加到字段列表">
               <Button

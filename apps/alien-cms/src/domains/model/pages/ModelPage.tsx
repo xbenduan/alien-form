@@ -590,6 +590,15 @@ export default function ModelPage() {
                 fields.splice(toIndex, 0, moved);
                 setDraft((currentDraft) => normalizeDraft({ ...currentDraft, fields }));
               }}
+              onAddChildField={(parentFieldId, preset) => {
+                const nextField = createFieldDraft(preset.type, preset.component);
+                const nextFields = updateFieldInTree(draft.fields, parentFieldId, (field) => ({
+                  ...field,
+                  children: [...(field.children ?? []), nextField],
+                }));
+                setDraft((currentDraft) => normalizeDraft({ ...currentDraft, fields: nextFields }));
+                openFieldConfigDrawer(nextField.id, nextField);
+              }}
             />
           </div>
         ) : null}

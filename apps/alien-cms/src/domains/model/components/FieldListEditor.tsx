@@ -1,6 +1,7 @@
-import { DeleteOutlined, DragOutlined } from "../../../shared/ui";
+import { DeleteOutlined, DragOutlined, PlusOutlined } from "../../../shared/ui";
 import type { ModelBuilderFieldDraft } from "@alien-form/cms";
-import { Button, Card, Empty, Space, Tag, Typography } from "../../../shared/ui";
+import { Button, Card, Dropdown, Empty, Space, Tag, Typography } from "../../../shared/ui";
+import { fieldPresets } from "./FieldPalette";
 import type { Dispatch, MutableRefObject, ReactNode, RefObject, SetStateAction } from "react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 
@@ -12,6 +13,7 @@ interface FieldListEditorProps {
   onSelect: (fieldId: string) => void;
   onRemove: (fieldId: string) => void;
   onMove: (fromIndex: number, toIndex: number) => void;
+  onAddChildField?: (parentFieldId: string, preset: (typeof fieldPresets)[number]) => void;
 }
 
 interface FieldListHandlers {
@@ -19,6 +21,7 @@ interface FieldListHandlers {
   onSelect: (fieldId: string) => void;
   onRemove: (fieldId: string) => void;
   onMove: (fromIndex: number, toIndex: number) => void;
+  onAddChildField?: (parentFieldId: string, preset: (typeof fieldPresets)[number]) => void;
 }
 
 type DropPosition = "before" | "after";
@@ -234,6 +237,36 @@ const FieldTreeNode = memo(function FieldTreeNode({
               <Typography.Text strong>{slotMeta.label}</Typography.Text>
               <div className="builder-slot-description">{slotMeta.description}</div>
             </div>
+            {handlersRef.current?.onAddChildField ? (
+              <Dropdown
+                menu={{
+                  items: fieldPresets.map((preset) => ({
+                    key: preset.key,
+                    label: (
+                      <div className="builder-slot-add-item">
+                        <span>{preset.label}</span>
+                        <span className="builder-slot-add-item-hint">{preset.component}</span>
+                      </div>
+                    ),
+                  })),
+                  onClick: ({ key }) => {
+                    const preset = fieldPresets.find((item) => item.key === key);
+                    if (preset) {
+                      handlersRef.current?.onAddChildField?.(field.id, preset);
+                    }
+                  },
+                }}
+              >
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<PlusOutlined />}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  添加
+                </Button>
+              </Dropdown>
+            ) : null}
           </div>
           {field.children?.length ? (
             <div className="builder-field-children">
@@ -314,6 +347,7 @@ export function FieldListEditor({
   onSelect,
   onRemove,
   onMove,
+  onAddChildField,
 }: FieldListEditorProps) {
   const [dragState, setDragState] = useState<DragState>(EMPTY_DRAG_STATE);
   const draggingIdRef = useRef<string | undefined>(undefined);
@@ -322,6 +356,7 @@ export function FieldListEditor({
     onSelect,
     onRemove,
     onMove,
+    onAddChildField,
   });
 
   useEffect(() => {
@@ -330,8 +365,9 @@ export function FieldListEditor({
       onSelect,
       onRemove,
       onMove,
+      onAddChildField,
     };
-  }, [isRemovable, onMove, onRemove, onSelect]);
+  }, [isRemovable, onAddChildField, onMove, onRemove, onSelect]);
 
   const handleListDragLeave = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     const nextTarget = event.relatedTarget as Node | null;
