@@ -211,6 +211,22 @@ importers:
         specifier: ^2.1.9
         version: 2.1.9(@types/node@24.12.4)(happy-dom@15.11.7)(lightningcss@1.32.0)
 
+  packages/core-oop:
+    dependencies:
+      alien-signals:
+        specifier: ^3.2.1
+        version: 3.2.1
+    devDependencies:
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.1(jiti@2.7.0)(postcss@8.5.15)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@24.12.4)(happy-dom@15.11.7)(lightningcss@1.32.0)
+
   packages/react:
     dependencies:
       '@alien-form/core':
