@@ -1,9 +1,8 @@
-import { defineAdapter } from "@alien-form/cms";
 import type { DataSourceItem } from "@alien-form/react";
 import { Select as AntSelect } from "../ui";
 import type { BaseFieldProps } from "./types";
 
-function Select({
+export function Select({
   value,
   onChange,
   disabled,
@@ -33,11 +32,4 @@ function Select({
   );
 }
 
-export default defineAdapter(Select, {
-  key: "Select",
-  label: "下拉选择组件",
-  description: "下拉选择组件。",
-  kind: "component",
-  scenes: { form: {}, filter: { operator: "in" }, detail: "DisplayChoice", table: { renderAs: "DisplayChoice", summary: true } },
-  meta: { fieldType: "string" },
-});
+export default Select;

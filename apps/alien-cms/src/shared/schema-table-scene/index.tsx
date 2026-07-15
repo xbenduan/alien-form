@@ -4,7 +4,6 @@ import { Button, Table, Tag, Tooltip, Typography } from "../ui";
 import type { TableColumnsType, TablePaginationConfig, TableProps } from "../ui";
 import type { ColumnType } from "../ui";
 import type { TableRowSelection } from "../ui";
-import { createAdapterCatalog, createAdapterRegistry, resolveSceneRender } from "@alien-form/cms";
 import type {
   CmsFieldSchema,
   CmsModelSchema,
@@ -12,64 +11,9 @@ import type {
   TableColumnProjection,
 } from "../../domains/record/types/record";
 import { FieldDetailDrawer } from "../../domains/record/components/FieldDetailDrawer";
-import * as adapters from "../adapters";
+import { getDisplaySummary } from "../adapters/get-display-summary";
+import { resolveSchemaComponent, TableComponentsMap } from "../adapters";
 import "./schema-table-scene.css";
-
-const tableAdapters = {
-  DisplayText: adapters.DisplayTextAdapter,
-  DisplayChoice: adapters.DisplayChoiceAdapter,
-  DisplayBoolean: adapters.DisplayBooleanAdapter,
-  DisplayDate: adapters.DisplayDateAdapter,
-  DisplayRate: adapters.DisplayRateAdapter,
-  DisplayTags: adapters.DisplayTagsAdapter,
-  getDisplaySummary: adapters.getDisplaySummaryAdapter,
-};
-
-const tableCatalogAdapters = {
-  ...tableAdapters,
-  Input: adapters.InputAdapter,
-  Textarea: adapters.TextareaAdapter,
-  NumberInput: adapters.NumberInputAdapter,
-  Select: adapters.SelectAdapter,
-  Switch: adapters.SwitchAdapter,
-  DateInput: adapters.DateInputAdapter,
-  Radio: adapters.RadioAdapter,
-  CheckboxGroup: adapters.CheckboxGroupAdapter,
-  Rate: adapters.RateAdapter,
-  TagsInput: adapters.TagsInputAdapter,
-};
-
-const tableMap = createAdapterRegistry(tableAdapters);
-const tableCatalog = createAdapterCatalog(tableCatalogAdapters);
-
-function renderSimpleValue(
-  value: unknown,
-  options: {
-    column?: TableColumnProjection;
-    format?: string;
-    dataSource?: CmsFieldSchema["dataSource"];
-    ellipsis?: boolean;
-  } = {},
-) {
-  const summary = tableMap.getDisplaySummary({
-    value,
-    format: options.format,
-    dataSource: options.dataSource,
-  });
-
-  if (summary.kind === "status") {
-    return <Tag color={summary.color}>{summary.text}</Tag>;
-  }
-
-  return (
-    <Typography.Text
-      style={{ display: "block", width: "100%" }}
-      ellipsis={options.ellipsis ? { tooltip: summary.fullText ?? summary.text } : false}
-    >
-      {summary.text}
-    </Typography.Text>
-  );
-}
 
 function getInlineDisplayText(
   value: unknown,
@@ -278,14 +222,24 @@ function buildArraySummary(column: TableColumnProjection, value: unknown) {
   return `共 ${value.length} 项`;
 }
 
+function getTableRenderer(column: TableColumnProjection) {
+  const componentKey = resolveSchemaComponent(column.field.component, column.type);
+  if (!componentKey) {
+    return undefined;
+  }
+  return TableComponentsMap[componentKey];
+}
+
 export function renderTableCell(
   column: TableColumnProjection,
   value: unknown,
   record: ModelRecord,
   onOpenFieldDetail: (column: TableColumnProjection, record: ModelRecord) => void,
 ) {
-  if (resolveSceneRender(column.field, "table", tableCatalog)) {
-    const summary = tableMap.getDisplaySummary({
+  const TableRenderer = getTableRenderer(column);
+
+  if (TableRenderer) {
+    const summary = getDisplaySummary({
       value,
       format: column.format,
       dataSource: column.dataSource,
@@ -294,12 +248,12 @@ export function renderTableCell(
     return (
       <div className="table-cell-complex">
         <div className="table-cell-summary">
-          {renderSimpleValue(value, {
-            column,
-            format: column.format,
-            dataSource: column.dataSource,
-            ellipsis: column.ellipsis,
-          })}
+          <TableRenderer
+            value={value}
+            format={column.format}
+            dataSource={column.dataSource}
+            ellipsis={column.ellipsis}
+          />
         </div>
         {summary.expandable ? (
           <Tooltip title={`点击查看${column.title}全部内容`}>

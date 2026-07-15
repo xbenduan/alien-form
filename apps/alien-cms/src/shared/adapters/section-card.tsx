@@ -1,8 +1,7 @@
 import type React from "react";
-import { defineAdapter } from "@alien-form/cms";
 import { Card, Typography } from "../ui";
 
-function SectionCard({
+export function SectionCard({
   title,
   description,
   children,
@@ -22,11 +21,4 @@ function SectionCard({
   );
 }
 
-export default defineAdapter(SectionCard, {
-  key: "SectionCard",
-  label: "SectionCard",
-  description: "分组卡片容器组件。",
-  kind: "component",
-  scenes: { form: {}, detail: {}, filter: {} },
-  meta: { fieldType: "object" },
-});
+export default SectionCard;

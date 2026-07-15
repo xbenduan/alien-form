@@ -1,8 +1,7 @@
-import { defineAdapter } from "@alien-form/cms";
 import { InputNumber } from "../ui";
 import type { BaseFieldProps } from "./types";
 
-function NumberInput({
+export function NumberInput({
   value,
   onChange,
   disabled,
@@ -29,11 +28,4 @@ function NumberInput({
   );
 }
 
-export default defineAdapter(NumberInput, {
-  key: "NumberInput",
-  label: "数字输入",
-  description: "数字输入组件。",
-  kind: "component",
-  scenes: { form: {}, filter: {}, detail: "DisplayText", table: { renderAs: "DisplayText", summary: true } },
-  meta: { fieldType: "number" },
-});
+export default NumberInput;

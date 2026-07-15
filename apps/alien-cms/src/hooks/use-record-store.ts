@@ -31,7 +31,7 @@ import {
   restoreFilterValues,
 } from "../domains/record/utils/filter-values";
 import { useSchemaDetail } from "./use-schema-store";
-import { registry } from "../shared/adapters";
+import { resolveSchemaComponent } from "../shared/adapters";
 
 type DataSourceOption = NonNullable<CmsFieldSchema["dataSource"]>[number];
 
@@ -155,11 +155,27 @@ function buildFilterSchema(
     return undefined;
   }
 
-  const fields = (projectFilterFields(schema, registry) as Array<Omit<FilterFieldProjection, "field">>).map((item) => {
+  const fields = (projectFilterFields(schema) as Array<Omit<FilterFieldProjection, "field">>).map((item) => {
     const field = getLeafFieldByPath(schema, item.path);
     const safeKey = toSafeKey(item.key);
+    const componentKey = resolveSchemaComponent(field?.component, field?.type);
+    const operator =
+      (field?.["x-cms"]?.filter?.operator as string | undefined) ??
+      (componentKey === "Select" ? "in" : componentKey === "Switch" ? "eq" : "contains");
+    const props =
+      componentKey === "Switch"
+        ? {
+            ...(item.props ?? {}),
+            dataSource: item.props?.dataSource ?? [
+              { label: "是", value: true },
+              { label: "否", value: false },
+            ],
+          }
+        : item.props;
     return {
       ...item,
+      operator,
+      props,
       safeKey,
       field: (field ?? { type: "string", title: item.title }) as CmsFieldSchema,
     };

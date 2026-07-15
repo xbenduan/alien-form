@@ -1,4 +1,3 @@
-import { defineAdapter } from "@alien-form/cms";
 import { Image, Tag, Typography } from "../ui";
 import { normalizeArrayItems, renderTagList } from "./display-utils";
 import { getDisplaySummary } from "./get-display-summary";
@@ -20,7 +19,7 @@ function renderText(text: string, ellipsis?: boolean) {
   return <>{text}</>;
 }
 
-function DisplayText({ value, dataSource, format, ellipsis }: DisplayValueProps) {
+export function DisplayText({ value, dataSource, format, ellipsis }: DisplayValueProps) {
   const summary = getDisplaySummary({ value, dataSource, format });
 
   if (summary.kind === "image" && typeof value === "string") {
@@ -46,11 +45,4 @@ function DisplayText({ value, dataSource, format, ellipsis }: DisplayValueProps)
   return renderText(summary.text, ellipsis);
 }
 
-export default defineAdapter(DisplayText, {
-  key: "DisplayText",
-  label: "文本展示组件",
-  description: "通用只读文本展示组件。",
-  kind: "display",
-  scenes: { detail: {}, table: {} },
-  meta: { displayType: "text" },
-});
+export default DisplayText;

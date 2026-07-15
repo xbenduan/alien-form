@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from "react";
-import { defineAdapter } from "@alien-form/cms";
 import { DeleteOutlined, EditOutlined, PlusOutlined } from "../ui";
 import { Button, Modal, Table } from "../ui";
 import type { ColumnsType } from "../ui";
@@ -37,7 +36,7 @@ interface ModalState {
   title: string;
 }
 
-function EditableTable({
+export function EditableTable({
   field,
   rowNodes,
   rowFields,
@@ -157,11 +156,4 @@ function EditableTable({
   );
 }
 
-export default defineAdapter(EditableTable, {
-  key: "EditableTable",
-  label: "可编辑表格",
-  description: "对象数组表格编辑组件。",
-  kind: "component",
-  scenes: { form: {}, detail: { mode: "readonly", props: { disabled: true } } },
-  meta: { fieldType: "array" },
-});
+export default EditableTable;

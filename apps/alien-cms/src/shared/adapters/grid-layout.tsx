@@ -1,8 +1,7 @@
 import React from "react";
-import { defineAdapter } from "@alien-form/cms";
 import { Col, Row, Typography } from "../ui";
 
-function GridLayout({
+export function GridLayout({
   title,
   columns = 2,
   gutter = 16,
@@ -33,11 +32,4 @@ function GridLayout({
   );
 }
 
-export default defineAdapter(GridLayout, {
-  key: "GridLayout",
-  label: "栅格布局",
-  description: "基于栅格的容器布局组件。",
-  kind: "component",
-  scenes: { form: {}, detail: {} },
-  meta: { fieldType: "object" },
-});
+export default GridLayout;

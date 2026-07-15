@@ -1,9 +1,8 @@
-import { defineAdapter } from "@alien-form/cms";
 import type { DataSourceItem } from "@alien-form/react";
 import { Checkbox } from "../ui";
 import type { BaseFieldProps } from "./types";
 
-function CheckboxGroup({
+export function CheckboxGroup({
   value,
   onChange,
   disabled,
@@ -24,11 +23,4 @@ function CheckboxGroup({
   );
 }
 
-export default defineAdapter(CheckboxGroup, {
-  key: "CheckboxGroup",
-  label: "多选组件",
-  description: "多选组件。",
-  kind: "component",
-  scenes: { form: {}, filter: {}, detail: "DisplayChoice", table: { renderAs: "DisplayChoice", summary: true } },
-  meta: { fieldType: "tags" },
-});
+export default CheckboxGroup;

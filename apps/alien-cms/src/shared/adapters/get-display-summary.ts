@@ -1,4 +1,3 @@
-import { defineAdapter } from "@alien-form/cms";
 import type { DataSourceItem } from "@alien-form/react";
 
 const EMPTY_TEXT = "—";
@@ -156,11 +155,4 @@ export function getDisplaySummary({
   };
 }
 
-export default defineAdapter(getDisplaySummary, {
-  key: "getDisplaySummary",
-  label: "getDisplaySummary",
-  description: "根据值和 format 计算展示摘要。",
-  kind: "utility",
-  scenes: { detail: {}, table: {} },
-  meta: { utility: true },
-});
+export default getDisplaySummary;

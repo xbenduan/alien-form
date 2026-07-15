@@ -1,10 +1,9 @@
-import { defineAdapter } from "@alien-form/cms";
 import { Input as AntInput } from "../ui";
 import type { BaseFieldProps } from "./types";
 
 const { TextArea } = AntInput;
 
-function Textarea({
+export function Textarea({
   value,
   onChange,
   disabled,
@@ -27,11 +26,4 @@ function Textarea({
   );
 }
 
-export default defineAdapter(Textarea, {
-  key: "Textarea",
-  label: "多行文本",
-  description: "多行文本输入组件。",
-  kind: "component",
-  scenes: { form: {}, filter: { renderAs: "Input", operator: "contains" }, detail: "DisplayText", table: { renderAs: "DisplayText", summary: true } },
-  meta: { fieldType: "string" },
-});
+export default Textarea;

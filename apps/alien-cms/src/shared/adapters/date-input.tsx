@@ -1,9 +1,8 @@
-import { defineAdapter } from "@alien-form/cms";
 import { DatePicker } from "../ui";
 import dayjs from "dayjs";
 import type { BaseFieldProps } from "./types";
 
-function DateInput({
+export function DateInput({
   value,
   onChange,
   disabled,
@@ -24,11 +23,4 @@ function DateInput({
   );
 }
 
-export default defineAdapter(DateInput, {
-  key: "DateInput",
-  label: "选择日期",
-  description: "日期输入组件。",
-  kind: "component",
-  scenes: { form: {}, filter: {}, detail: "DisplayDate", table: { renderAs: "DisplayDate", summary: true } },
-  meta: { fieldType: "string" },
-});
+export default DateInput;

@@ -1,5 +1,4 @@
 import type React from "react";
-import { defineAdapter } from "@alien-form/cms";
 import {
   ArrowDownOutlined,
   ArrowUpOutlined,
@@ -18,7 +17,7 @@ interface ArrayCardsProps {
   addText?: string;
 }
 
-function ArrayCards({
+export function ArrayCards({
   rows,
   onAdd,
   onRemove,
@@ -87,11 +86,4 @@ function ArrayCards({
   );
 }
 
-export default defineAdapter(ArrayCards, {
-  key: "ArrayCards",
-  label: "ArrayCards",
-  description: "对象数组卡片编辑组件。",
-  kind: "component",
-  scenes: { form: {}, detail: { mode: "readonly", props: { disabled: true } } },
-  meta: { fieldType: "array" },
-});
+export default ArrayCards;

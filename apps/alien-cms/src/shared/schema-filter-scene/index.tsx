@@ -11,12 +11,11 @@ import {
 } from "../ui";
 import type { CmsModelSchema } from "../../domains/record/types/record";
 import { createRecordFormConfig } from "../utils/create-record-form-config";
-import { buildRenderableScenes } from "../utils/build-renderable-scenes";
+import { FilterComponentsMap } from "../adapters";
 import FilterItem from "./form-item";
-import * as adapters from "../adapters";
 import "./schema-filter-scene.css";
 
-const filterComponents = buildRenderableScenes(adapters, "filter");
+const filterComponents = FilterComponentsMap;
 
 const filterDecorators = {
   FilterItem,

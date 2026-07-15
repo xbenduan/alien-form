@@ -1,9 +1,8 @@
-import { defineAdapter } from "@alien-form/cms";
 import type { DataSourceItem } from "@alien-form/react";
 import { Radio as AntRadio } from "../ui";
 import type { BaseFieldProps } from "./types";
 
-function Radio({
+export function Radio({
   value,
   onChange,
   disabled,
@@ -28,11 +27,4 @@ function Radio({
   );
 }
 
-export default defineAdapter(Radio, {
-  key: "Radio",
-  label: "单选组件",
-  description: "单选组件。",
-  kind: "component",
-  scenes: { form: {}, filter: {}, detail: "DisplayChoice", table: { renderAs: "DisplayChoice", summary: true } },
-  meta: { fieldType: "string" },
-});
+export default Radio;

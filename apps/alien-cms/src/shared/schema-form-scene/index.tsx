@@ -9,16 +9,15 @@ import type {
   ModelActionMode,
   ModelRecord,
 } from "../../domains/record/types/record";
-import { buildRenderableScenes } from "../utils/build-renderable-scenes";
+import { DetailComponentsMap, FormComponentsMap } from "../adapters";
 import FormItem from "./form-item";
-import * as adapters from "../adapters";
 import "./schema-form-scene.css";
 
 export type SchemaFormMode = Exclude<ModelActionMode, "closed">;
 
-export const formComponents = buildRenderableScenes(adapters, "form");
+export const formComponents = FormComponentsMap;
 
-const detailComponents = buildRenderableScenes(adapters, "detail");
+const detailComponents = DetailComponentsMap;
 
 export const formDecorators = {
   FormItem,

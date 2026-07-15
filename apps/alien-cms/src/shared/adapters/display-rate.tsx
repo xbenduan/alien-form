@@ -1,4 +1,3 @@
-import { defineAdapter } from "@alien-form/cms";
 import type { DataSourceItem } from "@alien-form/react";
 import { Rate } from "../ui";
 import { EMPTY_TEXT } from "./display-utils";
@@ -10,7 +9,7 @@ interface DisplayValueProps {
   ellipsis?: boolean;
 }
 
-function DisplayRate({ value }: DisplayValueProps) {
+export function DisplayRate({ value }: DisplayValueProps) {
   if (value === undefined || value === null || value === "") {
     return <>{EMPTY_TEXT}</>;
   }
@@ -23,11 +22,4 @@ function DisplayRate({ value }: DisplayValueProps) {
   return <Rate disabled value={numericValue} />;
 }
 
-export default defineAdapter(DisplayRate, {
-  key: "DisplayRate",
-  label: "DisplayRate",
-  description: "评分只读展示组件。",
-  kind: "display",
-  scenes: { detail: {}, table: {} },
-  meta: { displayType: "rate" },
-});
+export default DisplayRate;
