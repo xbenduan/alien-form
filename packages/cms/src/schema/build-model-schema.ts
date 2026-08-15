@@ -63,7 +63,7 @@ function buildFieldSchema(
   );
 
   const children = draftField.children ?? [];
-  const isContainer = draftField.type === "object" || draftField.type === "void";
+  const isContainer = draftField.type === "object";
   const isObjectArray = draftField.type === "array";
 
   const baseTableMeta = {
