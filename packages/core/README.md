@@ -1,35 +1,53 @@
 # @alien-form/core
 
-> AlienForm 的无头表单运行时。
-> 它不渲染任何 UI，只负责把 Schema 变成可响应的字段树，并执行联动、格式化、校验和提交投影。
+基于 [alien-signals](https://github.com/stackblitz/alien-signals) 的**框架无关**表单引擎。它用一份 JSON Schema 描述表单结构，构建出一棵响应式的**字段树**，并提供取值、联动、校验、提交等全部能力。它不依赖任何 UI 框架，React 绑定请见 `@alien-form/react`。
 
-`@alien-form/core` 是整个项目的地基。你可以把它理解成一个“表单状态机 + Schema Runtime”：输入一份 `IFormSchema`，得到一个 `FormInstance`，再由 React、Vue、自研 UI 或 CMS 系统负责消费字段状态并渲染界面。
+> 想直接在 React 里用，只装 `@alien-form/react` 即可，它已经把 core 全量再导出。本文档面向核心引擎本身、以及需要在非 React 环境使用的场景。
 
-## 特性
+---
 
-- **无 UI 依赖**：不依赖 React，不绑定任何组件库。
-- **Signal 驱动**：基于 `alien-signals` 暴露字段状态、表单状态和 computed values。
-- **Schema 字段树**：支持 primitive、object、array、void 四类字段节点（void 布局节点通过 `x-layout` 声明）。
-- **运行时规则**：支持 `x-reaction`、`x-effect`、`x-format`、`x-validate`。
-- **安全表达式子集**：表达式运行时不使用 `eval` / `new Function`。
-- **数组模型**：支持行节点、增删移动、嵌套字段和稳定路径。
-- **输出投影**：`form.values()`、`form.project()`、`form.submit()` 会按可见性和格式化规则输出。
-- **错误通道**：通过 `FormConfig.onError` 和 `form.onError()` 接收非致命运行时错误。
+## 目录
+
+- [安装](#安装)
+- [30 秒上手](#30-秒上手)
+- [核心心智模型](#核心心智模型)
+- [Schema：如何描述一个表单](#schema如何描述一个表单)
+  - [字段类型与四种节点](#字段类型与四种节点)
+  - [void 布局节点（x-layout）](#void-布局节点x-layout)
+  - [`$ref` 与 `definitions` 复用](#ref-与-definitions-复用)
+  - [字段排序 order](#字段排序-order)
+- [`createForm(config)`](#createformconfig)
+- [FormInstance：表单实例 API](#forminstance表单实例-api)
+- [FieldNode：字段节点 API](#fieldnode字段节点-api)
+- [Selector：选择器语法](#selector选择器语法)
+- [响应式规则（x-reaction / x-effect / x-format / x-validate）](#响应式规则)
+  - [规则值的四种写法](#规则值的四种写法)
+  - [x-reaction 字段联动](#x-reaction-字段联动)
+  - [x-effect 副作用](#x-effect-副作用)
+  - [x-format 输入/输出格式化](#x-format-输入输出格式化)
+  - [x-validate 自定义校验](#x-validate-自定义校验)
+  - [RuntimeRuleContext：规则运行时上下文](#runtimerulecontext规则运行时上下文)
+- [表达式语言 `{{ }}`](#表达式语言--)
+- [数据源与 dataSourcePolicy](#数据源与-datasourcepolicy)
+- [校验与提交](#校验与提交)
+- [错误处理 onError](#错误处理-onerror)
+- [工具函数导出](#工具函数导出)
+- [完整类型速查表](#完整类型速查表)
+
+---
 
 ## 安装
 
 ```bash
 pnpm add @alien-form/core
+# 或 npm install @alien-form/core / yarn add @alien-form/core
 ```
 
-如果在当前 monorepo 内开发：
+`alien-signals` 是它的运行时依赖，会随包自动安装。core 把常用的 signal 原语（`signal` / `computed` / `effect` / `startBatch` / `endBatch`）再导出，下游无需单独依赖 alien-signals。
 
-```bash
-pnpm --filter @alien-form/core run test
-pnpm --filter @alien-form/core run build
-```
+---
 
-## 最小示例
+## 30 秒上手
 
 ```ts
 import { createForm } from "@alien-form/core";
@@ -38,587 +56,692 @@ const form = createForm({
   schema: {
     type: "object",
     properties: {
-      name: {
-        type: "string",
-        title: "姓名",
-        required: true,
-        component: "Input",
-      },
-      age: {
-        type: "number",
-        title: "年龄",
-        component: "NumberInput",
-        "x-validate": "{{ $value >= 18 ? true : '必须年满 18 岁' }}",
-      },
+      name: { type: "string", required: true, title: "姓名" },
+      age: { type: "number", default: 18 },
     },
   },
-  initialValues: {
-    name: "Alien",
-    age: 18,
-  },
+  initialValues: { name: "Alien" },
 });
 
-form.mount();
+// 读值
+form.get("name"); // "Alien"
+form.values(); // { name: "Alien", age: 18 }
 
-form.set("name", "AlienForm");
-const valid = await form.validate();
-const values = await form.submit();
+// 写值
+form.set("age", 20);
+form.get("age"); // 20
 
-form.unmount();
-form.destroy();
+// 校验 + 提交
+await form.submit(); // 校验通过则 resolve 出最终值对象
 ```
 
-## 核心概念
+---
 
-### `FormInstance`
+## 核心心智模型
 
-`createForm(config)` 会返回一个表单实例。它持有完整 Schema、字段索引、根字段、表单值、校验状态和生命周期方法。
+理解下面 4 点，整个库就通了：
 
-```ts
-const form = createForm({ schema, initialValues });
+1. **一份 Schema → 一棵字段树。** `createForm` 读取 schema，把每个字段构建成一个 **FieldNode**（字段节点）。所有节点还被拍平存进一张 `path -> FieldNode` 的表里，用**点路径**（如 `user.address.city`、`items.0.name`）定位。
 
-form.mount();
-form.set("profile.name", "Ada");
+2. **只有基本类型（string / number / boolean）持有响应式值。** 叶子字段（primitive）通过 `signal` 保存自己的值；object / array 本身不存值，它们的值由子节点**投影（project）**聚合而来。这意味着：_不要往叶子字段塞对象或数组_——复杂结构请用 `properties` / `items` 拆分，简单的多值（如多选、标签）请在组件里序列化成字符串。
 
-const field = form.field("profile.name");
-const current = form.get("profile.name");
-const values = form.values();
-```
+3. **字段的每一项能力都是一个 signal。** `display` / `disabled` / `required` / `errors` / `title` / `component` / `dataSource` … 全是独立的响应式源。改任意一项，只有订阅它的地方会更新。这就是「value-capability runtime（值-能力运行时）」的含义。
 
-### `FieldNode`
+4. **联动规则是声明在 schema 里的、跑在 signal effect 中的函数。** `x-reaction` / `x-effect` 等在 `form.mount()` 后启动；它们读到哪些 signal，就自动依赖哪些 signal，源变化时自动重算。
 
-每个 Schema 字段都会变成一个字段节点：
+---
 
-| 节点类型 | 对应 Schema | 说明 |
-| --- | --- | --- |
-| `PrimitiveFieldNode` | `string`、`number`、`boolean` 或自定义 primitive type | 拥有 `value` signal 和 `setValue()`。 |
-| `ObjectFieldNode` | `type: "object"` | 拥有 `children`，用于组织嵌套字段。 |
-| `ArrayFieldNode` | `type: "array"` | 拥有 `rows`，支持 `push()`、`remove()`、`move()` 等操作。 |
-| `VoidFieldNode` | 通过 `"x-layout": "<布局组件名>"` 声明 | 只参与布局和状态，不参与输出值；子字段的路径与值扁平上浮到父级。 |
+## Schema：如何描述一个表单
 
-> **叶子值类型守卫**：`PrimitiveFieldNode.setValue()`（即组件 `onChange` 的唯一写入口）只接受单个 `string | number | boolean`；`null` / `undefined` 视为清空放行；数组、对象等复杂结构会抛出 `TypeError`。复杂结构请用 `properties` / `items` 拆成子字段；简单的 object / array 请在组件内部自行序列化为 string。
-
-> **布局节点（x-layout）**：在任意 `properties` 项上写 `"x-layout": "<布局组件名>"` 即声明一个布局节点（不占数据路径、不产生值，子字段扁平上浮）。顶层 `IFormSchema` 同样支持 `x-layout`——整棵表单被指定布局组件包裹，一个 schema 即可声明一整个页面。
-
-所有字段节点都拥有这些状态：
+顶层用 `IFormSchema`，字段用 `IFieldSchema`。
 
 ```ts
-field.display(); // "visible" | "hidden" | "none"
-field.disabled();
-field.required();
-field.errors();
-field.warnings();
-field.validateStatus();
-field.title();
-field.description();
-field.component();
-field.componentProps();
-field.decorator();
-field.decoratorProps();
-field.dataSource();
-field.loading();
-```
+interface IFormSchema {
+  type: "object";
+  title?: string;
+  description?: string;
+  required?: boolean | string[];
+  "x-layout"?: string;                       // 整个表单套一个布局组件
+  properties?: Record<string, IFieldSchema>; // 顶层字段
+  definitions?: Record<string, IFieldSchema>; // 供 $ref 复用的定义
+  "x-reaction"?: SchemaReactions;
+  "x-effect"?: SchemaEffect;
+}
 
-### Signal
+interface IFieldSchema {
+  type?: "string" | "number" | "boolean" | "object" | "array" | string;
+  title?: string;
+  description?: string;
+  default?: any;
+  properties?: Record<string, IFieldSchema>; // object 的子字段
+  items?: IFieldSchema | IFieldSchema[];      // array 的行结构
+  $ref?: string;                               // 引用 definitions
+  order?: number;                              // 同级排序
+  required?: boolean | string[];
+  display?: "visible" | "hidden" | "none";
+  disabled?: boolean;
 
-`@alien-form/core` 会重新导出 `alien-signals` 的常用能力：
+  // 展示层
+  "x-layout"?: string;             // 声明为布局(void)节点，值即默认组件名
+  component?: string;              // 渲染组件名（交给 UI 层解析）
+  props?: Record<string, any>;     // 传给组件的初始 props
+  decorator?: string;              // 装饰器组件名，默认 "FormItem"
+  decoratorProps?: Record<string, any>;
 
-```ts
-import { signal, computed, effect, startBatch, endBatch } from "@alien-form/core";
-```
+  // 数据源
+  dataSource?: DataSourceItem[];               // 选项
+  dataSourcePolicy?: "preserve" | "clear" | "filter" | "first";
 
-Signal 是函数式读写：
-
-```ts
-const count = signal(0);
-
-count(); // read
-count(1); // write
-```
-
-## Schema 协议
-
-### 基础字段
-
-```ts
-const schema = {
-  type: "object",
-  properties: {
-    email: {
-      type: "string",
-      title: "邮箱",
-      description: "用于接收通知",
-      required: true,
-      component: "Input",
-      decorator: "FormItem",
-      props: {
-        placeholder: "请输入邮箱",
-      },
-    },
-  },
-};
-```
-
-### `required`
-
-`required` 同时承担两个职责：
-
-- 设置字段的必填 UI 状态：`field.required()`。
-- 提供内置必填校验，错误消息为 `该字段为必填项`。
-
-### `x-reaction`
-
-`x-reaction` 用于声明字段联动，支持派生这些目标：
-
-| 目标 | 说明 |
-| --- | --- |
-| `value` | 派生字段值。 |
-| `rows` | 派生数组行。 |
-| `display` | 设置 `visible`、`hidden`、`none`。 |
-| `disabled` | 设置禁用状态。 |
-| `required` | 设置必填状态。 |
-| `title` / `description` | 派生标题和描述。 |
-| `props` / `decoratorProps` | 派生组件参数和装饰器参数。 |
-| `component` / `decorator` | 动态切换组件或装饰器。 |
-| `dataSource` | 动态加载或派生选项。 |
-
-```ts
-const schema = {
-  type: "object",
-  properties: {
-    country: {
-      type: "string",
-      component: "Select",
-      dataSource: [
-        { label: "中国", value: "cn" },
-        { label: "美国", value: "us" },
-      ],
-    },
-    city: {
-      type: "string",
-      component: "Select",
-      dataSourcePolicy: "first",
-      "x-reaction": {
-        display: "{{ country ? 'visible' : 'none' }}",
-        dataSource: "@loadCities",
-      },
-    },
-  },
-};
-
-const form = createForm({
-  schema,
-  handlers: {
-    loadCities(ctx) {
-      return ctx.get("country") === "cn"
-        ? [{ label: "杭州", value: "hangzhou" }]
-        : [{ label: "New York", value: "new-york" }];
-    },
-  },
-});
-```
-
-### `x-effect`
-
-`x-effect` 用于字段挂载后的副作用逻辑。它与其他运行时值共享同一套上下文，可以读取字段、表单值和自定义 scope。
-
-```ts
-{
-  type: "string",
-  "x-effect": (ctx) => {
-    return ctx.effect(() => {
-      const value = ctx.get("keyword");
-      console.log("keyword changed:", value);
-    });
-  },
+  // 响应式规则
+  "x-reaction"?: SchemaReactions;
+  "x-effect"?: SchemaEffect;
+  "x-format"?: { input?: ...; output?: ... };
+  "x-validate"?: SchemaXValidate;
 }
 ```
 
-### `x-format`
+`required` 有两种写法：字段自己写 `required: true`；或者父级 object 用 JSON-Schema 风格的字符串数组 `required: ["name", "email"]` 声明哪些子字段必填。
 
-`x-format` 负责输入和输出格式化：
+### 字段类型与四种节点
 
-- `input`：只在初始化加载值时执行。
-- `output`：在 `form.values()`、`form.project()`、`form.submit()` 时执行。
-- `x-format` 必须是同步规则，返回 Promise 会被视为错误。
+`type` 决定字段被构建成哪一种 **FieldNode**（`field.kind`）：
 
-```ts
-{
-  // tags 组件仍可用，但叶子值必须是单个基元（这里是逗号分隔的字符串）。
-  // 需要真正的多选数组请改用 type: "array" + items，或在组件内自行序列化为 string。
-  type: "tags",
-  default: "",
-  "x-format": {
-    input: ({ value }) => typeof value === "string" ? value.trim() : "",
-    output: ({ value }) => typeof value === "string" ? value.trim() : value,
-  },
-}
-```
+| schema 写法                                                                       | 节点 kind     | 说明                           | 默认组件        |
+| --------------------------------------------------------------------------------- | ------------- | ------------------------------ | --------------- |
+| `type: "string" / "number" / "boolean"`（或任意未识别的自定义 type，如 `"tags"`） | `"primitive"` | 叶子字段，持有单个响应式值     | `Input`         |
+| `type: "object"` + `properties`                                                   | `"object"`    | 分组容器，值由子字段聚合       | `SectionCard`   |
+| `type: "array"` + `items.type === "object"`                                       | `"array"`     | **对象数组**，每行是一组子字段 | `ArrayCards`    |
+| 含 `"x-layout"`                                                                   | `"void"`      | 布局节点，不占数据路径         | `x-layout` 的值 |
 
-### `x-validate`
+> **重要约束**：`type: "array"` 只支持 `items` 为**单个对象** schema（`items.type === "object"`）。基本类型的数组（多选、标签等）不要用 `array`，请用一个 primitive 字段并在组件里用 JSON 字符串承载，例如值存成 `'["a","b"]'`。`items` 写成数组（tuple 形式）不会被展开。
 
-`x-validate` 用于自定义校验。返回值语义如下：
+- **primitive** 有 `value` 信号和 `setValue()`。
+- **object** / **void** 有 `children: Map<string, FieldNode>`。
+- **array** 有 `rows: Signal<RowNode[]>` 和 `push/remove/move/...`。每个 `RowNode` 有自己的 `children`。
 
-| 返回值 | 结果 |
-| --- | --- |
-| `undefined` / `null` / `true` | 校验通过。 |
-| `false` | 校验失败，使用默认错误消息。 |
-| `string` | 校验失败，字符串作为错误消息。 |
-| `{ message: string }` | 校验失败，结构化错误。 |
-| `FieldError[]` | 多个结构化错误。 |
+### void 布局节点（x-layout）
 
-```ts
-{
-  type: "string",
-  title: "邮箱",
-  "x-validate": [
-    "{{ $value ? true : '邮箱不能为空' }}",
-    ({ value }) => /@/.test(value) ? true : "邮箱格式不正确",
-  ],
-}
-```
-
-### `$ref`
-
-Schema 支持通过 `schema.definitions` 和 `$ref` 复用字段定义：
-
-```ts
-const schema = {
-  type: "object",
-  definitions: {
-    userName: {
-      type: "string",
-      component: "Input",
-      required: true,
-    },
-  },
-  properties: {
-    creator: {
-      $ref: "#/definitions/userName",
-      title: "创建人",
-    },
-  },
-};
-```
-
-`schema.definitions` 是 Schema 自身的引用字典：
-
-- 只能通过 `$ref: "#/definitions/name"` 显式引用。
-- 适合描述协议内可复用的字段结构，例如地址、用户、树节点等。
-- `$ref` 解析后会继续递归解析子级 `properties` / `items` 中的 `$ref`，并检测循环引用。
-- 引用位置写的本地属性会覆盖被引用定义中的同名属性。
-
-### `config.definitions`
-
-`createForm(config)` 也支持 `config.definitions`，它会在表单创建时合并到 `schema.definitions`，作为 `$ref` 可引用的运行时定义字典：
+带 `x-layout` 的节点是 **void（虚字段）**：它只负责视觉分组/布局，**不占数据路径、不产生值**——子字段的路径和值会**扁平上浮到父级**。判定优先于 `type`。
 
 ```ts
 const form = createForm({
   schema: {
     type: "object",
     properties: {
-      email: {
-        $ref: "#/definitions/emailInput",
-        title: "邮箱",
-      },
-      members: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            name: {
-              $ref: "#/definitions/memberName",
-              title: "成员姓名",
-            },
-          },
-        },
-      },
-    },
-  },
-  definitions: {
-    emailInput: {
-      type: "string",
-      component: "Input",
-      decorator: "FormItem",
-      props: { placeholder: "请输入邮箱" },
-    },
-    memberName: {
-      type: "string",
-      component: "Input",
-      decorator: "FormItem",
-    },
-  },
-});
-```
-
-`config.definitions` 的规则：
-
-- key 是定义名，例如 `emailInput`、`memberName`，通过 `$ref: "#/definitions/name"` 显式引用。
-- value 是 `IFieldSchema`，可以包含函数等不适合放入 JSON Schema 的运行时规则。
-- 它会与 `schema.definitions` 合并后参与 `$ref` 解析；没有被 schema 显式 `$ref` 引用的定义不会影响任何字段。
-- 引用位置写的本地属性仍会覆盖被引用定义中的同名属性。
-
-两类 `definitions` 的区别：
-
-| 位置 | 作用 | key 形式 | 典型用途 |
-| --- | --- | --- | --- |
-| `schema.definitions` | Schema 内的 `$ref` 引用字典 | `userName`，通过 `#/definitions/userName` 引用 | 复用字段结构，随 Schema 一起下发或存储 |
-| `config.definitions` | 创建表单时合并进 `$ref` 引用字典 | `userName`，通过 `#/definitions/userName` 引用 | 在运行时补充函数、组件、装饰器、交互策略 |
-
-## Runtime Value Model
-
-AlienForm 在 `x-reaction`、`x-effect`、`x-format`、`x-validate` 中使用统一的运行时值模型：
-
-| 类型 | 示例 | 说明 |
-| --- | --- | --- |
-| 字面量 | `"text"`、`100`、`true`、`{}`、`[]` | 直接作为结果使用。 |
-| 表达式字符串 | `"{{ role === 'admin' }}"` | 在受限表达式运行时内求值。 |
-| Handler 字符串 | `"@loadOptions"` | 从 `FormConfig.handlers` 中查找并执行。 |
-| 直接函数 | `(ctx, form) => any` | 直接获得运行时上下文和表单实例。 |
-| 数组 | `["{{ a }}", "@handler"]` | 按规则列表执行。 |
-
-## 表达式上下文
-
-表达式可以读取：
-
-| 名称 | 说明 |
-| --- | --- |
-| `$self` | 当前字段节点。 |
-| `$form` | 当前表单实例。 |
-| `$values` | 当前表单值。 |
-| `$value` | 当前字段值。 |
-| `$row` | 当前数组行节点。 |
-| `$path` | 当前字段路径。 |
-| `$get(selector)` | 读取某个路径的值。 |
-| `$project(selector?)` | 读取投影后的输出值。 |
-| 自定义 scope | 来自 `FormConfig.scope`。 |
-
-表达式也可以直接访问同级或顶层字段名：
-
-```ts
-{
-  "x-reaction": {
-    disabled: "{{ status === 'archived' }}",
-  },
-}
-```
-
-表达式支持字面量、成员访问、数组、对象、算术、比较、逻辑运算和三元表达式。
-
-为了降低风险，表达式会拒绝：
-
-- 函数调用。
-- 赋值语句。
-- 模板字符串。
-- `eval`、`Function`、`window`、`document`、`process`。
-- `constructor`、`prototype`、`__proto__`。
-
-## Data Source Policy
-
-当字段拥有 `dataSource` 且选项发生变化时，`dataSourcePolicy` 决定如何处理当前值：
-
-| 策略 | 行为 |
-| --- | --- |
-| `preserve` | 保留当前值。 |
-| `clear` | 当前值不在新选项中时清空。 |
-| `filter` | 数组值中过滤非法项，标量非法时清空。 |
-| `first` | 当前值非法时回退到第一个选项。 |
-
-## Array 字段
-
-数组字段会创建 `ArrayFieldNode`，并为每行创建 `RowNode`：
-
-```ts
-const members = form.field("members");
-
-if (members?.kind === "array") {
-  members.push({ name: "Ada" });
-  members.moveUp(1);
-  members.remove(0);
-}
-```
-
-示例 Schema：
-
-```ts
-const schema = {
-  type: "object",
-  properties: {
-    members: {
-      type: "array",
-      title: "成员",
-      component: "ArrayCards",
-      items: {
-        type: "object",
+      section: {
+        "x-layout": "Card", // 该节点是 void，默认渲染组件名 = "Card"
         properties: {
-          name: {
-            type: "string",
-            title: "姓名",
-            component: "Input",
-          },
+          email: { type: "string" },
+          phone: { type: "string" },
         },
       },
     },
   },
-};
+  initialValues: { email: "a@b.com", phone: "123" }, // 注意：直接挂在顶层，而非 section 下
+});
+
+form.field("section")?.kind; // "void"
+form.field("email"); // 存在（路径没有 section 前缀）
+await form.submit(); // { email: "...", phone: "123" }
 ```
 
-## Public API
+顶层 `IFormSchema` 也支持 `x-layout`，用单个 schema 声明整页布局。
 
-### `createForm(config)`
+### `$ref` 与 `definitions` 复用
+
+可复用的 schema 片段放进 `definitions`，字段用 `$ref: "#/definitions/名字"` 引用。本地属性会**覆盖**被引用定义里的同名属性（local wins）。
 
 ```ts
-import { createForm } from "@alien-form/core";
-
 const form = createForm({
-  schema,
-  initialValues,
-  scope,
-  handlers,
-  onError(error) {
-    console.warn(error);
+  schema: {
+    type: "object",
+    definitions: {
+      Money: { type: "number", component: "MoneyInput" },
+    },
+    properties: {
+      price: { $ref: "#/definitions/Money", title: "价格" }, // title 覆盖，其余继承
+    },
   },
 });
 ```
 
-### `FormConfig`
+`definitions` 既可以写在 schema 里，也可以放进 `createForm` 的 `config.definitions`。两者合并，**config 同名定义覆盖 schema 定义**。注意：`config.definitions` 只有通过**显式 `$ref`** 才会生效，不会按字段名自动套用。`$ref` 链会被递归解析，并能检测直接/间接**循环引用**（不会栈溢出，会通过 `onError` 报告一次）。
+
+### 字段排序 order
+
+同级字段按 `order` 升序排列，没写 `order` 的排在最后（视为 `Infinity`）。core 用 `sortByOrder` 保证构建顺序，UI 层渲染顺序也一致。
+
+---
+
+## `createForm(config)`
+
+唯一的工厂函数。所有参数都是可选的。
 
 ```ts
+function createForm(config?: FormConfig): FormInstance;
+
 interface FormConfig {
-  schema?: IFormSchema;
-  definitions?: Record<string, IFieldSchema>;
-  initialValues?: Record<string, any>;
-  scope?: Record<string, any>;
-  handlers?: Record<string, RuntimeRuleHandler>;
-  onError?: (error: FormError) => void;
+  schema?: IFormSchema; // 表单结构，缺省为空 object
+  definitions?: Record<string, IFieldSchema>; // 额外的 $ref 定义（覆盖 schema.definitions）
+  initialValues?: Record<string, any>; // 初始值（按点路径匹配字段）
+  scope?: Record<string, any>; // 注入表达式/规则的额外作用域变量
+  handlers?: Record<string, RuntimeRuleHandler>; // 具名处理器，规则里用 "@名字" 调用
+  onError?: (error: FormError) => void; // 规则/解析错误回调
 }
 ```
 
-### `FormInstance`
+- **`initialValues`** 按点路径填充：`{ user: { name: "x" } }` 会填到字段 `user.name`。数组字段会据此生成对应行数。
+- **`scope`** 里的变量在表达式和 `@handler` 里都可直接访问。
+- **`handlers`** 是把命名函数与 schema 解耦的推荐方式：schema 里写 `"@double"`，运行时调用 `handlers.double`。
+
+> `createForm` 构建完字段树后，**响应式规则默认还没启动**，需要调用 `form.mount()`。（`@alien-form/react` 的 `useCreateForm` 会自动挂载。）
+
+---
+
+## FormInstance：表单实例 API
+
+### 响应式状态（都是 signal / computed，调用即读取）
+
+| 成员         | 类型                             | 含义                                         |
+| ------------ | -------------------------------- | -------------------------------------------- |
+| `schema`     | `IFormSchema`                    | 归一化后的 schema（含合并后的 definitions）  |
+| `root`       | `ObjectFieldNode`                | 字段树根节点                                 |
+| `fields`     | `Signal<Map<string, FieldNode>>` | 拍平的 `path -> 节点` 表；数组增删行时会变更 |
+| `submitting` | `Signal<boolean>`                | 是否正在 `submit()`                          |
+| `values`     | `Computed<Record<string, any>>`  | 当前完整值（已应用 `x-format.output`）       |
+| `errors`     | `Computed<FieldError[]>`         | 所有可见字段的错误汇总                       |
+| `valid`      | `Computed<boolean>`              | `errors().length === 0`                      |
+
+### 取值 / 写值
 
 ```ts
-interface FormInstance {
-  schema: IFormSchema;
-  root: ObjectFieldNode;
-  fields: Signal<Map<string, FieldNode>>;
-  submitting: Signal<boolean>;
-  values: Computed<Record<string, any>>;
-  errors: Computed<FieldError[]>;
-  valid: Computed<boolean>;
+form.field(path: string): FieldNode | undefined  // 按精确路径取节点
+form.get(selector: string): any                  // 按选择器读值（见下文 Selector）
+form.set(selector: string, value: any): void     // 按选择器写值（只能写到 primitive）
+form.project(selector?: string): any             // 投影：无参=整表值；有参=该字段投影值
+form.setValues(values): void                     // 批量按路径写入 primitive / 数组行
+form.setInitialValues(values): void              // 只改「初始值基线」，不改当前值
+form.reset(): void                               // 递归重置到 schema.default，并清空错误
+```
 
-  field(path: string): FieldNode | undefined;
-  get(selector: string): any;
-  set(selector: string, value: any): void;
-  project(selector?: string): any;
-  setValues(values: Record<string, any>): void;
-  setInitialValues(values: Record<string, any>): void;
-  reset(): void;
+- `get` / `set` 用的是 **selector**，支持相对路径、`$row.`、`[].` 集合广播等（见 [Selector](#selector选择器语法)）。
+- `set` 只能写到叶子（primitive）字段；写到 object / 越界索引会通过 `onError` 报错但**不抛异常、不产生幽灵行**。
+- `project()` 与 `values()` 的区别：`project` 用于按需拿某个子树的输出值；`values()` 是整表的响应式计算值。
 
-  mount(): void;
-  unmount(): void;
-  validate(): Promise<boolean>;
-  submit<T = any>(onSubmit?: (values: Record<string, any>) => T | Promise<T>): Promise<T>;
-  destroy(): void;
-  onError(listener: (error: FormError) => void): () => void;
+```ts
+form.setValues({ a: 10, list: [{ v: "x" }, { v: "y" }] }); // 数组会重建为 2 行
+form.setInitialValues({ a: 50 }); // 只影响下次 reset 的基线，当前值不变
+```
 
-  effect(runner: (form: FormInstance) => void | (() => void)): () => void;
-  effect<T>(
-    selector: (form: FormInstance) => T,
-    listener: (value: T, prev: T | undefined) => void,
-    options?: { immediate?: boolean; equals?: (a: T, b: T) => boolean },
-  ): () => void;
+### 生命周期
+
+```ts
+form.mount(): void      // 启动所有 x-reaction / x-effect（幂等，销毁后不再挂载）
+form.unmount(): void    // 停止所有规则，但保留字段树（可再 mount）
+form.destroy(): void    // 彻底销毁：unmount + 释放字段树 + 清空监听器
+```
+
+规则在 mount 之前不会运行（测试中 `spy` 不会被调用）；`unmount` 后可再次 `mount`，字段不丢失。
+
+### 校验与提交
+
+```ts
+form.validate(): Promise<boolean>
+// 并发校验所有 display !== "none" 的字段，全通过返回 true
+
+form.submit<T>(onSubmit?: (values) => T | Promise<T>): Promise<T>
+// 先 validate；失败则 reject（error.messages 是错误消息数组）
+// 成功则：有 onSubmit 就用最终值调用它并返回其结果；否则直接返回最终值
+// 全程 form.submitting() 为 true，结束后恢复 false
+```
+
+```ts
+try {
+  const saved = await form.submit(async (values) => api.save(values));
+} catch (err) {
+  console.log(err.messages); // ["该字段为必填项", ...]
 }
 ```
 
-### `RuntimeRuleContext`
+### 订阅与副作用：`form.effect`
+
+两种重载：
+
+**1) runner 形式**——注册一个响应式 runner，读到的 signal 变化就重跑；返回销毁函数；可返回 cleanup。
+
+```ts
+const dispose = form.effect((f) => {
+  console.log("a 变了：", f.get("a"));
+});
+dispose(); // 停止
+
+form.effect(() => {
+  const timer = setInterval(...);
+  return () => clearInterval(timer); // runner 返回的 cleanup 由框架托管，destroy 时调用
+});
+```
+
+**2) selector + listener 形式**——只在选中值变化时触发 listener，类似 watch。
+
+```ts
+form.effect(
+  (f) => f.get("a"), // selector
+  (next, prev) => console.log(next, prev), // 变化时触发
+  { immediate: true, equals: Object.is }, // 可选：立即执行一次 / 自定义相等比较
+);
+```
+
+默认**不**在初始化时触发（除非 `immediate: true`）；`equals` 返回 `true` 视为无变化、跳过 listener。
+
+### 错误监听
+
+```ts
+const off = form.onError((e: FormError) => console.warn(e.scope, e.path, e.message));
+off(); // 取消订阅
+```
+
+---
+
+## FieldNode：字段节点 API
+
+所有节点共享 `BaseFieldNode`，四种 kind 各自扩展。字段的每项「能力」都是一个 signal——**调用无参读取**，通过对应的 `setXxx` 写入（`setXxx` 内部做了相等判断，避免无谓通知）。
+
+### 公共属性（BaseFieldNode）
+
+| 属性                    | 类型                                                              | setter                                         |
+| ----------------------- | ----------------------------------------------------------------- | ---------------------------------------------- |
+| `id`                    | `string`                                                          | —                                              |
+| `path`                  | `string`                                                          | —（数组重排时框架内部维护）                    |
+| `schema`                | `IFieldSchema`                                                    | —                                              |
+| `kind`                  | `"primitive" \| "object" \| "array" \| "void"`                    | —                                              |
+| `parent` / `row`        | 节点 / 所属行                                                     | —                                              |
+| `display`               | `Signal<"visible" \| "hidden" \| "none">`                         | `setDisplay(v)`                                |
+| `disabled`              | `Signal<boolean>`                                                 | `setDisabled(v)`                               |
+| `required`              | `Signal<boolean>`                                                 | `setRequired(v)`                               |
+| `errors`                | `Signal<FieldError[]>`                                            | `setErrors(list)`（并联动 `validateStatus`）   |
+| `warnings`              | `Signal<FieldError[]>`                                            | `setWarnings(list)`                            |
+| `validateStatus`        | `Signal<"success" \| "error" \| "warning" \| "validating" \| "">` | 随 `setErrors` 自动更新                        |
+| `title` / `description` | `Signal<string>`                                                  | 直接调用 signal 写入                           |
+| `component`             | `Signal<string>`                                                  | `setComponent(name, props?)`                   |
+| `componentProps`        | `Signal<Record<string, any>>`                                     | 同上 / reaction                                |
+| `decorator`             | `Signal<string>`（默认 `"FormItem"`）                             | `setDecorator(name, props?)`                   |
+| `decoratorProps`        | `Signal<Record<string, any>>`                                     | 同上                                           |
+| `dataSource`            | `Signal<DataSourceItem[]>`                                        | `setDataSource(ds)`（会应用 dataSourcePolicy） |
+| `loading`               | `Signal<boolean>`                                                 | `setLoading(v)`                                |
+
+公共方法：
+
+```ts
+field.validate(): Promise<FieldError[]>  // 校验单个字段（必填判空 + x-validate）
+field.reset(): void                       // primitive 回 default；array 回 default 行；容器递归重置
+field.dispose(): void                     // 释放该字段（含子树/行）并从 fields 表移除
+```
+
+必填判空使用内部的空值判断：`undefined` / `null` / `""` / `[]` 视为空（`0`、`false`、`{}` 不算空）。
+
+### PrimitiveFieldNode
+
+```ts
+field.value: Signal<any>;
+field.setValue(value: string | number | boolean | null | undefined): void;
+```
+
+`setValue` 有**写入守卫**：只接受 `string | number | boolean`；`null` / `undefined` 视为清空放行；传入对象或数组会**抛 `TypeError`**（提示你拆字段或序列化）。
+
+```ts
+const name = form.field("name");
+if (name?.kind === "primitive") {
+  name.setValue("hi"); // ✅
+  name.setValue({ a: 1 }); // ❌ 抛 TypeError
+}
+```
+
+### ArrayFieldNode
+
+```ts
+field.rows: Signal<RowNode[]>;
+field.push(initialValues?: any): void;   // 追加一行（可带初始值）
+field.remove(index: number): void;       // 删除某行并重排索引
+field.move(from: number, to: number): void;
+field.moveUp(index: number): void;
+field.moveDown(index: number): void;
+field.setRows(values: any[]): void;      // 整体替换所有行
+```
+
+所有越界操作都是**安全的 no-op**（不抛错）。删除/移动会重新计算各行及嵌套子字段的 `path`。
+
+```ts
+const list = form.field("materials"); // kind === "array"
+list.push({ name: "新素材" });
+list.remove(0);
+form.get("materials[].name"); // 用集合选择器一次读所有行的 name
+```
+
+`RowNode` 结构：`{ id, index, path, parent, children: Map<string, FieldNode> }`。
+
+### ObjectFieldNode / VoidFieldNode
+
+```ts
+field.children: Map<string, FieldNode>;
+```
+
+二者结构相同，区别在语义：object 会占据数据路径并在投影中保留 `{}`（哪怕子节点全空），void 则把子节点扁平上浮到父级。
+
+---
+
+## Selector：选择器语法
+
+`form.get` / `form.set` / `runtime.get` / `runtime.set` 都用同一套选择器：
+
+| 选择器             | 含义                                                           | 示例                                    |
+| ------------------ | -------------------------------------------------------------- | --------------------------------------- |
+| `a.b.c`            | 绝对路径（对 root 而言）                                       | `form.get("user.name")`                 |
+| `a.0.b`            | 数组按下标定位某行的子字段                                     | `form.get("materials.0.name")`          |
+| `./sibling`        | 相对当前字段父级的路径（仅在规则上下文里有意义）               | `rt.get("./price")`                     |
+| `$value`           | 当前字段自身的值                                               | `rt.get("$value")`                      |
+| `$path`            | 当前字段路径                                                   | `rt.get("$path")`                       |
+| `$row.child`       | 当前所在**行**的某个子字段（含嵌套 `$row.profile.city`）       | `rt.get("$row.name")`                   |
+| `arr[].child`      | **集合选择器**：读=返回每行该子字段组成的数组；写=广播到每一行 | `form.get("materials[].name")`          |
+| `$row.arr[].child` | 行内集合广播                                                   | `rt.set("$row.phones[].number", "***")` |
+
+读写对齐（get/set parity）：能这么读，就能这么写。集合选择器写入是**广播**——把同一个值写进每一行的该子字段。
+
+```ts
+// 读：所有行的 name
+form.get("materials[].name"); // ["a", "b", "c"]
+// 写：广播到所有行
+form.set("materials[].name", "Z"); // 每行 name 都变成 "Z"
+
+// 嵌套集合读
+form.get("contacts[].phones.0.number"); // 每个联系人的第 0 个电话号
+```
+
+对非 primitive / 非数组的错误用法（如 `set` 一个 object、集合选择器指向非数组字段、越界下标），会通过 `onError` 报错，不抛异常。
+
+---
+
+## 响应式规则
+
+四种规则都写在 schema 上，规则值都遵循同一套「[四种写法](#规则值的四种写法)」，并在运行时收到同一个 [RuntimeRuleContext](#runtimerulecontext规则运行时上下文)。
+
+### 规则值的四种写法
+
+任何规则位置（`x-reaction` 的每个 target、`x-effect`、`x-format.input/output`、`x-validate`）都接受：
+
+1. **内联函数** `(ctx, form) => any`——最灵活，直接写逻辑。
+2. **`@handler` 字符串**——调用 `config.handlers` 里的具名函数（推荐，schema 可序列化）。
+3. **`{{ 表达式 }}` 字符串**——受限的 JS 表达式（见下文）。
+4. **字面量**——普通字符串/数字/对象等，直接作为结果值。
+
+```ts
+// 1) 内联函数
+{ "x-reaction": { value: (rt) => (rt.get("a") ?? 0) + 1 } }
+// 2) @handler
+{ "x-reaction": { value: "@double" } }   // 需 handlers.double
+// 3) 表达式
+{ "x-reaction": { display: "{{ toggle ? 'visible' : 'none' }}" } }
+// 4) 字面量
+{ "x-reaction": { value: "literal-text" } }  // value 直接变成这段文本
+{ "x-reaction": { props: { placeholder: "hi" } } } // 对象直接作为 props payload
+```
+
+每个 target 也可以传**规则数组**，依次执行（对同一 target，后者覆盖前者）：`{ title: ["@t1", "@t2"] }`。
+
+### x-reaction 字段联动
+
+`x-reaction` 是一个「target → 规则」的映射。每条规则跑在一个 signal effect 里，**读到的响应式源变化时自动重算**，并把结果写到对应能力上。结果为 `undefined` 时**跳过**（不覆盖）。支持的 target：
+
+| target                  | 作用                            | 备注                          |
+| ----------------------- | ------------------------------- | ----------------------------- |
+| `value`                 | 写字段值                        | **仅 primitive**；否则报错    |
+| `rows`                  | 设置数组行                      | **仅 array**；否则报错        |
+| `display`               | `"visible" / "hidden" / "none"` |                               |
+| `disabled`              | 布尔                            |                               |
+| `required`              | 布尔                            |                               |
+| `title` / `description` | 文案                            |                               |
+| `props`                 | 合并进 `componentProps`         | 浅合并                        |
+| `decoratorProps`        | 合并进 `decoratorProps`         | 浅合并                        |
+| `component`             | 换组件                          | 字符串或 `[name, props]` 元组 |
+| `decorator`             | 换装饰器                        | 字符串或 `[name, props]` 元组 |
+| `dataSource`            | 设置选项                        | 会应用 dataSourcePolicy       |
+
+```ts
+const form = createForm({
+  schema: {
+    type: "object",
+    properties: {
+      a: { type: "number" },
+      b: { type: "number", "x-reaction": { value: "@double" } }, // b 永远是 a 的两倍
+      toggle: { type: "boolean" },
+      secret: { type: "string", "x-reaction": { display: "{{ toggle ? 'visible' : 'none' }}" } },
+    },
+  },
+  initialValues: { a: 3, toggle: false },
+  handlers: { double: (rt) => (rt.get("a") ?? 0) * 2 },
+});
+form.mount();
+form.get("b"); // 6
+form.set("a", 10);
+form.get("b"); // 20（自动重算）
+form.set("toggle", true); // secret 变为可见
+```
+
+规则支持**异步**：返回 Promise 时，resolve 后再写入；若字段/表单已销毁，过期的异步结果会被丢弃；reject 会走 `onError`。
+
+### x-effect 副作用
+
+`x-effect` 用来跑不直接映射到某个 target 的副作用（订阅、拉数据、注册 watcher 等）。规则可**返回一个清理函数**（或 Promise<清理函数>），会在 `destroy` 时调用。
+
+```ts
+{
+  a: { type: "number" },
+  b: {
+    type: "number",
+    "x-effect": "@watchA", // handlers.watchA: (rt) => rt.effect(() => log(rt.get("a")))
+  },
+}
+```
+
+`rt.effect(runner)` 是暴露给规则的原始 effect 注册器，便于在 effect 里精确追踪依赖。
+
+### x-format 输入/输出格式化
+
+`x-format` 在值「进/出」时做转换，**必须同步**（返回 Promise 会被拒绝并走 onError，同时回退原值）：
+
+- `input`：**仅在初始化时**对初始值格式化一次（之后用户输入不再经过 input）。
+- `output`：在投影/`values()`/`submit()` 取值时对输出值格式化。
+
+```ts
+{
+  name: {
+    type: "string",
+    "x-format": {
+      input: ({ value }) => (typeof value === "string" ? value.trim() : value),
+      output: "@wrapName", // 提交时 "Bob" -> "[Bob]"
+    },
+  },
+}
+// 初始值 "  Alice  " 会被 trim 成 "Alice"；提交时再套上括号
+```
+
+### x-validate 自定义校验
+
+`x-validate` 在 `field.validate()` / `form.validate()` / `submit()` 时执行（可异步）。返回值被归一化成错误列表：
+
+- `undefined` / `null` / `true` → 通过（无错）
+- `false` → 一条 `"Invalid value"` 错误
+- 字符串 → 一条该文案的错误
+- `{ message, type? }` 对象 → 一条错误（`type` 默认 `"x-validate"`）
+- 以上的数组 → 逐条归一化，通过项跳过
+
+```ts
+{
+  username: {
+    type: "string",
+    "x-validate": "@checkUnique",
+    // handlers.checkUnique: async (rt) => rt.value === "taken" ? "用户名已被占用" : true
+  },
+}
+```
+
+必填校验是内建的（`required` 为真且值为空时报 `"该字段为必填项"`），与 `x-validate` 叠加。
+
+### RuntimeRuleContext：规则运行时上下文
+
+每条规则的第一个参数是 `ctx`（`RuntimeRuleContext`），第二个参数是 `form`：
 
 ```ts
 interface RuntimeRuleContext {
-  field: FieldNode;
+  field: FieldNode; // 当前字段节点
   form: FormInstance;
-  path: string;
-  key?: string;
+  path: string; // 当前字段路径
+  key?: string; // reaction 的 target 名 / format 的 phase 等
   kind: "x-reaction" | "x-effect" | "x-format" | "x-validate";
   schema: IFieldSchema | IFormSchema;
-  row?: RowNode;
-  scope: Record<string, any>;
-  values: Record<string, any>;
-  value?: any;
-
-  get(selector: string): any;
-  set(selector: string, value: any): void;
-  project(selector?: string): any;
-  effect(runner: () => void | (() => void)): () => void;
+  row?: RowNode; // 若在数组行内，则为所在行
+  scope: Record<string, any>; // config.scope
+  values: Record<string, any>; // 当前整表值（未应用 output 格式化）
+  value?: any; // 当前相关值（x-format/x-validate 的入参）
+  get(selector): any; // 按选择器读
+  set(selector, value): void; // 按选择器写
+  project(selector?): any; // 投影当前字段 / 指定字段
+  effect(runner): () => void; // 注册原始 effect
 }
 ```
 
-## 工具函数
+---
 
-`@alien-form/core` 还导出一些可复用工具：
+## 表达式语言 `{{ }}`
+
+`{{ ... }}` 里是一段**受限的、安全的 JS 表达式子集**，由内置解析器求值（**不使用 `eval` / `new Function`**）。
+
+**支持**：数字/字符串/布尔/`null`/`undefined` 字面量、数组 `[...]`、对象 `{...}`；成员访问 `a.b` / `a["b"]`；一元 `! - +`；算术 `+ - * / %`；比较 `< <= > >=`；相等 `=== !== == !=`；逻辑 `&& || ??`；三元 `? :`；括号分组。成员访问对 `null`/`undefined` 会短路返回 `undefined`。
+
+**禁止（会抛错）**：函数调用 `foo()`、赋值 `=`、语句分隔 `;`、模板字符串、箭头函数；危险标识符 `globalThis / window / document / process / Function / eval / constructor / prototype / __proto__ / this / import / new` 等；危险成员键 `constructor / prototype / __proto__`。标识符只从作用域的**自有属性**读取（原型链上的如 `toString` 读不到）。
+
+表达式的**作用域**（写规则时可直接引用的变量）由 core 组装：
+
+- 展开的当前整表值（顶层各字段名可直接用，如 `toggle`、`a`）
+- 展开的 `config.scope`
+- `$self`（当前字段节点）、`$form`、`$values`（整表值）、`$value`（当前值）
+- `$row`（所在行的子值对象；行内还会把行子字段名直接展开到作用域）
+- 当前字段父容器的子字段名也会展开
+- `$path`（当前路径）、`$get(selector)`、`$project(selector?)`
 
 ```ts
-import {
-  evaluateExpression,
-  getDeepValue,
-  isEmptyValue,
-  normalizeDataSource,
-  resolveSchemaRef,
-  resolveSchemaTree,
-  setDeepValue,
-  sortByOrder,
-} from "@alien-form/core";
+{ secret: { type: "string", "x-reaction": { display: "{{ toggle ? 'visible' : 'none' }}" } } }
+{ total: { type: "number", "x-reaction": { value: "{{ price * qty }}" } } } // price/qty 为同级字段
 ```
 
-| API | 作用 |
-| --- | --- |
-| `evaluateExpression` | 执行受限表达式。 |
-| `getDeepValue` / `setDeepValue` | 按点路径读写对象。 |
-| `sortByOrder` | 按 Schema `order` 排序属性。 |
-| `resolveSchemaRef` / `resolveSchemaTree` | 解析 `$ref`。 |
-| `normalizeDataSource` | 标准化选项数据源。 |
-| `isEmptyValue` | 判断空值，用于必填校验。 |
+`evaluateExpression(expr, scope)` 也作为工具函数导出，可独立使用（内部对 AST 有缓存）。
 
-## 错误处理
+---
 
-运行时规则、表达式、格式化、校验和 `$ref` 解析中的非致命错误会进入错误通道：
+## 数据源与 dataSourcePolicy
+
+`dataSource` 是选项数组（`{ label, value, ...extra }[]`）。`normalizeDataSource` 会把几种常见形态归一化：
+
+- 纯字符串/数字 `["a", 1]` → `[{ label: "a", value: "a" }, { label: "1", value: 1 }]`
+- `{ key, title }` 形态 → `{ label: title, value: key, ...原字段 }`
+- 已是 `{ label, value }` → 原样保留
+
+`dataSourcePolicy` 决定「当前值不在新数据源里」时怎么处理（在 `setDataSource` / 初始化时对 primitive 生效）：
+
+| 策略                         | 行为                                                        |
+| ---------------------------- | ----------------------------------------------------------- |
+| `"preserve"`（默认行为等价） | 保留当前值，不动                                            |
+| `"clear"`                    | 当前值失效 → 清空为 `undefined`                             |
+| `"filter"`                   | 当前值失效 → 清空为 `undefined`（语义上是「过滤掉非法项」） |
+| `"first"`                    | 当前值失效 → 自动选中第一个选项                             |
+
+```ts
+{ role: { type: "string", dataSourcePolicy: "first" } }
+// 初始 role = "ghost"，setDataSource([Admin, User]) 后，role 自动变为 "admin"
+```
+
+> 单个 primitive 只承载单值。多选/多值场景请在组件层做 JSON 字符串编解码，core 不在此处理数组。
+
+---
+
+## 校验与提交
+
+- `field.validate()`：校验单个字段（必填 + `x-validate`），写回 `errors` 并返回错误数组。
+- `form.validate()`：并发校验所有 `display !== "none"` 的字段，全通过返回 `true`。
+- `form.errors()`：汇总所有可见字段的错误。
+- `form.submit(onSubmit?)`：先校验，失败 reject（`error.messages` 为消息数组），成功用最终值调用 `onSubmit` 并返回其结果（无 `onSubmit` 则返回最终值）；全程维护 `submitting`。
+
+`display === "none"` 的字段既不参与校验，其值也**不进入投影**（相当于逻辑删除）；`hidden` 只是视觉隐藏，值仍保留。
+
+---
+
+## 错误处理 onError
+
+规则执行、`$ref` 解析、表达式求值、非法 `set` 等都会产生一条 `FormError`，通过 `config.onError` 或 `form.onError()` 上报——**不会中断表单**。
+
+```ts
+interface FormError {
+  scope:
+    | "reaction"
+    | "x-reaction"
+    | "x-effect"
+    | "x-format"
+    | "x-validate"
+    | "ref-resolve"
+    | "expression";
+  path: string;
+  key?: string;
+  message: string;
+  cause?: unknown;
+}
+```
 
 ```ts
 const form = createForm({
-  schema,
-  onError(error) {
-    reportToSentry(error);
+  schema: {
+    type: "object",
+    properties: { a: { type: "string", "x-reaction": { value: "@missing" } } },
   },
+  onError: (e) => console.warn(`[${e.scope}] ${e.path}: ${e.message}`),
 });
-
-const unsubscribe = form.onError((error) => {
-  console.warn(`[${error.scope}] ${error.path}: ${error.message}`);
-});
-
-unsubscribe();
+form.mount(); // 触发 "Handler \"missing\" not found."
 ```
 
-`FormError.scope` 可能是：
+---
+
+## 工具函数导出
+
+除了 `createForm`，core 还导出一批纯函数和 signal 原语，供高级用法：
+
+| 导出                                                      | 说明                                                                         |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `signal`, `computed`, `effect`, `startBatch`, `endBatch`  | 从 alien-signals 再导出的响应式原语                                          |
+| `resolveSchemaRef(schema, definitions, onError?, seen?)`  | 解析单个节点的 `$ref` 链（含循环检测），返回 `{ schema, fromRef, consumed }` |
+| `resolveSchemaTree(schema, definitions, onError?, seen?)` | 递归解析整棵 schema 树里的所有 `$ref`                                        |
+| `getDeepValue(obj, path)`                                 | 按点路径读深层值（支持数组下标段）                                           |
+| `setDeepValue(obj, path, value)`                          | 按点路径写深层值（缺失层自动建对象/数组）                                    |
+| `sortByOrder(properties)`                                 | 按 `order` 升序返回 `[key, schema]` 列表                                     |
+| `evaluateExpression(expr, scope)`                         | 独立求值受限表达式                                                           |
+| `normalizeDataSource(ds)`                                 | 归一化数据源为 `{ label, value }[]`                                          |
+| `isEmptyValue(value)`                                     | 判空（`undefined/null/""/[]` 为空）                                          |
 
 ```ts
-type FormErrorScope =
-  | "reaction"
-  | "x-reaction"
-  | "x-effect"
-  | "x-format"
-  | "x-validate"
-  | "ref-resolve"
-  | "expression";
+import { getDeepValue, evaluateExpression, isEmptyValue } from "@alien-form/core";
+
+getDeepValue({ list: [{ v: "x" }] }, "list.0.v"); // "x"
+evaluateExpression("a > 5 ? 'big' : 'small'", { a: 10 }); // "big"
+isEmptyValue([]); // true
 ```
 
-## 与其他包的关系
+---
 
-- `@alien-form/react` 基于本包渲染 React Schema 表单。
-- `@alien-form/cms` 复用本包的 Schema 类型，并在其上扩展 `x-cms` 模型元信息。
-- 你也可以直接使用本包接入任意 UI 框架。
+## 完整类型速查表
 
-## 开发
+以下类型均从包入口导出，可 `import type { ... } from "@alien-form/core"`：
 
-```bash
-pnpm test:core
-pnpm build:core
-```
+`Signal`, `Computed`, `FieldNode`, `FieldAtoms`, `BaseFieldNode`, `PrimitiveFieldNode`, `ObjectFieldNode`, `ArrayFieldNode`, `VoidFieldNode`, `RowNode`, `FieldKind`, `PrimitiveSchemaType`, `FormInstance`, `FormConfig`, `FormError`, `FormErrorScope`, `IFormSchema`, `IFieldSchema`, `FieldError`, `DataSourceItem`, `FieldDisplayTypes`, `ValidateStatus`, `SchemaTypes`, `DataSourcePolicy`, `SchemaRuntimeValue`, `SchemaEffect`, `SchemaReactions`, `SchemaFormat`, `SchemaXValidate`, `SchemaReactionKey`, `RuntimeRuleHandler`, `RuntimeRuleContext`, `ResolveRefResult`。
+
+---
+
+## License
+
+MIT
