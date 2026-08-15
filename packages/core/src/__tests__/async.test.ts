@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createForm } from './form';
-import type { FormError, IFormSchema, PrimitiveFieldNode } from './types';
+import { createForm } from '../form';
+import type { FormError, IFormSchema, PrimitiveFieldNode } from '../types';
 
 const tick = () => new Promise<void>((r) => setTimeout(r, 0));
 

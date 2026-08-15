@@ -10,7 +10,7 @@
 - **一站式 React 入口**：重新导出 `@alien-form/core` 的常用类型和 `createForm`。
 - **生命周期安全**：`useCreateForm` 负责创建、挂载、卸载和销毁表单实例。
 - **Signal 到 React**：`useSignalValue` 基于 `useSyncExternalStore` 订阅 Signal。
-- **Schema 渲染**：`SchemaField` 按 Schema 自动渲染 primitive、object、array、void 字段。
+- **Schema 渲染**：`SchemaField` 按 Schema 自动渲染 primitive、object、array 字段与 `x-layout` 布局节点。
 - **组件库无关**：通过 `components` 和 `decorators` 注入任意 React 组件。
 - **细粒度 Hooks**：提供字段值、错误、显隐、禁用、必填、loading、表单值和提交状态订阅。
 
@@ -241,20 +241,21 @@ type ObjectComponentProps = {
 
 如果 object 字段没有声明 `component`，`SchemaField` 会直接递归渲染其子字段。
 
-### Void 组件
+### 布局（Void）组件
 
-Void 字段只参与布局，不参与输出值。它适合分组、栅格、提示区块等 UI 容器。
+布局节点通过 `"x-layout": "<组件名>"` 声明，只参与布局、不参与输出值，其子字段的路径与值扁平上浮到父级。它适合分组、栅格、提示区块等 UI 容器。布局组件名默认取 `x-layout` 的值（可被 `component` 覆盖）。
 
 ```ts
 {
-  type: "void",
-  component: "Grid",
+  "x-layout": "Grid",
   properties: {
     firstName: { type: "string", component: "Input" },
     lastName: { type: "string", component: "Input" },
   },
 }
 ```
+
+顶层 `IFormSchema` 也支持 `x-layout`：整棵表单被指定的布局组件包裹，一个 schema 即可声明一整个页面（组件未注册时回退为直接渲染字段）。
 
 ## Public API
 

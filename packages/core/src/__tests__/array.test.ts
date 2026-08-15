@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createForm } from './form';
-import type { ArrayFieldNode, IFormSchema } from './types';
+import { createForm } from '../form';
+import type { ArrayFieldNode, IFormSchema } from '../types';
 
 function arrayField(form: ReturnType<typeof createForm>, path: string): ArrayFieldNode {
   const f = form.field(path);

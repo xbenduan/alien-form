@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateExpression as ev } from './expression';
+import { evaluateExpression as ev } from '../expression';
 
 const run = (src: string, scope: Record<string, any> = {}) => ev(src, scope);
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createForm } from './form';
-import type { IFormSchema } from './types';
+import { createForm } from '../form';
+import type { IFormSchema } from '../types';
 
 const flat = (): IFormSchema => ({
   type: 'object',

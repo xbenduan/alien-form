@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createForm } from './form';
-import type { IFormSchema } from './types';
+import { createForm } from '../form';
+import type { IFormSchema } from '../types';
 
 describe('createForm runtime and projection', () => {
   it('defers runtime reactions until mount', async () => {
@@ -71,7 +71,7 @@ describe('createForm runtime and projection', () => {
       type: 'object',
       properties: {
         deliverySection: {
-          type: 'void',
+          'x-layout': 'Card',
           properties: {
             landingPage: {
               type: 'string',
@@ -282,31 +282,6 @@ describe('createForm runtime and projection', () => {
     await expect(form.submit()).resolves.toEqual({
       name: '[  Bob  ]',
     });
-  });
-
-  it('filters invalid multi-select values on initialization when dataSourcePolicy is filter', () => {
-    const schema: IFormSchema = {
-      type: 'object',
-      properties: {
-        tags: {
-          type: 'tags',
-          dataSourcePolicy: 'filter',
-          dataSource: [
-            { label: 'A', value: 'a' },
-            { label: 'B', value: 'b' },
-          ],
-        },
-      },
-    };
-
-    const form = createForm({
-      schema,
-      initialValues: {
-        tags: ['a', 'x', 'b'],
-      },
-    });
-
-    expect(form.get('tags')).toEqual(['a', 'b']);
   });
 
   it('switches to the first option when dataSourcePolicy is first and current value becomes invalid', () => {
@@ -711,5 +686,89 @@ describe('set selector get/set parity', () => {
 
     expect(() => form.set('materials[].name', 'Z')).not.toThrow();
     expect(form.get('materials[].name')).toEqual([]);
+  });
+});
+
+describe('leaf value type guard', () => {
+  function makeForm() {
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: { name: { type: 'string' } },
+    };
+    return createForm({ schema });
+  }
+
+  it('accepts single string / number / boolean', () => {
+    const form = makeForm();
+    const field = form.field('name');
+    if (!field || field.kind !== 'primitive') throw new Error('name missing');
+    expect(() => field.setValue('hello')).not.toThrow();
+    expect(field.value()).toBe('hello');
+    expect(() => field.setValue(42)).not.toThrow();
+    expect(field.value()).toBe(42);
+    expect(() => field.setValue(true)).not.toThrow();
+    expect(field.value()).toBe(true);
+  });
+
+  it('treats null / undefined as clearing (passes through)', () => {
+    const form = makeForm();
+    const field = form.field('name');
+    if (!field || field.kind !== 'primitive') throw new Error('name missing');
+    field.setValue('x');
+    expect(() => field.setValue(undefined)).not.toThrow();
+    expect(field.value()).toBeUndefined();
+    expect(() => field.setValue(null)).not.toThrow();
+    expect(field.value()).toBeNull();
+  });
+
+  it('throws TypeError on object and does not write', () => {
+    const form = makeForm();
+    const field = form.field('name');
+    if (!field || field.kind !== 'primitive') throw new Error('name missing');
+    field.setValue('keep');
+    expect(() => field.setValue({ nested: 'object' })).toThrow(TypeError);
+    expect(field.value()).toBe('keep');
+  });
+
+  it('throws TypeError on array and does not write', () => {
+    const form = makeForm();
+    const field = form.field('name');
+    if (!field || field.kind !== 'primitive') throw new Error('name missing');
+    field.setValue('keep');
+    expect(() => field.setValue([1, 2])).toThrow(TypeError);
+    expect(field.value()).toBe('keep');
+  });
+});
+
+describe('x-layout layout nodes', () => {
+  it('flattens x-layout children into parent values (no key prefix)', async () => {
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        contactGroup: {
+          'x-layout': 'Card',
+          properties: {
+            email: { type: 'string' },
+            phone: { type: 'string' },
+          },
+        },
+      },
+    };
+    const form = createForm({ schema, initialValues: { email: 'a@b.com', phone: '123' } });
+    expect(form.field('email')).toBeDefined();
+    expect(form.field('contactGroup')?.kind).toBe('void');
+    form.set('email', 'x@y.com');
+    await expect(form.submit()).resolves.toEqual({ email: 'x@y.com', phone: '123' });
+  });
+
+  it('uses the x-layout value as the default component name', () => {
+    const schema: IFormSchema = {
+      type: 'object',
+      properties: {
+        section: { 'x-layout': 'Card', properties: { a: { type: 'string' } } },
+      },
+    };
+    const form = createForm({ schema });
+    expect(form.field('section')?.component()).toBe('Card');
   });
 });

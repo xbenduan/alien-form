@@ -60,9 +60,15 @@ export type {
 } from "@alien-form/core";
 
 export function useSignalValue<T>(sig: Signal<T> | Computed<T>): T {
-  const subscribe = useCallback((notify: () => void) => {
-    return effect(() => { sig(); notify(); });
-  }, [sig]);
+  const subscribe = useCallback(
+    (notify: () => void) => {
+      return effect(() => {
+        sig();
+        notify();
+      });
+    },
+    [sig],
+  );
   const getSnapshot = useCallback(() => sig(), [sig]);
   return useSyncExternalStore(subscribe, getSnapshot);
 }
@@ -78,14 +84,19 @@ export function useSignalValue<T>(sig: Signal<T> | Computed<T>): T {
  */
 function useFieldRender<F extends FieldNode, T>(field: F, read: (field: F) => T): T {
   const versionRef = useRef(0);
-  const subscribe = useCallback((notify: () => void) => {
-    let mounted = false;
-    return effect(() => {
-      read(field);
-      if (mounted) { versionRef.current++; notify(); }
-      else mounted = true;
-    });
-  }, [field]);
+  const subscribe = useCallback(
+    (notify: () => void) => {
+      let mounted = false;
+      return effect(() => {
+        read(field);
+        if (mounted) {
+          versionRef.current++;
+          notify();
+        } else mounted = true;
+      });
+    },
+    [field],
+  );
   const getSnapshot = useCallback(() => versionRef.current, []);
   useSyncExternalStore(subscribe, getSnapshot);
   return read(field);
@@ -259,7 +270,10 @@ export function useFormErrors(): FieldError[] {
 export function useFormSubmit<T = any>() {
   const form = useForm();
   const submitting = useSignalValue(form.submitting);
-  const submit = useCallback((onSubmit?: (values: Record<string, any>) => T | Promise<T>) => form.submit(onSubmit), [form]);
+  const submit = useCallback(
+    (onSubmit?: (values: Record<string, any>) => T | Promise<T>) => form.submit(onSubmit),
+    [form],
+  );
   return { submit, submitting };
 }
 
@@ -276,38 +290,80 @@ interface FormProviderProps {
   children?: React.ReactNode;
 }
 
-export const FormProvider: React.FC<FormProviderProps> = ({ form, components = {}, decorators = {}, children }) => {
+export const FormProvider: React.FC<FormProviderProps> = ({
+  form,
+  components = {},
+  decorators = {},
+  children,
+}) => {
   const compRef = useRef(components);
   const decoRef = useRef(decorators);
   compRef.current = components;
   decoRef.current = decorators;
-  const value = useMemo(() => ({
-    form,
-    get components() { return compRef.current; },
-    get decorators() { return decoRef.current; },
-  }), [form]);
+  const value = useMemo(
+    () => ({
+      form,
+      get components() {
+        return compRef.current;
+      },
+      get decorators() {
+        return decoRef.current;
+      },
+    }),
+    [form],
+  );
   return <FormContext.Provider value={value}>{children}</FormContext.Provider>;
 };
 
 export const SchemaField: React.FC<{ schema?: IFormSchema }> = () => {
   const ctx = useContext(FormContext);
   if (!ctx) throw new Error("[alien-form] SchemaField must be inside <FormProvider>");
-  return <SchemaProperties schema={ctx.form.schema} parentPath="" />;
+  const schema = ctx.form.schema;
+  const fields = <SchemaProperties schema={schema} parentPath="" />;
+  // 顶层 x-layout:用指定布局组件包裹所有顶层字段,使单个 schema 可声明一整个页面。
+  // 组件未注册时回退为直接渲染字段(不崩溃)。
+  const layoutName = schema["x-layout"];
+  if (!layoutName) return fields;
+  const Layout = ctx.components[layoutName];
+  return Layout ? (
+    <Layout title={schema.title} description={schema.description}>
+      {fields}
+    </Layout>
+  ) : (
+    fields
+  );
 };
 
-const SchemaProperties: React.FC<{ schema: IFormSchema | IFieldSchema; parentPath: string }> = ({ schema, parentPath }) => {
+const SchemaProperties: React.FC<{ schema: IFormSchema | IFieldSchema; parentPath: string }> = ({
+  schema,
+  parentPath,
+}) => {
   const properties = (schema as any).properties as Record<string, IFieldSchema> | undefined;
   if (!properties) return null;
-  return <>{sortByOrder(properties).map(([key, fieldSchema]) => <SchemaFieldItem key={key} fieldKey={key} schema={fieldSchema} parentPath={parentPath} />)}</>;
+  return (
+    <>
+      {sortByOrder(properties).map(([key, fieldSchema]) => (
+        <SchemaFieldItem key={key} fieldKey={key} schema={fieldSchema} parentPath={parentPath} />
+      ))}
+    </>
+  );
 };
 
-const SchemaFieldItem: React.FC<{ fieldKey: string; schema: IFieldSchema; parentPath: string }> = memo(({ fieldKey, schema, parentPath }) => {
-  const fullPath = parentPath ? `${parentPath}.${fieldKey}` : fieldKey;
-  if (schema.type === "array" && schema.items && !Array.isArray(schema.items)) return <ArrayFieldSlot path={fullPath} schema={schema} />;
-  if (schema.type === "object" && schema.properties) return schema.component ? <ObjectFieldSlot path={fullPath} schema={schema} /> : <SchemaProperties schema={schema} parentPath={fullPath} />;
-  if (schema.type === "void") return <VoidFieldSlot path={fullPath} schema={schema} parentPath={parentPath} />;
-  return <PrimitiveFieldSlot path={fullPath} />;
-});
+const SchemaFieldItem: React.FC<{ fieldKey: string; schema: IFieldSchema; parentPath: string }> =
+  memo(({ fieldKey, schema, parentPath }) => {
+    const fullPath = parentPath ? `${parentPath}.${fieldKey}` : fieldKey;
+    if (schema["x-layout"])
+      return <VoidFieldSlot path={fullPath} schema={schema} parentPath={parentPath} />;
+    if (schema.type === "array" && schema.items && !Array.isArray(schema.items))
+      return <ArrayFieldSlot path={fullPath} schema={schema} />;
+    if (schema.type === "object" && schema.properties)
+      return schema.component ? (
+        <ObjectFieldSlot path={fullPath} schema={schema} />
+      ) : (
+        <SchemaProperties schema={schema} parentPath={fullPath} />
+      );
+    return <PrimitiveFieldSlot path={fullPath} />;
+  });
 
 const PrimitiveFieldSlot: React.FC<{ path: string }> = memo(({ path }) => {
   const ctx = useContext(FormContext)!;
@@ -320,9 +376,21 @@ const PrimitiveFieldSlotInner: React.FC<{ field: PrimitiveFieldNode }> = memo(({
   const ctx = useContext(FormContext)!;
   const { components, decorators } = ctx;
   const {
-    display, componentName, decoratorName, value, disabled, loading,
-    componentProps, dataSource, title, required, errors, warnings,
-    description, validateStatus, decoratorProps,
+    display,
+    componentName,
+    decoratorName,
+    value,
+    disabled,
+    loading,
+    componentProps,
+    dataSource,
+    title,
+    required,
+    errors,
+    warnings,
+    description,
+    validateStatus,
+    decoratorProps,
   } = useFieldRender(field, readPrimitive);
   const onChange = useCallback((v: any) => field.setValue(v), [field]);
   if (display === "none") return null;
@@ -339,123 +407,235 @@ const PrimitiveFieldSlotInner: React.FC<{ field: PrimitiveFieldNode }> = memo(({
   };
   if (dataSource.length > 0) props.dataSource = dataSource;
   const rendered = <Component {...props} />;
-  return Decorator ? <Decorator label={title} required={required} errors={errors} warnings={warnings} description={description} validateStatus={validateStatus} {...decoratorProps}>{rendered}</Decorator> : rendered;
+  return Decorator ? (
+    <Decorator
+      label={title}
+      required={required}
+      errors={errors}
+      warnings={warnings}
+      description={description}
+      validateStatus={validateStatus}
+      {...decoratorProps}
+    >
+      {rendered}
+    </Decorator>
+  ) : (
+    rendered
+  );
 });
 
-const ArrayFieldSlot: React.FC<{ path: string; schema: IFieldSchema }> = memo(({ path, schema }) => {
-  const ctx = useContext(FormContext)!;
-  const field = useSignalValue(ctx.form.fields).get(path);
-  if (!field || field.kind !== "array") return null;
-  return <ArrayFieldSlotInner field={field} schema={schema} />;
-});
+const ArrayFieldSlot: React.FC<{ path: string; schema: IFieldSchema }> = memo(
+  ({ path, schema }) => {
+    const ctx = useContext(FormContext)!;
+    const field = useSignalValue(ctx.form.fields).get(path);
+    if (!field || field.kind !== "array") return null;
+    return <ArrayFieldSlotInner field={field} schema={schema} />;
+  },
+);
 
-const ArrayFieldSlotInner: React.FC<{ field: ArrayFieldNode; schema: IFieldSchema }> = memo(({ field, schema }) => {
-  const ctx = useContext(FormContext)!;
-  const { components, decorators } = ctx;
-  const {
-    display, componentName, decoratorName, disabled, title, required,
-    errors, warnings, description, validateStatus, componentProps,
-    decoratorProps, rowNodes,
-  } = useFieldRender(field, readArray);
-  const componentDisabled = Boolean((componentProps as Record<string, any> | undefined)?.disabled);
-  if (display === "none") return null;
-  if (display === "hidden") return <div style={{ display: "none" }} />;
-  const ArrayComponent = components[componentName];
-  const Decorator = decorators[decoratorName];
-  const itemSchema = schema.items as IFieldSchema;
-  const rows: React.ReactNode[][] = [];
-  const rowFields: Record<string, React.ReactNode>[] = [];
-  for (const row of rowNodes) {
-    const children: React.ReactNode[] = [];
-    const fieldMap: Record<string, React.ReactNode> = {};
-    if (itemSchema.properties) {
-      for (const [childKey, childSchema] of sortByOrder(itemSchema.properties)) {
-        const node = renderRowChild(row.path, childKey, childSchema);
-        children.push(node);
-        fieldMap[childKey] = node;
+const ArrayFieldSlotInner: React.FC<{ field: ArrayFieldNode; schema: IFieldSchema }> = memo(
+  ({ field, schema }) => {
+    const ctx = useContext(FormContext)!;
+    const { components, decorators } = ctx;
+    const {
+      display,
+      componentName,
+      decoratorName,
+      disabled,
+      title,
+      required,
+      errors,
+      warnings,
+      description,
+      validateStatus,
+      componentProps,
+      decoratorProps,
+      rowNodes,
+    } = useFieldRender(field, readArray);
+    const componentDisabled = Boolean(
+      (componentProps as Record<string, any> | undefined)?.disabled,
+    );
+    if (display === "none") return null;
+    if (display === "hidden") return <div style={{ display: "none" }} />;
+    const ArrayComponent = components[componentName];
+    const Decorator = decorators[decoratorName];
+    const itemSchema = schema.items as IFieldSchema;
+    const rows: React.ReactNode[][] = [];
+    const rowFields: Record<string, React.ReactNode>[] = [];
+    for (const row of rowNodes) {
+      const children: React.ReactNode[] = [];
+      const fieldMap: Record<string, React.ReactNode> = {};
+      if (itemSchema.properties) {
+        for (const [childKey, childSchema] of sortByOrder(itemSchema.properties)) {
+          const node = renderRowChild(row.path, childKey, childSchema);
+          children.push(node);
+          fieldMap[childKey] = node;
+        }
       }
+      rows.push(children);
+      rowFields.push(fieldMap);
     }
-    rows.push(children);
-    rowFields.push(fieldMap);
-  }
-  const arrayProps = {
-    ...componentProps,
-    field,
-    rows,
-    rowNodes,
-    rowFields,
-    onAdd: (iv?: Record<string, any>) => field.push(iv),
-    onRemove: (i: number) => field.remove(i),
-    onMoveUp: (i: number) => field.moveUp(i),
-    onMoveDown: (i: number) => field.moveDown(i),
-    onMove: (from: number, to: number) => field.move(from, to),
-    disabled: disabled || componentDisabled,
-  };
-  const decoProps = { label: title, required, errors, warnings, description, validateStatus, ...decoratorProps };
-  if (ArrayComponent) {
-    const rendered = <ArrayComponent {...arrayProps} />;
-    return Decorator ? <Decorator {...decoProps}>{rendered}</Decorator> : rendered;
-  }
-  return <div>{rows.map((row, i) => <div key={rowNodes[i]?.id || i}>{row}</div>)}{!disabled && <button type="button" onClick={() => field.push()}>+ Add</button>}</div>;
-});
+    const arrayProps = {
+      ...componentProps,
+      field,
+      rows,
+      rowNodes,
+      rowFields,
+      onAdd: (iv?: Record<string, any>) => field.push(iv),
+      onRemove: (i: number) => field.remove(i),
+      onMoveUp: (i: number) => field.moveUp(i),
+      onMoveDown: (i: number) => field.moveDown(i),
+      onMove: (from: number, to: number) => field.move(from, to),
+      disabled: disabled || componentDisabled,
+    };
+    const decoProps = {
+      label: title,
+      required,
+      errors,
+      warnings,
+      description,
+      validateStatus,
+      ...decoratorProps,
+    };
+    if (ArrayComponent) {
+      const rendered = <ArrayComponent {...arrayProps} />;
+      return Decorator ? <Decorator {...decoProps}>{rendered}</Decorator> : rendered;
+    }
+    return (
+      <div>
+        {rows.map((row, i) => (
+          <div key={rowNodes[i]?.id || i}>{row}</div>
+        ))}
+        {!disabled && (
+          <button type="button" onClick={() => field.push()}>
+            + Add
+          </button>
+        )}
+      </div>
+    );
+  },
+);
 
-function renderRowChild(rowPath: string, childKey: string, childSchema: IFieldSchema): React.ReactNode {
+function renderRowChild(
+  rowPath: string,
+  childKey: string,
+  childSchema: IFieldSchema,
+): React.ReactNode {
   const path = `${rowPath}.${childKey}`;
-  if (childSchema.type === "array" && childSchema.items && !Array.isArray(childSchema.items)) return <ArrayFieldSlot key={childKey} path={path} schema={childSchema} />;
-  if (childSchema.type === "object" && childSchema.properties) return childSchema.component ? <ObjectFieldSlot key={childKey} path={path} schema={childSchema} /> : <SchemaProperties key={childKey} schema={childSchema} parentPath={path} />;
-  if (childSchema.type === "void") return <VoidFieldSlot key={childKey} path={path} schema={childSchema} parentPath={rowPath} />;
+  if (childSchema["x-layout"])
+    return <VoidFieldSlot key={childKey} path={path} schema={childSchema} parentPath={rowPath} />;
+  if (childSchema.type === "array" && childSchema.items && !Array.isArray(childSchema.items))
+    return <ArrayFieldSlot key={childKey} path={path} schema={childSchema} />;
+  if (childSchema.type === "object" && childSchema.properties)
+    return childSchema.component ? (
+      <ObjectFieldSlot key={childKey} path={path} schema={childSchema} />
+    ) : (
+      <SchemaProperties key={childKey} schema={childSchema} parentPath={path} />
+    );
   return <PrimitiveFieldSlot key={childKey} path={path} />;
 }
 
-const ObjectFieldSlot: React.FC<{ path: string; schema: IFieldSchema }> = memo(({ path, schema }) => {
-  const ctx = useContext(FormContext)!;
-  const field = useSignalValue(ctx.form.fields).get(path);
-  if (!field || field.kind !== "object") return null;
-  return <ObjectFieldSlotInner field={field} schema={schema} />;
-});
+const ObjectFieldSlot: React.FC<{ path: string; schema: IFieldSchema }> = memo(
+  ({ path, schema }) => {
+    const ctx = useContext(FormContext)!;
+    const field = useSignalValue(ctx.form.fields).get(path);
+    if (!field || field.kind !== "object") return null;
+    return <ObjectFieldSlotInner field={field} schema={schema} />;
+  },
+);
 
-const ObjectFieldSlotInner: React.FC<{ field: ObjectFieldNode; schema: IFieldSchema }> = memo(({ field, schema }) => {
-  const ctx = useContext(FormContext)!;
-  const { components, decorators } = ctx;
-  const {
-    display, componentName, decoratorName, componentProps, title,
-    description, required, errors, decoratorProps,
-  } = useFieldRender(field, readObject);
-  if (display === "none") return null;
-  if (display === "hidden") return <div style={{ display: "none" }} />;
-  const ObjectComponent = components[componentName];
-  const Decorator = decorators[decoratorName];
-  const sorted = schema.properties ? sortByOrder(schema.properties) : [];
-  const children = sorted.map(([k, s]) => <SchemaFieldItem key={k} fieldKey={k} schema={s} parentPath={field.path} />);
-  const fieldMap: Record<string, React.ReactNode> = {};
-  for (const [k, s] of sorted) fieldMap[k] = renderRowChild(field.path, k, s);
-  if (ObjectComponent) {
-    const rendered = <ObjectComponent {...componentProps} field={field} fields={fieldMap} title={title} description={description}>{children}</ObjectComponent>;
-    return Decorator ? <Decorator label={title} required={required} errors={errors} {...decoratorProps}>{rendered}</Decorator> : rendered;
-  }
-  return <>{children}</>;
-});
+const ObjectFieldSlotInner: React.FC<{ field: ObjectFieldNode; schema: IFieldSchema }> = memo(
+  ({ field, schema }) => {
+    const ctx = useContext(FormContext)!;
+    const { components, decorators } = ctx;
+    const {
+      display,
+      componentName,
+      decoratorName,
+      componentProps,
+      title,
+      description,
+      required,
+      errors,
+      decoratorProps,
+    } = useFieldRender(field, readObject);
+    if (display === "none") return null;
+    if (display === "hidden") return <div style={{ display: "none" }} />;
+    const ObjectComponent = components[componentName];
+    const Decorator = decorators[decoratorName];
+    const sorted = schema.properties ? sortByOrder(schema.properties) : [];
+    const children = sorted.map(([k, s]) => (
+      <SchemaFieldItem key={k} fieldKey={k} schema={s} parentPath={field.path} />
+    ));
+    const fieldMap: Record<string, React.ReactNode> = {};
+    for (const [k, s] of sorted) fieldMap[k] = renderRowChild(field.path, k, s);
+    if (ObjectComponent) {
+      const rendered = (
+        <ObjectComponent
+          {...componentProps}
+          field={field}
+          fields={fieldMap}
+          title={title}
+          description={description}
+        >
+          {children}
+        </ObjectComponent>
+      );
+      return Decorator ? (
+        <Decorator label={title} required={required} errors={errors} {...decoratorProps}>
+          {rendered}
+        </Decorator>
+      ) : (
+        rendered
+      );
+    }
+    return <>{children}</>;
+  },
+);
 
-const VoidFieldSlot: React.FC<{ path: string; schema: IFieldSchema; parentPath: string }> = memo(({ path, schema, parentPath }) => {
-  const ctx = useContext(FormContext)!;
-  const field = useSignalValue(ctx.form.fields).get(path);
-  if (field && field.kind === "void") return <VoidFieldSlotInner field={field} schema={schema} />;
-  const sorted = schema.properties ? sortByOrder(schema.properties) : [];
-  return <>{sorted.map(([k, s]) => <SchemaFieldItem key={k} fieldKey={k} schema={s} parentPath={parentPath} />)}</>;
-});
+const VoidFieldSlot: React.FC<{ path: string; schema: IFieldSchema; parentPath: string }> = memo(
+  ({ path, schema, parentPath }) => {
+    const ctx = useContext(FormContext)!;
+    const field = useSignalValue(ctx.form.fields).get(path);
+    if (field && field.kind === "void") return <VoidFieldSlotInner field={field} schema={schema} />;
+    const sorted = schema.properties ? sortByOrder(schema.properties) : [];
+    return (
+      <>
+        {sorted.map(([k, s]) => (
+          <SchemaFieldItem key={k} fieldKey={k} schema={s} parentPath={parentPath} />
+        ))}
+      </>
+    );
+  },
+);
 
-const VoidFieldSlotInner: React.FC<{ field: FieldNode; schema: IFieldSchema }> = memo(({ field, schema }) => {
-  const ctx = useContext(FormContext)!;
-  const { components } = ctx;
-  const { display, componentName, componentProps, title, description } = useFieldRender(field, readVoid);
-  if (display === "none") return null;
-  if (display === "hidden") return <div style={{ display: "none" }} />;
-  const sorted = schema.properties ? sortByOrder(schema.properties) : [];
-  const parentPath = field.path.includes(".") ? field.path.slice(0, field.path.lastIndexOf(".")) : "";
-  const children = sorted.map(([k, s]) => <SchemaFieldItem key={k} fieldKey={k} schema={s} parentPath={parentPath} />);
-  const Layout = components[componentName];
-  return Layout ? <Layout title={title} description={description} {...componentProps}>{children}</Layout> : <>{children}</>;
-});
+const VoidFieldSlotInner: React.FC<{ field: FieldNode; schema: IFieldSchema }> = memo(
+  ({ field, schema }) => {
+    const ctx = useContext(FormContext)!;
+    const { components } = ctx;
+    const { display, componentName, componentProps, title, description } = useFieldRender(
+      field,
+      readVoid,
+    );
+    if (display === "none") return null;
+    if (display === "hidden") return <div style={{ display: "none" }} />;
+    const sorted = schema.properties ? sortByOrder(schema.properties) : [];
+    const parentPath = field.path.includes(".")
+      ? field.path.slice(0, field.path.lastIndexOf("."))
+      : "";
+    const children = sorted.map(([k, s]) => (
+      <SchemaFieldItem key={k} fieldKey={k} schema={s} parentPath={parentPath} />
+    ));
+    const Layout = components[componentName];
+    return Layout ? (
+      <Layout title={title} description={description} {...componentProps}>
+        {children}
+      </Layout>
+    ) : (
+      <>{children}</>
+    );
+  },
+);
 
 const emptyArraySignal = createSignal([]);
 const visibleSignal = createSignal("visible" as FieldDisplayTypes);

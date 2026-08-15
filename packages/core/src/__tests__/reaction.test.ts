@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createForm } from './form';
-import type { FormError, IFormSchema, PrimitiveFieldNode } from './types';
+import { createForm } from '../form';
+import type { FormError, IFormSchema, PrimitiveFieldNode } from '../types';
 
 function primitive(form: ReturnType<typeof createForm>, path: string): PrimitiveFieldNode {
   const f = form.field(path);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import * as api from './index';
+import * as api from '../index';
 
 describe('public API surface (index.ts)', () => {
   it('exports the core factory', () => {

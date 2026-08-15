@@ -66,6 +66,21 @@ function isContainerField(field: FieldNode | undefined): field is ObjectFieldNod
   return !!field && (field.kind === "object" || field.kind === "void");
 }
 
+/**
+ * 叶子写入守卫:叶子字段(onChange 的唯一写入口)只接受单个 string | number | boolean。
+ * null / undefined 视为清空放行;数组、对象等复杂结构一律抛 TypeError。
+ * 复杂结构请用 items / properties 拆分;简单 object/array 请在组件内序列化为 string。
+ */
+function assertPrimitiveValue(value: any, path: string): void {
+  if (value == null) return; // null/undefined 视为清空,放行
+  const t = typeof value;
+  if (t === "string" || t === "number" || t === "boolean") return;
+  throw new TypeError(
+    `字段 "${path}" 的值只接受 string | number | boolean,收到 ${Array.isArray(value) ? "array" : t}。` +
+      `复杂结构请用 properties / items 拆成子字段,简单 object/array 请在组件内序列化为 string,不要往叶子塞对象或数组。`,
+  );
+}
+
 function shallowEqual(a: any, b: any): boolean {
   if (Object.is(a, b)) return true;
   if (a == null || b == null) return false;
@@ -91,27 +106,7 @@ function applyDataSourcePolicy(field: PrimitiveFieldNode, dataSource: DataSource
   const currentValue = field.value();
   if (currentValue === undefined || currentValue === null) return;
 
-  if (Array.isArray(currentValue)) {
-    const validValues = currentValue.filter((item) => isSelectableFieldValueValid(item, dataSource));
-    if (policy === "filter") {
-      if (!shallowEqual(currentValue, validValues)) field.setValue(validValues);
-      return;
-    }
-    if (policy === "clear") {
-      if (currentValue.length > 0) field.setValue([]);
-      return;
-    }
-    if (policy === "first") {
-      if (validValues.length > 0) {
-        if (!shallowEqual(currentValue, validValues)) field.setValue(validValues);
-        return;
-      }
-      const first = dataSource[0]?.value;
-      field.setValue(first === undefined ? [] : [first]);
-    }
-    return;
-  }
-
+  // 叶子只承载单个基元:多选/多值请用 array 字段或组件内序列化,不在此处理数组。
   if (isSelectableFieldValueValid(currentValue, dataSource)) return;
   if (policy === "clear") {
     field.setValue(undefined);
@@ -148,7 +143,7 @@ function createBaseField(
     validateStatus: signal<ValidateStatus>(""),
     title: signal(schema.title || ""),
     description: signal(schema.description || ""),
-    component: signal(schema.component || defaultComponentFor(kind)),
+    component: signal(schema.component || schema["x-layout"] || defaultComponentFor(kind)),
     componentProps: signal<Record<string, any>>(schema.props || {}),
     decorator: signal(schema.decorator || "FormItem"),
     decoratorProps: signal<Record<string, any>>(schema.decoratorProps || {}),
@@ -232,6 +227,7 @@ function createPrimitiveField(ctx: FieldContext, path: string, schema: IFieldSch
   const formattedInitial = formatFieldValue(ctx, field, "input", initial);
   field.value = signal(formattedInitial);
   field.setValue = (value: any) => {
+    assertPrimitiveValue(value, path);
     if (options.row && rowChildKey && options.row.children.get(rowChildKey) !== field) {
       options.row.children.set(rowChildKey, field);
     }
@@ -286,6 +282,14 @@ function buildFieldTree(
   const schema = { ...resolved, required };
   const iv = initialValue !== undefined ? initialValue : getDeepValue(ctx.initialValues, path);
 
+  // 布局节点(void 语义):由 x-layout 声明,不占数据路径、不产生值,
+  // 子字段路径与值扁平上浮到父级。判定优先于 type。
+  if (schema["x-layout"]) {
+    const field = createVoidField(ctx, path, schema, options);
+    buildChildren(ctx, field, schema, undefined, schema.required);
+    return field;
+  }
+
   if (schema.type === "array" && schema.items && !Array.isArray(schema.items)) {
     return createArrayField(ctx, path, schema, iv, options);
   }
@@ -294,12 +298,6 @@ function buildFieldTree(
     const field = createObjectField(ctx, path, schema, options);
     const formattedInput = formatFieldValue(ctx, field, "input", iv);
     buildChildren(ctx, field, schema, formattedInput, schema.required);
-    return field;
-  }
-
-  if (schema.type === "void") {
-    const field = createVoidField(ctx, path, schema, options);
-    buildChildren(ctx, field, schema, undefined, schema.required);
     return field;
   }
 

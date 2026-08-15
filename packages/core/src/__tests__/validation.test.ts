@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isEmptyValue, normalizeDataSource, normalizeValidationErrors } from './validation';
+import { isEmptyValue, normalizeDataSource, normalizeValidationErrors } from '../validation';
 
 describe('isEmptyValue', () => {
   it('treats undefined / null / empty string / empty array as empty', () => {

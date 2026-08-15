@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createForm } from './form';
-import type { FormError, IFormSchema, PrimitiveFieldNode } from './types';
+import { createForm } from '../form';
+import type { FormError, IFormSchema, PrimitiveFieldNode } from '../types';
 
 function primitive(form: ReturnType<typeof createForm>, path: string): PrimitiveFieldNode {
   const f = form.field(path);
@@ -77,47 +77,7 @@ describe('set — $row without an enclosing row', () => {
   });
 });
 
-describe('dataSourcePolicy — array (multi-select) values', () => {
-  it('clear: empties a multi-select when the option set changes', () => {
-    const schema: IFormSchema = {
-      type: 'object',
-      properties: { tags: { type: 'tags', dataSourcePolicy: 'clear' } },
-    };
-    const form = createForm({ schema, initialValues: { tags: ['a', 'b'] } });
-    primitive(form, 'tags').setDataSource([{ label: 'C', value: 'c' }]);
-    expect(form.get('tags')).toEqual([]);
-  });
-
-  it('first: keeps valid selections when at least one remains', () => {
-    const schema: IFormSchema = {
-      type: 'object',
-      properties: { tags: { type: 'tags', dataSourcePolicy: 'first' } },
-    };
-    const form = createForm({ schema, initialValues: { tags: ['a', 'x'] } });
-    primitive(form, 'tags').setDataSource([{ label: 'A', value: 'a' }, { label: 'B', value: 'b' }]);
-    expect(form.get('tags')).toEqual(['a']);
-  });
-
-  it('first: falls back to the first option when no current selection is valid', () => {
-    const schema: IFormSchema = {
-      type: 'object',
-      properties: { tags: { type: 'tags', dataSourcePolicy: 'first' } },
-    };
-    const form = createForm({ schema, initialValues: { tags: ['x', 'y'] } });
-    primitive(form, 'tags').setDataSource([{ label: 'A', value: 'a' }, { label: 'B', value: 'b' }]);
-    expect(form.get('tags')).toEqual(['a']);
-  });
-
-  it('preserve: leaves invalid selections untouched', () => {
-    const schema: IFormSchema = {
-      type: 'object',
-      properties: { tags: { type: 'tags', dataSourcePolicy: 'preserve' } },
-    };
-    const form = createForm({ schema, initialValues: { tags: ['ghost'] } });
-    primitive(form, 'tags').setDataSource([{ label: 'A', value: 'a' }]);
-    expect(form.get('tags')).toEqual(['ghost']);
-  });
-
+describe('dataSourcePolicy — single value', () => {
   it('clear: empties a single-select when its value becomes invalid', () => {
     const schema: IFormSchema = {
       type: 'object',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { getDeepValue, setDeepValue, sortByOrder } from './path';
-import type { IFieldSchema } from './types';
+import { getDeepValue, setDeepValue, sortByOrder } from '../path';
+import type { IFieldSchema } from '../types';
 
 describe('getDeepValue', () => {
   it('reads a nested value by dotted path', () => {

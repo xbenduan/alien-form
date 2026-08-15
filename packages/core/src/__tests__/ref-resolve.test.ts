@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { resolveSchemaRef, resolveSchemaTree } from './ref-resolve';
-import type { IFieldSchema } from './types';
+import { resolveSchemaRef, resolveSchemaTree } from '../ref-resolve';
+import type { IFieldSchema } from '../types';
 
 describe('resolveSchemaRef — direct resolution', () => {
   it('returns schema unchanged when there is no $ref', () => {

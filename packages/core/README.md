@@ -9,7 +9,7 @@
 
 - **无 UI 依赖**：不依赖 React，不绑定任何组件库。
 - **Signal 驱动**：基于 `alien-signals` 暴露字段状态、表单状态和 computed values。
-- **Schema 字段树**：支持 primitive、object、array、void 四类字段节点。
+- **Schema 字段树**：支持 primitive、object、array、void 四类字段节点（void 布局节点通过 `x-layout` 声明）。
 - **运行时规则**：支持 `x-reaction`、`x-effect`、`x-format`、`x-validate`。
 - **安全表达式子集**：表达式运行时不使用 `eval` / `new Function`。
 - **数组模型**：支持行节点、增删移动、嵌套字段和稳定路径。
@@ -94,7 +94,11 @@ const values = form.values();
 | `PrimitiveFieldNode` | `string`、`number`、`boolean` 或自定义 primitive type | 拥有 `value` signal 和 `setValue()`。 |
 | `ObjectFieldNode` | `type: "object"` | 拥有 `children`，用于组织嵌套字段。 |
 | `ArrayFieldNode` | `type: "array"` | 拥有 `rows`，支持 `push()`、`remove()`、`move()` 等操作。 |
-| `VoidFieldNode` | `type: "void"` | 只参与布局和状态，不参与输出值。 |
+| `VoidFieldNode` | 通过 `"x-layout": "<布局组件名>"` 声明 | 只参与布局和状态，不参与输出值；子字段的路径与值扁平上浮到父级。 |
+
+> **叶子值类型守卫**：`PrimitiveFieldNode.setValue()`（即组件 `onChange` 的唯一写入口）只接受单个 `string | number | boolean`；`null` / `undefined` 视为清空放行；数组、对象等复杂结构会抛出 `TypeError`。复杂结构请用 `properties` / `items` 拆成子字段；简单的 object / array 请在组件内部自行序列化为 string。
+
+> **布局节点（x-layout）**：在任意 `properties` 项上写 `"x-layout": "<布局组件名>"` 即声明一个布局节点（不占数据路径、不产生值，子字段扁平上浮）。顶层 `IFormSchema` 同样支持 `x-layout`——整棵表单被指定布局组件包裹，一个 schema 即可声明一整个页面。
 
 所有字段节点都拥有这些状态：
 
@@ -240,11 +244,13 @@ const form = createForm({
 
 ```ts
 {
+  // tags 组件仍可用，但叶子值必须是单个基元（这里是逗号分隔的字符串）。
+  // 需要真正的多选数组请改用 type: "array" + items，或在组件内自行序列化为 string。
   type: "tags",
-  default: [],
+  default: "",
   "x-format": {
-    input: ({ value }) => Array.isArray(value) ? value.filter(Boolean) : [],
-    output: ({ value }) => Array.isArray(value) ? value.join(",") : value,
+    input: ({ value }) => typeof value === "string" ? value.trim() : "",
+    output: ({ value }) => typeof value === "string" ? value.trim() : value,
   },
 }
 ```
