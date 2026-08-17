@@ -132,7 +132,7 @@ export function ModalSchemaForm({
       open={open}
       width={width}
       onCancel={onClose}
-      maskClosable={false}
+      mask={{ closable: false }}
     >
       <SchemaForm {...formProps} />
     </Modal>
@@ -154,7 +154,7 @@ export function DrawerSchemaForm({
       size={width}
       footer={null}
       onClose={onClose}
-      maskClosable={false}
+      mask={{ closable: false }}
     >
       <SchemaForm {...formProps} />
     </Drawer>

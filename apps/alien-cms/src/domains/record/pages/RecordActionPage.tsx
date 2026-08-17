@@ -75,7 +75,7 @@ export default function RecordActionPage({
           { title: getActionLabel(page.actionMode, singularLabel), key: `${singularLabel}详情` },
         ]}
       />
-      <Card className="model-action-page">
+      <div className="model-action-page">
         <div className="model-action-page-body">
           <PageSchemaForm
             mode={page.actionMode}
@@ -99,7 +99,7 @@ export default function RecordActionPage({
             }}
           />
         </div>
-      </Card>
+      </div>
     </Flex>
   );
 }

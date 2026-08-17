@@ -46,9 +46,7 @@ export function FormScene({ mode, form }: { mode: SchemaFormMode; form: FormInst
       components={getFormComponents(mode) as never}
       decorators={getFormDecorators() as never}
     >
-      <div className="schema-form-content">
-        <SchemaField />
-      </div>
+      <SchemaField />
     </FormProvider>
   );
 }

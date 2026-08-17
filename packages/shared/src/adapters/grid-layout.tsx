@@ -16,15 +16,15 @@ function GridLayout({
 }) {
   const span = Math.max(1, Math.floor(24 / columns));
   return (
-    <div style={{ marginBottom: 24 }}>
+    <div className="schema-grid-layout">
       {title ? (
-        <Typography.Title level={5} style={{ marginBottom: 12 }}>
+        <Typography.Title level={5} className="schema-grid-layout-title">
           {title}
         </Typography.Title>
       ) : null}
-      <Row gutter={gutter}>
+      <Row gutter={gutter} className="schema-grid-layout-row">
         {React.Children.toArray(children).map((child, index) => (
-          <Col key={index} span={span}>
+          <Col key={index} xs={24} md={12} lg={span}>
             {child}
           </Col>
         ))}

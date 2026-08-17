@@ -21,7 +21,7 @@ export function FormItem({
   warnings = [],
   description,
   validateStatus,
-  layout = "horizontal",
+  layout = "vertical",
   children,
 }: FormItemProps) {
   let status: "" | "success" | "warning" | "error" | "validating" = "";

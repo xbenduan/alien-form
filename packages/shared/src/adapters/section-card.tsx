@@ -13,7 +13,7 @@ function SectionCard({
 }) {
   return (
     <Card
-      style={{ marginBottom: 24 }}
+      className="schema-section-card"
       title={title}
       extra={description ? <Typography.Text type="secondary">{description}</Typography.Text> : null}
     >
