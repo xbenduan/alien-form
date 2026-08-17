@@ -1,4 +1,4 @@
-import { isSystemField } from '@alien-form/cms';
+import { isSystemField } from '../../model';
 import type { CmsModelSchema } from '../types/record';
 
 const TABLE_VISIBLE_KEY_PREFIX = 'alien-cms:table-visible:';

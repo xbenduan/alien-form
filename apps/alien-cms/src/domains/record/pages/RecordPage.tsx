@@ -1,10 +1,10 @@
 import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
-import { Alert, Button, Card, Flex, Popconfirm, Space, Spin, Typography, message } from "antd";
+import { Alert, App, Button, Card, Flex, Popconfirm, Space, Spin, Typography } from "antd";
 import { useRef } from "react";
-import { useRecordStore } from "../../../hooks/use-record-store";
-import { SchemaFilterBody } from "../../../shared/schema-filter-scene";
-import { ProTable } from "../../../shared/components/ProTable";
+import { SchemaFilter, SchemaTable } from "@alien-form/shared";
+import { map as recordSchemaHandlers } from "../../../components/handlers";
 import RecordFormFrame from "../components/RecordFormFrame";
+import { useRecordStore } from "../hooks/use-record-store";
 import type { RecordRouteState } from "../types/record";
 
 interface RecordPageProps {
@@ -18,6 +18,7 @@ export default function RecordPage({
   routeAction,
   onRouteActionChange,
 }: RecordPageProps) {
+  const { message: messageApi } = App.useApp();
   const page = useRecordStore(modelName, {
     routeAction,
     onRouteActionChange,
@@ -27,10 +28,12 @@ export default function RecordPage({
   // Keep last valid mode/openMode so Modal/Drawer can show correctly during close animation
   const lastModeRef = useRef<"add" | "edit" | "detail">("add");
   const lastOpenModeRef = useRef<"modal" | "drawer">("drawer");
+  const lastRecordIdRef = useRef("new");
 
   if (page.actionMode !== "closed" && page.actionOpenMode && page.actionOpenMode !== "page") {
     lastModeRef.current = page.actionMode;
     lastOpenModeRef.current = page.actionOpenMode;
+    lastRecordIdRef.current = page.activeRecordId ?? "new";
   }
 
   const isFormOpen =
@@ -62,17 +65,19 @@ export default function RecordPage({
   return (
     <Flex vertical gap={16}>
       <Card className="model-query-card" styles={{ body: { padding: 16 } }}>
-        <SchemaFilterBody
-          schema={page.filterSchema}
+        <SchemaFilter
+          projection={{
+            schema: page.filterSchema,
+            defaultVisibleKeys: page.filterDefaultVisibleKeys,
+          }}
           initialValues={page.filterInitialValues}
+          handlers={recordSchemaHandlers}
           loading={page.listLoading}
-          defaultVisibleKeys={page.filterDefaultVisibleKeys}
-          onSearch={page.setFilters}
+          actions={{ onSearch: page.setFilters }}
         />
       </Card>
 
-      <ProTable
-        schema={page.schema}
+      <SchemaTable
         columns={page.tableColumns}
         dataSource={page.records}
         loading={page.listLoading || page.deleting}
@@ -94,15 +99,20 @@ export default function RecordPage({
           page.setSorter(
             single?.field
               ? {
-                  field: Array.isArray(single.field) ? single.field.join(".") : String(single.field),
+                  field: Array.isArray(single.field)
+                    ? single.field.join(".")
+                    : String(single.field),
                   order: single.order ?? undefined,
                 }
               : undefined,
           );
         }}
-        onAdd={page.openAdd}
-        addButtonText={`新增${singularLabel}`}
-        onRefresh={page.refresh}
+        actions={{
+          onAdd: page.openAdd,
+          addText: `新增${singularLabel}`,
+          onRefresh: page.refresh,
+        }}
+        detailHandlers={recordSchemaHandlers}
         columnSetting={{
           options: page.tableFieldOptions,
           values: page.tableVisibleKeys,
@@ -120,7 +130,7 @@ export default function RecordPage({
                 type="link"
                 size="small"
                 icon={<EyeOutlined />}
-                onClick={() => page.openDetail(record.id)}
+                onClick={() => page.openDetail(String(record.id))}
               >
                 详情
               </Button>
@@ -128,7 +138,7 @@ export default function RecordPage({
                 type="link"
                 size="small"
                 icon={<EditOutlined />}
-                onClick={() => page.openEdit(record.id)}
+                onClick={() => page.openEdit(String(record.id))}
               >
                 编辑
               </Button>
@@ -141,8 +151,8 @@ export default function RecordPage({
                 cancelText="取消"
                 okButtonProps={{ danger: true }}
                 onConfirm={async () => {
-                  await page.removeRecord(record.id);
-                  message.success("删除成功");
+                  await page.removeRecord(String(record.id));
+                  messageApi.success("删除成功");
                 }}
               >
                 <Button danger type="link" size="small" icon={<DeleteOutlined />}>
@@ -158,19 +168,20 @@ export default function RecordPage({
         open={isFormOpen}
         openMode={lastOpenModeRef.current}
         mode={lastModeRef.current}
+        formKey={`${modelName}:${lastModeRef.current}:${lastRecordIdRef.current}`}
         singularLabel={singularLabel}
-        schema={page.schema}
+        schema={page.actionSchema ?? page.schema}
         initialValues={page.activeRecord}
         loading={page.detailLoading}
         submitting={page.submitting}
         onClose={page.closeAction}
         onSubmitAdd={async (values) => {
           await page.submitAdd(values);
-          message.success("新增成功");
+          messageApi.success("新增成功");
         }}
         onSubmitEdit={async (values) => {
           await page.submitEdit(values);
-          message.success("保存成功");
+          messageApi.success("保存成功");
         }}
       />
     </Flex>

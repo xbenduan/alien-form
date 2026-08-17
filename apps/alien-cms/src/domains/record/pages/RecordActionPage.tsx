@@ -1,7 +1,7 @@
-import { ArrowLeftOutlined } from "@ant-design/icons";
-import { Alert, Button, Card, Spin, message } from "antd";
-import { useRecordStore } from "../../../hooks/use-record-store";
-import PageSchemaForm from "../../../shared/components/PageSchemaForm";
+import { PageSchemaForm } from "@alien-form/shared";
+import { Alert, App, Breadcrumb, Card, Flex, Spin } from "antd";
+import { map as recordSchemaHandlers } from "../../../components/handlers";
+import { useRecordStore } from "../hooks/use-record-store";
 import type { RecordRouteState } from "../types/record";
 
 interface RecordActionPageProps {
@@ -28,13 +28,13 @@ export default function RecordActionPage({
   routeAction,
   onRouteActionChange,
 }: RecordActionPageProps) {
+  const { message: messageApi } = App.useApp();
   const page = useRecordStore(modelName, {
     routeAction,
     onRouteActionChange,
   });
   const singularLabel = page.schema?.["x-model"]?.singularLabel ?? "记录";
-  const currentActionLabel = getActionLabel(page.actionMode, singularLabel);
-  const contentKey = `${page.actionMode}:${page.activeRecord?.id ?? "new"}:${page.activeRecord?.updatedAt ?? 0}`;
+  const formKey = `${modelName}:${page.actionMode}:${page.activeRecordId ?? "new"}`;
 
   if (page.schemaLoading) {
     return (
@@ -64,32 +64,42 @@ export default function RecordActionPage({
   }
 
   return (
-    <Card className="model-action-page" styles={{ body: { padding: 24 } }}>
-      <div className="model-action-page-header">
-        <Button type="link" icon={<ArrowLeftOutlined />} onClick={page.closeAction}>
-          返回列表
-        </Button>
-        <span className="model-action-page-title">{currentActionLabel}</span>
-      </div>
-      <div className="model-action-page-body">
-        <PageSchemaForm
-          key={contentKey}
-          mode={page.actionMode}
-          schema={page.schema}
-          initialValues={page.activeRecord}
-          loading={page.detailLoading}
-          submitting={page.submitting}
-          onClose={page.closeAction}
-          onSubmitAdd={async (values) => {
-            await page.submitAdd(values);
-            message.success("新增成功");
-          }}
-          onSubmitEdit={async (values) => {
-            await page.submitEdit(values);
-            message.success("保存成功");
-          }}
-        />
-      </div>
-    </Card>
+    <Flex gap={16} vertical>
+      <Breadcrumb
+        items={[
+          {
+            title: `${singularLabel}列表`,
+            key: "list",
+            href: `/records/${modelName}`,
+          },
+          { title: getActionLabel(page.actionMode, singularLabel), key: `${singularLabel}详情` },
+        ]}
+      />
+      <Card className="model-action-page">
+        <div className="model-action-page-body">
+          <PageSchemaForm
+            mode={page.actionMode}
+            schema={page.actionSchema ?? page.schema}
+            formKey={formKey}
+            initialValues={page.activeRecord}
+            handlers={recordSchemaHandlers}
+            loading={page.detailLoading}
+            submitting={page.submitting}
+            actions={{
+              onCancel: page.closeAction,
+              onSubmit: async (values, mode) => {
+                if (mode === "add") {
+                  await page.submitAdd(values);
+                  messageApi.success("新增成功");
+                  return;
+                }
+                await page.submitEdit(values);
+                messageApi.success("保存成功");
+              },
+            }}
+          />
+        </div>
+      </Card>
+    </Flex>
   );
 }

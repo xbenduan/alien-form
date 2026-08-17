@@ -671,7 +671,7 @@ function buildExpressionScope(ctx: FieldContext, field: FieldNode, runtime: Runt
   const values = runtime.values;
   const scope: Record<string, any> = {
     ...values,
-    ...(ctx.config.scope || {}),
+    ...ctx.config.scope,
     $self: field,
     $form: ctx.form,
     $values: values,
@@ -714,8 +714,16 @@ function applyReactionValue(ctx: FieldContext, field: FieldNode, key: string, va
       if (!shallowEqual(field.decoratorProps(), merged)) field.decoratorProps(merged);
       break;
     }
-    case "component": Array.isArray(value) ? field.setComponent(value[0], value[1]) : field.setComponent(value); break;
-    case "decorator": Array.isArray(value) ? field.setDecorator(value[0], value[1]) : field.setDecorator(value); break;
+    case "component": {
+      if (Array.isArray(value)) field.setComponent(value[0], value[1]);
+      else field.setComponent(value);
+      break;
+    }
+    case "decorator": {
+      if (Array.isArray(value)) field.setDecorator(value[0], value[1]);
+      else field.setDecorator(value);
+      break;
+    }
     case "dataSource": field.setDataSource(value); break;
     default:
       warnInvalid(ctx, field, key, `Unknown x-reaction target "${key}".`);
@@ -770,8 +778,8 @@ export function createForm(config: FormConfig = {}): FormInstance {
   const initialValues = config.initialValues ? { ...config.initialValues } : {};
   const baseSchema: IFormSchema = config.schema || { type: "object", properties: {} };
   const refDefinitions: Record<string, IFieldSchema> = {
-    ...(baseSchema.definitions || {}),
-    ...(config.definitions || {}),
+    ...baseSchema.definitions,
+    ...config.definitions,
   };
   const schema: IFormSchema = Object.keys(refDefinitions).length > 0
     ? { ...baseSchema, definitions: refDefinitions }

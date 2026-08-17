@@ -1,14 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  Button,
-  Card,
-  Flex,
-  Space,
-  Tag,
-  Typography,
-  message,
-  Input,
-} from "antd";
+import { useMemo, useState } from "react";
+import { App, Button, Card, Flex, Space, Tag, Typography, Input } from "antd";
 import { GithubOutlined } from "@ant-design/icons";
 import {
   FormProvider,
@@ -18,10 +9,7 @@ import {
   type FormInstance,
   type IFormSchema,
 } from "@alien-form/react";
-import {
-  formComponents,
-  formDecorators,
-} from "../../../shared/schema-form-scene";
+import { formComponents, formDecorators } from "@alien-form/shared";
 
 const { Title, Paragraph, Text, Link } = Typography;
 
@@ -107,20 +95,11 @@ function LiveExample({ title, description, live, code }: LiveExampleProps) {
 
 // 通用:用项目真实 adapters 渲染一个可交互表单
 function useDemoForm(schema: IFormSchema, initialValues?: Record<string, unknown>) {
-  const config: FormConfig = useMemo(
-    () => ({ schema, initialValues }),
-    [schema, initialValues],
-  );
+  const config: FormConfig = useMemo(() => ({ schema, initialValues }), [schema, initialValues]);
   return useCreateForm(config, [schema]);
 }
 
-function LiveSchemaForm({
-  form,
-  footer,
-}: {
-  form: FormInstance;
-  footer?: React.ReactNode;
-}) {
+function LiveSchemaForm({ form, footer }: { form: FormInstance; footer?: React.ReactNode }) {
   return (
     <FormProvider
       form={form}
@@ -164,7 +143,7 @@ const BASIC_CODE = `import {
   FormProvider,
   SchemaField,
 } from "@alien-form/react";
-import { formComponents, formDecorators } from "@/shared/components/SchemaFormShared";
+import { formComponents, formDecorators } from "@alien-form/shared";
 
 const schema = {
   type: "object",
@@ -206,6 +185,7 @@ function BasicForm() {
 }`;
 
 function BasicFormDemo() {
+  const { message: messageApi } = App.useApp();
   const form = useDemoForm(BASIC_SCHEMA, { role: "user" });
   return (
     <LiveSchemaForm
@@ -216,9 +196,9 @@ function BasicFormDemo() {
             type="primary"
             onClick={async () => {
               if (await form.validate()) {
-                message.success(`提交成功:${JSON.stringify(form.values())}`);
+                messageApi.success(`提交成功:${JSON.stringify(form.values())}`);
               } else {
-                message.warning("请先填写姓名");
+                messageApi.warning("请先填写姓名");
               }
             }}
           >
@@ -316,8 +296,7 @@ const VALIDATE_SCHEMA: IFormSchema = {
       component: "Input",
       props: { placeholder: "请输入昵称" },
       decorator: "FormItem",
-      "x-validate":
-        "{{ $value && $value.length >= 3 ? true : '昵称至少需要 3 个字符' }}",
+      "x-validate": "{{ $value && $value.length >= 3 ? true : '昵称至少需要 3 个字符' }}",
     },
   },
 };
@@ -360,43 +339,46 @@ const ALIEN_CMS_PROVIDER = `import {
   listSchemas,
   listRecords,
   createRecord,
-} from "@alien-form/cms";
+} from "../../../data";
 
-// 方式一:统一 providers(schema / record / log)
+// Provider 与 CRUD 属于应用数据层，不进入通用 shared 包
 const providers = createProviders({
-  type: "http",
+  version: "1.0",
+  name: "remote",
   baseUrl: "https://api.example.com",
 });
 const { list } = await providers.recordProvider.list({
-  modelName: "article",
+  model: "article",
   pagination: { current: 1, pageSize: 20 },
 });
 
-// 方式二:直接调用异步 API 函数(由浏览器缓存解析当前 provider)
+// 页面通过 data facade 调用当前 Provider
 const models = await listSchemas();
 const records = await listRecords({
-  modelName: "article",
+  model: "article",
   pagination: { current: 1, pageSize: 20 },
 });
-await createRecord({
-  modelName: "article",
-  data: { title: "Hello AlienForm", status: "draft" },
+await createRecord("article", {
+  title: "Hello AlienForm",
+  status: "draft",
 });`;
 
-const ALIEN_CMS_PROJECTION = `import {
-  getSchema,
+const ALIEN_CMS_PROJECTION = `import { getSchema } from "../../../data";
+import {
+  projectFilter,
   projectTableColumns,
-  projectFilterFields,
-} from "@alien-form/cms";
+  projectFormSchema,
+} from "../../record/projection";
 
 // 同一份模型 schema,投影出多种视图所需的配置
-const { schema } = await getSchema({ modelName: "article" });
+const schema = await getSchema("article");
 
 const tableColumns = projectTableColumns(schema);  // 列表表格列
-const filterFields = projectFilterFields(schema);  // 筛选条件表单
+const filter = projectFilter(schema);               // 筛选条件表单
+const editSchema = projectFormSchema(schema, "edit");
 
-// add / edit / detail 表单直接复用同一份 schema,
-// 这正是「一份 schema 同时驱动 filter / table / add / edit / detail」的核心。`;
+// 通用表单、筛选和表格渲染由 @alien-form/shared 提供,
+// app 只负责解释 x-model / x-cms 并将投影结果注入 shared。`;
 
 function PlaygroundDemo() {
   const [schemaStr, setSchemaStr] = useState(() => JSON.stringify(BASIC_SCHEMA, null, 2));
@@ -404,22 +386,28 @@ function PlaygroundDemo() {
   const [submitData, setSubmitData] = useState<string>("");
   const [error, setError] = useState<string>("");
 
-  useEffect(() => {
+  const handleSchemaTextChange = (nextSchemaText: string) => {
+    setSchemaStr(nextSchemaText);
     try {
-      const parsed = JSON.parse(schemaStr);
+      const parsed = JSON.parse(nextSchemaText);
       setSchema(parsed);
       setError("");
     } catch (e) {
       setError(String(e));
     }
-  }, [schemaStr]);
+  };
 
   const form = useDemoForm(schema);
 
   return (
     <Flex vertical gap={16}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <Card title="实时预览" size="small" styles={{ body: { padding: 16 } }} style={{ background: "#fafcff" }}>
+        <Card
+          title="实时预览"
+          size="small"
+          styles={{ body: { padding: 16 } }}
+          style={{ background: "#fafcff" }}
+        >
           <LiveSchemaForm
             form={form}
             footer={
@@ -436,10 +424,14 @@ function PlaygroundDemo() {
                 >
                   提交
                 </Button>
-                <Button onClick={() => {
-                  form.reset();
-                  setSubmitData("");
-                }}>重置</Button>
+                <Button
+                  onClick={() => {
+                    form.reset();
+                    setSubmitData("");
+                  }}
+                >
+                  重置
+                </Button>
               </Space>
             }
           />
@@ -447,18 +439,29 @@ function PlaygroundDemo() {
         <Card title="Schema 编辑" size="small" styles={{ body: { padding: 0 } }}>
           <Input.TextArea
             value={schemaStr}
-            onChange={(e) => setSchemaStr(e.target.value)}
-            style={{ 
-              fontFamily: "monospace", 
-              minHeight: 400, 
-              border: "none", 
+            onChange={(event) => handleSchemaTextChange(event.target.value)}
+            style={{
+              fontFamily: "monospace",
+              minHeight: 400,
+              border: "none",
               resize: "none",
               padding: 16,
               background: "#0f172a",
               color: "#e2e8f0",
             }}
           />
-          {error && <div style={{ color: "red", padding: "8px 16px", background: "#fff1f0", borderTop: "1px solid #ffa39e" }}>{error}</div>}
+          {error && (
+            <div
+              style={{
+                color: "red",
+                padding: "8px 16px",
+                background: "#fff1f0",
+                borderTop: "1px solid #ffa39e",
+              }}
+            >
+              {error}
+            </div>
+          )}
         </Card>
       </div>
       <Card title="提交数据" size="small" styles={{ body: { padding: 16 } }}>
@@ -500,13 +503,13 @@ export default function AboutPage() {
           <Text strong>字段叫什么、是什么类型、有什么约束、用什么组件展示</Text>。
           但在传统实现里,这份模型被拆散在四五个文件中:列定义在 <Text code>columns.tsx</Text>,
           校验写在 <Text code>schema.ts</Text>,筛选写在 <Text code>FilterForm.tsx</Text>,
-          详情又抄一份在 <Text code>DetailPage.tsx</Text>。结果就是,同一个字段每改一次,
-          都要在 N 个文件里同步修改;改漏一处,线上就会出现「列表能搜、详情看不到」的灵异 bug。
+          详情又抄一份在 <Text code>DetailPage.tsx</Text>。结果就是,同一个字段每改一次, 都要在 N
+          个文件里同步修改;改漏一处,线上就会出现「列表能搜、详情看不到」的灵异 bug。
         </Paragraph>
         <Paragraph type="secondary">
           AlienForm 的出发点很简单:<Text strong>把业务模型当作一等公民</Text>,
-          其他视图都只是它的投影(projection)。一份 schema 进去,filter / table / add /
-          edit / detail 出来 —— 这就是项目想要验证的核心命题。
+          其他视图都只是它的投影(projection)。一份 schema 进去,filter / table / add / edit / detail
+          出来 —— 这就是项目想要验证的核心命题。
         </Paragraph>
 
         <Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>
@@ -516,29 +519,36 @@ export default function AboutPage() {
           整个仓库是一个 pnpm monorepo,自下而上分成三层,每一层都可以独立使用:
         </Paragraph>
         <Paragraph type="secondary" style={{ marginBottom: 4 }}>
-          <Text strong>1. <Text code>@alien-form/core</Text> —— 无头运行时</Text>
+          <Text strong>
+            1. <Text code>@alien-form/core</Text> —— 无头运行时
+          </Text>
         </Paragraph>
         <Paragraph type="secondary" style={{ marginLeft: 16, marginBottom: 8 }}>
-          完全不依赖任何 UI 框架。它只做一件事:把 JSON Schema 编译成响应式的字段树,
-          运行 <Text code>x-reaction</Text>(联动)、<Text code>x-format</Text>(双向格式化)、
+          完全不依赖任何 UI 框架。它只做一件事:把 JSON Schema 编译成响应式的字段树, 运行{" "}
+          <Text code>x-reaction</Text>(联动)、<Text code>x-format</Text>(双向格式化)、
           <Text code>x-validate</Text>(校验),并按需投影出可提交的值。
           它可以跑在浏览器、Node.js、甚至小程序里,也可以接到任何渲染框架。
         </Paragraph>
         <Paragraph type="secondary" style={{ marginBottom: 4 }}>
-          <Text strong>2. <Text code>@alien-form/react</Text> —— React 绑定层</Text>
+          <Text strong>
+            2. <Text code>@alien-form/react</Text> —— React 绑定层
+          </Text>
         </Paragraph>
         <Paragraph type="secondary" style={{ marginLeft: 16, marginBottom: 8 }}>
           只负责把 core 接到 React 组件树:<Text code>useCreateForm</Text> 创建实例、
-          <Text code>FormProvider</Text> 注入组件/装饰器映射、<Text code>SchemaField</Text>{" "}
-          按 schema 自动渲染。UI 组件来自哪里完全由用户决定 —— 可以是 Ant Design、
-          Arco、Material UI,也可以是自研组件库。
+          <Text code>FormProvider</Text> 注入组件/装饰器映射、<Text code>SchemaField</Text> 按
+          schema 自动渲染。UI 组件来自哪里完全由用户决定 —— 可以是 Ant Design、 Arco、Material
+          UI,也可以是自研组件库。
         </Paragraph>
         <Paragraph type="secondary" style={{ marginBottom: 4 }}>
-          <Text strong>3. <Text code>@alien-form/cms</Text> + <Text code>apps/alien-cms</Text> —— 工作台样例</Text>
+          <Text strong>
+            3. <Text code>@alien-form/shared</Text> + <Text code>apps/alien-cms</Text> —— 通用 UI
+            与业务应用
+          </Text>
         </Paragraph>
         <Paragraph type="secondary" style={{ marginLeft: 16, marginBottom: 0 }}>
-          在 core / react 之上,补齐了「模型注册、数据 provider、视图投影」三件套,
-          再用一个真实可跑的 CMS 应用把它们串起来,作为整个理念的活靶子和参考实现。
+          shared 在 core / react 之上提供通用 adapters 与场景组件；模型、数据 provider、 CRUD
+          和多视图投影保留在 alien-cms 应用内，避免业务协议反向进入共享包。
         </Paragraph>
 
         <Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>
@@ -551,9 +561,8 @@ export default function AboutPage() {
         <Paragraph type="secondary">
           字段的类型、标题、组件、校验、联动、格式化,统统写在一份 schema 里。
           视图差异不是通过「再写一份配置」来表达,而是通过<Text strong>投影函数</Text>:
-          <Text code>projectTableColumns</Text>、
-          <Text code>projectFilterFields</Text>{" "}
-          各自从同一份 schema 中抽取自己需要的部分(表单则直接复用 schema)。
+          <Text code>projectTableColumns</Text>、<Text code>projectFilterFields</Text> 各自从同一份
+          schema 中抽取自己需要的部分(表单则直接复用 schema)。
           字段改名时只改一处,所有视图同步生效;新增字段时也只需在一个地方追加。
         </Paragraph>
 
@@ -561,10 +570,10 @@ export default function AboutPage() {
           2. 无头内核 + 可替换绑定(Headless Core)
         </Paragraph>
         <Paragraph type="secondary">
-          受 Headless UI、TanStack Table 等项目的启发,AlienForm 把「逻辑」和「外观」彻底解耦。
-          core 不知道按钮长什么样、表单项如何排版,它只关心字段树、值变化、依赖追踪与校验结果。
-          这意味着:同一份 schema,既可以渲染成 Ant Design 风格的后台,也可以渲染成移动端
-          H5 表单,甚至可以在没有 DOM 的环境下做服务端校验。
+          受 Headless UI、TanStack Table 等项目的启发,AlienForm 把「逻辑」和「外观」彻底解耦。 core
+          不知道按钮长什么样、表单项如何排版,它只关心字段树、值变化、依赖追踪与校验结果。
+          这意味着:同一份 schema,既可以渲染成 Ant Design 风格的后台,也可以渲染成移动端 H5
+          表单,甚至可以在没有 DOM 的环境下做服务端校验。
         </Paragraph>
 
         <Paragraph type="secondary" strong style={{ marginBottom: 4 }}>
@@ -572,16 +581,17 @@ export default function AboutPage() {
         </Paragraph>
         <Paragraph type="secondary">
           为了让 schema 里的「值」既能写死、又能联动、还能扩展,AlienForm 收敛出一套统一的值模型 ——
-          任意位置(<Text code>value</Text>、<Text code>display</Text>、
-          <Text code>dataSource</Text>、<Text code>x-validate</Text> 等)都接受同一组形态:
+          任意位置(<Text code>value</Text>、<Text code>display</Text>、<Text code>dataSource</Text>
+          、<Text code>x-validate</Text> 等)都接受同一组形态:
         </Paragraph>
         <Paragraph type="secondary" style={{ marginLeft: 16, marginBottom: 8 }}>
-          • <Text strong>字面量</Text>(字符串、数字、对象、数组)<br />
-          • <Text strong>表达式字符串</Text> <Text code>{"{{ a === 'admin' ? 'all' : 'read' }}"}</Text><br />
-          • <Text strong>handler 字符串</Text> <Text code>@handlerName</Text>{" "}
-          (引用注册到 form 的副作用函数)<br />
-          • <Text strong>直接函数</Text>(在编程式调用场景下使用)<br />
-          • 以及上述形态组成的<Text strong>数组</Text>
+          • <Text strong>字面量</Text>(字符串、数字、对象、数组)
+          <br />• <Text strong>表达式字符串</Text>{" "}
+          <Text code>{"{{ a === 'admin' ? 'all' : 'read' }}"}</Text>
+          <br />• <Text strong>handler 字符串</Text> <Text code>@handlerName</Text> (引用注册到 form
+          的副作用函数)
+          <br />• <Text strong>直接函数</Text>(在编程式调用场景下使用)
+          <br />• 以及上述形态组成的<Text strong>数组</Text>
         </Paragraph>
         <Paragraph type="secondary">
           一套写法贯穿所有位置,意味着学一次就够了 —— 不会再出现「这里支持表达式、那里只支持字符串」
@@ -595,9 +605,9 @@ export default function AboutPage() {
           schema 里允许写表达式,但<Text strong>不使用</Text> <Text code>eval</Text> 或{" "}
           <Text code>new Function</Text>。AlienForm 自带一个受限的解释器:
           只允许属性访问、二元运算、三元运算、字面量与逻辑运算,
-          <Text strong>拒绝</Text>函数调用、赋值、模板字符串以及{" "}
-          <Text code>window</Text> / <Text code>document</Text> / <Text code>__proto__</Text> 等
-          危险访问。这让 schema 既能从远端动态下发,也不会把整个页面的攻击面打开。
+          <Text strong>拒绝</Text>函数调用、赋值、模板字符串以及 <Text code>window</Text> /{" "}
+          <Text code>document</Text> / <Text code>__proto__</Text> 等 危险访问。这让 schema
+          既能从远端动态下发,也不会把整个页面的攻击面打开。
         </Paragraph>
 
         <Title level={5} style={{ marginTop: 16, marginBottom: 8 }}>
@@ -608,12 +618,12 @@ export default function AboutPage() {
         </Paragraph>
         <Paragraph type="secondary" style={{ marginLeft: 16, marginBottom: 8 }}>
           • <Text strong>奥卡姆剃刀</Text>:<Text code>packages/core</Text> 严禁保留零引用代码或
-          「声明但未实现」的协议。每砍掉一行死代码,理解成本就少一分。<br />
-          • <Text strong>语义对称</Text>:get/set、read/write、enter/leave 必须行为一致,
-          不允许出现「读取支持嵌套但写入只支持一级」这种半截实现。<br />
-          • <Text strong>模型驱动</Text>:UI 配置应当能从注册元数据自动生成,
-          而不是再写一份「配置的配置」。<br />
-          • <Text strong>架构分层</Text>:shell / layout 与业务 domain 必须保持清晰边界,
+          「声明但未实现」的协议。每砍掉一行死代码,理解成本就少一分。
+          <br />• <Text strong>语义对称</Text>:get/set、read/write、enter/leave 必须行为一致,
+          不允许出现「读取支持嵌套但写入只支持一级」这种半截实现。
+          <br />• <Text strong>模型驱动</Text>:UI 配置应当能从注册元数据自动生成,
+          而不是再写一份「配置的配置」。
+          <br />• <Text strong>架构分层</Text>:shell / layout 与业务 domain 必须保持清晰边界,
           业务页面只通过 provider 操作数据,不直接接触持久层。
         </Paragraph>
 
@@ -621,8 +631,8 @@ export default function AboutPage() {
           五、数据层解耦:本地与远端可互换
         </Title>
         <Paragraph type="secondary">
-          所有数据访问统一走 provider / API 函数,页面层不直接操作数据源。
-          默认实现支持<Text strong>本地 IndexedDB(Dexie)</Text>和{" "}
+          所有数据访问统一走 provider / API 函数,页面层不直接操作数据源。 默认实现支持
+          <Text strong>本地 IndexedDB(Dexie)</Text>和{" "}
           <Text strong>远端 HTTP(Cloudflare Workers + D1)</Text>两种 provider,
           可以在不改页面层一行代码的前提下互换。这不仅让本地开发与离线演示成为可能,
           也让整个仓库具备「先本地跑通,再无痛上云」的部署路径。
@@ -632,8 +642,8 @@ export default function AboutPage() {
           六、它适合谁
         </Title>
         <Paragraph type="secondary">
-          AlienForm 不是要替代 Ant Design Form 或 Formily,也不是要做又一个低代码平台。
-          它更像一个<Text strong>实验性的「后台运行时」</Text>:
+          AlienForm 不是要替代 Ant Design Form 或 Formily,也不是要做又一个低代码平台。 它更像一个
+          <Text strong>实验性的「后台运行时」</Text>:
           如果你正在为一个数据驱动的中后台项目做选型,厌倦了「列表抄一份、详情抄一份、编辑再抄一份」,
           想要一种 schema 即真相、视图皆投影的写法 —— 那么 AlienForm 提供的内核与约定,
           可以直接拿来用,也可以作为参考自己实现一套。
@@ -654,21 +664,25 @@ export default function AboutPage() {
         </Title>
         <Paragraph type="secondary">
           这一部分参考 Formily 官方“学习建议”的组织方式来写:先理解为什么需要 schema 驱动,
-          再从一个最小可运行表单开始,随后补上联动、校验和组件映射。AlienForm 与 Formily
-          一样,都强调<Text strong>先理解领域模型,再查具体组件文档</Text>。
+          再从一个最小可运行表单开始,随后补上联动、校验和组件映射。AlienForm 与 Formily 一样,都强调
+          <Text strong>先理解领域模型,再查具体组件文档</Text>。
         </Paragraph>
         <Card size="small" title="推荐阅读顺序" styles={{ body: { padding: 16 } }}>
           <Paragraph style={{ marginBottom: 8 }}>
-            1. <Text strong>先看理念</Text>:理解表单不只是输入框集合,而是字段状态、校验、联动、布局共同组成的领域模型。
+            1. <Text strong>先看理念</Text>
+            :理解表单不只是输入框集合,而是字段状态、校验、联动、布局共同组成的领域模型。
           </Paragraph>
           <Paragraph style={{ marginBottom: 8 }}>
-            2. <Text strong>再看最小示例</Text>:先掌握 <Text code>useCreateForm</Text>、<Text code>FormProvider</Text>、<Text code>SchemaField</Text> 这三件套。
+            2. <Text strong>再看最小示例</Text>:先掌握 <Text code>useCreateForm</Text>、
+            <Text code>FormProvider</Text>、<Text code>SchemaField</Text> 这三件套。
           </Paragraph>
           <Paragraph style={{ marginBottom: 8 }}>
-            3. <Text strong>然后看协议驱动</Text>:把字段标题、组件、校验、联动都收敛到一份 schema 中。
+            3. <Text strong>然后看协议驱动</Text>:把字段标题、组件、校验、联动都收敛到一份 schema
+            中。
           </Paragraph>
           <Paragraph style={{ marginBottom: 0 }}>
-            4. <Text strong>遇到细节再查字典</Text>:组件能力、装饰器能力、字段协议都按需查文档,不要一上来把所有 API 背完。
+            4. <Text strong>遇到细节再查字典</Text>
+            :组件能力、装饰器能力、字段协议都按需查文档,不要一上来把所有 API 背完。
           </Paragraph>
         </Card>
 
@@ -676,7 +690,9 @@ export default function AboutPage() {
           title="快速开始: 创建表单实例并提交"
           description={
             <>
-              先只掌握最核心的渲染链路: <Text code>schema</Text> 描述字段, <Text code>useCreateForm</Text> 创建表单实例, <Text code>FormProvider</Text> 注入上下文, <Text code>SchemaField</Text> 负责递归渲染。
+              先只掌握最核心的渲染链路: <Text code>schema</Text> 描述字段,{" "}
+              <Text code>useCreateForm</Text> 创建表单实例, <Text code>FormProvider</Text>{" "}
+              注入上下文, <Text code>SchemaField</Text> 负责递归渲染。
             </>
           }
           live={<BasicFormDemo />}
@@ -690,7 +706,7 @@ export default function AboutPage() {
           场景案例
         </Title>
         <Paragraph type="secondary">
-          Formily 官方推荐从具体业务场景里理解协议驱动的价值。AlienForm 这里提供两个常见场景: 
+          Formily 官方推荐从具体业务场景里理解协议驱动的价值。AlienForm 这里提供两个常见场景:
           字段联动与自定义校验。你不必先记住所有协议,先从“这个场景为什么适合 schema 驱动”开始看。
         </Paragraph>
 
@@ -698,7 +714,8 @@ export default function AboutPage() {
           title="场景 1: 角色权限联动"
           description={
             <>
-              当一个字段的选项、显隐、可编辑态依赖另一个字段时,不要把逻辑散落在多个组件状态里,而是直接把依赖写进协议。<Text code>{"{{ ... }}"}</Text> 表达式描述字段之间的依赖关系。
+              当一个字段的选项、显隐、可编辑态依赖另一个字段时,不要把逻辑散落在多个组件状态里,而是直接把依赖写进协议。
+              <Text code>{"{{ ... }}"}</Text> 表达式描述字段之间的依赖关系。
             </>
           }
           live={<ReactionFormDemo />}
@@ -709,7 +726,9 @@ export default function AboutPage() {
           title="场景 2: 自定义校验"
           description={
             <>
-              <Text code>x-validate</Text> 返回 <Text code>true</Text> 表示通过,返回 <Text code>string</Text> 或 <Text code>{"{ message }"}</Text> 表示失败。先把规则放进 schema,再考虑抽成复用函数。
+              <Text code>x-validate</Text> 返回 <Text code>true</Text> 表示通过,返回{" "}
+              <Text code>string</Text> 或 <Text code>{"{ message }"}</Text> 表示失败。先把规则放进
+              schema,再考虑抽成复用函数。
             </>
           }
           live={<ValidateFormDemo />}
@@ -723,16 +742,18 @@ export default function AboutPage() {
           进阶指南
         </Title>
         <Paragraph type="secondary">
-          当你已经能写基础 schema 后,下一步不是机械堆字段,而是把组件抽象、数据访问和多视图投影串起来。
-          真正的进阶点不在于多写几个 <Text code>x-*</Text> 属性,而在于能否把一份模型协议稳定地投影到多个界面中,并保持语义一致。
+          当你已经能写基础 schema
+          后,下一步不是机械堆字段,而是把组件抽象、数据访问和多视图投影串起来。
+          真正的进阶点不在于多写几个 <Text code>x-*</Text>{" "}
+          属性,而在于能否把一份模型协议稳定地投影到多个界面中,并保持语义一致。
         </Paragraph>
 
         <Title level={5} style={{ marginTop: 8, marginBottom: 8 }}>
           1. 数据访问抽象: provider 与 API 函数
         </Title>
         <Paragraph type="secondary">
-          复杂后台通常不止有表单渲染,还要处理列表查询、详情读取、保存提交。AlienForm 把这些访问统一收敛到 provider / API
-          函数层,避免页面组件直接耦合具体数据源。
+          复杂后台通常不止有表单渲染,还要处理列表查询、详情读取、保存提交。AlienForm
+          把这些访问统一收敛到 provider / API 函数层,避免页面组件直接耦合具体数据源。
         </Paragraph>
         <CodeBlock>{ALIEN_CMS_PROVIDER}</CodeBlock>
 
@@ -740,8 +761,8 @@ export default function AboutPage() {
           2. 协议投影: 一份 schema 驱动多种后台视图
         </Title>
         <Paragraph type="secondary" style={{ marginBottom: 8 }}>
-          这是 AlienForm 最贴近 Formily“协议复用”思想的场景。不是只渲染一个表单,而是让同一份模型 schema
-          同时驱动筛选、表格、编辑和详情,避免多份配置长期漂移。
+          这是 AlienForm 最贴近 Formily“协议复用”思想的场景。不是只渲染一个表单,而是让同一份模型
+          schema 同时驱动筛选、表格、编辑和详情,避免多份配置长期漂移。
         </Paragraph>
         <CodeBlock>{ALIEN_CMS_PROJECTION}</CodeBlock>
       </Flex>
@@ -752,7 +773,8 @@ export default function AboutPage() {
           演练场
         </Title>
         <Paragraph type="secondary">
-          你可以在这里实时修改 Schema，左侧的表单会即时热更新。填写表单并点击「提交」后，下方会展示导出的 JSON 数据。
+          你可以在这里实时修改
+          Schema，左侧的表单会即时热更新。填写表单并点击「提交」后，下方会展示导出的 JSON 数据。
         </Paragraph>
         <PlaygroundDemo />
       </Flex>
@@ -779,12 +801,7 @@ export default function AboutPage() {
               <Tag color="purple">演练场</Tag>
             </Flex>
           </div>
-          <Button
-            icon={<GithubOutlined />}
-            href={GITHUB_URL}
-            target="_blank"
-            rel="noreferrer"
-          >
+          <Button icon={<GithubOutlined />} href={GITHUB_URL} target="_blank" rel="noreferrer">
             GitHub
           </Button>
         </Flex>

@@ -1,5 +1,5 @@
 import { Alert, Modal, Spin } from 'antd';
-import type { CmsModelSchema } from '@alien-form/cms';
+import type { CmsModelSchema } from "../types";
 
 interface ModelSchemaJsonModalProps {
   open: boolean;

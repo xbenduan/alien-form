@@ -1,21 +1,17 @@
 import { EyeOutlined, SaveOutlined } from "@ant-design/icons";
-import { Alert, Button, Card, Col, Flex, Modal, Row, Space, Spin, Steps, message } from "antd";
+import { Alert, App, Button, Card, Col, Flex, Modal, Row, Space, Spin, Steps } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { buildModelSchema, schemaToBuilderDraft } from "@alien-form/cms";
+import { buildModelSchema, schemaToBuilderDraft } from "../schema";
 import type {
   BuilderComponentName,
   BuilderFieldType,
   CmsModelSchema,
   ModelBuilderDraft,
   ModelBuilderFieldDraft,
-} from "@alien-form/cms";
+} from "../types";
 import { buildModelListPath } from "../../../app/router/paths";
-import {
-  useModelSummaries,
-  useSchemaDetail,
-  useSchemaMutations,
-} from "../../../hooks/use-schema-store";
+import { useModelSummaries, useSchemaDetail, useSchemaMutations } from "../hooks/use-schema-store";
 import { FieldConfigPanel } from "../components/FieldConfigPanel";
 import { FieldListEditor } from "../components/FieldListEditor";
 import { ModelMetaForm } from "../components/ModelMetaForm";
@@ -48,11 +44,11 @@ function createFieldDraft(
     number: "Number Field",
     boolean: "Boolean Field",
     object: "Object Group",
-    void: "Layout Group",
+    layout: "Layout Group",
     array: "Array Field",
     tags: "Tags Field",
   };
-  const isContainer = type === "object" || type === "void";
+  const isContainer = type === "object" || type === "layout";
   const isObjectArray = type === "array";
 
   return {
@@ -153,7 +149,9 @@ function ensureSystemFields(fields: ModelBuilderFieldDraft[]): ModelBuilderField
   return nextFields;
 }
 
-function orderFieldsWithSystemFieldsFirst(fields: ModelBuilderFieldDraft[]): ModelBuilderFieldDraft[] {
+function orderFieldsWithSystemFieldsFirst(
+  fields: ModelBuilderFieldDraft[],
+): ModelBuilderFieldDraft[] {
   const systemFieldMap = new Map<SystemFieldKey, ModelBuilderFieldDraft>();
   const normalFields: ModelBuilderFieldDraft[] = [];
 
@@ -290,7 +288,7 @@ function validateDraft(
       keys.add(field.key.trim());
 
       const needsChildren =
-        field.type === "object" || field.type === "void" || field.type === "array";
+        field.type === "object" || field.type === "layout" || field.type === "array";
       if (needsChildren && (!field.children || field.children.length === 0)) {
         errors.push(`${label} 需要至少一个子字段`);
       }
@@ -341,7 +339,7 @@ export default function ModelPage() {
   const [draft, setDraft] = useState<ModelBuilderDraft>(createInitialDraft);
   const [selectedFieldId, setSelectedFieldId] = useState<string | undefined>(draft.fields[0]?.id);
   const [currentStep, setCurrentStep] = useState(0);
-  const [messageApi, contextHolder] = message.useMessage();
+  const { message: messageApi } = App.useApp();
   const [previewJsonVisible, setPreviewJsonVisible] = useState(false);
   const [schemaImportVisible, setSchemaImportVisible] = useState(false);
 
@@ -349,21 +347,18 @@ export default function ModelPage() {
     () => findFieldById(draft.fields, selectedFieldId),
     [draft.fields, selectedFieldId],
   );
-  const previewSchema = useMemo(() => {
+  const preview = useMemo(() => {
     try {
-      return buildModelSchema(draft);
-    } catch {
-      return undefined;
-    }
-  }, [draft]);
-  const previewError = useMemo(() => {
-    try {
-      buildModelSchema(draft);
-      return undefined;
+      return { schema: buildModelSchema(draft), error: undefined };
     } catch (error) {
-      return error instanceof Error ? error.message : "Preview generation failed";
+      return {
+        schema: undefined,
+        error: error instanceof Error ? error.message : "Preview generation failed",
+      };
     }
   }, [draft]);
+  const previewSchema = preview.schema;
+  const previewError = preview.error;
   const existingModels = existingModelsQuery.data ?? [];
   const saving = schemaMutations.creating || schemaMutations.updating;
   const loadingSchema =
@@ -422,7 +417,9 @@ export default function ModelPage() {
       setSchemaImportVisible(false);
       messageApi.success("Schema 解析成功");
     } catch (error) {
-      messageApi.error(error instanceof Error ? `Schema 解析失败：${error.message}` : "Schema 解析失败");
+      messageApi.error(
+        error instanceof Error ? `Schema 解析失败：${error.message}` : "Schema 解析失败",
+      );
     }
   };
 
@@ -447,7 +444,6 @@ export default function ModelPage() {
 
   return (
     <Flex vertical gap={16}>
-      {contextHolder}
       <Card className="model-query-card" styles={{ body: { padding: 20 } }}>
         <Steps current={currentStep} items={STEP_ITEMS} />
       </Card>
@@ -487,7 +483,9 @@ export default function ModelPage() {
                 }}
                 onRemove={(fieldId) => {
                   const nextFields = removeFieldById(draft.fields, fieldId);
-                  setDraft((currentDraft) => normalizeDraft({ ...currentDraft, fields: nextFields }));
+                  setDraft((currentDraft) =>
+                    normalizeDraft({ ...currentDraft, fields: nextFields }),
+                  );
                   const remainingIds = collectFieldIds(nextFields);
                   if (selectedFieldId && !remainingIds.includes(selectedFieldId)) {
                     setSelectedFieldId(getPreferredSelectedFieldId(nextFields));
@@ -505,10 +503,12 @@ export default function ModelPage() {
               <FieldConfigPanel
                 field={selectedField}
                 onChange={(nextField) => {
-                  setDraft((currentDraft) => normalizeDraft({
-                    ...currentDraft,
-                    fields: updateFieldInTree(currentDraft.fields, nextField.id, () => nextField),
-                  }));
+                  setDraft((currentDraft) =>
+                    normalizeDraft({
+                      ...currentDraft,
+                      fields: updateFieldInTree(currentDraft.fields, nextField.id, () => nextField),
+                    }),
+                  );
                 }}
               />
             </Col>

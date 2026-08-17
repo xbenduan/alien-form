@@ -2,13 +2,13 @@ import type {
   BuilderComponentName,
   BuilderFieldType,
   ModelBuilderFieldDraft,
-} from "@alien-form/cms";
+} from "../types";
 import { Card, Empty, Form, Input, Select, Switch } from "antd";
 import {
-  builderComponentOptions,
-  getBuilderComponentMeta,
-  getBuilderComponentOptions,
-} from "../../../shared/adapters";
+  componentOptions,
+  getComponentMeta,
+  getComponentOptions,
+} from "@alien-form/shared";
 import { HandlerSelectEditor } from "./HandlerSelectEditor";
 
 const fieldTypeOptions: Array<{ label: string; value: BuilderFieldType }> = [
@@ -16,7 +16,7 @@ const fieldTypeOptions: Array<{ label: string; value: BuilderFieldType }> = [
   { label: "number", value: "number" },
   { label: "boolean", value: "boolean" },
   { label: "object", value: "object" },
-  { label: "void", value: "void" },
+  { label: "layout", value: "layout" },
   { label: "array", value: "array" },
   { label: "tags", value: "tags" },
 ];
@@ -29,7 +29,7 @@ interface FieldConfigPanelProps {
 
 export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
   const isSystemField = Boolean(field && SYSTEM_FIELD_KEYS.has(field.key));
-  const isContainerField = field?.type === "object" || field?.type === "void";
+  const isContainerField = field?.type === "object" || field?.type === "layout";
   const isObjectArray = field?.type === "array";
   const supportsPrimitiveConfig = field && !isContainerField && !isObjectArray && !isSystemField;
   const supportsSummaryConfig = Boolean(field) && (isContainerField || isObjectArray);
@@ -38,9 +38,9 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
     value: child.key,
   }));
   const currentComponentOptions = field
-    ? getBuilderComponentOptions(field.type)
-    : builderComponentOptions;
-  const currentComponentMeta = field ? getBuilderComponentMeta(field.component) : undefined;
+    ? getComponentOptions(field.type === "layout" ? "object" : field.type)
+    : componentOptions;
+  const currentComponentMeta = field ? getComponentMeta(field.component) : undefined;
   const currentComponentHint = currentComponentMeta?.params?.length
     ? currentComponentMeta.params
         .map((param) => {
@@ -54,10 +54,13 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
     nextType: BuilderFieldType,
     currentField: ModelBuilderFieldDraft,
   ): ModelBuilderFieldDraft => {
-    const nextTypeOptions = getBuilderComponentOptions(nextType);
-    const nextDefaultComponent = nextTypeOptions[0]?.value ?? "Input";
+    const nextTypeOptions = getComponentOptions(
+      nextType === "layout" ? "object" : nextType,
+    );
+    const nextDefaultComponent =
+      (nextTypeOptions[0]?.value as BuilderComponentName | undefined) ?? "Input";
 
-    if (nextType === "object" || nextType === "void") {
+    if (nextType === "object" || nextType === "layout") {
       return {
         ...currentField,
         type: nextType,
@@ -140,7 +143,7 @@ export function FieldConfigPanel({ field, onChange }: FieldConfigPanelProps) {
       };
     }
 
-    if (currentField.type === "object" || currentField.type === "void") {
+    if (currentField.type === "object" || currentField.type === "layout") {
       return {
         ...currentField,
         component: nextComponent,

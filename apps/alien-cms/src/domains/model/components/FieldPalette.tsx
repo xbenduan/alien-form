@@ -1,4 +1,4 @@
-import type { BuilderComponentName, BuilderFieldType } from '@alien-form/cms';
+import type { BuilderComponentName, BuilderFieldType } from "../types";
 import { Button, Card, Space, Typography } from 'antd';
 
 export interface FieldPreset {
@@ -18,7 +18,7 @@ export const fieldPresets: FieldPreset[] = [
   { key: 'tags', label: '标签数组', type: 'tags', component: 'TagsInput' },
   { key: 'array-cards', label: '对象数组', type: 'array', component: 'ArrayCards' },
   { key: 'object', label: '对象分组', type: 'object', component: 'SectionCard' },
-  { key: 'void', label: '布局分组', type: 'void', component: 'SectionCard' },
+  { key: 'layout', label: '布局分组', type: 'layout', component: 'SectionCard' },
 ];
 
 interface FieldPaletteProps {

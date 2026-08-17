@@ -1,5 +1,5 @@
 import { DeleteOutlined, DownOutlined, DragOutlined, PlusOutlined } from '@ant-design/icons';
-import type { ModelBuilderFieldDraft } from '@alien-form/cms';
+import type { ModelBuilderFieldDraft } from "../types";
 import { Button, Card, Dropdown, Empty, Space, Tag, Typography } from 'antd';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
@@ -57,7 +57,7 @@ export function FieldListEditor({
         description: '该组件内部提供对象字段插槽，用于继续配置子字段。',
       };
     }
-    if (field.type === 'void') {
+    if (field.type === 'layout') {
       return {
         label: '布局插槽',
         description: '该组件内部提供布局插槽，用于承载一组展示/录入字段。',

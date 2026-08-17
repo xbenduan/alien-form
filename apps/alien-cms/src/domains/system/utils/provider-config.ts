@@ -1,4 +1,4 @@
-import type { AlienCmsConfig } from "@alien-form/cms";
+import type { AlienCmsConfig } from "../../../data";
 
 export interface ProviderSettingsFormValues {
   baseUrl?: string;

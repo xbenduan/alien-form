@@ -8,7 +8,6 @@ export default defineConfig({
     alias: {
       "@alien-form/core": fileURLToPath(new URL("../../packages/core/src/index.ts", import.meta.url)),
       "@alien-form/react": fileURLToPath(new URL("../../packages/react/src/index.tsx", import.meta.url)),
-      "@alien-form/cms": fileURLToPath(new URL("../../packages/cms/src/index.ts", import.meta.url)),
     },
   },
   test: {

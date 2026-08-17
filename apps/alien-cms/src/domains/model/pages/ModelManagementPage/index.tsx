@@ -1,26 +1,18 @@
 import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
-import {
-  Alert,
-  Button,
-  Card,
-  Flex,
-  Popconfirm,
-  Space,
-  message,
-} from "antd";
+import { Alert, App, Button, Card, Flex, Popconfirm, Space } from "antd";
 import { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import type { ModelSummary } from "@alien-form/cms";
-import { schemaQueryKeys, useSchemaStore } from "../../../../hooks/use-schema-store";
+import type { ModelSummary } from "../../types";
+import { SchemaFilter, SchemaTable } from "@alien-form/shared";
+import { schemaQueryKeys, useSchemaStore } from "../../hooks/use-schema-store";
 import { buildModelEditPath, buildModelNewPath } from "../../../../app/router/paths";
+import { map as recordSchemaHandlers } from "../../../../components/handlers";
 import { ModelSchemaJsonModal } from "../../components/ModelSchemaJsonModal";
-import { SchemaFilterBody } from "../../../../shared/schema-filter-scene";
-import { ProTable } from "../../../../shared/components/ProTable";
-import type { ModelRecord } from "../../../record/types/record";
 import { filterDefaultVisibleKeys, filterSchema, tableColumns } from "./schema";
 
 export default function ModelManagementPage() {
+  const { message: messageApi } = App.useApp();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const {
@@ -53,21 +45,26 @@ export default function ModelManagementPage() {
   return (
     <Flex vertical gap={16}>
       <Card className="model-query-card" styles={{ body: { padding: 16 } }}>
-        <SchemaFilterBody
-          schema={filterSchema}
+        <SchemaFilter
+          projection={{
+            schema: filterSchema,
+            defaultVisibleKeys: filterDefaultVisibleKeys,
+          }}
           initialValues={filterInitialValues}
+          handlers={recordSchemaHandlers}
           loading={loading}
-          defaultVisibleKeys={filterDefaultVisibleKeys}
-          onSearch={(values) => {
-            const next: Record<string, string> = {};
-            const name = String(values.name ?? "").trim();
-            const title = String(values.title ?? "").trim();
-            const description = String(values.description ?? "").trim();
-            if (name) next.name = name;
-            if (title) next.title = title;
-            if (description) next.description = description;
-            setFilters(next);
-            setPagination((current) => ({ ...current, current: 1 }));
+          actions={{
+            onSearch: (values) => {
+              const next: Record<string, string> = {};
+              const name = String(values.name ?? "").trim();
+              const title = String(values.title ?? "").trim();
+              const description = String(values.description ?? "").trim();
+              if (name) next.name = name;
+              if (title) next.title = title;
+              if (description) next.description = description;
+              setFilters(next);
+              setPagination((current) => ({ ...current, current: 1 }));
+            },
           }}
         />
       </Card>
@@ -77,10 +74,9 @@ export default function ModelManagementPage() {
           <Alert type="error" showIcon message="模型列表加载失败" description={error.message} />
         </Card>
       ) : (
-        <ProTable
-          schema={filterSchema}
+        <SchemaTable
           columns={tableColumns}
-          dataSource={list as unknown as ModelRecord[]}
+          dataSource={list as unknown as Record<string, unknown>[]}
           loading={loading}
           total={total}
           rowKey="name"
@@ -96,10 +92,12 @@ export default function ModelManagementPage() {
               pageSize: nextPagination.pageSize ?? pagination.pageSize,
             });
           }}
-          addButtonText="新增模型"
-          onAdd={() => navigate(buildModelNewPath())}
-          onRefresh={() => {
-            queryClient.invalidateQueries({ queryKey: schemaQueryKeys.all });
+          actions={{
+            addText: "新增模型",
+            onAdd: () => navigate(buildModelNewPath()),
+            onRefresh: () => {
+              void queryClient.invalidateQueries({ queryKey: schemaQueryKeys.all });
+            },
           }}
           actionsColumn={{
             title: "操作",
@@ -134,7 +132,7 @@ export default function ModelManagementPage() {
                     okButtonProps={{ danger: true }}
                     onConfirm={async () => {
                       await deleteModel(summary.name);
-                      message.success("模型删除成功");
+                      messageApi.success("模型删除成功");
                     }}
                   >
                     <Button danger type="link" size="small" icon={<DeleteOutlined />}>

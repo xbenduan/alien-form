@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { App } from "antd";
 import AboutPage from "./AboutPage";
 
 function renderPage() {
-  return render(<AboutPage />);
+  return render(
+    <App>
+      <AboutPage />
+    </App>,
+  );
 }
 
 describe("AboutPage", () => {
@@ -48,6 +53,23 @@ describe("AboutPage", () => {
     await waitFor(() => {
       expect(screen.queryByText("昵称至少需要 3 个字符")).toBeNull();
     });
+  });
+
+  it("通过 App context 保持基础表单的 warning 和 success 提示", async () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("tab", { name: "指南" }));
+    await screen.findByText("快速开始: 创建表单实例并提交");
+
+    fireEvent.click(screen.getByRole("button", { name: /提\s*交/ }));
+    await screen.findByText("请先填写姓名");
+
+    fireEvent.change(screen.getByPlaceholderText("请输入姓名"), {
+      target: { value: "张三" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /提\s*交/ }));
+
+    await screen.findByText(/提交成功:.*"name":"张三"/);
   });
 
   it("在演练场中提示非法 Schema 并支持恢复", async () => {

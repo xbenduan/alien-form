@@ -5,14 +5,13 @@ import {
   SchemaField,
   useCreateForm,
   type FormConfig,
-  type FormInstance,
   type IFormSchema,
 } from "@alien-form/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback } from "react";
 import {
   formComponents,
   formDecorators,
-} from "../../../shared/schema-form-scene";
+} from "@alien-form/shared";
 import type { ProviderSettingsFormValues } from "../utils/provider-config";
 
 const settingsSchema: IFormSchema = {
@@ -58,8 +57,6 @@ export function ProviderSettingsForm({
   isConnected,
   onDisconnect,
 }: ProviderSettingsFormProps) {
-  const formRef = useRef<FormInstance | null>(null);
-
   const config: FormConfig = {
     schema: settingsSchema,
     initialValues,
@@ -67,16 +64,11 @@ export function ProviderSettingsForm({
 
   const form = useCreateForm(config);
 
-  useEffect(() => {
-    formRef.current = form;
-  }, [form]);
-
   const handleSubmit = useCallback(async () => {
-    if (!formRef.current) return;
-    await formRef.current.submit(async (values) => {
+    await form.submit(async (values) => {
       await onFinish(values as ProviderSettingsFormValues);
     });
-  }, [onFinish]);
+  }, [form, onFinish]);
 
   return (
     <Card

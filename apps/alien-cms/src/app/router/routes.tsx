@@ -46,6 +46,7 @@ export interface RouteMeta {
 // ─── Lazy Components ─────────────────────────────────────────
 
 const ModelManagementPage = lazy(() => import("../../domains/model/pages/ModelManagementPage"));
+const ModelHomePage = lazy(() => import("../../domains/model/pages/ModelHomePage"));
 const ModelPage = lazy(() => import("../../domains/model/pages/ModelPage"));
 const SystemSettingsPage = lazy(() => import("../../domains/system/pages/SystemSettingsPage"));
 const LogPage = lazy(() => import("../../domains/system/pages/LogPage"));
@@ -62,6 +63,11 @@ const RecordActionPage = lazy(() => import("../../domains/record/pages/RecordAct
 export const staticRoutes: RouteMeta[] = [
   {
     path: "models",
+    key: "models",
+    component: ModelHomePage,
+  },
+  {
+    path: "models/manage",
     key: "models",
     menu: {
       group: "system",

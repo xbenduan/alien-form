@@ -1,4 +1,4 @@
-import type { ModelSummary } from "@alien-form/cms";
+import type { ModelSummary } from "../../../domains/model";
 import { Card, Divider, Menu, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
 import { getMenuRoutes } from "../../router/routes";

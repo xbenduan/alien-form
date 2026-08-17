@@ -1,4 +1,4 @@
-import type { ModelBuilderDraft } from '@alien-form/cms';
+import type { ModelBuilderDraft } from "../types";
 import { Card, Col, Form, Input, InputNumber, Row, Select, Typography } from 'antd';
 
 interface ModelMetaFormProps {

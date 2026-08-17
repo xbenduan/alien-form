@@ -1,7 +1,12 @@
 import { useMemo, type FC } from "react";
-import type { CmsModelSchema, ModelActionMode, ModelActionOpenMode, ModelRecord } from "../types/record";
-import DrawerSchemaForm from "../../../shared/components/DrawerSchemaForm";
-import ModalSchemaForm from "../../../shared/components/ModalSchemaForm";
+import { DrawerSchemaForm, ModalSchemaForm } from "@alien-form/shared";
+import { map as recordSchemaHandlers } from "../../../components/handlers";
+import type {
+  CmsModelSchema,
+  ModelActionMode,
+  ModelActionOpenMode,
+  ModelRecord,
+} from "../types/record";
 
 function buildActionMeta(mode: ModelActionMode, singularLabel: string) {
   switch (mode) {
@@ -36,6 +41,7 @@ interface RecordFormFrameProps {
   open: boolean;
   openMode: Exclude<ModelActionOpenMode, "page">;
   mode: Exclude<ModelActionMode, "closed">;
+  formKey: string;
   singularLabel: string;
   schema: CmsModelSchema;
   initialValues?: ModelRecord;
@@ -50,6 +56,7 @@ const RecordFormFrame: FC<RecordFormFrameProps> = ({
   open,
   openMode,
   mode,
+  formKey,
   singularLabel,
   schema,
   initialValues,
@@ -59,7 +66,15 @@ const RecordFormFrame: FC<RecordFormFrameProps> = ({
   onSubmitAdd,
   onSubmitEdit,
 }) => {
-  const meta = useMemo(() => buildActionMeta(mode, singularLabel), [mode, singularLabel]);
+  const meta = buildActionMeta(mode, singularLabel);
+  const actions = useMemo(
+    () => ({
+      onCancel: onClose,
+      onSubmit: (values: Record<string, unknown>) =>
+        mode === "add" ? onSubmitAdd(values) : onSubmitEdit(values),
+    }),
+    [mode, onClose, onSubmitAdd, onSubmitEdit],
+  );
 
   if (openMode === "modal") {
     return (
@@ -69,12 +84,13 @@ const RecordFormFrame: FC<RecordFormFrameProps> = ({
         width={meta.modalWidth}
         mode={mode}
         schema={schema}
+        formKey={formKey}
         initialValues={initialValues}
+        handlers={recordSchemaHandlers}
+        actions={actions}
         loading={loading}
         submitting={submitting}
         onClose={onClose}
-        onSubmitAdd={onSubmitAdd}
-        onSubmitEdit={onSubmitEdit}
       />
     );
   }
@@ -86,12 +102,13 @@ const RecordFormFrame: FC<RecordFormFrameProps> = ({
       width={meta.drawerWidth}
       mode={mode}
       schema={schema}
+      formKey={formKey}
       initialValues={initialValues}
+      handlers={recordSchemaHandlers}
+      actions={actions}
       loading={loading}
       submitting={submitting}
       onClose={onClose}
-      onSubmitAdd={onSubmitAdd}
-      onSubmitEdit={onSubmitEdit}
     />
   );
 };

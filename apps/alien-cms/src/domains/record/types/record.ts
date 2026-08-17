@@ -6,43 +6,22 @@ export type {
   ModelSummary,
   ModelActionKind,
   ModelActionOpenMode,
+  ValueFormat,
+} from "../../model";
+export type {
   ModelRecord,
   ModelRecord as BaseModelRecord,
-  ValueFormat,
-  FilterOperator,
-} from '@alien-form/cms';
-import type { CmsFieldSchema, CmsModelSchema, ModelActionKind, ModelRecord } from '@alien-form/cms';
+} from "../../../data";
+export type { FilterOperator } from "../../../data/types/common";
+export type { TableColumnProjection } from "@alien-form/shared";
+export type { FilterFieldProjection } from "../projection";
+import type {
+  CmsModelSchema,
+  ModelActionKind,
+} from "../../model";
+import type { ModelRecord } from "../../../data";
 
 export type ModelActionMode = 'closed' | ModelActionKind;
-
-export interface TableColumnProjection {
-  key: string;
-  title: string;
-  width?: number;
-  ellipsis?: boolean;
-  format?: string;
-  dataSource?: CmsFieldSchema['dataSource'];
-  inline?: string[];
-  expandable?: boolean;
-  visible?: boolean;
-  defaultVisible?: boolean;
-  order: number;
-  field: CmsFieldSchema;
-  type?: CmsFieldSchema['type'];
-}
-
-export interface FilterFieldProjection {
-  key: string;
-  path: string;
-  title: string;
-  component?: string;
-  operator?: string;
-  props?: Record<string, unknown>;
-  dataSource?: Array<{ label: string; value: unknown }>;
-  defaultVisible: boolean;
-  order: number;
-  field: CmsFieldSchema;
-}
 
 export interface RecordRouteState {
   mode: ModelActionMode;

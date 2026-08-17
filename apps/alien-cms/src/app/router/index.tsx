@@ -1,24 +1,14 @@
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
-import { Spin } from "antd";
-import WorkbenchLayout from "../layout/WorkbenchLayout";
+import type { BrowserRouterProps } from "react-router-dom";
 import { buildRecordPath } from "./paths";
-import { useModelSummaries } from "../../hooks/use-schema-store";
+import WorkbenchLayout from "../layout/WorkbenchLayout";
 import { staticRoutes, recordRoutes } from "./routes";
 import type { RecordRouteState } from "../../domains/record/types/record";
 
-function HomeRedirect() {
-  const modelSummariesQuery = useModelSummaries();
-  if (modelSummariesQuery.isLoading) {
-    return (
-      <div style={{ display: "flex", justifyContent: "center", padding: 48 }}>
-        <Spin size="large" />
-      </div>
-    );
-  }
-
-  const defaultModelName = modelSummariesQuery.data?.[0]?.name ?? "nail-booking";
-  return <Navigate replace to={buildRecordPath(defaultModelName)} />;
-}
+export const routerFutureConfig = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+} satisfies NonNullable<BrowserRouterProps["future"]>;
 
 function resolveRouteAction(routeAction: RecordRouteState, recordId?: string): RecordRouteState {
   if (routeAction.mode === "add") {
@@ -36,11 +26,9 @@ function resolveRouteAction(routeAction: RecordRouteState, recordId?: string): R
  */
 function RoutedRecordPage({
   routeAction,
-  pageType,
   Component,
 }: {
   routeAction: RecordRouteState;
-  pageType: "list" | "action";
   Component: React.LazyExoticComponent<React.ComponentType<any>>;
 }) {
   const navigate = useNavigate();
@@ -61,10 +49,10 @@ function RoutedRecordPage({
 
 export function AppRouter() {
   return (
-    <BrowserRouter>
+    <BrowserRouter future={routerFutureConfig}>
       <Routes>
         <Route path="/" element={<WorkbenchLayout />}>
-          <Route index element={<HomeRedirect />} />
+          <Route index element={<Navigate replace to="/models" />} />
 
           {/* Static routes auto-generated from route config */}
           {staticRoutes.map((route) => (
@@ -83,14 +71,13 @@ export function AppRouter() {
               element={
                 <RoutedRecordPage
                   routeAction={route.props?.routeAction ?? { mode: "closed" }}
-                  pageType={route.props?.pageType ?? "list"}
                   Component={route.component}
                 />
               }
             />
           ))}
 
-          <Route path="*" element={<HomeRedirect />} />
+          <Route path="*" element={<Navigate replace to="/models" />} />
         </Route>
       </Routes>
     </BrowserRouter>

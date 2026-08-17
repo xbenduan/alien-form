@@ -1,7 +1,7 @@
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import type { BuilderReactionTarget, ModelBuilderReactionDraft } from '@alien-form/cms';
+import type { BuilderReactionTarget, ModelBuilderReactionDraft } from "../types";
 import { Button, Empty, Input, Select, Space, Typography } from 'antd';
-import { getHandlerMeta, getHandlerOptions } from '../../../shared/handlers';
+import { getHandlerMeta, getHandlerOptions } from "../../../components/handlers";
 
 const reactionTargetOptions: Array<{ label: string; value: BuilderReactionTarget }> = [
   { label: 'value', value: 'value' },

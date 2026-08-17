@@ -18,7 +18,7 @@
   <a href="./pnpm-workspace.yaml"><img alt="Package Manager" src="https://img.shields.io/badge/pnpm-9.15.0-F69220.svg" /></a>
   <a href="./packages/core/README.md"><img alt="Core" src="https://img.shields.io/badge/core-headless-7C3AED.svg" /></a>
   <a href="./packages/react/README.md"><img alt="React" src="https://img.shields.io/badge/react-18%20%7C%2019-61DAFB.svg" /></a>
-  <a href="./packages/cms/README.md"><img alt="CMS" src="https://img.shields.io/badge/cms-provider%20driven-111827.svg" /></a>
+  <a href="./packages/shared"><img alt="Shared" src="https://img.shields.io/badge/shared-scene%20components-111827.svg" /></a>
 </p>
 
 <p align="center">
@@ -34,13 +34,13 @@
   ·
   <a href="./packages/react/README.md">React</a>
   ·
-  <a href="./packages/cms/README.md">CMS</a>
+  <a href="./packages/shared">Shared</a>
 </p>
 
 ---
 
 AlienForm 不是又一个表单组件库，而是一套把“表单行为”从 UI 组件中抽离出来的运行时协议。
-它让业务可以先用 Schema 描述领域模型，再按需接入 React、CMS 管理台、远程后端或自己的渲染系统。
+它让业务可以先用 Schema 描述领域模型，再按需接入 React、通用场景组件或自己的业务应用。
 
 ## ✨ 一眼看懂
 
@@ -48,9 +48,9 @@ AlienForm 不是又一个表单组件库，而是一套把“表单行为”从 
 | --- | --- |
 | 🧠 Headless Runtime | `@alien-form/core` 只负责字段树、状态、联动、校验、格式化和提交投影，不绑定 UI。 |
 | ⚛️ React Binding | `@alien-form/react` 提供 Hook、Provider、Signal 订阅和 Schema 自动渲染。 |
-| 🧩 CMS Toolkit | `@alien-form/cms` 提供模型 Schema、Provider、CRUD API、表格/筛选/详情投影和 Builder 工具。 |
+| 🧩 Shared UI | `@alien-form/shared` 提供无业务语义的 adapters，以及表单、筛选、表格和详情场景组件。 |
 | 🔁 Scene-Driven UI | 同一份 Schema 可以投影到新增、编辑、详情、表格、筛选和移动端卡片等场景。 |
-| 🔌 Provider Oriented | 本地内存 Demo 与远程 REST 后端使用同一套 Provider 契约。 |
+| 🖥️ App-Owned Business | `apps/alien-cms` 自己维护模型协议、Provider、CRUD、Builder 和多场景投影。 |
 | 🛡️ Restricted Expression | 表达式运行时避免 `eval` / `new Function`，用受限语法承载安全的字段联动。 |
 
 ## 📚 目录
@@ -81,11 +81,11 @@ AlienForm 的立意是：把这些易碎的隐性约定沉淀成一份清晰、�
 ## 🚀 核心能力
 
 - **Headless First**：`@alien-form/core` 不依赖 React，不关心组件库，只负责字段树、状态、校验、联动和提交投影。
-- **Schema As Contract**：Schema 同时是表单结构、运行时规则、CMS 模型和跨场景渲染的单一事实来源。
+- **Schema As Contract**：Schema 同时是表单结构、运行时规则、业务模型和跨场景渲染的单一事实来源。
 - **Runtime Value Model**：表达式、handler、函数和字面量共享同一套运行时值协议，避免分裂的 DSL。
-- **Scene-Driven UI**：CMS 场景下，组件通过 meta 声明自己在表单、详情、表格、筛选中的渲染策略。
-- **Provider Oriented**：CMS 数据访问通过 Provider 抽象，既能本地内存 Demo，也能连接远程 REST 后端。
-- **Composable Packages**：你可以只使用核心表单运行时，也可以组合 React 绑定和 CMS 能力构建完整后台。
+- **Scene-Driven UI**：shared 接收应用投影后的通用 Schema 和 actions，渲染表单、详情、表格与筛选。
+- **App-Owned Business**：CMS 模型、`x-model` / `x-cms`、Provider 和 CRUD 都留在应用域内。
+- **Composable Packages**：你可以只使用核心表单运行时，也可以组合 React 绑定和 shared 场景组件。
 
 ## 🎯 适合什么场景
 
@@ -101,15 +101,14 @@ AlienForm 的立意是：把这些易碎的隐性约定沉淀成一份清晰、�
 | --- | --- | --- |
 | 🧠 `@alien-form/core` | 无头表单运行时，负责 Schema 解析、字段树、Signal 状态、联动、校验和提交投影。 | [`packages/core`](./packages/core/README.md) |
 | ⚛️ `@alien-form/react` | React 绑定层，提供 `useCreateForm`、`FormProvider`、`SchemaField` 和字段状态 Hooks。 | [`packages/react`](./packages/react/README.md) |
-| 🧩 `@alien-form/cms` | CMS 核心能力，提供模型 Schema、Provider、CRUD API、场景投影和 Builder 工具函数。 | [`packages/cms`](./packages/cms/README.md) |
+| 🧩 `@alien-form/shared` | 通用 UI 层，提供 adapters 和表单、筛选、表格、详情场景组件，不包含 CMS 业务协议。 | [`packages/shared`](./packages/shared) |
 
 ## 🏗️ 应用目录
 
 | App | Role |
 | --- | --- |
-| 🖥️ `apps/alien-cms` | 基于三个包组合出的本地 CMS 工作台，用于模型管理、记录管理和运行时验证。 |
-| ☁️ `apps/server-cloudflare` | 面向 Cloudflare Workers 的后端示例，提供 Schema、Record、Log、Auth 等 API。 |
-| 📖 `apps/docs` | 文档站目录。 |
+| 🖥️ `apps/alien-cms` | 组合 core、react、shared 的 CMS 工作台，并拥有模型、Provider、CRUD、Builder 和投影逻辑。 |
+| 📊 `apps/benchmark` | AlienForm 与 Formily 的渲染基准应用。 |
 
 ## ⚡ 快速开始
 
@@ -222,29 +221,27 @@ AlienForm 的 Schema 基于对象树描述字段，并增加少量运行时扩�
 
 ```text
 ┌────────────────────────────────────────────────────────────┐
-│ apps/alien-cms                                             │
-│ CMS workbench, model builder, record management             │
-└───────────────┬───────────────────────────────┬────────────┘
-                │                               │
-┌───────────────▼──────────────┐   ┌────────────▼────────────┐
-│ @alien-form/react             │   │ @alien-form/cms          │
-│ React hooks and schema render │   │ providers and projection │
-└───────────────┬──────────────┘   └────────────┬────────────┘
-                │                               │
-                └───────────────┬───────────────┘
-                                │
-                   ┌────────────▼────────────┐
-                   │ @alien-form/core         │
-                   │ headless form runtime    │
-                   └─────────────────────────┘
+│ apps/alien-cms                                              │
+│ CMS models, providers, CRUD, builder and projections        │
+└─────────────────────────────┬───────────────────────────────┘
+                              │ projection + actions
+                  ┌───────────▼────────────┐
+                  │ @alien-form/shared      │
+                  │ generic scene UI        │
+                  └───────────┬────────────┘
+                              │
+              ┌───────────────▼───────────────┐
+              │ @alien-form/react + core       │
+              │ React binding + form runtime   │
+              └───────────────────────────────┘
 ```
 
 ## 🧱 子包导读
 
 - 想理解字段树、联动、校验、格式化、表达式和提交投影：阅读 [`packages/core/README.md`](./packages/core/README.md)。
 - 想在 React 中渲染 Schema、订阅字段状态、接入自己的组件库：阅读 [`packages/react/README.md`](./packages/react/README.md)。
-- 想做模型管理、记录 CRUD、本地/HTTP Provider、表格/筛选投影：阅读 [`packages/cms/README.md`](./packages/cms/README.md)。
-- 想理解 CMS 的场景驱动组件设计：阅读 [`docs/scene-driven-architecture.zh-CN.md`](./docs/scene-driven-architecture.zh-CN.md)。
+- 想复用通用表单、筛选、表格和详情组件：阅读 [`packages/shared`](./packages/shared)。
+- 想理解模型管理、记录 CRUD、本地/HTTP Provider 和业务投影：阅读 [`apps/alien-cms`](./apps/alien-cms/README.md)。
 
 ## 🛠️ 开发命令
 
@@ -256,12 +253,13 @@ AlienForm 的 Schema 基于对象树描述字段，并增加少量运行时扩�
 | `pnpm test:core` | 只运行 `@alien-form/core` 测试。 |
 | `pnpm build:core` | 只构建 `@alien-form/core`。 |
 | `pnpm build:react` | 只构建 `@alien-form/react`。 |
+| `pnpm check:boundaries` | 检查 shared 业务边界和已删除包的残留引用。 |
 | `pnpm lint` | 运行 Oxlint。 |
 | `pnpm format` | 使用 Oxfmt 格式化项目。 |
 
 ## 🚧 项目状态
 
-AlienForm 当前处于快速演进阶段，核心运行时、React 绑定和 CMS 抽象已经具备可组合能力。
+AlienForm 当前处于快速演进阶段，核心运行时、React 绑定、shared 通用 UI 和 CMS 应用已经具备可组合能力。
 如果你准备在生产环境中使用，建议优先锁定 Schema 协议和包版本，并用项目内测试覆盖关键业务 Schema。
 
 ## 📄 License

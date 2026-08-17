@@ -6,9 +6,9 @@ AlienForm 是一个以 Schema 驱动的表单工作区，采用 pnpm monorepo �
 
 - `packages/core`: 无头表单运行时内核
 - `packages/react`: `core` 的 React 绑定层
-- `packages/cms`: 面向 CMS 场景的 Schema 和 Provider 能力
-- `apps/alien-cms`: 本地 CMS 应用
-- `apps/server-cloudflare`: Cloudflare 后端服务
+- `packages/shared`: 无 CMS 业务语义的通用 adapters 与场景组件
+- `apps/alien-cms`: 拥有模型、Provider、CRUD、Builder 和投影逻辑的 CMS 应用
+- `apps/benchmark`: AlienForm 与 Formily 的渲染基准应用
 
 ## 当前协议
 

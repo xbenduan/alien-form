@@ -2,13 +2,12 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App as AntdApp } from 'antd';
 import {
+  createLocalProviders,
   createProviders,
   initProvider,
-  LocalRecordProvider,
-  LocalSchemaProvider,
   registerProvider,
-} from '@alien-form/cms';
-import type { AlienCmsConfig } from '@alien-form/cms';
+} from '../../data';
+import type { AlienCmsConfig } from '../../data';
 import { AppProviders } from '../providers';
 import { AppRouter } from '../router';
 import '../../index.css';
@@ -19,16 +18,21 @@ function registerBuiltinProviders() {
     return {
       schema: providers.schemaProvider,
       record: providers.recordProvider,
+      log: providers.logProvider,
     };
   });
 }
 
 registerBuiltinProviders();
 
-initProvider(({ seedDemo }: { seedDemo?: boolean }) => ({
-  schema: new LocalSchemaProvider({ seedDemo }),
-  record: new LocalRecordProvider({ seedDemo }),
-}));
+initProvider(({ seedDemo }: { seedDemo?: boolean }) => {
+  const providers = createLocalProviders({ seedDemo });
+  return {
+    schema: providers.schemaProvider,
+    record: providers.recordProvider,
+    log: providers.logProvider,
+  };
+});
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

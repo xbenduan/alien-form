@@ -1,8 +1,5 @@
-import type {
-  CmsFieldSchema,
-  CmsModelSchema,
-  TableColumnProjection,
-} from "../../../record/types/record";
+import type { TableColumnProjection } from "../../../record/types/record";
+import type { CmsFieldSchema, CmsModelSchema } from "../../types";
 
 export const SOURCE_OPTIONS = [
   { label: "静态", value: "static" },

@@ -2,19 +2,17 @@ import { useMemo, useState } from "react";
 import { Button, Card, Col, Descriptions, Drawer, Empty, Flex, Row, Select, Tag, Typography } from "antd";
 
 import { useQuery } from "@tanstack/react-query";
-import { getCurrentProviderSnapshot, createProviders } from "@alien-form/cms";
-import type { LogEntry, LogListParams } from "@alien-form/cms";
-import type { AlienCmsConfig } from "@alien-form/cms";
+import { getCurrentProviderSnapshot, listLogs } from "../../../../data";
+import type { LogEntry, LogListParams } from "../../../../data";
 
-import { SchemaFilterBody } from "../../../../shared/schema-filter-scene";
-import { ProTable } from "../../../../shared/components/ProTable";
-import type { ModelRecord } from "../../../record/types/record";
+import { SchemaFilter, SchemaTable } from "@alien-form/shared";
 import {
   ACTION_LABELS,
   filterDefaultVisibleKeys,
   filterSchema,
   tableColumns,
 } from "./schema";
+import { map as recordSchemaHandlers } from "../../../../components/handlers";
 
 function useLogList(params: LogListParams) {
   return useQuery({
@@ -24,8 +22,7 @@ function useLogList(params: LogListParams) {
       if (!snapshot || snapshot.type !== "http") {
         return { list: [], total: 0 };
       }
-      const providers = createProviders(snapshot.config as AlienCmsConfig);
-      return providers.logProvider.list(params);
+      return listLogs(params);
     },
     placeholderData: (prev) => prev,
   });
@@ -96,35 +93,39 @@ export default function LogPage() {
   return (
     <Flex vertical gap={16}>
       <Card className="model-query-card" styles={{ body: { padding: 16 } }}>
-        <SchemaFilterBody
-          schema={filterSchema}
+        <SchemaFilter
+          projection={{
+            schema: filterSchema,
+            defaultVisibleKeys: filterDefaultVisibleKeys,
+          }}
           initialValues={filterInitialValues}
+          handlers={recordSchemaHandlers}
           loading={isLoading}
-          defaultVisibleKeys={filterDefaultVisibleKeys}
-          onSearch={(values) => {
-            const action = (values.action as string | undefined) || undefined;
-            const modelName = (values.modelName as string | undefined) || undefined;
-            const start = values.dateStart as string | undefined;
-            const end = values.dateEnd as string | undefined;
-            setFilterAction(action);
-            setFilterModel(modelName);
-            if (start && end) {
-              setDateRange({
-                start: new Date(start).toISOString(),
-                end: new Date(end).toISOString(),
-              });
-            } else {
-              setDateRange(undefined);
-            }
-            setPagination((p) => ({ ...p, current: 1 }));
+          actions={{
+            onSearch: (values) => {
+              const action = (values.action as string | undefined) || undefined;
+              const modelName = (values.modelName as string | undefined) || undefined;
+              const start = values.dateStart as string | undefined;
+              const end = values.dateEnd as string | undefined;
+              setFilterAction(action);
+              setFilterModel(modelName);
+              if (start && end) {
+                setDateRange({
+                  start: new Date(start).toISOString(),
+                  end: new Date(end).toISOString(),
+                });
+              } else {
+                setDateRange(undefined);
+              }
+              setPagination((current) => ({ ...current, current: 1 }));
+            },
           }}
         />
       </Card>
 
-      <ProTable
-        schema={filterSchema}
+      <SchemaTable
         columns={tableColumns}
-        dataSource={(data?.list ?? []) as unknown as ModelRecord[]}
+        dataSource={(data?.list ?? []) as unknown as Record<string, unknown>[]}
         loading={isLoading}
         total={data?.total ?? 0}
         rowKey="id"
@@ -140,8 +141,10 @@ export default function LogPage() {
             pageSize: nextPagination.pageSize ?? pagination.pageSize,
           });
         }}
-        onRefresh={() => {
-          refetch();
+        actions={{
+          onRefresh: () => {
+            void refetch();
+          },
         }}
         actionsColumn={{
           title: "操作",
@@ -165,7 +168,7 @@ export default function LogPage() {
         title="日志详情"
         open={Boolean(detailEntry)}
         onClose={() => setDetailEntry(null)}
-        width={520}
+        size={520}
       >
         {detailEntry ? (
           <Flex vertical gap={20}>
