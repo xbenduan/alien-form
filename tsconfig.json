@@ -13,9 +13,5 @@
     "lib": ["ES2020"]
   },
   "files": [],
-  "references": [
-    { "path": "./apps/demo" },
-    { "path": "./packages/core" },
-    { "path": "./packages/ui" }
-  ]
+  "references": [{ "path": "./packages/core" }, { "path": "./packages/react" }]
 }
