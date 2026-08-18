@@ -1,6 +1,5 @@
 import type React from "react";
 import { defineAdapter } from "../adapter";
-import { Card, Typography } from "antd";
 
 function SectionCard({
   title,
@@ -12,13 +11,11 @@ function SectionCard({
   children?: React.ReactNode;
 }) {
   return (
-    <Card
-      className="schema-section-card"
-      title={title}
-      extra={description ? <Typography.Text type="secondary">{description}</Typography.Text> : null}
-    >
-      {children}
-    </Card>
+    <fieldset className="schema-section-card">
+      {title ? <legend className="schema-section-card-title">{title}</legend> : null}
+      {description ? <div className="schema-section-card-description">{description}</div> : null}
+      <div className="schema-section-card-content">{children}</div>
+    </fieldset>
   );
 }
 

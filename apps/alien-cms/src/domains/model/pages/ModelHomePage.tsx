@@ -64,6 +64,7 @@ export default function ModelHomePage() {
         <div className="model-home-search">
           <Input
             allowClear
+            size="large"
             prefix={<SearchOutlined />}
             placeholder="搜索模型名称、标题或描述"
             value={keyword}
@@ -74,6 +75,7 @@ export default function ModelHomePage() {
 
         <Button
           type="primary"
+          size="large"
           icon={<AppstoreAddOutlined />}
           onClick={() => navigate(buildModelNewPath())}
         >
