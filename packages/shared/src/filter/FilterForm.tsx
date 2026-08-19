@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import type { FormInstance } from "@alien-form/react";
 import { Button, Space } from "antd";
-import { DownOutlined, UpOutlined } from "@ant-design/icons";
 import type { SchemaConfig, SchemaHandlers, SchemaRecord } from "../types";
 import { SchemaRenderer } from "../components/SchemaRenderer";
 import { useFilterFields } from "./use-filter-fields";
@@ -47,6 +46,7 @@ export function FilterForm({
           mode="edit"
           schema={filterSchema}
           formKey="filter"
+          preserveValuesOnRebuild
           initialValues={initialValuesRef.current}
           handlers={handlers}
           onFormReady={(form) => {
@@ -57,11 +57,7 @@ export function FilterForm({
       <div className="af-filter-actions">
         <Space>
           {hasExtraFields ? (
-            <Button
-              type="link"
-              icon={expanded ? <UpOutlined /> : <DownOutlined />}
-              onClick={() => setExpanded((current) => !current)}
-            >
+            <Button type="link" onClick={() => setExpanded((current) => !current)}>
               {expanded ? "收起" : "展开"}
             </Button>
           ) : null}

@@ -72,6 +72,10 @@
   font-size: 13px;
 }
 
+.af-filter-item .ant-switch {
+  align-self: flex-start;
+}
+
 .af-filter-item .ant-select,
 .af-filter-item .ant-input,
 .af-filter-item .ant-input-number,
