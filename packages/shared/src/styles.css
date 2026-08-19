@@ -234,6 +234,10 @@
   min-width: 0;
 }
 
+.af-filter-collapsed .af-filter-fields .af-filter-item:nth-child(n + 5) {
+  display: none;
+}
+
 .af-filter-actions {
   display: flex;
   justify-content: flex-end;

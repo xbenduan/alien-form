@@ -1,7 +1,7 @@
 import type { IFieldSchema, IFormSchema } from "@alien-form/react";
 import type { SchemaConfig, TableColumn } from "../types";
 import { getComponentMeta } from "./component-meta";
-import { collectLeafFields, getChildProperties, isComplexField } from "./schema";
+import { collectLeafFields, isComplexField } from "./schema";
 import { multiValueFormat } from "./multi-value";
 
 interface TableMeta {
@@ -149,6 +149,9 @@ export function buildFilterSchema(config: SchemaConfig): IFormSchema {
       ...rest,
       title: field.title ?? key,
       decorator: "FilterItem",
+      ...(field.component === "Textarea"
+        ? { props: { ...field.props, rows: 1 } }
+        : {}),
       ...(meta?.multiValue ? { type: "string", "x-format": multiValueFormat } : {}),
     };
   }

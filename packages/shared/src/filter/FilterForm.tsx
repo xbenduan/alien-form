@@ -1,6 +1,7 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { FormInstance } from "@alien-form/react";
 import { Button, Space } from "antd";
+import { DownOutlined, UpOutlined } from "@ant-design/icons";
 import type { SchemaConfig, SchemaHandlers, SchemaRecord } from "../types";
 import { SchemaRenderer } from "../components/SchemaRenderer";
 import { useFilterFields } from "./use-filter-fields";
@@ -28,9 +29,11 @@ export function FilterForm({
   onSearch,
   onReset,
 }: FilterFormProps) {
-  const { schema: filterSchema } = useFilterFields(schema);
+  const { schema: filterSchema, leaves } = useFilterFields(schema);
   const formRef = useRef<FormInstance | null>(null);
   const initialValuesRef = useRef(dataSource);
+  const [expanded, setExpanded] = useState(false);
+  const hasExtraFields = leaves.length > 4;
 
   const handleReset = () => {
     formRef.current?.reset();
@@ -38,7 +41,7 @@ export function FilterForm({
   };
 
   return (
-    <div className="af-filter">
+    <div className={`af-filter${expanded || !hasExtraFields ? "" : " af-filter-collapsed"}`}>
       <div className="af-filter-fields">
         <SchemaRenderer
           mode="edit"
@@ -53,8 +56,21 @@ export function FilterForm({
       </div>
       <div className="af-filter-actions">
         <Space>
+          {hasExtraFields ? (
+            <Button
+              type="link"
+              icon={expanded ? <UpOutlined /> : <DownOutlined />}
+              onClick={() => setExpanded((current) => !current)}
+            >
+              {expanded ? "收起" : "展开"}
+            </Button>
+          ) : null}
           <Button onClick={handleReset}>重置</Button>
-          <Button type="primary" loading={loading} onClick={() => onSearch(formRef.current?.values() ?? {})}>
+          <Button
+            type="primary"
+            loading={loading}
+            onClick={() => onSearch(formRef.current?.values() ?? {})}
+          >
             {searchText}
           </Button>
         </Space>
