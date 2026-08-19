@@ -60,19 +60,21 @@ export default function RecordActionPage({ mode }: RecordActionPageProps) {
           updateRecord={mutations.updateRecord}
         />
       </div>
-      <div className={styles.footer}>
-        <Space>
-          <Button onClick={backToList}>返回</Button>
-          {mode === "detail" ? null : (
-            <Button
-              type="primary"
-              loading={mutations.submitting}
-              onClick={() => formRef.current?.submit()}
-            >
-              {mode === "add" ? "创建" : "保存"}
-            </Button>
-          )}
-        </Space>
+      <div className={styles.footerRoot}>
+        <div className={styles.footer}>
+          <Space>
+            <Button onClick={backToList}>返回</Button>
+            {mode === "detail" ? null : (
+              <Button
+                type="primary"
+                loading={mutations.submitting}
+                onClick={() => formRef.current?.submit()}
+              >
+                {mode === "add" ? "创建" : "保存"}
+              </Button>
+            )}
+          </Space>
+        </div>
       </div>
     </Flex>
   );

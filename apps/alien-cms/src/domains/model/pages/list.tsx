@@ -1,5 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+} from "@ant-design/icons";
 import { App, Button, Flex, Popconfirm, Space, Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { PageBreadcrumb, PageError, PageLoading } from "../../../components";
@@ -43,7 +49,15 @@ export default function ModelListPage() {
       key: "actions",
       width: 180,
       render: (_, record) => (
-        <Space size={4}>
+        <Space size={4} wrap>
+          <Button
+            type="link"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => navigate(recordListPath(record.name))}
+          >
+            详情
+          </Button>
           <Button
             type="link"
             size="small"
