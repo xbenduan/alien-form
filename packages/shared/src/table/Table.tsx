@@ -77,6 +77,7 @@ export function Table({
     <div className="af-table">
       {toolbar ? <div className="af-table-toolbar">{toolbar}</div> : null}
       <AntTable<SchemaRecord>
+        style={{ marginInline: 16 }}
         rowKey={rowKey}
         columns={finalColumns}
         dataSource={dataSource}

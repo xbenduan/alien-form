@@ -30,6 +30,7 @@ export function FilterForm({
 }: FilterFormProps) {
   const { schema: filterSchema } = useFilterFields(schema);
   const formRef = useRef<FormInstance | null>(null);
+  const initialValuesRef = useRef(dataSource);
 
   const handleReset = () => {
     formRef.current?.reset();
@@ -42,7 +43,8 @@ export function FilterForm({
         <SchemaRenderer
           mode="edit"
           schema={filterSchema}
-          initialValues={dataSource}
+          formKey="filter"
+          initialValues={initialValuesRef.current}
           handlers={handlers}
           onFormReady={(form) => {
             formRef.current = form;

@@ -1,12 +1,12 @@
 import { useNavigate } from "react-router-dom";
-import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
-import { App, Button, Card, Flex, Popconfirm, Space, Table, Typography } from "antd";
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
+import { App, Button, Flex, Popconfirm, Space, Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { PageError, PageLoading } from "../../components";
-import { useModelSummaries, useSchemaMutations } from "../../hooks";
-import type { ModelSummary } from "../../services";
-import { modelAddPath, modelEditPath, recordListPath } from "../../app/router/paths";
-import styles from "./index.module.css";
+import { PageError, PageLoading } from "../../../components";
+import { useModelSummaries, useSchemaMutations } from "../../../hooks";
+import type { ModelSummary } from "../../../services";
+import { modelAddPath, modelEditPath, recordListPath } from "../../../app/router/paths";
+import styles from "./list.module.css";
 
 /** 模型列表页：管理所有模型（进入数据、编辑、删除）。 */
 export default function ModelListPage() {
@@ -74,23 +74,25 @@ export default function ModelListPage() {
 
   return (
     <Flex vertical gap={16}>
-      <div className={styles.header}>
-        <Typography.Title level={4} className={styles.title}>
-          模型管理
-        </Typography.Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate(modelAddPath())}>
-          新增模型
-        </Button>
-      </div>
-      <Card styles={{ body: { padding: 0 } }}>
+      <div className={styles.tableCard}>
+        <div className={styles.toolbar}>
+          <span className={styles.toolbarTitle}>模型管理</span>
+          <Space>
+            <Button icon={<ReloadOutlined />} onClick={() => query.refetch()} aria-label="刷新" />
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate(modelAddPath())}>
+              新增模型
+            </Button>
+          </Space>
+        </div>
         <Table<ModelSummary>
           rowKey="name"
+          style={{ marginInline: 16 }}
           columns={columns}
           dataSource={query.data ?? []}
-          loading={mutations.deleting}
+          loading={query.isFetching || mutations.deleting}
           pagination={false}
         />
-      </Card>
+      </div>
     </Flex>
   );
 }

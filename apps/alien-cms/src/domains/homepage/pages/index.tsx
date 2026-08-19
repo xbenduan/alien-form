@@ -7,10 +7,10 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 import { Empty, Input, Tooltip, Typography } from "antd";
-import { PageError, PageLoading } from "../../components";
-import { useModelSummaries } from "../../hooks";
-import type { ModelSummary } from "../../services";
-import { recordListPath, modelAddPath } from "../../app/router/paths";
+import { PageError, PageLoading } from "../../../components";
+import { useModelSummaries } from "../../../hooks";
+import type { ModelSummary } from "../../../services";
+import { recordListPath, modelAddPath } from "../../../app/router/paths";
 import styles from "./index.module.css";
 
 function ModelCard({ model, onClick }: { model: ModelSummary; onClick: () => void }) {
@@ -58,7 +58,11 @@ export default function HomePage() {
           </span>
           <div>
             <Typography.Text className={styles.kicker}>ALIEN CMS</Typography.Text>
-            <Typography.Title level={4} className={styles.brandTitle}>
+            <Typography.Title
+              level={4}
+              className={styles.brandTitle}
+              style={{ marginTop: 0, marginBottom: 0 }}
+            >
               模型工作台
             </Typography.Title>
           </div>
@@ -77,11 +81,7 @@ export default function HomePage() {
           />
           <span className={styles.count}>{filtered.length} 个模型</span>
         </div>
-        <button
-          type="button"
-          className={styles.addButton}
-          onClick={() => navigate(modelAddPath())}
-        >
+        <button type="button" className={styles.addButton} onClick={() => navigate(modelAddPath())}>
           <AppstoreAddOutlined />
           <span>新增模型</span>
         </button>

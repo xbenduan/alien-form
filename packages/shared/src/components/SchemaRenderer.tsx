@@ -1,6 +1,6 @@
 import { useCreateForm, FormProvider, SchemaField } from "@alien-form/react";
 import type { FormInstance, IFormSchema } from "@alien-form/react";
-import { useMemo } from "react";
+import { useEffect } from "react";
 import type { FieldMode, SchemaHandlers, SchemaRecord } from "../types";
 import { FieldModeScope } from "./field-mode";
 import { fieldComponents, fieldDecorators } from "./registry";
@@ -28,7 +28,9 @@ export function SchemaRenderer({
   onFormReady,
 }: SchemaRendererProps) {
   const form = useCreateForm({ schema, initialValues, handlers }, [mode, schema, formKey]);
-  useMemo(() => onFormReady?.(form), [form, onFormReady]);
+  useEffect(() => {
+    onFormReady?.(form);
+  }, [form, onFormReady]);
 
   return (
     <FieldModeScope value={mode}>

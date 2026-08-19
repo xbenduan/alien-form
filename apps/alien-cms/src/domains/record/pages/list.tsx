@@ -1,5 +1,11 @@
 import { useParams } from "react-router-dom";
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+} from "@ant-design/icons";
 import { App, Button, Card, Flex, Popconfirm, Space } from "antd";
 import { FilterForm, Table } from "@alien-form/shared";
 import type { Pagination, Sorter } from "../../../services";
