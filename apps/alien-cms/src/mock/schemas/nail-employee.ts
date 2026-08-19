@@ -14,7 +14,7 @@ export const nailEmployeeSchema: ModelSchema = {
     pluralLabel: "员工",
     defaultPageSize: 5,
     filterCount: 3,
-    openMode: { add: "drawer", edit: "page", detail: "drawer" },
+    openMode: { add: "drawer", edit: "page", detail: "modal" },
   },
   properties: {
     employeeName: {
@@ -142,7 +142,7 @@ export const nailEmployeeSchema: ModelSchema = {
     },
     {
       component: "GridLayout",
-      keys: ["serviceIds", "skills", "editablePermissions"],
+      keys: ["serviceIds", "skills"],
       props: { gridSpan: 12, title: "能力与权限" },
     },
   ],

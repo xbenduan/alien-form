@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { QuestionCircleOutlined } from "@ant-design/icons";
 import type { FieldError, ValidateStatus } from "@alien-form/react";
 import { Tooltip } from "antd";
+import { useFieldMode } from "./field-mode";
 
 interface FormItemProps {
   label?: string;
@@ -21,6 +22,7 @@ export function FormItem({
   validateStatus,
   children,
 }: FormItemProps) {
+  const mode = useFieldMode();
   const hasError = validateStatus === "error" || errors.length > 0;
   const helpText = errors.map((error) => error.message).join("；");
 
@@ -28,7 +30,7 @@ export function FormItem({
     <div className={`af-form-item${hasError ? " af-form-item-error" : ""}`}>
       {label ? (
         <div className="af-form-item-label">
-          {required ? <span className="af-form-item-required">*</span> : null}
+          {required && mode !== "detail" ? <span className="af-form-item-required">*</span> : null}
           <span className="af-form-item-label-text">{label}</span>
           {description ? (
             <Tooltip title={description}>
@@ -51,7 +53,7 @@ export function FormItem({
 export function FilterItem({ label, children }: { label?: string; children?: ReactNode }) {
   return (
     <div className="af-filter-item">
-      {label ? <span className="af-filter-item-label">{label}</span> : null}
+      {label ? <span className="af-filter-item-label">{label}：</span> : null}
       {children}
     </div>
   );

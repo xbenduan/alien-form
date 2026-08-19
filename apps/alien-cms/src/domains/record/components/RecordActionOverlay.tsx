@@ -74,6 +74,7 @@ export function RecordActionOverlay({
   if (overlay?.openMode === "modal") {
     return (
       <Modal
+        centered
         open={open}
         title={title}
         width={720}

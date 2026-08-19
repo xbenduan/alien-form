@@ -31,7 +31,9 @@ export default function RecordActionPage({ mode }: RecordActionPageProps) {
 
   if (schemaQuery.isLoading || (mode !== "add" && detailQuery.isLoading)) return <PageLoading />;
   if (schemaQuery.error || !schema) {
-    return <PageError title="模型不存在或加载失败" description={(schemaQuery.error as Error)?.message} />;
+    return (
+      <PageError title="模型不存在或加载失败" description={(schemaQuery.error as Error)?.message} />
+    );
   }
 
   const { singularLabel } = schema.meta;
@@ -60,7 +62,7 @@ export default function RecordActionPage({ mode }: RecordActionPageProps) {
       </div>
       <div className={styles.footer}>
         <Space>
-          <Button onClick={backToList}>取消</Button>
+          <Button onClick={backToList}>返回</Button>
           {mode === "detail" ? null : (
             <Button
               type="primary"
