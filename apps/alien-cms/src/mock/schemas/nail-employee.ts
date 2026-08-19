@@ -87,9 +87,9 @@ export const nailEmployeeSchema: ModelSchema = {
     },
     editablePermissions: {
       type: "array",
-      title: "权限列表",
       component: "ArrayCards",
       order: 80,
+      props: { title: "权限列表" },
       "x-table": { width: 240 },
       items: {
         type: "object",
@@ -137,15 +137,13 @@ export const nailEmployeeSchema: ModelSchema = {
   group: [
     {
       component: "GridLayout",
-      title: "基础信息",
       keys: ["employeeName", "age", "level", "hourlyRate", "hiredAt", "active"],
-      props: { gridSpan: 8 },
+      props: { gridSpan: 8, title: "基础信息" },
     },
     {
       component: "GridLayout",
-      title: "能力与权限",
       keys: ["serviceIds", "skills", "editablePermissions"],
-      props: { gridSpan: 12 },
+      props: { gridSpan: 12, title: "能力与权限" },
     },
   ],
 };

@@ -67,9 +67,11 @@ export function buildModelSchema(draft: ModelDraft): ModelSchema {
       const gridSpan = Math.min(24, Math.max(1, Math.floor(group.gridSpan || 12)));
       return {
         component: group.component,
-        title: group.title || undefined,
         keys: group.keys,
-        props: { gridSpan },
+        props: {
+          gridSpan,
+          title: group.title || undefined,
+        },
       };
     });
 

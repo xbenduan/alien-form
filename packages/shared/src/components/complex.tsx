@@ -1,10 +1,34 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { ProfileOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Empty, Tooltip } from "antd";
 import type { FieldComponentProps } from "../types";
 import { useFieldMode } from "./field-mode";
 import { FieldDetailModal } from "./FieldDetailModal";
 import { toDisplayText } from "../utils/schema";
+
+function ComplexFieldFrame({
+  title,
+  description,
+  children,
+}: {
+  title?: string;
+  description?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <fieldset className="af-complex-field">
+      {title ? <legend className="af-complex-field-title">{title}</legend> : null}
+      {description ? <div className="af-complex-field-description">{description}</div> : null}
+      <div className="af-complex-field-body">{children}</div>
+    </fieldset>
+  );
+}
+
+function readFieldPropTitle(field: unknown): string | undefined {
+  const schema = (field as { schema?: { props?: Record<string, unknown> } } | undefined)?.schema;
+  const title = schema?.props?.title;
+  return typeof title === "string" ? title : undefined;
+}
 
 /** table 单元格中复杂字段的通用外观：摘要文本 + 详情按钮 + 详情弹窗。 */
 function TableComplexCell({
@@ -49,7 +73,12 @@ export function ObjectField(props: FieldComponentProps) {
   if (props.isTable) {
     return <TableComplexCell value={props.value} schema={props.schema} title={props.title} />;
   }
-  return <div className="af-object-field">{props.children}</div>;
+  const title = props.title ?? readFieldPropTitle(props.field);
+  return (
+    <ComplexFieldFrame title={title} description={props.description}>
+      <div className="af-object-field">{props.children}</div>
+    </ComplexFieldFrame>
+  );
 }
 
 /**
@@ -67,45 +96,50 @@ export function ArrayCards(props: FieldComponentProps) {
 
   const rows = props.rows ?? [];
   const readonly = mode === "detail";
+  const title = props.title ?? readFieldPropTitle(props.field);
 
   if (rows.length === 0) {
     return (
-      <div className="af-array-cards af-array-cards-empty">
-        <Empty description="暂无数据" style={{ paddingBlock: 16 }} />
-        {readonly ? null : (
-          <Button type="dashed" icon={<PlusOutlined />} onClick={() => props.onAdd?.()}>
-            添加一行
-          </Button>
-        )}
-      </div>
+      <ComplexFieldFrame title={title} description={props.description}>
+        <div className="af-array-cards-empty">
+          <Empty description="暂无数据" style={{ paddingBlock: 16 }} />
+          {readonly ? null : (
+            <Button type="dashed" icon={<PlusOutlined />} onClick={() => props.onAdd?.()}>
+              添加一行
+            </Button>
+          )}
+        </div>
+      </ComplexFieldFrame>
     );
   }
 
   return (
-    <div className="af-array-cards">
-      {rows.map((row, index) => (
-        <div className="af-array-card" key={props.rowNodes?.[index]?.id ?? index}>
-          <div className="af-array-card-header">
-            <span className="af-array-card-index">#{index + 1}</span>
-            {readonly ? null : (
-              <Button danger size="small" onClick={() => props.onRemove?.(index)}>
-                删除
-              </Button>
-            )}
+    <ComplexFieldFrame title={title} description={props.description}>
+      <div className="af-array-cards">
+        {rows.map((row, index) => (
+          <div className="af-array-card" key={props.rowNodes?.[index]?.id ?? index}>
+            <div className="af-array-card-header">
+              <span className="af-array-card-index">#{index + 1}</span>
+              {readonly ? null : (
+                <Button danger size="small" onClick={() => props.onRemove?.(index)}>
+                  删除
+                </Button>
+              )}
+            </div>
+            <div className="af-array-card-body">{row}</div>
           </div>
-          <div className="af-array-card-body">{row}</div>
-        </div>
-      ))}
-      {readonly ? null : (
-        <Button
-          className="af-array-card-add"
-          type="dashed"
-          icon={<PlusOutlined />}
-          onClick={() => props.onAdd?.()}
-        >
-          添加一行
-        </Button>
-      )}
-    </div>
+        ))}
+        {readonly ? null : (
+          <Button
+            className="af-array-card-add"
+            type="dashed"
+            icon={<PlusOutlined />}
+            onClick={() => props.onAdd?.()}
+          >
+            添加一行
+          </Button>
+        )}
+      </div>
+    </ComplexFieldFrame>
   );
 }

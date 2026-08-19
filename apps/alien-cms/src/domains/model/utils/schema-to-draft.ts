@@ -59,7 +59,10 @@ export function schemaToDraft(schema: ModelSchema): ModelDraft {
 
   const groups: GroupDraft[] = (schema.group ?? []).map((group) => ({
     id: uid("group"),
-    title: group.title ?? "",
+    title:
+      typeof group.props?.title === "string"
+        ? group.props.title
+        : group.title ?? "",
     component: group.component,
     keys: group.keys,
     gridSpan:
