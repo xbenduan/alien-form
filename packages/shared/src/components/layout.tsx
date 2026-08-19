@@ -22,9 +22,13 @@ export function Card({ title, description, children }: LayoutProps) {
 
 /** 栅格布局容器。 */
 export function GridLayout(props: FieldComponentProps) {
+  const gridSpan =
+    typeof props.gridSpan === "number"
+      ? Math.min(24, Math.max(1, Math.floor(props.gridSpan)))
+      : undefined;
   const columns = typeof props.columns === "number" ? props.columns : 2;
   const gutter = typeof props.gutter === "number" ? props.gutter : 16;
-  const span = Math.max(1, Math.floor(24 / columns));
+  const span = gridSpan ?? Math.max(1, Math.floor(24 / columns));
   return (
     <div className="af-grid-layout">
       {props.title ? (

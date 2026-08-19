@@ -62,6 +62,10 @@ export function schemaToDraft(schema: ModelSchema): ModelDraft {
     title: group.title ?? "",
     component: group.component,
     keys: group.keys,
+    gridSpan:
+      typeof group.props?.gridSpan === "number" && group.props.gridSpan > 0
+        ? group.props.gridSpan
+        : 12,
   }));
 
   return {
@@ -117,5 +121,11 @@ export function createFieldDraft(): FieldDraft {
 
 /** 新建分组草稿。 */
 export function createGroupDraft(): GroupDraft {
-  return { id: uid("group"), title: "新分组", component: "Card", keys: [] };
+  return {
+    id: uid("group"),
+    title: "新分组",
+    component: "GridLayout",
+    keys: [],
+    gridSpan: 12,
+  };
 }

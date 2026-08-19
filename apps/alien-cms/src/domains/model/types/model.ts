@@ -40,6 +40,8 @@ export interface GroupDraft {
   title: string;
   component: string;
   keys: string[];
+  /** GridLayout 单个字段占用的 24 栅格跨度，默认 12（一行两个）。 */
+  gridSpan: number;
 }
 
 /** 模型草稿：构建器的完整编辑态。 */

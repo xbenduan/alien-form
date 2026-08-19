@@ -1,5 +1,5 @@
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
-import { Button, Input, Select } from "antd";
+import { Button, Input, InputNumber, Select } from "antd";
 import type { FieldDraft, GroupDraft } from "../types";
 import { GROUP_COMPONENT_OPTIONS, createGroupDraft } from "../utils";
 import styles from "./GroupEditor.module.css";
@@ -37,6 +37,15 @@ export function GroupEditor({ groups, fields, onChange }: GroupEditorProps) {
               value={group.component}
               options={GROUP_COMPONENT_OPTIONS}
               onChange={(component) => patchGroup(group.id, { component })}
+            />
+            <InputNumber
+              className={styles.gridSpan}
+              min={1}
+              max={24}
+              value={group.gridSpan}
+              disabled={group.component !== "GridLayout"}
+              placeholder="跨度"
+              onChange={(gridSpan) => patchGroup(group.id, { gridSpan: gridSpan ?? 12 })}
             />
             <Button
               type="text"

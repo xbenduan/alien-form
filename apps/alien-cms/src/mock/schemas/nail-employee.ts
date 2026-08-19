@@ -136,19 +136,16 @@ export const nailEmployeeSchema: ModelSchema = {
   },
   group: [
     {
-      component: "Card",
+      component: "GridLayout",
       title: "基础信息",
-      keys: ["employeeName", "age", "level", "hourlyRate", "hiredAt"],
+      keys: ["employeeName", "age", "level", "hourlyRate", "hiredAt", "active"],
+      props: { gridSpan: 8 },
     },
     {
-      component: "Card",
+      component: "GridLayout",
       title: "能力与权限",
       keys: ["serviceIds", "skills", "editablePermissions"],
-    },
-    {
-      component: "Card",
-      title: "其他",
-      keys: ["active", "notes"],
+      props: { gridSpan: 12 },
     },
   ],
 };
