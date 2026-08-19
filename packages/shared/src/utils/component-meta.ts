@@ -22,9 +22,7 @@ export const componentMeta: Record<string, ComponentMeta> = {
   ArrayCards: { fieldType: "array", kind: "complex" },
 
   // 布局容器：仅在 form 中包裹子字段，不占数据路径
-  Card: { fieldType: "object", kind: "layout" },
   GridLayout: { fieldType: "object", kind: "layout" },
-  FlexLayout: { fieldType: "object", kind: "layout" },
 };
 
 export function getComponentMeta(component?: string): ComponentMeta | undefined {

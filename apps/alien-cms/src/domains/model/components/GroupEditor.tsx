@@ -10,7 +10,7 @@ interface GroupEditorProps {
   onChange: (groups: GroupDraft[]) => void;
 }
 
-/** 分组编辑：把顶层字段收进布局容器（Card 等），仅影响 form 渲染。 */
+/** 分组编辑：把顶层字段收进 GridLayout 容器，仅影响 form 渲染。 */
 export function GroupEditor({ groups, fields, onChange }: GroupEditorProps) {
   const fieldOptions = fields.map((field) => ({
     value: field.key,

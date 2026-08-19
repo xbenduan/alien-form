@@ -34,9 +34,7 @@ export function isContainerType(type: BuilderFieldType): boolean {
 
 /** 布局分组可用的容器组件。 */
 export const GROUP_COMPONENT_OPTIONS = [
-  { value: "Card", label: "卡片 (Card)" },
   { value: "GridLayout", label: "栅格 (GridLayout)" },
-  { value: "FlexLayout", label: "弹性 (FlexLayout)" },
 ];
 
 /** 打开方式选项。 */

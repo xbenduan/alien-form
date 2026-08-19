@@ -40,7 +40,6 @@ export {
 // components：符合 alien-form 协议的所有组件
 export {
   ArrayCards,
-  Card,
   CheckboxGroup,
   DateInput,
   DisplayValue,
@@ -49,7 +48,6 @@ export {
   fieldComponents,
   fieldDecorators,
   FilterItem,
-  FlexLayout,
   FormItem,
   GridLayout,
   Input,

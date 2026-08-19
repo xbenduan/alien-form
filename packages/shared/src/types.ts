@@ -13,7 +13,7 @@ export type SchemaRecord = Record<string, unknown>;
 export type SchemaHandlers = FormConfig["handlers"];
 
 /**
- * 分组配置：把若干顶层字段收进一个布局容器（如 Card），
+ * 分组配置：把若干顶层字段收进 GridLayout 布局容器，
  * 只影响 form 的渲染，不改变 table / filter 的字段来源。
  */
 export interface GroupConfig {

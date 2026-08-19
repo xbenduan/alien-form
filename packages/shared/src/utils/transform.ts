@@ -75,7 +75,7 @@ export function transformFieldForForm(field: IFieldSchema): IFieldSchema {
 
 /**
  * 配置态 schema → form schema。
- * group 中的字段被收进 x-layout void 容器（如 Card），未分组的顶层字段保持原位；
+ * group 中的字段被收进 x-layout void 容器（GridLayout），未分组的顶层字段保持原位；
  * group 节点插入在其首个成员字段的原始位置，保证渲染顺序自然。
  */
 export function buildFormSchema(config: SchemaConfig): IFormSchema {

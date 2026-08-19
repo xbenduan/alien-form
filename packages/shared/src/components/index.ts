@@ -16,7 +16,7 @@ export {
   Textarea,
 } from "./leaf";
 export { ArrayCards, ObjectField } from "./complex";
-export { Card, FlexLayout, GridLayout } from "./layout";
+export { GridLayout } from "./layout";
 export { fieldComponents, fieldDecorators } from "./registry";
 export { SchemaRenderer } from "./SchemaRenderer";
 export type { SchemaRendererProps } from "./SchemaRenderer";

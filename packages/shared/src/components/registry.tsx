@@ -14,7 +14,7 @@ import {
   Textarea,
 } from "./leaf";
 import { ArrayCards, ObjectField } from "./complex";
-import { Card, FlexLayout, GridLayout } from "./layout";
+import { GridLayout } from "./layout";
 import { FilterItem, FormItem } from "./decorators";
 
 /** component 名 → React 组件，交给 @alien-form/react 的 FormProvider 消费。 */
@@ -32,9 +32,7 @@ export const fieldComponents: Record<string, ComponentType<FieldComponentProps>>
   TagsInput,
   ObjectField,
   ArrayCards,
-  Card,
   GridLayout,
-  FlexLayout,
 };
 
 export const fieldDecorators = {
