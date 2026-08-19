@@ -22,14 +22,20 @@ function inferFieldType(field: ModelFieldSchema): BuilderFieldType {
   return "string";
 }
 
+function hasAdvancedSchema(field: ModelFieldSchema): boolean {
+  const props = Object.keys(field.props ?? {}).filter(
+    (key) => key !== "title" && key !== "placeholder",
+  );
+  return Boolean(
+    field.dataSource ||
+      field["x-reaction"] ||
+      field["x-handler-params"] ||
+      props.length > 0,
+  );
+}
+
 function toFieldDraft(key: string, field: ModelFieldSchema): FieldDraft {
   const type = inferFieldType(field);
-  const handler =
-    typeof field["x-reaction"]?.dataSource === "string"
-      ? String(field["x-reaction"]!.dataSource).replace(/^@/, "")
-      : undefined;
-  const handlerParams = field["x-handler-params"]?.dataSource;
-
   const itemProps =
     field.items && !Array.isArray(field.items) ? field.items.properties : undefined;
   const children = type === "object" ? field.properties : type === "array" ? itemProps : undefined;
@@ -47,10 +53,9 @@ function toFieldDraft(key: string, field: ModelFieldSchema): FieldDraft {
       typeof field.props?.placeholder === "string"
         ? field.props.placeholder
         : getDefaultPlaceholder(type),
+    jsonEnabled: hasAdvancedSchema(field),
+    schemaJsonText: JSON.stringify(field, null, 2),
     required: field.required === true,
-    dataSourceText: field.dataSource ? JSON.stringify(field.dataSource, null, 2) : "",
-    handler,
-    handlerParamsText: handlerParams ? JSON.stringify(handlerParams, null, 2) : "",
     tableWidthText: field["x-table"]?.width ? String(field["x-table"].width) : "",
     tableVisible: field["x-table"]?.visible !== false,
     children: children
@@ -121,10 +126,9 @@ export function createFieldDraft(): FieldDraft {
     type: "string",
     component: "Input",
     placeholder: getDefaultPlaceholder("string"),
+    jsonEnabled: false,
+    schemaJsonText: "",
     required: false,
-    dataSourceText: "",
-    handler: undefined,
-    handlerParamsText: "",
     tableWidthText: "",
     tableVisible: true,
     children: undefined,

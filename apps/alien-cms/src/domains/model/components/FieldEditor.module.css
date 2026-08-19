@@ -19,3 +19,8 @@
 .control {
   width: 100%;
 }
+
+.jsonRow {
+  display: grid;
+  grid-column: 1 / -1;
+}

@@ -1,7 +1,11 @@
-import { Input, InputNumber, Select, Space, Switch } from "antd";
+import { Input, Select, Switch } from "antd";
 import type { FieldDraft } from "../types";
-import { FIELD_TYPE_OPTIONS, getDefaultPlaceholder, isContainerType } from "../utils";
-import { handlerOptions } from "../../../handles";
+import {
+  FIELD_TYPE_META,
+  FIELD_TYPE_OPTIONS,
+  getDefaultPlaceholder,
+  isContainerType,
+} from "../utils";
 import styles from "./FieldEditor.module.css";
 
 interface FieldEditorProps {
@@ -9,18 +13,40 @@ interface FieldEditorProps {
   onChange: (field: FieldDraft) => void;
 }
 
-const HANDLER_SELECT_OPTIONS = [
-  { value: "", label: "不联动" },
-  ...handlerOptions.map((item) => ({ value: item.value, label: item.label })),
-];
-
-const DATA_SOURCE_TYPES = new Set(["select", "multiSelect"]);
+function defaultSchemaJson(field: FieldDraft): string {
+  const type =
+    field.type === "object" || field.type === "array"
+      ? field.type
+      : field.type === "number" || field.type === "boolean"
+        ? field.type
+        : "string";
+  const schema: Record<string, unknown> = {
+    type,
+    component: field.component,
+    title: field.title || field.key,
+    ...(field.placeholder ? { props: { placeholder: field.placeholder } } : {}),
+  };
+  if (field.type === "object" && field.children) {
+    schema.properties = Object.fromEntries(
+      field.children.map((child) => [child.key, JSON.parse(defaultSchemaJson(child))]),
+    );
+  }
+  if (field.type === "array" && field.children) {
+    schema.items = {
+      type: "object",
+      properties: Object.fromEntries(
+        field.children.map((child) => [child.key, JSON.parse(defaultSchemaJson(child))]),
+      ),
+    };
+  }
+  return JSON.stringify(schema, null, 2);
+}
 
 /** 单字段配置面板：类型、标题、组件行为、数据源与联动。 */
 export function FieldEditor({ field, onChange }: FieldEditorProps) {
   const patch = (partial: Partial<FieldDraft>) => onChange({ ...field, ...partial });
   const container = isContainerType(field.type);
-  const showDataSource = DATA_SOURCE_TYPES.has(field.type);
+  const schemaJsonText = field.schemaJsonText || defaultSchemaJson(field);
 
   return (
     <div className={styles.editor}>
@@ -38,7 +64,13 @@ export function FieldEditor({ field, onChange }: FieldEditorProps) {
           className={styles.control}
           value={field.type}
           options={FIELD_TYPE_OPTIONS}
-          onChange={(type) => patch({ type, placeholder: getDefaultPlaceholder(type) })}
+          onChange={(type) =>
+            patch({
+              type,
+              component: FIELD_TYPE_META[type].component,
+              placeholder: getDefaultPlaceholder(type),
+            })
+          }
         />
       </div>
 
@@ -62,55 +94,34 @@ export function FieldEditor({ field, onChange }: FieldEditorProps) {
         </div>
       )}
 
-      {showDataSource ? (
-        <>
-          <div className={styles.row}>
-            <label className={styles.label}>联动 handler</label>
-            <Select
-              className={styles.control}
-              value={field.handler ?? ""}
-              options={HANDLER_SELECT_OPTIONS}
-              onChange={(handler) => patch({ handler: handler || undefined })}
-            />
-          </div>
-          {field.handler ? (
-            <div className={styles.row}>
-              <label className={styles.label}>handler 参数</label>
-              <Input.TextArea
-                rows={3}
-                value={field.handlerParamsText}
-                placeholder={'{ "model": "nail-service", "label": "serviceName", "value": "id" }'}
-                onChange={(event) => patch({ handlerParamsText: event.target.value })}
-              />
-            </div>
-          ) : (
-            <div className={styles.row}>
-              <label className={styles.label}>选项数据源</label>
-              <Input.TextArea
-                rows={3}
-                value={field.dataSourceText}
-                placeholder={'[{ "label": "初级", "value": "junior" }]'}
-                onChange={(event) => patch({ dataSourceText: event.target.value })}
-              />
-            </div>
-          )}
-        </>
-      ) : null}
-
       <div className={styles.row}>
         <label className={styles.label}>列表展示</label>
-        <Space>
-          <Switch
-            checked={field.tableVisible}
-            onChange={(tableVisible) => patch({ tableVisible })}
-          />
-          <InputNumber
-            placeholder="列宽"
-            value={field.tableWidthText ? Number(field.tableWidthText) : undefined}
-            onChange={(value) => patch({ tableWidthText: value ? String(value) : "" })}
-          />
-        </Space>
+        <Switch checked={field.tableVisible} onChange={(tableVisible) => patch({ tableVisible })} />
       </div>
+
+      <div className={styles.row}>
+        <label className={styles.label}>编辑 JSON</label>
+        <Switch
+          checked={field.jsonEnabled}
+          onChange={(jsonEnabled) =>
+            patch({
+              jsonEnabled,
+              schemaJsonText: jsonEnabled ? schemaJsonText : field.schemaJsonText,
+            })
+          }
+        />
+      </div>
+
+      {field.jsonEnabled ? (
+        <div className={styles.jsonRow}>
+          <Input.TextArea
+            rows={12}
+            value={schemaJsonText}
+            spellCheck={false}
+            onChange={(event) => patch({ schemaJsonText: event.target.value })}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

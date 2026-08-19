@@ -23,12 +23,9 @@ export interface FieldDraft {
   type: BuilderFieldType;
   component: string;
   placeholder: string;
+  jsonEnabled: boolean;
+  schemaJsonText: string;
   required: boolean;
-  /** JSON 文本形式的选项数据源（Select/Radio 等）。 */
-  dataSourceText: string;
-  /** 联动 handler（如 loadDataSource），为空表示不联动。 */
-  handler?: string;
-  handlerParamsText: string;
   tableWidthText: string;
   tableVisible: boolean;
   /** 复杂字段（object/array）的子字段。 */

@@ -137,6 +137,17 @@ export function FieldListEditor({ fields, onChange }: FieldListEditorProps) {
       setError("请填写字段标题");
       return;
     }
+    if (editor.field.jsonEnabled) {
+      try {
+        const parsed: unknown = JSON.parse(editor.field.schemaJsonText);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          throw new Error("JSON Schema 必须是对象");
+        }
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : "JSON Schema 格式不正确");
+        return;
+      }
+    }
 
     if (editor.mode === "edit") {
       onChange(updateField(fields, editor.field.id, () => editor.field));

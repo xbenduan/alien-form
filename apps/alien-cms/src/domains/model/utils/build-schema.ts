@@ -1,14 +1,14 @@
-import type { DataSourceItem } from "@alien-form/react";
 import type { GroupConfig } from "@alien-form/shared";
 import type { ModelFieldSchema, ModelSchema } from "../../../services";
 import type { FieldDraft, ModelDraft } from "../types";
 import { FIELD_TYPE_META } from "./field-types";
 
-function parseJson<T>(text: string): T | undefined {
-  const trimmed = text.trim();
-  if (!trimmed) return undefined;
+function parseSchema(text: string): ModelFieldSchema | undefined {
   try {
-    return JSON.parse(trimmed) as T;
+    const value = JSON.parse(text) as unknown;
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? (value as ModelFieldSchema)
+      : undefined;
   } catch {
     return undefined;
   }
@@ -16,28 +16,22 @@ function parseJson<T>(text: string): T | undefined {
 
 function buildFieldSchema(draft: FieldDraft, order: number): ModelFieldSchema {
   const meta = FIELD_TYPE_META[draft.type];
-  const dataSource = parseJson<DataSourceItem[]>(draft.dataSourceText);
-  const handlerParams = parseJson<Record<string, unknown>>(draft.handlerParamsText);
   const title = draft.title || draft.key;
   const props = {
     ...(meta.container ? { title } : {}),
     ...(draft.placeholder ? { placeholder: draft.placeholder } : {}),
   };
 
+  const custom = draft.jsonEnabled ? parseSchema(draft.schemaJsonText) : undefined;
   const field: ModelFieldSchema = {
+    ...(custom ?? {}),
     component: meta.component,
     order,
     ...(meta.container ? {} : { title }),
-    ...(Object.keys(props).length > 0 ? { props } : {}),
+    ...(Object.keys(props).length > 0 ? { props: { ...custom?.props, ...props } } : {}),
   };
   if (meta.schemaType) field.type = meta.schemaType;
   if (draft.required) field.required = true;
-  if (Array.isArray(dataSource)) field.dataSource = dataSource;
-
-  if (draft.handler) {
-    field["x-reaction"] = { dataSource: `@${draft.handler}` };
-    if (handlerParams) field["x-handler-params"] = { dataSource: handlerParams };
-  }
 
   const width = Number(draft.tableWidthText);
   field["x-table"] = {
@@ -46,10 +40,10 @@ function buildFieldSchema(draft: FieldDraft, order: number): ModelFieldSchema {
   };
 
   // 复杂字段：递归构建子字段
-  if (draft.type === "object" && draft.children) {
+  if (draft.type === "object" && draft.children && !custom?.properties) {
     field.properties = buildProperties(draft.children);
   }
-  if (draft.type === "array" && draft.children) {
+  if (draft.type === "array" && draft.children && !custom?.items) {
     field.type = "array";
     field.items = { type: "object", properties: buildProperties(draft.children) };
   }
