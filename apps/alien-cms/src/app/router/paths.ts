@@ -6,6 +6,10 @@ export function homePath(): string {
 
 // ─── 模型 ────────────────────────────────────────────────────────────────
 
+export function modelListPath(): string {
+  return "/models/list";
+}
+
 export function modelAddPath(): string {
   return "/models/add";
 }

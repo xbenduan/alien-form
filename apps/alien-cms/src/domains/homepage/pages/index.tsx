@@ -5,12 +5,13 @@ import {
   AppstoreOutlined,
   DatabaseOutlined,
   SearchOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
-import { Empty, Input, Tooltip, Typography } from "antd";
+import { Button, Empty, Input, Tooltip, Typography } from "antd";
 import { PageError, PageLoading } from "../../../components";
 import { useModelSummaries } from "../../../hooks";
 import type { ModelSummary } from "../../../services";
-import { recordListPath, modelAddPath } from "../../../app/router/paths";
+import { modelAddPath, modelListPath, recordListPath } from "../../../app/router/paths";
 import styles from "./index.module.css";
 
 function ModelCard({ model, onClick }: { model: ModelSummary; onClick: () => void }) {
@@ -67,6 +68,9 @@ export default function HomePage() {
             </Typography.Title>
           </div>
         </div>
+        <Button type="link" icon={<SettingOutlined />} onClick={() => navigate(modelListPath())}>
+          管理模型
+        </Button>
       </header>
 
       <div className={styles.toolbar}>
