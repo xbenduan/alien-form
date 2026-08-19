@@ -1,48 +1,33 @@
-/**
- * Path builder utilities.
- * These are used by components to navigate programmatically.
- * Route definitions live in ./routes.tsx — this file only builds URL strings.
- */
-import type { RecordRouteState } from '../../domains/record/types/record';
+/** URL 构造工具：集中管理路由路径，页面通过它做编程式跳转。 */
 
-export function buildModelListPath() {
-  return '/models';
+export function homePath(): string {
+  return "/";
 }
 
-export function buildModelNewPath() {
-  return '/models/new';
+// ─── 模型 ────────────────────────────────────────────────────────────────
+
+export function modelAddPath(): string {
+  return "/models/add";
 }
 
-export function buildModelEditPath(modelName: string) {
-  return `/models/${modelName}/edit`;
+export function modelEditPath(name: string): string {
+  return `/models/${name}/edit`;
 }
 
-export function buildSystemSettingsPath() {
-  return '/system/settings';
+// ─── 记录 ────────────────────────────────────────────────────────────────
+
+export function recordListPath(model: string): string {
+  return `/records/${model}`;
 }
 
-export function buildSystemLogsPath() {
-  return '/system/logs';
+export function recordAddPath(model: string): string {
+  return `/records/${model}/add`;
 }
 
-export function buildAboutPath() {
-  return '/system/about';
+export function recordEditPath(model: string, id: string): string {
+  return `/records/${model}/edit/${id}`;
 }
 
-export function buildRecordPath(modelName: string, routeState: RecordRouteState = { mode: 'closed' }) {
-  const base = `/records/${modelName}`;
-
-  if (!routeState || routeState.mode === 'closed') {
-    return base;
-  }
-
-  if (routeState.mode === 'add') {
-    return `${base}/add`;
-  }
-
-  if (!routeState.recordId) {
-    return base;
-  }
-
-  return `${base}/${routeState.mode}/${routeState.recordId}`;
+export function recordDetailPath(model: string, id: string): string {
+  return `/records/${model}/detail/${id}`;
 }

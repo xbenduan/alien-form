@@ -1,0 +1,21 @@
+.editor {
+  display: grid;
+  gap: 12px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  align-items: start;
+  gap: 12px;
+}
+
+.label {
+  padding-top: 6px;
+  color: #52607a;
+  font-size: 13px;
+}
+
+.control {
+  width: 100%;
+}

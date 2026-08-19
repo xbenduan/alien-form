@@ -1,58 +1,90 @@
-export {
-  createAdapterCatalog,
-  createAdapterRegistry,
-  createHandlerCatalog,
-  createHandlerRegistry,
-  defineAdapter,
-  defineHandler,
-  resolveSceneRender,
-} from "./adapter";
+// 类型
 export type {
-  AdapterCatalogItem,
-  AdapterConfig,
-  AdapterScene,
-  DefinedAdapter,
-  DefinedHandler,
-  HandlerCatalogItem,
-  HandlerConfig,
-  ResolvedSceneRender,
-  SceneRenderOverride,
-} from "./adapter";
+  ComponentMeta,
+  FieldComponentProps,
+  FieldKind,
+  FieldMode,
+  FieldSchema,
+  GroupConfig,
+  LeafField,
+  SchemaConfig,
+  SchemaHandlers,
+  SchemaRecord,
+  TableColumn,
+} from "./types";
+
+// utils：form / table / filter 共有的函数逻辑
 export {
-  componentCatalog,
-  componentOptions,
+  buildFilterSchema,
+  buildFormSchema,
+  buildTableColumns,
+  collectLeafFields,
+  componentMeta,
+  EMPTY_TEXT,
+  getChildProperties,
   getComponentMeta,
-  getComponentOptions,
-  isCompatibleComponent,
-  map,
-  options,
-  registry,
-} from "./adapters";
-export { createFormConfig } from "./create-form-config";
+  isComplexComponent,
+  isComplexField,
+  isEmptyValue,
+  isMultiValueComponent,
+  LAYOUT_COMPONENTS,
+  multiValueFormat,
+  optionLabel,
+  parseMultiValue,
+  serializeMultiValue,
+  statusColor,
+  toDisplayText,
+  transformFieldForForm,
+} from "./utils";
+
+// components：符合 alien-form 协议的所有组件
+export {
+  ArrayCards,
+  Card,
+  CheckboxGroup,
+  DateInput,
+  DisplayValue,
+  FieldDetailModal,
+  FieldModeScope,
+  fieldComponents,
+  fieldDecorators,
+  FilterItem,
+  FlexLayout,
+  FormItem,
+  GridLayout,
+  Input,
+  MultiSelect,
+  NumberInput,
+  ObjectField,
+  Radio,
+  Rate,
+  SchemaRenderer,
+  Select,
+  Switch,
+  TagsInput,
+  Textarea,
+  useFieldMode,
+} from "./components";
+export type {
+  DisplayValueProps,
+  FieldDetailModalProps,
+  SchemaRendererProps,
+} from "./components";
+
+// form
 export {
   DrawerSchemaForm,
   ModalSchemaForm,
   PageSchemaForm,
   SchemaForm,
-} from "./components/SchemaForm";
-export type { SchemaFormProps } from "./components/SchemaForm";
-export { FieldDetailModal, SchemaDetail } from "./components/SchemaDetail";
-export type { FieldDetailModalProps } from "./components/SchemaDetail";
-export { SchemaFilter } from "./scenes/filter";
-export type { SchemaFilterProps } from "./scenes/filter";
-export { SchemaTable } from "./components/SchemaTable";
-export type { SchemaTableProps, TableActions, TableColumnSetting } from "./components/SchemaTable";
-export { ColumnVisibilityModal } from "./components/ColumnVisibilityModal";
-export { formComponents, formDecorators } from "./scenes/form";
-export { renderTableCell } from "./scenes/table";
-export type {
-  DetailProjection,
-  FilterActions,
-  FilterProjection,
-  FormActions,
-  SchemaFormMode,
-  SchemaHandlers,
-  SchemaRecord,
-  TableColumnProjection,
-  TableInlineProjection,
-} from "./types";
+  useFormSchema,
+} from "./form";
+export type { SchemaFormProps } from "./form";
+
+// table
+export { Table, useColumns } from "./table";
+export type { TableColumnAction, TableComponentProps } from "./table";
+
+// filter
+export { FilterForm, useFilterFields } from "./filter";
+export type { FilterFields, FilterFormProps } from "./filter";

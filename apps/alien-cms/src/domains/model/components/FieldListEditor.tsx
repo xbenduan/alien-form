@@ -1,153 +1,99 @@
-import { DeleteOutlined, DownOutlined, DragOutlined, PlusOutlined } from '@ant-design/icons';
-import type { ModelBuilderFieldDraft } from "../types";
-import { Button, Card, Dropdown, Empty, Space, Tag, Typography } from 'antd';
-import type { ReactNode } from 'react';
-import { useState } from 'react';
-import { fieldPresets, type FieldPreset } from './FieldPalette';
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import { Button, Empty, Tag } from "antd";
+import type { FieldDraft } from "../types";
+import { FIELD_TYPE_META, createFieldDraft, isContainerType } from "../utils";
+import styles from "./FieldListEditor.module.css";
 
 interface FieldListEditorProps {
-  fields: ModelBuilderFieldDraft[];
-  selectedFieldId?: string;
-  extra?: ReactNode;
-  isRemovable?: (field: ModelBuilderFieldDraft) => boolean;
-  onSelect: (fieldId: string) => void;
-  onRemove: (fieldId: string) => void;
-  onMove: (fromIndex: number, toIndex: number) => void;
-  onAddField: (preset: FieldPreset, parentId?: string) => void;
+  fields: FieldDraft[];
+  selectedId?: string;
+  onSelect: (id: string) => void;
+  onChange: (fields: FieldDraft[]) => void;
 }
 
-export function FieldListEditor({
-  fields,
-  selectedFieldId,
-  extra,
-  isRemovable,
-  onSelect,
-  onRemove,
-  onMove,
-  onAddField,
-}: FieldListEditorProps) {
-  const [draggingId, setDraggingId] = useState<string>();
-
-  const buildAddButton = (parentId?: string, label = '点击添加字段') => (
-    <Dropdown
-      trigger={['click']}
-      menu={{
-        items: fieldPresets.map((preset) => ({
-          key: preset.key,
-          label: preset.label,
-        })),
-        onClick: ({ key }) => {
-          const preset = fieldPresets.find((item) => item.key === key);
-          if (preset) {
-            onAddField(preset, parentId);
-          }
-        },
-      }}
-    >
-      <Button type="dashed" block icon={<PlusOutlined />}>
-        {label} <DownOutlined />
-      </Button>
-    </Dropdown>
-  );
-
-  const getSlotMeta = (field: ModelBuilderFieldDraft) => {
-    if (field.type === 'object') {
-      return {
-        label: '对象插槽',
-        description: '该组件内部提供对象字段插槽，用于继续配置子字段。',
-      };
-    }
-    if (field.type === 'layout') {
-      return {
-        label: '布局插槽',
-        description: '该组件内部提供布局插槽，用于承载一组展示/录入字段。',
-      };
-    }
-    if (field.type === 'array') {
-      return {
-        label: field.itemTitle || '数组项插槽',
-        description: '该组件内部提供数组项插槽，用于定义每一行对象的字段结构。',
-      };
-    }
-    return undefined;
+/** 字段列表编辑：增删字段、选中编辑、容器字段管理子字段。 */
+export function FieldListEditor({ fields, selectedId, onSelect, onChange }: FieldListEditorProps) {
+  const addField = () => {
+    const next = createFieldDraft();
+    onChange([...fields, next]);
+    onSelect(next.id);
   };
 
-  const renderField = (field: ModelBuilderFieldDraft, index: number, level = 0) => (
-    <div key={field.id} className="builder-field-tree-node" style={{ paddingLeft: level * 18 }}>
-      <div
-        draggable={level === 0}
-        className={`builder-field-item ${selectedFieldId === field.id ? 'is-active' : ''}`}
-        onClick={() => onSelect(field.id)}
-        onDragStart={() => setDraggingId(field.id)}
-        onDragOver={(event) => event.preventDefault()}
-        onDrop={() => {
-          if (level !== 0) {
-            setDraggingId(undefined);
-            return;
-          }
-          const fromIndex = fields.findIndex((item) => item.id === draggingId);
-          if (fromIndex >= 0 && fromIndex !== index) {
-            onMove(fromIndex, index);
-          }
-          setDraggingId(undefined);
-        }}
-        onDragEnd={() => setDraggingId(undefined)}
-      >
-        <Space align="center" size={8}>
-          <DragOutlined />
-          <div>
-            <Typography.Text strong>{field.title || '未命名字段'}</Typography.Text>
-            <div className="builder-field-item-meta">
-              <span>{field.key || '未设置 key'}</span>
-              <Tag variant="filled">{field.type}</Tag>
-              <Tag variant="filled">{field.component}</Tag>
-              {isRemovable?.(field) === false ? <Tag color="gold">系统</Tag> : null}
-            </div>
-          </div>
-        </Space>
-        {isRemovable?.(field) === false ? null : (
-          <Space size={4}>
-            <Button
-              danger
-              type="text"
-              icon={<DeleteOutlined />}
-              onClick={(event) => {
-                event.stopPropagation();
-                onRemove(field.id);
-              }}
-            />
-          </Space>
-        )}
+  const removeField = (id: string) => {
+    onChange(fields.filter((field) => field.id !== id));
+  };
+
+  const addChild = (parent: FieldDraft) => {
+    const child = createFieldDraft();
+    onChange(
+      fields.map((field) =>
+        field.id === parent.id
+          ? { ...field, children: [...(field.children ?? []), child] }
+          : field,
+      ),
+    );
+    onSelect(child.id);
+  };
+
+  const removeChild = (parent: FieldDraft, childId: string) => {
+    onChange(
+      fields.map((field) =>
+        field.id === parent.id
+          ? { ...field, children: (field.children ?? []).filter((c) => c.id !== childId) }
+          : field,
+      ),
+    );
+  };
+
+  const renderItem = (field: FieldDraft, onRemove: () => void, nested = false) => (
+    <div
+      key={field.id}
+      className={`${styles.item}${field.id === selectedId ? ` ${styles.active}` : ""}${nested ? ` ${styles.nested}` : ""}`}
+      onClick={() => onSelect(field.id)}
+    >
+      <div className={styles.itemMain}>
+        <span className={styles.itemTitle}>{field.title || field.key}</span>
+        <Tag>{FIELD_TYPE_META[field.type].label}</Tag>
       </div>
-      {getSlotMeta(field) ? (
-        <div className="builder-slot-panel">
-          <div className="builder-slot-header">
-            <div>
-              <Typography.Text strong>{getSlotMeta(field)?.label}</Typography.Text>
-              <div className="builder-slot-description">{getSlotMeta(field)?.description}</div>
-            </div>
-          </div>
-          {field.children?.length ? (
-            <div className="builder-field-children">
-              {field.children.map((child, childIndex) => renderField(child, childIndex, level + 1))}
-            </div>
-          ) : (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="该插槽下还没有字段" />
-          )}
-          {buildAddButton(field.id, '点击添加插槽字段')}
-        </div>
-      ) : null}
+      <Button
+        type="text"
+        size="small"
+        danger
+        icon={<DeleteOutlined />}
+        onClick={(event) => {
+          event.stopPropagation();
+          onRemove();
+        }}
+      />
     </div>
   );
 
   return (
-    <Card className="model-query-card" title="字段列表" extra={extra} styles={{ body: { padding: 20 } }}>
-      {fields.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="先从左侧添加一个字段" /> : null}
-
-      <div className="builder-field-list">
-        {fields.map((field, index) => renderField(field, index))}
-        {buildAddButton(undefined, '点击添加字段')}
-      </div>
-    </Card>
+    <div className={styles.list}>
+      {fields.length === 0 ? <Empty description="还没有字段" /> : null}
+      {fields.map((field) => (
+        <div key={field.id}>
+          {renderItem(field, () => removeField(field.id))}
+          {isContainerType(field.type) ? (
+            <div className={styles.children}>
+              {(field.children ?? []).map((child) =>
+                renderItem(child, () => removeChild(field, child.id), true),
+              )}
+              <Button
+                type="dashed"
+                size="small"
+                icon={<PlusOutlined />}
+                onClick={() => addChild(field)}
+              >
+                添加子字段
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ))}
+      <Button type="dashed" block icon={<PlusOutlined />} onClick={addField}>
+        添加字段
+      </Button>
+    </div>
   );
 }

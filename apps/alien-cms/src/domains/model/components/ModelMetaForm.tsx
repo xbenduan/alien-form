@@ -1,167 +1,99 @@
-import type { ModelBuilderDraft } from "../types";
-import { Card, Col, Form, Input, InputNumber, Row, Select, Typography } from 'antd';
+import { Input, InputNumber, Select } from "antd";
+import type { ModelDraft, OpenMode } from "../types";
+import { OPEN_MODE_OPTIONS } from "../utils";
+import styles from "./ModelMetaForm.module.css";
 
 interface ModelMetaFormProps {
-  draft: ModelBuilderDraft;
-  onChange: (nextDraft: ModelBuilderDraft) => void;
-  hideTitle?: boolean;
-  modelNameDisabled?: boolean;
-  tableFieldOptions: Array<{ label: string; value: string }>;
+  draft: ModelDraft;
+  nameDisabled?: boolean;
+  onChange: (draft: ModelDraft) => void;
 }
 
-export function ModelMetaForm({ draft, onChange, hideTitle, modelNameDisabled, tableFieldOptions }: ModelMetaFormProps) {
+/** 模型元信息编辑：名称、标题、标签、分页与打开方式。 */
+export function ModelMetaForm({ draft, nameDisabled, onChange }: ModelMetaFormProps) {
+  const patch = (partial: Partial<ModelDraft>) => onChange({ ...draft, ...partial });
+  const patchOpenMode = (key: "add" | "edit" | "detail", mode: OpenMode) =>
+    patch({ openMode: { ...draft.openMode, [key]: mode } });
+
   return (
-    <Card className="model-query-card" styles={{ body: { padding: 20 } }}>
-      {hideTitle ? null : (
-        <Typography.Title level={5} style={{ marginTop: 0 }}>
-          x-model 配置
-        </Typography.Title>
-      )}
-      <Form layout="vertical" size="middle">
-        <Row gutter={[16, 0]}>
-          <Col span={8}>
-            <Form.Item label="模型名（唯一标识）" required>
-              <Input
-                value={draft.modelName}
-                disabled={modelNameDisabled}
-                placeholder="如 product、order-item（小写字母+数字+中划线）"
-                onChange={(event) => onChange({ ...draft, modelName: event.target.value })}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item label="模型标题" required>
-              <Input
-                value={draft.title}
-                placeholder="如：商品管理、订单项"
-                onChange={(event) => onChange({ ...draft, title: event.target.value })}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item label="副标题">
-              <Input
-                value={draft.subtitle}
-                placeholder="可选，显示在标题下方"
-                onChange={(event) => onChange({ ...draft, subtitle: event.target.value })}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item label="单数标签">
-              <Input
-                value={draft.singularLabel}
-                placeholder="如：记录、商品、订单"
-                onChange={(event) => onChange({ ...draft, singularLabel: event.target.value })}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item label="复数标签">
-              <Input
-                value={draft.pluralLabel}
-                placeholder="如：记录、商品、订单"
-                onChange={(event) => onChange({ ...draft, pluralLabel: event.target.value })}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item label="默认每页条数">
-              <InputNumber
-                min={5}
-                max={100}
-                value={draft.defaultPageSize}
-                style={{ width: '100%' }}
-                onChange={(value) => onChange({ ...draft, defaultPageSize: value ?? 10 })}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item label="默认筛选项数量">
-              <InputNumber
-                min={1}
-                max={10}
-                value={draft.filterCount}
-                style={{ width: '100%' }}
-                onChange={(value) => onChange({ ...draft, filterCount: value ?? 3 })}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item label="表格默认宽度">
-              <InputNumber
-                min={80}
-                max={480}
-                value={draft.tableDefaultWidth}
-                style={{ width: '100%' }}
-                placeholder="为空时走渲染层默认公式"
-                onChange={(value) => onChange({ ...draft, tableDefaultWidth: value ?? undefined })}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item label="新增打开方式">
-              <Select
-                value={draft.openMode.add ?? 'drawer'}
-                options={[
-                  { label: '抽屉', value: 'drawer' },
-                  { label: '弹窗', value: 'modal' },
-                  { label: '页面', value: 'page' },
-                ]}
-                onChange={(value) => onChange({ ...draft, openMode: { ...draft.openMode, add: value } })}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item label="编辑打开方式">
-              <Select
-                value={draft.openMode.edit ?? 'drawer'}
-                options={[
-                  { label: '抽屉', value: 'drawer' },
-                  { label: '弹窗', value: 'modal' },
-                  { label: '页面', value: 'page' },
-                ]}
-                onChange={(value) => onChange({ ...draft, openMode: { ...draft.openMode, edit: value } })}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item label="详情打开方式">
-              <Select
-                value={draft.openMode.detail ?? 'drawer'}
-                options={[
-                  { label: '抽屉', value: 'drawer' },
-                  { label: '弹窗', value: 'modal' },
-                  { label: '页面', value: 'page' },
-                ]}
-                onChange={(value) => onChange({ ...draft, openMode: { ...draft.openMode, detail: value } })}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <Form.Item label="表格展示字段">
-              <Select
-                mode="multiple"
-                allowClear
-                value={draft.tableVisibleFields}
-                options={tableFieldOptions}
-                placeholder="为空时默认展示全部第一层字段"
-                onChange={(value) => onChange({ ...draft, tableVisibleFields: value })}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <Form.Item label="描述">
-              <Input.TextArea
-                value={draft.description}
-                autoSize={{ minRows: 2, maxRows: 4 }}
-                placeholder="可选，模型用途描述"
-                onChange={(event) => onChange({ ...draft, description: event.target.value })}
-              />
-            </Form.Item>
-          </Col>
-        </Row>
-      </Form>
-    </Card>
+    <div className={styles.form}>
+      <div className={styles.row}>
+        <label className={styles.label}>模型名 (name)</label>
+        <Input
+          disabled={nameDisabled}
+          placeholder="小写字母、数字和中划线"
+          value={draft.name}
+          onChange={(event) => patch({ name: event.target.value })}
+        />
+      </div>
+      <div className={styles.row}>
+        <label className={styles.label}>标题</label>
+        <Input value={draft.title} onChange={(event) => patch({ title: event.target.value })} />
+      </div>
+      <div className={styles.row}>
+        <label className={styles.label}>副标题</label>
+        <Input
+          value={draft.subtitle}
+          onChange={(event) => patch({ subtitle: event.target.value })}
+        />
+      </div>
+      <div className={styles.row}>
+        <label className={styles.label}>描述</label>
+        <Input.TextArea
+          rows={2}
+          value={draft.description}
+          onChange={(event) => patch({ description: event.target.value })}
+        />
+      </div>
+      <div className={styles.grid}>
+        <div className={styles.row}>
+          <label className={styles.label}>单数标签</label>
+          <Input
+            value={draft.singularLabel}
+            onChange={(event) => patch({ singularLabel: event.target.value })}
+          />
+        </div>
+        <div className={styles.row}>
+          <label className={styles.label}>复数标签</label>
+          <Input
+            value={draft.pluralLabel}
+            onChange={(event) => patch({ pluralLabel: event.target.value })}
+          />
+        </div>
+        <div className={styles.row}>
+          <label className={styles.label}>每页条数</label>
+          <InputNumber
+            min={1}
+            className={styles.control}
+            value={draft.defaultPageSize}
+            onChange={(value) => patch({ defaultPageSize: value ?? 10 })}
+          />
+        </div>
+        <div className={styles.row}>
+          <label className={styles.label}>筛选项数</label>
+          <InputNumber
+            min={0}
+            className={styles.control}
+            value={draft.filterCount}
+            onChange={(value) => patch({ filterCount: value ?? 3 })}
+          />
+        </div>
+      </div>
+      <div className={styles.grid}>
+        {(["add", "edit", "detail"] as const).map((key) => (
+          <div key={key} className={styles.row}>
+            <label className={styles.label}>
+              {key === "add" ? "新增" : key === "edit" ? "编辑" : "详情"}打开方式
+            </label>
+            <Select
+              className={styles.control}
+              value={draft.openMode[key]}
+              options={OPEN_MODE_OPTIONS}
+              onChange={(mode) => patchOpenMode(key, mode as OpenMode)}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
