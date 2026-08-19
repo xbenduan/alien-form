@@ -14,7 +14,7 @@ export const nailBookingSchema: ModelSchema = {
     pluralLabel: "预约",
     defaultPageSize: 10,
     filterCount: 4,
-    openMode: { add: "drawer", edit: "drawer", detail: "drawer" },
+    openMode: { add: "page", edit: "drawer", detail: "modal" },
   },
   properties: {
     customerName: {

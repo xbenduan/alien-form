@@ -14,7 +14,7 @@ export const nailEmployeeSchema: ModelSchema = {
     pluralLabel: "员工",
     defaultPageSize: 5,
     filterCount: 3,
-    openMode: { add: "drawer", edit: "drawer", detail: "drawer" },
+    openMode: { add: "drawer", edit: "page", detail: "drawer" },
   },
   properties: {
     employeeName: {
