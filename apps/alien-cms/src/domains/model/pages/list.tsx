@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import { App, Button, Flex, Popconfirm, Space, Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { PageError, PageLoading } from "../../../components";
+import { PageBreadcrumb, PageError, PageLoading } from "../../../components";
 import { useModelSummaries, useSchemaMutations } from "../../../hooks";
 import type { ModelSummary } from "../../../services";
 import { modelAddPath, modelEditPath, recordListPath } from "../../../app/router/paths";
@@ -74,6 +74,7 @@ export default function ModelListPage() {
 
   return (
     <Flex vertical gap={16}>
+      <PageBreadcrumb items={[{ title: "模型管理" }]} />
       <div className={styles.tableCard}>
         <div className={styles.toolbar}>
           <span className={styles.toolbarTitle}>模型管理</span>

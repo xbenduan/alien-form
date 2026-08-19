@@ -22,6 +22,7 @@ export interface FieldDraft {
   title: string;
   type: BuilderFieldType;
   component: string;
+  placeholder: string;
   required: boolean;
   /** JSON 文本形式的选项数据源（Select/Radio 等）。 */
   dataSourceText: string;

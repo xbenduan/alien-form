@@ -1,6 +1,6 @@
 import { Input, InputNumber, Select, Space, Switch } from "antd";
 import type { FieldDraft } from "../types";
-import { FIELD_TYPE_OPTIONS, isContainerType } from "../utils";
+import { FIELD_TYPE_OPTIONS, getDefaultPlaceholder, isContainerType } from "../utils";
 import { handlerOptions } from "../../../handles";
 import styles from "./FieldEditor.module.css";
 
@@ -38,14 +38,27 @@ export function FieldEditor({ field, onChange }: FieldEditorProps) {
           className={styles.control}
           value={field.type}
           options={FIELD_TYPE_OPTIONS}
-          onChange={(type) => patch({ type })}
+          onChange={(type) => patch({ type, placeholder: getDefaultPlaceholder(type) })}
         />
       </div>
+
+      {!container ? (
+        <div className={styles.row}>
+          <label className={styles.label}>占位提示</label>
+          <Input
+            value={field.placeholder}
+            placeholder={getDefaultPlaceholder(field.type)}
+            onChange={(event) => patch({ placeholder: event.target.value })}
+          />
+        </div>
+      ) : null}
 
       {container ? null : (
         <div className={styles.row}>
           <label className={styles.label}>必填</label>
-          <Switch checked={field.required} onChange={(required) => patch({ required })} />
+          <div>
+            <Switch checked={field.required} onChange={(required) => patch({ required })} />
+          </div>
         </div>
       )}
 

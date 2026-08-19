@@ -23,14 +23,16 @@ export function SchemaPreview({ schema, error }: SchemaPreviewProps) {
 
   return (
     <div className={styles.preview}>
-      <Segmented
-        value={tab}
-        onChange={(value) => setTab(value as "form" | "json")}
-        options={[
-          { label: "表单预览", value: "form" },
-          { label: "Schema JSON", value: "json" },
-        ]}
-      />
+      <div>
+        <Segmented
+          value={tab}
+          onChange={(value) => setTab(value as "form" | "json")}
+          options={[
+            { label: "表单预览", value: "form" },
+            { label: "Schema JSON", value: "json" },
+          ]}
+        />
+      </div>
       {tab === "form" ? (
         <div className={styles.formPreview}>
           <SchemaForm mode="add" schema={schema} handlers={handles} formKey={schema.meta.name} />

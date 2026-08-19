@@ -4,6 +4,7 @@ import { Button, Empty, Tooltip } from "antd";
 import type { FieldComponentProps } from "../types";
 import { useFieldMode } from "./field-mode";
 import { FieldDetailModal } from "./FieldDetailModal";
+import { renderGridChildren } from "./layout";
 import { toDisplayText } from "../utils/schema";
 
 function ComplexFieldFrame({
@@ -76,7 +77,13 @@ export function ObjectField(props: FieldComponentProps) {
   const title = props.title ?? readFieldPropTitle(props.field);
   return (
     <ComplexFieldFrame title={title} description={props.description}>
-      <div className="af-object-field">{props.children}</div>
+      <div className="af-object-field">
+        {renderGridChildren(props.children, {
+          gridSpan: props.gridSpan,
+          columns: props.columns,
+          gutter: props.gutter,
+        })}
+      </div>
     </ComplexFieldFrame>
   );
 }
@@ -126,7 +133,13 @@ export function ArrayCards(props: FieldComponentProps) {
                 </Button>
               )}
             </div>
-            <div className="af-array-card-body">{row}</div>
+            <div className="af-array-card-body">
+              {renderGridChildren(row, {
+                gridSpan: props.gridSpan,
+                columns: props.columns,
+                gutter: props.gutter,
+              })}
+            </div>
           </div>
         ))}
         {readonly ? null : (

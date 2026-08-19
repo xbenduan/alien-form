@@ -173,7 +173,10 @@ export function buildTableColumns(config: SchemaConfig): TableColumn[] {
       const tableMeta = readTableMeta(field);
       return {
         key,
-        title: field.title ?? key,
+        title:
+          field.title ??
+          (typeof field.props?.title === "string" ? field.props.title : undefined) ??
+          key,
         width: tableMeta.width,
         ellipsis: tableMeta.ellipsis ?? true,
         sortable: tableMeta.sortable ?? !complex,

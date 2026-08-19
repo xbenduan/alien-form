@@ -32,6 +32,13 @@ export function isContainerType(type: BuilderFieldType): boolean {
   return Boolean(FIELD_TYPE_META[type].container);
 }
 
+/** 字段组件的默认占位提示。 */
+export function getDefaultPlaceholder(type: BuilderFieldType): string {
+  if (type === "select" || type === "multiSelect" || type === "date") return "请选择";
+  if (isContainerType(type) || type === "boolean") return "";
+  return "请输入";
+}
+
 /** 布局分组可用的容器组件。 */
 export const GROUP_COMPONENT_OPTIONS = [
   { value: "GridLayout", label: "栅格 (GridLayout)" },

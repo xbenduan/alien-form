@@ -1,5 +1,6 @@
 import type { ModelFieldSchema, ModelSchema } from "../../../services";
 import type { BuilderFieldType, FieldDraft, GroupDraft, ModelDraft } from "../types";
+import { getDefaultPlaceholder } from "./field-types";
 
 let counter = 0;
 function uid(prefix: string): string {
@@ -36,9 +37,16 @@ function toFieldDraft(key: string, field: ModelFieldSchema): FieldDraft {
   return {
     id: uid("field"),
     key,
-    title: field.title ?? key,
+    title:
+      typeof field.props?.title === "string"
+        ? field.props.title
+        : field.title ?? key,
     type,
     component: field.component ?? "Input",
+    placeholder:
+      typeof field.props?.placeholder === "string"
+        ? field.props.placeholder
+        : getDefaultPlaceholder(type),
     required: field.required === true,
     dataSourceText: field.dataSource ? JSON.stringify(field.dataSource, null, 2) : "",
     handler,
@@ -112,6 +120,7 @@ export function createFieldDraft(): FieldDraft {
     title: "新字段",
     type: "string",
     component: "Input",
+    placeholder: getDefaultPlaceholder("string"),
     required: false,
     dataSourceText: "",
     handler: undefined,

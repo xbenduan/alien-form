@@ -1,44 +1,20 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { EyeOutlined, SaveOutlined } from "@ant-design/icons";
-import { App, Button, Card, Col, Flex, Row, Space, Steps } from "antd";
-import { PageError, PageLoading } from "../../../components";
+import { App, Button, Card, Flex, Space, Steps } from "antd";
+import { PageBreadcrumb, PageError, PageLoading } from "../../../components";
 import { modelListPath } from "../../../app/router/paths";
 import { useModelBuilder } from "../hooks";
 import {
-  FieldEditor,
   FieldListEditor,
   GroupEditor,
   ModelMetaForm,
+  SchemaJsonEditor,
   SchemaPreview,
 } from "../components";
-import type { FieldDraft } from "../types";
 import styles from "./actions.module.css";
 
-const STEPS = [
-  { title: "字段" },
-  { title: "分组与元信息" },
-  { title: "预览保存" },
-];
-
-function findField(fields: FieldDraft[], id?: string): FieldDraft | undefined {
-  for (const field of fields) {
-    if (field.id === id) return field;
-    if (field.children) {
-      const child = findField(field.children, id);
-      if (child) return child;
-    }
-  }
-  return undefined;
-}
-
-function replaceField(fields: FieldDraft[], next: FieldDraft): FieldDraft[] {
-  return fields.map((field) => {
-    if (field.id === next.id) return next;
-    if (field.children) return { ...field, children: replaceField(field.children, next) };
-    return field;
-  });
-}
+const STEPS = [{ title: "字段" }, { title: "分组与元信息" }, { title: "预览保存" }];
 
 interface ModelActionPageProps {
   mode: "add" | "edit";
@@ -51,13 +27,6 @@ export default function ModelActionPage({ mode }: ModelActionPageProps) {
   const { message } = App.useApp();
   const builder = useModelBuilder(mode === "edit" ? modelName : undefined);
   const [step, setStep] = useState(0);
-  const [selectedFieldId, setSelectedFieldId] = useState<string>();
-
-  const selectedField = useMemo(
-    () => findField(builder.draft.fields, selectedFieldId) ?? builder.draft.fields[0],
-    [builder.draft.fields, selectedFieldId],
-  );
-
   if (builder.loading) return <PageLoading />;
   if (builder.loadError) {
     return <PageError title="模型加载失败" description={builder.loadError.message} />;
@@ -87,62 +56,55 @@ export default function ModelActionPage({ mode }: ModelActionPageProps) {
 
   return (
     <Flex className={styles.page} vertical gap={16}>
+      <PageBreadcrumb
+        items={[
+          { title: "模型管理", to: modelListPath() },
+          { title: mode === "edit" ? "编辑模型" : "新增模型" },
+        ]}
+      />
       <Card styles={{ body: { padding: 20 } }}>
         <Steps current={step} items={STEPS} />
       </Card>
 
       <div className={styles.body}>
         {step === 0 ? (
-          <Row gutter={[20, 20]}>
-            <Col span={11}>
-              <Card title="字段列表" styles={{ body: { padding: 16 } }}>
-                <FieldListEditor
-                  fields={builder.draft.fields}
-                  selectedId={selectedField?.id}
-                  onSelect={setSelectedFieldId}
-                  onChange={(fields) => builder.setDraft({ ...builder.draft, fields })}
-                />
-              </Card>
-            </Col>
-            <Col span={13}>
-              <Card title="字段配置" styles={{ body: { padding: 16 } }}>
-                {selectedField ? (
-                  <FieldEditor
-                    field={selectedField}
-                    onChange={(next) =>
-                      builder.setDraft({
-                        ...builder.draft,
-                        fields: replaceField(builder.draft.fields, next),
-                      })
-                    }
-                  />
-                ) : null}
-              </Card>
-            </Col>
-          </Row>
+          <Card
+            title="字段列表"
+            extra={
+              <SchemaJsonEditor
+                compact
+                schema={builder.preview.schema}
+                onApply={builder.setDraft}
+              />
+            }
+            styles={{ body: { padding: 16 } }}
+          >
+            <FieldListEditor
+              fields={builder.draft.fields}
+              onChange={(fields) => builder.setDraft({ ...builder.draft, fields })}
+            />
+          </Card>
         ) : null}
 
         {step === 1 ? (
-          <Row gutter={[20, 20]}>
-            <Col span={13}>
-              <Card title="模型信息" styles={{ body: { padding: 16 } }}>
-                <ModelMetaForm
-                  draft={builder.draft}
-                  nameDisabled={mode === "edit"}
-                  onChange={builder.setDraft}
-                />
-              </Card>
-            </Col>
-            <Col span={11}>
-              <Card title="表单分组" styles={{ body: { padding: 16 } }}>
-                <GroupEditor
-                  groups={builder.draft.groups}
-                  fields={builder.draft.fields}
-                  onChange={(groups) => builder.setDraft({ ...builder.draft, groups })}
-                />
-              </Card>
-            </Col>
-          </Row>
+          <div className={styles.configStack}>
+            <fieldset className={`${styles.configLayout} ${styles.span8}`}>
+              <legend className={styles.configTitle}>模型信息</legend>
+              <ModelMetaForm
+                draft={builder.draft}
+                nameDisabled={mode === "edit"}
+                onChange={builder.setDraft}
+              />
+            </fieldset>
+            <fieldset className={`${styles.configLayout} ${styles.span12}`}>
+              <legend className={styles.configTitle}>表单分组</legend>
+              <GroupEditor
+                groups={builder.draft.groups}
+                fields={builder.draft.fields}
+                onChange={(groups) => builder.setDraft({ ...builder.draft, groups })}
+              />
+            </fieldset>
+          </div>
         ) : null}
 
         {step === 2 ? (

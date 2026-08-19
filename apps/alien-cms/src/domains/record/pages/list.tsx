@@ -9,7 +9,7 @@ import {
 import { App, Button, Card, Flex, Popconfirm, Space } from "antd";
 import { FilterForm, Table } from "@alien-form/shared";
 import type { Pagination, Sorter } from "../../../services";
-import { PageError, PageLoading } from "../../../components";
+import { PageBreadcrumb, PageError, PageLoading } from "../../../components";
 import { handles } from "../../../handles";
 import { useRecordPage } from "../hooks";
 import { RecordActionOverlay } from "../components";
@@ -30,6 +30,7 @@ export default function RecordListPage() {
 
   return (
     <Flex vertical gap={16}>
+      <PageBreadcrumb items={[{ title: page.schema.meta.title }]} />
       <Card styles={{ body: { padding: 16 } }}>
         <FilterForm
           schema={page.displaySchema}

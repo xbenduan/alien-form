@@ -18,11 +18,17 @@ function buildFieldSchema(draft: FieldDraft, order: number): ModelFieldSchema {
   const meta = FIELD_TYPE_META[draft.type];
   const dataSource = parseJson<DataSourceItem[]>(draft.dataSourceText);
   const handlerParams = parseJson<Record<string, unknown>>(draft.handlerParamsText);
+  const title = draft.title || draft.key;
+  const props = {
+    ...(meta.container ? { title } : {}),
+    ...(draft.placeholder ? { placeholder: draft.placeholder } : {}),
+  };
 
   const field: ModelFieldSchema = {
-    title: draft.title || draft.key,
     component: meta.component,
     order,
+    ...(meta.container ? {} : { title }),
+    ...(Object.keys(props).length > 0 ? { props } : {}),
   };
   if (meta.schemaType) field.type = meta.schemaType;
   if (draft.required) field.required = true;

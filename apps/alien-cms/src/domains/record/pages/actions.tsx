@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Breadcrumb, Button, Flex, Space } from "antd";
+import { Button, Flex, Space } from "antd";
 import type { SchemaFormRef } from "@alien-form/shared";
-import { PageError, PageLoading } from "../../../components";
+import { PageBreadcrumb, PageError, PageLoading } from "../../../components";
 import { useModelSchema, useRecordDetail, useRecordMutations } from "../../../hooks";
 import { recordListPath } from "../../../app/router/paths";
 import { RecordActionForm } from "../components";
@@ -41,9 +41,9 @@ export default function RecordActionPage({ mode }: RecordActionPageProps) {
 
   return (
     <Flex className={styles.page} vertical gap={16}>
-      <Breadcrumb
+      <PageBreadcrumb
         items={[
-          { title: `${singularLabel}列表`, href: recordListPath(modelName) },
+          { title: `${singularLabel}列表`, to: recordListPath(modelName) },
           { title: `${TITLE[mode]}${singularLabel}` },
         ]}
       />

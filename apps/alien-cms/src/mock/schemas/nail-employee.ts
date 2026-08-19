@@ -89,7 +89,7 @@ export const nailEmployeeSchema: ModelSchema = {
       type: "array",
       component: "ArrayCards",
       order: 80,
-      props: { title: "权限列表" },
+      props: { title: "权限列表", gridSpan: 12 },
       "x-table": { width: 240 },
       items: {
         type: "object",
