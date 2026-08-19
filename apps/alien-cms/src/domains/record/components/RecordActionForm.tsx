@@ -1,6 +1,8 @@
 import { App } from "antd";
 import { SchemaForm } from "@alien-form/shared";
 import type { SchemaRecord } from "@alien-form/shared";
+import type { SchemaFormRef } from "@alien-form/shared";
+import type { Ref } from "react";
 import { handles } from "../../../handles";
 import type { ModelRecord, ModelSchema } from "../../../services";
 import type { RecordActionMode } from "../types";
@@ -11,10 +13,10 @@ interface RecordActionFormProps {
   record?: ModelRecord;
   formKey: string;
   submitting?: boolean;
-  onCancel: () => void;
   onSubmitted: () => void;
   createRecord: (values: Record<string, unknown>) => Promise<unknown>;
   updateRecord: (id: string, values: Record<string, unknown>) => Promise<unknown>;
+  formRef?: Ref<SchemaFormRef>;
 }
 
 /**
@@ -27,10 +29,10 @@ export function RecordActionForm({
   record,
   formKey,
   submitting,
-  onCancel,
   onSubmitted,
   createRecord,
   updateRecord,
+  formRef,
 }: RecordActionFormProps) {
   const { message } = App.useApp();
 
@@ -47,13 +49,13 @@ export function RecordActionForm({
 
   return (
     <SchemaForm
+      ref={formRef}
       mode={mode}
       schema={schema}
       dataSource={record}
       handlers={handles}
       formKey={formKey}
       submitting={submitting}
-      onCancel={onCancel}
       onSubmit={mode === "detail" ? undefined : handleSubmit}
     />
   );

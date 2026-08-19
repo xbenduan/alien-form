@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { EyeOutlined, SaveOutlined } from "@ant-design/icons";
 import { App, Button, Card, Col, Flex, Row, Space, Steps } from "antd";
 import { PageError, PageLoading } from "../../../components";
-import { homePath } from "../../../app/router/paths";
+import { modelListPath } from "../../../app/router/paths";
 import { useModelBuilder } from "../hooks";
 import {
   FieldEditor,
@@ -79,14 +79,14 @@ export default function ModelActionPage({ mode }: ModelActionPageProps) {
     try {
       await builder.save();
       message.success(mode === "edit" ? "模型保存成功" : "模型创建成功");
-      navigate(homePath());
+      navigate(modelListPath());
     } catch (error) {
       message.error(error instanceof Error ? error.message : "保存失败");
     }
   };
 
   return (
-    <Flex vertical gap={16}>
+    <Flex className={styles.page} vertical gap={16}>
       <Card styles={{ body: { padding: 20 } }}>
         <Steps current={step} items={STEPS} />
       </Card>
@@ -154,6 +154,7 @@ export default function ModelActionPage({ mode }: ModelActionPageProps) {
 
       <div className={styles.footer}>
         <Space>
+          <Button onClick={() => navigate(modelListPath())}>取消</Button>
           {step > 0 ? <Button onClick={() => setStep((s) => s - 1)}>上一步</Button> : null}
           {step < 2 ? (
             <Button type="primary" onClick={() => setStep((s) => s + 1)}>

@@ -1,5 +1,7 @@
+import { useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Breadcrumb, Flex } from "antd";
+import { Breadcrumb, Button, Flex, Space } from "antd";
+import type { SchemaFormRef } from "@alien-form/shared";
 import { PageError, PageLoading } from "../../../components";
 import { useModelSchema, useRecordDetail, useRecordMutations } from "../../../hooks";
 import { recordListPath } from "../../../app/router/paths";
@@ -25,6 +27,7 @@ export default function RecordActionPage({ mode }: RecordActionPageProps) {
   const schema = schemaQuery.data;
   const detailQuery = useRecordDetail(modelName, recordId, mode !== "add");
   const mutations = useRecordMutations(modelName);
+  const formRef = useRef<SchemaFormRef>(null);
 
   if (schemaQuery.isLoading || (mode !== "add" && detailQuery.isLoading)) return <PageLoading />;
   if (schemaQuery.error || !schema) {
@@ -35,7 +38,7 @@ export default function RecordActionPage({ mode }: RecordActionPageProps) {
   const backToList = () => navigate(recordListPath(modelName));
 
   return (
-    <Flex vertical gap={16}>
+    <Flex className={styles.page} vertical gap={16}>
       <Breadcrumb
         items={[
           { title: `${singularLabel}列表`, href: recordListPath(modelName) },
@@ -48,12 +51,26 @@ export default function RecordActionPage({ mode }: RecordActionPageProps) {
           schema={schema}
           record={mode === "add" ? undefined : detailQuery.data}
           formKey={`${modelName}:${mode}:${recordId ?? "new"}`}
+          formRef={formRef}
           submitting={mutations.submitting}
-          onCancel={backToList}
           onSubmitted={backToList}
           createRecord={mutations.createRecord}
           updateRecord={mutations.updateRecord}
         />
+      </div>
+      <div className={styles.footer}>
+        <Space>
+          <Button onClick={backToList}>取消</Button>
+          {mode === "detail" ? null : (
+            <Button
+              type="primary"
+              loading={mutations.submitting}
+              onClick={() => formRef.current?.submit()}
+            >
+              {mode === "add" ? "创建" : "保存"}
+            </Button>
+          )}
+        </Space>
       </div>
     </Flex>
   );

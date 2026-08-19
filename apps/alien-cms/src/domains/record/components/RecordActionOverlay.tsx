@@ -1,4 +1,6 @@
-import { Drawer, Modal, Spin } from "antd";
+import { useRef } from "react";
+import { Button, Drawer, Modal, Space, Spin } from "antd";
+import type { SchemaFormRef } from "@alien-form/shared";
 import { useRecordDetail } from "../../../hooks";
 import type { ModelSchema } from "../../../services";
 import type { OverlayActionState } from "../types";
@@ -38,9 +40,20 @@ export function RecordActionOverlay({
 
   const title = `${TITLE[mode]}${schema.meta.singularLabel}`;
   const formKey = `${modelName}:${mode}:${recordId ?? "new"}`;
+  const formRef = useRef<SchemaFormRef>(null);
+  const loadingDetail = mode !== "add" && detailQuery.isFetching;
+  const editable = mode !== "detail" && !loadingDetail;
+  const footer = editable ? (
+    <Space>
+      <Button onClick={onClose}>取消</Button>
+      <Button type="primary" loading={submitting} onClick={() => formRef.current?.submit()}>
+        {mode === "add" ? "创建" : "保存"}
+      </Button>
+    </Space>
+  ) : null;
 
   const body =
-    mode !== "add" && detailQuery.isFetching ? (
+    loadingDetail ? (
       <div className={styles.loading}>
         <Spin />
       </div>
@@ -50,8 +63,8 @@ export function RecordActionOverlay({
         schema={schema}
         record={mode === "add" ? undefined : detailQuery.data}
         formKey={formKey}
+        formRef={formRef}
         submitting={submitting}
-        onCancel={onClose}
         onSubmitted={onClose}
         createRecord={createRecord}
         updateRecord={updateRecord}
@@ -60,14 +73,30 @@ export function RecordActionOverlay({
 
   if (overlay?.openMode === "modal") {
     return (
-      <Modal open={open} title={title} width={720} footer={null} destroyOnHidden onCancel={onClose}>
+      <Modal
+        open={open}
+        title={title}
+        width={720}
+        footer={footer}
+        destroyOnHidden
+        styles={{ body: { maxHeight: "calc(100vh - 220px)", overflowY: "auto" } }}
+        onCancel={onClose}
+      >
         {body}
       </Modal>
     );
   }
 
   return (
-    <Drawer open={open} title={title} size={680} footer={null} destroyOnHidden onClose={onClose}>
+    <Drawer
+      open={open}
+      title={title}
+      size={680}
+      footer={footer}
+      destroyOnHidden
+      styles={{ body: { maxHeight: "calc(100vh - 120px)", overflowY: "auto" } }}
+      onClose={onClose}
+    >
       {body}
     </Drawer>
   );

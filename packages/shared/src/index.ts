@@ -77,7 +77,7 @@ export {
   SchemaForm,
   useFormSchema,
 } from "./form";
-export type { SchemaFormProps } from "./form";
+export type { SchemaFormProps, SchemaFormRef } from "./form";
 
 // table
 export { Table, useColumns } from "./table";
