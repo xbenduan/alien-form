@@ -2,6 +2,7 @@ export {
   FIELD_TYPE_META,
   FIELD_TYPE_OPTIONS,
   GROUP_COMPONENT_OPTIONS,
+  MODEL_GROUP_OPTIONS,
   getDefaultPlaceholder,
   isContainerType,
   OPEN_MODE_OPTIONS,

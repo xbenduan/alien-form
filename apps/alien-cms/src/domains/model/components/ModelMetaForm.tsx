@@ -1,6 +1,6 @@
-import { Input, InputNumber, Select } from "antd";
-import type { ModelDraft, OpenMode } from "../types";
-import { OPEN_MODE_OPTIONS } from "../utils";
+import { Input, InputNumber, Segmented, Select } from "antd";
+import type { ModelDraft, ModelGroup, OpenMode } from "../types";
+import { MODEL_GROUP_OPTIONS, OPEN_MODE_OPTIONS } from "../utils";
 import styles from "./index.module.css";
 
 interface ModelMetaFormProps {
@@ -43,6 +43,14 @@ export function ModelMetaForm({ draft, nameDisabled, onChange }: ModelMetaFormPr
           rows={2}
           value={draft.description}
           onChange={(event) => patch({ description: event.target.value })}
+        />
+      </div>
+      <div className={styles.row}>
+        <label className={styles.label}>模型分组</label>
+        <Segmented
+          value={draft.group}
+          options={MODEL_GROUP_OPTIONS}
+          onChange={(value) => patch({ group: value as ModelGroup })}
         />
       </div>
       <div className={styles.grid}>

@@ -10,6 +10,7 @@ export const nailEmployeeSchema: ModelSchema = {
     title: "用户管理",
     subtitle: "School Users",
     description: "学校教师、学生及用户角色信息管理。",
+    group: "system",
     singularLabel: "用户",
     pluralLabel: "用户",
     defaultPageSize: 10,

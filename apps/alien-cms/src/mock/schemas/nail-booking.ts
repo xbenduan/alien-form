@@ -10,6 +10,7 @@ export const nailBookingSchema: ModelSchema = {
     title: "角色管理",
     subtitle: "School Roles",
     description: "学校用户角色与可查看业务表配置。",
+    group: "system",
     singularLabel: "角色",
     pluralLabel: "角色",
     defaultPageSize: 10,

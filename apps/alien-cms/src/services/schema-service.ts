@@ -20,6 +20,7 @@ export function listSchemas(): Promise<ModelSummary[]> {
       title: schema.meta.title,
       subtitle: schema.meta.subtitle,
       description: schema.meta.description,
+      group: schema.meta.group,
       fieldCount: Object.keys(schema.properties ?? {}).length,
       updatedAt,
     }))

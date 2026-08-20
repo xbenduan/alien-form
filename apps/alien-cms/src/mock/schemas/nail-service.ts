@@ -10,6 +10,7 @@ export const nailServiceSchema: ModelSchema = {
     title: "课程列表",
     subtitle: "School Courses",
     description: "学校体育课程、授课教师、容量与抢课时段管理。",
+    group: "other",
     singularLabel: "课程",
     pluralLabel: "课程",
     defaultPageSize: 10,

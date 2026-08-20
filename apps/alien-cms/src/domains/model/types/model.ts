@@ -1,7 +1,7 @@
 import type { GroupConfig } from "@alien-form/shared";
-import type { ModelMeta, ModelSchema, OpenMode } from "../../../services";
+import type { ModelGroup, ModelMeta, ModelSchema, OpenMode } from "../../../services";
 
-export type { ModelMeta, ModelSchema, OpenMode };
+export type { ModelGroup, ModelMeta, ModelSchema, OpenMode };
 
 /** 构建器支持的字段类型。 */
 export type BuilderFieldType =
@@ -48,6 +48,7 @@ export interface ModelDraft {
   title: string;
   subtitle: string;
   description: string;
+  group: ModelGroup;
   singularLabel: string;
   pluralLabel: string;
   defaultPageSize: number;

@@ -86,6 +86,7 @@ export function buildModelSchema(draft: ModelDraft): ModelSchema {
       title: draft.title,
       subtitle: draft.subtitle || undefined,
       description: draft.description || undefined,
+      group: draft.group,
       singularLabel: draft.singularLabel || "记录",
       pluralLabel: draft.pluralLabel || "记录",
       defaultPageSize: draft.defaultPageSize,

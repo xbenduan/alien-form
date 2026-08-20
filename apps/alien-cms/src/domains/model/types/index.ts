@@ -4,6 +4,7 @@ export type {
   GroupConfig,
   GroupDraft,
   ModelDraft,
+  ModelGroup,
   ModelMeta,
   ModelSchema,
   OpenMode,

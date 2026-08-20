@@ -15,6 +15,7 @@ export {
 } from "./record-service";
 export type {
   ModelFieldSchema,
+  ModelGroup,
   ModelMeta,
   ModelRecord,
   ModelSchema,

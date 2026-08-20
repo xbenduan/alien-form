@@ -7,7 +7,7 @@
   }
   .topbar {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
   }
 
@@ -64,25 +64,6 @@
   .count {
     color: #7b8799;
     font-size: 13px;
-  }
-
-  .addButton {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    height: 40px;
-    padding: 0 18px;
-    border: none;
-    border-radius: 6px;
-    background: #1677ff;
-    color: #fff;
-    font-size: 14px;
-    cursor: pointer;
-    transition: background 160ms ease;
-  }
-
-  .addButton:hover {
-    background: #4091ff;
   }
 
   .grid {

@@ -23,12 +23,16 @@ export interface ModelFieldSchema extends FieldSchema {
 /** 详情/新增/编辑的打开方式。 */
 export type OpenMode = "page" | "drawer" | "modal";
 
+/** 模型分组：用于落地页按「系统 / 其他」归类展示。 */
+export type ModelGroup = "system" | "other";
+
 /** 模型元信息：驱动列表页标题、分页、打开方式等。 */
 export interface ModelMeta {
   name: string;
   title: string;
   subtitle?: string;
   description?: string;
+  group?: ModelGroup;
   singularLabel: string;
   pluralLabel: string;
   defaultPageSize: number;
@@ -52,6 +56,7 @@ export interface ModelSummary {
   title: string;
   subtitle?: string;
   description?: string;
+  group?: ModelGroup;
   fieldCount: number;
   updatedAt: string;
 }

@@ -50,3 +50,9 @@ export const OPEN_MODE_OPTIONS = [
   { value: "drawer", label: "抽屉" },
   { value: "modal", label: "弹窗" },
 ];
+
+/** 模型分组选项（落地页 Segmented 归类用）。 */
+export const MODEL_GROUP_OPTIONS = [
+  { value: "system", label: "系统" },
+  { value: "other", label: "其他" },
+];
