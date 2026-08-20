@@ -1,9 +1,9 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Empty, Modal, Tag } from "antd";
-import { useState, type DragEvent, type ReactElement } from "react";
+import { useRef, useState, type DragEvent, type ReactElement } from "react";
 import type { FieldDraft } from "../types";
 import { FIELD_TYPE_META, createFieldDraft, isContainerType } from "../utils";
-import { FieldEditor } from "./FieldEditor";
+import { FieldEditor, type FieldEditorRef } from "./FieldEditor";
 import styles from "./FieldListEditor.module.css";
 
 interface FieldListEditorProps {
@@ -91,9 +91,9 @@ function containsField(field: FieldDraft, id: string): boolean {
 /** 字段树编辑：支持同级排序，以及拖入对象/对象数组容器形成嵌套字段。 */
 export function FieldListEditor({ fields, onChange }: FieldListEditorProps) {
   const [editor, setEditor] = useState<EditorState>();
-  const [error, setError] = useState("");
   const [draggingId, setDraggingId] = useState<string>();
   const [dropTargetId, setDropTargetId] = useState<string>();
+  const fieldEditorRef = useRef<FieldEditorRef>(null);
 
   const moveBefore = (targetId: string) => {
     if (!draggingId || draggingId === targetId) return;
@@ -128,41 +128,27 @@ export function FieldListEditor({ fields, onChange }: FieldListEditorProps) {
     setEditor({ mode: "add", parentId: parent.id, field: createFieldDraft() });
   };
 
-  const saveField = () => {
-    if (!editor || !editor.field.key.trim()) {
-      setError("请填写字段 Key");
-      return;
-    }
-    if (!editor.field.title.trim()) {
-      setError("请填写字段标题");
-      return;
-    }
-    if (editor.field.jsonEnabled) {
-      try {
-        const parsed: unknown = JSON.parse(editor.field.schemaJsonText);
-        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-          throw new Error("JSON Schema 必须是对象");
-        }
-      } catch (reason) {
-        setError(reason instanceof Error ? reason.message : "JSON Schema 格式不正确");
-        return;
-      }
-    }
+  const saveField = async () => {
+    if (!editor || !fieldEditorRef.current) return;
+    try {
+      const field = await fieldEditorRef.current.submit();
 
-    if (editor.mode === "edit") {
-      onChange(updateField(fields, editor.field.id, () => editor.field));
-    } else if (editor.parentId) {
-      onChange(
-        updateField(fields, editor.parentId, (parent) => ({
-          ...parent,
-          children: [...(parent.children ?? []), editor.field],
-        })),
-      );
-    } else {
-      onChange([...fields, editor.field]);
+      if (editor.mode === "edit") {
+        onChange(updateField(fields, editor.field.id, () => field));
+      } else if (editor.parentId) {
+        onChange(
+          updateField(fields, editor.parentId, (parent) => ({
+            ...parent,
+            children: [...(parent.children ?? []), field],
+          })),
+        );
+      } else {
+        onChange([...fields, field]);
+      }
+    } catch {
+      return;
     }
     setEditor(undefined);
-    setError("");
   };
 
   const renderActions = (field: FieldDraft) => (
@@ -286,7 +272,6 @@ export function FieldListEditor({ fields, onChange }: FieldListEditorProps) {
         width={620}
         onCancel={() => {
           setEditor(undefined);
-          setError("");
         }}
         onOk={saveField}
         okText={editor?.mode === "edit" ? "保存" : "确认新增"}
@@ -294,13 +279,11 @@ export function FieldListEditor({ fields, onChange }: FieldListEditorProps) {
         styles={{ body: { maxHeight: "calc(100vh - 260px)", overflowY: "auto" } }}
       >
         {editor ? (
-          <>
-            <FieldEditor
-              field={editor.field}
-              onChange={(field) => setEditor({ ...editor, field })}
-            />
-            {error ? <div className={styles.error}>{error}</div> : null}
-          </>
+          <FieldEditor
+            ref={fieldEditorRef}
+            field={editor.field}
+            onChange={(field) => setEditor({ ...editor, field })}
+          />
         ) : null}
       </Modal>
     </div>

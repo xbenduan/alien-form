@@ -22,7 +22,7 @@ function buildFieldSchema(draft: FieldDraft, order: number): ModelFieldSchema {
     ...(draft.placeholder ? { placeholder: draft.placeholder } : {}),
   };
 
-  const custom = draft.jsonEnabled ? parseSchema(draft.schemaJsonText) : undefined;
+  const custom = parseSchema(draft.schemaJsonText);
   const field: ModelFieldSchema = {
     ...(custom ?? {}),
     component: meta.component,

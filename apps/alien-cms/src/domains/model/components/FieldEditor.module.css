@@ -1,26 +1,9 @@
-.editor {
+.form {
   display: grid;
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 16px;
 }
 
-.row {
-  display: grid;
-  grid-template-columns: 96px 1fr;
-  align-items: start;
-  gap: 12px;
-}
-
-.label {
-  padding-top: 6px;
-  color: #52607a;
-  font-size: 13px;
-}
-
-.control {
-  width: 100%;
-}
-
-.jsonRow {
-  display: grid;
+.schemaJson {
   grid-column: 1 / -1;
 }
