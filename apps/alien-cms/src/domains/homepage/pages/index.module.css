@@ -43,11 +43,12 @@
   }
 
   .toolbar {
+    padding-top: 22px;
+  }
+
+  .toolbar :global(.ant-tabs-extra-content) {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-    padding: 38px 0 28px;
   }
 
   .search {

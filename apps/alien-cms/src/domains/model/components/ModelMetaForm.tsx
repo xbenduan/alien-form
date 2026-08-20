@@ -45,15 +45,15 @@ export function ModelMetaForm({ draft, nameDisabled, onChange }: ModelMetaFormPr
           onChange={(event) => patch({ description: event.target.value })}
         />
       </div>
-      <div className={styles.row}>
-        <label className={styles.label}>模型分组</label>
-        <Segmented
-          value={draft.group}
-          options={MODEL_GROUP_OPTIONS}
-          onChange={(value) => patch({ group: value as ModelGroup })}
-        />
-      </div>
       <div className={styles.grid}>
+        <div className={styles.row}>
+          <label className={styles.label}>模型分组</label>
+          <Select
+            value={draft.group}
+            options={MODEL_GROUP_OPTIONS}
+            onChange={(value) => patch({ group: value as ModelGroup })}
+          />
+        </div>
         <div className={styles.row}>
           <label className={styles.label}>单数标签</label>
           <Input

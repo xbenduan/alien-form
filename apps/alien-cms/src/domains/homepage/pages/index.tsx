@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppstoreOutlined, DatabaseOutlined, SearchOutlined } from "@ant-design/icons";
-import { Empty, Input, Segmented, Tooltip, Typography } from "antd";
+import { Empty, Input, Tabs, Tooltip, Typography } from "antd";
 import { PageError, PageLoading } from "../../../components";
 import { useModelSummaries } from "../../../hooks";
 import type { ModelGroup, ModelSummary } from "../../../services";
@@ -9,13 +9,13 @@ import { recordListPath } from "../../../app/router/paths";
 import { UserMenu } from "../components";
 import styles from "./index.module.css";
 
-/** Segmented 分组筛选值：all 表示不限分组。 */
+/** Tabs 分组筛选值：all 表示不限分组。 */
 type GroupFilter = "all" | ModelGroup;
 
-const GROUP_OPTIONS: { value: GroupFilter; label: string }[] = [
-  { value: "all", label: "全部" },
-  { value: "system", label: "系统" },
-  { value: "other", label: "其他" },
+const GROUP_TABS: { key: GroupFilter; label: string }[] = [
+  { key: "all", label: "全部" },
+  { key: "system", label: "系统" },
+  { key: "other", label: "其他" },
 ];
 
 function ModelCard({ model, onClick }: { model: ModelSummary; onClick: () => void }) {
@@ -77,23 +77,26 @@ export default function HomePage() {
         <UserMenu />
       </header>
 
-      <div className={styles.toolbar}>
-        <Segmented
-          value={group}
-          options={GROUP_OPTIONS}
-          onChange={(value) => setGroup(value as GroupFilter)}
-        />
-        <div className={styles.search}>
-          <span className={styles.count}>{filtered.length} 个模型</span>
-          <Input
-            allowClear
-            prefix={<SearchOutlined />}
-            placeholder="搜索模型名称、标题或描述"
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
-          />
-        </div>
-      </div>
+      <Tabs
+        className={styles.toolbar}
+        activeKey={group}
+        items={GROUP_TABS}
+        onChange={(key) => setGroup(key as GroupFilter)}
+        tabBarExtraContent={{
+          right: (
+            <div className={styles.search}>
+              <span className={styles.count}>{filtered.length} 个模型</span>
+              <Input
+                allowClear
+                prefix={<SearchOutlined />}
+                placeholder="搜索模型名称、标题或描述"
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+              />
+            </div>
+          ),
+        }}
+      />
 
       {query.isError ? (
         <PageError title="模型列表加载失败" description={(query.error as Error)?.message} />
