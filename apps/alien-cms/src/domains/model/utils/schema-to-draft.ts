@@ -1,6 +1,6 @@
 import type { ModelFieldSchema, ModelSchema } from "../../../services";
-import type { BuilderFieldType, FieldDraft, GroupDraft, ModelDraft } from "../types";
-import { getDefaultPlaceholder } from "./field-types";
+import type { FieldDraft, GroupDraft, ModelDraft } from "../types";
+import { FIELD_TYPE_META, inferFieldType } from "./field-types";
 
 let counter = 0;
 function uid(prefix: string): string {
@@ -8,58 +8,24 @@ function uid(prefix: string): string {
   return `${prefix}-${Date.now()}-${counter}`;
 }
 
-/** 由 component + type 反推构建器字段类型。 */
-function inferFieldType(field: ModelFieldSchema): BuilderFieldType {
-  const component = field.component;
-  if (component === "MultiSelect") return "multiSelect";
-  if (component === "TagsInput") return "tags";
-  if (component === "Select" || component === "Radio") return "select";
-  if (component === "DateInput") return "date";
-  if (component === "Switch") return "boolean";
-  if (component === "NumberInput") return "number";
-  if (component === "ObjectField" || field.type === "object") return "object";
-  if (component === "ArrayCards" || field.type === "array") return "array";
-  return "string";
-}
-
-function hasAdvancedSchema(field: ModelFieldSchema): boolean {
-  const props = Object.keys(field.props ?? {}).filter(
-    (key) => key !== "title" && key !== "placeholder",
-  );
-  return Boolean(
-    field.dataSource ||
-      field["x-reaction"] ||
-      field["x-handler-params"] ||
-      props.length > 0,
-  );
-}
-
+/**
+ * ModelFieldSchema → 字段草稿。
+ * 字段自身的 schema 直接挂在 `fields` 上（编辑器就地读写），key 也并入 `fields.key`，
+ * 便于在 JSON 编辑框内直接查看/修改；仅把子字段（object.properties / array.items.properties）
+ * 提出来交给 children 管理以便拖拽排序，`fields` 中不再冗余保存这些子结构。
+ */
 function toFieldDraft(key: string, field: ModelFieldSchema): FieldDraft {
   const type = inferFieldType(field);
   const itemProps =
     field.items && !Array.isArray(field.items) ? field.items.properties : undefined;
-  const children = type === "object" ? field.properties : type === "array" ? itemProps : undefined;
+  const childProps = type === "object" ? field.properties : type === "array" ? itemProps : undefined;
 
+  const { properties: _properties, items: _items, ...rest } = field;
   return {
     id: uid("field"),
-    key,
-    title:
-      typeof field.props?.title === "string"
-        ? field.props.title
-        : field.title ?? key,
-    type,
-    component: field.component ?? "Input",
-    placeholder:
-      typeof field.props?.placeholder === "string"
-        ? field.props.placeholder
-        : getDefaultPlaceholder(type),
-    jsonEnabled: hasAdvancedSchema(field),
-    schemaJsonText: JSON.stringify(field, null, 2),
-    required: field.required === true,
-    tableWidthText: field["x-table"]?.width ? String(field["x-table"].width) : "",
-    tableVisible: field["x-table"]?.visible !== false,
-    children: children
-      ? Object.entries(children).map(([childKey, childField]) => toFieldDraft(childKey, childField))
+    fields: { key, ...rest },
+    children: childProps
+      ? Object.entries(childProps).map(([childKey, childField]) => toFieldDraft(childKey, childField))
       : undefined,
   };
 }
@@ -121,18 +87,16 @@ export function createEmptyDraft(): ModelDraft {
 /** 新建字段草稿。 */
 export function createFieldDraft(): FieldDraft {
   const suffix = uid("f").split("-").pop();
+  const meta = FIELD_TYPE_META.string;
   return {
     id: uid("field"),
-    key: `field_${suffix}`,
-    title: "新字段",
-    type: "string",
-    component: "Input",
-    placeholder: getDefaultPlaceholder("string"),
-    jsonEnabled: false,
-    schemaJsonText: "",
-    required: false,
-    tableWidthText: "",
-    tableVisible: true,
+    fields: {
+      key: `field_${suffix}`,
+      type: meta.schemaType,
+      title: "新字段",
+      component: meta.component,
+      "x-table": { visible: true },
+    },
     children: undefined,
   };
 }

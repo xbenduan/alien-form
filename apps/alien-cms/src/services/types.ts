@@ -14,6 +14,8 @@ export interface TableFieldMeta {
  * - x-handler-params：handler（如 loadDataSource）运行参数
  */
 export interface ModelFieldSchema extends FieldSchema {
+  /** 字段 key：编辑态承载在字段 schema 上，便于在 JSON 中直接查看/修改；构建输出时剥离（key 即 properties 的键）。 */
+  key?: string;
   "x-table"?: TableFieldMeta;
   "x-handler-params"?: Record<string, Record<string, unknown>>;
   properties?: Record<string, ModelFieldSchema>;

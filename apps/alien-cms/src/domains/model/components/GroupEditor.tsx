@@ -16,8 +16,8 @@ export function GroupEditor({ groups, fields, onChange }: GroupEditorProps) {
   const [form] = Form.useForm<{ groups: GroupDraft[] }>();
   const watchedGroups = Form.useWatch("groups", form);
   const fieldOptions = fields.map((field) => ({
-    value: field.key,
-    label: field.title || field.key,
+    value: field.fields.key ?? "",
+    label: field.fields.title || field.fields.key || "",
   }));
 
   // 外部草稿变化（如 edit 模式载入或 JSON 导入）时同步回表单。

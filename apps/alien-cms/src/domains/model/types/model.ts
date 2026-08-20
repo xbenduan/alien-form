@@ -1,7 +1,13 @@
 import type { GroupConfig } from "@alien-form/shared";
-import type { ModelGroup, ModelMeta, ModelSchema, OpenMode } from "../../../services";
+import type {
+  ModelFieldSchema,
+  ModelGroup,
+  ModelMeta,
+  ModelSchema,
+  OpenMode,
+} from "../../../services";
 
-export type { ModelGroup, ModelMeta, ModelSchema, OpenMode };
+export type { ModelFieldSchema, ModelGroup, ModelMeta, ModelSchema, OpenMode };
 
 /** 构建器支持的字段类型。 */
 export type BuilderFieldType =
@@ -17,17 +23,10 @@ export type BuilderFieldType =
 
 /** 字段草稿：模型构建器编辑态的单个字段。 */
 export interface FieldDraft {
+  /** 拖拽排序 / 编辑定位用的稳定 id（不进入最终 schema）。 */
   id: string;
-  key: string;
-  title: string;
-  type: BuilderFieldType;
-  component: string;
-  placeholder: string;
-  jsonEnabled: boolean;
-  schemaJsonText: string;
-  required: boolean;
-  tableWidthText: string;
-  tableVisible: boolean;
+  /** 字段自身的 schema 对象，编辑态直接持有（含 key），避免逐字段拆解再回填。 */
+  fields: ModelFieldSchema;
   /** 复杂字段（object/array）的子字段。 */
   children?: FieldDraft[];
 }

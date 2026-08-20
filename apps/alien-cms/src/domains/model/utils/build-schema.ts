@@ -1,49 +1,21 @@
 import type { GroupConfig } from "@alien-form/shared";
 import type { ModelFieldSchema, ModelSchema } from "../../../services";
 import type { FieldDraft, ModelDraft } from "../types";
-import { FIELD_TYPE_META } from "./field-types";
+import { inferFieldType } from "./field-types";
 
-function parseSchema(text: string): ModelFieldSchema | undefined {
-  try {
-    const value = JSON.parse(text) as unknown;
-    return value && typeof value === "object" && !Array.isArray(value)
-      ? (value as ModelFieldSchema)
-      : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
+/**
+ * 字段草稿 → schema：草稿已直接持有字段 schema（draft.fields），
+ * 这里只补 order、剥离编辑态承载的 key、并把 children 还原成 properties / items.properties。
+ */
 function buildFieldSchema(draft: FieldDraft, order: number): ModelFieldSchema {
-  const meta = FIELD_TYPE_META[draft.type];
-  const title = draft.title || draft.key;
-  const props = {
-    ...(meta.container ? { title } : {}),
-    ...(draft.placeholder ? { placeholder: draft.placeholder } : {}),
-  };
+  const { key: _key, ...rest } = draft.fields;
+  const field: ModelFieldSchema = { ...rest, order };
+  const type = inferFieldType(field);
 
-  const custom = parseSchema(draft.schemaJsonText);
-  const field: ModelFieldSchema = {
-    ...(custom ?? {}),
-    component: meta.component,
-    order,
-    ...(meta.container ? {} : { title }),
-    ...(Object.keys(props).length > 0 ? { props: { ...custom?.props, ...props } } : {}),
-  };
-  if (meta.schemaType) field.type = meta.schemaType;
-  if (draft.required) field.required = true;
-
-  const width = Number(draft.tableWidthText);
-  field["x-table"] = {
-    ...(Number.isFinite(width) && width > 0 ? { width } : {}),
-    visible: draft.tableVisible,
-  };
-
-  // 复杂字段：递归构建子字段
-  if (draft.type === "object" && draft.children && !custom?.properties) {
+  if (type === "object" && draft.children) {
+    field.type = "object";
     field.properties = buildProperties(draft.children);
-  }
-  if (draft.type === "array" && draft.children && !custom?.items) {
+  } else if (type === "array" && draft.children) {
     field.type = "array";
     field.items = { type: "object", properties: buildProperties(draft.children) };
   }
@@ -53,7 +25,10 @@ function buildFieldSchema(draft: FieldDraft, order: number): ModelFieldSchema {
 
 function buildProperties(fields: FieldDraft[]): Record<string, ModelFieldSchema> {
   return Object.fromEntries(
-    fields.map((field, index) => [field.key, buildFieldSchema(field, (index + 1) * 10)]),
+    fields.map((field, index) => [
+      field.fields.key ?? `field_${index + 1}`,
+      buildFieldSchema(field, (index + 1) * 10),
+    ]),
   );
 }
 

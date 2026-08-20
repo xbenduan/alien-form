@@ -28,8 +28,28 @@ export const FIELD_TYPE_OPTIONS = Object.entries(FIELD_TYPE_META).map(([value, m
   label: meta.label,
 }));
 
+/** 类型选项（以 component 为值）：供直接绑定到字段 schema 的 component 字段。 */
+export const FIELD_TYPE_COMPONENT_OPTIONS = Object.values(FIELD_TYPE_META).map((meta) => ({
+  value: meta.component,
+  label: meta.label,
+}));
+
 export function isContainerType(type: BuilderFieldType): boolean {
   return Boolean(FIELD_TYPE_META[type].container);
+}
+
+/** 由 component + type 反推构建器字段类型。 */
+export function inferFieldType(field: { component?: string; type?: string }): BuilderFieldType {
+  const component = field.component;
+  if (component === "MultiSelect") return "multiSelect";
+  if (component === "TagsInput") return "tags";
+  if (component === "Select" || component === "Radio") return "select";
+  if (component === "DateInput") return "date";
+  if (component === "Switch") return "boolean";
+  if (component === "NumberInput") return "number";
+  if (component === "ObjectField" || field.type === "object") return "object";
+  if (component === "ArrayCards" || field.type === "array") return "array";
+  return "string";
 }
 
 /** 字段组件的默认占位提示。 */

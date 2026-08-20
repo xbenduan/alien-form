@@ -2,7 +2,7 @@ import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Empty, Modal, Tag } from "antd";
 import { useRef, useState, type DragEvent, type ReactElement } from "react";
 import type { FieldDraft } from "../types";
-import { FIELD_TYPE_META, createFieldDraft, isContainerType } from "../utils";
+import { FIELD_TYPE_META, createFieldDraft, inferFieldType, isContainerType } from "../utils";
 import { FieldEditor, type FieldEditorRef } from "./FieldEditor";
 import styles from "./index.module.css";
 
@@ -19,6 +19,16 @@ type EditorState =
 interface RemovedField {
   fields: FieldDraft[];
   field?: FieldDraft;
+}
+
+/** 草稿显示标题：优先字段 schema 的 title，回退到 key。 */
+function draftTitle(field: FieldDraft): string {
+  return field.fields.title || field.fields.key || "";
+}
+
+/** 草稿字段类型：由字段 schema 的 component / type 反推。 */
+function draftType(field: FieldDraft) {
+  return inferFieldType(field.fields);
 }
 
 function updateField(
@@ -153,12 +163,12 @@ export function FieldListEditor({ fields, onChange }: FieldListEditorProps) {
 
   const renderActions = (field: FieldDraft) => (
     <div className={styles.actions}>
-      {isContainerType(field.type) ? (
+      {isContainerType(draftType(field)) ? (
         <Button
           type="text"
           size="small"
           icon={<PlusOutlined />}
-          aria-label={`为${field.title || field.key}添加子字段`}
+          aria-label={`为${draftTitle(field)}添加子字段`}
           onClick={(event) => {
             event.stopPropagation();
             addChild(field);
@@ -169,7 +179,7 @@ export function FieldListEditor({ fields, onChange }: FieldListEditorProps) {
         type="text"
         size="small"
         icon={<EditOutlined />}
-        aria-label={`编辑${field.title || field.key}`}
+        aria-label={`编辑${draftTitle(field)}`}
         onClick={(event) => {
           event.stopPropagation();
           setEditor({ mode: "edit", field });
@@ -180,7 +190,7 @@ export function FieldListEditor({ fields, onChange }: FieldListEditorProps) {
         size="small"
         danger
         icon={<DeleteOutlined />}
-        aria-label={`删除${field.title || field.key}`}
+        aria-label={`删除${draftTitle(field)}`}
         onClick={(event) => {
           event.stopPropagation();
           remove(field.id);
@@ -190,7 +200,8 @@ export function FieldListEditor({ fields, onChange }: FieldListEditorProps) {
   );
 
   const renderField = (field: FieldDraft, nested = false): ReactElement => {
-    const container = isContainerType(field.type);
+    const type = draftType(field);
+    const container = isContainerType(type);
     const itemClass = [
       styles.item,
       nested ? styles.nested : "",
@@ -223,8 +234,8 @@ export function FieldListEditor({ fields, onChange }: FieldListEditorProps) {
             <span className={styles.dragHandle} aria-hidden="true">
               ⋮⋮
             </span>
-            <span className={styles.itemTitle}>{field.title || field.key}</span>
-            <Tag>{FIELD_TYPE_META[field.type].label}</Tag>
+            <span className={styles.itemTitle}>{draftTitle(field)}</span>
+            <Tag>{FIELD_TYPE_META[type].label}</Tag>
           </div>
           {renderActions(field)}
         </div>
