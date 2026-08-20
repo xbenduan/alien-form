@@ -1,5 +1,4 @@
-import { ImportOutlined } from "@ant-design/icons";
-import { Alert, Button, Input, Modal } from "antd";
+import { App, Alert, Button, Input } from "antd";
 import { useEffect, useState } from "react";
 import type { ModelDraft, ModelSchema } from "../types";
 import { schemaToDraft } from "../utils";
@@ -8,7 +7,6 @@ import styles from "./index.module.css";
 interface SchemaJsonEditorProps {
   schema?: ModelSchema;
   onApply: (draft: ModelDraft) => void;
-  compact?: boolean;
 }
 
 function stringifySchema(schema?: ModelSchema): string {
@@ -27,12 +25,16 @@ function isModelSchema(value: unknown): value is ModelSchema {
   );
 }
 
-/** 原始 Schema 编辑入口：支持 JSON 修改后反向恢复构建器草稿。 */
-export function SchemaJsonEditor({ schema, onApply, compact = false }: SchemaJsonEditorProps) {
+/**
+ * 内联 Schema JSON 编辑面板：整块 TextArea 展示/编辑模型 schema，
+ * 点击「更新」才解析并应用到构建器草稿，应用结果通过弹窗提示。
+ */
+export function SchemaJsonEditor({ schema, onApply }: SchemaJsonEditorProps) {
+  const { message } = App.useApp();
   const [text, setText] = useState(() => stringifySchema(schema));
   const [error, setError] = useState("");
-  const [open, setOpen] = useState(false);
 
+  // 左侧字段变化时回显最新 schema（未点击更新前不会反向覆盖草稿）。
   useEffect(() => {
     setText(stringifySchema(schema));
     setError("");
@@ -46,54 +48,31 @@ export function SchemaJsonEditor({ schema, onApply, compact = false }: SchemaJso
       }
       onApply(schemaToDraft(parsed));
       setError("");
-      setOpen(false);
+      message.success("Schema 已更新");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Schema JSON 格式不正确");
+      const detail = reason instanceof Error ? reason.message : "Schema JSON 格式不正确";
+      setError(detail);
+      message.error(`更新失败：${detail}`);
     }
   };
 
   return (
-    <div className={`${styles.schemaJsonEditor} ${styles.entry}${compact ? ` ${styles.compact}` : ""}`}>
-      {!compact ? <div className={styles.caption}>通过 JSON 导入或恢复模型 Schema</div> : null}
-      <Button
-        icon={<ImportOutlined />}
-        onClick={() => {
-          setText(stringifySchema(schema));
-          setError("");
-          setOpen(true);
+    <div className={`${styles.schemaJsonEditor} ${styles.panel}`}>
+      <Input.TextArea
+        className={styles.input}
+        value={text}
+        spellCheck={false}
+        onChange={(event) => {
+          setText(event.target.value);
+          if (error) setError("");
         }}
-      >
-        导入 Schema JSON
-      </Button>
-      <Modal
-        centered
-        destroyOnHidden
-        open={open}
-        title="导入 Schema JSON"
-        width={760}
-        okText="确认应用"
-        cancelText="取消"
-        styles={{ body: { maxHeight: "calc(100vh - 220px)", overflowY: "auto" } }}
-        onCancel={() => {
-          setOpen(false);
-          setError("");
-        }}
-        onOk={applySchema}
-      >
-        <div className={styles.editor}>
-          <Input.TextArea
-            className={styles.input}
-            value={text}
-            spellCheck={false}
-            autoSize={{ minRows: 22, maxRows: 36 }}
-            onChange={(event) => {
-              setText(event.target.value);
-              if (error) setError("");
-            }}
-          />
-          {error ? <Alert type="error" showIcon message={error} /> : null}
-        </div>
-      </Modal>
+      />
+      {error ? <Alert type="error" showIcon message={error} /> : null}
+      <div className={styles.actions}>
+        <Button type="primary" onClick={applySchema}>
+          更新
+        </Button>
+      </div>
     </div>
   );
 }

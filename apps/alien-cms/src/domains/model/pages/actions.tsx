@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { EyeOutlined, SaveOutlined } from "@ant-design/icons";
-import { App, Button, Card, Flex, Space, Steps } from "antd";
-import { PageBreadcrumb, PageError, PageLoading } from "../../../components";
+import { App, Button, Card, Col, Flex, Row, Space, Steps } from "antd";
+import { PageBreadcrumb, PageError, PageLoading, FieldsetCard } from "../../../components";
 import { modelListPath } from "../../../app/router/paths";
 import { useModelBuilder } from "../hooks";
 import {
@@ -68,49 +68,44 @@ export default function ModelActionPage({ mode }: ModelActionPageProps) {
 
       <div className={styles.body}>
         {step === 0 ? (
-          <Card
-            title="字段列表"
-            extra={
-              <SchemaJsonEditor
-                compact
-                schema={builder.preview.schema}
-                onApply={builder.setDraft}
-              />
-            }
-            styles={{ body: { padding: 16 } }}
-          >
-            <FieldListEditor
-              fields={builder.draft.fields}
-              onChange={(fields) => builder.setDraft({ ...builder.draft, fields })}
-            />
-          </Card>
+          <Row gutter={16} align="stretch" className={styles.fieldsStep}>
+            <Col span={8} className={styles.fill}>
+              <FieldsetCard title="字段列表" className={styles.fill}>
+                <FieldListEditor
+                  fields={builder.draft.fields}
+                  onChange={(fields) => builder.setDraft({ ...builder.draft, fields })}
+                />
+              </FieldsetCard>
+            </Col>
+            <Col span={16} className={styles.fill}>
+              <FieldsetCard title="Schema" className={styles.fill}>
+                <SchemaJsonEditor schema={builder.preview.schema} onApply={builder.setDraft} />
+              </FieldsetCard>
+            </Col>
+          </Row>
         ) : null}
 
         {step === 1 ? (
           <div className={styles.configStack}>
-            <fieldset className={`${styles.configLayout} ${styles.span8}`}>
-              <legend className={styles.configTitle}>模型信息</legend>
+            <FieldsetCard title="模型信息">
               <ModelMetaForm
                 draft={builder.draft}
                 nameDisabled={mode === "edit"}
                 onChange={builder.setDraft}
               />
-            </fieldset>
-            <fieldset className={`${styles.configLayout} ${styles.span12}`}>
-              <legend className={styles.configTitle}>表单分组</legend>
+            </FieldsetCard>
+            <FieldsetCard title="表单分组">
               <GroupEditor
                 groups={builder.draft.groups}
                 fields={builder.draft.fields}
                 onChange={(groups) => builder.setDraft({ ...builder.draft, groups })}
               />
-            </fieldset>
+            </FieldsetCard>
           </div>
         ) : null}
 
         {step === 2 ? (
-          <Card styles={{ body: { padding: 16 } }}>
-            <SchemaPreview schema={builder.preview.schema} error={builder.preview.error} />
-          </Card>
+          <SchemaPreview schema={builder.preview.schema} error={builder.preview.error} />
         ) : null}
       </div>
 

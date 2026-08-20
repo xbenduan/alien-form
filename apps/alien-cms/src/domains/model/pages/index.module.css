@@ -12,28 +12,14 @@
     gap: 20px;
   }
 
-  .configLayout {
-    width: 100%;
-    min-width: 0;
-    margin: 0;
-    padding: 14px 16px 24px;
-    border: 1px dashed #d8dee8;
-    border-radius: 8px;
-    background: #fff;
+  /* 字段步骤：左右卡片等高，超出部分卡片内部滚动。 */
+  .fieldsStep {
+    height: calc(100vh - 225px);
+    min-height: 420px;
   }
 
-  .configTitle {
-    padding: 0 6px;
-    color: #667085;
-    font-size: 14px;
-    font-weight: 500;
-  }
-
-  @media (max-width: 768px) {
-    .span8,
-    .span12 {
-      width: 100%;
-    }
+  .fill {
+    height: 100%;
   }
 
   .footer {

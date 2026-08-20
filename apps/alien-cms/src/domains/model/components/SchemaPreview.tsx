@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Alert, Empty, Segmented } from "antd";
+import { Alert, Empty, Input, Segmented, Typography } from "antd";
 import { SchemaForm } from "@alien-form/shared";
 import { handles } from "../../../handles";
 import type { ModelSchema } from "../types";
-import styles from "./index.module.css";
+import { FieldsetCard } from "../../../components";
 
 interface SchemaPreviewProps {
   schema?: ModelSchema;
@@ -22,9 +22,10 @@ export function SchemaPreview({ schema, error }: SchemaPreviewProps) {
   }
 
   return (
-    <div className={`${styles.schemaPreview} ${styles.preview}`}>
-      <div>
+    <FieldsetCard
+      title={
         <Segmented
+          style={{ border: "1px solid #e4e9f0" }}
           value={tab}
           onChange={(value) => setTab(value as "form" | "json")}
           options={[
@@ -32,14 +33,15 @@ export function SchemaPreview({ schema, error }: SchemaPreviewProps) {
             { label: "Schema JSON", value: "json" },
           ]}
         />
-      </div>
+      }
+    >
       {tab === "form" ? (
-        <div className={styles.formPreview}>
-          <SchemaForm mode="add" schema={schema} handlers={handles} formKey={schema.meta.name} />
-        </div>
+        <SchemaForm mode="add" schema={schema} handlers={handles} formKey={schema.meta.name} />
       ) : (
-        <pre className={styles.json}>{JSON.stringify(schema, null, 2)}</pre>
+        <Typography.Paragraph>
+          <pre>{JSON.stringify(schema, null, 2)}</pre>
+        </Typography.Paragraph>
       )}
-    </div>
+    </FieldsetCard>
   );
 }
