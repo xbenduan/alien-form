@@ -3,7 +3,7 @@ import { Alert, Empty, Segmented } from "antd";
 import { SchemaForm } from "@alien-form/shared";
 import { handles } from "../../../handles";
 import type { ModelSchema } from "../types";
-import styles from "./SchemaPreview.module.css";
+import styles from "./index.module.css";
 
 interface SchemaPreviewProps {
   schema?: ModelSchema;
@@ -22,7 +22,7 @@ export function SchemaPreview({ schema, error }: SchemaPreviewProps) {
   }
 
   return (
-    <div className={styles.preview}>
+    <div className={`${styles.schemaPreview} ${styles.preview}`}>
       <div>
         <Segmented
           value={tab}

@@ -12,7 +12,7 @@ import {
   SchemaJsonEditor,
   SchemaPreview,
 } from "../components";
-import styles from "./actions.module.css";
+import styles from "./index.module.css";
 
 const STEPS = [{ title: "字段" }, { title: "分组与元信息" }, { title: "预览保存" }];
 
@@ -55,7 +55,7 @@ export default function ModelActionPage({ mode }: ModelActionPageProps) {
   };
 
   return (
-    <Flex className={styles.page} vertical gap={16}>
+    <Flex className={`${styles.actionsPage} ${styles.page}`} vertical gap={16}>
       <PageBreadcrumb
         items={[
           { title: "模型管理", to: modelListPath() },

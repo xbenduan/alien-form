@@ -1,0 +1,59 @@
+.actionsPage {
+  &.page {
+    width: 1000px;
+    margin: 0 auto;
+    padding-bottom: 76px;
+  }
+
+  .body {
+    min-width: 0;
+    min-height: 320px;
+    padding: 28px 16px;
+    background: #ffffff;
+    border-radius: 8px;
+  }
+
+  .footerRoot {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 10;
+    width: 100%;
+  }
+
+  .footer {
+    display: flex;
+    justify-content: flex-end;
+    width: 1000px;
+    margin: 0 auto;
+    padding: 12px 16px;
+    border: 1px solid rgba(22, 119, 255, 0.12);
+    border-radius: 8px 8px 0 0;
+    background: #fff;
+    box-shadow: 0 -4px 16px rgba(23, 32, 51, 0.06);
+  }
+}
+
+.listPage {
+  &.tableCard {
+    overflow: hidden;
+    border: 1px solid rgba(22, 119, 255, 0.12);
+    border-radius: 12px;
+    background: #fff;
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+  }
+
+  .toolbarTitle {
+    color: #172033;
+    font-size: 15px;
+    font-weight: 600;
+  }
+}

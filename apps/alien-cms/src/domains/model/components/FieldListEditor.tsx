@@ -4,7 +4,7 @@ import { useRef, useState, type DragEvent, type ReactElement } from "react";
 import type { FieldDraft } from "../types";
 import { FIELD_TYPE_META, createFieldDraft, isContainerType } from "../utils";
 import { FieldEditor, type FieldEditorRef } from "./FieldEditor";
-import styles from "./FieldListEditor.module.css";
+import styles from "./index.module.css";
 
 interface FieldListEditorProps {
   fields: FieldDraft[];
@@ -253,7 +253,7 @@ export function FieldListEditor({ fields, onChange }: FieldListEditorProps) {
   };
 
   return (
-    <div className={styles.list}>
+    <div className={`${styles.fieldListEditor} ${styles.list}`}>
       {fields.length === 0 ? <Empty description="还没有字段" /> : null}
       {fields.map((field) => renderField(field))}
       <Button

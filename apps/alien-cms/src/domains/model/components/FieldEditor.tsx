@@ -7,7 +7,7 @@ import {
   getDefaultPlaceholder,
   isContainerType,
 } from "../utils";
-import styles from "./FieldEditor.module.css";
+import styles from "./index.module.css";
 
 interface FieldEditorProps {
   field: FieldDraft;
@@ -174,7 +174,7 @@ export const FieldEditor = forwardRef<FieldEditorRef, FieldEditorProps>(function
     <Form
       form={form}
       layout="vertical"
-      className={styles.form}
+      className={`${styles.fieldEditor} ${styles.form}`}
       onValuesChange={(changedValues, values) => {
         let nextValues = { ...values };
 
@@ -260,6 +260,7 @@ export const FieldEditor = forwardRef<FieldEditorRef, FieldEditorProps>(function
       <Form.Item
         name="schemaJsonText"
         className={styles.schemaJson}
+        wrapperCol={{ span: 24 }}
         rules={[
           {
             validator: async (_, value: string) => {

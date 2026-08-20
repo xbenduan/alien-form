@@ -2,7 +2,7 @@ import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Input, InputNumber, Select } from "antd";
 import type { FieldDraft, GroupDraft } from "../types";
 import { GROUP_COMPONENT_OPTIONS, createGroupDraft } from "../utils";
-import styles from "./GroupEditor.module.css";
+import styles from "./index.module.css";
 
 interface GroupEditorProps {
   groups: GroupDraft[];
@@ -22,7 +22,7 @@ export function GroupEditor({ groups, fields, onChange }: GroupEditorProps) {
   };
 
   return (
-    <div className={styles.editor}>
+    <div className={`${styles.groupEditor} ${styles.editor}`}>
       {groups.map((group) => (
         <div key={group.id} className={styles.group}>
           <div className={styles.groupHeader}>

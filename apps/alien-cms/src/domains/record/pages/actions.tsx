@@ -7,7 +7,7 @@ import { useModelSchema, useRecordDetail, useRecordMutations } from "../../../ho
 import { recordListPath } from "../../../app/router/paths";
 import { RecordActionForm } from "../components";
 import type { RecordActionMode } from "../types";
-import styles from "./actions.module.css";
+import styles from "./index.module.css";
 
 const TITLE: Record<Exclude<RecordActionMode, "closed">, string> = {
   add: "新增",
@@ -40,7 +40,7 @@ export default function RecordActionPage({ mode }: RecordActionPageProps) {
   const backToList = () => navigate(recordListPath(modelName));
 
   return (
-    <Flex className={styles.page} vertical gap={16}>
+    <Flex className={`${styles.actionsPage} ${styles.page}`} vertical gap={16}>
       <PageBreadcrumb
         items={[
           { title: `${singularLabel}列表`, to: recordListPath(modelName) },

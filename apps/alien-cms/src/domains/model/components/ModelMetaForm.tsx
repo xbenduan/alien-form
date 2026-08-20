@@ -1,7 +1,7 @@
 import { Input, InputNumber, Select } from "antd";
 import type { ModelDraft, OpenMode } from "../types";
 import { OPEN_MODE_OPTIONS } from "../utils";
-import styles from "./ModelMetaForm.module.css";
+import styles from "./index.module.css";
 
 interface ModelMetaFormProps {
   draft: ModelDraft;
@@ -16,7 +16,7 @@ export function ModelMetaForm({ draft, nameDisabled, onChange }: ModelMetaFormPr
     patch({ openMode: { ...draft.openMode, [key]: mode } });
 
   return (
-    <div className={styles.form}>
+    <div className={`${styles.modelMetaForm} ${styles.form}`}>
       <div className={styles.row}>
         <label className={styles.label}>模型名 (name)</label>
         <Input

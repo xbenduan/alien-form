@@ -12,7 +12,7 @@ import { PageBreadcrumb, PageError, PageLoading } from "../../../components";
 import { useModelSummaries, useSchemaMutations } from "../../../hooks";
 import type { ModelSummary } from "../../../services";
 import { modelAddPath, modelEditPath, recordListPath } from "../../../app/router/paths";
-import styles from "./list.module.css";
+import styles from "./index.module.css";
 
 /** 模型列表页：管理所有模型（进入数据、编辑、删除）。 */
 export default function ModelListPage() {
@@ -89,7 +89,7 @@ export default function ModelListPage() {
   return (
     <Flex vertical gap={16}>
       <PageBreadcrumb items={[{ title: "模型管理" }]} />
-      <div className={styles.tableCard}>
+      <div className={`${styles.listPage} ${styles.tableCard}`}>
         <div className={styles.toolbar}>
           <span className={styles.toolbarTitle}>模型管理</span>
           <Space>

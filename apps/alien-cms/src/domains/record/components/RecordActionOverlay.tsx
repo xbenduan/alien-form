@@ -5,7 +5,7 @@ import { useRecordDetail } from "../../../hooks";
 import type { ModelSchema } from "../../../services";
 import type { OverlayActionState } from "../types";
 import { RecordActionForm } from "./RecordActionForm";
-import styles from "./RecordActionOverlay.module.css";
+import styles from "./index.module.css";
 
 interface RecordActionOverlayProps {
   modelName: string;
@@ -54,7 +54,7 @@ export function RecordActionOverlay({
 
   const body =
     loadingDetail ? (
-      <div className={styles.loading}>
+      <div className={`${styles.recordActionOverlay} ${styles.loading}`}>
         <Spin />
       </div>
     ) : (

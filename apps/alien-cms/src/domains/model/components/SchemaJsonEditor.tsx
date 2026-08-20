@@ -3,7 +3,7 @@ import { Alert, Button, Input, Modal } from "antd";
 import { useEffect, useState } from "react";
 import type { ModelDraft, ModelSchema } from "../types";
 import { schemaToDraft } from "../utils";
-import styles from "./SchemaJsonEditor.module.css";
+import styles from "./index.module.css";
 
 interface SchemaJsonEditorProps {
   schema?: ModelSchema;
@@ -53,7 +53,7 @@ export function SchemaJsonEditor({ schema, onApply, compact = false }: SchemaJso
   };
 
   return (
-    <div className={`${styles.entry}${compact ? ` ${styles.compact}` : ""}`}>
+    <div className={`${styles.schemaJsonEditor} ${styles.entry}${compact ? ` ${styles.compact}` : ""}`}>
       {!compact ? <div className={styles.caption}>通过 JSON 导入或恢复模型 Schema</div> : null}
       <Button
         icon={<ImportOutlined />}

@@ -13,7 +13,7 @@ import { PageBreadcrumb, PageError, PageLoading } from "../../../components";
 import { handles } from "../../../handles";
 import { useRecordPage } from "../hooks";
 import { RecordActionOverlay } from "../components";
-import styles from "./list.module.css";
+import styles from "./index.module.css";
 
 /** 记录列表页：filter + table，行内操作跳转 add/edit/detail。 */
 export default function RecordListPage() {
@@ -40,7 +40,7 @@ export default function RecordListPage() {
         />
       </Card>
 
-      <div className={styles.tableCard}>
+      <div className={`${styles.listPage} ${styles.tableCard}`}>
         <div className={styles.toolbar}>
           <span className={styles.toolbarTitle}>{page.schema.meta.title}</span>
           <Space>
