@@ -33,6 +33,7 @@ export interface TableComponentProps {
   total?: number;
   pagination?: TableProps<SchemaRecord>["pagination"];
   onChange?: TableProps<SchemaRecord>["onChange"];
+  rowSelection?: TableProps<SchemaRecord>["rowSelection"];
   /** 追加的操作列（详情/编辑/删除等）。 */
   actionColumn?: TableColumnAction;
   toolbar?: ReactNode;
@@ -47,6 +48,7 @@ export function Table({
   total,
   pagination,
   onChange,
+  rowSelection,
   actionColumn,
   toolbar,
 }: TableComponentProps) {
@@ -85,10 +87,10 @@ export function Table({
         scroll={{ x: "max-content" }}
         pagination={resolvedPagination}
         onChange={onChange}
+        rowSelection={rowSelection}
         locale={{
           emptyText: (
             <div className="af-table-empty">
-              <Tag>No Data</Tag>
               <div>当前条件下暂无记录。</div>
             </div>
           ),

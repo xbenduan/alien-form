@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   DeleteOutlined,
@@ -6,7 +7,8 @@ import {
   PlusOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
-import { App, Button, Card, Flex, Popconfirm, Space } from "antd";
+import { App, Button, Card, Flex, Popconfirm, Space, Typography } from "antd";
+import type { TableRowSelection } from "antd/es/table/interface";
 import { FilterForm, Table } from "@alien-form/shared";
 import type { Pagination, Sorter } from "../../../services";
 import { PageBreadcrumb, PageError, PageLoading } from "../../../components";
@@ -20,6 +22,7 @@ export default function RecordListPage() {
   const { modelName = "" } = useParams();
   const { message } = App.useApp();
   const page = useRecordPage(modelName);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   if (page.schemaLoading) return <PageLoading />;
   if (page.schemaError || !page.schema || !page.displaySchema) {
@@ -42,7 +45,31 @@ export default function RecordListPage() {
 
       <div className={`${styles.listPage} ${styles.tableCard}`}>
         <div className={styles.toolbar}>
-          <span className={styles.toolbarTitle}>{page.schema.meta.title}</span>
+          {selectedRowKeys.length > 0 ? (
+            <Space>
+              <Typography.Text type="secondary">
+                {`已选择 ${selectedRowKeys.length} 条`}
+              </Typography.Text>
+              <Popconfirm
+                title={`确认删除选中的 ${selectedRowKeys.length} 条记录吗？`}
+                okText="删除"
+                cancelText="取消"
+                okButtonProps={{ danger: true }}
+                disabled={selectedRowKeys.length === 0}
+                onConfirm={async () => {
+                  await page.removeRecords(selectedRowKeys.map(String));
+                  setSelectedRowKeys([]);
+                  message.success("批量删除成功");
+                }}
+              >
+                <Button icon={<DeleteOutlined />} disabled={selectedRowKeys.length === 0}>
+                  批量删除
+                </Button>
+              </Popconfirm>
+            </Space>
+          ) : (
+            <Typography.Text type="secondary">批量操作</Typography.Text>
+          )}
           <Space>
             <Button icon={<ReloadOutlined />} onClick={() => page.refresh()} aria-label="刷新" />
             <Button type="primary" icon={<PlusOutlined />} onClick={page.openAdd}>
@@ -56,6 +83,12 @@ export default function RecordListPage() {
           loading={page.listLoading || page.deleting}
           total={page.total}
           pagination={{ current: page.pagination.current, pageSize: page.pagination.pageSize }}
+          rowSelection={
+            {
+              selectedRowKeys,
+              onChange: setSelectedRowKeys,
+            } satisfies TableRowSelection<Record<string, unknown>>
+          }
           onChange={(nextPagination, _filters, nextSorter) => {
             page.setPagination({
               current: nextPagination.current ?? 1,
@@ -103,6 +136,9 @@ export default function RecordListPage() {
                   okButtonProps={{ danger: true }}
                   onConfirm={async () => {
                     await page.removeRecord(String(record.id));
+                    setSelectedRowKeys((keys) =>
+                      keys.filter((key) => String(key) !== String(record.id)),
+                    );
                     message.success("删除成功");
                   }}
                 >

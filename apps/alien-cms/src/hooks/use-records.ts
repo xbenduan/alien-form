@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createRecord,
   deleteRecord,
+  deleteRecords,
   getRecord,
   listRecords,
   updateRecord,
@@ -75,12 +76,21 @@ export function useRecordMutations(model: string) {
     },
   });
 
+  const batchDeleteMutation = useMutation({
+    mutationFn: (ids: string[]) => deleteRecords(model, ids),
+    onSuccess: async (_data, ids) => {
+      ids.forEach((id) => queryClient.removeQueries({ queryKey: recordKeys.detail(model, id) }));
+      await invalidateLists();
+    },
+  });
+
   return {
     createRecord: (values: Record<string, unknown>) => createMutation.mutateAsync(values),
     updateRecord: (id: string, values: Record<string, unknown>) =>
       updateMutation.mutateAsync({ id, values }),
     deleteRecord: (id: string) => deleteMutation.mutateAsync(id),
+    deleteRecords: (ids: string[]) => batchDeleteMutation.mutateAsync(ids),
     submitting: createMutation.isPending || updateMutation.isPending,
-    deleting: deleteMutation.isPending,
+    deleting: deleteMutation.isPending || batchDeleteMutation.isPending,
   };
 }

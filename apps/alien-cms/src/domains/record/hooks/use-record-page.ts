@@ -80,6 +80,7 @@ export function useRecordPage(modelName: string) {
     createRecord: mutations.createRecord,
     updateRecord: mutations.updateRecord,
     removeRecord: mutations.deleteRecord,
+    removeRecords: mutations.deleteRecords,
     refresh: () => listQuery.refetch(),
   };
 }

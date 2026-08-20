@@ -102,3 +102,8 @@ export function upsertRecord(model: string, record: ModelRecord): void {
 export function removeRecord(model: string, id: string): void {
   recordMap(model).delete(id);
 }
+
+export function removeRecords(model: string, ids: string[]): void {
+  const records = recordMap(model);
+  ids.forEach((id) => records.delete(id));
+}

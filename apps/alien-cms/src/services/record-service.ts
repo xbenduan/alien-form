@@ -3,6 +3,7 @@ import {
   hasSchema,
   listRecordEntries,
   removeRecord,
+  removeRecords,
   upsertRecord,
 } from "../mock/store";
 import type {
@@ -102,5 +103,11 @@ export async function updateRecord(
 
 export async function deleteRecord(model: string, id: string): Promise<void> {
   removeRecord(model, id);
+  return delay(undefined);
+}
+
+export async function deleteRecords(model: string, ids: string[]): Promise<void> {
+  if (!hasSchema(model)) throw new Error(`未知模型：${model}`);
+  removeRecords(model, ids);
   return delay(undefined);
 }

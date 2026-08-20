@@ -6,6 +6,7 @@ export {
   listRecordEntries,
   listSchemaEntries,
   removeRecord,
+  removeRecords,
   removeSchema,
   upsertRecord,
   upsertSchema,

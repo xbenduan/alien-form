@@ -8,6 +8,7 @@ export {
 export {
   createRecord,
   deleteRecord,
+  deleteRecords,
   getRecord,
   listRecords,
   updateRecord,
