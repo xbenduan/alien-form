@@ -1,5 +1,6 @@
+import { useEffect } from "react";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
-import { Button, Input, InputNumber, Select } from "antd";
+import { Button, Form, Input, InputNumber, Select } from "antd";
 import type { FieldDraft, GroupDraft } from "../types";
 import { GROUP_COMPONENT_OPTIONS, createGroupDraft } from "../utils";
 import styles from "./index.module.css";
@@ -12,66 +13,81 @@ interface GroupEditorProps {
 
 /** 分组编辑：把顶层字段收进 GridLayout 容器，仅影响 form 渲染。 */
 export function GroupEditor({ groups, fields, onChange }: GroupEditorProps) {
+  const [form] = Form.useForm<{ groups: GroupDraft[] }>();
+  const watchedGroups = Form.useWatch("groups", form);
   const fieldOptions = fields.map((field) => ({
     value: field.key,
     label: field.title || field.key,
   }));
 
-  const patchGroup = (id: string, partial: Partial<GroupDraft>) => {
-    onChange(groups.map((group) => (group.id === id ? { ...group, ...partial } : group)));
-  };
+  // 外部草稿变化（如 edit 模式载入或 JSON 导入）时同步回表单。
+  useEffect(() => {
+    form.setFieldsValue({ groups });
+  }, [groups, form]);
 
   return (
-    <div className={`${styles.groupEditor} ${styles.editor}`}>
-      {groups.map((group) => (
-        <div key={group.id} className={styles.group}>
-          <div className={styles.groupHeader}>
-            <Input
-              className={styles.title}
-              placeholder="分组标题"
-              value={group.title}
-              onChange={(event) => patchGroup(group.id, { title: event.target.value })}
-            />
-            <Select
-              className={styles.component}
-              value={group.component}
-              options={GROUP_COMPONENT_OPTIONS}
-              onChange={(component) => patchGroup(group.id, { component })}
-            />
-            <InputNumber
-              className={styles.gridSpan}
-              min={1}
-              max={24}
-              value={group.gridSpan}
-              disabled={group.component !== "GridLayout"}
-              placeholder="跨度"
-              onChange={(gridSpan) => patchGroup(group.id, { gridSpan: gridSpan ?? 12 })}
-            />
+    <Form
+      form={form}
+      className={`${styles.groupEditor} ${styles.editor}`}
+      initialValues={{ groups }}
+      onValuesChange={(_, values) =>
+        onChange(
+          (values.groups ?? []).map((group) => ({
+            ...group,
+            gridSpan: group.gridSpan ?? 12,
+          })),
+        )
+      }
+    >
+      <Form.List name="groups">
+        {(items, { add, remove }) => (
+          <>
+            {items.map(({ key, name }) => (
+              <div key={key} className={styles.group}>
+                <div className={styles.groupHeader}>
+                  <Form.Item name={[name, "title"]} noStyle>
+                    <Input className={styles.title} placeholder="分组标题" />
+                  </Form.Item>
+                  <Form.Item name={[name, "component"]} noStyle>
+                    <Select className={styles.component} options={GROUP_COMPONENT_OPTIONS} />
+                  </Form.Item>
+                  <Form.Item name={[name, "gridSpan"]} noStyle>
+                    <InputNumber
+                      className={styles.gridSpan}
+                      min={1}
+                      max={24}
+                      placeholder="跨度"
+                      disabled={watchedGroups?.[name]?.component !== "GridLayout"}
+                    />
+                  </Form.Item>
+                  <Button
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
+                    onClick={() => remove(name)}
+                  />
+                </div>
+                <Form.Item name={[name, "keys"]} noStyle>
+                  <Select
+                    mode="multiple"
+                    className={styles.keys}
+                    placeholder="选择归入该分组的字段"
+                    options={fieldOptions}
+                  />
+                </Form.Item>
+              </div>
+            ))}
             <Button
-              type="text"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => onChange(groups.filter((item) => item.id !== group.id))}
-            />
-          </div>
-          <Select
-            mode="multiple"
-            className={styles.keys}
-            placeholder="选择归入该分组的字段"
-            value={group.keys}
-            options={fieldOptions}
-            onChange={(keys) => patchGroup(group.id, { keys })}
-          />
-        </div>
-      ))}
-      <Button
-        type="dashed"
-        block
-        icon={<PlusOutlined />}
-        onClick={() => onChange([...groups, createGroupDraft()])}
-      >
-        添加分组
-      </Button>
-    </div>
+              type="dashed"
+              block
+              icon={<PlusOutlined />}
+              onClick={() => add(createGroupDraft())}
+            >
+              添加分组
+            </Button>
+          </>
+        )}
+      </Form.List>
+    </Form>
   );
 }

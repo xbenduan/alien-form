@@ -1,5 +1,6 @@
-import { Input, InputNumber, Segmented, Select } from "antd";
-import type { ModelDraft, ModelGroup, OpenMode } from "../types";
+import { useEffect } from "react";
+import { Form, Input, InputNumber, Select } from "antd";
+import type { ModelDraft } from "../types";
 import { MODEL_GROUP_OPTIONS, OPEN_MODE_OPTIONS } from "../utils";
 import styles from "./index.module.css";
 
@@ -9,99 +10,77 @@ interface ModelMetaFormProps {
   onChange: (draft: ModelDraft) => void;
 }
 
+const OPEN_MODE_FIELDS = [
+  { key: "add", label: "新增打开方式" },
+  { key: "edit", label: "编辑打开方式" },
+  { key: "detail", label: "详情打开方式" },
+] as const;
+
 /** 模型元信息编辑：名称、标题、标签、分页与打开方式。 */
 export function ModelMetaForm({ draft, nameDisabled, onChange }: ModelMetaFormProps) {
-  const patch = (partial: Partial<ModelDraft>) => onChange({ ...draft, ...partial });
-  const patchOpenMode = (key: "add" | "edit" | "detail", mode: OpenMode) =>
-    patch({ openMode: { ...draft.openMode, [key]: mode } });
+  const [form] = Form.useForm<ModelDraft>();
+
+  // 外部草稿变化（如 edit 模式异步载入 schema）时同步回表单。
+  useEffect(() => {
+    form.setFieldsValue(draft);
+  }, [draft, form]);
 
   return (
-    <div className={`${styles.modelMetaForm} ${styles.form}`}>
-      <div className={styles.row}>
-        <label className={styles.label}>模型名 (name)</label>
-        <Input
-          disabled={nameDisabled}
-          placeholder="小写字母、数字和中划线"
-          value={draft.name}
-          onChange={(event) => patch({ name: event.target.value })}
-        />
-      </div>
-      <div className={styles.row}>
-        <label className={styles.label}>标题</label>
-        <Input value={draft.title} onChange={(event) => patch({ title: event.target.value })} />
-      </div>
-      <div className={styles.row}>
-        <label className={styles.label}>副标题</label>
-        <Input
-          value={draft.subtitle}
-          onChange={(event) => patch({ subtitle: event.target.value })}
-        />
-      </div>
-      <div className={styles.row}>
-        <label className={styles.label}>描述</label>
-        <Input.TextArea
-          rows={2}
-          value={draft.description}
-          onChange={(event) => patch({ description: event.target.value })}
-        />
-      </div>
+    <Form
+      className={styles.modelMetaForm}
+      form={form}
+      layout="horizontal"
+      labelCol={{ flex: "110px" }}
+      labelAlign="left"
+      colon={false}
+      initialValues={draft}
+      onValuesChange={(_, values) =>
+        onChange({
+          ...draft,
+          ...values,
+          defaultPageSize: values.defaultPageSize ?? 10,
+          filterCount: values.filterCount ?? 3,
+        })
+      }
+    >
+      <Form.Item label="模型名 (name)" name="name">
+        <Input disabled={nameDisabled} placeholder="小写字母、数字和中划线" />
+      </Form.Item>
+      <Form.Item label="标题" name="title">
+        <Input />
+      </Form.Item>
+      <Form.Item label="副标题" name="subtitle">
+        <Input />
+      </Form.Item>
+      <Form.Item label="描述" name="description">
+        <Input.TextArea rows={2} />
+      </Form.Item>
+
       <div className={styles.grid}>
-        <div className={styles.row}>
-          <label className={styles.label}>模型分组</label>
-          <Select
-            value={draft.group}
-            options={MODEL_GROUP_OPTIONS}
-            onChange={(value) => patch({ group: value as ModelGroup })}
-          />
-        </div>
-        <div className={styles.row}>
-          <label className={styles.label}>单数标签</label>
-          <Input
-            value={draft.singularLabel}
-            onChange={(event) => patch({ singularLabel: event.target.value })}
-          />
-        </div>
-        <div className={styles.row}>
-          <label className={styles.label}>复数标签</label>
-          <Input
-            value={draft.pluralLabel}
-            onChange={(event) => patch({ pluralLabel: event.target.value })}
-          />
-        </div>
-        <div className={styles.row}>
-          <label className={styles.label}>每页条数</label>
-          <InputNumber
-            min={1}
-            className={styles.control}
-            value={draft.defaultPageSize}
-            onChange={(value) => patch({ defaultPageSize: value ?? 10 })}
-          />
-        </div>
-        <div className={styles.row}>
-          <label className={styles.label}>筛选项数</label>
-          <InputNumber
-            min={0}
-            className={styles.control}
-            value={draft.filterCount}
-            onChange={(value) => patch({ filterCount: value ?? 3 })}
-          />
-        </div>
+        <Form.Item label="模型分组" name="group">
+          <Select options={MODEL_GROUP_OPTIONS} />
+        </Form.Item>
+        <Form.Item label="单数标签" name="singularLabel">
+          <Input />
+        </Form.Item>
+        <Form.Item label="复数标签" name="pluralLabel">
+          <Input />
+        </Form.Item>
+        <Form.Item label="每页条数" name="defaultPageSize">
+          <InputNumber min={1} className={styles.control} />
+        </Form.Item>
+        <Form.Item label="筛选项数" name="filterCount">
+          <InputNumber min={0} className={styles.control} />
+        </Form.Item>
       </div>
+
       <div className={styles.grid}>
-        {(["add", "edit", "detail"] as const).map((key) => (
-          <div key={key} className={styles.row}>
-            <label className={styles.label}>
-              {key === "add" ? "新增" : key === "edit" ? "编辑" : "详情"}打开方式
-            </label>
-            <Select
-              className={styles.control}
-              value={draft.openMode[key]}
-              options={OPEN_MODE_OPTIONS}
-              onChange={(mode) => patchOpenMode(key, mode as OpenMode)}
-            />
-          </div>
+        {OPEN_MODE_FIELDS.map(({ key, label }) => (
+          <Form.Item key={key} label={label} name={["openMode", key]}>
+            <Select className={styles.control} options={OPEN_MODE_OPTIONS} />
+          </Form.Item>
         ))}
       </div>
-    </div>
+    </Form>
   );
 }
