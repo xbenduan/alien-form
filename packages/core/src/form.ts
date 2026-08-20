@@ -101,7 +101,11 @@ function isSelectableFieldValueValid(value: any, dataSource: DataSourceItem[]): 
   return dataSource.some((item) => Object.is(item.value, value));
 }
 
-function applyDataSourcePolicy(field: PrimitiveFieldNode, dataSource: DataSourceItem[], policy: DataSourcePolicy | undefined) {
+function applyDataSourcePolicy(
+  field: PrimitiveFieldNode,
+  dataSource: DataSourceItem[],
+  policy: DataSourcePolicy | undefined,
+) {
   if (dataSource.length === 0 || policy === "preserve") return;
   const currentValue = field.value();
   if (currentValue === undefined || currentValue === null) return;
@@ -141,7 +145,7 @@ function createBaseField(
     errors: signal<FieldError[]>([]),
     warnings: signal<FieldError[]>([]),
     validateStatus: signal<ValidateStatus>(""),
-    title: signal(schema.title || ""),
+    title: signal(schema.title || undefined),
     description: signal(schema.description || ""),
     component: signal(schema.component || schema["x-layout"] || defaultComponentFor(kind)),
     componentProps: signal<Record<string, any>>(schema.props || {}),
@@ -155,7 +159,8 @@ function createBaseField(
       if (isArrayField(base as FieldNode)) {
         for (const row of (base as ArrayFieldNode).rows()) disposeRow(row);
       } else if (isContainerField(base as FieldNode)) {
-        for (const child of (base as ObjectFieldNode | VoidFieldNode).children.values()) child.dispose();
+        for (const child of (base as ObjectFieldNode | VoidFieldNode).children.values())
+          child.dispose();
       }
       ctx.fieldsMap.delete(base.path);
     },
@@ -163,11 +168,21 @@ function createBaseField(
       base.errors(errors);
       base.validateStatus(errors.length > 0 ? "error" : "success");
     },
-    setWarnings(warnings: FieldError[]) { base.warnings(warnings); },
-    setDisplay(display: FieldDisplayTypes) { if (base.display() !== display) base.display(display); },
-    setDisabled(value: boolean) { if (base.disabled() !== value) base.disabled(value); },
-    setRequired(value: boolean) { if (base.required() !== value) base.required(value); },
-    setLoading(loading: boolean) { if (base.loading() !== loading) base.loading(loading); },
+    setWarnings(warnings: FieldError[]) {
+      base.warnings(warnings);
+    },
+    setDisplay(display: FieldDisplayTypes) {
+      if (base.display() !== display) base.display(display);
+    },
+    setDisabled(value: boolean) {
+      if (base.disabled() !== value) base.disabled(value);
+    },
+    setRequired(value: boolean) {
+      if (base.required() !== value) base.required(value);
+    },
+    setLoading(loading: boolean) {
+      if (base.loading() !== loading) base.loading(loading);
+    },
     setDataSource(ds: DataSourceItem[]) {
       const normalized = normalizeDataSource(ds);
       if (isPrimitiveField(base as FieldNode)) {
@@ -190,7 +205,7 @@ function createBaseField(
         errors.push({ message: "该字段为必填项", type: "required" });
       }
       if (schema["x-validate"]) {
-        errors.push(...await runXValidate(ctx, base as FieldNode, schema["x-validate"]!, value));
+        errors.push(...(await runXValidate(ctx, base as FieldNode, schema["x-validate"]!, value)));
       }
       base.setErrors(errors);
       return errors;
@@ -203,7 +218,8 @@ function createBaseField(
         (base as ArrayFieldNode).setRows(Array.isArray(schema.default) ? schema.default : []);
       } else if (isContainerField(base as FieldNode)) {
         // object / void 容器递归重置子节点，否则深层嵌套字段不会被还原
-        for (const child of (base as ObjectFieldNode | VoidFieldNode).children.values()) child.reset();
+        for (const child of (base as ObjectFieldNode | VoidFieldNode).children.values())
+          child.reset();
       }
       base.setErrors([]);
       base.setWarnings([]);
@@ -218,10 +234,18 @@ function defaultComponentFor(kind: FieldKind): string {
   return "Input";
 }
 
-function createPrimitiveField(ctx: FieldContext, path: string, schema: IFieldSchema, initialValue: any, options: BuildOptions): PrimitiveFieldNode {
+function createPrimitiveField(
+  ctx: FieldContext,
+  path: string,
+  schema: IFieldSchema,
+  initialValue: any,
+  options: BuildOptions,
+): PrimitiveFieldNode {
   const base = createBaseField(ctx, "primitive", path, schema, options);
   const field = base as PrimitiveFieldNode;
-  const rowChildKey = options.row ? path.slice(options.row.path.length + 1).split(".")[0] : undefined;
+  const rowChildKey = options.row
+    ? path.slice(options.row.path.length + 1).split(".")[0]
+    : undefined;
   ctx.fieldsMap.set(path, field);
   const initial = initialValue !== undefined ? initialValue : schema.default;
   const formattedInitial = formatFieldValue(ctx, field, "input", initial);
@@ -237,21 +261,37 @@ function createPrimitiveField(ctx: FieldContext, path: string, schema: IFieldSch
   return field;
 }
 
-function createObjectField(ctx: FieldContext, path: string, schema: IFieldSchema, options: BuildOptions): ObjectFieldNode {
+function createObjectField(
+  ctx: FieldContext,
+  path: string,
+  schema: IFieldSchema,
+  options: BuildOptions,
+): ObjectFieldNode {
   const field = createBaseField(ctx, "object", path, schema, options) as ObjectFieldNode;
   field.children = new Map();
   ctx.fieldsMap.set(path, field);
   return field;
 }
 
-function createVoidField(ctx: FieldContext, path: string, schema: IFieldSchema, options: BuildOptions): VoidFieldNode {
+function createVoidField(
+  ctx: FieldContext,
+  path: string,
+  schema: IFieldSchema,
+  options: BuildOptions,
+): VoidFieldNode {
   const field = createBaseField(ctx, "void", path, schema, options) as VoidFieldNode;
   field.children = new Map();
   ctx.fieldsMap.set(path, field);
   return field;
 }
 
-function createArrayField(ctx: FieldContext, path: string, schema: IFieldSchema, initialValue: any, options: BuildOptions): ArrayFieldNode {
+function createArrayField(
+  ctx: FieldContext,
+  path: string,
+  schema: IFieldSchema,
+  initialValue: any,
+  options: BuildOptions,
+): ArrayFieldNode {
   const field = createBaseField(ctx, "array", path, schema, options) as ArrayFieldNode;
   field.rows = signal<RowNode[]>([]);
   field.push = (iv?: any) => pushArrayRow(ctx, field, iv);
@@ -261,7 +301,11 @@ function createArrayField(ctx: FieldContext, path: string, schema: IFieldSchema,
   field.moveDown = (index: number) => moveArrayRow(ctx, field, index, index + 1);
   field.setRows = (values: any[]) => setArrayRows(ctx, field, Array.isArray(values) ? values : []);
   ctx.fieldsMap.set(path, field);
-  const initialRows = Array.isArray(initialValue) ? initialValue : (Array.isArray(schema.default) ? schema.default : []);
+  const initialRows = Array.isArray(initialValue)
+    ? initialValue
+    : Array.isArray(schema.default)
+      ? schema.default
+      : [];
   const formattedRows = formatFieldValue(ctx, field, "input", initialRows);
   field.setRows(Array.isArray(formattedRows) ? formattedRows : []);
   return field;
@@ -278,7 +322,9 @@ function buildFieldTree(
     ctx.emitError({ scope: "ref-resolve", path, message: msg });
   });
   const key = path.split(".").pop() || path;
-  const required = resolved.required === true || (Array.isArray(options.parentRequired) && options.parentRequired.includes(key));
+  const required =
+    resolved.required === true ||
+    (Array.isArray(options.parentRequired) && options.parentRequired.includes(key));
   const schema = { ...resolved, required };
   const iv = initialValue !== undefined ? initialValue : getDeepValue(ctx.initialValues, path);
 
@@ -304,20 +350,39 @@ function buildFieldTree(
   return createPrimitiveField(ctx, path, schema, iv, options);
 }
 
-function buildChildren(ctx: FieldContext, parent: ObjectFieldNode | VoidFieldNode, schema: IFieldSchema, initialValue: any, required?: boolean | string[]) {
+function buildChildren(
+  ctx: FieldContext,
+  parent: ObjectFieldNode | VoidFieldNode,
+  schema: IFieldSchema,
+  initialValue: any,
+  required?: boolean | string[],
+) {
   if (!schema.properties) return;
   for (const [childKey, childSchema] of sortByOrder(schema.properties)) {
-    const childContainerPath = parent.kind === "void"
-      ? (parent.path.includes(".") ? parent.path.slice(0, parent.path.lastIndexOf(".")) : "")
-      : parent.path;
+    const childContainerPath =
+      parent.kind === "void"
+        ? parent.path.includes(".")
+          ? parent.path.slice(0, parent.path.lastIndexOf("."))
+          : ""
+        : parent.path;
     const childPath = childContainerPath ? `${childContainerPath}.${childKey}` : childKey;
-    const childIv = initialValue != null ? initialValue[childKey] : getDeepValue(ctx.initialValues, childPath);
-    const child = buildFieldTree(ctx, childPath, childSchema, childIv, { parent, row: parent.row, parentRequired: required });
+    const childIv =
+      initialValue != null ? initialValue[childKey] : getDeepValue(ctx.initialValues, childPath);
+    const child = buildFieldTree(ctx, childPath, childSchema, childIv, {
+      parent,
+      row: parent.row,
+      parentRequired: required,
+    });
     parent.children.set(childKey, child);
   }
 }
 
-function createRow(ctx: FieldContext, array: ArrayFieldNode, index: number, initialValues?: any): RowNode {
+function createRow(
+  ctx: FieldContext,
+  array: ArrayFieldNode,
+  index: number,
+  initialValues?: any,
+): RowNode {
   const row: RowNode = {
     id: createId("row"),
     index,
@@ -329,7 +394,11 @@ function createRow(ctx: FieldContext, array: ArrayFieldNode, index: number, init
   if (itemSchema.properties) {
     for (const [childKey, childSchema] of sortByOrder(itemSchema.properties)) {
       const childPath = `${row.path}.${childKey}`;
-      const child = buildFieldTree(ctx, childPath, childSchema, initialValues?.[childKey], { parent: array, row, parentRequired: itemSchema.required });
+      const child = buildFieldTree(ctx, childPath, childSchema, initialValues?.[childKey], {
+        parent: array,
+        row,
+        parentRequired: itemSchema.required,
+      });
       row.children.set(childKey, child);
     }
   }
@@ -410,11 +479,17 @@ function installRowRuntime(ctx: FieldContext, row: RowNode) {
 function installFieldRuntime(ctx: FieldContext, field: FieldNode) {
   if (field.schema["x-reaction"]) installReactions(ctx, field);
   if (field.schema["x-effect"]) installEffects(ctx, field, field.schema["x-effect"]);
-  if (isContainerField(field)) for (const child of field.children.values()) installFieldRuntime(ctx, child);
+  if (isContainerField(field))
+    for (const child of field.children.values()) installFieldRuntime(ctx, child);
   if (isArrayField(field)) for (const row of field.rows()) installRowRuntime(ctx, row);
 }
 
-function formatFieldValue(ctx: FieldContext, field: FieldNode, phase: "input" | "output", value: any): any {
+function formatFieldValue(
+  ctx: FieldContext,
+  field: FieldNode,
+  phase: "input" | "output",
+  value: any,
+): any {
   const rule = field.schema["x-format"]?.[phase];
   if (rule === undefined) return value;
   const runtime = buildRuntimeContext(ctx, field, "x-format", phase, value);
@@ -431,12 +506,22 @@ function formatFieldValue(ctx: FieldContext, field: FieldNode, phase: "input" | 
     }
     return result;
   } catch (err) {
-    ctx.emitError({ scope: "x-format", path: field.path, key: phase, message: errorMessage(err), cause: err });
+    ctx.emitError({
+      scope: "x-format",
+      path: field.path,
+      key: phase,
+      message: errorMessage(err),
+      cause: err,
+    });
     return value;
   }
 }
 
-function projectFormValues(ctx: FieldContext, root: ObjectFieldNode, applyOutput = true): Record<string, any> {
+function projectFormValues(
+  ctx: FieldContext,
+  root: ObjectFieldNode,
+  applyOutput = true,
+): Record<string, any> {
   return projectChildren(ctx, root.children, applyOutput) || {};
 }
 
@@ -446,13 +531,18 @@ function projectNode(ctx: FieldContext, node: FieldNode, applyOutput = true): an
   if (isPrimitiveField(node)) value = node.value();
   // 显式 object 字段即使所有子节点为空也保留 {}，避免合法空分组从投影值中丢失
   else if (node.kind === "object") value = projectChildren(ctx, node.children, applyOutput) ?? {};
-  else if (node.kind === "array") value = node.rows().map((row) => projectChildren(ctx, row.children, applyOutput) || {});
+  else if (node.kind === "array")
+    value = node.rows().map((row) => projectChildren(ctx, row.children, applyOutput) || {});
   else if (node.kind === "void") value = projectChildren(ctx, node.children, applyOutput);
   else value = undefined;
   return applyOutput ? formatFieldValue(ctx, node, "output", value) : value;
 }
 
-function projectChildren(ctx: FieldContext, children: Map<string, FieldNode>, applyOutput = true): Record<string, any> | undefined {
+function projectChildren(
+  ctx: FieldContext,
+  children: Map<string, FieldNode>,
+  applyOutput = true,
+): Record<string, any> | undefined {
   const result: Record<string, any> = {};
   for (const [key, child] of children) {
     const value = projectNode(ctx, child, applyOutput);
@@ -472,7 +562,8 @@ function rootForm(ctx: FieldContext): ObjectFieldNode {
 
 function resolveSelector(ctx: FieldContext, baseField: FieldNode, selector: string): any {
   if (!selector) return undefined;
-  if (selector === "$value") return isPrimitiveField(baseField) ? baseField.value() : projectNode(ctx, baseField, false);
+  if (selector === "$value")
+    return isPrimitiveField(baseField) ? baseField.value() : projectNode(ctx, baseField, false);
   if (selector === "$path") return baseField.path;
   if (selector.startsWith("$row.")) {
     const row = baseField.row;
@@ -491,10 +582,16 @@ function resolveSelector(ctx: FieldContext, baseField: FieldNode, selector: stri
 }
 
 function resolveRowChild(row: RowNode, childPath: string): FieldNode | undefined {
-  return resolveChildSegments(row.children.get(childPath.split(".")[0]), childPath.split(".").slice(1));
+  return resolveChildSegments(
+    row.children.get(childPath.split(".")[0]),
+    childPath.split(".").slice(1),
+  );
 }
 
-function resolveChildSegments(node: FieldNode | undefined, segments: string[]): FieldNode | undefined {
+function resolveChildSegments(
+  node: FieldNode | undefined,
+  segments: string[],
+): FieldNode | undefined {
   if (!node) return undefined;
   if (segments.length === 0) return node;
 
@@ -512,7 +609,9 @@ function resolveChildSegments(node: FieldNode | undefined, segments: string[]): 
 
 function resolveRelativeSelector(baseField: FieldNode, selector: string): string {
   if (selector.startsWith("./")) {
-    const base = baseField.path.includes(".") ? baseField.path.slice(0, baseField.path.lastIndexOf(".")) : "";
+    const base = baseField.path.includes(".")
+      ? baseField.path.slice(0, baseField.path.lastIndexOf("."))
+      : "";
     return base ? `${base}.${selector.slice(2)}` : selector.slice(2);
   }
   return selector;
@@ -521,11 +620,18 @@ function resolveRelativeSelector(baseField: FieldNode, selector: string): string
 function selectorValue(field: FieldNode | undefined): any {
   if (!field) return undefined;
   if (isPrimitiveField(field)) return field.value();
-  if (field.kind === "array" || field.kind === "object") return { kind: field.kind, path: field.path };
+  if (field.kind === "array" || field.kind === "object")
+    return { kind: field.kind, path: field.path };
   return undefined;
 }
 
-function buildRuntimeContext(ctx: FieldContext, field: FieldNode, kind: RuntimeRuleContext["kind"], key?: string, value?: any): RuntimeRuleContext {
+function buildRuntimeContext(
+  ctx: FieldContext,
+  field: FieldNode,
+  kind: RuntimeRuleContext["kind"],
+  key?: string,
+  value?: any,
+): RuntimeRuleContext {
   const runtime: RuntimeRuleContext = {
     field,
     form: ctx.form,
@@ -535,24 +641,39 @@ function buildRuntimeContext(ctx: FieldContext, field: FieldNode, kind: RuntimeR
     schema: field.schema,
     row: field.row,
     scope: ctx.config.scope || {},
-    get values() { return projectFormValues(ctx, rootForm(ctx), false); },
+    get values() {
+      return projectFormValues(ctx, rootForm(ctx), false);
+    },
     value,
-    get(selector: string) { return resolveSelector(ctx, field, selector); },
-    set(selector: string, next: any) { setSelectorValue(ctx, field, selector, next); },
+    get(selector: string) {
+      return resolveSelector(ctx, field, selector);
+    },
+    set(selector: string, next: any) {
+      setSelectorValue(ctx, field, selector, next);
+    },
     project(selector?: string) {
       if (!selector) return projectNode(ctx, field);
       const resolved = resolveRelativeSelector(field, selector);
       const target = ctx.fieldsMap.get(resolved);
       return target ? projectNode(ctx, target) : undefined;
     },
-    effect(runner: () => void | (() => void)) { return effect(runner); },
+    effect(runner: () => void | (() => void)) {
+      return effect(runner);
+    },
   };
   return runtime;
 }
 
-function setFieldValue(ctx: FieldContext, baseField: FieldNode, selector: string, field: FieldNode | undefined, value: any) {
+function setFieldValue(
+  ctx: FieldContext,
+  baseField: FieldNode,
+  selector: string,
+  field: FieldNode | undefined,
+  value: any,
+) {
   if (isPrimitiveField(field)) field.setValue(value);
-  else warnInvalid(ctx, field || baseField, "set", `Cannot set non-primitive selector "${selector}".`);
+  else
+    warnInvalid(ctx, field || baseField, "set", `Cannot set non-primitive selector "${selector}".`);
 }
 
 function setSelectorValue(ctx: FieldContext, baseField: FieldNode, selector: string, value: any) {
@@ -567,11 +688,17 @@ function setSelectorValue(ctx: FieldContext, baseField: FieldNode, selector: str
   if (collectionMatch) {
     const arrayPath = collectionMatch[1];
     const childPath = collectionMatch[2];
-    const array = arrayPath.startsWith("$row.") && baseField.row
-      ? resolveRowChild(baseField.row, arrayPath.slice(5))
-      : ctx.fieldsMap.get(resolveRelativeSelector(baseField, arrayPath));
+    const array =
+      arrayPath.startsWith("$row.") && baseField.row
+        ? resolveRowChild(baseField.row, arrayPath.slice(5))
+        : ctx.fieldsMap.get(resolveRelativeSelector(baseField, arrayPath));
     if (!isArrayField(array)) {
-      warnInvalid(ctx, array || baseField, "set", `Cannot set collection "${selector}": "${arrayPath}" is not an array field.`);
+      warnInvalid(
+        ctx,
+        array || baseField,
+        "set",
+        `Cannot set collection "${selector}": "${arrayPath}" is not an array field.`,
+      );
       return;
     }
     for (const row of array.rows()) {
@@ -604,13 +731,22 @@ function installReactions(ctx: FieldContext, field: FieldNode) {
         const result = executeRuntimeValue(ctx, field, rule, runtime, key);
         if (isPromiseLike(result)) {
           let alive = true;
-          const cancel = () => { alive = false; };
+          const cancel = () => {
+            alive = false;
+          };
           field._disposers.push(cancel);
-          result.then((value: any) => {
-            if (alive) applyReactionValue(ctx, field, key, value);
-          })
+          result
+            .then((value: any) => {
+              if (alive) applyReactionValue(ctx, field, key, value);
+            })
             .catch((err: any) => {
-              ctx.emitError({ scope: "x-reaction", path: field.path, key, message: errorMessage(err), cause: err });
+              ctx.emitError({
+                scope: "x-reaction",
+                path: field.path,
+                key,
+                message: errorMessage(err),
+                cause: err,
+              });
             });
         } else {
           applyReactionValue(ctx, field, key, result);
@@ -628,24 +764,55 @@ function installEffects(ctx: FieldContext, field: FieldNode, raw: SchemaEffect) 
     try {
       const result = executeRuntimeValue(ctx, field, rule, runtime, "x-effect");
       if (typeof result === "function") field._disposers.push(result);
-      else if (isPromiseLike(result)) result.then((dispose: any) => { if (typeof dispose === "function") field._disposers.push(dispose); })
-        .catch((err: any) => ctx.emitError({ scope: "x-effect", path: field.path, message: errorMessage(err), cause: err }));
+      else if (isPromiseLike(result))
+        result
+          .then((dispose: any) => {
+            if (typeof dispose === "function") field._disposers.push(dispose);
+          })
+          .catch((err: any) =>
+            ctx.emitError({
+              scope: "x-effect",
+              path: field.path,
+              message: errorMessage(err),
+              cause: err,
+            }),
+          );
     } catch (err) {
-      ctx.emitError({ scope: "x-effect", path: field.path, message: errorMessage(err), cause: err });
+      ctx.emitError({
+        scope: "x-effect",
+        path: field.path,
+        message: errorMessage(err),
+        cause: err,
+      });
     }
   }
 }
 
-function executeRuntimeValue(ctx: FieldContext, field: FieldNode, rule: SchemaRuntimeValue, runtime: RuntimeRuleContext, key?: string): any {
+function executeRuntimeValue(
+  ctx: FieldContext,
+  field: FieldNode,
+  rule: SchemaRuntimeValue,
+  runtime: RuntimeRuleContext,
+  key?: string,
+): any {
   try {
     if (typeof rule === "function") return rule(runtime, ctx.form);
     if (typeof rule === "string") {
-      if (isExpression(rule)) return evaluateExpression(extractExpression(rule), buildExpressionScope(ctx, field, runtime));
+      if (isExpression(rule))
+        return evaluateExpression(
+          extractExpression(rule),
+          buildExpressionScope(ctx, field, runtime),
+        );
       if (rule.startsWith("@")) {
         const name = rule.slice(1);
         const handler = ctx.config.handlers?.[name];
         if (!handler) {
-          ctx.emitError({ scope: runtime.kind, path: field.path, key, message: `Handler "${name}" not found.` });
+          ctx.emitError({
+            scope: runtime.kind,
+            path: field.path,
+            key,
+            message: `Handler "${name}" not found.`,
+          });
           return undefined;
         }
         return handler(runtime, ctx.form);
@@ -653,7 +820,13 @@ function executeRuntimeValue(ctx: FieldContext, field: FieldNode, rule: SchemaRu
     }
     return rule;
   } catch (err) {
-    ctx.emitError({ scope: runtime.kind, path: field.path, key, message: errorMessage(err), cause: err });
+    ctx.emitError({
+      scope: runtime.kind,
+      path: field.path,
+      key,
+      message: errorMessage(err),
+      cause: err,
+    });
     return undefined;
   }
 }
@@ -667,7 +840,11 @@ function extractExpression(value: string): string {
   return value.trim().slice(2, -2).trim();
 }
 
-function buildExpressionScope(ctx: FieldContext, field: FieldNode, runtime: RuntimeRuleContext): Record<string, any> {
+function buildExpressionScope(
+  ctx: FieldContext,
+  field: FieldNode,
+  runtime: RuntimeRuleContext,
+): Record<string, any> {
   const values = runtime.values;
   const scope: Record<string, any> = {
     ...values,
@@ -682,7 +859,8 @@ function buildExpressionScope(ctx: FieldContext, field: FieldNode, runtime: Runt
     $project: (selector?: string) => runtime.project(selector),
   };
   if (field.row) Object.assign(scope, projectChildren(ctx, field.row.children, false) || {});
-  if (field.parent && isContainerField(field.parent)) Object.assign(scope, projectChildren(ctx, field.parent.children, false) || {});
+  if (field.parent && isContainerField(field.parent))
+    Object.assign(scope, projectChildren(ctx, field.parent.children, false) || {});
   return scope;
 }
 
@@ -699,11 +877,21 @@ function applyReactionValue(ctx: FieldContext, field: FieldNode, key: string, va
       if (isArrayField(field)) field.setRows(Array.isArray(value) ? value : []);
       else warnInvalid(ctx, field, key, `x-reaction.rows is only valid for array fields.`);
       break;
-    case "display": field.setDisplay(value as FieldDisplayTypes); break;
-    case "disabled": field.setDisabled(Boolean(value)); break;
-    case "required": field.setRequired(Boolean(value)); break;
-    case "title": if (field.title() !== value) field.title(String(value)); break;
-    case "description": if (field.description() !== value) field.description(String(value)); break;
+    case "display":
+      field.setDisplay(value as FieldDisplayTypes);
+      break;
+    case "disabled":
+      field.setDisabled(Boolean(value));
+      break;
+    case "required":
+      field.setRequired(Boolean(value));
+      break;
+    case "title":
+      if (field.title() !== value) field.title(String(value));
+      break;
+    case "description":
+      if (field.description() !== value) field.description(String(value));
+      break;
     case "props": {
       const merged = { ...field.componentProps(), ...value };
       if (!shallowEqual(field.componentProps(), merged)) field.componentProps(merged);
@@ -724,13 +912,20 @@ function applyReactionValue(ctx: FieldContext, field: FieldNode, key: string, va
       else field.setDecorator(value);
       break;
     }
-    case "dataSource": field.setDataSource(value); break;
+    case "dataSource":
+      field.setDataSource(value);
+      break;
     default:
       warnInvalid(ctx, field, key, `Unknown x-reaction target "${key}".`);
   }
 }
 
-async function runXValidate(ctx: FieldContext, field: FieldNode, raw: SchemaRuntimeValue | SchemaRuntimeValue[], value: any): Promise<FieldError[]> {
+async function runXValidate(
+  ctx: FieldContext,
+  field: FieldNode,
+  raw: SchemaRuntimeValue | SchemaRuntimeValue[],
+  value: any,
+): Promise<FieldError[]> {
   const rules = Array.isArray(raw) ? raw : [raw];
   const errors: FieldError[] = [];
   for (const rule of rules) {
@@ -742,7 +937,8 @@ async function runXValidate(ctx: FieldContext, field: FieldNode, raw: SchemaRunt
 }
 
 function warnInvalid(ctx: FieldContext, field: FieldNode, key: string, message: string) {
-  if (typeof console !== "undefined" && console.warn) console.warn(`[alien-form] ${message} path=${field.path}`);
+  if (typeof console !== "undefined" && console.warn)
+    console.warn(`[alien-form] ${message} path=${field.path}`);
   ctx.emitError({ scope: "x-reaction", path: field.path, key, message });
 }
 
@@ -781,28 +977,39 @@ export function createForm(config: FormConfig = {}): FormInstance {
     ...baseSchema.definitions,
     ...config.definitions,
   };
-  const schema: IFormSchema = Object.keys(refDefinitions).length > 0
-    ? { ...baseSchema, definitions: refDefinitions }
-    : baseSchema;
+  const schema: IFormSchema =
+    Object.keys(refDefinitions).length > 0
+      ? { ...baseSchema, definitions: refDefinitions }
+      : baseSchema;
   const form: FormInstance = {} as FormInstance;
   const ctx: FieldContext = {
     fieldsMap,
     config,
     refDefinitions,
     initialValues,
-    emitError(error) { for (const listener of errorListeners) listener(error); },
-    notifyFieldsChanged() { fieldsSignal(fieldsMap); },
+    emitError(error) {
+      for (const listener of errorListeners) listener(error);
+    },
+    notifyFieldsChanged() {
+      fieldsSignal(fieldsMap);
+    },
     form,
   };
 
-  const root = createObjectField(ctx, "", { ...schema, type: "object" }, { parentRequired: schema.required });
+  const root = createObjectField(
+    ctx,
+    "",
+    { ...schema, type: "object" },
+    { parentRequired: schema.required },
+  );
   buildChildren(ctx, root, schema, initialValues, schema.required);
 
   const submittingSignal = signal(false);
   const valuesComputed = computed(() => projectFormValues(ctx, root));
   const errorsComputed = computed(() => {
     const all: FieldError[] = [];
-    for (const field of fieldsSignal().values()) if (field.display() !== "none") all.push(...field.errors());
+    for (const field of fieldsSignal().values())
+      if (field.display() !== "none") all.push(...field.errors());
     return all;
   });
   const validComputed = computed(() => errorsComputed().length === 0);
@@ -815,9 +1022,15 @@ export function createForm(config: FormConfig = {}): FormInstance {
     values: valuesComputed,
     errors: errorsComputed,
     valid: validComputed,
-    field(path: string) { return fieldsSignal().get(path); },
-    get(selector: string) { return resolveSelector(ctx, root, selector); },
-    set(selector: string, value: any) { setSelectorValue(ctx, root, selector, value); },
+    field(path: string) {
+      return fieldsSignal().get(path);
+    },
+    get(selector: string) {
+      return resolveSelector(ctx, root, selector);
+    },
+    set(selector: string, value: any) {
+      setSelectorValue(ctx, root, selector, value);
+    },
     project(selector?: string) {
       if (!selector) return projectFormValues(ctx, root);
       const field = fieldsSignal().get(selector);
@@ -835,8 +1048,14 @@ export function createForm(config: FormConfig = {}): FormInstance {
       }
       endBatch();
     },
-    setInitialValues(values: Record<string, any>) { ctx.initialValues = { ...values }; },
-    reset() { startBatch(); root.reset(); endBatch(); },
+    setInitialValues(values: Record<string, any>) {
+      ctx.initialValues = { ...values };
+    },
+    reset() {
+      startBatch();
+      root.reset();
+      endBatch();
+    },
     mount() {
       if (destroyed || mounted) return;
       mounted = true;
@@ -848,7 +1067,11 @@ export function createForm(config: FormConfig = {}): FormInstance {
       unmountFormRuntime(fieldsSignal());
     },
     async validate() {
-      const results = await Promise.all(Array.from(fieldsSignal().values()).filter((f: FieldNode) => f.display() !== "none").map((f: FieldNode) => f.validate()));
+      const results = await Promise.all(
+        Array.from(fieldsSignal().values())
+          .filter((f: FieldNode) => f.display() !== "none")
+          .map((f: FieldNode) => f.validate()),
+      );
       return results.every((errors) => errors.length === 0);
     },
     async submit<T = any>(onSubmit?: (values: Record<string, any>) => T | Promise<T>) {
@@ -861,7 +1084,9 @@ export function createForm(config: FormConfig = {}): FormInstance {
           throw error;
         }
         return onSubmit ? await onSubmit(form.values()) : (form.values() as T);
-      } finally { submittingSignal(false); }
+      } finally {
+        submittingSignal(false);
+      }
     },
     destroy() {
       if (destroyed) return;
@@ -874,13 +1099,25 @@ export function createForm(config: FormConfig = {}): FormInstance {
     },
     onError(listener: (error: FormError) => void) {
       errorListeners.add(listener);
-      return () => { errorListeners.delete(listener); };
+      return () => {
+        errorListeners.delete(listener);
+      };
     },
-    effect<T>(runnerOrSelector: ((form: FormInstance) => void | (() => void)) | ((form: FormInstance) => T), listener?: (value: T, prev: T | undefined) => void, options?: { immediate?: boolean; equals?: (a: T, b: T) => boolean }) {
+    effect<T>(
+      runnerOrSelector: ((form: FormInstance) => void | (() => void)) | ((form: FormInstance) => T),
+      listener?: (value: T, prev: T | undefined) => void,
+      options?: { immediate?: boolean; equals?: (a: T, b: T) => boolean },
+    ) {
       if (!listener) {
-        const dispose = effect(() => { if (!destroyed) return (runnerOrSelector as (form: FormInstance) => void | (() => void))(form); });
+        const dispose = effect(() => {
+          if (!destroyed)
+            return (runnerOrSelector as (form: FormInstance) => void | (() => void))(form);
+        });
         effectDisposers.add(dispose);
-        return () => { dispose(); effectDisposers.delete(dispose); };
+        return () => {
+          dispose();
+          effectDisposers.delete(dispose);
+        };
       }
       const equals = options?.equals ?? Object.is;
       let initialized = false;
@@ -900,7 +1137,10 @@ export function createForm(config: FormConfig = {}): FormInstance {
         listener(next, old);
       });
       effectDisposers.add(dispose);
-      return () => { dispose(); effectDisposers.delete(dispose); };
+      return () => {
+        dispose();
+        effectDisposers.delete(dispose);
+      };
     },
   } as FormInstance);
 

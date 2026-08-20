@@ -21,7 +21,17 @@ export type PrimitiveSchemaType = "string" | "number" | "boolean";
 export type SchemaTypes = PrimitiveSchemaType | "object" | "array" | (string & {});
 export type FieldKind = "primitive" | "object" | "array" | "void";
 export type FieldDisplayTypes = "visible" | "hidden" | "none";
-export type ValidatorFormats = "email" | "url" | "phone" | "number" | "integer" | "idcard" | "ip" | "ipv6" | "zip" | (string & {});
+export type ValidatorFormats =
+  | "email"
+  | "url"
+  | "phone"
+  | "number"
+  | "integer"
+  | "idcard"
+  | "ip"
+  | "ipv6"
+  | "zip"
+  | (string & {});
 export type DataSourcePolicy = "preserve" | "clear" | "filter" | "first";
 
 export interface FieldError {
@@ -38,15 +48,37 @@ export interface DataSourceItem {
 // ─── Schema Validate ──────────────────────────────────────────────────────────
 
 export type SchemaReactionKey =
-  | "value" | "rows" | "display" | "disabled" | "required"
-  | "title" | "description" | "props" | "decoratorProps"
-  | "component" | "decorator" | "dataSource";
+  | "value"
+  | "rows"
+  | "display"
+  | "disabled"
+  | "required"
+  | "title"
+  | "description"
+  | "props"
+  | "decoratorProps"
+  | "component"
+  | "decorator"
+  | "dataSource";
 
 export type RuntimeExecutable = (ctx: RuntimeRuleContext, form: FormInstance) => any | Promise<any>;
-export type SchemaRuntimeValue = string | number | boolean | null | undefined | Record<string, any> | any[] | RuntimeExecutable;
-export type SchemaReactions = Partial<Record<SchemaReactionKey | string, SchemaRuntimeValue | SchemaRuntimeValue[]>>;
+export type SchemaRuntimeValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | Record<string, any>
+  | any[]
+  | RuntimeExecutable;
+export type SchemaReactions = Partial<
+  Record<SchemaReactionKey | string, SchemaRuntimeValue | SchemaRuntimeValue[]>
+>;
 export type SchemaEffect = SchemaRuntimeValue | SchemaRuntimeValue[];
-export interface SchemaFormat { input?: SchemaRuntimeValue; output?: SchemaRuntimeValue; }
+export interface SchemaFormat {
+  input?: SchemaRuntimeValue;
+  output?: SchemaRuntimeValue;
+}
 export type SchemaXValidate = SchemaRuntimeValue | SchemaRuntimeValue[];
 
 export interface RuntimeRuleContext {
@@ -128,7 +160,7 @@ export interface BaseFieldNode {
   errors: Signal<FieldError[]>;
   warnings: Signal<FieldError[]>;
   validateStatus: Signal<ValidateStatus>;
-  title: Signal<string>;
+  title: Signal<string | undefined>;
   description: Signal<string>;
   component: Signal<string>;
   componentProps: Signal<Record<string, any>>;
@@ -191,7 +223,14 @@ export type FieldAtoms = FieldNode;
 
 // ─── FormConfig ───────────────────────────────────────────────────────────────
 
-export type FormErrorScope = "reaction" | "x-reaction" | "x-effect" | "x-format" | "x-validate" | "ref-resolve" | "expression";
+export type FormErrorScope =
+  | "reaction"
+  | "x-reaction"
+  | "x-effect"
+  | "x-format"
+  | "x-validate"
+  | "ref-resolve"
+  | "expression";
 
 export interface FormError {
   scope: FormErrorScope;

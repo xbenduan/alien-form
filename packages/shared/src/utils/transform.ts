@@ -15,17 +15,11 @@ function readTableMeta(field: IFieldSchema): TableMeta {
   return ((field as Record<string, unknown>)["x-table"] as TableMeta | undefined) ?? {};
 }
 
-function sortEntries(
-  properties: Record<string, IFieldSchema>,
-): Array<[string, IFieldSchema]> {
-  return Object.entries(properties).sort(
-    ([, a], [, b]) => (a.order ?? 0) - (b.order ?? 0),
-  );
+function sortEntries(properties: Record<string, IFieldSchema>): Array<[string, IFieldSchema]> {
+  return Object.entries(properties).sort(([, a], [, b]) => (a.order ?? 0) - (b.order ?? 0));
 }
 
-function mapProperties(
-  properties: Record<string, IFieldSchema>,
-): Record<string, IFieldSchema> {
+function mapProperties(properties: Record<string, IFieldSchema>): Record<string, IFieldSchema> {
   return Object.fromEntries(
     Object.entries(properties).map(([key, field]) => [key, transformFieldForForm(field)]),
   );
@@ -46,6 +40,8 @@ export function transformFieldForForm(field: IFieldSchema): IFieldSchema {
     return {
       ...field,
       type: "array",
+      title: undefined,
+      props: { ...field.props, title: field?.props?.title ?? field.title ?? "" },
       component: field.component ?? "ArrayCards",
       items: items.properties
         ? { ...items, type: "object", properties: mapProperties(items.properties) }
@@ -57,6 +53,8 @@ export function transformFieldForForm(field: IFieldSchema): IFieldSchema {
     return {
       ...field,
       type: "object",
+      title: undefined,
+      props: { ...field.props, title: field?.props?.title ?? field.title ?? "" },
       component: field.component ?? "ObjectField",
       properties: mapProperties(field.properties),
     };
@@ -139,19 +137,12 @@ export function buildFilterSchema(config: SchemaConfig): IFormSchema {
   for (const { key, field } of leaves) {
     if (field.display === "none") continue;
     const meta = getComponentMeta(field.component);
-    const {
-      required: _required,
-      default: _default,
-      "x-validate": _validate,
-      ...rest
-    } = field;
+    const { required: _required, default: _default, "x-validate": _validate, ...rest } = field;
     properties[key] = {
       ...rest,
       title: field.title ?? key,
       decorator: "FilterItem",
-      ...(field.component === "Textarea"
-        ? { props: { ...field.props, rows: 1 } }
-        : {}),
+      ...(field.component === "Textarea" ? { props: { ...field.props, rows: 1 } } : {}),
       ...(meta?.multiValue ? { type: "string", "x-format": multiValueFormat } : {}),
     };
   }
