@@ -20,3 +20,4 @@ export { SchemaRenderer } from "./SchemaRenderer";
 export type { SchemaRendererProps } from "./SchemaRenderer";
 export { FieldDetailModal } from "./FieldDetailModal";
 export type { FieldDetailModalProps } from "./FieldDetailModal";
+export { FieldServiceContext, useAsyncOptions, useFieldOptions, useServiceRequest } from "./service";

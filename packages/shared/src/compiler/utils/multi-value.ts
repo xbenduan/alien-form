@@ -2,10 +2,9 @@ import type { RuntimeRuleContext } from "@alien-form/react";
 
 /**
  * 多值组件（多选 / 标签 / 复选组）值为数组，但 alien-form 的叶子字段只接受
- * string | number | boolean。这里用 x-format 在叶子上做双向桥接：
+ * string | number | boolean。用 x-format 在叶子上做双向桥接：
  *  - input:  数组 → JSON 字符串（存入 signal）
  *  - output: JSON 字符串 → 数组（投影回真实值）
- * 组件内部只需消费 / 产出数组，由 parseMultiValue / serializeMultiValue 转换。
  */
 export function serializeMultiValue(value: unknown): string | undefined {
   if (value === undefined || value === null) return undefined;

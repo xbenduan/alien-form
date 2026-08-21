@@ -3,10 +3,9 @@ import { Suspense } from "react";
 import { Table as AntTable } from "antd";
 import type { TablePaginationConfig, TableProps } from "antd";
 import type { ColumnsType, ColumnType } from "antd/es/table";
-import type { SchemaConfig, SchemaRecord, TableColumn } from "../types";
+import type { SchemaRecord, TableColumn } from "../types";
 import { fieldComponents } from "../components/registry";
 import { DisplayValue } from "../components/DisplayValue";
-import { useColumns } from "./use-columns";
 
 /** 依据列定义渲染单元格：复杂列走组件 isTable，叶子列走对应组件的 detail 只读态。 */
 function renderCell(column: TableColumn, value: unknown): ReactNode {
@@ -32,8 +31,8 @@ function renderCell(column: TableColumn, value: unknown): ReactNode {
 export interface TableColumnAction extends ColumnType<SchemaRecord> {}
 
 export interface TableComponentProps {
-  /** 配置态 schema，内部经 useColumns 转换。 */
-  schema: SchemaConfig;
+  /** 已编译的 table 列（由 SchemaCompiler.compile 产出）。 */
+  columns: TableColumn[];
   dataSource: SchemaRecord[];
   loading?: boolean;
   rowKey?: string;
@@ -46,9 +45,9 @@ export interface TableComponentProps {
   toolbar?: ReactNode;
 }
 
-/** <Table />：只接收 schema + dataSource，自动投影列。 */
+/** <Table />：接收已编译的列定义 + dataSource。 */
 export function Table({
-  schema,
+  columns,
   dataSource,
   loading,
   rowKey = "id",
@@ -59,8 +58,6 @@ export function Table({
   actionColumn,
   toolbar,
 }: TableComponentProps) {
-  const columns = useColumns(schema);
-
   const antColumns: ColumnsType<SchemaRecord> = columns.map((column) => ({
     title: column.title,
     dataIndex: column.key,

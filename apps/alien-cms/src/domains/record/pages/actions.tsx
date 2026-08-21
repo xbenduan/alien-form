@@ -4,6 +4,7 @@ import { Button, Flex, Space } from "antd";
 import type { SchemaFormRef } from "@alien-form/shared";
 import { PageBreadcrumb, PageError, PageLoading } from "../../../components";
 import { useModelSchema, useRecordDetail, useRecordMutations } from "../../../hooks";
+import { CompilerProvider, useCompiledSchema } from "../../../compiler";
 import { recordListPath } from "../../../app/router/paths";
 import { RecordActionForm } from "../components";
 import type { RecordActionMode } from "../types";
@@ -21,16 +22,30 @@ interface RecordActionPageProps {
 
 /** 记录动作页（整页形态）：add / edit / detail 共用，由 mode 区分。 */
 export default function RecordActionPage({ mode }: RecordActionPageProps) {
+  return (
+    <CompilerProvider>
+      <RecordActionContent mode={mode} />
+    </CompilerProvider>
+  );
+}
+
+function RecordActionContent({ mode }: RecordActionPageProps) {
   const navigate = useNavigate();
   const { modelName = "", recordId } = useParams();
   const schemaQuery = useModelSchema(modelName);
   const schema = schemaQuery.data;
+  const compiledQuery = useCompiledSchema(schema);
   const detailQuery = useRecordDetail(modelName, recordId, mode !== "add");
   const mutations = useRecordMutations(modelName);
   const formRef = useRef<SchemaFormRef>(null);
 
-  if (schemaQuery.isLoading || (mode !== "add" && detailQuery.isLoading)) return <PageLoading />;
-  if (schemaQuery.error || !schema) {
+  if (
+    schemaQuery.isLoading ||
+    compiledQuery.isLoading ||
+    (mode !== "add" && detailQuery.isLoading)
+  )
+    return <PageLoading />;
+  if (schemaQuery.error || !schema || !compiledQuery.data) {
     return (
       <PageError title="模型不存在或加载失败" description={(schemaQuery.error as Error)?.message} />
     );
@@ -50,7 +65,7 @@ export default function RecordActionPage({ mode }: RecordActionPageProps) {
       <div className={styles.body}>
         <RecordActionForm
           mode={mode}
-          schema={schema}
+          formSchema={compiledQuery.data.form}
           record={mode === "add" ? undefined : detailQuery.data}
           formKey={`${modelName}:${mode}:${recordId ?? "new"}`}
           formRef={formRef}

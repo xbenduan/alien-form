@@ -1,11 +1,10 @@
-import type { DataSourceItem, FormConfig, IFieldSchema, IFormSchema } from "@alien-form/react";
+import type { DataSourceItem, IFieldSchema, IFormSchema } from "@alien-form/react";
 import type { ComponentType, LazyExoticComponent, ReactNode } from "react";
 
 /** 渲染模式：新增 / 编辑 / 详情（只读）。 */
 export type FieldMode = "add" | "edit" | "detail";
 
 export type SchemaRecord = Record<string, unknown>;
-export type SchemaHandlers = FormConfig["handlers"];
 
 /**
  * 分组配置：把若干顶层字段收进 GridLayout 布局容器，
@@ -112,6 +111,13 @@ export interface FieldComponentProps {
   placeholder?: string;
   mode?: FieldMode;
   dataSource?: DataSourceItem[];
+  /** props 方案的数据源声明：组件通过注入的 request 自取选项。 */
+  service?: {
+    model: string;
+    valueKey: string;
+    labelKey: string;
+    remoteSearch: boolean;
+  };
 
   /** 复杂字段在 table 单元格中渲染时为 true：展示摘要 + 详情按钮。 */
   isTable?: boolean;

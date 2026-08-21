@@ -12,20 +12,28 @@ import type { TableRowSelection } from "antd/es/table/interface";
 import { FilterForm, Table } from "@alien-form/shared";
 import type { Pagination, Sorter } from "../../../services";
 import { PageBreadcrumb, PageError, PageLoading } from "../../../components";
-import { handles } from "../../../handles";
+import { CompilerProvider } from "../../../compiler";
 import { useRecordPage } from "../hooks";
 import { RecordActionOverlay } from "../components";
 import styles from "./index.module.css";
 
 /** 记录列表页：filter + table，行内操作跳转 add/edit/detail。 */
 export default function RecordListPage() {
+  return (
+    <CompilerProvider>
+      <RecordListContent />
+    </CompilerProvider>
+  );
+}
+
+function RecordListContent() {
   const { modelName = "" } = useParams();
   const { message } = App.useApp();
   const page = useRecordPage(modelName);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   if (page.schemaLoading) return <PageLoading />;
-  if (page.schemaError || !page.schema || !page.displaySchema) {
+  if (page.schemaError || !page.schema || !page.compiled) {
     return <PageError title="模型不存在或加载失败" description={page.schemaError?.message} />;
   }
 
@@ -36,8 +44,7 @@ export default function RecordListPage() {
       <PageBreadcrumb items={[{ title: page.schema.meta.title }]} />
       <Card styles={{ body: { padding: 16 } }}>
         <FilterForm
-          schema={page.displaySchema}
-          handlers={handles}
+          filterSchema={page.compiled.filter}
           loading={page.listLoading}
           onSearch={page.setFilters}
         />
@@ -78,7 +85,7 @@ export default function RecordListPage() {
           </Space>
         </div>
         <Table
-          schema={page.displaySchema}
+          columns={page.compiled.columns}
           dataSource={page.records}
           loading={page.listLoading || page.deleting}
           total={page.total}
@@ -155,6 +162,7 @@ export default function RecordListPage() {
       <RecordActionOverlay
         modelName={modelName}
         schema={page.schema}
+        formSchema={page.compiled.form}
         overlay={page.overlay}
         submitting={page.submitting}
         onClose={page.closeOverlay}

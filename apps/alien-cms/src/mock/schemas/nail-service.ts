@@ -62,9 +62,11 @@ export const nailServiceSchema: ModelSchema = {
       required: true,
       order: 40,
       props: { placeholder: "请选择授课教师" },
-      "x-reaction": { dataSource: "@loadDataSource" },
-      "x-handler-params": {
-        dataSource: { model: "school-user", label: "displayName", value: "id" },
+      dataSource: {
+        plugin: "$af-dataSource",
+        model: "school-user",
+        label: "displayName",
+        value: "id",
       },
       "x-table": { width: 130 },
     },

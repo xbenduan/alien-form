@@ -1,31 +1,27 @@
 import { Modal, Empty } from "antd";
 import { useMemo } from "react";
 import type { IFieldSchema, IFormSchema } from "@alien-form/react";
-import type { SchemaHandlers } from "../types";
 import { SchemaRenderer } from "./SchemaRenderer";
-import { transformFieldForForm } from "../utils/transform";
 
 export interface FieldDetailModalProps {
   open: boolean;
   title?: string;
-  /** 当前字段的 schema（配置态或 form 态均可，内部会统一转换）。 */
+  /** 已编译的 form 态字段 schema（table 列携带的 column.field）。 */
   field?: IFieldSchema;
   /** 该字段的值。 */
   value?: unknown;
-  handlers?: SchemaHandlers;
   onClose: () => void;
 }
 
 /**
- * 公共详情弹窗：接收单个字段的 value + schema，以 alien-form 的 detail 只读态渲染其完整内容。
- * table 下复杂字段点击“详情”即打开此弹窗。
+ * 公共详情弹窗：接收单个字段的 value + 已编译 schema，以 detail 只读态渲染其完整内容。
+ * table 下复杂字段点击"详情"即打开此弹窗。
  */
 export function FieldDetailModal({
   open,
   title,
   field,
   value,
-  handlers,
   onClose,
 }: FieldDetailModalProps) {
   const schema = useMemo<IFormSchema | undefined>(() => {
@@ -33,7 +29,7 @@ export function FieldDetailModal({
     return {
       type: "object",
       properties: {
-        __detail__: { ...transformFieldForForm(field), title: undefined },
+        __detail__: { ...field, title: undefined },
       },
     };
   }, [field]);
@@ -53,7 +49,6 @@ export function FieldDetailModal({
           mode="detail"
           schema={schema}
           initialValues={{ __detail__: value }}
-          handlers={handlers}
           formKey={open ? "open" : "closed"}
         />
       ) : (

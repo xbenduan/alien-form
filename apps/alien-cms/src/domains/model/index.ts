@@ -7,4 +7,3 @@ export type {
   OpenMode,
 } from "./types";
 export { useModelBuilder } from "./hooks";
-export { buildModelSchema, schemaToDraft } from "./utils";

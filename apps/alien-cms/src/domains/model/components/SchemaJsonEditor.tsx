@@ -1,7 +1,7 @@
 import { App, Alert, Button, Input } from "antd";
 import { useEffect, useState } from "react";
 import type { ModelDraft, ModelSchema } from "../types";
-import { schemaToDraft } from "../utils";
+import { useCompiler } from "../../../compiler";
 import styles from "./index.module.css";
 
 interface SchemaJsonEditorProps {
@@ -31,6 +31,7 @@ function isModelSchema(value: unknown): value is ModelSchema {
  */
 export function SchemaJsonEditor({ schema, onApply }: SchemaJsonEditorProps) {
   const { message } = App.useApp();
+  const compiler = useCompiler();
   const [text, setText] = useState(() => stringifySchema(schema));
   const [error, setError] = useState("");
 
@@ -46,7 +47,7 @@ export function SchemaJsonEditor({ schema, onApply }: SchemaJsonEditorProps) {
       if (!isModelSchema(parsed)) {
         throw new Error("Schema 必须包含 meta 和 properties");
       }
-      onApply(schemaToDraft(parsed));
+      onApply(compiler.toDraft(parsed));
       setError("");
       message.success("Schema 已更新");
     } catch (reason) {

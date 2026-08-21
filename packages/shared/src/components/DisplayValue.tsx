@@ -1,6 +1,6 @@
 import { Image, Tag, Typography } from "antd";
 import type { DataSourceItem } from "@alien-form/react";
-import { EMPTY_TEXT, isEmptyValue, optionLabel, statusColor } from "../utils/schema";
+import { EMPTY_TEXT, isEmptyValue, optionLabel, statusColor } from "../compiler";
 
 export interface DisplayValueProps {
   value?: unknown;

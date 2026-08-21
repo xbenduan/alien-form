@@ -6,18 +6,16 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { FormInstance } from "@alien-form/react";
+import type { FormInstance, IFormSchema } from "@alien-form/react";
 import { App, Drawer, Modal, Space, Button } from "antd";
-import type { FieldMode, SchemaConfig, SchemaHandlers, SchemaRecord } from "../types";
+import type { FieldMode, SchemaRecord } from "../types";
 import { SchemaRenderer } from "../components/SchemaRenderer";
-import { useFormSchema } from "./use-form-schema";
 
 export interface SchemaFormProps {
   mode: FieldMode;
-  /** 配置态 schema（内部转换为 form schema）。 */
-  schema: SchemaConfig;
+  /** 已编译的 form 场景 schema（由 SchemaCompiler.compile 产出）。 */
+  formSchema: IFormSchema;
   dataSource?: SchemaRecord;
-  handlers?: SchemaHandlers;
   formKey?: string | number;
   submitting?: boolean;
   submitText?: string;
@@ -31,17 +29,16 @@ export interface SchemaFormRef {
 }
 
 /**
- * <SchemaForm />：完整渲染一份 schema，支持 add / edit / detail 三态。
+ * <SchemaForm />：渲染一份已编译的 form schema，支持 add / edit / detail 三态。
  * detail 态只读且不显示提交按钮。
  */
 export const SchemaForm = forwardRef<SchemaFormRef, SchemaFormProps>(function SchemaForm(
-  { mode, schema, dataSource, handlers, formKey, onSubmit },
+  { mode, formSchema, dataSource, formKey, onSubmit },
   ref,
 ) {
   const { message } = App.useApp();
   const formRef = useRef<FormInstance | null>(null);
   const [form, setForm] = useState<FormInstance | null>(null);
-  const formSchema = useFormSchema(schema);
   const editable = mode !== "detail";
 
   const handleSubmit = useCallback(async () => {
@@ -63,7 +60,6 @@ export const SchemaForm = forwardRef<SchemaFormRef, SchemaFormProps>(function Sc
         mode={mode}
         schema={formSchema}
         initialValues={dataSource}
-        handlers={handlers}
         formKey={formKey}
         onFormReady={(form) => {
           formRef.current = form;

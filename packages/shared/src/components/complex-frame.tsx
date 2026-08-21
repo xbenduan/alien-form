@@ -4,7 +4,7 @@ import { ProfileOutlined } from "@ant-design/icons";
 import { Button, Tooltip } from "antd";
 import type { FieldComponentProps } from "../types";
 import { FieldDetailModal } from "./FieldDetailModal";
-import { toDisplayText } from "../utils/schema";
+import { toDisplayText } from "../compiler";
 
 /** 复杂字段（ObjectField / ArrayCards）的通用外观与详情单元格，供 register/ 中两者复用。 */
 export function ComplexFieldFrame({

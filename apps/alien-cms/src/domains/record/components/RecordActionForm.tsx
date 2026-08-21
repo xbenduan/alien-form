@@ -1,15 +1,15 @@
 import { App } from "antd";
 import { SchemaForm } from "@alien-form/shared";
-import type { SchemaRecord } from "@alien-form/shared";
+import type { IFormSchema, SchemaRecord } from "@alien-form/shared";
 import type { SchemaFormRef } from "@alien-form/shared";
 import type { Ref } from "react";
-import { handles } from "../../../handles";
-import type { ModelRecord, ModelSchema } from "../../../services";
+import type { ModelRecord } from "../../../services";
 import type { RecordActionMode } from "../types";
 
 interface RecordActionFormProps {
   mode: Exclude<RecordActionMode, "closed">;
-  schema: ModelSchema;
+  /** 已编译的 form 场景 schema。 */
+  formSchema: IFormSchema;
   record?: ModelRecord;
   formKey: string;
   submitting?: boolean;
@@ -25,7 +25,7 @@ interface RecordActionFormProps {
  */
 export function RecordActionForm({
   mode,
-  schema,
+  formSchema,
   record,
   formKey,
   submitting,
@@ -51,9 +51,8 @@ export function RecordActionForm({
     <SchemaForm
       ref={formRef}
       mode={mode}
-      schema={schema}
+      formSchema={formSchema}
       dataSource={record}
-      handlers={handles}
       formKey={formKey}
       submitting={submitting}
       onSubmit={mode === "detail" ? undefined : handleSubmit}

@@ -66,9 +66,11 @@ export const nailEmployeeSchema: ModelSchema = {
       required: true,
       order: 50,
       props: { placeholder: "请选择用户角色" },
-      "x-reaction": { dataSource: "@loadDataSource" },
-      "x-handler-params": {
-        dataSource: { model: "school-role", label: "roleName", value: "id" },
+      dataSource: {
+        plugin: "$af-dataSource",
+        model: "school-role",
+        label: "roleName",
+        value: "id",
       },
       "x-table": { width: 180 },
     },
@@ -161,9 +163,11 @@ export const nailEmployeeSchema: ModelSchema = {
       component: "Select",
       order: 140,
       props: { placeholder: "请选择班主任" },
-      "x-reaction": { dataSource: "@loadDataSource" },
-      "x-handler-params": {
-        dataSource: { model: "school-user", label: "displayName", value: "id" },
+      dataSource: {
+        plugin: "$af-dataSource",
+        model: "school-user",
+        label: "displayName",
+        value: "id",
       },
       "x-table": { width: 110 },
     },

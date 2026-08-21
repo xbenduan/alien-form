@@ -5,4 +5,4 @@ export type {
   OverlayActionState,
   RecordActionMode,
 } from "./types";
-export { useRecordPage, useDynamicDataSources } from "./hooks";
+export { useRecordPage } from "./hooks";

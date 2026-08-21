@@ -1,32 +1,28 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { SchemaRecord } from "@alien-form/shared";
 import { useModelSchema, useRecordList, useRecordMutations } from "../../../hooks";
+import { useCompiledSchema } from "../../../compiler";
 import type { Pagination, Sorter } from "../../../services";
 import { recordAddPath, recordDetailPath, recordEditPath } from "../../../app/router/paths";
-import { applyDataSources } from "../utils";
 import type { OverlayActionState } from "../types";
-import { useDynamicDataSources } from "./use-dynamic-data-sources";
 
 /**
- * 列表页状态中枢：聚合 schema、列表查询、筛选/分页/排序、联动数据源与增删改。
+ * 列表页状态中枢：聚合 schema、编译产物（form/filter/table）、列表查询、
+ * 筛选/分页/排序与增删改。
  * 打开 add/edit/detail 时：openMode=page 走路由跳转，drawer/modal 走本页叠加层。
  */
 export function useRecordPage(modelName: string) {
   const navigate = useNavigate();
   const schemaQuery = useModelSchema(modelName);
   const schema = schemaQuery.data;
+  const compiledQuery = useCompiledSchema(schema);
+  const compiled = compiledQuery.data;
 
   const [filters, setFilters] = useState<SchemaRecord>({});
   const [pagination, setPagination] = useState<Pagination>({ current: 1, pageSize: 10 });
   const [sorter, setSorter] = useState<Sorter>();
   const [overlay, setOverlay] = useState<OverlayActionState | null>(null);
-
-  const dataSources = useDynamicDataSources(schema);
-  const displaySchema = useMemo(
-    () => (schema ? applyDataSources(schema, dataSources) : undefined),
-    [schema, dataSources],
-  );
 
   const listQuery = useRecordList({
     model: modelName,
@@ -51,9 +47,9 @@ export function useRecordPage(modelName: string) {
   return {
     modelName,
     schema,
-    displaySchema,
-    schemaLoading: schemaQuery.isLoading,
-    schemaError: schemaQuery.error as Error | null,
+    compiled,
+    schemaLoading: schemaQuery.isLoading || compiledQuery.isLoading,
+    schemaError: (schemaQuery.error ?? compiledQuery.error) as Error | null,
 
     records: listQuery.data?.list ?? [],
     total: listQuery.data?.total ?? 0,

@@ -1,14 +1,13 @@
 import { useRef, useState } from "react";
-import type { FormInstance } from "@alien-form/react";
+import type { FormInstance, IFormSchema } from "@alien-form/react";
 import { Button, Space } from "antd";
-import type { SchemaConfig, SchemaHandlers, SchemaRecord } from "../types";
+import type { SchemaRecord } from "../types";
 import { SchemaRenderer } from "../components/SchemaRenderer";
-import { useFilterFields } from "./use-filter-fields";
 
 export interface FilterFormProps {
-  schema: SchemaConfig;
+  /** 已编译的 filter 场景 schema（由 SchemaCompiler.compile 产出）。 */
+  filterSchema: IFormSchema;
   dataSource?: SchemaRecord;
-  handlers?: SchemaHandlers;
   loading?: boolean;
   searchText?: string;
   onSearch: (values: SchemaRecord) => void;
@@ -20,19 +19,18 @@ export interface FilterFormProps {
  * 与 form 的差异：无校验（叶子字段不带 x-validate），装饰器为 FilterItem。
  */
 export function FilterForm({
-  schema,
+  filterSchema,
   dataSource,
-  handlers,
   loading,
   searchText = "查询",
   onSearch,
   onReset,
 }: FilterFormProps) {
-  const { schema: filterSchema, leaves } = useFilterFields(schema);
   const formRef = useRef<FormInstance | null>(null);
   const initialValuesRef = useRef(dataSource);
   const [expanded, setExpanded] = useState(false);
-  const hasExtraFields = leaves.length > 4;
+  const fieldCount = Object.keys(filterSchema.properties ?? {}).length;
+  const hasExtraFields = fieldCount > 4;
 
   const handleReset = () => {
     formRef.current?.reset();
@@ -48,7 +46,6 @@ export function FilterForm({
           formKey="filter"
           preserveValuesOnRebuild
           initialValues={initialValuesRef.current}
-          handlers={handlers}
           onFormReady={(form) => {
             formRef.current = form;
           }}

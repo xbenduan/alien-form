@@ -1,6 +1,6 @@
 import type { DataSourceItem, IFieldSchema } from "@alien-form/react";
-import type { LeafField } from "../types";
-import { getComponentMeta } from "../components/register";
+import type { LeafField } from "../../types";
+import { getComponentMeta } from "../../components/register";
 
 /** 字段是否为复杂字段：object（含子 properties）或对象数组。 */
 export function isComplexField(field: IFieldSchema): boolean {
@@ -24,8 +24,7 @@ export function getChildProperties(
 
 /**
  * 递归整棵 schema 树，收集所有叶子字段（无子 properties 的字段）。
- * filter 场景只渲染叶子，容器（object/array/layout）本身不渲染。
- * 复杂字段的子字段会被平铺展开。
+ * 复杂字段的子字段被平铺展开。
  */
 export function collectLeafFields(
   properties: Record<string, IFieldSchema> | undefined,
@@ -46,7 +45,7 @@ export function collectLeafFields(
   return result;
 }
 
-// ─── 展示值格式化（detail / table 只读态共用） ──────────────────────────────
+// ─── 展示值格式化（detail / table 只读态共用）──────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "default",
@@ -85,7 +84,6 @@ export const EMPTY_TEXT = "—";
 export function toDisplayText(value: unknown, dataSource?: DataSourceItem[]): string {
   if (isEmptyValue(value)) return EMPTY_TEXT;
   if (Array.isArray(value)) {
-    // 对象数组无法逐项平铺，折叠为计数摘要（详情按钮查看完整内容）
     const hasObjectItems = value.some(
       (item) => item && typeof item === "object" && !Array.isArray(item),
     );

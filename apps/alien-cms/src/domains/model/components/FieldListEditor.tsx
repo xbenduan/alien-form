@@ -2,7 +2,8 @@ import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Empty, Modal, Tag } from "antd";
 import { useRef, useState, type DragEvent, type ReactElement } from "react";
 import type { FieldDraft } from "../types";
-import { componentAlias, createFieldDraft, isContainerField } from "../utils";
+import { componentAlias, isContainerField } from "../utils";
+import { useCompiler } from "../../../compiler";
 import { FieldEditor, type FieldEditorRef } from "./FieldEditor";
 import styles from "./index.module.css";
 
@@ -100,6 +101,7 @@ function containsField(field: FieldDraft, id: string): boolean {
 
 /** 字段树编辑：支持同级排序，以及拖入对象/对象数组容器形成嵌套字段。 */
 export function FieldListEditor({ fields, onChange }: FieldListEditorProps) {
+  const compiler = useCompiler();
   const [editor, setEditor] = useState<EditorState>();
   const [draggingId, setDraggingId] = useState<string>();
   const [dropTargetId, setDropTargetId] = useState<string>();
@@ -135,7 +137,7 @@ export function FieldListEditor({ fields, onChange }: FieldListEditorProps) {
   };
 
   const addChild = (parent: FieldDraft) => {
-    setEditor({ mode: "add", parentId: parent.id, field: createFieldDraft() });
+    setEditor({ mode: "add", parentId: parent.id, field: compiler.createFieldDraft() });
   };
 
   const saveField = async () => {
@@ -270,7 +272,7 @@ export function FieldListEditor({ fields, onChange }: FieldListEditorProps) {
         type="dashed"
         block
         icon={<PlusOutlined />}
-        onClick={() => setEditor({ mode: "add", field: createFieldDraft() })}
+        onClick={() => setEditor({ mode: "add", field: compiler.createFieldDraft() })}
       >
         添加字段
       </Button>

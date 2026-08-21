@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Form, Input, InputNumber, Select } from "antd";
 import type { FieldDraft, GroupDraft } from "../types";
-import { GROUP_COMPONENT_OPTIONS, createGroupDraft } from "../utils";
+import { GROUP_COMPONENT_OPTIONS } from "../utils";
+import { useCompiler } from "../../../compiler";
 import styles from "./index.module.css";
 
 interface GroupEditorProps {
@@ -13,6 +14,7 @@ interface GroupEditorProps {
 
 /** 分组编辑：把顶层字段收进 GridLayout 容器，仅影响 form 渲染。 */
 export function GroupEditor({ groups, fields, onChange }: GroupEditorProps) {
+  const compiler = useCompiler();
   const [form] = Form.useForm<{ groups: GroupDraft[] }>();
   const watchedGroups = Form.useWatch("groups", form);
   const fieldOptions = fields.map((field) => ({
@@ -81,7 +83,7 @@ export function GroupEditor({ groups, fields, onChange }: GroupEditorProps) {
               type="dashed"
               block
               icon={<PlusOutlined />}
-              onClick={() => add(createGroupDraft())}
+              onClick={() => add(compiler.createGroupDraft())}
             >
               添加分组
             </Button>

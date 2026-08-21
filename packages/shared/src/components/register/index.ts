@@ -88,7 +88,7 @@ const registry: ComponentRegistry = {
     fieldType: "string",
     kind: "leaf",
     description:
-      "下拉单选框，适用于枚举类字段（状态、分类等）。dataSource 配置候选项 [{label,value}]，也可绑定 handler（如 loadDataSource）动态加载远程选项。",
+      '下拉单选框，适用于枚举类字段（状态、分类等）。dataSource 直接配置静态候选项 [{label,value}]；需从其他模型联动时，dataSource 写成 { plugin: "$af-dataSource", model, value, label } 由编译器解析（table/filter 预取翻译、form 注入 service 供组件自取）。',
     schema: {
       type: "string",
       title: "下拉单选",
@@ -116,7 +116,7 @@ const registry: ComponentRegistry = {
     kind: "leaf",
     multiValue: true,
     description:
-      "下拉多选框，可选中多个候选项，值为数组（内部以 JSON 字符串承载）。dataSource 同样支持绑定 handler 动态加载。",
+      '下拉多选框，可选中多个候选项，值为数组（内部以 JSON 字符串承载）。dataSource 支持静态候选项，或写成 { plugin: "$af-dataSource", ... } 从其他模型联动加载。',
     schema: {
       type: "string",
       title: "下拉多选",
@@ -187,7 +187,7 @@ const registry: ComponentRegistry = {
     fieldType: "string",
     kind: "leaf",
     description:
-      "单选按钮组，选项平铺展示，适合选项较少（2-5 个）的枚举。dataSource 配置候选项，也可绑定 handler。",
+      '单选按钮组，选项平铺展示，适合选项较少（2-5 个）的枚举。dataSource 配置静态候选项，或写成 { plugin: "$af-dataSource", ... } 从其他模型联动。',
     schema: {
       type: "string",
       title: "单选按钮组",
@@ -215,7 +215,7 @@ const registry: ComponentRegistry = {
     kind: "leaf",
     multiValue: true,
     description:
-      "复选框组，可多选，选项平铺展示，值为数组（内部以 JSON 字符串承载）。dataSource 配置候选项，也可绑定 handler。",
+      '复选框组，可多选，选项平铺展示，值为数组（内部以 JSON 字符串承载）。dataSource 配置静态候选项，或写成 { plugin: "$af-dataSource", ... } 从其他模型联动。',
     schema: {
       type: "string",
       title: "复选框组",

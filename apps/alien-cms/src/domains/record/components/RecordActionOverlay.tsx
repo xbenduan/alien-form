@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { Button, Drawer, Modal, Space, Spin } from "antd";
-import type { SchemaFormRef } from "@alien-form/shared";
+import type { IFormSchema, SchemaFormRef } from "@alien-form/shared";
 import { useRecordDetail } from "../../../hooks";
 import type { ModelSchema } from "../../../services";
 import type { OverlayActionState } from "../types";
@@ -10,6 +10,8 @@ import styles from "./index.module.css";
 interface RecordActionOverlayProps {
   modelName: string;
   schema: ModelSchema;
+  /** 已编译的 form 场景 schema。 */
+  formSchema: IFormSchema;
   overlay: OverlayActionState | null;
   submitting?: boolean;
   onClose: () => void;
@@ -27,6 +29,7 @@ const TITLE: Record<OverlayActionState["mode"], string> = {
 export function RecordActionOverlay({
   modelName,
   schema,
+  formSchema,
   overlay,
   submitting,
   onClose,
@@ -60,7 +63,7 @@ export function RecordActionOverlay({
     ) : (
       <RecordActionForm
         mode={mode}
-        schema={schema}
+        formSchema={formSchema}
         record={mode === "add" ? undefined : detailQuery.data}
         formKey={formKey}
         formRef={formRef}

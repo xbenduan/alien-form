@@ -4,6 +4,7 @@ import { EyeOutlined, SaveOutlined } from "@ant-design/icons";
 import { App, Button, Card, Col, Flex, Row, Space, Steps } from "antd";
 import { PageBreadcrumb, PageError, PageLoading, FieldsetCard } from "../../../components";
 import { modelListPath } from "../../../app/router/paths";
+import { CompilerProvider } from "../../../compiler";
 import { useModelBuilder } from "../hooks";
 import {
   FieldListEditor,
@@ -22,6 +23,14 @@ interface ModelActionPageProps {
 
 /** 模型构建页（新开页面）：add / edit 共用，由 mode 区分。 */
 export default function ModelActionPage({ mode }: ModelActionPageProps) {
+  return (
+    <CompilerProvider>
+      <ModelActionContent mode={mode} />
+    </CompilerProvider>
+  );
+}
+
+function ModelActionContent({ mode }: ModelActionPageProps) {
   const navigate = useNavigate();
   const { modelName } = useParams();
   const { message } = App.useApp();
