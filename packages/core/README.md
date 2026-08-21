@@ -149,7 +149,7 @@ interface IFieldSchema {
 | schema 写法                                                                       | 节点 kind     | 说明                           | 默认组件        |
 | --------------------------------------------------------------------------------- | ------------- | ------------------------------ | --------------- |
 | `type: "string" / "number" / "boolean"`（或任意未识别的自定义 type，如 `"tags"`） | `"primitive"` | 叶子字段，持有单个响应式值     | `Input`         |
-| `type: "object"` + `properties`                                                   | `"object"`    | 分组容器，值由子字段聚合       | `SectionCard`   |
+| `type: "object"` + `properties`                                                   | `"object"`    | 分组容器，值由子字段聚合       | `ObjectField`   |
 | `type: "array"` + `items.type === "object"`                                       | `"array"`     | **对象数组**，每行是一组子字段 | `ArrayCards`    |
 | 含 `"x-layout"`                                                                   | `"void"`      | 布局节点，不占数据路径         | `x-layout` 的值 |
 

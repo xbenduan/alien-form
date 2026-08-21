@@ -32,7 +32,7 @@ shared 只接收 core 的 `IFieldSchema`、通用 projection、handlers 和 acti
 
 公开 Schema 使用以下容器语义：
 
-- `x-layout`：无值布局节点，例如 `SectionCard`、`GridLayout`、`FlexLayout`。
+- `x-layout`：无值布局节点，例如 `ObjectField`、`GridLayout`。
 - `type: "object"`：对象值。
 - `type: "array"`：数组值；对象数组由 `items.properties` 描述。
 - 其他 `type`：标量或 tags 等叶子字段。

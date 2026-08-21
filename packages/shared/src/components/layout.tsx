@@ -8,10 +8,7 @@ interface GridOptions {
   gutter?: unknown;
 }
 
-export function renderGridChildren(
-  children: ReactNode,
-  props: GridOptions,
-) {
+export function renderGridChildren(children: ReactNode, props: GridOptions) {
   const gridSpan =
     typeof props.gridSpan === "number"
       ? Math.min(24, Math.max(1, Math.floor(props.gridSpan)))
