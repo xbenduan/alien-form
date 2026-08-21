@@ -4,6 +4,7 @@ export {
   MODEL_GROUP_OPTIONS,
   OPEN_MODE_OPTIONS,
   componentAlias,
+  componentDescription,
   defaultFieldSchema,
   isContainerField,
 } from "./field-types";

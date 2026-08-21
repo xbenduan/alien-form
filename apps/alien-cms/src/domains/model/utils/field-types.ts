@@ -31,6 +31,11 @@ export function componentAlias(component?: string): string {
   return getRegistryEntry(component)?.alias ?? component ?? "";
 }
 
+/** 组件说明（编辑字段弹窗「字段 Schema」旁的 info 提示）。 */
+export function componentDescription(component?: string): string {
+  return getRegistryEntry(component)?.description ?? "";
+}
+
 /** 新建字段时的默认字段 schema（默认单行文本）。 */
 export function defaultFieldSchema(component = "Input"): ModelFieldSchema {
   return getDefaultFieldSchema(component) as ModelFieldSchema;

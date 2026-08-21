@@ -8,6 +8,17 @@
   .schemaJson {
     grid-column: 1 / -1;
   }
+
+  .schemaLabel {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .schemaInfo {
+    color: #98a2b3;
+    cursor: help;
+  }
 }
 
 .fieldListEditor {

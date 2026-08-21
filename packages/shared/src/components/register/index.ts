@@ -24,7 +24,8 @@ const registry: ComponentRegistry = {
     component: lazy(() => import("./Input")),
     fieldType: "string",
     kind: "leaf",
-    description: "",
+    description:
+      "单行文本输入框，适用于姓名、标题等短文本。可在 props.placeholder 设置占位提示；用 x-validate 配置校验表达式。",
     schema: {
       type: "string",
       title: "单行文本",
@@ -46,6 +47,8 @@ const registry: ComponentRegistry = {
     component: lazy(() => import("./Textarea")),
     fieldType: "string",
     kind: "leaf",
+    description:
+      "多行文本域，适用于备注、简介等长文本。可用 props.rows 设置默认行数；props.placeholder 设置占位提示。",
     schema: {
       type: "string",
       title: "多行文本",
@@ -67,6 +70,8 @@ const registry: ComponentRegistry = {
     component: lazy(() => import("./NumberInput")),
     fieldType: "number",
     kind: "leaf",
+    description:
+      "数字输入框，适用于金额、数量、年龄等数值。可用 props.min / props.max 限制取值范围。",
     schema: {
       type: "number",
       title: "数字",
@@ -88,6 +93,8 @@ const registry: ComponentRegistry = {
     component: lazy(() => import("./Select")),
     fieldType: "string",
     kind: "leaf",
+    description:
+      "下拉单选框，适用于枚举类字段（状态、分类等）。dataSource 配置候选项 [{label,value}]，也可绑定 handler（如 loadDataSource）动态加载远程选项。",
     schema: {
       type: "string",
       title: "下拉单选",
@@ -114,6 +121,8 @@ const registry: ComponentRegistry = {
     fieldType: "string",
     kind: "leaf",
     multiValue: true,
+    description:
+      "下拉多选框，可选中多个候选项，值为数组（内部以 JSON 字符串承载）。dataSource 同样支持绑定 handler 动态加载。",
     schema: {
       type: "string",
       title: "下拉多选",
@@ -139,6 +148,7 @@ const registry: ComponentRegistry = {
     component: lazy(() => import("./DateInput")),
     fieldType: "string",
     kind: "leaf",
+    description: "日期选择器，值以字符串（YYYY-MM-DD）存储。适用于生日、生效日期等。",
     schema: {
       type: "string",
       title: "日期",
@@ -160,6 +170,7 @@ const registry: ComponentRegistry = {
     component: lazy(() => import("./Switch")),
     fieldType: "boolean",
     kind: "leaf",
+    description: "开关，用于布尔值（是/否、启用/停用）。值为 true / false。",
     schema: {
       type: "boolean",
       title: "开关",
@@ -181,6 +192,8 @@ const registry: ComponentRegistry = {
     component: lazy(() => import("./Radio")),
     fieldType: "string",
     kind: "leaf",
+    description:
+      "单选按钮组，选项平铺展示，适合选项较少（2-5 个）的枚举。dataSource 配置候选项，也可绑定 handler。",
     schema: {
       type: "string",
       title: "单选按钮组",
@@ -207,6 +220,8 @@ const registry: ComponentRegistry = {
     fieldType: "string",
     kind: "leaf",
     multiValue: true,
+    description:
+      "复选框组，可多选，选项平铺展示，值为数组（内部以 JSON 字符串承载）。dataSource 配置候选项，也可绑定 handler。",
     schema: {
       type: "string",
       title: "复选框组",
@@ -232,6 +247,7 @@ const registry: ComponentRegistry = {
     component: lazy(() => import("./Rate")),
     fieldType: "number",
     kind: "leaf",
+    description: "星级评分，值为数字（默认 0-5）。适用于满意度、优先级等打分场景。",
     schema: {
       type: "number",
       title: "评分",
@@ -254,6 +270,8 @@ const registry: ComponentRegistry = {
     fieldType: "string",
     kind: "leaf",
     multiValue: true,
+    description:
+      "标签输入，输入后回车即添加，无需预设候选项，值为字符串数组（内部以 JSON 字符串承载）。适用于关键词、标签等自由录入。",
     schema: {
       type: "string",
       title: "标签",
@@ -277,6 +295,8 @@ const registry: ComponentRegistry = {
     fieldType: "object",
     kind: "complex",
     container: true,
+    description:
+      "对象分组：把若干子字段收敛为一个嵌套对象（值为对象）。子字段在字段树中拖入本节点管理；props.columns / props.gutter 控制栅格列数与间距。table 中折叠为摘要 + 详情按钮。",
     schema: {
       type: "object",
       title: "对象分组",
@@ -296,6 +316,8 @@ const registry: ComponentRegistry = {
     fieldType: "array",
     kind: "complex",
     container: true,
+    description:
+      "对象数组：以卡片列表管理一组同构对象（值为数组），支持增删行。子字段（每行的结构）在字段树中拖入本节点管理；props.columns / props.gutter 控制每行栅格。",
     schema: {
       type: "array",
       title: "对象数组",
@@ -315,6 +337,8 @@ const registry: ComponentRegistry = {
     component: lazy(() => import("./GridLayout")),
     fieldType: "object",
     kind: "layout",
+    description:
+      "栅格布局容器：仅在表单中把若干字段按栅格排布，不占用数据路径（不产生独立取值）。通过分组编辑器使用，props.columns / props.gutter 控制列数与间距。",
     schema: {
       type: "void",
       title: "栅格布局",

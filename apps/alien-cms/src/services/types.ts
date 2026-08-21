@@ -8,15 +8,23 @@ export interface TableFieldMeta {
   visible?: boolean;
 }
 
+/** filter 筛选区的展示元信息。 */
+export interface FilterFieldMeta {
+  /** 是否在筛选区展示该字段（false 时 buildFilterSchema 跳过）。 */
+  visible?: boolean;
+}
+
 /**
  * 模型字段：alien-form 协议字段 + CMS 层扩展元信息。
  * - x-table：table 列展示配置
+ * - x-filter：filter 筛选区展示配置
  * - x-handler-params：handler（如 loadDataSource）运行参数
  */
 export interface ModelFieldSchema extends FieldSchema {
   /** 字段 key：编辑态承载在字段 schema 上，便于在 JSON 中直接查看/修改；构建输出时剥离（key 即 properties 的键）。 */
   key?: string;
   "x-table"?: TableFieldMeta;
+  "x-filter"?: FilterFieldMeta;
   "x-handler-params"?: Record<string, Record<string, unknown>>;
   properties?: Record<string, ModelFieldSchema>;
   items?: ModelFieldSchema | ModelFieldSchema[];

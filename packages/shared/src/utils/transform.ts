@@ -15,6 +15,14 @@ function readTableMeta(field: IFieldSchema): TableMeta {
   return ((field as Record<string, unknown>)["x-table"] as TableMeta | undefined) ?? {};
 }
 
+interface FilterMeta {
+  visible?: boolean;
+}
+
+function readFilterMeta(field: IFieldSchema): FilterMeta {
+  return ((field as Record<string, unknown>)["x-filter"] as FilterMeta | undefined) ?? {};
+}
+
 function sortEntries(properties: Record<string, IFieldSchema>): Array<[string, IFieldSchema]> {
   return Object.entries(properties).sort(([, a], [, b]) => (a.order ?? 0) - (b.order ?? 0));
 }
@@ -129,6 +137,7 @@ export function buildFormSchema(config: SchemaConfig): IFormSchema {
 /**
  * 配置态 schema → filter schema。
  * 递归收集所有叶子字段并平铺到顶层；不含任何校验、默认值、必填。
+ * 跳过 display === "none" 或 x-filter.visible === false 的字段（后者表示不在筛选区展示）。
  */
 export function buildFilterSchema(config: SchemaConfig): IFormSchema {
   const leaves = collectLeafFields(config.properties);
@@ -136,6 +145,7 @@ export function buildFilterSchema(config: SchemaConfig): IFormSchema {
 
   for (const { key, field } of leaves) {
     if (field.display === "none") continue;
+    if (readFilterMeta(field).visible === false) continue;
     const meta = getComponentMeta(field.component);
     const { required: _required, default: _default, "x-validate": _validate, ...rest } = field;
     properties[key] = {

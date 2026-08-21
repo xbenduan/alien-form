@@ -1,9 +1,10 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { Form, Input, Select } from "antd";
+import { Form, Input, Select, Tooltip } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import { getDefaultFieldSchema, getRegistryEntry } from "@alien-form/shared";
 import type { ModelFieldSchema } from "../../../services";
 import type { FieldDraft } from "../types";
-import { FIELD_COMPONENT_OPTIONS } from "../utils";
+import { FIELD_COMPONENT_OPTIONS, componentDescription } from "../utils";
 import styles from "./index.module.css";
 
 interface FieldEditorProps {
@@ -78,6 +79,9 @@ export const FieldEditor = forwardRef<FieldEditorRef, FieldEditorProps>(function
 ) {
   const [form] = Form.useForm<FieldFormValues>();
   const initialComponent = field.fields.component ?? "Input";
+  // 当前选中组件（用于「字段 Schema」旁展示组件说明 info）。
+  const selectedComponent = Form.useWatch("component", form) ?? initialComponent;
+  const description = componentDescription(selectedComponent);
   const [jsonText, setJsonText] = useState(() => stringify(stripHidden(field.fields)));
   const [jsonError, setJsonError] = useState(false);
   // 最近一次有效的「其余 schema」，供表单项改动时与 key/title/component 重新组合。
@@ -188,7 +192,16 @@ export const FieldEditor = forwardRef<FieldEditorRef, FieldEditorProps>(function
       </Form.Item>
 
       <Form.Item
-        label="字段 Schema"
+        label={
+          <span className={styles.schemaLabel}>
+            字段 Schema
+            {description ? (
+              <Tooltip title={description}>
+                <InfoCircleOutlined className={styles.schemaInfo} />
+              </Tooltip>
+            ) : null}
+          </span>
+        }
         className={styles.schemaJson}
         wrapperCol={{ span: 24 }}
         validateStatus={jsonError ? "error" : undefined}
