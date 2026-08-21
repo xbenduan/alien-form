@@ -1,11 +1,4 @@
 export {
-  componentMeta,
-  getComponentMeta,
-  isComplexComponent,
-  isMultiValueComponent,
-  LAYOUT_COMPONENTS,
-} from "./component-meta";
-export {
   collectLeafFields,
   EMPTY_TEXT,
   getChildProperties,

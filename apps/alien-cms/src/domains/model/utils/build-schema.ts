@@ -1,21 +1,22 @@
 import type { GroupConfig } from "@alien-form/shared";
+import { getRegistryEntry } from "@alien-form/shared";
 import type { ModelFieldSchema, ModelSchema } from "../../../services";
 import type { FieldDraft, ModelDraft } from "../types";
-import { inferFieldType } from "./field-types";
 
 /**
  * 字段草稿 → schema：草稿已直接持有字段 schema（draft.fields），
  * 这里只补 order、剥离编辑态承载的 key、并把 children 还原成 properties / items.properties。
+ * 容器类型（object / array）由组件注册项的 fieldType 判定，不再反推。
  */
 function buildFieldSchema(draft: FieldDraft, order: number): ModelFieldSchema {
   const { key: _key, ...rest } = draft.fields;
   const field: ModelFieldSchema = { ...rest, order };
-  const type = inferFieldType(field);
+  const fieldType = getRegistryEntry(field.component)?.fieldType;
 
-  if (type === "object" && draft.children) {
+  if (fieldType === "object" && draft.children) {
     field.type = "object";
     field.properties = buildProperties(draft.children);
-  } else if (type === "array" && draft.children) {
+  } else if (fieldType === "array" && draft.children) {
     field.type = "array";
     field.items = { type: "object", properties: buildProperties(draft.children) };
   }

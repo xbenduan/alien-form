@@ -1,5 +1,4 @@
 export type {
-  BuilderFieldType,
   FieldDraft,
   GroupDraft,
   ModelDraft,

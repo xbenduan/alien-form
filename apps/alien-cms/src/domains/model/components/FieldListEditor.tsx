@@ -2,7 +2,7 @@ import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Empty, Modal, Tag } from "antd";
 import { useRef, useState, type DragEvent, type ReactElement } from "react";
 import type { FieldDraft } from "../types";
-import { FIELD_TYPE_META, createFieldDraft, inferFieldType, isContainerType } from "../utils";
+import { componentAlias, createFieldDraft, isContainerField } from "../utils";
 import { FieldEditor, type FieldEditorRef } from "./FieldEditor";
 import styles from "./index.module.css";
 
@@ -26,9 +26,9 @@ function draftTitle(field: FieldDraft): string {
   return field.fields.title || field.fields.key || "";
 }
 
-/** 草稿字段类型：由字段 schema 的 component / type 反推。 */
-function draftType(field: FieldDraft) {
-  return inferFieldType(field.fields);
+/** 草稿是否为可嵌套子字段的容器：由字段 schema 的 component 判定。 */
+function isContainerDraft(field: FieldDraft): boolean {
+  return isContainerField(field.fields.component);
 }
 
 function updateField(
@@ -163,7 +163,7 @@ export function FieldListEditor({ fields, onChange }: FieldListEditorProps) {
 
   const renderActions = (field: FieldDraft) => (
     <div className={styles.actions}>
-      {isContainerType(draftType(field)) ? (
+      {isContainerDraft(field) ? (
         <Button
           type="text"
           size="small"
@@ -200,8 +200,7 @@ export function FieldListEditor({ fields, onChange }: FieldListEditorProps) {
   );
 
   const renderField = (field: FieldDraft, nested = false): ReactElement => {
-    const type = draftType(field);
-    const container = isContainerType(type);
+    const container = isContainerDraft(field);
     const itemClass = [
       styles.item,
       nested ? styles.nested : "",
@@ -235,7 +234,7 @@ export function FieldListEditor({ fields, onChange }: FieldListEditorProps) {
               ⋮⋮
             </span>
             <span className={styles.itemTitle}>{draftTitle(field)}</span>
-            <Tag>{FIELD_TYPE_META[type].label}</Tag>
+            <Tag>{componentAlias(field.fields.component)}</Tag>
           </div>
           {renderActions(field)}
         </div>

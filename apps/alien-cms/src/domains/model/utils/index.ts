@@ -1,13 +1,11 @@
 export {
-  FIELD_TYPE_META,
-  FIELD_TYPE_OPTIONS,
-  FIELD_TYPE_COMPONENT_OPTIONS,
+  FIELD_COMPONENT_OPTIONS,
   GROUP_COMPONENT_OPTIONS,
   MODEL_GROUP_OPTIONS,
-  getDefaultPlaceholder,
-  inferFieldType,
-  isContainerType,
   OPEN_MODE_OPTIONS,
+  componentAlias,
+  defaultFieldSchema,
+  isContainerField,
 } from "./field-types";
 export { buildModelSchema } from "./build-schema";
 export {

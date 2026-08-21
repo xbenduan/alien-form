@@ -1,6 +1,6 @@
 import type { IFieldSchema, IFormSchema } from "@alien-form/react";
 import type { SchemaConfig, TableColumn } from "../types";
-import { getComponentMeta } from "./component-meta";
+import { getComponentMeta } from "../components/register";
 import { collectLeafFields, isComplexField } from "./schema";
 import { multiValueFormat } from "./multi-value";
 

@@ -1,6 +1,6 @@
 import { useCreateForm, FormProvider, SchemaField } from "@alien-form/react";
 import type { FormInstance, IFormSchema } from "@alien-form/react";
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import type { FieldMode, SchemaHandlers, SchemaRecord } from "../types";
 import { FieldModeScope } from "./field-mode";
 import { fieldComponents, fieldDecorators } from "./registry";
@@ -51,7 +51,9 @@ export function SchemaRenderer({
         components={fieldComponents as never}
         decorators={fieldDecorators as never}
       >
-        <SchemaField />
+        <Suspense fallback={null}>
+          <SchemaField />
+        </Suspense>
       </FormProvider>
     </FieldModeScope>
   );

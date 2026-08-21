@@ -1,6 +1,5 @@
 import { Children, type ReactNode } from "react";
 import { Col, Row } from "antd";
-import type { FieldComponentProps } from "../types";
 
 interface GridOptions {
   gridSpan?: unknown;
@@ -8,6 +7,7 @@ interface GridOptions {
   gutter?: unknown;
 }
 
+/** 栅格排布子字段：GridLayout / ObjectField / ArrayCards 共用（register/ 依赖组件）。 */
 export function renderGridChildren(children: ReactNode, props: GridOptions) {
   const gridSpan =
     typeof props.gridSpan === "number"
@@ -25,20 +25,5 @@ export function renderGridChildren(children: ReactNode, props: GridOptions) {
         </Col>
       ))}
     </Row>
-  );
-}
-
-/** 唯一的分组布局容器：栅格卡片。 */
-export function GridLayout(props: FieldComponentProps) {
-  return (
-    <fieldset className="af-grid-layout af-layout-card">
-      {props.title ? <legend className="af-card-title">{props.title}</legend> : null}
-      {props.description ? <div className="af-card-desc">{props.description}</div> : null}
-      {renderGridChildren(props.children, {
-        gridSpan: props.gridSpan,
-        columns: props.columns,
-        gutter: props.gutter,
-      })}
-    </fieldset>
   );
 }

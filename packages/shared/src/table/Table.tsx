@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Table as AntTable, Tag } from "antd";
+import { Suspense } from "react";
+import { Table as AntTable } from "antd";
 import type { TablePaginationConfig, TableProps } from "antd";
 import type { ColumnsType, ColumnType } from "antd/es/table";
 import type { SchemaConfig, SchemaRecord, TableColumn } from "../types";
@@ -13,11 +14,17 @@ function renderCell(column: TableColumn, value: unknown): ReactNode {
 
   if (column.complex && Component) {
     return (
-      <Component value={value} schema={column.field} mode="detail" isTable title={column.title} />
+      <Suspense fallback={<DisplayValue value={value} ellipsis={column.ellipsis} />}>
+        <Component value={value} schema={column.field} mode="detail" isTable title={column.title} />
+      </Suspense>
     );
   }
   if (Component) {
-    return <Component value={value} dataSource={column.dataSource} mode="detail" />;
+    return (
+      <Suspense fallback={<DisplayValue value={value} dataSource={column.dataSource} />}>
+        <Component value={value} dataSource={column.dataSource} mode="detail" />
+      </Suspense>
+    );
   }
   return <DisplayValue value={value} dataSource={column.dataSource} ellipsis={column.ellipsis} />;
 }

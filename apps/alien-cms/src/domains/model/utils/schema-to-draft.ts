@@ -1,6 +1,7 @@
+import { getRegistryEntry } from "@alien-form/shared";
 import type { ModelFieldSchema, ModelSchema } from "../../../services";
 import type { FieldDraft, GroupDraft, ModelDraft } from "../types";
-import { FIELD_TYPE_META, inferFieldType } from "./field-types";
+import { defaultFieldSchema } from "./field-types";
 
 let counter = 0;
 function uid(prefix: string): string {
@@ -13,12 +14,14 @@ function uid(prefix: string): string {
  * 字段自身的 schema 直接挂在 `fields` 上（编辑器就地读写），key 也并入 `fields.key`，
  * 便于在 JSON 编辑框内直接查看/修改；仅把子字段（object.properties / array.items.properties）
  * 提出来交给 children 管理以便拖拽排序，`fields` 中不再冗余保存这些子结构。
+ * 容器类型由组件注册项的 fieldType 判定（不再反推）。
  */
 function toFieldDraft(key: string, field: ModelFieldSchema): FieldDraft {
-  const type = inferFieldType(field);
+  const fieldType = getRegistryEntry(field.component)?.fieldType;
   const itemProps =
     field.items && !Array.isArray(field.items) ? field.items.properties : undefined;
-  const childProps = type === "object" ? field.properties : type === "array" ? itemProps : undefined;
+  const childProps =
+    fieldType === "object" ? field.properties : fieldType === "array" ? itemProps : undefined;
 
   const { properties: _properties, items: _items, ...rest } = field;
   return {
@@ -84,18 +87,15 @@ export function createEmptyDraft(): ModelDraft {
   };
 }
 
-/** 新建字段草稿。 */
+/** 新建字段草稿：默认单行文本，schema 取自组件注册机的默认模板。 */
 export function createFieldDraft(): FieldDraft {
   const suffix = uid("f").split("-").pop();
-  const meta = FIELD_TYPE_META.string;
   return {
     id: uid("field"),
     fields: {
+      ...defaultFieldSchema("Input"),
       key: `field_${suffix}`,
-      type: meta.schemaType,
       title: "新字段",
-      component: meta.component,
-      "x-table": { visible: true },
     },
     children: undefined,
   };

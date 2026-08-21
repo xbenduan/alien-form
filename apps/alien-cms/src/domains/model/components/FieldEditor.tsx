@@ -1,14 +1,9 @@
-import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
-import { Form, Input, Select, Switch } from "antd";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { Form, Input, Select } from "antd";
+import { getDefaultFieldSchema, getRegistryEntry } from "@alien-form/shared";
 import type { ModelFieldSchema } from "../../../services";
 import type { FieldDraft } from "../types";
-import {
-  FIELD_TYPE_COMPONENT_OPTIONS,
-  FIELD_TYPE_META,
-  getDefaultPlaceholder,
-  inferFieldType,
-  isContainerType,
-} from "../utils";
+import { FIELD_COMPONENT_OPTIONS } from "../utils";
 import styles from "./index.module.css";
 
 interface FieldEditorProps {
@@ -21,109 +16,146 @@ export interface FieldEditorRef {
 }
 
 interface FieldFormValues {
-  fields: ModelFieldSchema;
+  component: string;
+  key: string;
+  title?: string;
 }
 
-function parseSchema(text: string): ModelFieldSchema | undefined {
+/**
+ * 由表单直接管理、不在 JSON 编辑框透出的字段：
+ *  - component / type / key / title：交给上方三个表单项修改（type 与 component 绑定，完全不透出）
+ *  - properties / items：子字段由字段树（FieldListEditor）拖拽管理，不在此编辑
+ *  - order：拖拽排序时生成，构建 schema 时统一重写
+ */
+const HIDDEN_KEYS = [
+  "component",
+  "type",
+  "key",
+  "title",
+  "properties",
+  "items",
+  "order",
+] as const;
+
+type SchemaRest = Record<string, unknown>;
+
+function parseSchema(text: string): SchemaRest | undefined {
   try {
     const value = JSON.parse(text) as unknown;
     return value && typeof value === "object" && !Array.isArray(value)
-      ? (value as ModelFieldSchema)
+      ? (value as SchemaRest)
       : undefined;
   } catch {
     return undefined;
   }
 }
 
-function stringify(fields: ModelFieldSchema): string {
-  return JSON.stringify(fields, null, 2);
+/** 剔除由表单/字段树管理的键，得到 JSON 编辑框展示的「其余 schema」。 */
+function stripHidden(schema: object): SchemaRest {
+  const rest: SchemaRest = { ...(schema as SchemaRest) };
+  for (const key of HIDDEN_KEYS) delete rest[key];
+  return rest;
 }
 
-/** 精确路径合并：把 changedValues 里的字段按路径并入既有对象，其余键/顺序原样保留。 */
-function deepMerge(
-  base: Record<string, unknown>,
-  patch: Record<string, unknown>,
-): Record<string, unknown> {
-  const result: Record<string, unknown> = { ...base };
-  for (const [key, value] of Object.entries(patch)) {
-    const prev = result[key];
-    result[key] =
-      value &&
-      typeof value === "object" &&
-      !Array.isArray(value) &&
-      prev &&
-      typeof prev === "object" &&
-      !Array.isArray(prev)
-        ? deepMerge(prev as Record<string, unknown>, value as Record<string, unknown>)
-        : value;
-  }
-  return result;
+function stringify(rest: SchemaRest): string {
+  return JSON.stringify(rest, null, 2);
+}
+
+/** component → 绑定的 schema type（多值组件降级为 string，容器为 object/array/void）。 */
+function typeOfComponent(component: string): ModelFieldSchema["type"] {
+  return getRegistryEntry(component)?.schema.type as ModelFieldSchema["type"];
 }
 
 /**
- * 单字段配置面板：Form 直接绑定字段 schema 对象（含 key）。
- * - Key → ["fields", "key"]
- * - 标题 → ["fields", "title"]
- * - 类型 → ["fields", "component"]（同时联动 ["fields", "type"]）
- * - 占位 → ["fields", "props", "placeholder"]
- * - 必填 → ["fields", "required"]
- * - 列表展示 → ["fields", "x-table", "visible"]
- * - JSON 区直接是 fields 的序列化，任意字段改动都会在此回显。
+ * 单字段配置面板：
+ *  - 表单仅三项，顺序为 选择组件 → key（必填）→ 标题（可空）
+ *  - 选择组件后自动带入其注册的默认 schema 到下方 JSON 编辑框
+ *  - JSON 编辑框只承载「其余 schema」；component/type/key/title 由表单控制、不可在 JSON 修改
  */
 export const FieldEditor = forwardRef<FieldEditorRef, FieldEditorProps>(function FieldEditor(
   { field, onChange },
   ref,
 ) {
   const [form] = Form.useForm<FieldFormValues>();
-  const [jsonText, setJsonText] = useState(() => stringify(field.fields));
-  const component = Form.useWatch(["fields", "component"], form);
-  const schemaType = Form.useWatch(["fields", "type"], form);
-  const type = inferFieldType({ component, type: schemaType });
-  const container = isContainerType(type);
+  const initialComponent = field.fields.component ?? "Input";
+  const [jsonText, setJsonText] = useState(() => stringify(stripHidden(field.fields)));
+  const [jsonError, setJsonError] = useState(false);
+  // 最近一次有效的「其余 schema」，供表单项改动时与 key/title/component 重新组合。
+  const restRef = useRef<SchemaRest>(stripHidden(field.fields));
 
   useEffect(() => {
-    form.setFieldsValue({ fields: field.fields });
-    setJsonText(stringify(field.fields));
+    form.setFieldsValue({
+      component: field.fields.component ?? "Input",
+      key: field.fields.key ?? "",
+      title: field.fields.title ?? "",
+    });
+    const rest = stripHidden(field.fields);
+    restRef.current = rest;
+    setJsonText(stringify(rest));
+    setJsonError(false);
   }, [field.id, form]);
+
+  const compose = (component: string, key: string, title?: string): ModelFieldSchema =>
+    ({
+      ...restRef.current,
+      component,
+      type: typeOfComponent(component),
+      key,
+      title: title ?? "",
+    }) as ModelFieldSchema;
+
+  const emit = (component: string, key: string, title?: string) => {
+    onChange({ ...field, fields: compose(component, key, title) });
+  };
 
   useImperativeHandle(
     ref,
     () => ({
       submit: async () => {
         await form.validateFields();
-        return { ...field, fields: form.getFieldValue("fields") as ModelFieldSchema };
+        if (!parseSchema(jsonText)) {
+          setJsonError(true);
+          throw new Error("字段 Schema 不是合法的 JSON 对象");
+        }
+        const values = form.getFieldsValue();
+        return {
+          ...field,
+          fields: compose(values.component, values.key, values.title),
+        };
       },
     }),
-    [field, form],
+    [field, form, jsonText],
   );
 
-  // 表单改动：按精确路径合并进「JSON 框内的完整对象」，只覆盖变化的路径，
-  // 其余键（type / dataSource / 手写的自定义键）与顺序原样保留，不整体重置 JSON。
-  const handleFormChange = (changedValues: { fields?: Partial<ModelFieldSchema> }) => {
-    const patch = changedValues.fields;
-    if (!patch) return;
-    const base = (parseSchema(jsonText) ?? field.fields) as Record<string, unknown>;
-    let next = deepMerge(base, patch as Record<string, unknown>) as ModelFieldSchema;
-
-    // 类型（component）切换时联动 schema 的 type，并写回表单以保持 Select/开关一致。
-    if (patch.component !== undefined) {
-      const meta = Object.values(FIELD_TYPE_META).find((item) => item.component === next.component);
-      next = { ...next, type: meta?.schemaType };
-      form.setFieldsValue({ fields: { type: meta?.schemaType } });
+  const handleValuesChange = (changed: Partial<FieldFormValues>, all: FieldFormValues) => {
+    // 切换组件：带入该组件注册的默认 schema（标题也同步为默认别名），key 保持不变。
+    if (changed.component !== undefined) {
+      const def = getDefaultFieldSchema(changed.component);
+      const rest = stripHidden(def);
+      restRef.current = rest;
+      const nextTitle = typeof def.title === "string" ? def.title : "";
+      setJsonText(stringify(rest));
+      setJsonError(false);
+      form.setFieldsValue({ title: nextTitle });
+      emit(changed.component, all.key, nextTitle);
+      return;
     }
-
-    setJsonText(stringify(next));
-    onChange({ ...field, fields: next });
+    // key / title 改动：与当前 JSON 的其余 schema 重新组合。
+    emit(all.component, all.key, all.title);
   };
 
-  // JSON 框改动：整体替换 fields，并回填到表单各精确路径。
+  // JSON 改动：解析成功则更新其余 schema 并回传；失败仅提示、不覆盖已有草稿。
   const handleJsonChange = (text: string) => {
     setJsonText(text);
-    const fields = parseSchema(text);
-    if (fields) {
-      form.setFieldsValue({ fields });
-      onChange({ ...field, fields });
+    const parsed = parseSchema(text);
+    if (!parsed) {
+      setJsonError(true);
+      return;
     }
+    setJsonError(false);
+    restRef.current = stripHidden(parsed);
+    const values = form.getFieldsValue();
+    emit(values.component, values.key, values.title);
   };
 
   return (
@@ -131,12 +163,19 @@ export const FieldEditor = forwardRef<FieldEditorRef, FieldEditorProps>(function
       form={form}
       layout="vertical"
       className={`${styles.fieldEditor} ${styles.form}`}
-      initialValues={{ fields: field.fields }}
-      onValuesChange={handleFormChange}
+      initialValues={{
+        component: initialComponent,
+        key: field.fields.key ?? "",
+        title: field.fields.title ?? "",
+      }}
+      onValuesChange={handleValuesChange}
     >
+      <Form.Item label="组件" name="component">
+        <Select options={FIELD_COMPONENT_OPTIONS} />
+      </Form.Item>
       <Form.Item
         label="字段 Key"
-        name={["fields", "key"]}
+        name="key"
         rules={[
           { required: true, whitespace: true, message: "请填写字段 Key" },
           { pattern: /^[a-zA-Z_][\w-]*$/, message: "字段 Key 只能使用字母、数字、下划线和中划线" },
@@ -144,44 +183,17 @@ export const FieldEditor = forwardRef<FieldEditorRef, FieldEditorProps>(function
       >
         <Input />
       </Form.Item>
-      <Form.Item
-        label="标题"
-        name={["fields", "title"]}
-        rules={[{ required: true, whitespace: true, message: "请填写字段标题" }]}
-      >
-        <Input />
+      <Form.Item label="标题" name="title">
+        <Input placeholder="可留空" />
       </Form.Item>
-      <Form.Item label="类型" name={["fields", "component"]}>
-        <Select options={FIELD_TYPE_COMPONENT_OPTIONS} />
-      </Form.Item>
-
-      {!container ? (
-        <Form.Item label="占位提示" name={["fields", "props", "placeholder"]}>
-          <Input placeholder={getDefaultPlaceholder(type)} />
-        </Form.Item>
-      ) : null}
-
-      {!container ? (
-        <Form.Item
-          layout="horizontal"
-          label="必填"
-          name={["fields", "required"]}
-          valuePropName="checked"
-        >
-          <Switch />
-        </Form.Item>
-      ) : null}
 
       <Form.Item
-        layout="horizontal"
-        label="列表展示"
-        name={["fields", "x-table", "visible"]}
-        valuePropName="checked"
+        label="字段 Schema"
+        className={styles.schemaJson}
+        wrapperCol={{ span: 24 }}
+        validateStatus={jsonError ? "error" : undefined}
+        help={jsonError ? "请输入合法的 JSON 对象" : undefined}
       >
-        <Switch />
-      </Form.Item>
-
-      <Form.Item label="字段 Schema" className={styles.schemaJson} wrapperCol={{ span: 24 }}>
         <Input.TextArea
           rows={12}
           spellCheck={false}

@@ -9,18 +9,6 @@ import type {
 
 export type { ModelFieldSchema, ModelGroup, ModelMeta, ModelSchema, OpenMode };
 
-/** 构建器支持的字段类型。 */
-export type BuilderFieldType =
-  | "string"
-  | "number"
-  | "boolean"
-  | "date"
-  | "select"
-  | "multiSelect"
-  | "tags"
-  | "object"
-  | "array";
-
 /** 字段草稿：模型构建器编辑态的单个字段。 */
 export interface FieldDraft {
   /** 拖拽排序 / 编辑定位用的稳定 id（不进入最终 schema）。 */

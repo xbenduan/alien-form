@@ -1,6 +1,6 @@
 import type { DataSourceItem, IFieldSchema } from "@alien-form/react";
 import type { LeafField } from "../types";
-import { getComponentMeta } from "./component-meta";
+import { getComponentMeta } from "../components/register";
 
 /** 字段是否为复杂字段：object（含子 properties）或对象数组。 */
 export function isComplexField(field: IFieldSchema): boolean {
