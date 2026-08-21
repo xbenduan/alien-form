@@ -11,12 +11,6 @@ import type {
  *
  * ！！！需要用到任一组件的配置（React 组件、别名、字段类型、默认 schema…）时，
  * 都必须走这张表；缺信息就在这里补，不要在别处另写一份配置。
- *
- * 每一项（ComponentRegistryEntry）承载：
- *  - alias：组件中文别名 → 编辑字段弹窗组件下拉展示名（buildComponentOptions）
- *  - component：React 组件（lazy 懒加载）→ fieldComponents（FormProvider）与 table 单元格渲染
- *  - fieldType / kind / multiValue / container：schema 投影与容器判断（transform.ts、schema.ts、buildComponentMeta）
- *  - schema：选择组件后自动带入的默认字段 schema（含 props / x-table / x-filter；type 与 component 绑定；不含 order）
  */
 const registry: ComponentRegistry = {
   Input: {
