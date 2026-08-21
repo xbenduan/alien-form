@@ -19,9 +19,7 @@ export default function Select(props: FieldComponentProps) {
       disabled={props.disabled}
       loading={props.loading || loading}
       placeholder={props.placeholder}
-      showSearch={Boolean(onSearch) || undefined}
-      filterOption={onSearch ? false : undefined}
-      onSearch={onSearch}
+      showSearch={onSearch ? { onSearch, filterOption: false } : true}
       options={options.map((item) => ({ label: item.label, value: item.value }))}
       allowClear
     />
