@@ -4,6 +4,7 @@ import { cors } from "hono/cors";
 import { bootstrap } from "./db/migrate.ts";
 import { schemaRoutes } from "./routes/schemas.ts";
 import { recordRoutes } from "./routes/records.ts";
+import { authRoutes } from "./routes/auth.ts";
 
 // 启动即建表 + 注册内置 schema（幂等）。演示数据用 `node script/seed.js` 灌入。
 bootstrap();
@@ -14,6 +15,7 @@ const app = new Hono();
 app.use("/api/*", cors());
 
 app.get("/api/health", (c) => c.json({ ok: true }));
+app.route("/api/auth", authRoutes);
 app.route("/api/schemas", schemaRoutes);
 app.route("/api/records", recordRoutes);
 

@@ -4,6 +4,7 @@ import { lazy } from "react";
 export type ActionMode = "add" | "edit" | "detail";
 
 const HomePage = lazy(() => import("../../domains/homepage/pages/index"));
+const LoginPage = lazy(() => import("../../domains/auth/pages/login"));
 const ModelListPage = lazy(() => import("../../domains/model/pages/list"));
 const ModelActionPage = lazy(() => import("../../domains/model/pages/actions"));
 const RecordListPage = lazy(() => import("../../domains/record/pages/list"));
@@ -35,3 +36,5 @@ export const routes: RouteMeta[] = [
     props: { mode: "detail" },
   },
 ];
+
+export const publicRoutes: RouteMeta[] = [{ path: "/login", component: LoginPage }];

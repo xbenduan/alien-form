@@ -1,18 +1,41 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { Suspense } from "react";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import type { BrowserRouterProps } from "react-router-dom";
 import WorkbenchLayout from "../layout/WorkbenchLayout";
-import { routes } from "./routes";
+import { useAuth } from "../../domains/auth/components/AuthProvider";
+import { loginPath } from "./paths";
+import { publicRoutes, routes } from "./routes";
 
 const futureConfig = {
   v7_startTransition: true,
   v7_relativeSplatPath: true,
 } satisfies NonNullable<BrowserRouterProps["future"]>;
 
+function ProtectedWorkbench() {
+  const auth = useAuth();
+  const location = useLocation();
+  if (!auth.isAuthenticated) {
+    return <Navigate replace to={loginPath()} state={{ from: location }} />;
+  }
+  return <WorkbenchLayout />;
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter future={futureConfig}>
       <Routes>
-        <Route element={<WorkbenchLayout />}>
+        {publicRoutes.map((route) => (
+          <Route
+            key={route.path}
+            path={route.path}
+            element={
+              <Suspense fallback={null}>
+                <route.component {...(route.props ?? {})} />
+              </Suspense>
+            }
+          />
+        ))}
+        <Route element={<ProtectedWorkbench />}>
           {routes.map((route) => (
             <Route
               key={route.path}

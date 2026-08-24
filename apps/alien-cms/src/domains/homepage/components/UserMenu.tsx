@@ -1,17 +1,28 @@
 import { useNavigate } from "react-router-dom";
-import { Dropdown } from "antd";
+import { App, Dropdown } from "antd";
 import { LogoutOutlined, SettingOutlined, UserOutlined } from "@ant-design/icons";
-import { modelListPath, recordEditPath } from "../../../app/router/paths";
+import { loginPath, modelListPath, recordEditPath } from "../../../app/router/paths";
+import { useAuth } from "../../auth/components/AuthProvider";
 import { Identicon } from "./Identicon";
 import styles from "./index.module.css";
 
-/** 演示用当前用户，写死一个用户记录 id 用于跳转个人信息编辑页。 */
-const CURRENT_USER_MODEL = "school-user";
-const CURRENT_USER_ID = "user-admin-1";
+const USER_MODEL = "school-user";
 
-/** 顶栏用户头像：hover 展开「模型管理」和「个人信息」两个入口。 */
+/** 顶栏用户头像：hover 展开模型管理、个人信息和退出登录入口。 */
 export function UserMenu() {
   const navigate = useNavigate();
+  const auth = useAuth();
+  const { message } = App.useApp();
+  const user = auth.user;
+
+  async function handleLogout() {
+    try {
+      await auth.logout();
+      navigate(loginPath(), { replace: true });
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : "退出登录失败");
+    }
+  }
 
   return (
     <Dropdown
@@ -28,14 +39,16 @@ export function UserMenu() {
           {
             key: "profile",
             icon: <UserOutlined />,
-            label: "个人信息",
-            onClick: () => navigate(recordEditPath(CURRENT_USER_MODEL, CURRENT_USER_ID)),
+            label: user?.displayName ? `个人信息：${user.displayName}` : "个人信息",
+            onClick: () => {
+              if (user?.id) navigate(recordEditPath(USER_MODEL, user.id));
+            },
           },
           {
-            key: "outing",
+            key: "logout",
             icon: <LogoutOutlined />,
             label: "退出登录",
-            disabled: true,
+            onClick: handleLogout,
           },
         ],
       }}
@@ -45,7 +58,7 @@ export function UserMenu() {
         className={`${styles.userMenu} ${styles.trigger}`}
         aria-label="用户菜单"
       >
-        <Identicon seed={CURRENT_USER_ID} />
+        <Identicon seed={user?.id ?? "anonymous"} />
       </button>
     </Dropdown>
   );

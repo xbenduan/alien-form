@@ -1,13 +1,31 @@
 import { getDb } from "./connection.ts";
-import { buildTableDDL } from "../schema/ddl.ts";
+import { buildColumnDDL, buildTableDDL } from "../schema/ddl.ts";
 import { builtinSchemas } from "../schemas/index.ts";
 import { ensureSchemaTable, upsertSchema } from "./schema-repo.ts";
+import { planFields } from "../schema/field-plan.ts";
+import { tableName } from "../schema/naming.ts";
 import type { ModelSchema } from "../schema/types.ts";
 
 /** 执行一份 schema 的建表 DDL（幂等，IF NOT EXISTS）。 */
 export function migrateSchema(schema: ModelSchema): void {
   const db = getDb();
-  for (const stmt of buildTableDDL(schema)) db.exec(stmt);
+  const [createTable, ...rest] = buildTableDDL(schema);
+  db.exec(createTable);
+  syncMissingColumns(schema);
+  for (const stmt of rest) db.exec(stmt);
+}
+
+/** 内置 schema 演进时，为既有表补齐新增的普通列。 */
+function syncMissingColumns(schema: ModelSchema): void {
+  const db = getDb();
+  const table = tableName(schema.meta.name);
+  const rows = db.prepare(`PRAGMA table_info("${table}")`).all() as Array<{ name: string }>;
+  const existing = new Set(rows.map((row) => row.name));
+
+  for (const plan of planFields(schema)) {
+    if (plan.kind !== "column" || existing.has(plan.column)) continue;
+    db.exec(`ALTER TABLE "${table}" ADD COLUMN ${buildColumnDDL(plan)}`);
+  }
 }
 
 /**

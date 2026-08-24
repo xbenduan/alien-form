@@ -13,7 +13,17 @@
 //   - 记录自带 id，接口按 id 幂等 upsert，可重复执行不会产生重复数据。
 //   - createdAt / updatedAt 由服务端统一管理，无需也无法从这里写入。
 
+const { pbkdf2Sync, randomBytes } = require("node:crypto");
 const API_BASE = process.env.API_BASE ?? `http://localhost:${process.env.PORT ?? 8787}`;
+const DEMO_PASSWORD = "alien123456";
+
+function hashPassword(password) {
+  const salt = randomBytes(16).toString("hex");
+  const hash = pbkdf2Sync(password, salt, 120_000, 32, "sha256").toString("hex");
+  return `pbkdf2_sha256$120000$${salt}$${hash}`;
+}
+
+const demoPasswordHash = hashPassword(DEMO_PASSWORD);
 
 const roles = [
   {
@@ -92,6 +102,7 @@ const users = [
     displayName: "张伟",
     userType: "teacher",
     roleIds: ["role-course-teacher"],
+    passwordHash: demoPasswordHash,
     gender: "male",
     phone: "13800001001",
     email: "zhangwei@school.edu.cn",
@@ -108,6 +119,7 @@ const users = [
     displayName: "刘娜",
     userType: "teacher",
     roleIds: ["role-course-teacher", "role-homeroom-teacher"],
+    passwordHash: demoPasswordHash,
     gender: "female",
     phone: "13800001002",
     email: "liuna@school.edu.cn",
@@ -124,6 +136,7 @@ const users = [
     displayName: "王军",
     userType: "teacher",
     roleIds: ["role-course-teacher", "role-grade-director"],
+    passwordHash: demoPasswordHash,
     gender: "male",
     phone: "13800001003",
     email: "wangjun@school.edu.cn",
@@ -140,6 +153,7 @@ const users = [
     displayName: "陈希",
     userType: "student",
     roleIds: ["role-student"],
+    passwordHash: demoPasswordHash,
     gender: "female",
     phone: "13900002001",
     email: "chenxi@student.school.edu.cn",
@@ -158,6 +172,7 @@ const users = [
     displayName: "李阳",
     userType: "student",
     roleIds: ["role-student"],
+    passwordHash: demoPasswordHash,
     gender: "male",
     phone: "13900002002",
     email: "liyang@student.school.edu.cn",
@@ -176,6 +191,7 @@ const users = [
     displayName: "赵梦",
     userType: "student",
     roleIds: ["role-student"],
+    passwordHash: demoPasswordHash,
     gender: "female",
     phone: "13900002003",
     email: "zhaomeng@student.school.edu.cn",
@@ -194,6 +210,7 @@ const users = [
     displayName: "教务管理员",
     userType: "academic-admin",
     roleIds: ["role-academic-admin"],
+    passwordHash: demoPasswordHash,
     gender: "female",
     phone: "13800001010",
     email: "jiaowu@school.edu.cn",

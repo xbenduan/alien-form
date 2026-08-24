@@ -2,6 +2,7 @@ import { ConfigProvider, theme } from "antd";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import { useState } from "react";
+import { AuthProvider } from "../../domains/auth/components/AuthProvider";
 
 const GLOBAL_GC_TIME = 10 * 60 * 1000; // 10 minutes
 
@@ -45,7 +46,9 @@ export function AppProviders({ children }: PropsWithChildren) {
         },
       }}
     >
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>{children}</AuthProvider>
+      </QueryClientProvider>
     </ConfigProvider>
   );
 }

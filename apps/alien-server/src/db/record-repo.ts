@@ -149,6 +149,24 @@ export function getRecord(schema: ModelSchema, id: string): ModelRecord | undefi
   return rowToRecord(schema, row, columnPlans(schema), relationPlans(schema));
 }
 
+/** 按一个标量字段精确查询单条记录，供登录等模型内查找场景复用。 */
+export function findRecordByField(
+  schema: ModelSchema,
+  field: string,
+  value: string | number,
+): ModelRecord | undefined {
+  const db = getDb();
+  const table = tableName(schema.meta.name);
+  const cols = columnPlans(schema);
+  const plan = cols.find((item) => item.field === field);
+  if (!plan) return undefined;
+  const row = db
+    .prepare(`SELECT * FROM "${table}" WHERE "${plan.column}" = ? LIMIT 1`)
+    .get(value) as Record<string, unknown> | undefined;
+  if (!row) return undefined;
+  return rowToRecord(schema, row, cols, relationPlans(schema));
+}
+
 /**
  * 新建记录：主表 + 各 junction 表在同一事务内写入。
  * 幂等：允许调用方传入 id，命中已存在则走 upsert（ON CONFLICT），避免重复提交产生多条。

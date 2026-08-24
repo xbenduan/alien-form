@@ -4,6 +4,10 @@ export function homePath(): string {
   return "/";
 }
 
+export function loginPath(): string {
+  return "/login";
+}
+
 // ─── 模型 ────────────────────────────────────────────────────────────────
 
 export function modelListPath(): string {

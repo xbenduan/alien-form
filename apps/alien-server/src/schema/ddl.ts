@@ -23,7 +23,7 @@ function defaultLiteral(value: string | number | boolean): string {
   return `'${value.replace(/'/g, "''")}'`;
 }
 
-function columnDef(plan: ColumnPlan): string {
+export function buildColumnDDL(plan: ColumnPlan): string {
   const parts = [`"${plan.column}"`, sqliteType(plan.type)];
   if (!plan.nullable) parts.push("NOT NULL");
   if (plan.unique) parts.push("UNIQUE");
@@ -51,7 +51,7 @@ export function buildTableDDL(schema: ModelSchema): string[] {
 
   for (const plan of plans) {
     if (plan.kind !== "column") continue;
-    columns.push(columnDef(plan));
+    columns.push(buildColumnDDL(plan));
     if (plan.relationTarget) {
       foreignKeys.push(
         `FOREIGN KEY ("${plan.column}") REFERENCES "${tableName(plan.relationTarget)}"("id")`,

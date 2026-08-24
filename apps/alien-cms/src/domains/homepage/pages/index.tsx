@@ -66,7 +66,7 @@ export default function HomePage() {
           <div>
             <Typography.Text className={styles.kicker}>ALIEN CMS</Typography.Text>
             <Typography.Title
-              level={5}
+              level={3}
               className={styles.brandTitle}
               style={{ marginTop: 0, marginBottom: 0 }}
             >
