@@ -18,11 +18,6 @@ export interface TableFieldMeta {
   visible?: boolean;
 }
 
-/** filter 筛选区展示元信息。 */
-export interface FilterFieldMeta {
-  visible?: boolean;
-}
-
 /**
  * x-database：字段的「后端存储事实」声明。
  * 前端只消费其中影响投影的两个信号：
@@ -73,7 +68,6 @@ export interface ModelFieldSchema extends Omit<
 > {
   key?: string;
   "x-table"?: TableFieldMeta;
-  "x-filter"?: FilterFieldMeta;
   /** 后端存储事实：驱动 filter 可见（filterable）与列可排序（sortable）。 */
   "x-database"?: XDatabaseMeta;
   /** 静态选项数组，或 $af-dataSource 插件 marker。 */

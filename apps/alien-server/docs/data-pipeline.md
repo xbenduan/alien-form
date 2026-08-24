@@ -42,7 +42,6 @@
 2. **filter 可见性归后端**：一个字段能不能进筛选区，是被**存储能力约束死的**，不是前端偏好。
    反例就是上面的 `contact`（JSON 字符串列）——它物理上**无法建索引、无法按子键查询**，
    那它就**不可能**成为 filter，前端想显示也没用。所以「可筛选」是后端的能力事实。
-3. **`x-filter` 并入 `x-database`，作为独立 marker 消失**：既然可筛选是存储能力，就该和存储声明待在一起。
 
 而且有个优雅收敛：**`index` 与「可筛选」本质是同一个事实** —— 能高效筛选 ⟺ 有索引。
 所以 `x-database.index: true` **一处声明、两处产出**：DDL 建索引 + filter 投影纳入该字段，零漂移。
@@ -139,10 +138,6 @@ contact: {
 **`type: "object"`（及 `array`）无 marker → 默认 `TEXT`，整体 JSON 序列化**；
 **`x-database.index: true` → DDL 建索引 + 该字段进入 filter 投影**（可筛选 ⟺ 有索引）。
 这些都是 **显式映射表**，不靠猜。
-
-> **`x-filter` 已废弃**：字段是否进筛选区不再由前端 schema 的 `x-filter.visible` 声明，
-> 而是由后端的 `x-database.index` 决定。filter 投影从「读 `x-filter.visible !== false`」
-> 改为「读 `x-database.index === true`」。
 
 ### object / array 的落库策略
 

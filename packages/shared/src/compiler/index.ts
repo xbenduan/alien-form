@@ -60,7 +60,6 @@ export type {
   Scene,
   SchemaCompilerContext,
   TableFieldMeta,
-  FilterFieldMeta,
   XDatabaseMeta,
 } from "./types";
 export type { FoundMarker } from "./utils/deep-path";

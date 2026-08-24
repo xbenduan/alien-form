@@ -65,7 +65,6 @@ export type {
   FieldDescriptor,
   FieldDraft,
   FieldService,
-  FilterFieldMeta,
   FoundMarker,
   GroupDraft,
   I18nDict,

@@ -32,7 +32,6 @@ const registry: ComponentRegistry = {
       display: "visible",
       "x-validate": "",
       "x-table": { width: 100, visible: true },
-      "x-filter": { visible: true },
     },
   },
 
@@ -55,7 +54,6 @@ const registry: ComponentRegistry = {
       display: "visible",
       "x-validate": "",
       "x-table": { width: 160, visible: true },
-      "x-filter": { visible: true },
     },
   },
 
@@ -78,7 +76,6 @@ const registry: ComponentRegistry = {
       display: "visible",
       "x-validate": "",
       "x-table": { width: 100, visible: true },
-      "x-filter": { visible: true },
     },
   },
 
@@ -105,7 +102,6 @@ const registry: ComponentRegistry = {
       display: "visible",
       "x-validate": "",
       "x-table": { width: 100, visible: true },
-      "x-filter": { visible: true },
     },
   },
 
@@ -133,7 +129,6 @@ const registry: ComponentRegistry = {
       display: "visible",
       "x-validate": "",
       "x-table": { width: 140, visible: true },
-      "x-filter": { visible: true },
     },
   },
 
@@ -155,7 +150,6 @@ const registry: ComponentRegistry = {
       display: "visible",
       "x-validate": "",
       "x-table": { width: 120, visible: true },
-      "x-filter": { visible: true },
     },
   },
 
@@ -177,7 +171,6 @@ const registry: ComponentRegistry = {
       display: "visible",
       "x-validate": "",
       "x-table": { width: 80, visible: true },
-      "x-filter": { visible: true },
     },
   },
 
@@ -204,7 +197,6 @@ const registry: ComponentRegistry = {
       display: "visible",
       "x-validate": "",
       "x-table": { width: 120, visible: true },
-      "x-filter": { visible: true },
     },
   },
 
@@ -232,7 +224,6 @@ const registry: ComponentRegistry = {
       display: "visible",
       "x-validate": "",
       "x-table": { width: 140, visible: true },
-      "x-filter": { visible: true },
     },
   },
 
@@ -254,7 +245,6 @@ const registry: ComponentRegistry = {
       display: "visible",
       "x-validate": "",
       "x-table": { width: 120, visible: true },
-      "x-filter": { visible: true },
     },
   },
 
@@ -278,7 +268,6 @@ const registry: ComponentRegistry = {
       display: "visible",
       "x-validate": "",
       "x-table": { width: 140, visible: true },
-      "x-filter": { visible: true },
     },
   },
 
@@ -300,7 +289,6 @@ const registry: ComponentRegistry = {
       display: "visible",
       properties: {},
       "x-table": { width: 160, visible: true },
-      "x-filter": { visible: false },
     },
   },
 
@@ -321,7 +309,6 @@ const registry: ComponentRegistry = {
       display: "visible",
       items: { type: "object", properties: {} },
       "x-table": { width: 160, visible: true },
-      "x-filter": { visible: false },
     },
   },
 

@@ -20,6 +20,7 @@ const checkedExtensions = new Set([
   ".yml",
 ]);
 const removedPackageName = ["@alien-form", "cms"].join("/");
+const removedFilterMarker = ["x", "filter"].join("-");
 const violations = [];
 
 async function collectFiles(directory) {
@@ -60,6 +61,16 @@ for (const filePath of files) {
       index: packageReference,
       0: removedPackageName,
     });
+  }
+
+  if (path.extname(filePath) !== ".md") {
+    const filterMarkerReference = file.contents.indexOf(removedFilterMarker);
+    if (filterMarkerReference >= 0) {
+      addViolation(file, "removed filter marker", {
+        index: filterMarkerReference,
+        0: removedFilterMarker,
+      });
+    }
   }
 
   if (!filePath.startsWith(path.join(root, "packages/shared") + path.sep)) {

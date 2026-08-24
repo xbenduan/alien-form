@@ -5,7 +5,6 @@ import type {
   ModelSchema,
   OpenMode,
   TableFieldMeta,
-  FilterFieldMeta,
 } from "@alien-form/shared";
 
 // 模型 schema 相关类型统一由 SchemaCompiler（@alien-form/shared）提供，
@@ -17,7 +16,6 @@ export type {
   ModelSchema,
   OpenMode,
   TableFieldMeta,
-  FilterFieldMeta,
 };
 
 /** 模型摘要（落地页卡片、列表用）。 */

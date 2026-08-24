@@ -45,7 +45,7 @@ export interface ComponentMeta {
 
 /**
  * 注册项默认 schema：作为“选择组件后自动带入”的字段配置模板。
- * 覆盖单个组件能填写的全部字段（含 props / x-table / x-filter），
+ * 覆盖单个组件能填写的全部字段（含 props / x-table），
  * 唯独不含 order（order 由拖拽排序生成，不应有默认值）。
  * 消费方：
  *  - register/index.ts 每个组件的 `schema` 字段
@@ -55,8 +55,6 @@ export interface ComponentMeta {
 export interface RegistryFieldSchema extends IFieldSchema {
   /** table 列展示元信息（对应 CMS 的 x-table）。 */
   "x-table"?: { width?: number; visible?: boolean; ellipsis?: boolean; sortable?: boolean };
-  /** filter 展示元信息。 */
-  "x-filter"?: { visible?: boolean };
 }
 
 /**
