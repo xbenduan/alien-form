@@ -1,0 +1,19 @@
+{
+  "name": "@alien-form/alien-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Alien Form 数据管理后端 demo：Node 24 node:sqlite + Hono + Drizzle，schema 驱动建表与 CRUD。",
+  "scripts": {
+    "dev": "node --watch src/index.ts",
+    "start": "node src/index.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.0",
+    "drizzle-orm": "^0.44.0",
+    "hono": "^4.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0"
+  }
+}

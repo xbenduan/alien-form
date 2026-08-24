@@ -1,7 +1,10 @@
-import type { ModelSchema } from "../../services/types";
+import type { ModelSchema } from "../schema/types.ts";
 
-/** 课程模型：学校体育课程、容量与抢课时段管理。 */
-export const nailServiceSchema: ModelSchema = {
+/**
+ * 课程模型（业务模型，建立在 user/role 之上）：
+ * teacherId 指向 school-user（多对一）；registrationSlots 为对象数组（落 JSON 列）。
+ */
+export const schoolCourseSchema: ModelSchema = {
   type: "object",
   title: "课程列表",
   description: "学校体育课程、授课教师、容量与抢课时段管理。",
@@ -26,6 +29,7 @@ export const nailServiceSchema: ModelSchema = {
       order: 10,
       props: { placeholder: "请输入课程编号" },
       "x-table": { width: 120 },
+      "x-database": { type: "text", unique: true, index: true, filterable: true },
     },
     courseName: {
       type: "string",
@@ -35,6 +39,7 @@ export const nailServiceSchema: ModelSchema = {
       order: 20,
       props: { placeholder: "请输入课程名称" },
       "x-table": { width: 160 },
+      "x-database": { type: "text", index: true, filterable: true },
     },
     sportType: {
       type: "string",
@@ -54,6 +59,7 @@ export const nailServiceSchema: ModelSchema = {
       ],
       props: { placeholder: "请选择运动项目" },
       "x-table": { width: 110 },
+      "x-database": { type: "text", index: true, filterable: true },
     },
     teacherId: {
       type: "string",
@@ -69,6 +75,7 @@ export const nailServiceSchema: ModelSchema = {
         value: "id",
       },
       "x-table": { width: 130 },
+      "x-database": { relation: "many-to-one", target: "school-user", index: true, filterable: true },
     },
     semester: {
       type: "string",
@@ -83,6 +90,7 @@ export const nailServiceSchema: ModelSchema = {
       ],
       props: { placeholder: "请选择开课学期" },
       "x-table": { width: 140 },
+      "x-database": { type: "text", filterable: true },
     },
     gradeScope: {
       title: "适用年级",
@@ -99,6 +107,7 @@ export const nailServiceSchema: ModelSchema = {
       ],
       props: { placeholder: "请选择适用年级" },
       "x-table": { width: 180 },
+      "x-database": { type: "json", sortable: false },
     },
     courseDescription: {
       type: "string",
@@ -107,6 +116,7 @@ export const nailServiceSchema: ModelSchema = {
       order: 70,
       props: { rows: 3, placeholder: "请输入课程简介" },
       "x-table": { visible: false },
+      "x-database": { type: "text" },
     },
     credits: {
       type: "number",
@@ -116,6 +126,7 @@ export const nailServiceSchema: ModelSchema = {
       order: 80,
       props: { placeholder: "请输入课程学分", min: 0, max: 20 },
       "x-table": { width: 100 },
+      "x-database": { type: "real", sortable: true },
     },
     maxCapacity: {
       type: "number",
@@ -125,6 +136,7 @@ export const nailServiceSchema: ModelSchema = {
       order: 90,
       props: { placeholder: "请输入报名人数上限", min: 1 },
       "x-table": { width: 120 },
+      "x-database": { type: "real", sortable: true },
     },
     enrolledCount: {
       type: "number",
@@ -134,6 +146,7 @@ export const nailServiceSchema: ModelSchema = {
       default: 0,
       props: { placeholder: "请输入已报名人数", min: 0 },
       "x-table": { width: 110 },
+      "x-database": { type: "real", default: 0, sortable: true },
     },
     waitlistEnabled: {
       type: "boolean",
@@ -142,6 +155,7 @@ export const nailServiceSchema: ModelSchema = {
       order: 110,
       default: true,
       "x-table": { width: 110 },
+      "x-database": { type: "boolean", default: true, filterable: true },
     },
     waitlistCapacity: {
       type: "number",
@@ -151,6 +165,7 @@ export const nailServiceSchema: ModelSchema = {
       default: 0,
       props: { placeholder: "请输入候补人数上限", min: 0 },
       "x-table": { width: 110 },
+      "x-database": { type: "real", default: 0 },
     },
     waitlistCount: {
       type: "number",
@@ -160,6 +175,7 @@ export const nailServiceSchema: ModelSchema = {
       default: 0,
       props: { placeholder: "请输入当前候补人数", min: 0 },
       "x-table": { visible: false },
+      "x-database": { type: "real", default: 0 },
     },
     registrationStartAt: {
       type: "string",
@@ -169,6 +185,7 @@ export const nailServiceSchema: ModelSchema = {
       order: 140,
       props: { placeholder: "请输入抢课开始时间，例如 2026-09-01 08:00" },
       "x-table": { width: 160 },
+      "x-database": { type: "text" },
     },
     registrationEndAt: {
       type: "string",
@@ -178,6 +195,7 @@ export const nailServiceSchema: ModelSchema = {
       order: 150,
       props: { placeholder: "请输入抢课结束时间，例如 2026-09-07 23:59" },
       "x-table": { width: 160 },
+      "x-database": { type: "text" },
     },
     registrationSlots: {
       type: "array",
@@ -185,6 +203,7 @@ export const nailServiceSchema: ModelSchema = {
       order: 155,
       props: { title: "报名抢课时段", gridSpan: 12 },
       "x-table": { width: 260 },
+      "x-database": { type: "json" },
       items: {
         type: "object",
         properties: {
@@ -252,6 +271,7 @@ export const nailServiceSchema: ModelSchema = {
       order: 160,
       props: { placeholder: "请选择上课开始日期" },
       "x-table": { visible: false },
+      "x-database": { type: "text" },
     },
     classEndDate: {
       type: "string",
@@ -260,6 +280,7 @@ export const nailServiceSchema: ModelSchema = {
       order: 170,
       props: { placeholder: "请选择上课结束日期" },
       "x-table": { visible: false },
+      "x-database": { type: "text" },
     },
     weeklySchedule: {
       type: "string",
@@ -268,6 +289,7 @@ export const nailServiceSchema: ModelSchema = {
       order: 180,
       props: { placeholder: "例如：周二 16:00-17:30" },
       "x-table": { width: 180 },
+      "x-database": { type: "text" },
     },
     location: {
       type: "string",
@@ -276,6 +298,7 @@ export const nailServiceSchema: ModelSchema = {
       order: 190,
       props: { placeholder: "请输入上课地点" },
       "x-table": { width: 140 },
+      "x-database": { type: "text" },
     },
     status: {
       type: "string",
@@ -294,6 +317,7 @@ export const nailServiceSchema: ModelSchema = {
       ],
       props: { placeholder: "请选择课程状态" },
       "x-table": { width: 110 },
+      "x-database": { type: "text", index: true, filterable: true },
     },
     notes: {
       type: "string",
@@ -302,14 +326,9 @@ export const nailServiceSchema: ModelSchema = {
       order: 210,
       props: { rows: 3, placeholder: "请输入备注" },
       "x-table": { visible: false },
+      "x-database": { type: "text" },
     },
-    id: {
-      type: "string",
-      title: "ID",
-      display: "none",
-      order: 900,
-      "x-table": { visible: false },
-    },
+    id: { type: "string", title: "ID", display: "none", order: 900, "x-table": { visible: false } },
     createdAt: {
       type: "string",
       title: "创建时间",
@@ -317,39 +336,11 @@ export const nailServiceSchema: ModelSchema = {
       order: 910,
       "x-table": { visible: false },
     },
-    generatedAt: {
-      type: "string",
-      title: "生成时间",
-      display: "none",
-      order: 915,
-      "x-table": { visible: false },
-    },
     updatedAt: {
       type: "string",
       title: "更新时间",
       display: "none",
       order: 920,
-      "x-table": { visible: false },
-    },
-    createdBy: {
-      type: "string",
-      title: "创建人",
-      display: "none",
-      order: 930,
-      "x-table": { visible: false },
-    },
-    updatedBy: {
-      type: "string",
-      title: "更新人",
-      display: "none",
-      order: 940,
-      "x-table": { visible: false },
-    },
-    deletedAt: {
-      type: "string",
-      title: "删除时间",
-      display: "none",
-      order: 950,
       "x-table": { visible: false },
     },
   },

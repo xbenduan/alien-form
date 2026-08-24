@@ -85,6 +85,7 @@ export type {
   Scene,
   SchemaCompilerContext,
   TableFieldMeta,
+  XDatabaseMeta,
 } from "./compiler";
 
 // components：符合 alien-form 协议的组件注册机与渲染核心

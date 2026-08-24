@@ -10,6 +10,16 @@ function tableMeta(field: ModelFieldSchema) {
   return field["x-table"] ?? {};
 }
 
+/**
+ * 列是否可排序：后端存储事实（x-database.sortable）优先——无索引排序等于全表扫描，
+ * 是否可排序本质是存储能力。缺省回落到 x-table.sortable / 复杂字段判断。
+ */
+function columnSortable(field: ModelFieldSchema, fallback: boolean): boolean {
+  const xdb = field["x-database"]?.sortable;
+  if (xdb !== undefined) return xdb;
+  return field["x-table"]?.sortable ?? fallback;
+}
+
 /** filter 场景剥离校验/默认/必填，套上 FilterItem 装饰器。 */
 function toFilterBase(field: IFieldSchema, key: string): IFieldSchema {
   const { required: _r, default: _d, "x-validate": _v, ...rest } = field;
@@ -24,7 +34,7 @@ function complexColumn(field: ModelFieldSchema, key: string, formField: IFieldSc
     title: field.title ?? (typeof field.props?.title === "string" ? field.props.title : key),
     width: meta.width,
     ellipsis: meta.ellipsis ?? true,
-    sortable: meta.sortable ?? false,
+    sortable: columnSortable(field, false),
     complex: true,
     component: field.component,
     field: formField,
@@ -123,7 +133,7 @@ function leafColumn(field: ModelFieldSchema, key: string): TableColumn {
       field.title ?? (typeof field.props?.title === "string" ? field.props.title : undefined) ?? key,
     width: meta.width,
     ellipsis: meta.ellipsis ?? true,
-    sortable: meta.sortable ?? !complex,
+    sortable: columnSortable(field, !complex),
     complex,
     component: field.component,
     dataSource: Array.isArray(field.dataSource) ? field.dataSource : undefined,

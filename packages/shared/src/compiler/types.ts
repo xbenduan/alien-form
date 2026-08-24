@@ -23,6 +23,26 @@ export interface FilterFieldMeta {
   visible?: boolean;
 }
 
+/**
+ * x-database：字段的「后端存储事实」声明。
+ * 前端只消费其中影响投影的两个信号：
+ *  - filterable（缺省跟随 index）：字段是否进入 filter 筛选区；
+ *  - sortable：表格列是否可排序。
+ * 其余（列类型、关系、约束等）由后端解释，前端透传。
+ */
+export interface XDatabaseMeta {
+  type?: string;
+  nullable?: boolean;
+  default?: string | number | boolean;
+  unique?: boolean;
+  index?: boolean;
+  filterable?: boolean;
+  sortable?: boolean;
+  relation?: "many-to-one" | "many-to-many";
+  target?: string;
+  through?: string;
+}
+
 /** 详情/新增/编辑的打开方式。 */
 export type OpenMode = "page" | "drawer" | "modal";
 
@@ -51,6 +71,8 @@ export interface ModelFieldSchema extends Omit<IFieldSchema, "dataSource" | "pro
   key?: string;
   "x-table"?: TableFieldMeta;
   "x-filter"?: FilterFieldMeta;
+  /** 后端存储事实：驱动 filter 可见（filterable）与列可排序（sortable）。 */
+  "x-database"?: XDatabaseMeta;
   /** 静态选项数组，或 $af-dataSource 插件 marker。 */
   dataSource?: DataSourceItem[] | PluginMarker;
   properties?: Record<string, ModelFieldSchema>;

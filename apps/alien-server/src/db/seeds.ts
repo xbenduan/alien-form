@@ -1,4 +1,4 @@
-import type { ModelRecord } from "../services/types";
+import type { ModelRecord } from "../schema/types.ts";
 
 function daysAgo(days: number, hour: number, minute: number): number {
   const date = new Date();

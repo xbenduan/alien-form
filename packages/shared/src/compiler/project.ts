@@ -119,7 +119,11 @@ export function projectFilter(
         continue;
       }
       if (field.display === "none") continue;
-      if (field["x-filter"]?.visible === false) continue;
+      // 是否进入筛选区由后端存储事实决定：filterable（缺省跟随 index）。
+      // 这是能力约束——字段能不能高效筛选取决于是否有索引，前端无权声明。
+      const xdb = field["x-database"];
+      const filterable = xdb?.filterable ?? xdb?.index ?? false;
+      if (!filterable) continue;
       const projected = matchDescriptor(field, descriptors).toFilter(field, key, ctx);
       if (projected) properties[key] = projected;
     }

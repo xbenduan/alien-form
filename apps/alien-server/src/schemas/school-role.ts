@@ -1,7 +1,10 @@
-import type { ModelSchema } from "../../services/types";
+import type { ModelSchema } from "../schema/types.ts";
 
-/** 角色模型：先维护角色及可查看的数据表，权限执行逻辑暂不实现。 */
-export const nailBookingSchema: ModelSchema = {
+/**
+ * 角色模型（权限基础模型，写死）：维护角色及其可查看的数据表。
+ * viewableTables 即最朴素的「权限存储」——记录该角色能看哪些模型。
+ */
+export const schoolRoleSchema: ModelSchema = {
   type: "object",
   title: "角色管理",
   description: "学校用户角色与可查看业务表配置。",
@@ -26,6 +29,7 @@ export const nailBookingSchema: ModelSchema = {
       order: 10,
       props: { placeholder: "请输入角色编码" },
       "x-table": { width: 150 },
+      "x-database": { type: "text", unique: true, index: true, filterable: true },
     },
     roleName: {
       type: "string",
@@ -35,6 +39,7 @@ export const nailBookingSchema: ModelSchema = {
       order: 20,
       props: { placeholder: "请输入角色名称" },
       "x-table": { width: 140 },
+      "x-database": { type: "text", index: true, filterable: true },
     },
     roleType: {
       type: "string",
@@ -52,6 +57,7 @@ export const nailBookingSchema: ModelSchema = {
       ],
       props: { placeholder: "请选择角色类型" },
       "x-table": { width: 130 },
+      "x-database": { type: "text", index: true, filterable: true },
     },
     roleLevel: {
       type: "string",
@@ -67,6 +73,7 @@ export const nailBookingSchema: ModelSchema = {
       ],
       props: { placeholder: "请选择管理层级" },
       "x-table": { width: 100 },
+      "x-database": { type: "text", filterable: true },
     },
     viewableTables: {
       title: "可查看数据表",
@@ -80,6 +87,7 @@ export const nailBookingSchema: ModelSchema = {
       ],
       props: { placeholder: "请选择可查看数据表" },
       "x-table": { width: 220 },
+      "x-database": { type: "json", sortable: false },
     },
     description: {
       type: "string",
@@ -88,6 +96,7 @@ export const nailBookingSchema: ModelSchema = {
       order: 60,
       props: { rows: 3, placeholder: "请输入角色说明" },
       "x-table": { visible: false },
+      "x-database": { type: "text" },
     },
     enabled: {
       type: "boolean",
@@ -96,6 +105,7 @@ export const nailBookingSchema: ModelSchema = {
       order: 70,
       default: true,
       "x-table": { width: 100 },
+      "x-database": { type: "boolean", default: true, filterable: true },
     },
     sortOrder: {
       type: "number",
@@ -105,14 +115,9 @@ export const nailBookingSchema: ModelSchema = {
       default: 0,
       props: { placeholder: "请输入排序号", min: 0 },
       "x-table": { width: 90 },
+      "x-database": { type: "real", default: 0, sortable: true },
     },
-    id: {
-      type: "string",
-      title: "ID",
-      display: "none",
-      order: 900,
-      "x-table": { visible: false },
-    },
+    id: { type: "string", title: "ID", display: "none", order: 900, "x-table": { visible: false } },
     createdAt: {
       type: "string",
       title: "创建时间",
@@ -120,39 +125,11 @@ export const nailBookingSchema: ModelSchema = {
       order: 910,
       "x-table": { visible: false },
     },
-    generatedAt: {
-      type: "string",
-      title: "生成时间",
-      display: "none",
-      order: 915,
-      "x-table": { visible: false },
-    },
     updatedAt: {
       type: "string",
       title: "更新时间",
       display: "none",
       order: 920,
-      "x-table": { visible: false },
-    },
-    createdBy: {
-      type: "string",
-      title: "创建人",
-      display: "none",
-      order: 930,
-      "x-table": { visible: false },
-    },
-    updatedBy: {
-      type: "string",
-      title: "更新人",
-      display: "none",
-      order: 940,
-      "x-table": { visible: false },
-    },
-    deletedAt: {
-      type: "string",
-      title: "删除时间",
-      display: "none",
-      order: 950,
       "x-table": { visible: false },
     },
   },

@@ -61,5 +61,6 @@ export type {
   SchemaCompilerContext,
   TableFieldMeta,
   FilterFieldMeta,
+  XDatabaseMeta,
 } from "./types";
 export type { FoundMarker } from "./utils/deep-path";

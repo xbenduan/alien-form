@@ -1,7 +1,11 @@
-import type { ModelSchema } from "../../services/types";
+import type { ModelSchema } from "../schema/types.ts";
 
-/** 用户模型：统一管理教师、学生及其角色归属。 */
-export const nailEmployeeSchema: ModelSchema = {
+/**
+ * 用户模型（基础模型，写死）：统一管理教师、学生及其角色归属。
+ * roleIds 指向 school-role（多对多，落 junction 表）；
+ * homeroomTeacherId 指向 school-user 自身（多对一外键）。
+ */
+export const schoolUserSchema: ModelSchema = {
   type: "object",
   title: "用户管理",
   description: "学校教师、学生及用户角色信息管理。",
@@ -26,6 +30,7 @@ export const nailEmployeeSchema: ModelSchema = {
       order: 10,
       props: { placeholder: "请输入用户编号" },
       "x-table": { width: 130 },
+      "x-database": { type: "text", unique: true, index: true, filterable: true },
     },
     username: {
       type: "string",
@@ -35,6 +40,7 @@ export const nailEmployeeSchema: ModelSchema = {
       order: 20,
       props: { placeholder: "请输入登录账号" },
       "x-table": { width: 140 },
+      "x-database": { type: "text", unique: true, index: true, filterable: true },
     },
     displayName: {
       type: "string",
@@ -44,6 +50,7 @@ export const nailEmployeeSchema: ModelSchema = {
       order: 30,
       props: { placeholder: "请输入姓名" },
       "x-table": { width: 110 },
+      "x-database": { type: "text", index: true, filterable: true },
     },
     userType: {
       type: "string",
@@ -59,6 +66,7 @@ export const nailEmployeeSchema: ModelSchema = {
       ],
       props: { placeholder: "请选择用户类型" },
       "x-table": { width: 120 },
+      "x-database": { type: "text", index: true, filterable: true },
     },
     roleIds: {
       title: "用户角色",
@@ -66,13 +74,9 @@ export const nailEmployeeSchema: ModelSchema = {
       required: true,
       order: 50,
       props: { placeholder: "请选择用户角色" },
-      dataSource: {
-        plugin: "$af-dataSource",
-        model: "school-role",
-        label: "roleName",
-        value: "id",
-      },
+      dataSource: { plugin: "$af-dataSource", model: "school-role", label: "roleName", value: "id" },
       "x-table": { width: 180 },
+      "x-database": { relation: "many-to-many", target: "school-role", sortable: false },
     },
     gender: {
       type: "string",
@@ -86,6 +90,7 @@ export const nailEmployeeSchema: ModelSchema = {
       ],
       props: { placeholder: "请选择性别" },
       "x-table": { width: 80 },
+      "x-database": { type: "text", filterable: true },
     },
     phone: {
       type: "string",
@@ -94,6 +99,7 @@ export const nailEmployeeSchema: ModelSchema = {
       order: 70,
       props: { placeholder: "请输入联系电话" },
       "x-table": { width: 140 },
+      "x-database": { type: "text" },
     },
     email: {
       type: "string",
@@ -102,6 +108,7 @@ export const nailEmployeeSchema: ModelSchema = {
       order: 80,
       props: { placeholder: "请输入邮箱" },
       "x-table": { width: 180 },
+      "x-database": { type: "text" },
     },
     grade: {
       type: "string",
@@ -118,6 +125,7 @@ export const nailEmployeeSchema: ModelSchema = {
       ],
       props: { placeholder: "请选择年级" },
       "x-table": { width: 100 },
+      "x-database": { type: "text", filterable: true },
     },
     className: {
       type: "string",
@@ -126,6 +134,7 @@ export const nailEmployeeSchema: ModelSchema = {
       order: 100,
       props: { placeholder: "请输入班级" },
       "x-table": { width: 120 },
+      "x-database": { type: "text" },
     },
     studentNo: {
       type: "string",
@@ -134,6 +143,7 @@ export const nailEmployeeSchema: ModelSchema = {
       order: 110,
       props: { placeholder: "请输入学号" },
       "x-table": { width: 130 },
+      "x-database": { type: "text" },
     },
     department: {
       type: "string",
@@ -142,6 +152,7 @@ export const nailEmployeeSchema: ModelSchema = {
       order: 120,
       props: { placeholder: "请输入所属院系或部门" },
       "x-table": { width: 150 },
+      "x-database": { type: "text" },
     },
     teacherTitle: {
       type: "string",
@@ -156,6 +167,7 @@ export const nailEmployeeSchema: ModelSchema = {
       ],
       props: { placeholder: "请选择教师职称" },
       "x-table": { width: 120 },
+      "x-database": { type: "text" },
     },
     homeroomTeacherId: {
       type: "string",
@@ -170,6 +182,7 @@ export const nailEmployeeSchema: ModelSchema = {
         value: "id",
       },
       "x-table": { width: 110 },
+      "x-database": { relation: "many-to-one", target: "school-user" },
     },
     status: {
       type: "string",
@@ -185,6 +198,7 @@ export const nailEmployeeSchema: ModelSchema = {
       ],
       props: { placeholder: "请选择账号状态" },
       "x-table": { width: 100 },
+      "x-database": { type: "text", nullable: false, default: "active", index: true, filterable: true },
     },
     lastLoginAt: {
       type: "string",
@@ -193,6 +207,7 @@ export const nailEmployeeSchema: ModelSchema = {
       order: 160,
       props: { placeholder: "请选择最后登录时间" },
       "x-table": { visible: false },
+      "x-database": { type: "text" },
     },
     remark: {
       type: "string",
@@ -201,14 +216,9 @@ export const nailEmployeeSchema: ModelSchema = {
       order: 170,
       props: { rows: 3, placeholder: "请输入备注" },
       "x-table": { visible: false },
+      "x-database": { type: "text" },
     },
-    id: {
-      type: "string",
-      title: "ID",
-      display: "none",
-      order: 900,
-      "x-table": { visible: false },
-    },
+    id: { type: "string", title: "ID", display: "none", order: 900, "x-table": { visible: false } },
     createdAt: {
       type: "string",
       title: "创建时间",
@@ -216,39 +226,11 @@ export const nailEmployeeSchema: ModelSchema = {
       order: 910,
       "x-table": { visible: false },
     },
-    generatedAt: {
-      type: "string",
-      title: "生成时间",
-      display: "none",
-      order: 915,
-      "x-table": { visible: false },
-    },
     updatedAt: {
       type: "string",
       title: "更新时间",
       display: "none",
       order: 920,
-      "x-table": { visible: false },
-    },
-    createdBy: {
-      type: "string",
-      title: "创建人",
-      display: "none",
-      order: 930,
-      "x-table": { visible: false },
-    },
-    updatedBy: {
-      type: "string",
-      title: "更新人",
-      display: "none",
-      order: 940,
-      "x-table": { visible: false },
-    },
-    deletedAt: {
-      type: "string",
-      title: "注销时间",
-      display: "none",
-      order: 950,
       "x-table": { visible: false },
     },
   },
