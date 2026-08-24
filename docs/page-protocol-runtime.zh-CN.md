@@ -495,6 +495,56 @@ export default config; // 域内唯一对外导出
 要点：`parentCode` 甚至无需 `filterable`（只用于前端拼树）；真正打到后端的是本来就 filterable 的 `userNo IN [...]`。
 唯一改动是**新增一个字段声明 + 重排 seed 数据**（纯配置/数据，不碰引擎）。
 
+### 7.1 组织独立成 `school-department` 模型（部门 / 班级 / 党团）
+
+`school-user` 的自连接人链只适合「人挂在人下」的场景；一旦需要「随时新建部门/班级」「学部下
+建独立于学生结构的党团组织」「学生同时属于班级和团委/学生会」，人链就要塞占位人节点、且无法表达
+一个学生属于多个组织。因此把「组织结构」独立成 `school-department` 模型（自身也是一棵 `parentCode`
+自连接树，复用 §7 的树表机制），`school-user` 不变。
+
+模型字段（详见 `apps/alien-server/src/schemas/school-department.ts`）：
+
+| 字段                | 语义                     | 存储                                                              |
+| ------------------- | ------------------------ | ----------------------------------------------------------------- |
+| `deptCode`          | 部门编码（树的连接键）   | text，`unique + index + filterable`                               |
+| `deptType`          | 学部/年级/班级/党团组织  | text，`filterable`                                                |
+| `parentCode`        | 上级部门的 `deptCode`    | **普通文本列**，`index + filterable + nullable`（学部为 null 森林根） |
+| `homeroomTeacherId` | 班主任（仅班级）         | `many-to-one → school-user`                                       |
+| `creatorId`         | 创建者（必须是教师）     | `many-to-one → school-user`，`index`                             |
+| `memberIds`         | 学生成员（班级/党团均可）| `many-to-many → school-user`（junction 表）                      |
+
+三条硬约束：
+
+1. **父级选择用 `TreeSelect`（新增组件）。** `parentCode` 的连接键是业务编码 `deptCode` 而非记录
+   `id`，因此**不能挂 `$af-dataSource`**——否则 `field-plan` 会把它推断成指向 `id` 的外键（FK ON，
+   写入被拒）。取数配置改放在字段 `props`（`treeModel / treeIdField / treeLabelField / treeParentField`），
+   由 `TreeSelect` 通过 `records.list` 自取并按 `parentField → idField` 拼树，回填 `deptCode`；
+   组件同时排除「自身及其子树」避免选成自己的父级形成环。`TreeSelect` 落在 `packages/shared` 组件
+   注册表（与 `Select` 同层，自取逻辑复用 `useServiceResolver()`），过 `check:boundaries`。
+2. **创建者/班主任必须是教师。** `creatorId` 必填指向 `school-user`；班主任只对班级有意义。语义由
+   seed 数据与前端取值范围保证（本轮范围只含班主任 + 学生，不含任课老师）。
+3. **学生可属于多个组织。** `memberIds` 是多对多：班级放本班学生，团委/学生会放跨班学生，一个学生
+   可同时出现在自己的班级与若干党团组织的成员集里。
+
+树导航布局（`schoolDepartmentLayout`）与 §7 同构，但多传一个 `tree` 组件 prop：
+
+```jsonc
+{ "component": "tree", "props": {
+  "model": "school-department", "idField": "deptCode",
+  "parentField": "parentCode", "labelField": "deptName",
+  "targetField": "deptCode", "publishTo": "main",
+  "hideLeaf": false          // 班级/党团是叶子但必须可点选；缺省 true 用于隐藏 school-user 树的学生叶子
+}}
+```
+
+> `tree` 组件原逻辑丢弃无子节点的叶子（隐藏用户树里的学生）。部门树里班级/党团本身就是叶子，
+> 必须保留 → 新增 `hideLeaf` 开关（缺省 `true` 保持用户树行为，部门布局显式传 `false`）。
+
+数据链路整套通过 `scripts/seed.js` 灌入（`school-department` 组排在 `school-user` 之后满足 FK 依赖），
+**后端引擎零改动**；本轮唯一的应用代码改动是新增模型 schema（schema-as-code，进 `builtinSchemas`）、
+新增 `TreeSelect` 组件、以及 `tree` 组件的 `hideLeaf` 开关。
+
+
 `tree` 组件的 `props` 约定：
 
 ```ts
@@ -507,6 +557,7 @@ interface TreeProps {
   publishTo: string; // 目标数据域 id，如 "main"
   targetField: string; // 用哪个字段 IN 过滤表格，如 "userNo"
   includeSelf?: boolean; // 子树是否含节点自身
+  hideLeaf?: boolean; // 是否丢弃无子节点的叶子（缺省 true：隐藏用户树的学生叶子；部门树传 false）
   defaultSelect?: "root" | "first" | "none";
 }
 ```

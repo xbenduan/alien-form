@@ -14,6 +14,9 @@ export function TreePanel({ ctx, props }: { ctx: PageContext; props: Record<stri
   const labelField = String(props.labelField ?? "displayName");
   const targetField = String(props.targetField ?? idField);
   const includeSelf = props.includeSelf !== false;
+  // hideLeaf：是否丢弃无子节点的叶子。school-user 树里叶子是学生（隐藏）→ 缺省 true；
+  // 部门树里班级/党团组织是叶子但必须可点选 → 布局显式传 hideLeaf:false 保留。
+  const hideLeaf = props.hideLeaf !== false;
   const treeQuery = useRecordList({
     model,
     filters: {},
@@ -39,7 +42,7 @@ export function TreePanel({ ctx, props }: { ctx: PageContext; props: Record<stri
         const id = String(record[idField]);
         const children = build(id);
         const hasChildren = (byParent.get(id) ?? []).length > 0;
-        if (!hasChildren) return [];
+        if (hideLeaf && !hasChildren) return [];
         return [
           {
             key: id,
@@ -53,7 +56,7 @@ export function TreePanel({ ctx, props }: { ctx: PageContext; props: Record<stri
       ...(byParent.get(id) ?? []).flatMap((record) => collect(String(record[idField]))),
     ];
     return { nodes: build(""), descendants: collect };
-  }, [idField, parentField, labelField, records, includeSelf]);
+  }, [idField, parentField, labelField, records, includeSelf, hideLeaf]);
 
   const filteredNodes = useMemo(() => {
     const value = keyword.trim().toLowerCase();

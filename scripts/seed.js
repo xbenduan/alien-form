@@ -323,6 +323,122 @@ function buildUniversityUsers() {
 
 users.push(...buildUniversityUsers());
 
+/**
+ * 组织/部门树（school-department）：把「组织结构」从 school-user 的人链里独立出来。
+ *
+ * 层级：学校根节点【不落库、不展示】→ 学部（森林根，parentCode=null）→ 年级 → 班级；
+ * 学部下再挂独立于学生结构的党团组织（团委 / 学生会），它们不是班级但同样能容纳学生成员。
+ *
+ * 约束落地（本次范围：只含班主任 + 学生，不含任课老师）：
+ *  - 所有部门 creatorId 指向教师（org-fac-XX 是 userType=teacher 的组织节点）→「创建者必须是老师」。
+ *  - 班级 homeroomTeacherId 指向教师（org-class-XX-YY-ZZ）→ 学生「绑班主任」由班级承载。
+ *  - 班级 memberIds = 本班学生；团委 / 学生会 memberIds = 跨班学生 → 学生可隶属非班级部门。
+ *  - parentCode 存上级部门的 deptCode（文本自连接键，非外键）→ 前端 TreeSelect 选父级。
+ * 引用的 creatorId / homeroomTeacherId / memberIds 均为 school-user 记录的 id 值。
+ */
+function buildDepartments() {
+  const facultyNames = ["理工学部", "经济管理学部", "人文学部", "外国语学部", "艺术学部"];
+  const records = [];
+
+  for (let f = 1; f <= facultyNames.length; f += 1) {
+    const fac = String(f).padStart(2, "0");
+    const facultyCode = `DEPT-FAC-${fac}`;
+    const creatorId = `org-fac-${fac}`; // 学部组织节点（教师）作为创建者
+
+    // 学部：森林根，parentCode = null（学校根节点不落库、不展示）
+    records.push({
+      id: `dept-fac-${fac}`,
+      deptCode: facultyCode,
+      deptName: facultyNames[f - 1],
+      deptType: "faculty",
+      parentCode: null,
+      creatorId,
+      sortOrder: f * 10,
+      enabled: true,
+      remark: "学部（组织树森林根，学校根节点不展示）。",
+    });
+
+    for (let g = 1; g <= 4; g += 1) {
+      const grade = String(g).padStart(2, "0");
+      const gradeCode = `DEPT-GRADE-${fac}-${grade}`;
+      records.push({
+        id: `dept-grade-${fac}-${grade}`,
+        deptCode: gradeCode,
+        deptName: `${2021 + g}级`,
+        deptType: "grade",
+        parentCode: facultyCode,
+        creatorId,
+        sortOrder: g,
+        enabled: true,
+        remark: "年级层级节点。",
+      });
+
+      for (let k = 1; k <= 2; k += 1) {
+        const cls = String(k).padStart(2, "0");
+        const classCode = `DEPT-CLASS-${fac}-${grade}-${cls}`;
+        const classMembers = [];
+        for (let s = 1; s <= 5; s += 1) {
+          classMembers.push(`student-s-${fac}-${grade}-${cls}-${String(s).padStart(2, "0")}`);
+        }
+        records.push({
+          id: `dept-class-${fac}-${grade}-${cls}`,
+          deptCode: classCode,
+          deptName: `${2021 + g}级${k}班`,
+          deptType: "class",
+          parentCode: gradeCode,
+          // 班主任 = 班级组织节点（教师）；创建者同为教师
+          homeroomTeacherId: `org-class-${fac}-${grade}-${cls}`,
+          creatorId,
+          memberIds: classMembers,
+          sortOrder: k,
+          enabled: true,
+          remark: "班级：成员为本班学生，绑定班主任。",
+        });
+      }
+    }
+
+    // 党团组织：直接挂在学部下（选学部为父级），独立于年级/班级结构。
+    // 成员为跨班学生（取该学部每个班的第 1 名学生），演示学生隶属非班级部门。
+    const crossClassMembers = [];
+    for (let g = 1; g <= 4; g += 1) {
+      const grade = String(g).padStart(2, "0");
+      for (let k = 1; k <= 2; k += 1) {
+        const cls = String(k).padStart(2, "0");
+        crossClassMembers.push(`student-s-${fac}-${grade}-${cls}-01`);
+      }
+    }
+    records.push({
+      id: `dept-league-${fac}`,
+      deptCode: `DEPT-PL-${fac}-LEAGUE`,
+      deptName: `${facultyNames[f - 1]}团委`,
+      deptType: "party-league",
+      parentCode: facultyCode,
+      creatorId,
+      memberIds: crossClassMembers,
+      sortOrder: 91,
+      enabled: true,
+      remark: "党团组织：非班级部门，成员为跨班学生。",
+    });
+    records.push({
+      id: `dept-union-${fac}`,
+      deptCode: `DEPT-PL-${fac}-UNION`,
+      deptName: `${facultyNames[f - 1]}学生会`,
+      deptType: "party-league",
+      parentCode: facultyCode,
+      creatorId,
+      memberIds: crossClassMembers.slice(0, 4),
+      sortOrder: 92,
+      enabled: true,
+      remark: "党团组织：非班级部门，成员为跨班学生。",
+    });
+  }
+
+  return records;
+}
+
+const departments = buildDepartments();
+
+
 const courses = [
   {
     id: "course-basketball",
@@ -512,10 +628,12 @@ const courses = [
   },
 ];
 
-// 灌入顺序即依赖顺序：role/user 先于 course（course 引用 teacherId）。
+// 灌入顺序即依赖顺序：role/user 先于 department（引用 user 的班主任/创建者/成员）
+// 与 course（引用 user 的授课教师）。
 const groups = [
   { model: "school-role", records: roles },
   { model: "school-user", records: users },
+  { model: "school-department", records: departments },
   { model: "school-course", records: courses },
 ];
 

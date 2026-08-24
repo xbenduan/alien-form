@@ -153,6 +153,34 @@ const registry: ComponentRegistry = {
     },
   },
 
+  TreeSelect: {
+    alias: "树形单选",
+    component: lazy(() => import("./TreeSelect")),
+    fieldType: "string",
+    kind: "leaf",
+    description:
+      "树形单选：从一个模型按「父字段 → 自身字段」拼成层级树供选择，适合选自连接结构的上级节点（如部门的上级部门）。取数配置放在 props：treeModel（取数模型）、treeIdField（节点标识，即回填值）、treeLabelField（展示字段）、treeParentField（上级标识，缺省 parentCode）。自连接连接键为业务编码而非 id，因此不走 $af-dataSource，避免被推断成外键。",
+    schema: {
+      type: "string",
+      title: "树形单选",
+      description: undefined,
+      default: undefined,
+      component: "TreeSelect",
+      props: {
+        placeholder: "请选择",
+        treeModel: "",
+        treeIdField: "id",
+        treeLabelField: "id",
+        treeParentField: "parentCode",
+      },
+      required: false,
+      disabled: false,
+      display: "visible",
+      "x-validate": "",
+      "x-table": { width: 160, visible: true },
+    },
+  },
+
   Switch: {
     alias: "开关",
     component: lazy(() => import("./Switch")),
