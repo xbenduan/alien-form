@@ -123,13 +123,23 @@ export const schoolUserSchema: ModelSchema = {
       "x-table": { width: 100 },
       "x-database": { type: "text", filterable: true },
     },
-    parentCode: {
+    deptCode: {
       type: "string",
-      title: "上级节点编号",
-      component: "Input",
+      title: "所属部门",
+      component: "TreeSelect",
       order: 95,
-      props: { placeholder: "请输入上级用户编号" },
-      "x-table": { visible: false },
+      props: {
+        placeholder: "请选择所属部门（学部 / 年级 / 班级 / 党团组织）",
+        // 通用组织树来源：从 school-department 按 parentCode 拼树，回填其 deptCode。
+        // 换成公司场景只需把 treeModel 指向 company-department，其余不变。
+        treeModel: "school-department",
+        treeIdField: "deptCode",
+        treeLabelField: "deptName",
+        treeParentField: "parentCode",
+      },
+      "x-table": { width: 160 },
+      // 标量文本列（非外键）：连接键是部门业务编码 deptCode，须 filterable 才能被
+      // 组织树的 deptCode IN [...] 过滤命中（多对多 junction 不可过滤，故不能用成员集反向表达）。
       "x-database": { type: "text", index: true, filterable: true, nullable: true },
     },
     className: {
@@ -276,6 +286,7 @@ export const schoolUserSchema: ModelSchema = {
         "phone",
         "email",
         "grade",
+        "deptCode",
         "className",
         "studentNo",
         "department",

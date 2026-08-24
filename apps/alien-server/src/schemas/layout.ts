@@ -30,6 +30,11 @@ export const defaultLayout = {
   ],
 } as const;
 
+/**
+ * 用户树表布局：左侧组织树来源于 school-department（部门只管自己的层级），
+ * 选中部门后按 school-user.deptCode IN [子树所有 deptCode] 过滤用户表。
+ * 这是「组织树驱动成员表」的通用形态——公司/员工等场景把 model/字段换掉即可复用。
+ */
 export const schoolUserLayout = {
   plugin: "$af-ui",
   component: "treelayout",
@@ -39,14 +44,16 @@ export const schoolUserLayout = {
         plugin: "$af-ui",
         component: "tree",
         props: {
-          model: "school-user",
-          idField: "userNo",
+          // 树取自部门模型，过滤打到用户模型的 deptCode 标量列。
+          model: "school-department",
+          idField: "deptCode",
           parentField: "parentCode",
-          labelField: "displayName",
+          labelField: "deptName",
           searchable: true,
           publishTo: "main",
-          targetField: "userNo",
+          targetField: "deptCode",
           includeSelf: true,
+          hideLeaf: false,
           defaultSelect: "root",
         },
       },

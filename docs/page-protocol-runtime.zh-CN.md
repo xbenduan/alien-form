@@ -471,36 +471,37 @@ export default config; // 域内唯一对外导出
 
 ## 7. 树表数据源（后端零改动）
 
-树数据源极简：**在 `school-user` 增加一个 `parentCode` 字段**，与已有 `userNo`（`unique + index + filterable`）自连成层级链。
+「组织树驱动成员表」是一个**通用**形态：一个 `parentCode` 自连接的**组织模型**提供层级树，
+另一个**成员模型**用一个标量 `filterable` 列指向所属组织；选中树节点时把该节点子树内所有组织编码
+注入锁定过滤 `filters: { <deptField>: [...] }`，后端对数组值天然走 `IN`。学校（部门/用户）、
+公司（部门/员工）等场景只是把 model 与字段名换掉，`tree` 组件与过滤引擎完全复用。
 
-层级示例（五级）：
-
-```text
-校长(学校层, parentCode=null)
-  └─ 学院领导(parentCode=校长userNo)
-       └─ 年级主任(parentCode=学院领导userNo)
-            └─ 班主任(parentCode=年级主任userNo)
-                 └─ 学生(parentCode=班主任userNo)
-```
+本仓落地：组织模型是 `school-department`（见 §7.1），成员模型是 `school-user`，连接字段是
+`school-user.deptCode`（标量文本，`index + filterable`）。
 
 数据流：
 
-1. `$af-ui` 的 `tree` 组件拉取节点数据（大 pageSize 或仅取 `userNo / parentCode / displayName`），
-   按 `parentCode → userNo` 在前端拼成树；套 antd `Tree` + 搜索框（按 label 过滤，命中自动展开）。
-2. 选中节点 → 前端遍历算出该节点**子树内所有 `userNo`** 集合。
-3. 向数据域注入锁定过滤 `filters: { userNo: [...] }`。
+1. `$af-ui` 的 `tree` 组件从**组织模型**拉取节点（大 pageSize），按 `parentCode → deptCode`
+   在前端拼成树；套 antd `Tree` + 搜索框（按 label 过滤，命中自动展开）。
+2. 选中节点 → 前端遍历算出该节点**子树内所有 `deptCode`** 集合。
+3. 向数据域注入锁定过滤 `filters: { deptCode: [...] }`（`targetField` 指定打到成员模型的哪列）。
 4. 后端 `POST /api/records/list` 对**数组值天然走 `IN`**（`record-repo.ts` 现有逻辑），
    **过滤引擎 / list 接口 / DDL 全部零改**。
 
-要点：`parentCode` 甚至无需 `filterable`（只用于前端拼树）；真正打到后端的是本来就 filterable 的 `userNo IN [...]`。
-唯一改动是**新增一个字段声明 + 重排 seed 数据**（纯配置/数据，不碰引擎）。
+要点：连接键必须是成员模型上的**标量 `filterable` 列**（多对多 junction 不可过滤，故不能用
+「部门持有成员集」反向表达）；真正打到后端的是 `deptCode IN [...]`。
 
 ### 7.1 组织独立成 `school-department` 模型（部门 / 班级 / 党团）
 
 `school-user` 的自连接人链只适合「人挂在人下」的场景；一旦需要「随时新建部门/班级」「学部下
-建独立于学生结构的党团组织」「学生同时属于班级和团委/学生会」，人链就要塞占位人节点、且无法表达
-一个学生属于多个组织。因此把「组织结构」独立成 `school-department` 模型（自身也是一棵 `parentCode`
-自连接树，复用 §7 的树表机制），`school-user` 不变。
+建独立于学生结构的党团组织」「学生隶属团委/学生会等非班级部门」，人链就要塞占位人节点。
+因此把「组织结构」独立成 `school-department` 模型（自身是一棵 `parentCode` 自连接树），
+`school-user` 通过标量 `deptCode` 单向指向所属部门。
+
+**单向隶属（本次调整的核心）**：部门只维护自己的层级与创建者/班主任，**不持有成员集**——
+「谁属于这个部门」完全由 `school-user.deptCode` 反向指向承载。这样既避免双向维护，也让组织树
+能通过 `user.deptCode IN [...]` 直接过滤成员；反过来若把成员塞进部门的多对多字段，那张 junction
+表根本不可过滤（见 §7 要点），组织树就驱动不了成员表。
 
 模型字段（详见 `apps/alien-server/src/schemas/school-department.ts`）：
 
@@ -511,53 +512,60 @@ export default config; // 域内唯一对外导出
 | `parentCode`        | 上级部门的 `deptCode`    | **普通文本列**，`index + filterable + nullable`（学部为 null 森林根） |
 | `homeroomTeacherId` | 班主任（仅班级）         | `many-to-one → school-user`                                       |
 | `creatorId`         | 创建者（必须是教师）     | `many-to-one → school-user`，`index`                             |
-| `memberIds`         | 学生成员（班级/党团均可）| `many-to-many → school-user`（junction 表）                      |
+
+`school-user` 侧新增字段：
+
+| 字段       | 语义         | 存储                                                                                    |
+| ---------- | ------------ | --------------------------------------------------------------------------------------- |
+| `deptCode` | 所属部门编码 | **标量文本列**，`index + filterable + nullable`，`TreeSelect` 从 `school-department` 选 |
+
+> 注：原 `school-user.parentCode` 自连接人链已删除；用户不再挂在用户下，改为挂在部门下。
 
 三条硬约束：
 
-1. **父级选择用 `TreeSelect`（新增组件）。** `parentCode` 的连接键是业务编码 `deptCode` 而非记录
-   `id`，因此**不能挂 `$af-dataSource`**——否则 `field-plan` 会把它推断成指向 `id` 的外键（FK ON，
+1. **父级 / 所属部门都用 `TreeSelect`（组件）。** 连接键是业务编码 `deptCode` 而非记录 `id`，
+   因此**不能挂 `$af-dataSource`**——否则 `field-plan` 会把它推断成指向 `id` 的外键（FK ON，
    写入被拒）。取数配置改放在字段 `props`（`treeModel / treeIdField / treeLabelField / treeParentField`），
    由 `TreeSelect` 通过 `records.list` 自取并按 `parentField → idField` 拼树，回填 `deptCode`；
-   组件同时排除「自身及其子树」避免选成自己的父级形成环。`TreeSelect` 落在 `packages/shared` 组件
+   部门自身选父级时还会排除「自身及其子树」避免成环。`TreeSelect` 落在 `packages/shared` 组件
    注册表（与 `Select` 同层，自取逻辑复用 `useServiceResolver()`），过 `check:boundaries`。
 2. **创建者/班主任必须是教师。** `creatorId` 必填指向 `school-user`；班主任只对班级有意义。语义由
    seed 数据与前端取值范围保证（本轮范围只含班主任 + 学生，不含任课老师）。
-3. **学生可属于多个组织。** `memberIds` 是多对多：班级放本班学生，团委/学生会放跨班学生，一个学生
-   可同时出现在自己的班级与若干党团组织的成员集里。
+3. **学生可属于非班级部门。** 学生的 `deptCode` 可直接指向团委/学生会等党团组织（seed 里
+   `user-student-4/5` 即演示），无需部门登记成员。
 
-树导航布局（`schoolDepartmentLayout`）与 §7 同构，但多传一个 `tree` 组件 prop：
+用户树表布局（`schoolUserLayout`）：左侧 `tree` 取自部门模型，选中后过滤用户表：
 
 ```jsonc
 { "component": "tree", "props": {
   "model": "school-department", "idField": "deptCode",
   "parentField": "parentCode", "labelField": "deptName",
   "targetField": "deptCode", "publishTo": "main",
-  "hideLeaf": false          // 班级/党团是叶子但必须可点选；缺省 true 用于隐藏 school-user 树的学生叶子
+  "hideLeaf": false          // 班级/党团是叶子但必须可点选；缺省 true 用于隐藏无子节点的叶子
 }}
 ```
 
-> `tree` 组件原逻辑丢弃无子节点的叶子（隐藏用户树里的学生）。部门树里班级/党团本身就是叶子，
-> 必须保留 → 新增 `hideLeaf` 开关（缺省 `true` 保持用户树行为，部门布局显式传 `false`）。
+> `tree` 组件原逻辑丢弃无子节点的叶子。部门树里班级/党团本身就是叶子，必须保留 →
+> `hideLeaf` 开关（缺省 `true`，部门驱动的树布局显式传 `false`）。
 
-数据链路整套通过 `scripts/seed.js` 灌入（`school-department` 组排在 `school-user` 之后满足 FK 依赖），
-**后端引擎零改动**；本轮唯一的应用代码改动是新增模型 schema（schema-as-code，进 `builtinSchemas`）、
-新增 `TreeSelect` 组件、以及 `tree` 组件的 `hideLeaf` 开关。
+数据链路整套通过 `scripts/seed.js` 灌入（`school-user` 组的 `deptCode` 指向 `school-department`
+组的 `deptCode`，纯文本引用不构成 FK 顺序约束），**后端引擎零改动**；本轮应用代码改动为：
+新增/调整模型 schema（schema-as-code）、`TreeSelect` 组件、`tree` 组件的 `hideLeaf` 开关。
 
 
 `tree` 组件的 `props` 约定：
 
 ```ts
 interface TreeProps {
-  model?: string; // 缺省 = 页面主模型
-  idField: string; // 节点自身标识，如 "userNo"（已 filterable）
+  model?: string; // 缺省 = 页面主模型；组织树填组织模型（如 "school-department"）
+  idField: string; // 节点自身标识（组织编码），如 "deptCode"
   parentField: string; // 上级标识，如 "parentCode"
-  labelField: string; // 展示字段，如 "displayName"
+  labelField: string; // 展示字段，如 "deptName"
   searchable?: boolean; // antd Tree + 搜索框
   publishTo: string; // 目标数据域 id，如 "main"
-  targetField: string; // 用哪个字段 IN 过滤表格，如 "userNo"
+  targetField: string; // 用哪个字段 IN 过滤成员表，如 "deptCode"
   includeSelf?: boolean; // 子树是否含节点自身
-  hideLeaf?: boolean; // 是否丢弃无子节点的叶子（缺省 true：隐藏用户树的学生叶子；部门树传 false）
+  hideLeaf?: boolean; // 是否丢弃无子节点的叶子（缺省 true；组织树传 false 保留班级/党团叶子）
   defaultSelect?: "root" | "first" | "none";
 }
 ```

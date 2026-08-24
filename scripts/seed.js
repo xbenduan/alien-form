@@ -106,7 +106,7 @@ const users = [
     gender: "male",
     phone: "13800001001",
     email: "zhangwei@school.edu.cn",
-    parentCode: "FAC-01",
+    deptCode: "DEPT-FAC-01",
     department: "体育教研组",
     teacherTitle: "lecturer",
     status: "active",
@@ -124,7 +124,7 @@ const users = [
     gender: "female",
     phone: "13800001002",
     email: "liuna@school.edu.cn",
-    parentCode: "GRADE-01-01",
+    deptCode: "DEPT-GRADE-01-01",
     department: "体育教研组",
     teacherTitle: "associate-professor",
     status: "active",
@@ -142,7 +142,7 @@ const users = [
     gender: "male",
     phone: "13800001003",
     email: "wangjun@school.edu.cn",
-    parentCode: "GRADE-01-02",
+    deptCode: "DEPT-GRADE-01-02",
     department: "体育教研组",
     teacherTitle: "professor",
     status: "active",
@@ -160,7 +160,7 @@ const users = [
     gender: "female",
     phone: "13900002001",
     email: "chenxi@student.school.edu.cn",
-    parentCode: "CLASS-01-01-01",
+    deptCode: "DEPT-CLASS-01-01-01",
     grade: "grade-6",
     className: "六年级一班",
     studentNo: "20260101",
@@ -180,7 +180,7 @@ const users = [
     gender: "male",
     phone: "13900002002",
     email: "liyang@student.school.edu.cn",
-    parentCode: "CLASS-01-01-01",
+    deptCode: "DEPT-CLASS-01-01-01",
     grade: "grade-6",
     className: "六年级一班",
     studentNo: "20260102",
@@ -200,7 +200,7 @@ const users = [
     gender: "female",
     phone: "13900002003",
     email: "zhaomeng@student.school.edu.cn",
-    parentCode: "CLASS-01-02-02",
+    deptCode: "DEPT-CLASS-01-02-02",
     grade: "grade-5",
     className: "五年级二班",
     studentNo: "20260103",
@@ -208,6 +208,47 @@ const users = [
     status: "active",
     lastLoginAt: "2026-08-18",
     remark: "",
+  },
+  {
+    id: "user-student-4",
+    userNo: "S20260201",
+    username: "sunlei",
+    displayName: "孙磊",
+    userType: "student",
+    roleIds: ["role-student"],
+    passwordHash: demoPasswordHash,
+    gender: "male",
+    phone: "13900002011",
+    email: "sunlei@student.school.edu.cn",
+    // 学生直接隶属「非班级部门」（团委）：单向 deptCode 指向即可，部门表无需登记成员。
+    deptCode: "DEPT-PL-01-LEAGUE",
+    grade: "grade-6",
+    className: "六年级一班",
+    studentNo: "20260201",
+    homeroomTeacherId: "user-teacher-2",
+    status: "active",
+    lastLoginAt: "2026-08-20",
+    remark: "隶属理工学部团委（演示学生属于非班级部门）。",
+  },
+  {
+    id: "user-student-5",
+    userNo: "S20260202",
+    username: "zhouqi",
+    displayName: "周琪",
+    userType: "student",
+    roleIds: ["role-student"],
+    passwordHash: demoPasswordHash,
+    gender: "female",
+    phone: "13900002012",
+    email: "zhouqi@student.school.edu.cn",
+    deptCode: "DEPT-PL-01-UNION",
+    grade: "grade-6",
+    className: "六年级一班",
+    studentNo: "20260202",
+    homeroomTeacherId: "user-teacher-2",
+    status: "active",
+    lastLoginAt: "2026-08-19",
+    remark: "隶属理工学部学生会（演示学生属于非班级部门）。",
   },
   {
     id: "user-admin-1",
@@ -220,7 +261,7 @@ const users = [
     gender: "female",
     phone: "13800001010",
     email: "jiaowu@school.edu.cn",
-    parentCode: "FAC-01",
+    deptCode: "DEPT-FAC-01",
     department: "教务处",
     status: "active",
     lastLoginAt: "2026-08-20",
@@ -245,8 +286,8 @@ function buildUniversityUsers() {
       gender: facultyIndex % 2 ? "male" : "female",
       department: faculties[facultyIndex - 1],
       status: "active",
-      parentCode: null,
-      remark: "组织层级节点。",
+      deptCode: `DEPT-${facultyCode}`,
+      remark: "学部负责人。",
     });
 
     for (let gradeIndex = 1; gradeIndex <= 4; gradeIndex += 1) {
@@ -265,8 +306,8 @@ function buildUniversityUsers() {
         department: faculties[facultyIndex - 1],
         grade: `grade-${gradeIndex}`,
         status: "active",
-        parentCode: facultyCode,
-        remark: "年级层级节点。",
+        deptCode: `DEPT-${gradeCode}`,
+        remark: "年级负责人。",
       });
 
       for (let classIndex = 1; classIndex <= 2; classIndex += 1) {
@@ -286,8 +327,8 @@ function buildUniversityUsers() {
           grade: `grade-${gradeIndex}`,
           className: `${2021 + gradeIndex}级${classIndex}班`,
           status: "active",
-          parentCode: gradeCode,
-          remark: "班级层级节点。",
+          deptCode: `DEPT-${classCode}`,
+          remark: "班主任。",
         });
 
         for (let studentIndex = 1; studentIndex <= 5; studentIndex += 1) {
@@ -310,7 +351,7 @@ function buildUniversityUsers() {
             studentNo: `${facultyIndex}${gradeIndex}${classIndex}${suffix}`,
             department: faculties[facultyIndex - 1],
             status: "active",
-            parentCode: classCode,
+            deptCode: `DEPT-${classCode}`,
             remark: "",
           });
         }
@@ -327,14 +368,16 @@ users.push(...buildUniversityUsers());
  * 组织/部门树（school-department）：把「组织结构」从 school-user 的人链里独立出来。
  *
  * 层级：学校根节点【不落库、不展示】→ 学部（森林根，parentCode=null）→ 年级 → 班级；
- * 学部下再挂独立于学生结构的党团组织（团委 / 学生会），它们不是班级但同样能容纳学生成员。
+ * 学部下再挂独立于学生结构的党团组织（团委 / 学生会），它们不是班级。
+ *
+ * 单向隶属：部门只维护自己的层级（parentCode）与创建者/班主任，**不持有成员集**。
+ * 「谁属于这个部门」完全由 school-user.deptCode 反向指向承载，部门表不冗余存成员。
  *
  * 约束落地（本次范围：只含班主任 + 学生，不含任课老师）：
  *  - 所有部门 creatorId 指向教师（org-fac-XX 是 userType=teacher 的组织节点）→「创建者必须是老师」。
  *  - 班级 homeroomTeacherId 指向教师（org-class-XX-YY-ZZ）→ 学生「绑班主任」由班级承载。
- *  - 班级 memberIds = 本班学生；团委 / 学生会 memberIds = 跨班学生 → 学生可隶属非班级部门。
  *  - parentCode 存上级部门的 deptCode（文本自连接键，非外键）→ 前端 TreeSelect 选父级。
- * 引用的 creatorId / homeroomTeacherId / memberIds 均为 school-user 记录的 id 值。
+ * 引用的 creatorId / homeroomTeacherId 均为 school-user 记录的 id 值。
  */
 function buildDepartments() {
   const facultyNames = ["理工学部", "经济管理学部", "人文学部", "外国语学部", "艺术学部"];
@@ -376,10 +419,6 @@ function buildDepartments() {
       for (let k = 1; k <= 2; k += 1) {
         const cls = String(k).padStart(2, "0");
         const classCode = `DEPT-CLASS-${fac}-${grade}-${cls}`;
-        const classMembers = [];
-        for (let s = 1; s <= 5; s += 1) {
-          classMembers.push(`student-s-${fac}-${grade}-${cls}-${String(s).padStart(2, "0")}`);
-        }
         records.push({
           id: `dept-class-${fac}-${grade}-${cls}`,
           deptCode: classCode,
@@ -389,24 +428,15 @@ function buildDepartments() {
           // 班主任 = 班级组织节点（教师）；创建者同为教师
           homeroomTeacherId: `org-class-${fac}-${grade}-${cls}`,
           creatorId,
-          memberIds: classMembers,
           sortOrder: k,
           enabled: true,
-          remark: "班级：成员为本班学生，绑定班主任。",
+          remark: "班级：绑定班主任，学生通过自身 deptCode 隶属本班。",
         });
       }
     }
 
     // 党团组织：直接挂在学部下（选学部为父级），独立于年级/班级结构。
-    // 成员为跨班学生（取该学部每个班的第 1 名学生），演示学生隶属非班级部门。
-    const crossClassMembers = [];
-    for (let g = 1; g <= 4; g += 1) {
-      const grade = String(g).padStart(2, "0");
-      for (let k = 1; k <= 2; k += 1) {
-        const cls = String(k).padStart(2, "0");
-        crossClassMembers.push(`student-s-${fac}-${grade}-${cls}-01`);
-      }
-    }
+    // 成员同样由学生自身 deptCode 指向这里承载（见 buildUniversityUsers 的演示学生）。
     records.push({
       id: `dept-league-${fac}`,
       deptCode: `DEPT-PL-${fac}-LEAGUE`,
@@ -414,10 +444,9 @@ function buildDepartments() {
       deptType: "party-league",
       parentCode: facultyCode,
       creatorId,
-      memberIds: crossClassMembers,
       sortOrder: 91,
       enabled: true,
-      remark: "党团组织：非班级部门，成员为跨班学生。",
+      remark: "党团组织：非班级部门，可容纳跨班学生。",
     });
     records.push({
       id: `dept-union-${fac}`,
@@ -426,10 +455,9 @@ function buildDepartments() {
       deptType: "party-league",
       parentCode: facultyCode,
       creatorId,
-      memberIds: crossClassMembers.slice(0, 4),
       sortOrder: 92,
       enabled: true,
-      remark: "党团组织：非班级部门，成员为跨班学生。",
+      remark: "党团组织：非班级部门，可容纳跨班学生。",
     });
   }
 
