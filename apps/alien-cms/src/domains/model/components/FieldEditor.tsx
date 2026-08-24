@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "re
 import { Form, Input, Select, Tooltip } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import { getDefaultFieldSchema, getRegistryEntry } from "@alien-form/shared";
-import type { ModelFieldSchema } from "../../../services";
+import type { ModelFieldSchema } from "../../../runtime";
 import type { FieldDraft } from "../types";
 import { FIELD_COMPONENT_OPTIONS, componentDescription } from "../utils";
 import styles from "./index.module.css";

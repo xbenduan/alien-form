@@ -17,6 +17,21 @@ export const i18nPlugin: AlienPlugin = {
   },
 };
 
+export const CONSTANT_PLUGIN = "$af-constant";
+
+interface ConstantMarker extends PluginMarker {
+  key: string;
+}
+
+export const constantPlugin: AlienPlugin = {
+  name: CONSTANT_PLUGIN,
+  order: 5,
+  resolve: (marker, ctx) => {
+    const key = (marker as ConstantMarker).key;
+    return ctx.constant(key);
+  },
+};
+
 // ─── $af-dataSource：外键选项加载（handler 预取 / props 组件自取双方案）────────
 
 export const DATA_SOURCE_PLUGIN = "$af-dataSource";
@@ -26,6 +41,7 @@ const REMOTE_SEARCH_THRESHOLD = 50;
 
 interface DataSourceMarker extends PluginMarker {
   model: string;
+  service?: string;
   value?: string;
   label?: string;
   /** handler：编译期预取选项写入 dataSource；props：注入 props.service 由组件自取。默认 props。 */
@@ -48,8 +64,11 @@ async function prefetchOptions(marker: PluginMarker, ctx: PrefetchCtx): Promise<
   const key = cacheKey(ds.model, valueKey, labelKey);
   if (ctx.store[key]) return;
 
-  const promise = ctx
-    .request({ model: ds.model, pagination: { current: 1, pageSize: 1000 } })
+  const service = ctx.service(ds.service ?? "records.list");
+  if (!service) throw new Error(`[alien-form] service "${ds.service ?? "records.list"}" 未注册`);
+  const promise = service
+    .send({ model: ds.model, pagination: { current: 1, pageSize: 1000 } })
+    .then((result) => result as { list: Record<string, unknown>[] })
     .then(({ list }) =>
       list.map<DataSourceItem>((item) => ({
         value: item[valueKey],
@@ -103,4 +122,4 @@ export const dataSourcePlugin: AlienPlugin = {
   },
 };
 
-export const builtinPlugins: AlienPlugin[] = [i18nPlugin, dataSourcePlugin];
+export const builtinPlugins: AlienPlugin[] = [constantPlugin, i18nPlugin, dataSourcePlugin];

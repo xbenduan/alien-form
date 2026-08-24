@@ -3,8 +3,10 @@ export { defaultDescriptors, matchDescriptor } from "./descriptors";
 export {
   builtinPlugins,
   dataSourcePlugin,
+  constantPlugin,
   i18nPlugin,
   DATA_SOURCE_PLUGIN,
+  CONSTANT_PLUGIN,
   I18N_PLUGIN,
 } from "./plugins";
 export { projectColumns, projectField, projectFilter, projectForm } from "./project";
@@ -14,6 +16,7 @@ export {
   createFieldDraft,
   createGroupDraft,
   createIdFactory,
+  DEFAULT_LAYOUT,
   draftToSchema,
   schemaToDraft,
 } from "./authoring";
@@ -36,8 +39,10 @@ export { collectMarkers, deletePath, getPath, setPath } from "./utils/deep-path"
 // types
 export type {
   AlienPlugin,
+  AfUiNode,
   Compiled,
   CompileOptions,
+  ConstantResolver,
   DescriptorCtx,
   FieldDescriptor,
   FieldDraft,
@@ -56,6 +61,8 @@ export type {
   RequestFn,
   RequestInput,
   RequestResult,
+  ServiceClient,
+  ServiceResolver,
   ResolveCtx,
   Scene,
   SchemaCompilerContext,

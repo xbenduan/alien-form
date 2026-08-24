@@ -4,7 +4,6 @@ import type {
   ModelSchema,
   PluginMarker,
   PrefetchCtx,
-  RequestFn,
   ResolveCtx,
   Scene,
 } from "./types";
@@ -20,7 +19,8 @@ function pluginMap(plugins: AlienPlugin[]): Map<string, AlienPlugin> {
 interface SharedResolveState {
   locale: Locale;
   resolveData: boolean;
-  request: RequestFn;
+  service: PrefetchCtx["service"];
+  constant: PrefetchCtx["constant"];
   store: Record<string, unknown>;
 }
 
@@ -34,7 +34,7 @@ export async function prefetch(
   ctx: PrefetchCtx,
 ): Promise<void> {
   const map = pluginMap(plugins);
-  const markers = collectMarkers(schema);
+  const markers = collectMarkers(schema).filter(({ marker }) => marker.plugin !== "$af-ui");
   await Promise.all(
     markers.map(({ marker }) => {
       const plugin = map.get(marker.plugin);
@@ -57,9 +57,11 @@ export async function resolveScene(
   shared: SharedResolveState,
 ): Promise<ModelSchema> {
   const map = pluginMap(plugins);
-  const markers = collectMarkers(sceneSchema).sort(
-    (a, b) => (map.get(a.marker.plugin)?.order ?? 0) - (map.get(b.marker.plugin)?.order ?? 0),
-  );
+  const markers = collectMarkers(sceneSchema)
+    .filter(({ marker }) => marker.plugin !== "$af-ui")
+    .sort(
+      (a, b) => (map.get(a.marker.plugin)?.order ?? 0) - (map.get(b.marker.plugin)?.order ?? 0),
+    );
 
   for (const { marker, path } of markers) {
     const plugin = map.get(marker.plugin);
@@ -74,7 +76,8 @@ export async function resolveScene(
       path,
       locale: shared.locale,
       resolveData: shared.resolveData,
-      request: shared.request,
+      service: shared.service,
+      constant: shared.constant,
       store: shared.store,
       patch: (target, value) => setPath(sceneSchema, target, value),
     };

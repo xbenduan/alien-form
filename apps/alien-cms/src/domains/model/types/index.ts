@@ -1,4 +1,5 @@
 export type {
+  AfUiNode,
   FieldDraft,
   GroupConfig,
   GroupDraft,

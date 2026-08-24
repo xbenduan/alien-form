@@ -16,13 +16,13 @@ export {
   LAYOUT_COMPONENTS,
 } from "./register";
 export { default as componentRegistryDefault } from "./register";
-export { SchemaRenderer } from "./SchemaRenderer";
-export type { SchemaRendererProps } from "./SchemaRenderer";
+export { RuntimeResourceContext, SchemaRenderer } from "./SchemaRenderer";
+export type { RuntimeResourceContextValue, SchemaRendererProps } from "./SchemaRenderer";
 export { FieldDetailModal } from "./FieldDetailModal";
 export type { FieldDetailModalProps } from "./FieldDetailModal";
 export {
   FieldServiceContext,
   useAsyncOptions,
   useFieldOptions,
-  useServiceRequest,
+  useServiceResolver,
 } from "./service";

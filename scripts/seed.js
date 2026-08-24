@@ -106,6 +106,7 @@ const users = [
     gender: "male",
     phone: "13800001001",
     email: "zhangwei@school.edu.cn",
+    parentCode: "FAC-01",
     department: "体育教研组",
     teacherTitle: "lecturer",
     status: "active",
@@ -123,6 +124,7 @@ const users = [
     gender: "female",
     phone: "13800001002",
     email: "liuna@school.edu.cn",
+    parentCode: "GRADE-01-01",
     department: "体育教研组",
     teacherTitle: "associate-professor",
     status: "active",
@@ -140,6 +142,7 @@ const users = [
     gender: "male",
     phone: "13800001003",
     email: "wangjun@school.edu.cn",
+    parentCode: "GRADE-01-02",
     department: "体育教研组",
     teacherTitle: "professor",
     status: "active",
@@ -157,6 +160,7 @@ const users = [
     gender: "female",
     phone: "13900002001",
     email: "chenxi@student.school.edu.cn",
+    parentCode: "CLASS-01-01-01",
     grade: "grade-6",
     className: "六年级一班",
     studentNo: "20260101",
@@ -176,6 +180,7 @@ const users = [
     gender: "male",
     phone: "13900002002",
     email: "liyang@student.school.edu.cn",
+    parentCode: "CLASS-01-01-01",
     grade: "grade-6",
     className: "六年级一班",
     studentNo: "20260102",
@@ -195,6 +200,7 @@ const users = [
     gender: "female",
     phone: "13900002003",
     email: "zhaomeng@student.school.edu.cn",
+    parentCode: "CLASS-01-02-02",
     grade: "grade-5",
     className: "五年级二班",
     studentNo: "20260103",
@@ -214,12 +220,108 @@ const users = [
     gender: "female",
     phone: "13800001010",
     email: "jiaowu@school.edu.cn",
+    parentCode: "FAC-01",
     department: "教务处",
     status: "active",
     lastLoginAt: "2026-08-20",
     remark: "体育选课系统管理员。",
   },
 ];
+
+function buildUniversityUsers() {
+  const faculties = ["理工学部", "经济管理学部", "人文学部", "外国语学部", "艺术学部"];
+  const records = [];
+
+  for (let facultyIndex = 1; facultyIndex <= faculties.length; facultyIndex += 1) {
+    const facultyCode = `FAC-${String(facultyIndex).padStart(2, "0")}`;
+    records.push({
+      id: `org-${facultyCode.toLowerCase()}`,
+      userNo: facultyCode,
+      username: `org_${facultyCode.toLowerCase()}`,
+      displayName: faculties[facultyIndex - 1],
+      userType: "teacher",
+      roleIds: ["role-school-leader"],
+      passwordHash: demoPasswordHash,
+      gender: facultyIndex % 2 ? "male" : "female",
+      department: faculties[facultyIndex - 1],
+      status: "active",
+      parentCode: null,
+      remark: "组织层级节点。",
+    });
+
+    for (let gradeIndex = 1; gradeIndex <= 4; gradeIndex += 1) {
+      const gradeCode = `GRADE-${String(facultyIndex).padStart(2, "0")}-${String(
+        gradeIndex,
+      ).padStart(2, "0")}`;
+      records.push({
+        id: `org-${gradeCode.toLowerCase()}`,
+        userNo: gradeCode,
+        username: `org_${gradeCode.toLowerCase()}`,
+        displayName: `${2021 + gradeIndex}级`,
+        userType: "teacher",
+        roleIds: ["role-grade-director"],
+        passwordHash: demoPasswordHash,
+        gender: "unknown",
+        department: faculties[facultyIndex - 1],
+        grade: `grade-${gradeIndex}`,
+        status: "active",
+        parentCode: facultyCode,
+        remark: "年级层级节点。",
+      });
+
+      for (let classIndex = 1; classIndex <= 2; classIndex += 1) {
+        const classCode = `CLASS-${String(facultyIndex).padStart(2, "0")}-${String(
+          gradeIndex,
+        ).padStart(2, "0")}-${String(classIndex).padStart(2, "0")}`;
+        records.push({
+          id: `org-${classCode.toLowerCase()}`,
+          userNo: classCode,
+          username: `org_${classCode.toLowerCase()}`,
+          displayName: `${classIndex}班`,
+          userType: "teacher",
+          roleIds: ["role-homeroom-teacher"],
+          passwordHash: demoPasswordHash,
+          gender: classIndex % 2 ? "male" : "female",
+          department: faculties[facultyIndex - 1],
+          grade: `grade-${gradeIndex}`,
+          className: `${2021 + gradeIndex}级${classIndex}班`,
+          status: "active",
+          parentCode: gradeCode,
+          remark: "班级层级节点。",
+        });
+
+        for (let studentIndex = 1; studentIndex <= 5; studentIndex += 1) {
+          const suffix = String(studentIndex).padStart(2, "0");
+          const studentCode = `S-${String(facultyIndex).padStart(2, "0")}-${String(
+            gradeIndex,
+          ).padStart(2, "0")}-${String(classIndex).padStart(2, "0")}-${suffix}`;
+          records.push({
+            id: `student-${studentCode.toLowerCase()}`,
+            userNo: studentCode,
+            username: `student_${studentCode.toLowerCase().replaceAll("-", "_")}`,
+            displayName: `${2021 + gradeIndex}级${classIndex}班学生${studentIndex}`,
+            userType: "student",
+            roleIds: ["role-student"],
+            passwordHash: demoPasswordHash,
+            gender: studentIndex % 2 ? "male" : "female",
+            email: `${studentCode.toLowerCase().replaceAll("-", ".")}@student.gut.edu.cn`,
+            grade: `grade-${gradeIndex}`,
+            className: `${2021 + gradeIndex}级${classIndex}班`,
+            studentNo: `${facultyIndex}${gradeIndex}${classIndex}${suffix}`,
+            department: faculties[facultyIndex - 1],
+            status: "active",
+            parentCode: classCode,
+            remark: "",
+          });
+        }
+      }
+    }
+  }
+
+  return records;
+}
+
+users.push(...buildUniversityUsers());
 
 const courses = [
   {

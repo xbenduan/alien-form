@@ -1,6 +1,5 @@
 /**
- * 后端 API 客户端：统一 baseURL、JSON 解析与错误抛出。
- * dev 下走 vite 代理（/api → localhost:8787），生产可用 VITE_API_BASE 覆盖。
+ * 唯一的 HTTP transport。业务与 UI 不得直接调用，所有请求必须由注册 service 封装。
  */
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 

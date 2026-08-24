@@ -1,4 +1,5 @@
 import type { ModelSchema } from "../schema/types.ts";
+import { schoolUserLayout } from "./layout.ts";
 
 /**
  * 用户模型（基础模型，写死）：统一管理教师、学生及其角色归属。
@@ -7,6 +8,7 @@ import type { ModelSchema } from "../schema/types.ts";
  */
 export const schoolUserSchema: ModelSchema = {
   type: "object",
+  "x-layout": schoolUserLayout,
   title: "用户管理",
   description: "学校教师、学生及用户角色信息管理。",
   meta: {
@@ -88,11 +90,7 @@ export const schoolUserSchema: ModelSchema = {
       title: "性别",
       component: "Select",
       order: 60,
-      dataSource: [
-        { label: "男", value: "male" },
-        { label: "女", value: "female" },
-        { label: "其他", value: "other" },
-      ],
+      dataSource: { plugin: "$af-constant", key: "gender" },
       props: { placeholder: "请选择性别" },
       "x-table": { width: 80 },
       "x-database": { type: "text", filterable: true },
@@ -120,17 +118,19 @@ export const schoolUserSchema: ModelSchema = {
       title: "年级",
       component: "Select",
       order: 90,
-      dataSource: [
-        { label: "一年级", value: "grade-1" },
-        { label: "二年级", value: "grade-2" },
-        { label: "三年级", value: "grade-3" },
-        { label: "四年级", value: "grade-4" },
-        { label: "五年级", value: "grade-5" },
-        { label: "六年级", value: "grade-6" },
-      ],
+      dataSource: { plugin: "$af-constant", key: "grades" },
       props: { placeholder: "请选择年级" },
       "x-table": { width: 100 },
       "x-database": { type: "text", filterable: true },
+    },
+    parentCode: {
+      type: "string",
+      title: "上级节点编号",
+      component: "Input",
+      order: 95,
+      props: { placeholder: "请输入上级用户编号" },
+      "x-table": { visible: false },
+      "x-database": { type: "text", index: true, filterable: true, nullable: true },
     },
     className: {
       type: "string",

@@ -22,7 +22,6 @@ import type {
   ModelDraft,
   ModelFieldSchema,
   ModelSchema,
-  RequestFn,
   SchemaCompilerContext,
 } from "./types";
 
@@ -42,7 +41,8 @@ function cloneSchema(schema: ModelSchema): ModelSchema {
  * 一律走单次 compile 的 store，不挂插件模块级，避免跨模型串数据。
  */
 export class SchemaCompiler {
-  private readonly request: RequestFn;
+  private readonly service: SchemaCompilerContext["service"];
+  private readonly constant: SchemaCompilerContext["constant"];
   private readonly loadSchema?: (modelCode: string) => Promise<ModelSchema>;
   private readonly plugins: AlienPlugin[];
   private readonly descriptors: FieldDescriptor[];
@@ -50,7 +50,8 @@ export class SchemaCompiler {
   private readonly locale: Locale;
 
   constructor(ctx: SchemaCompilerContext) {
-    this.request = ctx.request;
+    this.service = ctx.service;
+    this.constant = ctx.constant;
     this.loadSchema = ctx.loadSchema;
     this.plugins = [...builtinPlugins, ...(ctx.plugins ?? [])];
     this.descriptors = ctx.descriptors ?? defaultDescriptors;
@@ -87,11 +88,18 @@ export class SchemaCompiler {
       schema,
       locale,
       resolveData,
-      request: this.request,
+      service: this.service,
+      constant: this.constant,
       store,
     });
 
-    const shared = { locale, resolveData, request: this.request, store };
+    const shared = {
+      locale,
+      resolveData,
+      service: this.service,
+      constant: this.constant,
+      store,
+    };
 
     const [formSchema, filterSchema, tableSchema] = await Promise.all([
       resolveScene(cloneSchema(schema), "form", schema, this.plugins, shared),
@@ -104,6 +112,7 @@ export class SchemaCompiler {
       form: projectForm(formSchema, locale, this.descriptors),
       filter: projectFilter(filterSchema, locale, this.descriptors),
       columns: projectColumns(tableSchema, locale, this.descriptors),
+      layout: schema["x-layout"],
     };
   }
 
@@ -122,13 +131,15 @@ export class SchemaCompiler {
       schema,
       locale,
       resolveData,
-      request: this.request,
+      service: this.service,
+      constant: this.constant,
       store,
     });
     const resolved = await resolveScene(cloneSchema(wrapper), "form", schema, this.plugins, {
       locale,
       resolveData,
-      request: this.request,
+      service: this.service,
+      constant: this.constant,
       store,
     });
     return projectField(resolved.properties.__field__, locale, this.descriptors);

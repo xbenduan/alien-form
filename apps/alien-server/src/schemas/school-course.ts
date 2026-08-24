@@ -1,4 +1,5 @@
 import type { ModelSchema } from "../schema/types.ts";
+import { defaultLayout } from "./layout.ts";
 
 /**
  * 课程模型（业务模型，建立在 user/role 之上）：
@@ -6,6 +7,7 @@ import type { ModelSchema } from "../schema/types.ts";
  */
 export const schoolCourseSchema: ModelSchema = {
   type: "object",
+  "x-layout": defaultLayout,
   title: "课程列表",
   description: "学校体育课程、授课教师、容量与抢课时段管理。",
   meta: {

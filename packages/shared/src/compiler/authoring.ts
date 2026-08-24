@@ -1,6 +1,48 @@
 import type { GroupConfig } from "../types";
 import { getDefaultFieldSchema, getRegistryEntry } from "../components/register";
-import type { FieldDraft, GroupDraft, ModelDraft, ModelFieldSchema, ModelSchema } from "./types";
+import type {
+  AfUiNode,
+  FieldDraft,
+  GroupDraft,
+  ModelDraft,
+  ModelFieldSchema,
+  ModelSchema,
+} from "./types";
+
+export const DEFAULT_LAYOUT: AfUiNode = {
+  plugin: "$af-ui",
+  component: "page",
+  children: [
+    { plugin: "$af-ui", component: "filter", props: { scope: "main" } },
+    {
+      plugin: "$af-ui",
+      component: "table",
+      props: { scope: "main" },
+      children: [
+        {
+          plugin: "$af-ui",
+          component: "row-actions",
+          children: [
+            { plugin: "$af-ui", component: "detail" },
+            { plugin: "$af-ui", component: "edit" },
+            { plugin: "$af-ui", component: "delete" },
+          ],
+        },
+      ],
+      slots: {
+        toolbarLeft: [{ plugin: "$af-ui", component: "action-batch-delete" }],
+        toolbarRight: [
+          { plugin: "$af-ui", component: "action-refresh" },
+          { plugin: "$af-ui", component: "action-add" },
+        ],
+      },
+    },
+  ],
+};
+
+function cloneLayout(layout: AfUiNode): AfUiNode {
+  return JSON.parse(JSON.stringify(layout)) as AfUiNode;
+}
 
 /** 默认 uid 生成器（注入以隔离唯一的可变状态）。 */
 export function createIdFactory(): () => string {
@@ -58,6 +100,7 @@ export function draftToSchema(draft: ModelDraft): ModelSchema {
     title: draft.title,
     description: draft.description,
     properties,
+    "x-layout": cloneLayout(draft.layout),
     ...(groups.length > 0 ? { group: groups } : {}),
     meta: {
       name: draft.name,
@@ -124,6 +167,7 @@ export function schemaToDraft(schema: ModelSchema, uid: () => string): ModelDraf
     openMode: schema.meta.openMode,
     fields,
     groups,
+    layout: cloneLayout(schema["x-layout"]),
   };
 }
 
@@ -142,6 +186,7 @@ export function createEmptyDraft(uid: () => string): ModelDraft {
     openMode: { add: "drawer", edit: "drawer", detail: "drawer" },
     fields: [createFieldDraft(uid)],
     groups: [],
+    layout: cloneLayout(DEFAULT_LAYOUT),
   };
 }
 

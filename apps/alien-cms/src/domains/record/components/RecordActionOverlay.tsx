@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { Button, Drawer, Modal, Space, Spin } from "antd";
 import type { IFormSchema, SchemaFormRef } from "@alien-form/shared";
 import { useRecordDetail } from "../../../hooks";
-import type { ModelSchema } from "../../../services";
+import type { ModelSchema } from "../../../runtime";
 import type { OverlayActionState } from "../types";
 import { RecordActionForm } from "./RecordActionForm";
 import styles from "./index.module.css";

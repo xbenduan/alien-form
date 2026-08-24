@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSignalValue } from "@alien-form/react";
 import type { SchemaRecord } from "@alien-form/shared";
 import { useModelSchema, useRecordList, useRecordMutations } from "../../../hooks";
 import { useCompiledSchema } from "../../../compiler";
-import type { Pagination, Sorter } from "../../../services";
+import type { Pagination, Sorter } from "../../../runtime";
 import { recordAddPath, recordDetailPath, recordEditPath } from "../../../app/router/paths";
+import { DataScope } from "../../../runtime";
 import type { OverlayActionState } from "../types";
 
 /**
@@ -19,9 +21,11 @@ export function useRecordPage(modelName: string) {
   const compiledQuery = useCompiledSchema(schema);
   const compiled = compiledQuery.data;
 
-  const [filters, setFilters] = useState<SchemaRecord>({});
-  const [pagination, setPagination] = useState<Pagination>({ current: 1, pageSize: 10 });
-  const [sorter, setSorter] = useState<Sorter>();
+  const scope = useMemo(() => new DataScope(modelName), [modelName]);
+  const filters = useSignalValue(scope.filters) as SchemaRecord;
+  const pagination = useSignalValue(scope.pagination);
+  const sorter = useSignalValue(scope.sorter);
+  const refreshVersion = useSignalValue(scope.refreshVersion);
   const [overlay, setOverlay] = useState<OverlayActionState | null>(null);
 
   const listQuery = useRecordList({
@@ -29,6 +33,7 @@ export function useRecordPage(modelName: string) {
     filters,
     pagination,
     sorter,
+    refreshVersion,
     enabled: Boolean(schema),
   });
   const mutations = useRecordMutations(modelName);
@@ -56,14 +61,13 @@ export function useRecordPage(modelName: string) {
     listLoading: listQuery.isFetching,
 
     filters,
-    setFilters: (values: SchemaRecord) => {
-      setFilters(values);
-      setPagination((current) => ({ ...current, current: 1 }));
-    },
+    setFilters: (values: SchemaRecord) => scope.setFilterPatch("filter", values),
+    setLayoutFilters: (values: SchemaRecord) => scope.setFilterPatch("layout", values),
     pagination,
-    setPagination,
+    setPagination: (value: Pagination) => scope.setPagination(value),
     sorter,
-    setSorter,
+    setSorter: (value?: Sorter) => scope.setSorter(value),
+    scope,
 
     overlay,
     openAdd: () => openAction("add"),

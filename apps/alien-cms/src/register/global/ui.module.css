@@ -1,0 +1,90 @@
+.treeLayout {
+  min-height: 520px;
+}
+
+.treePane {
+  flex: 0 0 280px;
+  min-width: 240px;
+}
+
+.treeContent {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.treeCard {
+  height: 100%;
+  min-height: 520px;
+}
+
+.treeCard :global(.ant-card-head) {
+  min-height: 48px;
+  padding: 0 16px;
+  border-bottom-color: #edf0f5;
+}
+
+.treeCard :global(.ant-card-head-title) {
+  color: #172033;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.treeCard :global(.ant-card-body) {
+  display: flex;
+  flex-direction: column;
+  min-height: 470px;
+  padding: 12px;
+}
+
+.treeSearch {
+  margin-bottom: 10px;
+}
+
+.tree {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 2px 4px;
+}
+
+.tree :global(.ant-tree-treenode) {
+  width: 100%;
+  min-height: 34px;
+  padding-block: 2px;
+}
+
+.tree :global(.ant-tree-node-content-wrapper) {
+  min-height: 30px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 22px;
+}
+
+.tree :global(.ant-tree-node-content-wrapper:hover) {
+  background: #f0f6ff;
+}
+
+.tree :global(.ant-tree-node-content-wrapper.ant-tree-node-selected) {
+  color: #0958d9;
+  background: #e6f4ff;
+}
+
+.tableCard {
+  overflow: hidden;
+  border: 1px solid rgba(22, 119, 255, 0.12);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.tableToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 16px;
+  width: 100%;
+}

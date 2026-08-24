@@ -9,6 +9,7 @@ import { useModelBuilder } from "../hooks";
 import {
   FieldListEditor,
   GroupEditor,
+  LayoutJsonEditor,
   ModelMetaForm,
   SchemaJsonEditor,
   SchemaPreview,
@@ -108,6 +109,13 @@ function ModelActionContent({ mode }: ModelActionPageProps) {
                 groups={builder.draft.groups}
                 fields={builder.draft.fields}
                 onChange={(groups) => builder.setDraft({ ...builder.draft, groups })}
+              />
+            </FieldsetCard>
+            <FieldsetCard title="页面布局（x-layout）">
+              <LayoutJsonEditor
+                draft={builder.draft}
+                layout={builder.draft.layout}
+                onChange={builder.setDraft}
               />
             </FieldsetCard>
           </div>

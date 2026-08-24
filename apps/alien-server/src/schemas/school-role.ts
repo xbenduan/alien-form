@@ -1,4 +1,5 @@
 import type { ModelSchema } from "../schema/types.ts";
+import { defaultLayout } from "./layout.ts";
 
 /**
  * 角色模型（权限基础模型，写死）：维护角色及其可查看的数据表。
@@ -6,6 +7,7 @@ import type { ModelSchema } from "../schema/types.ts";
  */
 export const schoolRoleSchema: ModelSchema = {
   type: "object",
+  "x-layout": defaultLayout,
   title: "角色管理",
   description: "学校用户角色与可查看业务表配置。",
   meta: {

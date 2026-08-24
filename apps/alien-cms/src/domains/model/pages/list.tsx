@@ -10,7 +10,7 @@ import { App, Button, Flex, Popconfirm, Space, Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { PageBreadcrumb, PageError, PageLoading } from "../../../components";
 import { useModelSummaries, useSchemaMutations } from "../../../hooks";
-import type { ModelSummary } from "../../../services";
+import type { ModelSummary } from "../../../runtime";
 import { modelAddPath, modelEditPath, recordListPath } from "../../../app/router/paths";
 import styles from "./index.module.css";
 

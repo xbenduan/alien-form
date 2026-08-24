@@ -7,18 +7,8 @@ import type {
   TableFieldMeta,
 } from "@alien-form/shared";
 
-// 模型 schema 相关类型统一由 SchemaCompiler（@alien-form/shared）提供，
-// services 层直接透传，避免同一套类型在两处分叉。
-export type {
-  ModelFieldSchema,
-  ModelGroup,
-  ModelMeta,
-  ModelSchema,
-  OpenMode,
-  TableFieldMeta,
-};
+export type { ModelFieldSchema, ModelGroup, ModelMeta, ModelSchema, OpenMode, TableFieldMeta };
 
-/** 模型摘要（落地页卡片、列表用）。 */
 export interface ModelSummary {
   name: string;
   title: string;
@@ -29,7 +19,6 @@ export interface ModelSummary {
   updatedAt: string;
 }
 
-/** 记录：任意键值 + 系统字段。 */
 export interface ModelRecord {
   id: string;
   createdAt?: number;
@@ -57,4 +46,24 @@ export interface RecordListParams {
 export interface RecordListResult {
   list: ModelRecord[];
   total: number;
+}
+
+export interface AuthUser extends ModelRecord {
+  username?: string;
+  displayName?: string;
+  userType?: string;
+  status?: string;
+  roleIds?: string[];
+}
+
+export interface LoginPayload {
+  provider?: "password" | string;
+  username: string;
+  password: string;
+}
+
+export interface LoginResult {
+  token: string;
+  provider: string;
+  user: AuthUser;
 }

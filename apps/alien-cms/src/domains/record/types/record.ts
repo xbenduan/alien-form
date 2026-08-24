@@ -1,4 +1,4 @@
-import type { ModelRecord, ModelSchema, OpenMode } from "../../../services";
+import type { ModelRecord, ModelSchema, OpenMode } from "../../../runtime";
 
 export type { ModelRecord, ModelSchema, OpenMode };
 

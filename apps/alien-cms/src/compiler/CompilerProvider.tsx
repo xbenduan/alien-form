@@ -1,27 +1,40 @@
 import { createContext, useContext, useMemo } from "react";
 import type { ReactNode } from "react";
-import { FieldServiceContext, type SchemaCompiler } from "@alien-form/shared";
-import { appRequest, createAppCompiler } from "./create-compiler";
+import {
+  FieldServiceContext,
+  RuntimeResourceContext,
+  type SchemaCompiler,
+} from "@alien-form/shared";
+import { createAppCompiler } from "./create-compiler";
+import { RuntimeCore } from "../runtime";
 
 const CompilerContext = createContext<SchemaCompiler | null>(null);
 
 /**
  * 每个 domain 挂一个 CompilerProvider：new 一个 SchemaCompiler 实例，
  * locale 变化时重建（useMemo 依赖 locale），Provider 卸载即随组件树销毁。
- * 同时把 appRequest 灌入 FieldServiceContext，向消费 dataSource 的组件注入
- * request（props 方案自取）。
+ * 同时把当前 domain 的 service resolver 灌入 FieldServiceContext，向消费
+ * dataSource 的组件提供 records.list。
  */
 export function CompilerProvider({
   locale = "zh",
+  domain,
   children,
 }: {
   locale?: string;
+  domain?: string;
   children: ReactNode;
 }) {
-  const compiler = useMemo(() => createAppCompiler(locale), [locale]);
+  const compiler = useMemo(() => createAppCompiler(locale, domain), [locale, domain]);
   return (
     <CompilerContext.Provider value={compiler}>
-      <FieldServiceContext.Provider value={appRequest}>{children}</FieldServiceContext.Provider>
+      <RuntimeResourceContext.Provider value={RuntimeCore.current.resources(domain)}>
+        <FieldServiceContext.Provider
+          value={(code) => RuntimeCore.current.service.query(code, domain)}
+        >
+          {children}
+        </FieldServiceContext.Provider>
+      </RuntimeResourceContext.Provider>
     </CompilerContext.Provider>
   );
 }

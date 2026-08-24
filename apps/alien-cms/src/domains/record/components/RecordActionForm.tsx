@@ -3,7 +3,7 @@ import { SchemaForm } from "@alien-form/shared";
 import type { IFormSchema, SchemaRecord } from "@alien-form/shared";
 import type { SchemaFormRef } from "@alien-form/shared";
 import type { Ref } from "react";
-import type { ModelRecord } from "../../../services";
+import type { ModelRecord } from "../../../runtime";
 import type { RecordActionMode } from "../types";
 
 interface RecordActionFormProps {

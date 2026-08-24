@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { PropsWithChildren } from "react";
-import { login as requestLogin, logout as requestLogout } from "../../../services";
-import type { AuthUser, LoginPayload } from "../../../services";
+import { RuntimeCore } from "../../../runtime";
+import type { AuthUser, LoginPayload, LoginResult } from "../../../runtime";
 
 const AUTH_STORAGE_KEY = "alien-cms-auth";
 
@@ -35,7 +35,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [auth, setAuth] = useState<StoredAuth | undefined>(() => readStoredAuth());
 
   const handleLogin = useCallback(async (payload: LoginPayload) => {
-    const result = await requestLogin(payload);
+    const service = RuntimeCore.current.service.query("auth.login");
+    if (!service) throw new Error("[alien-cms] service auth.login 未注册");
+    const result = (await service.send(payload)) as LoginResult;
     const nextAuth = { token: result.token, user: result.user };
     window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextAuth));
     setAuth(nextAuth);
@@ -46,7 +48,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const token = auth?.token;
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
     setAuth(undefined);
-    if (token) await requestLogout(token);
+    if (token) {
+      const service = RuntimeCore.current.service.query("auth.logout");
+      if (!service) throw new Error("[alien-cms] service auth.logout 未注册");
+      await service.send({ token });
+    }
   }, [auth?.token]);
 
   const value = useMemo<AuthContextValue>(

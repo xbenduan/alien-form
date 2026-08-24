@@ -25,8 +25,10 @@ export {
   matchDescriptor,
   builtinPlugins,
   dataSourcePlugin,
+  constantPlugin,
   i18nPlugin,
   DATA_SOURCE_PLUGIN,
+  CONSTANT_PLUGIN,
   I18N_PLUGIN,
   projectColumns,
   projectField,
@@ -38,6 +40,7 @@ export {
   createFieldDraft,
   createGroupDraft,
   createIdFactory,
+  DEFAULT_LAYOUT,
   draftToSchema,
   schemaToDraft,
   isPluginMarker,
@@ -59,8 +62,10 @@ export {
 } from "./compiler";
 export type {
   AlienPlugin,
+  AfUiNode,
   Compiled,
   CompileOptions,
+  ConstantResolver,
   DescriptorCtx,
   FieldDescriptor,
   FieldDraft,
@@ -80,6 +85,8 @@ export type {
   RequestFn,
   RequestInput,
   RequestResult,
+  ServiceClient,
+  ServiceResolver,
   ResolveCtx,
   Scene,
   SchemaCompilerContext,
@@ -107,13 +114,19 @@ export {
   isMultiValueComponent,
   LAYOUT_COMPONENTS,
   SchemaRenderer,
+  RuntimeResourceContext,
   FieldServiceContext,
   useAsyncOptions,
   useFieldMode,
   useFieldOptions,
-  useServiceRequest,
+  useServiceResolver,
 } from "./components";
-export type { DisplayValueProps, FieldDetailModalProps, SchemaRendererProps } from "./components";
+export type {
+  DisplayValueProps,
+  FieldDetailModalProps,
+  RuntimeResourceContextValue,
+  SchemaRendererProps,
+} from "./components";
 
 // form
 export { DrawerSchemaForm, ModalSchemaForm, PageSchemaForm, SchemaForm } from "./form";

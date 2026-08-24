@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createSchema, deleteSchema, getSchema, listSchemas, updateSchema } from "../services";
-import type { ModelSchema } from "../services";
+import { RuntimeCore } from "../runtime";
+import type { ModelSchema, ModelSummary } from "../runtime";
 
 export const schemaKeys = {
   all: ["schemas"] as const,
@@ -10,7 +10,14 @@ export const schemaKeys = {
 
 /** 所有模型摘要（落地页）。 */
 export function useModelSummaries() {
-  return useQuery({ queryKey: schemaKeys.summaries, queryFn: listSchemas });
+  return useQuery({
+    queryKey: schemaKeys.summaries,
+    queryFn: async () => {
+      const service = RuntimeCore.current.service.query("schema.list");
+      if (!service) throw new Error("[alien-cms] service schema.list 未注册");
+      return (await service.send()) as ModelSummary[];
+    },
+  });
 }
 
 /** 单个模型 schema 详情。 */
@@ -18,7 +25,11 @@ export function useModelSchema(name?: string) {
   return useQuery({
     queryKey: schemaKeys.detail(name),
     enabled: Boolean(name),
-    queryFn: () => getSchema(name!),
+    queryFn: async () => {
+      const service = RuntimeCore.current.service.query("schema.get");
+      if (!service) throw new Error("[alien-cms] service schema.get 未注册");
+      return (await service.send({ name: name! })) as ModelSchema;
+    },
   });
 }
 
@@ -33,13 +44,20 @@ export function useSchemaMutations() {
     ]);
 
   const createMutation = useMutation({
-    mutationFn: (schema: ModelSchema) => createSchema(schema),
+    mutationFn: async (schema: ModelSchema) => {
+      const service = RuntimeCore.current.service.query("schema.create");
+      if (!service) throw new Error("[alien-cms] service schema.create 未注册");
+      return service.send(schema) as Promise<ModelSchema>;
+    },
     onSuccess: invalidateAll,
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ name, schema }: { name: string; schema: ModelSchema }) =>
-      updateSchema(name, schema),
+    mutationFn: async ({ name, schema }: { name: string; schema: ModelSchema }) => {
+      const service = RuntimeCore.current.service.query("schema.update");
+      if (!service) throw new Error("[alien-cms] service schema.update 未注册");
+      return service.send({ name, schema }) as Promise<ModelSchema>;
+    },
     onSuccess: async (_data, variables) => {
       await queryClient.invalidateQueries({ queryKey: schemaKeys.detail(variables.name) });
       await invalidateAll();
@@ -47,7 +65,11 @@ export function useSchemaMutations() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (name: string) => deleteSchema(name),
+    mutationFn: async (name: string) => {
+      const service = RuntimeCore.current.service.query("schema.delete");
+      if (!service) throw new Error("[alien-cms] service schema.delete 未注册");
+      return service.send({ name });
+    },
     onSuccess: async (_data, name) => {
       queryClient.removeQueries({ queryKey: schemaKeys.detail(name) });
       await invalidateAll();

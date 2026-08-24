@@ -6,6 +6,16 @@ import type { GroupConfig, TableColumn } from "../types";
 /** 编译投影的目标场景。detail 复用 form（渲染时切只读态）。 */
 export type Scene = "form" | "filter" | "table";
 
+/** 页面级 UI 协议节点。运行时只负责按 component 查找已注册实现。 */
+export interface AfUiNode {
+  plugin: "$af-ui";
+  component: string;
+  props?: Record<string, unknown>;
+  slot?: string;
+  children?: AfUiNode[];
+  slots?: Record<string, AfUiNode[]>;
+}
+
 export type Locale = "zh" | "en" | (string & {});
 
 // ─── 后端配置态 schema（原 services/types 下沉至此，shared 作为唯一来源）──────
@@ -83,10 +93,11 @@ export type I18nDict = Record<string, Partial<Record<Locale, string>>>;
  * 模型 schema：配置态 schema（properties + group）+ 模型元信息 + 多语言字典。
  * 一份 schema 经 SchemaCompiler 投影出 form / table / filter 三个场景。
  */
-export interface ModelSchema extends Omit<IFormSchema, "properties"> {
+export interface ModelSchema extends Omit<IFormSchema, "properties" | "x-layout"> {
   meta: ModelMeta;
   properties: Record<string, ModelFieldSchema>;
   group?: GroupConfig[];
+  "x-layout": AfUiNode;
   /** 多语言字典，供 $af-i18n 插件消费。 */
   i18n?: I18nDict;
 }
@@ -126,6 +137,14 @@ export interface RequestResult {
 
 export type RequestFn = (input: RequestInput) => Promise<RequestResult>;
 
+export interface ServiceClient {
+  send: (params?: unknown, options?: unknown) => Promise<unknown>;
+}
+
+export type ServiceResolver = (code: string) => ServiceClient | undefined;
+
+export type ConstantResolver = (key: string) => unknown;
+
 /**
  * 组件自取数据源的声明（props 方案）：纯可序列化数据，不含闭包，
  * 由组件通过 FieldServiceContext 注入的 request 消费。
@@ -146,7 +165,8 @@ export interface PrefetchCtx {
   locale: Locale;
   /** 是否真实拉取远程数据（构建器预览传 false 以跳过 fetch）。 */
   resolveData: boolean;
-  request: RequestFn;
+  service: ServiceResolver;
+  constant: ConstantResolver;
   /** 单次 compile 的共享态（跨场景共享预取结果，随 compile 结束丢弃）。 */
   store: Record<string, unknown>;
 }
@@ -225,6 +245,7 @@ export interface ModelDraft {
   openMode: Record<"add" | "edit" | "detail", OpenMode>;
   fields: FieldDraft[];
   groups: GroupDraft[];
+  layout: AfUiNode;
 }
 
 // ─── 编译产物 ────────────────────────────────────────────────────────────────
@@ -235,6 +256,7 @@ export interface Compiled {
   form: IFormSchema;
   filter: IFormSchema;
   columns: TableColumn[];
+  layout: AfUiNode;
 }
 
 /** compile 选项。 */
@@ -246,7 +268,8 @@ export interface CompileOptions {
 
 /** SchemaCompiler 构造上下文。 */
 export interface SchemaCompilerContext {
-  request: RequestFn;
+  service: ServiceResolver;
+  constant: ConstantResolver;
   /** 拉取原始 schema（getSchema modelCode）。 */
   loadSchema?: (modelCode: string) => Promise<ModelSchema>;
   plugins?: AlienPlugin[];
