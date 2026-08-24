@@ -17,13 +17,7 @@ export interface FieldDetailModalProps {
  * 公共详情弹窗：接收单个字段的 value + 已编译 schema，以 detail 只读态渲染其完整内容。
  * table 下复杂字段点击"详情"即打开此弹窗。
  */
-export function FieldDetailModal({
-  open,
-  title,
-  field,
-  value,
-  onClose,
-}: FieldDetailModalProps) {
+export function FieldDetailModal({ open, title, field, value, onClose }: FieldDetailModalProps) {
   const schema = useMemo<IFormSchema | undefined>(() => {
     if (!field) return undefined;
     return {

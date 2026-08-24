@@ -1,10 +1,4 @@
-import {
-  Profiler,
-  useCallback,
-  useRef,
-  useState,
-  type ProfilerOnRenderCallback,
-} from "react";
+import { Profiler, useCallback, useRef, useState, type ProfilerOnRenderCallback } from "react";
 import { Button, Card, InputNumber, Space, Table, Tag, Typography } from "antd";
 import { scenes, type SceneKey } from "./scenes";
 import {
@@ -169,10 +163,8 @@ export default function App() {
   }, [runScene, rounds, count]);
 
   // 以基线 Pure Antd Input 的 commit 为 1x,计算相对倍率
-  const baselineMountCommit =
-    results.find((r) => r.scene === "pureAntdInput")?.mountCommit ?? 0;
-  const baselineInputCommit =
-    results.find((r) => r.scene === "pureAntdInput")?.inputCommit ?? 0;
+  const baselineMountCommit = results.find((r) => r.scene === "pureAntdInput")?.mountCommit ?? 0;
+  const baselineInputCommit = results.find((r) => r.scene === "pureAntdInput")?.inputCommit ?? 0;
 
   const Active = active ? scenes[active].Component : null;
 
@@ -180,9 +172,11 @@ export default function App() {
     <div style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>
       <Typography.Title level={3}>AlienForm Benchmark</Typography.Title>
       <Typography.Paragraph type="secondary">
-        对标 formily/packages/benchmark:每种方式渲染 N 个表单字段,自动测量挂载耗时与单次输入到重渲染完成的耗时。
+        对标 formily/packages/benchmark:每种方式渲染 N
+        个表单字段,自动测量挂载耗时与单次输入到重渲染完成的耗时。
         <br />
-        指标:<b>wall</b> = 墙钟耗时(performance.now),<b>commit</b> = React Profiler 报告的本阶段提交耗时之和。数值越小越好。
+        指标:<b>wall</b> = 墙钟耗时(performance.now),<b>commit</b> = React Profiler
+        报告的本阶段提交耗时之和。数值越小越好。
       </Typography.Paragraph>
 
       <Card size="small" style={{ marginBottom: 16 }}>
@@ -208,19 +202,13 @@ export default function App() {
           <Button type="primary" loading={running} onClick={runAll}>
             运行多轮对比
           </Button>
-          {progress ? (
-            <Typography.Text type="secondary">{progress}</Typography.Text>
-          ) : null}
+          {progress ? <Typography.Text type="secondary">{progress}</Typography.Text> : null}
         </Space>
       </Card>
 
       <Card
         size="small"
-        title={
-          results.length > 0
-            ? `测量结果(${results[0].rounds} 轮中位数)`
-            : "测量结果"
-        }
+        title={results.length > 0 ? `测量结果(${results[0].rounds} 轮中位数)` : "测量结果"}
         style={{ marginBottom: 16 }}
       >
         <Table<Aggregated>
@@ -235,11 +223,7 @@ export default function App() {
               title: "场景",
               render: (_, r) => (
                 <Space size={4}>
-                  {ENGINE_SCENES.has(r.scene) ? (
-                    <Tag color="purple">引擎</Tag>
-                  ) : (
-                    <Tag>基线</Tag>
-                  )}
+                  {ENGINE_SCENES.has(r.scene) ? <Tag color="purple">引擎</Tag> : <Tag>基线</Tag>}
                   <span>{r.label}</span>
                 </Space>
               ),

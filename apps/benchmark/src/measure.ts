@@ -19,10 +19,7 @@ export function findFirstInput(container: HTMLElement): HTMLInputElement | null 
 
 /** 用原生 setter + input 事件模拟一次真实键入,触发受控组件 onChange */
 export function dispatchNativeInput(input: HTMLInputElement, value: string) {
-  const setter = Object.getOwnPropertyDescriptor(
-    window.HTMLInputElement.prototype,
-    "value",
-  )?.set;
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
   setter?.call(input, value);
   input.dispatchEvent(new Event("input", { bubbles: true }));
 }

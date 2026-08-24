@@ -74,7 +74,12 @@ export const schoolUserSchema: ModelSchema = {
       required: true,
       order: 50,
       props: { placeholder: "请选择用户角色" },
-      dataSource: { plugin: "$af-dataSource", model: "school-role", label: "roleName", value: "id" },
+      dataSource: {
+        plugin: "$af-dataSource",
+        model: "school-role",
+        label: "roleName",
+        value: "id",
+      },
       "x-table": { width: 180 },
       "x-database": { relation: "many-to-many", target: "school-role", sortable: false },
     },
@@ -198,7 +203,13 @@ export const schoolUserSchema: ModelSchema = {
       ],
       props: { placeholder: "请选择账号状态" },
       "x-table": { width: 100 },
-      "x-database": { type: "text", nullable: false, default: "active", index: true, filterable: true },
+      "x-database": {
+        type: "text",
+        nullable: false,
+        default: "active",
+        index: true,
+        filterable: true,
+      },
     },
     lastLoginAt: {
       type: "string",

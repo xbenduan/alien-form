@@ -18,10 +18,10 @@ function isModelSchema(value: unknown): value is ModelSchema {
   const schema = value as Partial<ModelSchema>;
   return Boolean(
     schema.meta &&
-      typeof schema.meta === "object" &&
-      typeof schema.properties === "object" &&
-      schema.properties !== null &&
-      !Array.isArray(schema.properties),
+    typeof schema.meta === "object" &&
+    typeof schema.properties === "object" &&
+    schema.properties !== null &&
+    !Array.isArray(schema.properties),
   );
 }
 

@@ -113,9 +113,9 @@ export function listRecords(schema: ModelSchema, params: ListParams): ListResult
   }
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-  const totalRow = db
-    .prepare(`SELECT COUNT(*) AS c FROM "${table}" ${whereSql}`)
-    .get(...args) as { c: number };
+  const totalRow = db.prepare(`SELECT COUNT(*) AS c FROM "${table}" ${whereSql}`).get(...args) as {
+    c: number;
+  };
   const total = totalRow.c;
 
   // 排序：仅 sortable 列，列名映射后拼接（白名单，无注入）
@@ -244,12 +244,4 @@ export function deleteRecords(schema: ModelSchema, ids: string[]): void {
       db.prepare(`DELETE FROM "${table}" WHERE "id" = ?`).run(id);
     }
   });
-}
-
-/** 供 seed 使用：判断表是否已有数据。 */
-export function countRecords(schema: ModelSchema): number {
-  const db = getDb();
-  const table = tableName(schema.meta.name);
-  const row = db.prepare(`SELECT COUNT(*) AS c FROM "${table}"`).get() as { c: number };
-  return row.c;
 }

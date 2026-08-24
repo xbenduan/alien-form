@@ -19,11 +19,7 @@ export interface SchemaEntry {
   updatedAt: string;
 }
 
-function parseRow(row: {
-  schema: string;
-  created_at: string;
-  updated_at: string;
-}): SchemaEntry {
+function parseRow(row: { schema: string; created_at: string; updated_at: string }): SchemaEntry {
   return {
     schema: JSON.parse(row.schema) as ModelSchema,
     createdAt: row.created_at,

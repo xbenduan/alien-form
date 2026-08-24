@@ -1,6 +1,9 @@
 /** camelCase → snake_case（字段名 → 列名）。 */
 export function toSnake(name: string): string {
-  return name.replace(/([a-z0-9])([A-Z])/g, "$1_$2").replace(/-/g, "_").toLowerCase();
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/-/g, "_")
+    .toLowerCase();
 }
 
 /** modelCode（如 school-user）→ 物理表名（school_user）。 */

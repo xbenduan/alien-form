@@ -44,14 +44,14 @@ AlienForm 不是又一个表单组件库，而是一套把“表单行为”从 
 
 ## ✨ 一眼看懂
 
-| 能力 | 说明 |
-| --- | --- |
-| 🧠 Headless Runtime | `@alien-form/core` 只负责字段树、状态、联动、校验、格式化和提交投影，不绑定 UI。 |
-| ⚛️ React Binding | `@alien-form/react` 提供 Hook、Provider、Signal 订阅和 Schema 自动渲染。 |
-| 🧩 Shared UI | `@alien-form/shared` 提供无业务语义的 adapters，以及表单、筛选、表格和详情场景组件。 |
-| 🔁 Scene-Driven UI | 同一份 Schema 可以投影到新增、编辑、详情、表格、筛选和移动端卡片等场景。 |
-| 🖥️ App-Owned Business | `apps/alien-cms` 自己维护模型协议、Provider、CRUD、Builder 和多场景投影。 |
-| 🛡️ Restricted Expression | 表达式运行时避免 `eval` / `new Function`，用受限语法承载安全的字段联动。 |
+| 能力                     | 说明                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------ |
+| 🧠 Headless Runtime      | `@alien-form/core` 只负责字段树、状态、联动、校验、格式化和提交投影，不绑定 UI。     |
+| ⚛️ React Binding         | `@alien-form/react` 提供 Hook、Provider、Signal 订阅和 Schema 自动渲染。             |
+| 🧩 Shared UI             | `@alien-form/shared` 提供无业务语义的 adapters，以及表单、筛选、表格和详情场景组件。 |
+| 🔁 Scene-Driven UI       | 同一份 Schema 可以投影到新增、编辑、详情、表格、筛选和移动端卡片等场景。             |
+| 🖥️ App-Owned Business    | `apps/alien-cms` 自己维护模型协议、Provider、CRUD、Builder 和多场景投影。            |
+| 🛡️ Restricted Expression | 表达式运行时避免 `eval` / `new Function`，用受限语法承载安全的字段联动。             |
 
 ## 📚 目录
 
@@ -97,18 +97,18 @@ AlienForm 的立意是：把这些易碎的隐性约定沉淀成一份清晰、�
 
 ## 📦 包目录
 
-| Package | Role | Documentation |
-| --- | --- | --- |
-| 🧠 `@alien-form/core` | 无头表单运行时，负责 Schema 解析、字段树、Signal 状态、联动、校验和提交投影。 | [`packages/core`](./packages/core/README.md) |
-| ⚛️ `@alien-form/react` | React 绑定层，提供 `useCreateForm`、`FormProvider`、`SchemaField` 和字段状态 Hooks。 | [`packages/react`](./packages/react/README.md) |
-| 🧩 `@alien-form/shared` | 通用 UI 层，提供 adapters 和表单、筛选、表格、详情场景组件，不包含 CMS 业务协议。 | [`packages/shared`](./packages/shared) |
+| Package                 | Role                                                                                 | Documentation                                  |
+| ----------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| 🧠 `@alien-form/core`   | 无头表单运行时，负责 Schema 解析、字段树、Signal 状态、联动、校验和提交投影。        | [`packages/core`](./packages/core/README.md)   |
+| ⚛️ `@alien-form/react`  | React 绑定层，提供 `useCreateForm`、`FormProvider`、`SchemaField` 和字段状态 Hooks。 | [`packages/react`](./packages/react/README.md) |
+| 🧩 `@alien-form/shared` | 通用 UI 层，提供 adapters 和表单、筛选、表格、详情场景组件，不包含 CMS 业务协议。    | [`packages/shared`](./packages/shared)         |
 
 ## 🏗️ 应用目录
 
-| App | Role |
-| --- | --- |
+| App                 | Role                                                                                     |
+| ------------------- | ---------------------------------------------------------------------------------------- |
 | 🖥️ `apps/alien-cms` | 组合 core、react、shared 的 CMS 工作台，并拥有模型、Provider、CRUD、Builder 和投影逻辑。 |
-| 📊 `apps/benchmark` | AlienForm 与 Formily 的渲染基准应用。 |
+| 📊 `apps/benchmark` | AlienForm 与 Formily 的渲染基准应用。                                                    |
 
 ## ⚡ 快速开始
 
@@ -156,7 +156,8 @@ const form = createForm({
         dataSourcePolicy: "first",
         "x-reaction": {
           display: "{{ role ? 'visible' : 'none' }}",
-          dataSource: "{{ role === 'admin' ? [{ label: '全部', value: '*' }] : [{ label: '读取', value: 'read' }] }}",
+          dataSource:
+            "{{ role === 'admin' ? [{ label: '全部', value: '*' }] : [{ label: '读取', value: 'read' }] }}",
         },
       },
     },
@@ -192,20 +193,20 @@ function App() {
 
 AlienForm 的 Schema 基于对象树描述字段，并增加少量运行时扩展：
 
-| 字段 | 作用 |
-| --- | --- |
-| `type` | 字段类型，支持 `string`、`number`、`boolean`、`object`、`array`、`void` 以及自定义类型。 |
-| `component` / `props` | 指定渲染组件和组件参数。 |
-| `decorator` / `decoratorProps` | 指定字段装饰器，例如表单项容器。 |
-| `required` | 必填 UI 状态和内置必填校验简写。 |
-| `dataSource` | 选项数据源。 |
-| `dataSourcePolicy` | 选项变化后当前值的处理策略：`preserve`、`clear`、`filter`、`first`。 |
-| `definitions` / `$ref` | `schema.definitions` 是 `$ref` 引用字典；`config.definitions` 会合并到该字典，只有 schema 显式 `$ref` 时才生效。 |
-| `x-reaction` | 字段联动规则，可派生值、显隐、禁用、选项、组件、标题等。 |
-| `x-effect` | 字段挂载后的副作用规则。 |
-| `x-format` | 输入初始化与输出提交的格式化规则。 |
-| `x-validate` | 自定义校验规则。 |
-| `x-cms` | CMS 场景元信息，描述表格、筛选、表单、详情、移动端等投影行为。 |
+| 字段                           | 作用                                                                                                             |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `type`                         | 字段类型，支持 `string`、`number`、`boolean`、`object`、`array`、`void` 以及自定义类型。                         |
+| `component` / `props`          | 指定渲染组件和组件参数。                                                                                         |
+| `decorator` / `decoratorProps` | 指定字段装饰器，例如表单项容器。                                                                                 |
+| `required`                     | 必填 UI 状态和内置必填校验简写。                                                                                 |
+| `dataSource`                   | 选项数据源。                                                                                                     |
+| `dataSourcePolicy`             | 选项变化后当前值的处理策略：`preserve`、`clear`、`filter`、`first`。                                             |
+| `definitions` / `$ref`         | `schema.definitions` 是 `$ref` 引用字典；`config.definitions` 会合并到该字典，只有 schema 显式 `$ref` 时才生效。 |
+| `x-reaction`                   | 字段联动规则，可派生值、显隐、禁用、选项、组件、标题等。                                                         |
+| `x-effect`                     | 字段挂载后的副作用规则。                                                                                         |
+| `x-format`                     | 输入初始化与输出提交的格式化规则。                                                                               |
+| `x-validate`                   | 自定义校验规则。                                                                                                 |
+| `x-cms`                        | CMS 场景元信息，描述表格、筛选、表单、详情、移动端等投影行为。                                                   |
 
 运行时值统一支持：
 
@@ -245,17 +246,17 @@ AlienForm 的 Schema 基于对象树描述字段，并增加少量运行时扩�
 
 ## 🛠️ 开发命令
 
-| 命令 | 作用 |
-| --- | --- |
-| `pnpm dev` | 启动 Alien CMS 本地开发应用。 |
-| `pnpm build` | 构建全部 workspace 包和应用。 |
-| `pnpm test` | 运行全部测试。 |
-| `pnpm test:core` | 只运行 `@alien-form/core` 测试。 |
-| `pnpm build:core` | 只构建 `@alien-form/core`。 |
-| `pnpm build:react` | 只构建 `@alien-form/react`。 |
+| 命令                    | 作用                                       |
+| ----------------------- | ------------------------------------------ |
+| `pnpm dev`              | 启动 Alien CMS 本地开发应用。              |
+| `pnpm build`            | 构建全部 workspace 包和应用。              |
+| `pnpm test`             | 运行全部测试。                             |
+| `pnpm test:core`        | 只运行 `@alien-form/core` 测试。           |
+| `pnpm build:core`       | 只构建 `@alien-form/core`。                |
+| `pnpm build:react`      | 只构建 `@alien-form/react`。               |
 | `pnpm check:boundaries` | 检查 shared 业务边界和已删除包的残留引用。 |
-| `pnpm lint` | 运行 Oxlint。 |
-| `pnpm format` | 使用 Oxfmt 格式化项目。 |
+| `pnpm lint`             | 运行 Oxlint。                              |
+| `pnpm format`           | 使用 Oxfmt 格式化项目。                    |
 
 ## 🚧 项目状态
 

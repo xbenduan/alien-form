@@ -54,10 +54,9 @@ describe("useCreateForm", () => {
   });
 
   it("StrictMode 重挂后实例仍存活可用", () => {
-    const { result } = renderHook(
-      () => useCreateForm(configFor(schemaA), [1]),
-      { wrapper: StrictMode },
-    );
+    const { result } = renderHook(() => useCreateForm(configFor(schemaA), [1]), {
+      wrapper: StrictMode,
+    });
 
     const form = result.current;
     // 经历 mount -> unmount -> remount 后字段树仍在，未被销毁
@@ -83,7 +82,10 @@ describe("useCreateForm", () => {
           },
           initialValues: { name: "alien" },
           definitions: {
-            HookName: { type: "string", "x-validate": () => ({ message: "from hook definitions" }) },
+            HookName: {
+              type: "string",
+              "x-validate": () => ({ message: "from hook definitions" }),
+            },
           },
         },
         [1],
@@ -91,6 +93,8 @@ describe("useCreateForm", () => {
     );
 
     await expect(result.current.validate()).resolves.toBe(false);
-    expect(result.current.field("name")?.errors()).toEqual([{ message: "from hook definitions", type: "x-validate" }]);
+    expect(result.current.field("name")?.errors()).toEqual([
+      { message: "from hook definitions", type: "x-validate" },
+    ]);
   });
 });

@@ -55,24 +55,23 @@ export function RecordActionOverlay({
     </Space>
   ) : null;
 
-  const body =
-    loadingDetail ? (
-      <div className={`${styles.recordActionOverlay} ${styles.loading}`}>
-        <Spin />
-      </div>
-    ) : (
-      <RecordActionForm
-        mode={mode}
-        formSchema={formSchema}
-        record={mode === "add" ? undefined : detailQuery.data}
-        formKey={formKey}
-        formRef={formRef}
-        submitting={submitting}
-        onSubmitted={onClose}
-        createRecord={createRecord}
-        updateRecord={updateRecord}
-      />
-    );
+  const body = loadingDetail ? (
+    <div className={`${styles.recordActionOverlay} ${styles.loading}`}>
+      <Spin />
+    </div>
+  ) : (
+    <RecordActionForm
+      mode={mode}
+      formSchema={formSchema}
+      record={mode === "add" ? undefined : detailQuery.data}
+      formKey={formKey}
+      formRef={formRef}
+      submitting={submitting}
+      onSubmitted={onClose}
+      createRecord={createRecord}
+      updateRecord={updateRecord}
+    />
+  );
 
   if (overlay?.openMode === "modal") {
     return (

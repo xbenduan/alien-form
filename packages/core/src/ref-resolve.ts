@@ -56,12 +56,21 @@ export function resolveSchemaTree(
   const childSeen = consumed.size > 0 ? new Set([...seen, ...consumed]) : seen;
   let result = resolved;
   if (resolved.properties) {
-    result = { ...result, properties: Object.fromEntries(
-      Object.entries(resolved.properties).map(([k, v]) => [k, resolveSchemaTree(v, definitions, onError, childSeen)])
-    )};
+    result = {
+      ...result,
+      properties: Object.fromEntries(
+        Object.entries(resolved.properties).map(([k, v]) => [
+          k,
+          resolveSchemaTree(v, definitions, onError, childSeen),
+        ]),
+      ),
+    };
   }
   if (resolved.items && !Array.isArray(resolved.items)) {
-    result = { ...result, items: resolveSchemaTree(resolved.items as IFieldSchema, definitions, onError, childSeen) };
+    result = {
+      ...result,
+      items: resolveSchemaTree(resolved.items as IFieldSchema, definitions, onError, childSeen),
+    };
   }
   return result;
 }

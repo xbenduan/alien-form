@@ -33,10 +33,11 @@ export function SchemaRenderer({
     preserveValuesOnRebuild && previousFormRef.current
       ? previousFormRef.current.values()
       : initialValues;
-  const form = useCreateForm(
-    { schema, initialValues: rebuildInitialValues },
-    [mode, schema, formKey],
-  );
+  const form = useCreateForm({ schema, initialValues: rebuildInitialValues }, [
+    mode,
+    schema,
+    formKey,
+  ]);
   useEffect(() => {
     previousFormRef.current = form;
     onFormReady?.(form);

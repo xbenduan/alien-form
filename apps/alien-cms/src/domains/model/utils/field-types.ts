@@ -1,8 +1,4 @@
-import {
-  buildComponentOptions,
-  getRegistryEntry,
-  isContainerComponent,
-} from "@alien-form/shared";
+import { buildComponentOptions, getRegistryEntry, isContainerComponent } from "@alien-form/shared";
 
 /**
  * 面向构建器的组件注册机薄封装（仅 UI 展示用途）。

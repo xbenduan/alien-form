@@ -27,8 +27,7 @@ export function AppProviders({ children }: PropsWithChildren) {
           borderRadius: 6,
           colorBgLayout: "#f5f7fb",
           colorText: "#172033",
-          fontFamily:
-            "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         },
         components: {
           Card: {

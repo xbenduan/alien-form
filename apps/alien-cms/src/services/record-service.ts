@@ -15,10 +15,7 @@ export function getRecord(model: string, id: string): Promise<ModelRecord> {
   return apiGet<ModelRecord>(`/records/${encodeURIComponent(model)}/${encodeURIComponent(id)}`);
 }
 
-export function createRecord(
-  model: string,
-  values: Record<string, unknown>,
-): Promise<ModelRecord> {
+export function createRecord(model: string, values: Record<string, unknown>): Promise<ModelRecord> {
   return apiSend<ModelRecord>("POST", `/records/${encodeURIComponent(model)}`, values);
 }
 
@@ -35,10 +32,7 @@ export function updateRecord(
 }
 
 export function deleteRecord(model: string, id: string): Promise<void> {
-  return apiSend<void>(
-    "DELETE",
-    `/records/${encodeURIComponent(model)}/${encodeURIComponent(id)}`,
-  );
+  return apiSend<void>("DELETE", `/records/${encodeURIComponent(model)}/${encodeURIComponent(id)}`);
 }
 
 export function deleteRecords(model: string, ids: string[]): Promise<void> {

@@ -31,7 +31,13 @@ interface RecordListArgs {
 }
 
 /** 记录列表查询。 */
-export function useRecordList({ model, filters, pagination, sorter, enabled = true }: RecordListArgs) {
+export function useRecordList({
+  model,
+  filters,
+  pagination,
+  sorter,
+  enabled = true,
+}: RecordListArgs) {
   return useQuery({
     queryKey: recordKeys.list(model, filters, pagination, sorter),
     enabled,

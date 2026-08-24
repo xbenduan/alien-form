@@ -75,7 +75,12 @@ export const schoolCourseSchema: ModelSchema = {
         value: "id",
       },
       "x-table": { width: 130 },
-      "x-database": { relation: "many-to-one", target: "school-user", index: true, filterable: true },
+      "x-database": {
+        relation: "many-to-one",
+        target: "school-user",
+        index: true,
+        filterable: true,
+      },
     },
     semester: {
       type: "string",

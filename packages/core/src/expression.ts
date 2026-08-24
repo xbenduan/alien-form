@@ -15,9 +15,20 @@ type Node =
   | { type: "Member"; object: Node; key: string | Node; computed: boolean };
 
 const FORBIDDEN_IDS = new Set([
-  "globalThis", "window", "document", "process", "Function",
-  "eval", "constructor", "prototype", "__proto__", "new",
-  "function", "class", "import", "this",
+  "globalThis",
+  "window",
+  "document",
+  "process",
+  "Function",
+  "eval",
+  "constructor",
+  "prototype",
+  "__proto__",
+  "new",
+  "function",
+  "class",
+  "import",
+  "this",
 ]);
 const FORBIDDEN_KEYS = new Set(["constructor", "prototype", "__proto__"]);
 
@@ -40,17 +51,27 @@ class Parser {
   private len: number;
   private lastOp: string | undefined;
 
-  constructor(src: string) { this.src = src; this.len = src.length; }
+  constructor(src: string) {
+    this.src = src;
+    this.len = src.length;
+  }
 
-  parseExpression(): Node { return this.conditional(); }
+  parseExpression(): Node {
+    return this.conditional();
+  }
 
   expectEnd(): void {
     this.skip();
     if (this.pos < this.len) {
       const ch = this.src[this.pos];
       if (ch === "(") this.fail("function calls are not allowed");
-      if (ch === "=" && this.src[this.pos + 1] !== "=" && this.src[this.pos + 1] !== ">") this.fail("assignment is not allowed");
-      if ((ch === "+" || ch === "-" || ch === "*" || ch === "/" || ch === "%") && this.src[this.pos + 1] === "=") this.fail("assignment is not allowed");
+      if (ch === "=" && this.src[this.pos + 1] !== "=" && this.src[this.pos + 1] !== ">")
+        this.fail("assignment is not allowed");
+      if (
+        (ch === "+" || ch === "-" || ch === "*" || ch === "/" || ch === "%") &&
+        this.src[this.pos + 1] === "="
+      )
+        this.fail("assignment is not allowed");
       this.fail(`unexpected character '${ch}'`);
     }
   }
@@ -66,42 +87,55 @@ class Parser {
 
   private logicalOr(): Node {
     let node = this.logicalAnd();
-    while (this.eat("||") || this.eat("??")) { node = { type: "Logical", op: this.lastOp!, left: node, right: this.logicalAnd() }; }
+    while (this.eat("||") || this.eat("??")) {
+      node = { type: "Logical", op: this.lastOp!, left: node, right: this.logicalAnd() };
+    }
     return node;
   }
 
   private logicalAnd(): Node {
     let node = this.equality();
-    while (this.eat("&&")) { node = { type: "Logical", op: "&&", left: node, right: this.equality() }; }
+    while (this.eat("&&")) {
+      node = { type: "Logical", op: "&&", left: node, right: this.equality() };
+    }
     return node;
   }
 
   private equality(): Node {
     let node = this.comparison();
-    while (this.eat("===") || this.eat("!==") || this.eat("==") || this.eat("!=")) { node = { type: "Binary", op: this.lastOp!, left: node, right: this.comparison() }; }
+    while (this.eat("===") || this.eat("!==") || this.eat("==") || this.eat("!=")) {
+      node = { type: "Binary", op: this.lastOp!, left: node, right: this.comparison() };
+    }
     return node;
   }
 
   private comparison(): Node {
     let node = this.additive();
-    while (this.eat("<=") || this.eat(">=") || this.eat("<") || this.eat(">")) { node = { type: "Binary", op: this.lastOp!, left: node, right: this.additive() }; }
+    while (this.eat("<=") || this.eat(">=") || this.eat("<") || this.eat(">")) {
+      node = { type: "Binary", op: this.lastOp!, left: node, right: this.additive() };
+    }
     return node;
   }
 
   private additive(): Node {
     let node = this.multiplicative();
-    while (this.eatChar("+") || this.eatChar("-")) { node = { type: "Binary", op: this.lastOp!, left: node, right: this.multiplicative() }; }
+    while (this.eatChar("+") || this.eatChar("-")) {
+      node = { type: "Binary", op: this.lastOp!, left: node, right: this.multiplicative() };
+    }
     return node;
   }
 
   private multiplicative(): Node {
     let node = this.unary();
-    while (this.eatChar("*") || this.eatChar("/") || this.eatChar("%")) { node = { type: "Binary", op: this.lastOp!, left: node, right: this.unary() }; }
+    while (this.eatChar("*") || this.eatChar("/") || this.eatChar("%")) {
+      node = { type: "Binary", op: this.lastOp!, left: node, right: this.unary() };
+    }
     return node;
   }
 
   private unary(): Node {
-    if (this.eatChar("!") || this.eatChar("-") || this.eatChar("+")) return { type: "Unary", op: this.lastOp!, arg: this.unary() };
+    if (this.eatChar("!") || this.eatChar("-") || this.eatChar("+"))
+      return { type: "Unary", op: this.lastOp!, arg: this.unary() };
     return this.member();
   }
 
@@ -127,11 +161,21 @@ class Parser {
   private primary(): Node {
     this.skip();
     const ch = this.src[this.pos];
-    if (ch === "(") { this.pos++; const n = this.parseExpression(); this.expect(")"); return n; }
+    if (ch === "(") {
+      this.pos++;
+      const n = this.parseExpression();
+      this.expect(")");
+      return n;
+    }
     if (ch === "[") {
       this.pos++;
       const elements: Node[] = [];
-      if (!this.eatChar("]")) { do { elements.push(this.parseExpression()); } while (this.eatChar(",")); this.expect("]"); }
+      if (!this.eatChar("]")) {
+        do {
+          elements.push(this.parseExpression());
+        } while (this.eatChar(","));
+        this.expect("]");
+      }
       return { type: "Array", elements };
     }
     if (ch === "{") {
@@ -150,7 +194,8 @@ class Parser {
       return { type: "Object", properties };
     }
     if (ch === "'" || ch === '"') return { type: "Literal", value: this.readString() };
-    if (isDigit(ch) || (ch === "." && isDigit(this.src[this.pos + 1]))) return { type: "Literal", value: this.readNumber() };
+    if (isDigit(ch) || (ch === "." && isDigit(this.src[this.pos + 1])))
+      return { type: "Literal", value: this.readNumber() };
     const id = this.readIdentifier();
     if (id) {
       if (id === "true") return { type: "Literal", value: true };
@@ -164,52 +209,167 @@ class Parser {
     this.fail(`unexpected character '${ch}'`);
   }
 
-  private skip(): void { while (this.pos < this.len && /\s/.test(this.src[this.pos])) this.pos++; }
-  private peek(): string | undefined { this.skip(); return this.src[this.pos]; }
-  private eat(op: string): boolean { this.skip(); if (this.src.startsWith(op, this.pos)) { this.pos += op.length; this.lastOp = op; return true; } return false; }
-  private eatChar(ch: string): boolean { this.skip(); if (this.src[this.pos] === ch) { this.pos++; this.lastOp = ch; return true; } return false; }
-  private expect(ch: string): void { if (!this.eatChar(ch) && !this.eat(ch)) this.fail(`expected '${ch}'`); }
-  private readIdentifier(): string { this.skip(); const start = this.pos; if (this.pos < this.len && /[A-Za-z_$]/.test(this.src[this.pos])) { this.pos++; while (this.pos < this.len && /[A-Za-z0-9_$]/.test(this.src[this.pos])) this.pos++; } return this.src.slice(start, this.pos); }
-  private readObjectKey(): string { this.skip(); const ch = this.src[this.pos]; if (ch === "'" || ch === '"') return this.readString(); return this.readIdentifier(); }
+  private skip(): void {
+    while (this.pos < this.len && /\s/.test(this.src[this.pos])) this.pos++;
+  }
+  private peek(): string | undefined {
+    this.skip();
+    return this.src[this.pos];
+  }
+  private eat(op: string): boolean {
+    this.skip();
+    if (this.src.startsWith(op, this.pos)) {
+      this.pos += op.length;
+      this.lastOp = op;
+      return true;
+    }
+    return false;
+  }
+  private eatChar(ch: string): boolean {
+    this.skip();
+    if (this.src[this.pos] === ch) {
+      this.pos++;
+      this.lastOp = ch;
+      return true;
+    }
+    return false;
+  }
+  private expect(ch: string): void {
+    if (!this.eatChar(ch) && !this.eat(ch)) this.fail(`expected '${ch}'`);
+  }
+  private readIdentifier(): string {
+    this.skip();
+    const start = this.pos;
+    if (this.pos < this.len && /[A-Za-z_$]/.test(this.src[this.pos])) {
+      this.pos++;
+      while (this.pos < this.len && /[A-Za-z0-9_$]/.test(this.src[this.pos])) this.pos++;
+    }
+    return this.src.slice(start, this.pos);
+  }
+  private readObjectKey(): string {
+    this.skip();
+    const ch = this.src[this.pos];
+    if (ch === "'" || ch === '"') return this.readString();
+    return this.readIdentifier();
+  }
   private readString(): string {
-    const quote = this.src[this.pos++]; let result = "";
+    const quote = this.src[this.pos++];
+    let result = "";
     while (this.pos < this.len) {
       const ch = this.src[this.pos];
-      if (ch === quote) { this.pos++; return result; }
-      if (ch === "\\") { this.pos++; const esc = this.src[this.pos++]; const map: Record<string, string> = { n: "\n", r: "\r", t: "\t", "\\": "\\", "'": "'", '"': '"' }; result += map[esc] ?? esc; }
-      else { result += ch; this.pos++; }
+      if (ch === quote) {
+        this.pos++;
+        return result;
+      }
+      if (ch === "\\") {
+        this.pos++;
+        const esc = this.src[this.pos++];
+        const map: Record<string, string> = {
+          n: "\n",
+          r: "\r",
+          t: "\t",
+          "\\": "\\",
+          "'": "'",
+          '"': '"',
+        };
+        result += map[esc] ?? esc;
+      } else {
+        result += ch;
+        this.pos++;
+      }
     }
-    this.fail("unterminated string"); return "";
+    this.fail("unterminated string");
+    return "";
   }
-  private readNumber(): number { const start = this.pos; const m = /^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/.exec(this.src.slice(this.pos)); if (!m) this.fail("invalid number"); this.pos += m![0].length; return Number(this.src.slice(start, this.pos)); }
-  private assertSafeId(name: string): void { if (FORBIDDEN_IDS.has(name)) this.fail(`identifier '${name}' is not allowed`); }
-  private assertSafeKey(key: string): void { if (FORBIDDEN_KEYS.has(key)) this.fail(`member key '${key}' is not allowed`); }
-  private fail(msg: string): never { throw new Error(`Expression error at ${this.pos}: ${msg}`); }
+  private readNumber(): number {
+    const start = this.pos;
+    const m = /^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/.exec(this.src.slice(this.pos));
+    if (!m) this.fail("invalid number");
+    this.pos += m![0].length;
+    return Number(this.src.slice(start, this.pos));
+  }
+  private assertSafeId(name: string): void {
+    if (FORBIDDEN_IDS.has(name)) this.fail(`identifier '${name}' is not allowed`);
+  }
+  private assertSafeKey(key: string): void {
+    if (FORBIDDEN_KEYS.has(key)) this.fail(`member key '${key}' is not allowed`);
+  }
+  private fail(msg: string): never {
+    throw new Error(`Expression error at ${this.pos}: ${msg}`);
+  }
 }
 
 function evaluate(node: Node, scope: Record<string, any>): any {
   switch (node.type) {
-    case "Literal": return node.value;
-    case "Identifier": return Object.prototype.hasOwnProperty.call(scope, node.name) ? scope[node.name] : undefined;
-    case "Array": return node.elements.map((el) => evaluate(el, scope));
-    case "Object": { const obj: Record<string, any> = {}; for (const p of node.properties) obj[p.key] = evaluate(p.value, scope); return obj; }
-    case "Unary": { const v = evaluate(node.arg, scope); return node.op === "!" ? !v : node.op === "-" ? -v : +v; }
-    case "Binary": return evalBinary(node.op, evaluate(node.left, scope), evaluate(node.right, scope));
-    case "Logical": { const left = evaluate(node.left, scope); if (node.op === "&&") return left && evaluate(node.right, scope); if (node.op === "||") return left || evaluate(node.right, scope); return left ?? evaluate(node.right, scope); }
-    case "Conditional": return evaluate(node.test, scope) ? evaluate(node.yes, scope) : evaluate(node.no, scope);
-    case "Member": { const obj = evaluate(node.object, scope); if (obj == null) return undefined; const key = node.computed ? String(evaluate(node.key as Node, scope)) : (node.key as string); if (FORBIDDEN_KEYS.has(key)) throw new Error(`Expression error: member key '${key}' is not allowed`); return obj[key]; }
+    case "Literal":
+      return node.value;
+    case "Identifier":
+      return Object.prototype.hasOwnProperty.call(scope, node.name) ? scope[node.name] : undefined;
+    case "Array":
+      return node.elements.map((el) => evaluate(el, scope));
+    case "Object": {
+      const obj: Record<string, any> = {};
+      for (const p of node.properties) obj[p.key] = evaluate(p.value, scope);
+      return obj;
+    }
+    case "Unary": {
+      const v = evaluate(node.arg, scope);
+      return node.op === "!" ? !v : node.op === "-" ? -v : +v;
+    }
+    case "Binary":
+      return evalBinary(node.op, evaluate(node.left, scope), evaluate(node.right, scope));
+    case "Logical": {
+      const left = evaluate(node.left, scope);
+      if (node.op === "&&") return left && evaluate(node.right, scope);
+      if (node.op === "||") return left || evaluate(node.right, scope);
+      return left ?? evaluate(node.right, scope);
+    }
+    case "Conditional":
+      return evaluate(node.test, scope) ? evaluate(node.yes, scope) : evaluate(node.no, scope);
+    case "Member": {
+      const obj = evaluate(node.object, scope);
+      if (obj == null) return undefined;
+      const key = node.computed ? String(evaluate(node.key as Node, scope)) : (node.key as string);
+      if (FORBIDDEN_KEYS.has(key))
+        throw new Error(`Expression error: member key '${key}' is not allowed`);
+      return obj[key];
+    }
   }
 }
 
 function evalBinary(op: string, l: any, r: any): any {
   switch (op) {
-    case "+": return l + r; case "-": return l - r; case "*": return l * r;
-    case "/": return l / r; case "%": return l % r; case "<": return l < r;
-    case "<=": return l <= r; case ">": return l > r; case ">=": return l >= r;
-    case "===": return l === r; case "!==": return l !== r;
-    case "==": return l == r; case "!=": return l != r;
-    default: return undefined;
+    case "+":
+      return l + r;
+    case "-":
+      return l - r;
+    case "*":
+      return l * r;
+    case "/":
+      return l / r;
+    case "%":
+      return l % r;
+    case "<":
+      return l < r;
+    case "<=":
+      return l <= r;
+    case ">":
+      return l > r;
+    case ">=":
+      return l >= r;
+    case "===":
+      return l === r;
+    case "!==":
+      return l !== r;
+    case "==":
+      return l == r;
+    case "!=":
+      return l != r;
+    default:
+      return undefined;
   }
 }
 
-function isDigit(ch: string | undefined): boolean { return !!ch && ch >= "0" && ch <= "9"; }
+function isDigit(ch: string | undefined): boolean {
+  return !!ch && ch >= "0" && ch <= "9";
+}

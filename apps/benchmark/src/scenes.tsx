@@ -1,16 +1,8 @@
 import { useMemo } from "react";
 import { Form as AntForm, Input as AntInput } from "antd";
-import {
-  FormProvider,
-  SchemaField,
-  useCreateForm,
-  type IFormSchema,
-} from "@alien-form/react";
+import { FormProvider, SchemaField, useCreateForm, type IFormSchema } from "@alien-form/react";
 import { createForm } from "@formily/core";
-import {
-  FormProvider as FormilyProvider,
-  createSchemaField,
-} from "@formily/react";
+import { FormProvider as FormilyProvider, createSchemaField } from "@formily/react";
 import { benchmarkComponents, benchmarkDecorators, formilyComponents } from "./components";
 
 export interface SceneProps {

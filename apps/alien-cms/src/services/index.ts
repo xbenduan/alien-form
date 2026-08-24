@@ -1,10 +1,4 @@
-export {
-  createSchema,
-  deleteSchema,
-  getSchema,
-  listSchemas,
-  updateSchema,
-} from "./schema-service";
+export { createSchema, deleteSchema, getSchema, listSchemas, updateSchema } from "./schema-service";
 export {
   createRecord,
   deleteRecord,

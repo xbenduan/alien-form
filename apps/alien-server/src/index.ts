@@ -5,7 +5,7 @@ import { bootstrap } from "./db/migrate.ts";
 import { schemaRoutes } from "./routes/schemas.ts";
 import { recordRoutes } from "./routes/records.ts";
 
-// 启动即建表 + 灌 seed（幂等）
+// 启动即建表 + 注册内置 schema（幂等）。演示数据用 `node script/seed.js` 灌入。
 bootstrap();
 
 const app = new Hono();

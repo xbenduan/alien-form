@@ -12,9 +12,7 @@ export function isComplexField(field: IFieldSchema): boolean {
 }
 
 /** 取字段下的子字段 properties：对象取自身，对象数组取 items。 */
-export function getChildProperties(
-  field: IFieldSchema,
-): Record<string, IFieldSchema> | undefined {
+export function getChildProperties(field: IFieldSchema): Record<string, IFieldSchema> | undefined {
   if (field.type === "array" && field.items && !Array.isArray(field.items)) {
     return field.items.properties;
   }

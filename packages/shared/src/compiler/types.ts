@@ -67,7 +67,10 @@ export interface ModelMeta {
  * 模型字段：alien-form 协议字段 + CMS 扩展元信息。
  * dataSource / title / description / props.* 等位置可承载插件 marker（见 PluginMarker）。
  */
-export interface ModelFieldSchema extends Omit<IFieldSchema, "dataSource" | "properties" | "items"> {
+export interface ModelFieldSchema extends Omit<
+  IFieldSchema,
+  "dataSource" | "properties" | "items"
+> {
   key?: string;
   "x-table"?: TableFieldMeta;
   "x-filter"?: FilterFieldMeta;
@@ -181,9 +184,7 @@ export interface DescriptorCtx {
   scene: Scene;
   locale: Locale;
   /** 递归投影子 properties（容器字段用）。 */
-  projectProperties: (
-    properties: Record<string, ModelFieldSchema>,
-  ) => Record<string, IFieldSchema>;
+  projectProperties: (properties: Record<string, ModelFieldSchema>) => Record<string, IFieldSchema>;
 }
 
 /**

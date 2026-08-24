@@ -76,14 +76,9 @@ export function draftToSchema(draft: ModelDraft): ModelSchema {
 
 // ─── schema → draft ──────────────────────────────────────────────────────────
 
-function toFieldDraft(
-  key: string,
-  field: ModelFieldSchema,
-  uid: () => string,
-): FieldDraft {
+function toFieldDraft(key: string, field: ModelFieldSchema, uid: () => string): FieldDraft {
   const fieldType = getRegistryEntry(field.component)?.fieldType;
-  const itemProps =
-    field.items && !Array.isArray(field.items) ? field.items.properties : undefined;
+  const itemProps = field.items && !Array.isArray(field.items) ? field.items.properties : undefined;
   const childProps =
     fieldType === "object" ? field.properties : fieldType === "array" ? itemProps : undefined;
 
@@ -107,8 +102,7 @@ export function schemaToDraft(schema: ModelSchema, uid: () => string): ModelDraf
 
   const groups: GroupDraft[] = (schema.group ?? []).map((group) => ({
     id: uid(),
-    title:
-      typeof group.props?.title === "string" ? group.props.title : group.title ?? "",
+    title: typeof group.props?.title === "string" ? group.props.title : (group.title ?? ""),
     component: group.component,
     keys: group.keys,
     gridSpan:

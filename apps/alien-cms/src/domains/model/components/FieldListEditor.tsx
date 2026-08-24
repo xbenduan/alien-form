@@ -74,9 +74,7 @@ function insertBefore(fields: FieldDraft[], targetId: string, field: FieldDraft)
     return [...fields.slice(0, index), field, ...fields.slice(index)];
   }
   return fields.map((item) =>
-    item.children
-      ? { ...item, children: insertBefore(item.children, targetId, field) }
-      : item,
+    item.children ? { ...item, children: insertBefore(item.children, targetId, field) } : item,
   );
 }
 

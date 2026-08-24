@@ -30,5 +30,7 @@ export function setDeepValue(obj: Record<string, any>, path: string, value: any)
 }
 
 export function sortByOrder(properties: Record<string, IFieldSchema>): [string, IFieldSchema][] {
-  return Object.entries(properties).sort(([, a], [, b]) => (a.order ?? Infinity) - (b.order ?? Infinity));
+  return Object.entries(properties).sort(
+    ([, a], [, b]) => (a.order ?? Infinity) - (b.order ?? Infinity),
+  );
 }

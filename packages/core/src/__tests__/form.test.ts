@@ -1,17 +1,17 @@
-import { describe, expect, it } from 'vitest';
-import { createForm } from '../form';
-import type { IFormSchema } from '../types';
+import { describe, expect, it } from "vitest";
+import { createForm } from "../form";
+import type { IFormSchema } from "../types";
 
-describe('createForm runtime and projection', () => {
-  it('defers runtime reactions until mount', async () => {
+describe("createForm runtime and projection", () => {
+  it("defers runtime reactions until mount", async () => {
     let calls = 0;
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         serviceIds: {
-          type: 'tags',
-          'x-reaction': {
-            dataSource: '@loadDataSource',
+          type: "tags",
+          "x-reaction": {
+            dataSource: "@loadDataSource",
           },
         },
       },
@@ -34,15 +34,15 @@ describe('createForm runtime and projection', () => {
     expect(calls).toBe(1);
   });
 
-  it('can remount runtime after unmount without losing fields', () => {
+  it("can remount runtime after unmount without losing fields", () => {
     let calls = 0;
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         serviceIds: {
-          type: 'tags',
-          'x-reaction': {
-            dataSource: '@loadDataSource',
+          type: "tags",
+          "x-reaction": {
+            dataSource: "@loadDataSource",
           },
         },
       },
@@ -62,22 +62,22 @@ describe('createForm runtime and projection', () => {
     form.unmount();
     form.mount();
 
-    expect(form.field('serviceIds')).toBeDefined();
+    expect(form.field("serviceIds")).toBeDefined();
     expect(calls).toBe(2);
   });
 
-  it('flattens void field children into parent values', async () => {
+  it("flattens void field children into parent values", async () => {
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         deliverySection: {
-          'x-layout': 'Card',
+          "x-layout": "Card",
           properties: {
             landingPage: {
-              type: 'string',
+              type: "string",
             },
             trackingCode: {
-              type: 'string',
+              type: "string",
             },
           },
         },
@@ -87,37 +87,37 @@ describe('createForm runtime and projection', () => {
     const form = createForm({
       schema,
       initialValues: {
-        landingPage: 'https://before.example.com',
-        trackingCode: 'OLD',
+        landingPage: "https://before.example.com",
+        trackingCode: "OLD",
       },
     });
 
-    form.set('landingPage', 'https://after.example.com');
-    form.set('trackingCode', 'NEW');
+    form.set("landingPage", "https://after.example.com");
+    form.set("trackingCode", "NEW");
 
     await expect(form.submit()).resolves.toEqual({
-      landingPage: 'https://after.example.com',
-      trackingCode: 'NEW',
+      landingPage: "https://after.example.com",
+      trackingCode: "NEW",
     });
   });
 
-  it('keeps array object item values after edit', async () => {
+  it("keeps array object item values after edit", async () => {
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         materials: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
               name: {
-                type: 'string',
+                type: "string",
               },
               format: {
-                type: 'string',
+                type: "string",
               },
               owner: {
-                type: 'string',
+                type: "string",
               },
             },
           },
@@ -130,49 +130,49 @@ describe('createForm runtime and projection', () => {
       initialValues: {
         materials: [
           {
-            name: '旧素材',
-            format: 'banner',
-            owner: 'Luna',
+            name: "旧素材",
+            format: "banner",
+            owner: "Luna",
           },
         ],
       },
     });
 
-    form.set('materials.0.name', '新素材');
-    form.set('materials.0.format', 'video');
-    form.set('materials.0.owner', 'Mika');
+    form.set("materials.0.name", "新素材");
+    form.set("materials.0.format", "video");
+    form.set("materials.0.owner", "Mika");
 
     await expect(form.submit()).resolves.toEqual({
       materials: [
         {
-          name: '新素材',
-          format: 'video',
-          owner: 'Mika',
+          name: "新素材",
+          format: "video",
+          owner: "Mika",
         },
       ],
     });
   });
 
-  it('keeps array object item values after editing from empty row object', async () => {
+  it("keeps array object item values after editing from empty row object", async () => {
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         materials: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
               name: {
-                type: 'string',
+                type: "string",
               },
               format: {
-                type: 'string',
+                type: "string",
               },
               owner: {
-                type: 'string',
+                type: "string",
               },
               enabled: {
-                type: 'boolean',
+                type: "boolean",
               },
             },
           },
@@ -187,34 +187,34 @@ describe('createForm runtime and projection', () => {
       },
     });
 
-    form.set('materials.0.name', '111');
-    form.set('materials.0.format', 'banner');
-    form.set('materials.0.owner', '111');
-    form.set('materials.0.enabled', true);
+    form.set("materials.0.name", "111");
+    form.set("materials.0.format", "banner");
+    form.set("materials.0.owner", "111");
+    form.set("materials.0.enabled", true);
 
     await expect(form.submit()).resolves.toEqual({
       materials: [
         {
-          name: '111',
-          format: 'banner',
-          owner: '111',
+          name: "111",
+          format: "banner",
+          owner: "111",
           enabled: true,
         },
       ],
     });
   });
 
-  it('relinks stale row children before projecting array item values', async () => {
+  it("relinks stale row children before projecting array item values", async () => {
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         materials: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
-              name: { type: 'string' },
-              format: { type: 'string' },
+              name: { type: "string" },
+              format: { type: "string" },
             },
           },
         },
@@ -228,35 +228,35 @@ describe('createForm runtime and projection', () => {
       },
     });
 
-    const materials = form.field('materials');
-    if (!materials || materials.kind !== 'array') {
-      throw new Error('materials field missing');
+    const materials = form.field("materials");
+    if (!materials || materials.kind !== "array") {
+      throw new Error("materials field missing");
     }
 
     materials.rows()[0]?.children.clear();
 
-    form.set('materials.0.name', '修复后素材');
-    form.set('materials.0.format', 'video');
+    form.set("materials.0.name", "修复后素材");
+    form.set("materials.0.format", "video");
 
     await expect(form.submit()).resolves.toEqual({
       materials: [
         {
-          name: '修复后素材',
-          format: 'video',
+          name: "修复后素材",
+          format: "video",
         },
       ],
     });
   });
 
-  it('applies x-format input on initialization only and output on submit', async () => {
+  it("applies x-format input on initialization only and output on submit", async () => {
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         name: {
-          type: 'string',
-          'x-format': {
-            input: ({ value }) => typeof value === 'string' ? value.trim() : value,
-            output: '@wrapName',
+          type: "string",
+          "x-format": {
+            input: ({ value }) => (typeof value === "string" ? value.trim() : value),
+            output: "@wrapName",
           },
         },
       },
@@ -265,32 +265,32 @@ describe('createForm runtime and projection', () => {
     const form = createForm({
       schema,
       initialValues: {
-        name: '  Alice  ',
+        name: "  Alice  ",
       },
       handlers: {
         wrapName({ value }) {
-          return typeof value === 'string' ? `[${value}]` : value;
+          return typeof value === "string" ? `[${value}]` : value;
         },
       },
     });
 
-    expect(form.get('name')).toBe('Alice');
+    expect(form.get("name")).toBe("Alice");
 
-    form.set('name', '  Bob  ');
+    form.set("name", "  Bob  ");
 
-    expect(form.get('name')).toBe('  Bob  ');
+    expect(form.get("name")).toBe("  Bob  ");
     await expect(form.submit()).resolves.toEqual({
-      name: '[  Bob  ]',
+      name: "[  Bob  ]",
     });
   });
 
-  it('switches to the first option when dataSourcePolicy is first and current value becomes invalid', () => {
+  it("switches to the first option when dataSourcePolicy is first and current value becomes invalid", () => {
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         role: {
-          type: 'string',
-          dataSourcePolicy: 'first',
+          type: "string",
+          dataSourcePolicy: "first",
         },
       },
     };
@@ -298,34 +298,34 @@ describe('createForm runtime and projection', () => {
     const form = createForm({
       schema,
       initialValues: {
-        role: 'ghost',
+        role: "ghost",
       },
     });
 
-    const role = form.field('role');
-    if (!role || role.kind !== 'primitive') {
-      throw new Error('role field missing');
+    const role = form.field("role");
+    if (!role || role.kind !== "primitive") {
+      throw new Error("role field missing");
     }
 
     role.setDataSource([
-      { label: 'Admin', value: 'admin' },
-      { label: 'User', value: 'user' },
+      { label: "Admin", value: "admin" },
+      { label: "User", value: "user" },
     ]);
 
-    expect(form.get('role')).toBe('admin');
+    expect(form.get("role")).toBe("admin");
   });
 
-  it('reads primitive values from array item selectors', () => {
+  it("reads primitive values from array item selectors", () => {
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         materials: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
-              name: { type: 'string' },
-              format: { type: 'string' },
+              name: { type: "string" },
+              format: { type: "string" },
             },
           },
         },
@@ -336,31 +336,31 @@ describe('createForm runtime and projection', () => {
       schema,
       initialValues: {
         materials: [
-          { name: '海报', format: 'image' },
-          { name: '视频', format: 'video' },
+          { name: "海报", format: "image" },
+          { name: "视频", format: "video" },
         ],
       },
     });
 
-    expect(form.get('materials[].name')).toEqual(['海报', '视频']);
+    expect(form.get("materials[].name")).toEqual(["海报", "视频"]);
   });
 
-  it('reads nested array item selectors', () => {
+  it("reads nested array item selectors", () => {
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         contacts: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
-              name: { type: 'string' },
+              name: { type: "string" },
               phones: {
-                type: 'array',
+                type: "array",
                 items: {
-                  type: 'object',
+                  type: "object",
                   properties: {
-                    number: { type: 'string' },
+                    number: { type: "string" },
                   },
                 },
               },
@@ -375,34 +375,34 @@ describe('createForm runtime and projection', () => {
       initialValues: {
         contacts: [
           {
-            name: 'Alice',
-            phones: [{ number: '111' }, { number: '222' }],
+            name: "Alice",
+            phones: [{ number: "111" }, { number: "222" }],
           },
           {
-            name: 'Bob',
-            phones: [{ number: '333' }],
+            name: "Bob",
+            phones: [{ number: "333" }],
           },
         ],
       },
     });
 
-    expect(form.get('contacts[].phones.0.number')).toEqual(['111', '333']);
+    expect(form.get("contacts[].phones.0.number")).toEqual(["111", "333"]);
   });
 
-  it('reads $row first-level selectors inside row runtime', () => {
+  it("reads $row first-level selectors inside row runtime", () => {
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         contacts: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
-              name: { type: 'string' },
+              name: { type: "string" },
               summary: {
-                type: 'string',
-                'x-reaction': {
-                  value: '@readRowName',
+                type: "string",
+                "x-reaction": {
+                  value: "@readRowName",
                 },
               },
             },
@@ -414,43 +414,40 @@ describe('createForm runtime and projection', () => {
     const form = createForm({
       schema,
       initialValues: {
-        contacts: [
-          { name: 'Alice' },
-          { name: 'Bob' },
-        ],
+        contacts: [{ name: "Alice" }, { name: "Bob" }],
       },
       handlers: {
         readRowName(runtime) {
-          return runtime.get('$row.name');
+          return runtime.get("$row.name");
         },
       },
     });
 
     form.mount();
 
-    expect(form.get('contacts.0.summary')).toBe('Alice');
-    expect(form.get('contacts.1.summary')).toBe('Bob');
+    expect(form.get("contacts.0.summary")).toBe("Alice");
+    expect(form.get("contacts.1.summary")).toBe("Bob");
   });
 
-  it('reads $row nested selectors inside row runtime', () => {
+  it("reads $row nested selectors inside row runtime", () => {
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         contacts: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
               profile: {
-                type: 'object',
+                type: "object",
                 properties: {
-                  city: { type: 'string' },
+                  city: { type: "string" },
                 },
               },
               summary: {
-                type: 'string',
-                'x-reaction': {
-                  value: '@readRowCity',
+                type: "string",
+                "x-reaction": {
+                  value: "@readRowCity",
                 },
               },
             },
@@ -462,87 +459,84 @@ describe('createForm runtime and projection', () => {
     const form = createForm({
       schema,
       initialValues: {
-        contacts: [
-          { profile: { city: 'Shanghai' } },
-          { profile: { city: 'Beijing' } },
-        ],
+        contacts: [{ profile: { city: "Shanghai" } }, { profile: { city: "Beijing" } }],
       },
       handlers: {
         readRowCity(runtime) {
-          return runtime.get('$row.profile.city');
+          return runtime.get("$row.profile.city");
         },
       },
     });
 
     form.mount();
 
-    expect(form.get('contacts.0.summary')).toBe('Shanghai');
-    expect(form.get('contacts.1.summary')).toBe('Beijing');
+    expect(form.get("contacts.0.summary")).toBe("Shanghai");
+    expect(form.get("contacts.1.summary")).toBe("Beijing");
   });
 });
 
-describe('set selector get/set parity', () => {
+describe("set selector get/set parity", () => {
   // ── direct: single absolute/index selector still writes correctly (regression guard) ──
-  it('direct: writes a single array-item primitive selector', async () => {
+  it("direct: writes a single array-item primitive selector", async () => {
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         materials: {
-          type: 'array',
-          items: { type: 'object', properties: { name: { type: 'string' } } },
+          type: "array",
+          items: { type: "object", properties: { name: { type: "string" } } },
         },
       },
     };
     const form = createForm({
       schema,
-      initialValues: { materials: [{ name: 'a' }, { name: 'b' }] },
+      initialValues: { materials: [{ name: "a" }, { name: "b" }] },
     });
 
-    form.set('materials.0.name', 'A0');
+    form.set("materials.0.name", "A0");
 
-    expect(form.get('materials.0.name')).toBe('A0');
-    expect(form.get('materials.1.name')).toBe('b');
+    expect(form.get("materials.0.name")).toBe("A0");
+    expect(form.get("materials.1.name")).toBe("b");
   });
 
   // ── nested (collection): set('coll[].child') broadcasts to every row, mirroring get ──
-  it('nested: broadcasts a collection selector to every array row', async () => {
+  it("nested: broadcasts a collection selector to every array row", async () => {
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         materials: {
-          type: 'array',
-          items: { type: 'object', properties: { name: { type: 'string' } } },
+          type: "array",
+          items: { type: "object", properties: { name: { type: "string" } } },
         },
       },
     };
     const form = createForm({
       schema,
-      initialValues: { materials: [{ name: 'a' }, { name: 'b' }, { name: 'c' }] },
+      initialValues: { materials: [{ name: "a" }, { name: "b" }, { name: "c" }] },
     });
 
     // read parity already exists; now the write must mirror it
-    expect(form.get('materials[].name')).toEqual(['a', 'b', 'c']);
+    expect(form.get("materials[].name")).toEqual(["a", "b", "c"]);
 
-    form.set('materials[].name', 'Z');
+    form.set("materials[].name", "Z");
 
-    expect(form.get('materials[].name')).toEqual(['Z', 'Z', 'Z']);
+    expect(form.get("materials[].name")).toEqual(["Z", "Z", "Z"]);
     await expect(form.submit()).resolves.toEqual({
-      materials: [{ name: 'Z' }, { name: 'Z' }, { name: 'Z' }],
+      materials: [{ name: "Z" }, { name: "Z" }, { name: "Z" }],
     });
   });
 
   // ── nested ($row): writing a nested $row child path from inside row runtime ──
-  it('nested: writes a nested $row child selector inside row runtime', () => {
+  it("nested: writes a nested $row child selector inside row runtime", () => {
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         contacts: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
-              profile: { type: 'object', properties: { city: { type: 'string' } } },
-              trigger: { type: 'string', 'x-reaction': { value: '@writeCity' } },
+              profile: { type: "object", properties: { city: { type: "string" } } },
+              trigger: { type: "string", "x-reaction": { value: "@writeCity" } },
             },
           },
         },
@@ -550,35 +544,35 @@ describe('set selector get/set parity', () => {
     };
     const form = createForm({
       schema,
-      initialValues: { contacts: [{ profile: { city: 'old' } }] },
+      initialValues: { contacts: [{ profile: { city: "old" } }] },
       handlers: {
         writeCity(runtime) {
-          runtime.set('$row.profile.city', 'WRITTEN');
-          return 'done';
+          runtime.set("$row.profile.city", "WRITTEN");
+          return "done";
         },
       },
     });
 
     form.mount();
 
-    expect(form.get('contacts.0.profile.city')).toBe('WRITTEN');
+    expect(form.get("contacts.0.profile.city")).toBe("WRITTEN");
   });
 
   // ── nested ($row collection): set('$row.arr[].child') broadcasts within the row ──
-  it('nested: broadcasts a $row collection selector within the row', () => {
+  it("nested: broadcasts a $row collection selector within the row", () => {
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         contacts: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
               phones: {
-                type: 'array',
-                items: { type: 'object', properties: { number: { type: 'string' } } },
+                type: "array",
+                items: { type: "object", properties: { number: { type: "string" } } },
               },
-              trigger: { type: 'string', 'x-reaction': { value: '@maskPhones' } },
+              trigger: { type: "string", "x-reaction": { value: "@maskPhones" } },
             },
           },
         },
@@ -586,96 +580,96 @@ describe('set selector get/set parity', () => {
     };
     const form = createForm({
       schema,
-      initialValues: { contacts: [{ phones: [{ number: 'P1' }, { number: 'P2' }] }] },
+      initialValues: { contacts: [{ phones: [{ number: "P1" }, { number: "P2" }] }] },
       handlers: {
         maskPhones(runtime) {
-          runtime.set('$row.phones[].number', '***');
-          return 'done';
+          runtime.set("$row.phones[].number", "***");
+          return "done";
         },
       },
     });
 
     form.mount();
 
-    expect(form.get('contacts.0.phones[].number')).toEqual(['***', '***']);
+    expect(form.get("contacts.0.phones[].number")).toEqual(["***", "***"]);
   });
 
   // ── invalid: collection selector against a non-array field reports error, no write ──
-  it('invalid: collection selector on a non-array field emits error and writes nothing', () => {
+  it("invalid: collection selector on a non-array field emits error and writes nothing", () => {
     const errors: string[] = [];
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
-        title: { type: 'string' },
+        title: { type: "string" },
       },
     };
     const form = createForm({
       schema,
-      initialValues: { title: 'keep' },
+      initialValues: { title: "keep" },
       onError: (e) => errors.push(e.message),
     });
 
-    form.set('title[].name', 'X');
+    form.set("title[].name", "X");
 
-    expect(form.get('title')).toBe('keep');
-    expect(errors.some((m) => m.includes('is not an array field'))).toBe(true);
+    expect(form.get("title")).toBe("keep");
+    expect(errors.some((m) => m.includes("is not an array field"))).toBe(true);
   });
 
   // ── invalid: setting a non-primitive (object) selector reports error, no crash ──
-  it('invalid: setting a non-primitive object selector emits error and does not throw', () => {
+  it("invalid: setting a non-primitive object selector emits error and does not throw", () => {
     const errors: string[] = [];
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
-        profile: { type: 'object', properties: { city: { type: 'string' } } },
+        profile: { type: "object", properties: { city: { type: "string" } } },
       },
     };
     const form = createForm({
       schema,
-      initialValues: { profile: { city: 'sh' } },
+      initialValues: { profile: { city: "sh" } },
       onError: (e) => errors.push(e.message),
     });
 
-    expect(() => form.set('profile', { city: 'bj' })).not.toThrow();
-    expect(form.get('profile.city')).toBe('sh');
-    expect(errors.some((m) => m.includes('Cannot set non-primitive selector'))).toBe(true);
+    expect(() => form.set("profile", { city: "bj" })).not.toThrow();
+    expect(form.get("profile.city")).toBe("sh");
+    expect(errors.some((m) => m.includes("Cannot set non-primitive selector"))).toBe(true);
   });
 
   // ── out-of-range: direct index past the end is a no-op (no ghost rows, no throw) ──
-  it('out-of-range: writing past the last array index is a safe no-op', async () => {
+  it("out-of-range: writing past the last array index is a safe no-op", async () => {
     const errors: string[] = [];
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         materials: {
-          type: 'array',
-          items: { type: 'object', properties: { name: { type: 'string' } } },
+          type: "array",
+          items: { type: "object", properties: { name: { type: "string" } } },
         },
       },
     };
     const form = createForm({
       schema,
-      initialValues: { materials: [{ name: 'a' }] },
+      initialValues: { materials: [{ name: "a" }] },
       onError: (e) => errors.push(e.message),
     });
 
-    expect(() => form.set('materials.5.name', 'ghost')).not.toThrow();
+    expect(() => form.set("materials.5.name", "ghost")).not.toThrow();
 
     // no ghost row created
-    const materials = form.field('materials');
-    if (!materials || materials.kind !== 'array') throw new Error('materials missing');
+    const materials = form.field("materials");
+    if (!materials || materials.kind !== "array") throw new Error("materials missing");
     expect(materials.rows().length).toBe(1);
-    await expect(form.submit()).resolves.toEqual({ materials: [{ name: 'a' }] });
+    await expect(form.submit()).resolves.toEqual({ materials: [{ name: "a" }] });
   });
 
   // ── out-of-range: empty collection broadcast writes nothing and does not throw ──
-  it('out-of-range: collection broadcast on an empty array writes nothing', () => {
+  it("out-of-range: collection broadcast on an empty array writes nothing", () => {
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         materials: {
-          type: 'array',
-          items: { type: 'object', properties: { name: { type: 'string' } } },
+          type: "array",
+          items: { type: "object", properties: { name: { type: "string" } } },
         },
       },
     };
@@ -684,91 +678,91 @@ describe('set selector get/set parity', () => {
       initialValues: { materials: [] },
     });
 
-    expect(() => form.set('materials[].name', 'Z')).not.toThrow();
-    expect(form.get('materials[].name')).toEqual([]);
+    expect(() => form.set("materials[].name", "Z")).not.toThrow();
+    expect(form.get("materials[].name")).toEqual([]);
   });
 });
 
-describe('leaf value type guard', () => {
+describe("leaf value type guard", () => {
   function makeForm() {
     const schema: IFormSchema = {
-      type: 'object',
-      properties: { name: { type: 'string' } },
+      type: "object",
+      properties: { name: { type: "string" } },
     };
     return createForm({ schema });
   }
 
-  it('accepts single string / number / boolean', () => {
+  it("accepts single string / number / boolean", () => {
     const form = makeForm();
-    const field = form.field('name');
-    if (!field || field.kind !== 'primitive') throw new Error('name missing');
-    expect(() => field.setValue('hello')).not.toThrow();
-    expect(field.value()).toBe('hello');
+    const field = form.field("name");
+    if (!field || field.kind !== "primitive") throw new Error("name missing");
+    expect(() => field.setValue("hello")).not.toThrow();
+    expect(field.value()).toBe("hello");
     expect(() => field.setValue(42)).not.toThrow();
     expect(field.value()).toBe(42);
     expect(() => field.setValue(true)).not.toThrow();
     expect(field.value()).toBe(true);
   });
 
-  it('treats null / undefined as clearing (passes through)', () => {
+  it("treats null / undefined as clearing (passes through)", () => {
     const form = makeForm();
-    const field = form.field('name');
-    if (!field || field.kind !== 'primitive') throw new Error('name missing');
-    field.setValue('x');
+    const field = form.field("name");
+    if (!field || field.kind !== "primitive") throw new Error("name missing");
+    field.setValue("x");
     expect(() => field.setValue(undefined)).not.toThrow();
     expect(field.value()).toBeUndefined();
     expect(() => field.setValue(null)).not.toThrow();
     expect(field.value()).toBeNull();
   });
 
-  it('throws TypeError on object and does not write', () => {
+  it("throws TypeError on object and does not write", () => {
     const form = makeForm();
-    const field = form.field('name');
-    if (!field || field.kind !== 'primitive') throw new Error('name missing');
-    field.setValue('keep');
-    expect(() => field.setValue({ nested: 'object' })).toThrow(TypeError);
-    expect(field.value()).toBe('keep');
+    const field = form.field("name");
+    if (!field || field.kind !== "primitive") throw new Error("name missing");
+    field.setValue("keep");
+    expect(() => field.setValue({ nested: "object" })).toThrow(TypeError);
+    expect(field.value()).toBe("keep");
   });
 
-  it('throws TypeError on array and does not write', () => {
+  it("throws TypeError on array and does not write", () => {
     const form = makeForm();
-    const field = form.field('name');
-    if (!field || field.kind !== 'primitive') throw new Error('name missing');
-    field.setValue('keep');
+    const field = form.field("name");
+    if (!field || field.kind !== "primitive") throw new Error("name missing");
+    field.setValue("keep");
     expect(() => field.setValue([1, 2])).toThrow(TypeError);
-    expect(field.value()).toBe('keep');
+    expect(field.value()).toBe("keep");
   });
 });
 
-describe('x-layout layout nodes', () => {
-  it('flattens x-layout children into parent values (no key prefix)', async () => {
+describe("x-layout layout nodes", () => {
+  it("flattens x-layout children into parent values (no key prefix)", async () => {
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
         contactGroup: {
-          'x-layout': 'Card',
+          "x-layout": "Card",
           properties: {
-            email: { type: 'string' },
-            phone: { type: 'string' },
+            email: { type: "string" },
+            phone: { type: "string" },
           },
         },
       },
     };
-    const form = createForm({ schema, initialValues: { email: 'a@b.com', phone: '123' } });
-    expect(form.field('email')).toBeDefined();
-    expect(form.field('contactGroup')?.kind).toBe('void');
-    form.set('email', 'x@y.com');
-    await expect(form.submit()).resolves.toEqual({ email: 'x@y.com', phone: '123' });
+    const form = createForm({ schema, initialValues: { email: "a@b.com", phone: "123" } });
+    expect(form.field("email")).toBeDefined();
+    expect(form.field("contactGroup")?.kind).toBe("void");
+    form.set("email", "x@y.com");
+    await expect(form.submit()).resolves.toEqual({ email: "x@y.com", phone: "123" });
   });
 
-  it('uses the x-layout value as the default component name', () => {
+  it("uses the x-layout value as the default component name", () => {
     const schema: IFormSchema = {
-      type: 'object',
+      type: "object",
       properties: {
-        section: { 'x-layout': 'Card', properties: { a: { type: 'string' } } },
+        section: { "x-layout": "Card", properties: { a: { type: "string" } } },
       },
     };
     const form = createForm({ schema });
-    expect(form.field('section')?.component()).toBe('Card');
+    expect(form.field("section")?.component()).toBe("Card");
   });
 });

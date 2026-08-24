@@ -30,10 +30,10 @@
 在展开管线前，先厘清一件比命名更根本的事 —— schema 里的扩展 marker **不该按场景切**
 （table 场景 / filter 场景 / database 场景），而该按 **「这个事实归谁拥有」** 切：
 
-| 层 | marker | 归属 | 事实性质 | 例子 |
-|----|--------|------|----------|------|
+| 层         | marker       | 归属                 | 事实性质                                 | 例子                                               |
+| ---------- | ------------ | -------------------- | ---------------------------------------- | -------------------------------------------------- |
 | **能力层** | `x-database` | **后端**（存储决定） | 字段**能不能**被查询/排序/建索引，怎么存 | 列类型、`nullable`、`default`、`index`、`relation` |
-| **表现层** | `x-table` | **前端**（展示偏好） | 纯 UI 偏好，不影响数据能力 | 列宽 `width`、`ellipsis`、表格显隐 `visible` |
+| **表现层** | `x-table`    | **前端**（展示偏好） | 纯 UI 偏好，不影响数据能力               | 列宽 `width`、`ellipsis`、表格显隐 `visible`       |
 
 由此推出三条修正（对应本轮三个问题）：
 
@@ -58,6 +58,7 @@
 ```
 
 > 注意区分两种「不显示」：
+>
 > - `x-table.visible: false`（如 id/createdAt）= 后端**能**给，前端选择不展示 → **纯偏好**，留在 `x-table`；
 > - filter 不出现 = 后端**给不了**（无索引/JSON 列）→ **能力约束**，由 `x-database.index` 决定。
 >
@@ -232,9 +233,9 @@ form / table / filter。例如 `userType` 字段：
       { "label": "学生", "value": "student" },
       { "label": "教师", "value": "teacher" },
       { "label": "教务管理员", "value": "academic-admin" },
-      { "label": "系统管理员", "value": "system-admin" }
-    ]
-  }
+      { "label": "系统管理员", "value": "system-admin" },
+    ],
+  },
 }
 ```
 
@@ -252,17 +253,18 @@ form / table / filter。例如 `userType` 字段：
 
 `school_user` 表里的一行：
 
-| id | user_no | display_name | user_type | ... | status | last_login_at | contact |
-|----|---------|--------------|-----------|-----|--------|---------------|---------|
-| user-1001 | U1001 | 王小明 | `student` | ... | `active` | 1724200000000 | `{"wechat":"wx_alice","qq":"10001","address":"XX路1号"}` |
+| id        | user_no | display_name | user_type | ... | status   | last_login_at | contact                                                  |
+| --------- | ------- | ------------ | --------- | --- | -------- | ------------- | -------------------------------------------------------- |
+| user-1001 | U1001   | 王小明       | `student` | ... | `active` | 1724200000000 | `{"wechat":"wx_alice","qq":"10001","address":"XX路1号"}` |
 
 `school_user_role` 表里的关联行（roleIds 被拆开，**不在主表**）：
 
-| user_id | role_id |
-|---------|---------|
+| user_id   | role_id      |
+| --------- | ------------ |
 | user-1001 | role-student |
 
 注意：
+
 - 存的是 `student` / `active` / `role-student` 这样的**码值**，绝不存"学生""正常"这些 label；
 - `roleIds` 数组被拆成 junction 表的多行；
 - `contact` 对象**整体存成一个 JSON 字符串**（TEXT 列），表里没有 `contact_wechat` 之类的展开列；
@@ -313,13 +315,13 @@ form / table / filter。例如 `userType` 字段：
 
 ## 各阶段对照总览
 
-| 阶段 | 产物 | `userType` | `roleIds` | `contact`（object） |
-|------|------|-----------|-----------|---------------------|
-| ① 源头 | canonical schema（唯一手写） | `dataSource` + `x-database.index` | `$af-dataSource` + `relation:m2m` | `properties` + `x-database:json` |
-| ② 建库 | `CREATE TABLE`（DDL 投影） | `TEXT CHECK(...)` + 索引 | 独立 `school_user_role` 表 | 单个 `TEXT` 列（不拆列） |
-| ② 前端 | form/table/filter（前端投影） | `Select` + `enum` + **进筛选区** | `MultiSelect` + `props.service` | 子表单控件（**不进筛选区**） |
-| ③ 存库 | SQLite 物理行 | `'student'`（码值） | junction 多行 | `'{"wechat":...}'`（JSON 字符串） |
-| ④ 接口 | JSON 响应 | `"student"`（码值） | `["role-student"]`（聚合回数组） | `{ "wechat": ... }`（parse 回对象） |
+| 阶段   | 产物                          | `userType`                        | `roleIds`                         | `contact`（object）                 |
+| ------ | ----------------------------- | --------------------------------- | --------------------------------- | ----------------------------------- |
+| ① 源头 | canonical schema（唯一手写）  | `dataSource` + `x-database.index` | `$af-dataSource` + `relation:m2m` | `properties` + `x-database:json`    |
+| ② 建库 | `CREATE TABLE`（DDL 投影）    | `TEXT CHECK(...)` + 索引          | 独立 `school_user_role` 表        | 单个 `TEXT` 列（不拆列）            |
+| ② 前端 | form/table/filter（前端投影） | `Select` + `enum` + **进筛选区**  | `MultiSelect` + `props.service`   | 子表单控件（**不进筛选区**）        |
+| ③ 存库 | SQLite 物理行                 | `'student'`（码值）               | junction 多行                     | `'{"wechat":...}'`（JSON 字符串）   |
+| ④ 接口 | JSON 响应                     | `"student"`（码值）               | `["role-student"]`（聚合回数组）  | `{ "wechat": ... }`（parse 回对象） |
 
 **一句话**：schema 不"就是"建表 DSL —— 它是上游的领域模型；建表 DSL 是它往 SQLite 方向的一个投影，
 前端 schema 是它往浏览器方向的另一个投影。两个下游同源、永不漂移。

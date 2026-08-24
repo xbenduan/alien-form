@@ -114,19 +114,10 @@ export {
   useFieldOptions,
   useServiceRequest,
 } from "./components";
-export type {
-  DisplayValueProps,
-  FieldDetailModalProps,
-  SchemaRendererProps,
-} from "./components";
+export type { DisplayValueProps, FieldDetailModalProps, SchemaRendererProps } from "./components";
 
 // form
-export {
-  DrawerSchemaForm,
-  ModalSchemaForm,
-  PageSchemaForm,
-  SchemaForm,
-} from "./form";
+export { DrawerSchemaForm, ModalSchemaForm, PageSchemaForm, SchemaForm } from "./form";
 export type { SchemaFormProps, SchemaFormRef } from "./form";
 
 // table

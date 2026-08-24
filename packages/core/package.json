@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Alien Signals powered form engine with React binding and schema support",
   "license": "MIT",
+  "files": [
+    "dist",
+    "src"
+  ],
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -13,10 +17,6 @@
       "require": "./dist/index.js"
     }
   },
-  "files": [
-    "dist",
-    "src"
-  ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts",
     "test": "vitest run"

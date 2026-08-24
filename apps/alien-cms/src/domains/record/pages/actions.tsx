@@ -39,11 +39,7 @@ function RecordActionContent({ mode }: RecordActionPageProps) {
   const mutations = useRecordMutations(modelName);
   const formRef = useRef<SchemaFormRef>(null);
 
-  if (
-    schemaQuery.isLoading ||
-    compiledQuery.isLoading ||
-    (mode !== "add" && detailQuery.isLoading)
-  )
+  if (schemaQuery.isLoading || compiledQuery.isLoading || (mode !== "add" && detailQuery.isLoading))
     return <PageLoading />;
   if (schemaQuery.error || !schema || !compiledQuery.data) {
     return (

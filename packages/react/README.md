@@ -60,15 +60,32 @@ const schema: IFormSchema = {
 
 // 1) 你提供「组件名 -> React 组件」的映射
 const components: ComponentMap = {
-  Input: (p) => <input value={p.value ?? ""} disabled={p.disabled} onChange={(e) => p.onChange(e.target.value)} />,
-  NumberInput: (p) => <input type="number" value={p.value ?? ""} onChange={(e) => p.onChange(Number(e.target.value))} />,
+  Input: (p) => (
+    <input
+      value={p.value ?? ""}
+      disabled={p.disabled}
+      onChange={(e) => p.onChange(e.target.value)}
+    />
+  ),
+  NumberInput: (p) => (
+    <input
+      type="number"
+      value={p.value ?? ""}
+      onChange={(e) => p.onChange(Number(e.target.value))}
+    />
+  ),
 };
 const decorators: DecoratorMap = {
   FormItem: (p) => (
     <label>
-      {p.label}{p.required && " *"}
+      {p.label}
+      {p.required && " *"}
       {p.children}
-      {p.errors?.map((e: any, i: number) => <span key={i} style={{ color: "red" }}>{e.message}</span>)}
+      {p.errors?.map((e: any, i: number) => (
+        <span key={i} style={{ color: "red" }}>
+          {e.message}
+        </span>
+      ))}
     </label>
   ),
 };
@@ -130,8 +147,8 @@ const form = useCreateForm({ schema, initialValues }, [pageKey]);
 ```tsx
 interface FormProviderProps {
   form: FormInstance;
-  components?: ComponentMap;   // Record<string, React.ComponentType<any>>
-  decorators?: DecoratorMap;   // Record<string, React.ComponentType<any>>
+  components?: ComponentMap; // Record<string, React.ComponentType<any>>
+  decorators?: DecoratorMap; // Record<string, React.ComponentType<any>>
   children?: React.ReactNode;
 }
 ```
@@ -243,15 +260,15 @@ export type DecoratorMap = Record<string, React.ComponentType<any>>;
 
 这些 Hook 按 `path` 订阅某个字段的**单项能力**，只有该项变化才触发重渲染。字段不存在时返回安全默认值（不会抛错）。
 
-| Hook | 返回 | 说明 |
-|---|---|---|
-| `useFieldAtoms(path)` | `FieldNode \| undefined` | 拿到字段节点本身（可直接调它的方法/读它的 signal） |
-| `useFieldValue(path)` | `any` | 字段值（非 primitive 字段返回 `undefined`） |
-| `useFieldErrors(path)` | `FieldError[]` | 该字段的错误列表 |
-| `useFieldDisplay(path)` | `"visible" \| "hidden" \| "none"` | 显示状态 |
-| `useFieldDisabled(path)` | `boolean` | 是否禁用 |
-| `useFieldRequired(path)` | `boolean` | 是否必填 |
-| `useFieldLoading(path)` | `boolean` | 是否加载中 |
+| Hook                     | 返回                              | 说明                                               |
+| ------------------------ | --------------------------------- | -------------------------------------------------- |
+| `useFieldAtoms(path)`    | `FieldNode \| undefined`          | 拿到字段节点本身（可直接调它的方法/读它的 signal） |
+| `useFieldValue(path)`    | `any`                             | 字段值（非 primitive 字段返回 `undefined`）        |
+| `useFieldErrors(path)`   | `FieldError[]`                    | 该字段的错误列表                                   |
+| `useFieldDisplay(path)`  | `"visible" \| "hidden" \| "none"` | 显示状态                                           |
+| `useFieldDisabled(path)` | `boolean`                         | 是否禁用                                           |
+| `useFieldRequired(path)` | `boolean`                         | 是否必填                                           |
+| `useFieldLoading(path)`  | `boolean`                         | 是否加载中                                         |
 
 ```tsx
 function NameField() {
@@ -263,7 +280,9 @@ function NameField() {
     <div>
       <input value={value ?? ""} onChange={(e) => form.set("name", e.target.value)} />
       {required && <span>*</span>}
-      {errors.map((e, i) => <em key={i}>{e.message}</em>)}
+      {errors.map((e, i) => (
+        <em key={i}>{e.message}</em>
+      ))}
     </div>
   );
 }
@@ -275,14 +294,14 @@ function NameField() {
 
 按整表状态订阅（都基于 core 的 computed / signal）：
 
-| Hook | 返回 | 说明 |
-|---|---|---|
-| `useFormValues()` | `Record<string, any>` | 当前完整值（响应式） |
-| `useFormValid()` | `boolean` | 是否全部校验通过 |
-| `useFormErrors()` | `FieldError[]` | 所有可见字段的错误汇总 |
-| `useFormSubmitting()` | `boolean` | 是否正在提交 |
-| `useFormSubmit<T>()` | `{ submit, submitting }` | `submit(onSubmit?)` 触发校验+提交；`submitting` 为响应式状态 |
-| `useFormValidate()` | `{ validate }` | `validate()` 手动触发整表校验，返回 `Promise<boolean>` |
+| Hook                  | 返回                     | 说明                                                         |
+| --------------------- | ------------------------ | ------------------------------------------------------------ |
+| `useFormValues()`     | `Record<string, any>`    | 当前完整值（响应式）                                         |
+| `useFormValid()`      | `boolean`                | 是否全部校验通过                                             |
+| `useFormErrors()`     | `FieldError[]`           | 所有可见字段的错误汇总                                       |
+| `useFormSubmitting()` | `boolean`                | 是否正在提交                                                 |
+| `useFormSubmit<T>()`  | `{ submit, submitting }` | `submit(onSubmit?)` 触发校验+提交；`submitting` 为响应式状态 |
+| `useFormValidate()`   | `{ validate }`           | `validate()` 手动触发整表校验，返回 `Promise<boolean>`       |
 
 ```tsx
 function SubmitBar() {

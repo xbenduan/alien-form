@@ -1,11 +1,5 @@
 import type { DataSourceItem } from "@alien-form/react";
-import type {
-  AlienPlugin,
-  FieldService,
-  PluginMarker,
-  PrefetchCtx,
-  ResolveCtx,
-} from "./types";
+import type { AlienPlugin, FieldService, PluginMarker, PrefetchCtx, ResolveCtx } from "./types";
 
 // ─── $af-i18n：多语言文案替换（同步，scene 无关）─────────────────────────────
 
@@ -101,7 +95,7 @@ export const dataSourcePlugin: AlienPlugin = {
     const service: FieldService = {
       model: ds.model,
       valueKey: ds.value || "id",
-      labelKey: ds.label || (ds.value || "id"),
+      labelKey: ds.label || ds.value || "id",
       remoteSearch: options.length > REMOTE_SEARCH_THRESHOLD,
     };
     ctx.patch([...fieldPath, "props", "service"], service);

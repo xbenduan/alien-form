@@ -69,8 +69,7 @@ const objectDescriptor: FieldDescriptor = {
  */
 const arrayDescriptor: FieldDescriptor = {
   name: "array",
-  match: (field) =>
-    field.type === "array" && Boolean(field.items) && !Array.isArray(field.items),
+  match: (field) => field.type === "array" && Boolean(field.items) && !Array.isArray(field.items),
   toForm: (field, ctx) => {
     const items = field.items as ModelFieldSchema;
     return {
@@ -80,7 +79,11 @@ const arrayDescriptor: FieldDescriptor = {
       props: { ...field.props, title: field.props?.title ?? field.title ?? "" },
       component: field.component ?? "ArrayCards",
       items: items.properties
-        ? { ...(items as IFieldSchema), type: "object", properties: ctx.projectProperties(items.properties) }
+        ? {
+            ...(items as IFieldSchema),
+            type: "object",
+            properties: ctx.projectProperties(items.properties),
+          }
         : (items as IFieldSchema),
     };
   },
@@ -130,7 +133,9 @@ function leafColumn(field: ModelFieldSchema, key: string): TableColumn {
   return {
     key,
     title:
-      field.title ?? (typeof field.props?.title === "string" ? field.props.title : undefined) ?? key,
+      field.title ??
+      (typeof field.props?.title === "string" ? field.props.title : undefined) ??
+      key,
     width: meta.width,
     ellipsis: meta.ellipsis ?? true,
     sortable: columnSortable(field, !complex),

@@ -2,12 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 const root = process.cwd();
-const ignoredDirectories = new Set([
-  ".git",
-  ".trae",
-  "dist",
-  "node_modules",
-]);
+const ignoredDirectories = new Set([".git", ".trae", "dist", "node_modules"]);
 const checkedExtensions = new Set([
   ".cjs",
   ".css",
@@ -38,7 +33,7 @@ async function collectFiles(directory) {
 
     const absolutePath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      files.push(...await collectFiles(absolutePath));
+      files.push(...(await collectFiles(absolutePath)));
     } else if (checkedExtensions.has(path.extname(entry.name))) {
       files.push(absolutePath);
     }
@@ -85,13 +80,8 @@ for (const filePath of files) {
   for (const match of file.contents.matchAll(/\b[A-Za-z_$][\w$]*\b/g)) {
     const identifier = match[0];
     const isReactFormProvider = identifier === "FormProvider";
-    const isContextProperty =
-      identifier === "Provider" && file.contents[match.index - 1] === ".";
-    if (
-      identifier.endsWith("Provider") &&
-      !isReactFormProvider &&
-      !isContextProperty
-    ) {
+    const isContextProperty = identifier === "Provider" && file.contents[match.index - 1] === ".";
+    if (identifier.endsWith("Provider") && !isReactFormProvider && !isContextProperty) {
       addViolation(file, "Provider concept", match);
     }
   }

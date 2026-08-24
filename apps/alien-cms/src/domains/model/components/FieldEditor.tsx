@@ -28,15 +28,7 @@ interface FieldFormValues {
  *  - properties / items：子字段由字段树（FieldListEditor）拖拽管理，不在此编辑
  *  - order：拖拽排序时生成，构建 schema 时统一重写
  */
-const HIDDEN_KEYS = [
-  "component",
-  "type",
-  "key",
-  "title",
-  "properties",
-  "items",
-  "order",
-] as const;
+const HIDDEN_KEYS = ["component", "type", "key", "title", "properties", "items", "order"] as const;
 
 type SchemaRest = Record<string, unknown>;
 

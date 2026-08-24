@@ -1,11 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  createSchema,
-  deleteSchema,
-  getSchema,
-  listSchemas,
-  updateSchema,
-} from "../services";
+import { createSchema, deleteSchema, getSchema, listSchemas, updateSchema } from "../services";
 import type { ModelSchema } from "../services";
 
 export const schemaKeys = {

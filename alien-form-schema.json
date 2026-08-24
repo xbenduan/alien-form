@@ -18,10 +18,7 @@
       "markdownDescription": "表单描述"
     },
     "required": {
-      "anyOf": [
-        { "type": "boolean" },
-        { "type": "array", "items": { "type": "string" } }
-      ],
+      "anyOf": [{ "type": "boolean" }, { "type": "array", "items": { "type": "string" } }],
       "markdownDescription": "是否必填，或必填子字段名称的数组"
     },
     "properties": {
@@ -252,10 +249,7 @@
           "markdownDescription": "字段渲染排序号（升序，默认 `Infinity`）"
         },
         "required": {
-          "anyOf": [
-            { "type": "boolean" },
-            { "type": "array", "items": { "type": "string" } }
-          ],
+          "anyOf": [{ "type": "boolean" }, { "type": "array", "items": { "type": "string" } }],
           "markdownDescription": "是否必填。`object` 类型字段可传子字段名数组指定哪些子字段必填"
         },
         "display": {
