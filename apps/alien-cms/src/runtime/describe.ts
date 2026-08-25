@@ -1,7 +1,8 @@
 import type React from "react";
 import type { RuntimeRuleHandler } from "@alien-form/core";
-import type { AfUiNode } from "@alien-form/shared";
+import type { AfUiNode, LayoutServiceMap } from "@alien-form/shared";
 import type { RuntimeCore } from "./RuntimeCore";
+import { DataScope } from "./DataScope";
 
 export type { AfUiNode };
 
@@ -21,11 +22,20 @@ export interface UINodeProps {
   ctx: PageContext;
 }
 
-export interface PageContext {
+/**
+ * 布局 service 解析所需的最小上下文。
+ * PageContext 满足该契约；动作页等无完整布局的场景也可构造瘦 ctx 复用 hooks。
+ */
+export interface ServiceCtx {
   model: string;
+  runtime: RuntimeCore;
+  services: LayoutServiceMap;
+  scope?: DataScope;
+}
+
+export interface PageContext extends ServiceCtx {
   schema: Record<string, unknown>;
   compiled: Record<string, unknown>;
-  runtime: RuntimeCore;
   page: unknown;
 }
 

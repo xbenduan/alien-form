@@ -1,5 +1,6 @@
 import type { GroupConfig } from "../types";
 import { getDefaultFieldSchema, getRegistryEntry } from "../components/register";
+import { DEFAULT_RECORD_SERVICES } from "./types";
 import type {
   AfUiNode,
   FieldDraft,
@@ -12,6 +13,7 @@ import type {
 export const DEFAULT_LAYOUT: AfUiNode = {
   plugin: "$af-ui",
   component: "page",
+  props: { services: DEFAULT_RECORD_SERVICES },
   children: [
     { plugin: "$af-ui", component: "filter", props: { scope: "main" } },
     {

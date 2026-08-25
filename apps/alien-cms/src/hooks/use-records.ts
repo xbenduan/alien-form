@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RuntimeCore } from "../runtime";
-import type { ModelRecord, Pagination, RecordListResult, Sorter } from "../runtime";
+import { LAYOUT_SERVICE_KEYS } from "@alien-form/shared";
+import type { ServiceCtx } from "../runtime";
+import { resolveLayoutService } from "../runtime";
+import type { ModelRecord, Pagination, RecordListResult, Sorter } from "../runtime/types";
 
 export const recordKeys = {
   all: ["records"] as const,
@@ -17,7 +19,6 @@ export const recordKeys = {
 };
 
 interface RecordListArgs {
-  model: string;
   filters: Record<string, unknown>;
   pagination: Pagination;
   sorter?: Sorter;
@@ -25,86 +26,112 @@ interface RecordListArgs {
   enabled?: boolean;
 }
 
-/** 记录列表查询。 */
-export function useRecordList({
-  model,
-  filters,
-  pagination,
-  sorter,
-  refreshVersion,
-  enabled = true,
-}: RecordListArgs) {
+/** 树子树查询：service 由 query.subtree 声明，返回扁平节点列表。 */
+export function useRecordSubtree(
+  ctx: ServiceCtx,
+  {
+    model,
+    idField,
+    parentField,
+    parentValue,
+    enabled = true,
+  }: {
+    model: string;
+    idField?: string;
+    parentField?: string;
+    parentValue?: string | null;
+    enabled?: boolean;
+  },
+) {
   return useQuery({
-    queryKey: recordKeys.list(model, filters, pagination, sorter, refreshVersion),
+    queryKey: ["records", model, "subtree", idField, parentField, parentValue] as const,
     enabled,
     queryFn: async () => {
-      const service = RuntimeCore.current.service.query("records.list", model);
-      if (!service) throw new Error("[alien-cms] service records.list 未注册");
-      return (await service.send({ model, filters, pagination, sorter })) as RecordListResult;
+      const service = resolveLayoutService(ctx, LAYOUT_SERVICE_KEYS.SUBTREE);
+      return (await service.send({ model, idField, parentField, parentValue })) as {
+        list: ModelRecord[];
+      };
     },
   });
 }
 
-/** 单条记录详情。 */
-export function useRecordDetail(model: string, id?: string, enabled = true) {
+/** 列表查询：service 由布局根节点 props.services[query.list] 声明。 */
+export function useRecordListQuery(
+  ctx: ServiceCtx,
+  { filters, pagination, sorter, refreshVersion, enabled = true }: RecordListArgs,
+) {
+  return useQuery({
+    queryKey: recordKeys.list(ctx.model, filters, pagination, sorter, refreshVersion),
+    enabled,
+    queryFn: async () => {
+      const service = resolveLayoutService(ctx, LAYOUT_SERVICE_KEYS.LIST);
+      return (await service.send({ model: ctx.model, filters, pagination, sorter })) as RecordListResult;
+    },
+  });
+}
+
+/** 单条详情：service 由 query.detail 声明。 */
+export function useRecordDetailQuery(ctx: ServiceCtx, id?: string, enabled = true) {
   return useQuery<ModelRecord>({
-    queryKey: recordKeys.detail(model, id),
+    queryKey: recordKeys.detail(ctx.model, id),
     enabled: Boolean(id) && enabled,
     queryFn: async () => {
-      const service = RuntimeCore.current.service.query("records.get", model);
-      if (!service) throw new Error("[alien-cms] service records.get 未注册");
-      return (await service.send({ model, id: id! })) as ModelRecord;
+      const service = resolveLayoutService(ctx, LAYOUT_SERVICE_KEYS.DETAIL);
+      return (await service.send({ model: ctx.model, id: id! })) as ModelRecord;
     },
   });
 }
 
-/** 记录的增删改。 */
-export function useRecordMutations(model: string) {
+/** 记录的增删改：service 由 create/update/delete 语义 key 声明。 */
+export function useRecordMutations(ctx: ServiceCtx) {
   const queryClient = useQueryClient();
   const invalidateLists = () =>
-    queryClient.invalidateQueries({ queryKey: recordKeys.lists(model) });
+    queryClient.invalidateQueries({ queryKey: recordKeys.lists(ctx.model) });
+  const bumpRefresh = () => ctx.scope?.refresh();
 
   const createMutation = useMutation({
     mutationFn: async (values: Record<string, unknown>) => {
-      const service = RuntimeCore.current.service.query("records.create", model);
-      if (!service) throw new Error("[alien-cms] service records.create 未注册");
-      return service.send({ model, values }) as Promise<ModelRecord>;
+      const service = resolveLayoutService(ctx, LAYOUT_SERVICE_KEYS.CREATE);
+      return service.send({ model: ctx.model, values }) as Promise<ModelRecord>;
     },
-    onSuccess: invalidateLists,
+    onSuccess: () => {
+      bumpRefresh();
+      return invalidateLists();
+    },
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, values }: { id: string; values: Record<string, unknown> }) => {
-      const service = RuntimeCore.current.service.query("records.update", model);
-      if (!service) throw new Error("[alien-cms] service records.update 未注册");
-      return service.send({ model, id, values }) as Promise<ModelRecord>;
+      const service = resolveLayoutService(ctx, LAYOUT_SERVICE_KEYS.UPDATE);
+      return service.send({ model: ctx.model, id, values }) as Promise<ModelRecord>;
     },
     onSuccess: async (_data, variables) => {
-      await queryClient.invalidateQueries({ queryKey: recordKeys.detail(model, variables.id) });
+      bumpRefresh();
+      await queryClient.invalidateQueries({ queryKey: recordKeys.detail(ctx.model, variables.id) });
       await invalidateLists();
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const service = RuntimeCore.current.service.query("records.delete", model);
-      if (!service) throw new Error("[alien-cms] service records.delete 未注册");
-      return service.send({ model, id });
+      const service = resolveLayoutService(ctx, LAYOUT_SERVICE_KEYS.DELETE);
+      return service.send({ model: ctx.model, id });
     },
     onSuccess: async (_data, id) => {
-      queryClient.removeQueries({ queryKey: recordKeys.detail(model, id) });
+      bumpRefresh();
+      queryClient.removeQueries({ queryKey: recordKeys.detail(ctx.model, id) });
       await invalidateLists();
     },
   });
 
   const batchDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      const service = RuntimeCore.current.service.query("records.deleteMany", model);
-      if (!service) throw new Error("[alien-cms] service records.deleteMany 未注册");
-      return service.send({ model, ids });
+      const service = resolveLayoutService(ctx, LAYOUT_SERVICE_KEYS.DELETE_MANY);
+      return service.send({ model: ctx.model, ids });
     },
     onSuccess: async (_data, ids) => {
-      ids.forEach((id) => queryClient.removeQueries({ queryKey: recordKeys.detail(model, id) }));
+      bumpRefresh();
+      ids.forEach((id) => queryClient.removeQueries({ queryKey: recordKeys.detail(ctx.model, id) }));
       await invalidateLists();
     },
   });

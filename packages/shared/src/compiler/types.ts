@@ -6,7 +6,13 @@ import type { GroupConfig, TableColumn } from "../types";
 /** 编译投影的目标场景。detail 复用 form（渲染时切只读态）。 */
 export type Scene = "form" | "filter" | "table";
 
-/** 页面级 UI 协议节点。运行时只负责按 component 查找已注册实现。 */
+/**
+ * 页面级 UI 协议节点。运行时只负责按 component 查找已注册实现。
+ *
+ * 根节点（page / treelayout）通过 props.services 声明语义化 service 映射：
+ * key 为布局语义（见 LAYOUT_SERVICE_KEYS），value 为已注册的 service code。
+ * 子组件按语义 key 自取数据，不再在组件实现里写死 service code。
+ */
 export interface AfUiNode {
   plugin: "$af-ui";
   component: string;
@@ -15,6 +21,42 @@ export interface AfUiNode {
   children?: AfUiNode[];
   slots?: Record<string, AfUiNode[]>;
 }
+
+/** 语义 key → 已注册 service code 的映射，由布局根节点 props.services 持有。 */
+export type LayoutServiceMap = Record<string, string>;
+
+/**
+ * 布局内建的 service 语义 key。根节点 props.services 必须声明数据类组件所需的 key。
+ *  - query.list：表格列表查询
+ *  - query.filter：筛选区数据源（多数场景与 query.list 同源）
+ *  - query.detail：单条详情
+ *  - query.subtree：树的子树查询（treelayout 专用）
+ *  - create.record / update.record / delete.record / delete.recordMany：写操作
+ */
+export const LAYOUT_SERVICE_KEYS = {
+  LIST: "query.list",
+  FILTER: "query.filter",
+  DETAIL: "query.detail",
+  SUBTREE: "query.subtree",
+  CREATE: "create.record",
+  UPDATE: "update.record",
+  DELETE: "delete.record",
+  DELETE_MANY: "delete.recordMany",
+} as const;
+
+/**
+ * 内置记录型页面的默认 service 映射。page 根节点直接使用；
+ * treelayout 根节点在此基础上追加 query.subtree。
+ */
+export const DEFAULT_RECORD_SERVICES: LayoutServiceMap = {
+  [LAYOUT_SERVICE_KEYS.LIST]: "records.list",
+  [LAYOUT_SERVICE_KEYS.FILTER]: "records.list",
+  [LAYOUT_SERVICE_KEYS.DETAIL]: "records.get",
+  [LAYOUT_SERVICE_KEYS.CREATE]: "records.create",
+  [LAYOUT_SERVICE_KEYS.UPDATE]: "records.update",
+  [LAYOUT_SERVICE_KEYS.DELETE]: "records.delete",
+  [LAYOUT_SERVICE_KEYS.DELETE_MANY]: "records.deleteMany",
+};
 
 export type Locale = "zh" | "en" | (string & {});
 

@@ -20,7 +20,7 @@ export {
   draftToSchema,
   schemaToDraft,
 } from "./authoring";
-export { isPluginMarker } from "./types";
+export { isPluginMarker, LAYOUT_SERVICE_KEYS, DEFAULT_RECORD_SERVICES } from "./types";
 
 // utils
 export {
@@ -53,6 +53,7 @@ export type {
   GroupDraft,
   I18nDict,
   Locale,
+  LayoutServiceMap,
   ModelDraft,
   ModelFieldSchema,
   ModelGroup,

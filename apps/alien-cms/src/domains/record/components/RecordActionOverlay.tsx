@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import { Button, Drawer, Modal, Space, Spin } from "antd";
 import type { IFormSchema, SchemaFormRef } from "@alien-form/shared";
-import { useRecordDetail } from "../../../hooks";
-import type { ModelSchema } from "../../../runtime";
+import { useRecordDetailQuery } from "../../../hooks";
+import type { ModelSchema, ServiceCtx } from "../../../runtime";
 import type { OverlayActionState } from "../types";
 import { RecordActionForm } from "./RecordActionForm";
 import styles from "./index.module.css";
@@ -14,6 +14,7 @@ interface RecordActionOverlayProps {
   formSchema: IFormSchema;
   overlay: OverlayActionState | null;
   submitting?: boolean;
+  serviceCtx: ServiceCtx;
   onClose: () => void;
   createRecord: (values: Record<string, unknown>) => Promise<unknown>;
   updateRecord: (id: string, values: Record<string, unknown>) => Promise<unknown>;
@@ -32,6 +33,7 @@ export function RecordActionOverlay({
   formSchema,
   overlay,
   submitting,
+  serviceCtx,
   onClose,
   createRecord,
   updateRecord,
@@ -39,7 +41,7 @@ export function RecordActionOverlay({
   const open = Boolean(overlay);
   const mode = overlay?.mode ?? "add";
   const recordId = overlay?.recordId;
-  const detailQuery = useRecordDetail(modelName, recordId, mode !== "add" && open);
+  const detailQuery = useRecordDetailQuery(serviceCtx, recordId, mode !== "add" && open);
 
   const title = `${TITLE[mode]}${schema.meta.singularLabel}`;
   const formKey = `${modelName}:${mode}:${recordId ?? "new"}`;

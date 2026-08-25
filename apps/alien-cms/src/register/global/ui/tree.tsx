@@ -3,12 +3,12 @@ import { useMemo, useState } from "react";
 import { refValue, Tree, collectExpandable } from "@alien-form/shared";
 import type { TreeNode } from "@alien-form/shared";
 import type { ModelRecord, PageContext } from "../../../runtime";
-import { useRecordList } from "../../../hooks";
-import { pageOf } from "./types";
+import { useRecordSubtree } from "../../../hooks";
+import { scopeOf } from "./types";
 import styles from "../ui.module.css";
 
 export function TreePanel({ ctx, props }: { ctx: PageContext; props: Record<string, unknown> }) {
-  const page = pageOf(ctx);
+  const scope = scopeOf(ctx);
   const model = String(props.model ?? ctx.model);
   const idField = String(props.idField ?? "userNo");
   const parentField = String(props.parentField ?? "parentCode");
@@ -18,10 +18,10 @@ export function TreePanel({ ctx, props }: { ctx: PageContext; props: Record<stri
   // hideLeaf：是否丢弃无子节点的叶子。school-user 树里叶子是学生（隐藏）→ 缺省 true；
   // 部门树里班级/党团组织是叶子但必须可点选 → 布局显式传 hideLeaf:false 保留。
   const hideLeaf = props.hideLeaf !== false;
-  const treeQuery = useRecordList({
+  const treeQuery = useRecordSubtree(ctx, {
     model,
-    filters: {},
-    pagination: { current: 1, pageSize: 1000 },
+    idField,
+    parentField,
     enabled: true,
   });
   const [keyword, setKeyword] = useState("");
@@ -96,7 +96,7 @@ export function TreePanel({ ctx, props }: { ctx: PageContext; props: Record<stri
           onExpand={setExpandedKeys}
           onSelect={(key) => {
             setSelectedKey(key);
-            page.setLayoutFilters(key ? { [targetField]: descendants(key) } : {});
+            scope.setFilterPatch("layout", key ? { [targetField]: descendants(key) } : {});
           }}
         />
       </div>

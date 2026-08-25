@@ -6,6 +6,7 @@ import {
   deleteRecords,
   getRecord,
   listRecords,
+  listSubtree,
   updateRecord,
 } from "../db/record-repo.ts";
 import { expandRefs, expandRefsOne, unwrapRefs } from "../db/ref-expand.ts";
@@ -46,6 +47,28 @@ recordRoutes.post("/list", async (c) => {
     ...result,
     list: expanded.map((record) => publicRecord(body.model, record)),
   });
+});
+
+/**
+ * POST /api/records/subtree → { list }：树子树查询。
+ * 传 idField/parentField/parentValue 时返回该节点下全部后代；不传 parentValue 返回整棵树。
+ */
+recordRoutes.post("/subtree", async (c) => {
+  const body = (await c.req.json()) as {
+    model: string;
+    idField?: string;
+    parentField?: string;
+    parentValue?: string | null;
+  };
+  const schema = getSchema(body.model);
+  if (!schema) return c.json({ error: `未知模型：${body.model}` }, 404);
+  const list = listSubtree(schema, {
+    idField: body.idField ?? "id",
+    parentField: body.parentField ?? "id",
+    parentValue: body.parentValue,
+  });
+  const expanded = expandRefs(schema, list);
+  return c.json({ list: expanded.map((record) => publicRecord(body.model, record)) });
 });
 
 /** GET /api/records/:model/:id → ModelRecord。 */

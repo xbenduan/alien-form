@@ -1,2 +1,8 @@
 export { schemaKeys, useModelSchema, useModelSummaries, useSchemaMutations } from "./use-schemas";
-export { recordKeys, useRecordDetail, useRecordList, useRecordMutations } from "./use-records";
+export {
+  recordKeys,
+  useRecordDetailQuery,
+  useRecordListQuery,
+  useRecordMutations,
+  useRecordSubtree,
+} from "./use-records";

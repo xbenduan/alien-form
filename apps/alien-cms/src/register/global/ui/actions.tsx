@@ -7,7 +7,8 @@ import {
 } from "@ant-design/icons";
 import { Button, Popconfirm } from "antd";
 import type { PageContext } from "../../../runtime";
-import { pageOf, type LayoutContext } from "./types";
+import { useRecordMutations } from "../../../hooks";
+import { pageOf, scopeOf, type LayoutContext } from "./types";
 
 export function ActionAdd({ ctx }: { ctx: PageContext }) {
   return (
@@ -18,14 +19,15 @@ export function ActionAdd({ ctx }: { ctx: PageContext }) {
 }
 
 export function ActionRefresh({ ctx }: { ctx: PageContext }) {
+  const scope = scopeOf(ctx);
   return (
-    <Button icon={<ReloadOutlined />} onClick={() => pageOf(ctx).refresh()} aria-label="刷新" />
+    <Button icon={<ReloadOutlined />} onClick={() => scope.refresh()} aria-label="刷新" />
   );
 }
 
 export function ActionBatchDelete({ ctx }: { ctx: PageContext }) {
   const table = (ctx as LayoutContext).table;
-  const page = pageOf(ctx);
+  const { deleteRecords } = useRecordMutations(ctx);
   const ids = table?.selectedRowKeys ?? [];
   if (!table) return null;
   return (
@@ -36,7 +38,7 @@ export function ActionBatchDelete({ ctx }: { ctx: PageContext }) {
       okButtonProps={{ danger: true }}
       disabled={!ids.length}
       onConfirm={async () => {
-        await page.removeRecords(ids.map(String));
+        await deleteRecords(ids.map(String));
         table.setSelectedRowKeys([]);
       }}
     >
@@ -77,6 +79,7 @@ export function RowEdit({ ctx }: { ctx: PageContext }) {
 
 export function RowDelete({ ctx }: { ctx: PageContext }) {
   const row = (ctx as LayoutContext).table?.row;
+  const { deleteRecord } = useRecordMutations(ctx);
   if (!row) return null;
   return (
     <Popconfirm
@@ -84,7 +87,7 @@ export function RowDelete({ ctx }: { ctx: PageContext }) {
       okText="删除"
       cancelText="取消"
       okButtonProps={{ danger: true }}
-      onConfirm={() => pageOf(ctx).removeRecord(String(row.id))}
+      onConfirm={() => deleteRecord(String(row.id))}
     >
       <Button danger type="link" size="small" icon={<DeleteOutlined />}>
         删除

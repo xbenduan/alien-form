@@ -8,6 +8,11 @@ export const recordsServices: ServiceDescribe[] = [
     send: (params) => apiSend<RecordListResult>("POST", "/records/list", params as RecordListParams),
   },
   {
+    code: "records.subtree",
+    send: (params) =>
+      apiSend<{ list: ModelRecord[] }>("POST", "/records/subtree", params as RecordListParams),
+  },
+  {
     code: "records.get",
     send: (params) => {
       const { model, id } = params as { model: string; id: string };

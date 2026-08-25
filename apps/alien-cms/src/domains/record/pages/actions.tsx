@@ -1,10 +1,16 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button, Flex, Space } from "antd";
 import type { SchemaFormRef } from "@alien-form/shared";
 import { PageBreadcrumb, PageError, PageLoading } from "../../../components";
-import { useModelSchema, useRecordDetail, useRecordMutations } from "../../../hooks";
+import {
+  useModelSchema,
+  useRecordDetailQuery,
+  useRecordMutations,
+} from "../../../hooks";
 import { CompilerProvider, useCompiledSchema } from "../../../compiler";
+import { readLayoutServices, RuntimeCore } from "../../../runtime";
+import type { ServiceCtx } from "../../../runtime";
 import { recordListPath } from "../../../app/router/paths";
 import { RecordActionForm } from "../components";
 import type { RecordActionMode } from "../types";
@@ -35,16 +41,25 @@ function RecordActionContent({ mode }: RecordActionPageProps) {
   const schemaQuery = useModelSchema(modelName);
   const schema = schemaQuery.data;
   const compiledQuery = useCompiledSchema(schema);
-  const detailQuery = useRecordDetail(modelName, recordId, mode !== "add");
-  const mutations = useRecordMutations(modelName);
+  const compiled = compiledQuery.data;
+
+  const serviceCtx: ServiceCtx = useMemo(
+    () => ({
+      model: modelName,
+      runtime: RuntimeCore.current,
+      services: compiled ? readLayoutServices(compiled.layout) : {},
+    }),
+    [modelName, compiled],
+  );
+
+  const detailQuery = useRecordDetailQuery(serviceCtx, recordId, mode !== "add");
+  const mutations = useRecordMutations(serviceCtx);
   const formRef = useRef<SchemaFormRef>(null);
 
   if (schemaQuery.isLoading || compiledQuery.isLoading || (mode !== "add" && detailQuery.isLoading))
     return <PageLoading />;
   if (schemaQuery.error || !schema || !compiledQuery.data) {
-    return (
-      <PageError title="模型不存在或加载失败" description={(schemaQuery.error as Error)?.message} />
-    );
+    return <PageError title="模型不存在或加载失败" description={(schemaQuery.error as Error)?.message} />;
   }
 
   const { singularLabel } = schema.meta;

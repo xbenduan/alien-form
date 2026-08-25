@@ -1,18 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSignalValue } from "@alien-form/react";
-import type { SchemaRecord } from "@alien-form/shared";
-import { useModelSchema, useRecordList, useRecordMutations } from "../../../hooks";
+import { useModelSchema } from "../../../hooks";
 import { useCompiledSchema } from "../../../compiler";
-import type { Pagination, Sorter } from "../../../runtime";
-import { recordAddPath, recordDetailPath, recordEditPath } from "../../../app/router/paths";
 import { DataScope } from "../../../runtime";
+import { recordAddPath, recordDetailPath, recordEditPath } from "../../../app/router/paths";
 import type { OverlayActionState } from "../types";
 
 /**
- * 列表页状态中枢：聚合 schema、编译产物（form/filter/table）、列表查询、
- * 筛选/分页/排序与增删改。
- * 打开 add/edit/detail 时：openMode=page 走路由跳转，drawer/modal 走本页叠加层。
+ * 列表页协调器：只负责 schema 加载/编译、跨组件的 DataScope（筛选/分页/排序联动）
+ * 以及 add/edit/detail 的叠加层与路由跳转。
+ * 数据获取已下沉到 table/tree 等组件按布局 props.services 语义 key 自取。
  */
 export function useRecordPage(modelName: string) {
   const navigate = useNavigate();
@@ -22,21 +19,13 @@ export function useRecordPage(modelName: string) {
   const compiled = compiledQuery.data;
 
   const scope = useMemo(() => new DataScope(modelName), [modelName]);
-  const filters = useSignalValue(scope.filters) as SchemaRecord;
-  const pagination = useSignalValue(scope.pagination);
-  const sorter = useSignalValue(scope.sorter);
-  const refreshVersion = useSignalValue(scope.refreshVersion);
   const [overlay, setOverlay] = useState<OverlayActionState | null>(null);
 
-  const listQuery = useRecordList({
-    model: modelName,
-    filters,
-    pagination,
-    sorter,
-    refreshVersion,
-    enabled: Boolean(schema),
-  });
-  const mutations = useRecordMutations(modelName);
+  useEffect(() => {
+    if (schema?.meta.defaultPageSize) {
+      scope.setPagination({ current: 1, pageSize: schema.meta.defaultPageSize });
+    }
+  }, [schema, scope]);
 
   const openAction = (mode: "add" | "edit" | "detail", recordId?: string) => {
     const openMode = schema?.meta.openMode[mode] ?? "drawer";
@@ -56,17 +45,6 @@ export function useRecordPage(modelName: string) {
     schemaLoading: schemaQuery.isLoading || compiledQuery.isLoading,
     schemaError: (schemaQuery.error ?? compiledQuery.error) as Error | null,
 
-    records: listQuery.data?.list ?? [],
-    total: listQuery.data?.total ?? 0,
-    listLoading: listQuery.isFetching,
-
-    filters,
-    setFilters: (values: SchemaRecord) => scope.setFilterPatch("filter", values),
-    setLayoutFilters: (values: SchemaRecord) => scope.setFilterPatch("layout", values),
-    pagination,
-    setPagination: (value: Pagination) => scope.setPagination(value),
-    sorter,
-    setSorter: (value?: Sorter) => scope.setSorter(value),
     scope,
 
     overlay,
@@ -74,13 +52,5 @@ export function useRecordPage(modelName: string) {
     openEdit: (id: string) => openAction("edit", id),
     openDetail: (id: string) => openAction("detail", id),
     closeOverlay: () => setOverlay(null),
-
-    submitting: mutations.submitting,
-    deleting: mutations.deleting,
-    createRecord: mutations.createRecord,
-    updateRecord: mutations.updateRecord,
-    removeRecord: mutations.deleteRecord,
-    removeRecords: mutations.deleteRecords,
-    refresh: () => listQuery.refetch(),
   };
 }

@@ -139,6 +139,51 @@ export function listRecords(schema: ModelSchema, params: ListParams): ListResult
   return { list: rows.map((row) => rowToRecord(schema, row, cols, rels)), total };
 }
 
+/**
+ * 子树查询：按业务字段 idField / parentField 收集 parentValue 之下的全部后代（任意层级）。
+ * parentValue 为空时返回整棵树（全量记录）。供 treelayout 的 query.subtree service 使用。
+ */
+export function listSubtree(
+  schema: ModelSchema,
+  params: { idField: string; parentField: string; parentValue?: string | null },
+): ModelRecord[] {
+  const db = getDb();
+  const table = tableName(schema.meta.name);
+  const cols = columnPlans(schema);
+  const rels = relationPlans(schema);
+  const rows = db.prepare(`SELECT * FROM "${table}"`).all() as Record<string, unknown>[];
+  const records = rows.map((row) => rowToRecord(schema, row, cols, rels));
+
+  const childrenOf = new Map<string, ModelRecord[]>();
+  for (const record of records) {
+    const raw = record[params.parentField];
+    const parent = raw === undefined || raw === null ? "" : String(raw);
+    const arr = childrenOf.get(parent) ?? [];
+    arr.push(record);
+    childrenOf.set(parent, arr);
+  }
+
+  const root =
+    params.parentValue === undefined || params.parentValue === null ? "" : String(params.parentValue);
+  if (root === "") return records;
+
+  const result: ModelRecord[] = [];
+  const queue = [root];
+  const seen = new Set<string>();
+  while (queue.length) {
+    const current = queue.shift()!;
+    if (seen.has(current)) continue;
+    seen.add(current);
+    const kids = childrenOf.get(current) ?? [];
+    result.push(...kids);
+    for (const kid of kids) {
+      const id = kid[params.idField];
+      if (id !== undefined && id !== null) queue.push(String(id));
+    }
+  }
+  return result;
+}
+
 export function getRecord(schema: ModelSchema, id: string): ModelRecord | undefined {
   const db = getDb();
   const table = tableName(schema.meta.name);

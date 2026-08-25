@@ -42,6 +42,11 @@ export class DataScope {
     this.sorter(value);
   }
 
+  /** 触发一次列表刷新（bump refreshVersion，订阅方据此重查）。 */
+  refresh(): void {
+    this.refreshVersion(this.refreshVersion() + 1);
+  }
+
   setSelection(value: string[]): void {
     this.selection(value);
   }

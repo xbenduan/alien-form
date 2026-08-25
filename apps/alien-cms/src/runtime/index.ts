@@ -1,6 +1,7 @@
 export { RuntimeCore } from "./RuntimeCore";
 export { RuntimeProvider, useRuntime, useScope } from "./react";
 export { RenderChildren, RenderNode } from "./RenderNode";
+export { readLayoutServices, resolveLayoutService } from "./layout-services";
 export { MDConstant } from "./MDConstant";
 export { MDForm } from "./MDForm";
 export { MDService } from "./MDService";
@@ -11,6 +12,7 @@ export type {
   IConfig,
   PageContext,
   RegisterDescribe,
+  ServiceCtx,
   ServiceDescribe,
   UIComponentDescribe,
   UINodeProps,

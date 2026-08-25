@@ -1,8 +1,11 @@
 import { Card, Space } from "antd";
+import { useSignalValue } from "@alien-form/react";
 import { Table } from "@alien-form/shared";
+import type { TableColumn } from "@alien-form/shared";
 import type { AfUiNode, ModelRecord, PageContext, Sorter } from "../../../runtime";
 import { RenderNode } from "../../../runtime";
-import { pageOf, layoutCtx, type TableContext } from "./types";
+import { layoutCtx, scopeOf, type TableContext } from "./types";
+import { useRecordListQuery } from "../../../hooks";
 import styles from "../ui.module.css";
 import { useState } from "react";
 import { Typography } from "antd";
@@ -16,7 +19,20 @@ export function TableLayout({
   slots?: Record<string, AfUiNode[]>;
   ctx: PageContext;
 }) {
-  const page = pageOf(ctx);
+  const scope = scopeOf(ctx);
+  const filters = useSignalValue(scope.filters) as Record<string, unknown>;
+  const pagination = useSignalValue(scope.pagination);
+  const sorter = useSignalValue(scope.sorter) as Sorter | undefined;
+  const refreshVersion = useSignalValue(scope.refreshVersion);
+
+  const listQuery = useRecordListQuery(ctx, {
+    filters,
+    pagination,
+    sorter,
+    refreshVersion,
+    enabled: true,
+  });
+
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const rowActions = children.find((node) => node.component === "row-actions");
   const batchActions = slots.toolbarLeft ?? [];
@@ -24,14 +40,17 @@ export function TableLayout({
   const table: TableContext = { selectedRowKeys, setSelectedRowKeys };
   const childContext = layoutCtx(ctx, table);
 
+  const columns = ((ctx.compiled as { columns?: TableColumn[] }).columns ?? []) as TableColumn[];
+  const data = (listQuery.data?.list ?? []) as ModelRecord[];
+
   return (
     <Card className={styles.tableCard} styles={{ body: { padding: 0 } }}>
       <Table
-        columns={page.compiled?.columns ?? []}
-        dataSource={page.records}
-        loading={page.listLoading || page.deleting}
-        total={page.total}
-        pagination={{ current: page.pagination.current, pageSize: page.pagination.pageSize }}
+        columns={columns}
+        dataSource={data}
+        loading={listQuery.isFetching}
+        total={listQuery.data?.total ?? 0}
+        pagination={{ current: pagination.current, pageSize: pagination.pageSize }}
         rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
         toolbar={
           <div className={styles.tableToolbar}>
@@ -78,12 +97,12 @@ export function TableLayout({
             : undefined
         }
         onChange={(nextPagination, _filters, nextSorter) => {
-          page.setPagination({
+          scope.setPagination({
             current: nextPagination.current ?? 1,
-            pageSize: nextPagination.pageSize ?? page.pagination.pageSize,
+            pageSize: nextPagination.pageSize ?? pagination.pageSize,
           });
           const single = Array.isArray(nextSorter) ? nextSorter[0] : nextSorter;
-          page.setSorter(
+          scope.setSorter(
             single?.field && single.order
               ? {
                   field: Array.isArray(single.field)

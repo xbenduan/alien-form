@@ -1,7 +1,26 @@
 /** 内置模型的默认页面布局；模型构建器也使用同一份协议形态生成布局。 */
+
+/** 记录型页面的默认 service 语义映射（与前端 DEFAULT_RECORD_SERVICES 同构）。 */
+const RECORD_SERVICES = {
+  "query.list": "records.list",
+  "query.filter": "records.list",
+  "query.detail": "records.get",
+  "create.record": "records.create",
+  "update.record": "records.update",
+  "delete.record": "records.delete",
+  "delete.recordMany": "records.deleteMany",
+};
+
+/** 树表布局追加子树查询 service。 */
+const TREE_SERVICES = {
+  ...RECORD_SERVICES,
+  "query.subtree": "records.subtree",
+};
+
 export const defaultLayout = {
   plugin: "$af-ui",
   component: "page",
+  props: { services: RECORD_SERVICES },
   children: [
     { plugin: "$af-ui", component: "filter", props: { scope: "main" } },
     {
@@ -38,6 +57,7 @@ export const defaultLayout = {
 export const schoolUserLayout = {
   plugin: "$af-ui",
   component: "treelayout",
+  props: { services: TREE_SERVICES },
   slots: {
     tree: [
       {
@@ -94,6 +114,7 @@ export const schoolUserLayout = {
 export const schoolDepartmentLayout = {
   plugin: "$af-ui",
   component: "treelayout",
+  props: { services: TREE_SERVICES },
   slots: {
     tree: [
       {
