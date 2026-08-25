@@ -269,9 +269,14 @@ export interface FormInstance {
   reset(): void;
   mount(): void;
   unmount(): void;
-  validate(): Promise<boolean>;
+  validate(names?: string[]): Promise<boolean>;
+  validateFast(): Promise<boolean>;
+  getFieldsValue(names?: string[]): Record<string, any>;
+  getFieldsValueFast(): Record<string, any>;
   submit<T = any>(onSubmit?: (values: Record<string, any>) => T | Promise<T>): Promise<T>;
   destroy(): void;
+  _registerField(field: FieldNode): void;
+  _unregisterField(field: FieldNode): void;
   onError(listener: (error: FormError) => void): () => void;
   effect(runner: (form: FormInstance) => void | (() => void)): () => void;
   effect<T>(

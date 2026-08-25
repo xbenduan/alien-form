@@ -34,6 +34,7 @@ import { resolveSchemaTree } from "./ref-resolve";
 
 interface FieldContext {
   readonly fieldsMap: Map<string, FieldNode>;
+  readonly mountedFields: Set<FieldNode>;
   readonly config: FormConfig;
   readonly refDefinitions: Record<string, IFieldSchema>;
   initialValues: Record<string, any>;
@@ -163,6 +164,7 @@ function createBaseField(
           child.dispose();
       }
       ctx.fieldsMap.delete(base.path);
+      ctx.mountedFields.delete(base as FieldNode);
     },
     setErrors(errors: FieldError[]) {
       base.errors(errors);
@@ -546,6 +548,49 @@ function projectChildren(
   const result: Record<string, any> = {};
   for (const [key, child] of children) {
     const value = projectNode(ctx, child, applyOutput);
+    if (value === undefined) continue;
+    if (child.kind === "void" && value && typeof value === "object" && !Array.isArray(value)) {
+      Object.assign(result, value);
+      continue;
+    }
+    result[key] = value;
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function collectFieldAndDescendants(field: FieldNode, out: Set<FieldNode>): void {
+  if (out.has(field)) return;
+  out.add(field);
+  if (field.kind === "object" || field.kind === "void") {
+    for (const child of field.children.values()) collectFieldAndDescendants(child, out);
+  } else if (field.kind === "array") {
+    for (const row of field.rows()) {
+      for (const child of row.children.values()) collectFieldAndDescendants(child, out);
+    }
+  }
+}
+
+function projectMountedTree(ctx: FieldContext, node: FieldNode): any {
+  if (node.display() === "none") return undefined;
+  if (node.kind === "void") {
+    return projectMountedChildren(ctx, node.children);
+  }
+  if (ctx.mountedFields.has(node)) {
+    return projectNode(ctx, node);
+  }
+  if (node.kind === "object") {
+    return projectMountedChildren(ctx, node.children) ?? {};
+  }
+  return undefined;
+}
+
+function projectMountedChildren(
+  ctx: FieldContext,
+  children: Map<string, FieldNode>,
+): Record<string, any> | undefined {
+  const result: Record<string, any> = {};
+  for (const [key, child] of children) {
+    const value = projectMountedTree(ctx, child);
     if (value === undefined) continue;
     if (child.kind === "void" && value && typeof value === "object" && !Array.isArray(value)) {
       Object.assign(result, value);
@@ -967,6 +1012,7 @@ function unmountFormRuntime(fields: Map<string, FieldNode>) {
 export function createForm(config: FormConfig = {}): FormInstance {
   const errorListeners = new Set<(e: FormError) => void>(config.onError ? [config.onError] : []);
   const fieldsMap = new Map<string, FieldNode>();
+  const mountedFields = new Set<FieldNode>();
   const fieldsSignal = signal(fieldsMap);
   let destroyed = false;
   let mounted = false;
@@ -984,6 +1030,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
   const form: FormInstance = {} as FormInstance;
   const ctx: FieldContext = {
     fieldsMap,
+    mountedFields,
     config,
     refDefinitions,
     initialValues,
@@ -1066,13 +1113,41 @@ export function createForm(config: FormConfig = {}): FormInstance {
       mounted = false;
       unmountFormRuntime(fieldsSignal());
     },
-    async validate() {
-      const results = await Promise.all(
-        Array.from(fieldsSignal().values())
-          .filter((f: FieldNode) => f.display() !== "none")
-          .map((f: FieldNode) => f.validate()),
-      );
+    async validate(names?: string[]) {
+      let targets: FieldNode[];
+      if (!names || names.length === 0) {
+        targets = Array.from(fieldsSignal().values()).filter(
+          (f: FieldNode) => f.display() !== "none",
+        );
+      } else {
+        const seen = new Set<FieldNode>();
+        for (const name of names) {
+          const field = fieldsSignal().get(name);
+          if (field) collectFieldAndDescendants(field, seen);
+        }
+        targets = Array.from(seen).filter((f) => f.display() !== "none");
+      }
+      const results = await Promise.all(targets.map((f) => f.validate()));
       return results.every((errors) => errors.length === 0);
+    },
+    async validateFast() {
+      const targets = Array.from(mountedFields).filter((f) => f.display() !== "none");
+      const results = await Promise.all(targets.map((f) => f.validate()));
+      return results.every((errors) => errors.length === 0);
+    },
+    getFieldsValue(names?: string[]) {
+      if (!names || names.length === 0) return projectFormValues(ctx, root);
+      const result: Record<string, any> = {};
+      for (const name of names) {
+        const field = fieldsSignal().get(name);
+        if (!field) continue;
+        const value = projectNode(ctx, field);
+        if (value !== undefined) setDeepValue(result, name, value);
+      }
+      return result;
+    },
+    getFieldsValueFast() {
+      return projectMountedTree(ctx, root) || {};
     },
     async submit<T = any>(onSubmit?: (values: Record<string, any>) => T | Promise<T>) {
       submittingSignal(true);
@@ -1093,9 +1168,16 @@ export function createForm(config: FormConfig = {}): FormInstance {
       destroyed = true;
       form.unmount();
       root.dispose();
+      mountedFields.clear();
       for (const d of effectDisposers) d();
       effectDisposers.clear();
       errorListeners.clear();
+    },
+    _registerField(field: FieldNode) {
+      mountedFields.add(field);
+    },
+    _unregisterField(field: FieldNode) {
+      mountedFields.delete(field);
     },
     onError(listener: (error: FormError) => void) {
       errorListeners.add(listener);

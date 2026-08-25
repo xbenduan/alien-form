@@ -208,6 +208,13 @@ export function useForm(): FormInstance {
   return ctx.form;
 }
 
+function useRegisterField(form: FormInstance, field: FieldNode): void {
+  useEffect(() => {
+    form._registerField(field);
+    return () => form._unregisterField(field);
+  }, [form, field]);
+}
+
 export function useFieldAtoms(path: string): FieldNode | undefined {
   const form = useForm();
   const fields = useSignalValue(form.fields);
@@ -393,6 +400,7 @@ const PrimitiveFieldSlotInner: React.FC<{ field: PrimitiveFieldNode }> = memo(({
     decoratorProps,
   } = useFieldRender(field, readPrimitive);
   const onChange = useCallback((v: any) => field.setValue(v), [field]);
+  useRegisterField(ctx.form, field);
   if (display === "none") return null;
   if (display === "hidden") return <div style={{ display: "none" }} />;
   const Component = components[componentName];
@@ -452,6 +460,7 @@ const ArrayFieldSlotInner: React.FC<{ field: ArrayFieldNode; schema: IFieldSchem
       decoratorProps,
       rowNodes,
     } = useFieldRender(field, readArray);
+    useRegisterField(ctx.form, field);
     const componentDisabled = Boolean(
       (componentProps as Record<string, any> | undefined)?.disabled,
     );
@@ -559,6 +568,7 @@ const ObjectFieldSlotInner: React.FC<{ field: ObjectFieldNode; schema: IFieldSch
       errors,
       decoratorProps,
     } = useFieldRender(field, readObject);
+    useRegisterField(ctx.form, field);
     if (display === "none") return null;
     if (display === "hidden") return <div style={{ display: "none" }} />;
     const ObjectComponent = components[componentName];
@@ -617,6 +627,7 @@ const VoidFieldSlotInner: React.FC<{ field: FieldNode; schema: IFieldSchema }> =
       field,
       readVoid,
     );
+    useRegisterField(ctx.form, field);
     if (display === "none") return null;
     if (display === "hidden") return <div style={{ display: "none" }} />;
     const sorted = schema.properties ? sortByOrder(schema.properties) : [];

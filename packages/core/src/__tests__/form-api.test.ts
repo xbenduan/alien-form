@@ -293,3 +293,199 @@ describe("form.onError listener registration", () => {
     expect(seen.length).toBe(before);
   });
 });
+
+describe("form.getFieldsValue", () => {
+  it("returns all values when called with no names", () => {
+    const form = createForm({ schema: flat(), initialValues: { a: 1, b: "x" } });
+    expect(form.getFieldsValue()).toEqual({ a: 1, b: "x" });
+  });
+
+  it("returns an empty array result as all values", () => {
+    const form = createForm({ schema: flat(), initialValues: { a: 1, b: "x" } });
+    expect(form.getFieldsValue([])).toEqual({ a: 1, b: "x" });
+  });
+
+  it("projects only the requested primitive fields", () => {
+    const form = createForm({ schema: flat(), initialValues: { a: 1, b: "x" } });
+    expect(form.getFieldsValue(["a"])).toEqual({ a: 1 });
+  });
+
+  it("projects a nested object subtree by path", () => {
+    const schema: IFormSchema = {
+      type: "object",
+      properties: {
+        group: {
+          type: "object",
+          properties: {
+            inner: { type: "string" },
+            other: { type: "number" },
+          },
+        },
+      },
+    };
+    const form = createForm({
+      schema,
+      initialValues: { group: { inner: "v", other: 42 } },
+    });
+    expect(form.getFieldsValue(["group"])).toEqual({ group: { inner: "v", other: 42 } });
+  });
+
+  it("builds a nested structure for dotted leaf paths", () => {
+    const schema: IFormSchema = {
+      type: "object",
+      properties: {
+        group: {
+          type: "object",
+          properties: { inner: { type: "string" } },
+        },
+      },
+    };
+    const form = createForm({ schema, initialValues: { group: { inner: "v" } } });
+    expect(form.getFieldsValue(["group.inner"])).toEqual({ group: { inner: "v" } });
+  });
+
+  it("silently skips unknown paths", () => {
+    const form = createForm({ schema: flat(), initialValues: { a: 1 } });
+    expect(form.getFieldsValue(["a", "nope"])).toEqual({ a: 1 });
+  });
+});
+
+describe("form.validate(names)", () => {
+  it("validates only the named field and leaves sibling errors untouched", async () => {
+    const schema: IFormSchema = {
+      type: "object",
+      properties: {
+        a: { type: "string", required: true },
+        b: { type: "string", required: true },
+      },
+    };
+    const form = createForm({ schema });
+    const ok = await form.validate(["a"]);
+    expect(ok).toBe(false);
+    expect(form.field("a")?.errors().length).toBeGreaterThan(0);
+    expect(form.field("b")?.errors()).toEqual([]);
+  });
+
+  it("validates a container together with all its descendants", async () => {
+    const schema: IFormSchema = {
+      type: "object",
+      properties: {
+        group: {
+          type: "object",
+          properties: {
+            inner: { type: "string", required: true },
+          },
+        },
+      },
+    };
+    const form = createForm({ schema });
+    const ok = await form.validate(["group"]);
+    expect(ok).toBe(false);
+    expect(form.field("group.inner")?.errors().length).toBeGreaterThan(0);
+  });
+
+  it("validates all visible fields when called without names", async () => {
+    const schema: IFormSchema = {
+      type: "object",
+      properties: {
+        a: { type: "string", required: true },
+        b: { type: "string", required: true },
+      },
+    };
+    const form = createForm({ schema });
+    const ok = await form.validate();
+    expect(ok).toBe(false);
+    expect(form.field("a")?.errors().length).toBeGreaterThan(0);
+    expect(form.field("b")?.errors().length).toBeGreaterThan(0);
+  });
+});
+
+describe("form.getFieldsValueFast / validateFast", () => {
+  it("returns an empty object when no fields are registered", () => {
+    const form = createForm({ schema: flat(), initialValues: { a: 1, b: "x" } });
+    expect(form.getFieldsValueFast()).toEqual({});
+  });
+
+  it("projects only registered (mounted) fields", () => {
+    const form = createForm({ schema: flat(), initialValues: { a: 1, b: "x" } });
+    form._registerField(form.field("a")!);
+    expect(form.getFieldsValueFast()).toEqual({ a: 1 });
+  });
+
+  it("projects a whole mounted container subtree", () => {
+    const schema: IFormSchema = {
+      type: "object",
+      properties: {
+        group: {
+          type: "object",
+          component: "ObjectField",
+          properties: {
+            inner: { type: "string" },
+          },
+        },
+      },
+    };
+    const form = createForm({ schema, initialValues: { group: { inner: "v" } } });
+    form._registerField(form.field("group")!);
+    expect(form.getFieldsValueFast()).toEqual({ group: { inner: "v" } });
+  });
+
+  it("skips display:none subtrees even when registered", () => {
+    const schema: IFormSchema = {
+      type: "object",
+      properties: {
+        a: { type: "string", display: "none" },
+        b: { type: "string" },
+      },
+    };
+    const form = createForm({ schema, initialValues: { a: 1, b: "x" } });
+    form._registerField(form.field("a")!);
+    form._registerField(form.field("b")!);
+    expect(form.getFieldsValueFast()).toEqual({ b: "x" });
+  });
+
+  it("stops projecting a field after it is unregistered", () => {
+    const form = createForm({ schema: flat(), initialValues: { a: 1, b: "x" } });
+    const fieldA = form.field("a")!;
+    form._registerField(fieldA);
+    expect(form.getFieldsValueFast()).toEqual({ a: 1 });
+    form._unregisterField(fieldA);
+    expect(form.getFieldsValueFast()).toEqual({});
+  });
+
+  it("validateFast only validates registered fields", async () => {
+    const schema: IFormSchema = {
+      type: "object",
+      properties: {
+        a: { type: "string", required: true },
+        b: { type: "string", required: true },
+      },
+    };
+    const form = createForm({ schema });
+    form._registerField(form.field("a")!);
+    const ok = await form.validateFast();
+    expect(ok).toBe(false);
+    expect(form.field("a")?.errors().length).toBeGreaterThan(0);
+    expect(form.field("b")?.errors()).toEqual([]);
+  });
+
+  it("validateFast ignores display:none registered fields", async () => {
+    const schema: IFormSchema = {
+      type: "object",
+      properties: {
+        a: { type: "string", required: true, display: "none" },
+      },
+    };
+    const form = createForm({ schema });
+    form._registerField(form.field("a")!);
+    await expect(form.validateFast()).resolves.toBe(true);
+    expect(form.field("a")?.errors()).toEqual([]);
+  });
+
+  it("clears registered fields when the form is destroyed", () => {
+    const form = createForm({ schema: flat(), initialValues: { a: 1 } });
+    form._registerField(form.field("a")!);
+    form.destroy();
+    expect(form.getFieldsValueFast()).toEqual({});
+  });
+});

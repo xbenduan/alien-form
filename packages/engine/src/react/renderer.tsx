@@ -1,0 +1,83 @@
+import React from "react";
+import type { UiNode } from "../core/dsl";
+import { BlockProvider, usePage, useRuntime, NodeContext } from "./context";
+import type { ComponentDescriptor } from "../core/registry";
+
+export interface ComponentProps {
+  node: UiNode;
+  children?: React.ReactNode;
+  [key: string]: unknown;
+}
+
+export function RenderNode({ node }: { node: UiNode }): React.ReactNode {
+  const runtime = useRuntime();
+  const page = usePage();
+
+  const descriptor = runtime.registry.components.resolve(node.component) as
+    | ComponentDescriptor<React.ComponentType<ComponentProps>>
+    | undefined;
+
+  if (!descriptor) {
+    throw new Error(
+      `[alien-page] component "${node.component}" not registered (page="${page.id}")`,
+    );
+  }
+
+  const Component = descriptor.component;
+  const block = node.block ? page.block(node.block) : undefined;
+
+  const children = node.children?.map((child, i) => (
+    <RenderNode key={`${child.component}-${i}`} node={child} />
+  ));
+
+  const slots: Record<string, React.ReactNode> = {};
+  if (node.slots) {
+    for (const [slotName, slotNodes] of Object.entries(node.slots)) {
+      slots[slotName] = slotNodes.map((child, i) => (
+        <RenderNode key={`${child.component}-${i}`} node={child} />
+      ));
+    }
+  }
+
+  const element = (
+    <Component {...(node.props ?? {})} node={node}>
+      {children}
+    </Component>
+  );
+
+  const wrapped = (
+    <NodeContext.Provider value={{ slots: node.slots }}>
+      {element}
+    </NodeContext.Provider>
+  );
+
+  if (block) {
+    return <BlockProvider block={block}>{wrapped}</BlockProvider>;
+  }
+  return wrapped;
+}
+
+export function RenderChildren({ children }: { children: UiNode[] }): React.ReactNode {
+  return children.map((child, i) => (
+    <RenderNode key={`${child.component}-${i}`} node={child} />
+  ));
+}
+
+export function Slot({
+  name,
+  children,
+}: {
+  name: string;
+  children?: React.ReactNode;
+}) {
+  const nodeCtx = React.useContext(NodeContext);
+  const slotNodes = (nodeCtx?.slots as Record<string, UiNode[]> | undefined)?.[name];
+  if (!slotNodes) return <>{children}</>;
+  return (
+    <>
+      {slotNodes.map((node, i) => (
+        <RenderNode key={`${node.component}-${i}`} node={node} />
+      ))}
+    </>
+  );
+}
