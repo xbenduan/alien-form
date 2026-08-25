@@ -110,7 +110,6 @@ export function TreeSelect({
           <Tree
             treeData={filtered}
             selectedKey={value}
-            defaultExpandAll
             expandedKeys={expandedKeys}
             onSelect={(next) => {
               onChange?.(next);
