@@ -1,6 +1,6 @@
 import { Image, Tag, Typography } from "antd";
 import type { DataSourceItem } from "@alien-form/react";
-import { EMPTY_TEXT, isEmptyValue, optionLabel, statusColor } from "../compiler";
+import { EMPTY_TEXT, isEmptyValue, optionLabel, refValue, statusColor } from "../compiler";
 
 export interface DisplayValueProps {
   value?: unknown;
@@ -42,7 +42,7 @@ export function DisplayValue({ value, dataSource, format, ellipsis }: DisplayVal
   }
   if (format === "status") {
     const text = optionLabel(value, dataSource);
-    return <Tag color={statusColor(value)}>{text}</Tag>;
+    return <Tag color={statusColor(refValue(value))}>{text}</Tag>;
   }
   if (format === "date") return <>{toDateText(value, false)}</>;
   if (format === "dateTime") return <>{toDateText(value, true)}</>;

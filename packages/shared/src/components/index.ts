@@ -18,6 +18,8 @@ export {
 export { default as componentRegistryDefault } from "./register";
 export { RuntimeResourceContext, SchemaRenderer } from "./SchemaRenderer";
 export type { RuntimeResourceContextValue, SchemaRendererProps } from "./SchemaRenderer";
+export { Tree, collectExpandable, TreeSelect } from "./tree";
+export type { TreeNode, TreeProps, TreeSelectComboProps } from "./tree";
 export { FieldDetailModal } from "./FieldDetailModal";
 export type { FieldDetailModalProps } from "./FieldDetailModal";
 export {

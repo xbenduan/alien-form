@@ -1,0 +1,133 @@
+/*
+ * Tree —— 自绘树组件样式，采用 shadcn/ui 视觉语言。
+ * 设计令牌（border / accent / muted-foreground / ring / radius）内联为 CSS 变量，
+ * 作用域限定在本组件根类上，避免污染全局；不依赖 Tailwind。
+ * TreeSelect 外壳复用 antd Select，尺寸/边框/清空按钮/宽度全由 antd 提供，本文件不再干预。
+ */
+.af-tree {
+  --af-tree-border: hsl(240 5.9% 90%);
+  --af-tree-fg: hsl(240 10% 3.9%);
+  --af-tree-muted-fg: hsl(240 3.8% 46.1%);
+  --af-tree-accent: hsl(240 4.8% 95.9%);
+  --af-tree-accent-fg: hsl(240 5.9% 10%);
+  --af-tree-ring: hsl(240 5% 64.9%);
+  --af-tree-bg: hsl(0 0% 100%);
+  --af-tree-radius: 0.5rem;
+  color: var(--af-tree-fg);
+  font-size: 14px;
+}
+
+/* ─── Tree 本体 ────────────────────────────────────────────── */
+.af-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.af-tree-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.af-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 4px 8px;
+  border-radius: calc(var(--af-tree-radius) - 2px);
+  color: var(--af-tree-fg);
+  line-height: 20px;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.af-tree-row:hover {
+  background: var(--af-tree-accent);
+  color: var(--af-tree-accent-fg);
+}
+
+.af-tree-row[data-selected="true"] {
+  background: var(--af-tree-accent);
+  color: var(--af-tree-accent-fg);
+  font-weight: 500;
+}
+
+.af-tree-row[data-disabled="true"] {
+  color: var(--af-tree-muted-fg);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.af-tree-row[data-disabled="true"]:hover {
+  background: transparent;
+}
+
+.af-tree-toggle,
+.af-tree-toggle-spacer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+}
+
+.af-tree-toggle {
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--af-tree-muted-fg);
+  cursor: pointer;
+}
+
+.af-tree-toggle:hover {
+  background: hsl(240 5.9% 90% / 0.6);
+  color: var(--af-tree-fg);
+}
+
+.af-tree-chevron {
+  font-size: 12px;
+  transition: transform 0.15s ease;
+}
+
+.af-tree-toggle[data-open="true"] .af-tree-chevron {
+  transform: rotate(90deg);
+}
+
+.af-tree-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.af-tree-empty {
+  padding: 16px 8px;
+  color: var(--af-tree-muted-fg);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ─── TreeSelect 弹层内的树容器（外壳由 antd Select 提供）────── */
+.af-tree-select-list {
+  /* popup 脱离 .af-tree 作用域，令牌需在此重挂 */
+  --af-tree-border: hsl(240 5.9% 90%);
+  --af-tree-fg: hsl(240 10% 3.9%);
+  --af-tree-muted-fg: hsl(240 3.8% 46.1%);
+  --af-tree-accent: hsl(240 4.8% 95.9%);
+  --af-tree-accent-fg: hsl(240 5.9% 10%);
+  --af-tree-ring: hsl(240 5% 64.9%);
+  --af-tree-bg: hsl(0 0% 100%);
+  --af-tree-radius: 0.5rem;
+  max-height: 288px;
+  overflow: auto;
+  padding: 2px;
+}

@@ -1,15 +1,11 @@
-import { TreeSelect as AntTreeSelect } from "antd";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FieldComponentProps } from "../../types";
 import { useFieldMode } from "../field-mode";
 import { DisplayValue } from "../DisplayValue";
+import { refValue } from "../../compiler";
 import { useServiceResolver } from "../service";
-
-interface TreeSelectNode {
-  title: string;
-  value: string;
-  children: TreeSelectNode[];
-}
+import { TreeSelect as TreeSelectCombo } from "../tree";
+import type { TreeNode } from "../tree";
 
 /**
  * 树形单选：从一个模型按「父字段 → 自身字段」拼成层级树供选择，
@@ -22,6 +18,8 @@ interface TreeSelectNode {
  *  - treeIdField：节点自身标识（即回填到本字段的值），缺省 "id"
  *  - treeLabelField：节点展示字段，缺省 treeIdField
  *  - treeParentField：上级标识字段，缺省 "parentCode"
+ *
+ * UI 使用 shared/components/tree 的自绘 TreeSelect（shadcn 视觉），不再依赖 antd。
  */
 export default function TreeSelect(props: FieldComponentProps) {
   const mode = useFieldMode(props.mode);
@@ -52,48 +50,58 @@ export default function TreeSelect(props: FieldComponentProps) {
       });
   }, [resolveService, treeModel]);
 
+  const rawValue = refValue(props.value);
+  const currentValue = rawValue == null || rawValue === "" ? undefined : String(rawValue);
+  // 引用对象自带 label，作为兜底显示名（记录未拉到 / 超分页时仍能回显 name）
+  const refLabel =
+    typeof props.value === "object" && props.value !== null && "label" in props.value
+      ? String((props.value as { label?: unknown }).label ?? "")
+      : "";
+
   const { treeData, labelOf } = useMemo(() => {
     const byParent = new Map<string, Record<string, unknown>[]>();
     const labels = new Map<string, string>();
     records.forEach((record) => {
-      const rawId = record[idField];
+      const rawId = refValue(record[idField]);
       if (rawId === undefined || rawId === null || rawId === "") return;
       const id = String(rawId);
-      labels.set(id, String(record[labelField] ?? id));
-      const parent = String(record[parentField] ?? "");
+      labels.set(id, String(refValue(record[labelField]) ?? id));
+      // parentField 可能被服务端展开为引用对象 { $ref, value, label }：取其 value 拼树
+      const parent = String(refValue(record[parentField]) ?? "");
       const items = byParent.get(parent) ?? [];
       items.push(record);
       byParent.set(parent, items);
     });
-    // 排除当前记录自身及其子树，避免把自己或后代选成父级形成环
-    const selfId = props.value === undefined ? undefined : String(props.value);
-    const build = (parent: string): TreeSelectNode[] =>
-      (byParent.get(parent) ?? []).flatMap((record) => {
-        const id = String(record[idField]);
-        if (id === selfId) return [];
-        return [{ title: labels.get(id) ?? id, value: id, children: build(id) }];
+    const build = (parent: string): TreeNode[] =>
+      (byParent.get(parent) ?? []).map((record) => {
+        const id = String(refValue(record[idField]));
+        return { key: id, title: labels.get(id) ?? id, children: build(id) };
       });
-    return { treeData: build(""), labelOf: labels };
-  }, [records, idField, labelField, parentField, props.value]);
+    const nodes = build("");
+    // 兜底：选中值不在已拉取记录里（未加载完 / 超分页 / 悬空引用）时，
+    // 用引用 label 拼一个 echo 顶层节点，保证回显出 name 而非 code。
+    if (currentValue != null && !labels.has(currentValue)) {
+      nodes.unshift({ key: currentValue, title: refLabel || currentValue, children: [] });
+      labels.set(currentValue, refLabel || currentValue);
+    }
+    return { treeData: nodes, labelOf: labels };
+  }, [records, idField, labelField, parentField, currentValue, refLabel]);
 
   if (mode === "detail") {
-    const value = props.value == null ? undefined : String(props.value);
-    const display = value != null ? (labelOf.get(value) ?? value) : value;
+    const display =
+      currentValue != null ? (labelOf.get(currentValue) ?? refLabel ?? currentValue) : currentValue;
     return <DisplayValue value={display} />;
   }
 
   return (
-    <AntTreeSelect
-      style={{ width: "100%" }}
-      value={props.value as string | undefined}
+    <TreeSelectCombo
+      treeData={treeData}
+      value={currentValue}
       onChange={(next) => props.onChange?.(next)}
       disabled={props.disabled}
       loading={props.loading || loading}
       placeholder={props.placeholder}
-      treeData={treeData}
-      treeDefaultExpandAll
       showSearch
-      treeNodeFilterProp="title"
       allowClear
     />
   );

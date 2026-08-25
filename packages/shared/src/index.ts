@@ -49,9 +49,12 @@ export {
   getChildProperties,
   isComplexField,
   isEmptyValue,
+  isRefValue,
   optionLabel,
+  refValue,
   statusColor,
   toDisplayText,
+  withRefEchoOptions,
   multiValueFormat,
   parseMultiValue,
   serializeMultiValue,
@@ -93,6 +96,7 @@ export type {
   TableFieldMeta,
   XDatabaseMeta,
 } from "./compiler";
+export type { RefValue } from "./compiler";
 
 // components：符合 alien-form 协议的组件注册机与渲染核心
 export {
@@ -116,6 +120,9 @@ export {
   SchemaRenderer,
   RuntimeResourceContext,
   FieldServiceContext,
+  Tree,
+  TreeSelect,
+  collectExpandable,
   useAsyncOptions,
   useFieldMode,
   useFieldOptions,
@@ -126,6 +133,9 @@ export type {
   FieldDetailModalProps,
   RuntimeResourceContextValue,
   SchemaRendererProps,
+  TreeNode,
+  TreeProps,
+  TreeSelectComboProps,
 } from "./components";
 
 // form

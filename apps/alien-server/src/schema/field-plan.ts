@@ -128,3 +128,84 @@ export function planByField(schema: ModelSchema): Map<string, FieldPlan> {
   for (const plan of planFields(schema)) map.set(plan.field, plan);
   return map;
 }
+
+/**
+ * 引用字段声明：读路径把标量 join 键展开成 { $ref, value, label } 所需的元信息。
+ * 由既有的 canonical 声明派生（不额外要求作者重复配置）：
+ *  - $af-dataSource marker（many-to-one 标量外键 / many-to-many）：value/label 取自 marker；
+ *  - TreeSelect 的 props（自连接业务码软引用，如 deptCode/parentCode）：取 treeModel/treeIdField/treeLabelField；
+ *  - 显式 x-ref（可选，未来直接声明）：{ model, value?, label? }。
+ */
+export interface RefField {
+  /** 本模型字段名。 */
+  field: string;
+  /** 目标模型 modelCode。 */
+  model: string;
+  /** 目标模型上的 join 键（回写用原值，如 id / deptCode）。 */
+  valueKey: string;
+  /** 目标模型上的展示字段（如 displayName / deptName）。 */
+  labelKey: string;
+  /** 数组值（many-to-many / 多值组件），展开为 ref 对象数组。 */
+  multi: boolean;
+}
+
+/** 显式 x-ref 声明（可选）。 */
+interface XRefMeta {
+  model: string;
+  value?: string;
+  label?: string;
+}
+
+/** 扫描一份 schema 的所有引用字段。 */
+export function refFields(schema: ModelSchema): RefField[] {
+  const refs: RefField[] = [];
+  for (const [key, field] of Object.entries(schema.properties ?? {})) {
+    if (SYSTEM_MANAGED.has(key)) continue;
+    const multi = isMultiValue(field);
+
+    // 1) 显式 x-ref
+    const xref = field["x-ref"] as XRefMeta | undefined;
+    if (xref && typeof xref.model === "string") {
+      const value = typeof xref.value === "string" ? xref.value : "id";
+      refs.push({
+        field: key,
+        model: xref.model,
+        valueKey: value,
+        labelKey: typeof xref.label === "string" ? xref.label : value,
+        multi,
+      });
+      continue;
+    }
+
+    // 2) $af-dataSource marker（many-to-one / many-to-many）
+    const model = relationTargetFromDataSource(field);
+    if (model) {
+      const ds = field.dataSource as { value?: unknown; label?: unknown };
+      const value = typeof ds.value === "string" ? ds.value : "id";
+      refs.push({
+        field: key,
+        model,
+        valueKey: value,
+        labelKey: typeof ds.label === "string" ? ds.label : value,
+        multi,
+      });
+      continue;
+    }
+
+    // 3) TreeSelect props（自连接业务码软引用）
+    if (field.component === "TreeSelect") {
+      const props = (field.props ?? {}) as Record<string, unknown>;
+      const treeModel = typeof props.treeModel === "string" ? props.treeModel : "";
+      if (!treeModel) continue;
+      const idField = typeof props.treeIdField === "string" ? props.treeIdField : "id";
+      refs.push({
+        field: key,
+        model: treeModel,
+        valueKey: idField,
+        labelKey: typeof props.treeLabelField === "string" ? props.treeLabelField : idField,
+        multi: false,
+      });
+    }
+  }
+  return refs;
+}

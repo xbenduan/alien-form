@@ -50,28 +50,6 @@
   padding: 2px 4px;
 }
 
-.tree :global(.ant-tree-treenode) {
-  width: 100%;
-  min-height: 34px;
-  padding-block: 2px;
-}
-
-.tree :global(.ant-tree-node-content-wrapper) {
-  min-height: 30px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  line-height: 22px;
-}
-
-.tree :global(.ant-tree-node-content-wrapper:hover) {
-  background: #f0f6ff;
-}
-
-.tree :global(.ant-tree-node-content-wrapper.ant-tree-node-selected) {
-  color: #0958d9;
-  background: #e6f4ff;
-}
-
 .tableCard {
   overflow: hidden;
   border: 1px solid rgba(22, 119, 255, 0.12);

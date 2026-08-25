@@ -8,6 +8,7 @@ import {
   listRecords,
   updateRecord,
 } from "../db/record-repo.ts";
+import { expandRefs, expandRefsOne, unwrapRefs } from "../db/ref-expand.ts";
 import type { Pagination, Sorter } from "../schema/types.ts";
 
 export const recordRoutes = new Hono();
@@ -35,13 +36,15 @@ recordRoutes.post("/list", async (c) => {
   const schema = getSchema(body.model);
   if (!schema) return c.json({ error: `未知模型：${body.model}` }, 404);
   const result = listRecords(schema, {
-    filters: body.filters,
+    filters: unwrapRefs(body.filters),
     pagination: body.pagination,
     sorter: body.sorter,
   });
+  // 引用字段展开为 { $ref, value, label }（批量 IN，每字段每页 1 查询）
+  const expanded = expandRefs(schema, result.list);
   return c.json({
     ...result,
-    list: result.list.map((record) => publicRecord(body.model, record)),
+    list: expanded.map((record) => publicRecord(body.model, record)),
   });
 });
 
@@ -52,7 +55,7 @@ recordRoutes.get("/:model/:id", (c) => {
   if (!schema) return c.json({ error: `未知模型：${model}` }, 404);
   const record = getRecord(schema, id);
   if (!record) return c.json({ error: `记录不存在：${id}` }, 404);
-  return c.json(publicRecord(model, record));
+  return c.json(publicRecord(model, expandRefsOne(schema, record)));
 });
 
 /** POST /api/records/:model → 新建记录（幂等 upsert 支持传入 id）。 */
@@ -61,8 +64,8 @@ recordRoutes.post("/:model", async (c) => {
   const schema = getSchema(model);
   if (!schema) return c.json({ error: `未知模型：${model}` }, 404);
   const values = (await c.req.json()) as Record<string, unknown>;
-  const record = createRecord(schema, values);
-  return c.json(publicRecord(model, record), 201);
+  const record = createRecord(schema, unwrapRefs(values)!);
+  return c.json(publicRecord(model, expandRefsOne(schema, record)), 201);
 });
 
 /** PUT /api/records/:model/:id → 更新记录。 */
@@ -71,9 +74,9 @@ recordRoutes.put("/:model/:id", async (c) => {
   const schema = getSchema(model);
   if (!schema) return c.json({ error: `未知模型：${model}` }, 404);
   const values = (await c.req.json()) as Record<string, unknown>;
-  const record = updateRecord(schema, id, values);
+  const record = updateRecord(schema, id, unwrapRefs(values)!);
   if (!record) return c.json({ error: `记录不存在：${id}` }, 404);
-  return c.json(publicRecord(model, record));
+  return c.json(publicRecord(model, expandRefsOne(schema, record)));
 });
 
 /** POST /api/records/:model/batch-delete → 批量删除 { ids }。 */

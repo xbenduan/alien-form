@@ -29,9 +29,12 @@ export {
   getChildProperties,
   isComplexField,
   isEmptyValue,
+  isRefValue,
   optionLabel,
+  refValue,
   statusColor,
   toDisplayText,
+  withRefEchoOptions,
 } from "./utils/schema";
 export { multiValueFormat, parseMultiValue, serializeMultiValue } from "./utils/multi-value";
 export { collectMarkers, deletePath, getPath, setPath } from "./utils/deep-path";
@@ -70,3 +73,4 @@ export type {
   XDatabaseMeta,
 } from "./types";
 export type { FoundMarker } from "./utils/deep-path";
+export type { RefValue } from "./utils/schema";
