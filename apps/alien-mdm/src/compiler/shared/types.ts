@@ -124,7 +124,7 @@ export interface ModelFieldSchema extends Omit<
   "x-table"?: TableFieldMeta;
   /** 后端存储事实：驱动 filter 可见（filterable）与列可排序（sortable）。 */
   "x-database"?: XDatabaseMeta;
-  /** 静态选项数组，或 $af-dataSource 插件 marker。 */
+  /** 静态选项数组，或通用插件 marker（例如 $af-constant）。 */
   dataSource?: DataSourceItem[] | PluginMarker;
   properties?: Record<string, ModelFieldSchema>;
   items?: ModelFieldSchema | ModelFieldSchema[];
@@ -190,7 +190,7 @@ export type ServiceResolver = (code: string) => ServiceClient | undefined;
 export type ConstantResolver = (key: string) => unknown;
 
 /**
- * 组件自取数据源的声明（props 方案）：纯可序列化数据，不含闭包，
+ * 组件自取数据源的声明：纯可序列化数据，不含闭包，
  * 由组件通过 FieldServiceContext 注入的 request 消费。
  */
 export interface FieldService {

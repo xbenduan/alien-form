@@ -94,14 +94,14 @@ userType: {
 roleIds: {
   component: "MultiSelect",
   required: true,
-  dataSource: { plugin: "$af-dataSource", model: "school-role", label: "roleName", value: "id" },
+  props: { service: { model: "school-role", valueKey: "id", labelKey: "roleName", remoteSearch: false } },
   "x-database": { relation: "many-to-many", target: "school-role", through: "school_user_role" },
 },
 
 // 单选外键（自引用：班主任也是一个 school-user）
 homeroomTeacherId: {
   component: "Select",
-  dataSource: { plugin: "$af-dataSource", model: "school-user", label: "displayName", value: "id" },
+  props: { service: { model: "school-user", valueKey: "id", labelKey: "displayName", remoteSearch: false } },
   "x-database": { relation: "many-to-one", target: "school-user" },
 },
 
@@ -151,7 +151,7 @@ contact: {
   说明它其实该是一个独立的顶层字段，而不是塞进 object。
 
 > `type: "array"`（如非关系型的标签数组 `["a","b"]`）同理：也是一个 `TEXT` 列存 JSON。
-> 唯一例外是 `roleIds` 这种 **`$af-dataSource` 关联型多选** —— 它是关系不是数据，走 junction 表（见下）。
+> 唯一例外是 `roleIds` 这种**关联型多选**，它是关系不是数据，走 junction 表（见下）。
 > 区分标准：**值是"引用别的表的 id" → junction 表；值是"自包含的数据" → JSON 字符串列。**
 
 ---
@@ -234,7 +234,7 @@ form / table / filter。例如 `userType` 字段：
 }
 ```
 
-`roleIds` 的 `$af-dataSource` marker 会在这一步被解析成 `props.service`
+`roleIds` 直接在 `props.service` 声明
 （`{ model: "school-role", labelKey: "roleName", valueKey: "id" }`），由组件自取选项。
 
 **filter 投影**只收 `x-database.index === true` 的字段（本例：`userType` / `status` / `homeroomTeacherId`），
@@ -300,7 +300,7 @@ form / table / filter。例如 `userType` 字段：
 ```
 
 **label 不在接口里**："student → 学生""role-student → 学生角色""user-2001 → 李老师"
-都是前端在渲染时，用同一份 `dataSource`（静态 enum 或 `$af-dataSource` 拉取的关联表）解析出来的。
+都是前端在渲染时，用静态 `dataSource` 或 `props.service` 拉取的关联表解析出来的。
 `contact` 则是后端 parse 后直接给的结构化对象——**物理层是字符串，接口层已还原成对象**，前端无感知。
 
 > 这正是「非损耗数据流」：码值从表单 → 数据库 → 接口 → 表格，全程原样流动；
@@ -312,7 +312,7 @@ form / table / filter。例如 `userType` 字段：
 
 | 阶段   | 产物                          | `userType`                        | `roleIds`                         | `contact`（object）                 |
 | ------ | ----------------------------- | --------------------------------- | --------------------------------- | ----------------------------------- |
-| ① 源头 | canonical schema（唯一手写）  | `dataSource` + `x-database.index` | `$af-dataSource` + `relation:m2m` | `properties` + `x-database:json`    |
+| ① 源头 | canonical schema（唯一手写）  | `dataSource` + `x-database.index` | `props.service` + `relation:m2m`  | `properties` + `x-database:json`    |
 | ② 建库 | `CREATE TABLE`（DDL 投影）    | `TEXT CHECK(...)` + 索引          | 独立 `school_user_role` 表        | 单个 `TEXT` 列（不拆列）            |
 | ② 前端 | form/table/filter（前端投影） | `Select` + `enum` + **进筛选区**  | `MultiSelect` + `props.service`   | 子表单控件（**不进筛选区**）        |
 | ③ 存库 | SQLite 物理行                 | `'student'`（码值）               | junction 多行                     | `'{"wechat":...}'`（JSON 字符串）   |

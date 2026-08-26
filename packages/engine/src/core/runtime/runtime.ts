@@ -1,15 +1,17 @@
 import { AtomStore } from "../store";
-import { createRegistry, type ComponentDescriptor, type FunctionDescriptor, type Registry, type ServiceDescriptor } from "../registry";
+import {
+  createRegistry,
+  type ComponentDescriptor,
+  type FunctionDescriptor,
+  type Registry,
+  type ServiceDescriptor,
+} from "../registry";
 import type { RuntimeRuleHandler } from "@alien-form/core";
 import { PageBus } from "../bus/page-bus";
 import { SharedShelf } from "../bus/shelf";
 import { SchemaTranslator } from "../compiler/translator";
 import { PageCompiler } from "../compiler/page-compiler";
-import {
-  constantPlugin,
-  dataSourcePlugin,
-  i18nPlugin,
-} from "../plugins";
+import { constantPlugin, i18nPlugin } from "../plugins";
 import type { RouterAdapter } from "../router";
 import type { PageSchema } from "../dsl";
 import type { TranslatorPlugin } from "../compiler/types";
@@ -46,7 +48,6 @@ export class Runtime {
     this.translator = new SchemaTranslator();
     this.translator.use(constantPlugin);
     this.translator.use(i18nPlugin);
-    this.translator.use(dataSourcePlugin);
     for (const plugin of options.plugins ?? []) {
       this.translator.use(plugin);
     }

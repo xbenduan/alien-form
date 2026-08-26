@@ -75,12 +75,14 @@ export const schoolUserSchema: ModelSchema = {
       component: "MultiSelect",
       required: true,
       order: 50,
-      props: { placeholder: "请选择用户角色" },
-      dataSource: {
-        plugin: "$af-dataSource",
-        model: "school-role",
-        label: "roleName",
-        value: "id",
+      props: {
+        placeholder: "请选择用户角色",
+        service: {
+          model: "school-role",
+          valueKey: "id",
+          labelKey: "roleName",
+          remoteSearch: false,
+        },
       },
       "x-table": { width: 180 },
       "x-database": { relation: "many-to-many", target: "school-role", sortable: false },
@@ -189,12 +191,14 @@ export const schoolUserSchema: ModelSchema = {
       title: "班主任",
       component: "Select",
       order: 140,
-      props: { placeholder: "请选择班主任" },
-      dataSource: {
-        plugin: "$af-dataSource",
-        model: "school-user",
-        label: "displayName",
-        value: "id",
+      props: {
+        placeholder: "请选择班主任",
+        service: {
+          model: "school-user",
+          valueKey: "id",
+          labelKey: "displayName",
+          remoteSearch: false,
+        },
       },
       "x-table": { width: 110 },
       "x-database": { relation: "many-to-one", target: "school-user" },

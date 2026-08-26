@@ -43,7 +43,7 @@ export interface DataSourceItem {
   value: unknown;
 }
 
-/** $af-dataSource 等插件 marker（后端只透传，不解释）。 */
+/** 通用插件 marker（后端只透传，不解释）。 */
 export interface PluginMarker {
   plugin: string;
   [key: string]: unknown;

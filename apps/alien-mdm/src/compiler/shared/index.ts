@@ -2,10 +2,8 @@ export { SchemaCompiler, createSchemaCompiler } from "./SchemaCompiler";
 export { defaultDescriptors, matchDescriptor } from "./descriptors";
 export {
   builtinPlugins,
-  dataSourcePlugin,
   constantPlugin,
   i18nPlugin,
-  DATA_SOURCE_PLUGIN,
   CONSTANT_PLUGIN,
   I18N_PLUGIN,
 } from "./plugins";

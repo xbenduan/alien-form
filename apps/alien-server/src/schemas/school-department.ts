@@ -10,10 +10,8 @@ import { schoolDepartmentLayout } from "./layout.ts";
  *  - 单向隶属：**部门只维护自己的层级（parentCode）与创建者/班主任，不持有成员集。**
  *    「谁属于这个部门」由 school-user.deptCode 反向指向，部门表不关心也不冗余存成员，
  *    避免双向维护成本，也让组织树能通过 user.deptCode IN [...] 直接过滤成员（多对多不可过滤）。
- *  - parentCode 存上级部门的 deptCode（自连接的连接键），是普通文本列，**不是外键**：
- *    带 $af-dataSource 会被 field-plan 推断成指向 id 的 many-to-one FK，而这里连的是
- *    deptCode 文本值，FK 会拒绝写入。因此父级选择走 TreeSelect 的 props 自取，
- *    dataSource 保持为空，仅在 props 里声明取数所需的 model/字段。
+ *  - parentCode 存上级部门的 deptCode（自连接的连接键），是普通文本列，**不是外键**。
+ *    父级选择走 TreeSelect 的 props 自取，避免把业务编码误当作外键 id。
  *  - homeroomTeacherId / creatorId 指向 school-user（many-to-one 标量外键）：
  *    班主任只对「班级」有意义；creatorId 是部门创建者，语义上必须是老师
  *    （由 seed 数据保证，前端 Select 也只从教师范围取值）。
@@ -86,7 +84,7 @@ export const schoolDepartmentSchema: ModelSchema = {
         treeParentField: "parentCode",
       },
       "x-table": { width: 160 },
-      // 关键：普通文本列，不声明 relation / 不挂 $af-dataSource，避免被推断成 FK。
+      // 关键：普通文本列，不声明 relation，避免把业务编码误当作外键。
       "x-database": { type: "text", index: true, filterable: true, nullable: true },
     },
     homeroomTeacherId: {
@@ -94,12 +92,14 @@ export const schoolDepartmentSchema: ModelSchema = {
       title: "班主任",
       component: "Select",
       order: 50,
-      props: { placeholder: "仅班级需要，请选择班主任" },
-      dataSource: {
-        plugin: "$af-dataSource",
-        model: "school-user",
-        label: "displayName",
-        value: "id",
+      props: {
+        placeholder: "仅班级需要，请选择班主任",
+        service: {
+          model: "school-user",
+          valueKey: "id",
+          labelKey: "displayName",
+          remoteSearch: false,
+        },
       },
       "x-table": { width: 120 },
       "x-database": { relation: "many-to-one", target: "school-user", nullable: true },
@@ -110,12 +110,14 @@ export const schoolDepartmentSchema: ModelSchema = {
       component: "Select",
       required: true,
       order: 60,
-      props: { placeholder: "请选择创建者（必须为教师）" },
-      dataSource: {
-        plugin: "$af-dataSource",
-        model: "school-user",
-        label: "displayName",
-        value: "id",
+      props: {
+        placeholder: "请选择创建者（必须为教师）",
+        service: {
+          model: "school-user",
+          valueKey: "id",
+          labelKey: "displayName",
+          remoteSearch: false,
+        },
       },
       "x-table": { width: 120 },
       "x-database": { relation: "many-to-one", target: "school-user", index: true },

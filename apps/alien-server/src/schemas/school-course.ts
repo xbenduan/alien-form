@@ -69,12 +69,14 @@ export const schoolCourseSchema: ModelSchema = {
       component: "Select",
       required: true,
       order: 40,
-      props: { placeholder: "请选择授课教师" },
-      dataSource: {
-        plugin: "$af-dataSource",
-        model: "school-user",
-        label: "displayName",
-        value: "id",
+      props: {
+        placeholder: "请选择授课教师",
+        service: {
+          model: "school-user",
+          valueKey: "id",
+          labelKey: "displayName",
+          remoteSearch: false,
+        },
       },
       "x-table": { width: 130 },
       "x-database": {

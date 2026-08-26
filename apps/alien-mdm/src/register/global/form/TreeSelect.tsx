@@ -11,9 +11,8 @@ import type { TreeNode } from "../../../components/tree";
  * 树形单选：从一个模型按「父字段 → 自身字段」拼成层级树供选择，
  * 常用于选择自连接结构的上级节点（如部门的上级部门）。
  *
- * 与 Select/MultiSelect 的 $af-dataSource 方案不同：自连接的连接键是业务编码
- * （如 deptCode）而非记录 id，若挂 $af-dataSource 会被推断成指向 id 的外键。
- * 因此取数配置直接放在字段 props 上，由本组件通过 records.list 自取：
+ * 自连接的连接键是业务编码（如 deptCode）而非记录 id，因此取数配置直接放在
+ * 字段 props 上，由本组件通过 records.list 自取：
  *  - treeModel：取数模型，缺省用 dataSource.model
  *  - treeIdField：节点自身标识（即回填到本字段的值），缺省 "id"
  *  - treeLabelField：节点展示字段，缺省 treeIdField

@@ -14,12 +14,7 @@ export { AtomStore, type Atom, type ReadonlyAtom } from "./store";
 export { PageBus } from "./bus/page-bus";
 export { SharedShelf } from "./bus/shelf";
 
-export type {
-  RouteLocation,
-  RouteNavigateTarget,
-  NavigationGuard,
-  RouterAdapter,
-} from "./router";
+export type { RouteLocation, RouteNavigateTarget, NavigationGuard, RouterAdapter } from "./router";
 export { MemoryRouterAdapter } from "./router";
 
 export {
@@ -35,7 +30,7 @@ export {
   type TranslatorPlugin,
 } from "./compiler";
 
-export { i18nPlugin, constantPlugin, dataSourcePlugin } from "./plugins";
+export { i18nPlugin, constantPlugin } from "./plugins";
 
 export {
   PageRuntime,
@@ -60,10 +55,4 @@ export {
   type CompiledPage,
 } from "./dsl";
 
-export {
-  signal,
-  computed,
-  effect,
-  startBatch,
-  endBatch,
-} from "alien-signals";
+export { signal, computed, effect, startBatch, endBatch } from "alien-signals";

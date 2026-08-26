@@ -28,7 +28,7 @@ export const RuntimeResourceContext = createContext<RuntimeResourceContextValue>
 
 /**
  * 协议渲染核心：把一份 form schema 交给 @alien-form/react 渲染。
- * 数据源联动已在编译期解析（$af-dataSource 插件），运行时不再需要 handler 表。
+ * 静态 dataSource 直接透传；远程取数由字段 props.service 和运行时服务解析器承接。
  */
 export function SchemaRenderer({
   mode,

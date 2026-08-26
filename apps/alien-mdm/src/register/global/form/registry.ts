@@ -85,7 +85,7 @@ const registry: ComponentRegistry = {
     fieldType: "string",
     kind: "leaf",
     description:
-      '下拉单选框，适用于枚举类字段（状态、分类等）。dataSource 直接配置静态候选项 [{label,value}]；需从其他模型联动时，dataSource 写成 { plugin: "$af-dataSource", model, value, label } 由编译器解析（table/filter 预取翻译、form 注入 service 供组件自取）。',
+      "下拉单选框，适用于枚举类字段（状态、分类等）。dataSource 直接配置静态候选项 [{label,value}]；远程候选项通过 props.service 声明 model、valueKey 和 labelKey。",
     schema: {
       type: "string",
       title: "下拉单选",
@@ -112,7 +112,7 @@ const registry: ComponentRegistry = {
     kind: "leaf",
     multiValue: true,
     description:
-      '下拉多选框，可选中多个候选项，值为数组（内部以 JSON 字符串承载）。dataSource 支持静态候选项，或写成 { plugin: "$af-dataSource", ... } 从其他模型联动加载。',
+      "下拉多选框，可选中多个候选项，值为数组（内部以 JSON 字符串承载）。dataSource 支持静态候选项，远程候选项通过 props.service 声明。",
     schema: {
       type: "string",
       title: "下拉多选",
@@ -159,7 +159,7 @@ const registry: ComponentRegistry = {
     fieldType: "string",
     kind: "leaf",
     description:
-      "树形单选：从一个模型按「父字段 → 自身字段」拼成层级树供选择，适合选自连接结构的上级节点（如部门的上级部门）。取数配置放在 props：treeModel（取数模型）、treeIdField（节点标识，即回填值）、treeLabelField（展示字段）、treeParentField（上级标识，缺省 parentCode）。自连接连接键为业务编码而非 id，因此不走 $af-dataSource，避免被推断成外键。",
+      "树形单选：从一个模型按「父字段 → 自身字段」拼成层级树供选择，适合选自连接结构的上级节点（如部门的上级部门）。取数配置放在 props：treeModel（取数模型）、treeIdField（节点标识，即回填值）、treeLabelField（展示字段）、treeParentField（上级标识，缺省 parentCode）。自连接连接键为业务编码而非 id，不声明外键。",
     schema: {
       type: "string",
       title: "树形单选",
@@ -208,7 +208,7 @@ const registry: ComponentRegistry = {
     fieldType: "string",
     kind: "leaf",
     description:
-      '单选按钮组，选项平铺展示，适合选项较少（2-5 个）的枚举。dataSource 配置静态候选项，或写成 { plugin: "$af-dataSource", ... } 从其他模型联动。',
+      "单选按钮组，选项平铺展示，适合选项较少（2-5 个）的枚举。dataSource 配置静态候选项，远程候选项通过 props.service 声明。",
     schema: {
       type: "string",
       title: "单选按钮组",
@@ -235,7 +235,7 @@ const registry: ComponentRegistry = {
     kind: "leaf",
     multiValue: true,
     description:
-      '复选框组，可多选，选项平铺展示，值为数组（内部以 JSON 字符串承载）。dataSource 配置静态候选项，或写成 { plugin: "$af-dataSource", ... } 从其他模型联动。',
+      "复选框组，选项平铺展示，值为数组（内部以 JSON 字符串承载）。dataSource 配置静态选项，远程候选项通过 props.service 声明。",
     schema: {
       type: "string",
       title: "复选框组",

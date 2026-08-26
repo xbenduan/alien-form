@@ -336,21 +336,20 @@ $af_scope_service("records.list")?.send({ model, filters, pagination });
 
 两条数据路径都必须改走 services：
 
-1. **编译期**：`SchemaCompilerContext.request` 语义不变（仍是 `RequestFn`），但 app 层传入的实现改为内部调
-   `runtime.service.query("records.list").send(...)`。因此 `$af-dataSource` 的 `ctx.request(...)` 底层即 service，
-   **不保留旧匿名 request 入口**；编译器的 request 上下文必须改为 service resolver。
-2. **运行期**：`FieldServiceContext`（现注入匿名 `RequestFn`）升级为注入 `scope`（含 `$af_scope_service`）；
-   `useAsyncOptions` 内部直接使用 `$af_scope_service("records.list")?.send(...)`。
+1. **编译期**：远程字段不参与通用 compiler plugin 解析；静态 `dataSource` 原样透传。
+2. **运行期**：字段在 `props.service` 声明 model、valueKey、labelKey 等取数元数据，
+   `FieldServiceContext` 注入按 domain 解析的 service resolver，`useAsyncOptions` 通过它调用 `records.list`。
 
-`$af-dataSource` marker 可显式声明所用 service（缺省 `records.list`）：
+远程字段直接在 `props.service` 声明：
 
 ```jsonc
 {
-  "plugin": "$af-dataSource",
-  "service": "records.list",
-  "model": "school-role",
-  "label": "roleName",
-  "value": "id",
+  "service": {
+    "model": "school-role",
+    "labelKey": "roleName",
+    "valueKey": "id",
+    "remoteSearch": false
+  }
 }
 ```
 
@@ -392,7 +391,7 @@ export default class RuntimeCore {
 | `RuntimeCore` 单例 + `current`                   | 保留                                                       | 注册表与全局能力宿主          |
 | global / domain / scene 三级作用域               | **仅 global + domain**                                     | `scene` 预留接口，首版不实现  |
 | services / ui / enums / constants / utils / form | **ui / services / constant / form**                        | 去 utils；enums 并入 constant |
-| 8 个 parser plugin                               | 复用现有 `SchemaCompiler`（`$af-i18n` / `$af-dataSource`） | 不重造解析管线                |
+| 8 个 parser plugin                               | 复用现有 `SchemaCompiler`（`$af-i18n`）                   | 不重造解析管线                |
 | `IConfig = (runtime) => RegisterDescribe`        | 保留                                                       | 每域导出的工厂签名            |
 
 ---
@@ -524,8 +523,7 @@ export default config; // 域内唯一对外导出
 三条硬约束：
 
 1. **父级 / 所属部门都用 `TreeSelect`（组件）。** 连接键是业务编码 `deptCode` 而非记录 `id`，
-   因此**不能挂 `$af-dataSource`**——否则 `field-plan` 会把它推断成指向 `id` 的外键（FK ON，
-   写入被拒）。取数配置改放在字段 `props`（`treeModel / treeIdField / treeLabelField / treeParentField`），
+   取数配置放在字段 `props`（`treeModel / treeIdField / treeLabelField / treeParentField`），
    由 `TreeSelect` 通过 `records.list` 自取并按 `parentField → idField` 拼树，回填 `deptCode`；
    部门自身选父级时还会排除「自身及其子树」避免成环。`TreeSelect` 落在 `packages/shared` 组件
    注册表（与 `Select` 同层，自取逻辑复用 `useServiceResolver()`），过 `check:boundaries`。

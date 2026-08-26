@@ -1,5 +1,4 @@
 import type { ColumnType, ModelFieldSchema, ModelSchema } from "./types.ts";
-import { isPluginMarker } from "./types.ts";
 import { junctionName, tableName, toSnake } from "./naming.ts";
 
 /** 值为数组的多值组件：无关系时落 JSON 列，有关系时落 junction。 */
@@ -44,15 +43,6 @@ function isMultiValue(field: ModelFieldSchema): boolean {
   return field.component ? MULTI_VALUE_COMPONENTS.has(field.component) : false;
 }
 
-/** dataSource 是否为 $af-dataSource 关联 marker，返回目标模型。 */
-function relationTargetFromDataSource(field: ModelFieldSchema): string | undefined {
-  const ds = field.dataSource;
-  if (isPluginMarker(ds) && ds.plugin === "$af-dataSource" && typeof ds.model === "string") {
-    return ds.model;
-  }
-  return undefined;
-}
-
 /** 推导列类型：x-database.type 优先，否则由 type/component 派生。 */
 function inferColumnType(field: ModelFieldSchema): ColumnType {
   const explicit = field["x-database"]?.type;
@@ -79,11 +69,8 @@ export function planFields(schema: ModelSchema): FieldPlan[] {
     if (SYSTEM_MANAGED.has(key)) continue;
 
     const xdb = field["x-database"] ?? {};
-    const dsTarget = relationTargetFromDataSource(field);
-    const multi = isMultiValue(field);
-    const relation =
-      xdb.relation ?? (dsTarget ? (multi ? "many-to-many" : "many-to-one") : undefined);
-    const target = xdb.target ?? dsTarget;
+    const relation = xdb.relation;
+    const target = xdb.target;
 
     // 多对多：junction 表，不在主表建列
     if (relation === "many-to-many" && target) {
@@ -132,7 +119,7 @@ export function planByField(schema: ModelSchema): Map<string, FieldPlan> {
 /**
  * 引用字段声明：读路径把标量 join 键展开成 { $ref, value, label } 所需的元信息。
  * 由既有的 canonical 声明派生（不额外要求作者重复配置）：
- *  - $af-dataSource marker（many-to-one 标量外键 / many-to-many）：value/label 取自 marker；
+ *  - props.service（字段运行时取数声明）：model/valueKey/labelKey；
  *  - TreeSelect 的 props（自连接业务码软引用，如 deptCode/parentCode）：取 treeModel/treeIdField/treeLabelField；
  *  - 显式 x-ref（可选，未来直接声明）：{ model, value?, label? }。
  */
@@ -156,6 +143,12 @@ interface XRefMeta {
   label?: string;
 }
 
+interface FieldServiceMeta {
+  model: string;
+  valueKey?: string;
+  labelKey?: string;
+}
+
 /** 扫描一份 schema 的所有引用字段。 */
 export function refFields(schema: ModelSchema): RefField[] {
   const refs: RefField[] = [];
@@ -177,16 +170,17 @@ export function refFields(schema: ModelSchema): RefField[] {
       continue;
     }
 
-    // 2) $af-dataSource marker（many-to-one / many-to-many）
-    const model = relationTargetFromDataSource(field);
-    if (model) {
-      const ds = field.dataSource as { value?: unknown; label?: unknown };
-      const value = typeof ds.value === "string" ? ds.value : "id";
+    // 2) props.service（字段组件声明的远程取数）
+    const service = (field.props as { service?: unknown } | undefined)?.service as
+      | FieldServiceMeta
+      | undefined;
+    if (service && typeof service.model === "string") {
+      const value = typeof service.valueKey === "string" ? service.valueKey : "id";
       refs.push({
         field: key,
-        model,
+        model: service.model,
         valueKey: value,
-        labelKey: typeof ds.label === "string" ? ds.label : value,
+        labelKey: typeof service.labelKey === "string" ? service.labelKey : value,
         multi,
       });
       continue;
