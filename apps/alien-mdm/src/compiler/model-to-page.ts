@@ -45,7 +45,7 @@ function pageMeta(modelSchema: ModelSchema, scene: ModelPageScene): Record<strin
 /**
  * 列表页 PageSchema：完全由 runtime 承接。
  * layout 直接取自模型的 x-layout（原生 UiNode），注入 columns 与 filter form block；
- * 追加一个 record-overlay 承接 drawer/modal 形态的新增/编辑/详情。
+ * 追加一个 overlay 承接 drawer/modal 形态的新增/编辑/详情。
  */
 export function buildListPageSchema(compiled: Compiled, modelSchema: ModelSchema): PageSchema {
   const modelName = modelSchema.meta.name;
@@ -84,7 +84,7 @@ export function buildListPageSchema(compiled: Compiled, modelSchema: ModelSchema
       children: [
         contentLayout,
         {
-          component: "record-overlay",
+          component: "overlay",
           props: { title: modelSchema.meta.title },
         },
       ],
@@ -94,7 +94,7 @@ export function buildListPageSchema(compiled: Compiled, modelSchema: ModelSchema
 
 /**
  * 整页动作（add/edit/detail 为 openMode="page" 时）的 PageSchema。
- * 只挂一个 form block，交给 record-action-page 承接提交/返回。
+ * 只挂一个 form block，交给 action-page 承接提交/返回。
  */
 export function buildActionPageSchema(
   compiled: Compiled,
@@ -119,7 +119,7 @@ export function buildActionPageSchema(
       component: "record-page",
       children: [
         {
-          component: "record-action-page",
+          component: "action-page",
           block: "form",
           props: { mode, recordId, model: modelName },
         },

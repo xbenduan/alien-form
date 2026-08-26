@@ -214,7 +214,7 @@ export function listOptions(
 
 /**
  * 子树查询：按业务字段 idField / parentField 收集 parentValue 之下的全部后代（任意层级）。
- * parentValue 为空时返回整棵树（全量记录）。供 treelayout 的 query.subtree service 使用。
+ * parentValue 为空时返回整棵树（全量记录）。供布局 left 树栏的 query.subtree service 使用。
  */
 export function listSubtree(
   schema: ModelSchema,

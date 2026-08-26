@@ -27,32 +27,34 @@ const TREE_SERVICES = {
 };
 
 export const defaultLayout = {
-  component: "page",
+  component: "layout",
   props: { services: RECORD_SERVICES },
-  children: [
-    { component: "filter", props: { scope: "main" } },
-    {
-      component: "table",
-      props: { scope: "main" },
-      slots: {
-        toolbarLeft: [{ component: "action-batch-delete" }],
-        toolbarRight: [
-          { component: "action-refresh" },
-          { component: "action-add" },
-        ],
-      },
-      children: [
-        {
-          component: "row-actions",
-          children: [
-            { component: "detail" },
-            { component: "edit" },
-            { component: "delete" },
+  slots: {
+    rightTop: [{ component: "filter", props: { scope: "main" } }],
+    rightBottom: [
+      {
+        component: "table",
+        props: { scope: "main" },
+        slots: {
+          toolbarLeft: [{ component: "action-batch-delete" }],
+          toolbarRight: [
+            { component: "action-refresh" },
+            { component: "action-add" },
           ],
         },
-      ],
-    },
-  ],
+        children: [
+          {
+            component: "row-actions",
+            children: [
+              { component: "detail" },
+              { component: "edit" },
+              { component: "delete" },
+            ],
+          },
+        ],
+      },
+    ],
+  },
 } as const;
 
 /**
@@ -61,10 +63,10 @@ export const defaultLayout = {
  * 这是「组织树驱动成员表」的通用形态——公司/员工等场景把 model/字段换掉即可复用。
  */
 export const schoolUserLayout = {
-  component: "treelayout",
+  component: "layout",
   props: { services: TREE_SERVICES },
   slots: {
-    tree: [
+    left: [
       {
         component: "tree",
         props: {
@@ -82,8 +84,8 @@ export const schoolUserLayout = {
         },
       },
     ],
-    filter: [{ component: "filter", props: { scope: "main" } }],
-    table: [
+    rightTop: [{ component: "filter", props: { scope: "main" } }],
+    rightBottom: [
       {
         component: "table",
         props: { scope: "main" },
@@ -114,10 +116,10 @@ export const schoolUserLayout = {
  * tree.hideLeaf=false 让班级这类叶子部门也出现在导航树里（用户页仍默认隐藏学生叶子）。
  */
 export const schoolDepartmentLayout = {
-  component: "treelayout",
+  component: "layout",
   props: { services: TREE_SERVICES },
   slots: {
-    tree: [
+    left: [
       {
         component: "tree",
         props: {
@@ -134,8 +136,8 @@ export const schoolDepartmentLayout = {
         },
       },
     ],
-    filter: [{ component: "filter", props: { scope: "main" } }],
-    table: [
+    rightTop: [{ component: "filter", props: { scope: "main" } }],
+    rightBottom: [
       {
         component: "table",
         props: { scope: "main" },

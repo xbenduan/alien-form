@@ -9,7 +9,14 @@ export interface ComponentProps {
   [key: string]: unknown;
 }
 
-export function RenderNode({ node }: { node: UiNode }): React.ReactNode {
+export function RenderNode({
+  node,
+  props,
+}: {
+  node: UiNode;
+  /** 渲染时注入/覆盖节点 props（如把当前行 record 传给行操作子节点）。 */
+  props?: Record<string, unknown>;
+}): React.ReactNode {
   const runtime = useRuntime();
   const page = usePage();
 
@@ -42,7 +49,7 @@ export function RenderNode({ node }: { node: UiNode }): React.ReactNode {
   }
 
   const element = (
-    <Component {...(node.props ?? {})} node={node}>
+    <Component {...(node.props ?? {})} {...props} node={node}>
       {children}
     </Component>
   );

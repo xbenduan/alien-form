@@ -11,7 +11,7 @@ export type Scene = "form" | "filter" | "table";
  * 节点即 { component, props?, children?, slots? }，不再包 $af-ui 插件标记。
  * 运行时只负责按 component 查找已注册实现，编译产物可直接塞进 PageSchema.layout。
  *
- * 根节点（page / treelayout）通过 props.services 声明语义化 service 映射：
+ * 根节点（layout）通过 props.services 声明语义化 service 映射：
  * key 为布局语义（见 LAYOUT_SERVICE_KEYS），value 为已注册的 service code。
  * 子组件按语义 key 自取数据，不再在组件实现里写死 service code。
  */
@@ -32,7 +32,7 @@ export type LayoutServiceMap = Record<string, string>;
  *  - query.list：表格列表查询
  *  - query.filter：筛选区数据源（多数场景与 query.list 同源）
  *  - query.detail：单条详情
- *  - query.subtree：树的子树查询（treelayout 专用）
+ *  - query.subtree：树的子树查询（配置了 left 树栏的布局专用）
  *  - create.record / update.record / delete.record / delete.recordMany：写操作
  */
 export const LAYOUT_SERVICE_KEYS = {
@@ -47,8 +47,8 @@ export const LAYOUT_SERVICE_KEYS = {
 } as const;
 
 /**
- * 内置记录型页面的默认 service 映射。page 根节点直接使用；
- * treelayout 根节点在此基础上追加 query.subtree。
+ * 内置记录型页面的默认 service 映射。layout 根节点直接使用；
+ * 配置了 left 树栏的布局在此基础上追加 query.subtree。
  */
 export const DEFAULT_RECORD_SERVICES: LayoutServiceMap = {
   [LAYOUT_SERVICE_KEYS.LIST]: "records.list",

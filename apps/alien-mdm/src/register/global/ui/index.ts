@@ -1,6 +1,5 @@
 import type { Runtime } from "@alien-form/engine";
-import { Page } from "./page";
-import { TreeLayout } from "./layout";
+import { Layout } from "./layout";
 import { Filter } from "./filter";
 import { TableLayout } from "./table";
 import { TreePanel } from "./tree";
@@ -13,14 +12,12 @@ import {
   RowDetail,
   RowEdit,
 } from "./actions";
-import { RecordOverlay } from "./overlay";
-import { RecordActionPageLayout } from "./action-page";
-import { RecordPage } from "./record-page";
 
 export function registerUIComponents(runtime: Runtime): void {
-  runtime.component("record-page", { component: RecordPage });
-  runtime.component("page", { component: Page });
-  runtime.component("treelayout", { component: TreeLayout, slots: ["tree", "filter", "table"] });
+  runtime.component("layout", {
+    component: Layout,
+    slots: ["left", "rightTop", "rightBottom"],
+  });
   runtime.component("filter", { component: Filter });
   runtime.component("table", { component: TableLayout, slots: ["toolbarLeft", "toolbarRight"] });
   runtime.component("tree", { component: TreePanel });
@@ -31,6 +28,4 @@ export function registerUIComponents(runtime: Runtime): void {
   runtime.component("detail", { component: RowDetail });
   runtime.component("edit", { component: RowEdit });
   runtime.component("delete", { component: RowDelete });
-  runtime.component("record-overlay", { component: RecordOverlay });
-  runtime.component("record-action-page", { component: RecordActionPageLayout });
 }

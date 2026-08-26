@@ -21,7 +21,7 @@ export function RecordPage({ children }: ComponentProps) {
   const items = isAction
     ? [
         { title: `${singularLabel}列表`, to: recordListPath(model) },
-        { title: `${ACTION_TITLE[scene]}${singularLabel}` },
+        { title: `${ACTION_TITLE?.[scene] ?? ""}${singularLabel}` },
       ]
     : [{ title }];
 

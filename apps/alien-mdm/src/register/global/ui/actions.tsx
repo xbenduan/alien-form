@@ -8,11 +8,23 @@ import {
 import { Button, Popconfirm } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useBlock, usePage, useRuntime, type ComponentProps } from "@alien-form/engine/react";
-import { useTableContext, useRowRecord } from "./table-context";
+import type { ModelRecord } from "../../../runtime/types";
 import { recordAddPath, recordDetailPath, recordEditPath } from "../../../app/router/paths";
 
 type ActionMode = "add" | "edit" | "detail";
 type OpenMode = "page" | "drawer" | "modal";
+
+/** 行操作组件的注入 props：由 table 渲染行操作子节点时下发。 */
+interface RowActionProps extends ComponentProps {
+  record: ModelRecord;
+  onDelete?: (id: string) => Promise<void> | void;
+}
+
+/** 批量操作组件的注入 props：由 table 渲染工具栏子节点时下发。 */
+interface BatchActionProps extends ComponentProps {
+  selectedRowKeys?: React.Key[];
+  onBatchDelete?: (ids: string[]) => Promise<void> | void;
+}
 
 /** 从页面 meta 读取某动作的打开方式（缺省 drawer）。 */
 function useOpenMode(mode: ActionMode): OpenMode {
@@ -47,15 +59,12 @@ export function ActionAdd({ node }: ComponentProps) {
 export function ActionRefresh({ node }: ComponentProps) {
   const block = useBlock(node.block ?? "main");
   const listBlock = block as unknown as { refresh: () => void };
-  return (
-    <Button icon={<ReloadOutlined />} onClick={() => listBlock.refresh()} aria-label="刷新" />
-  );
+  return <Button icon={<ReloadOutlined />} onClick={() => listBlock.refresh()} aria-label="刷新" />;
 }
 
-export function ActionBatchDelete() {
-  const { selectedRowKeys, onBatchDelete } = useTableContext();
-  const ids = selectedRowKeys.map(String);
-  if (!ids.length) return null;
+export function ActionBatchDelete({ selectedRowKeys, onBatchDelete }: BatchActionProps) {
+  const ids = (selectedRowKeys ?? []).map(String);
+  if (!ids.length || !onBatchDelete) return null;
   return (
     <Popconfirm
       title={`确认删除选中的 ${ids.length} 条记录吗？`}
@@ -71,14 +80,13 @@ export function ActionBatchDelete() {
   );
 }
 
-export function RowDetail() {
-  const row = useRowRecord();
+export function RowDetail({ record }: RowActionProps) {
   const runtime = useRuntime();
   const navigate = useNavigate();
   const page = usePage();
   const openMode = useOpenMode("detail");
   const model = page.domain;
-  const id = String(row.id);
+  const id = String(record.id);
 
   const onClick = () => {
     if (openMode === "page") {
@@ -95,14 +103,13 @@ export function RowDetail() {
   );
 }
 
-export function RowEdit() {
-  const row = useRowRecord();
+export function RowEdit({ record }: RowActionProps) {
   const runtime = useRuntime();
   const navigate = useNavigate();
   const page = usePage();
   const openMode = useOpenMode("edit");
   const model = page.domain;
-  const id = String(row.id);
+  const id = String(record.id);
 
   const onClick = () => {
     if (openMode === "page") {
@@ -119,16 +126,15 @@ export function RowEdit() {
   );
 }
 
-export function RowDelete() {
-  const row = useRowRecord();
-  const { onDelete } = useTableContext();
+export function RowDelete({ record, onDelete }: RowActionProps) {
+  if (!onDelete) return null;
   return (
     <Popconfirm
       title="确认删除这条记录吗？"
       okText="删除"
       cancelText="取消"
       okButtonProps={{ danger: true }}
-      onConfirm={() => onDelete(String(row.id))}
+      onConfirm={() => onDelete(String(record.id))}
     >
       <Button danger type="link" size="small" icon={<DeleteOutlined />}>
         删除

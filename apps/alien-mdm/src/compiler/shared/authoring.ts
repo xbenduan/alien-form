@@ -11,32 +11,34 @@ import type {
 } from "./types";
 
 export const DEFAULT_LAYOUT: AfUiNode = {
-  component: "page",
+  component: "layout",
   props: { services: DEFAULT_RECORD_SERVICES },
-  children: [
-    { component: "filter", props: { scope: "main" } },
-    {
-      component: "table",
-      props: { scope: "main" },
-      children: [
-        {
-          component: "row-actions",
-          children: [
-            { component: "detail" },
-            { component: "edit" },
-            { component: "delete" },
+  slots: {
+    rightTop: [{ component: "filter", props: { scope: "main" } }],
+    rightBottom: [
+      {
+        component: "table",
+        props: { scope: "main" },
+        children: [
+          {
+            component: "row-actions",
+            children: [
+              { component: "detail" },
+              { component: "edit" },
+              { component: "delete" },
+            ],
+          },
+        ],
+        slots: {
+          toolbarLeft: [{ component: "action-batch-delete" }],
+          toolbarRight: [
+            { component: "action-refresh" },
+            { component: "action-add" },
           ],
         },
-      ],
-      slots: {
-        toolbarLeft: [{ component: "action-batch-delete" }],
-        toolbarRight: [
-          { component: "action-refresh" },
-          { component: "action-add" },
-        ],
       },
-    },
-  ],
+    ],
+  },
 };
 
 function cloneLayout(layout: AfUiNode): AfUiNode {

@@ -10,7 +10,6 @@ import type { TableColumnAction } from "@components/Table";
 import type { TableColumn } from "../../../types/shared";
 import { useEffect, useState } from "react";
 import type { ModelRecord } from "../../../runtime/types";
-import { RowContext, TableContext, type TableContextValue } from "./table-context";
 import styles from "../ui.module.css";
 
 export function TableLayout({ node }: ComponentProps) {
@@ -48,13 +47,6 @@ export function TableLayout({ node }: ComponentProps) {
     }
   };
 
-  const tableCtx: TableContextValue = {
-    selectedRowKeys,
-    setSelectedRowKeys,
-    onDelete: handleDelete,
-    onBatchDelete: handleBatchDelete,
-  };
-
   const rowActions = node.children?.find((n) => n.component === "row-actions");
   const batchActions = node.slots?.toolbarLeft ?? [];
   const utilityActions = node.slots?.toolbarRight ?? [];
@@ -66,69 +58,71 @@ export function TableLayout({ node }: ComponentProps) {
         fixed: "right" as const,
         width: 180,
         render: (_: unknown, record: ModelRecord) => (
-          <RowContext.Provider value={record as ModelRecord}>
-            <Space size={4} wrap>
-              {rowActions.children?.map((child, i) => (
-                <RenderNode key={i} node={child} />
-              ))}
-            </Space>
-          </RowContext.Provider>
+          <Space size={4} wrap>
+            {rowActions.children?.map((child, i) => (
+              <RenderNode key={i} node={child} props={{ record, onDelete: handleDelete }} />
+            ))}
+          </Space>
         ),
       } as unknown as TableColumnAction)
     : undefined;
 
   return (
-    <TableContext.Provider value={tableCtx}>
-      <Card className={styles.tableCard} styles={{ body: { padding: 0 } }}>
-        <Table
-          columns={columns}
-          actionColumn={actionColumn}
-          dataSource={data}
-          loading={list.loading}
-          total={list.total}
-          pagination={{
-            current: list.pagination.current,
-            pageSize: list.pagination.pageSize,
-          }}
-          rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
-          toolbar={
-            <div className={styles.tableToolbar}>
-              <Space wrap>
-                {selectedRowKeys.length
-                  ? batchActions.map((n, i) => <RenderNode key={i} node={n} />)
-                  : null}
-                {selectedRowKeys.length ? (
-                  <span>已选择 {selectedRowKeys.length} 条</span>
-                ) : (
-                  <span>批量操作</span>
-                )}
-              </Space>
-              <Space>
-                {utilityActions.map((n, i) => (
-                  <RenderNode key={i} node={n} />
-                ))}
-              </Space>
-            </div>
-          }
-          onChange={(nextPagination, _filters, nextSorter) => {
-            list.setPagination({
-              current: nextPagination.current ?? 1,
-              pageSize: nextPagination.pageSize ?? list.pagination.pageSize,
-            });
-            const single = Array.isArray(nextSorter) ? nextSorter[0] : nextSorter;
-            list.setSorter(
-              single?.field && single.order
-                ? {
-                    field: Array.isArray(single.field)
-                      ? single.field.join(".")
-                      : String(single.field),
-                    order: single.order === "ascend" ? "asc" : "desc",
-                  }
-                : undefined,
-            );
-          }}
-        />
-      </Card>
-    </TableContext.Provider>
+    <Card className={styles.tableCard} styles={{ body: { padding: 0 } }}>
+      <Table
+        columns={columns}
+        actionColumn={actionColumn}
+        dataSource={data}
+        loading={list.loading}
+        total={list.total}
+        pagination={{
+          current: list.pagination.current,
+          pageSize: list.pagination.pageSize,
+        }}
+        rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
+        toolbar={
+          <div className={styles.tableToolbar}>
+            <Space wrap>
+              {selectedRowKeys.length
+                ? batchActions.map((n, i) => (
+                    <RenderNode
+                      key={i}
+                      node={n}
+                      props={{ selectedRowKeys, onBatchDelete: handleBatchDelete }}
+                    />
+                  ))
+                : null}
+              {selectedRowKeys.length ? (
+                <span>已选择 {selectedRowKeys.length} 条</span>
+              ) : (
+                <span>批量操作</span>
+              )}
+            </Space>
+            <Space>
+              {utilityActions.map((n, i) => (
+                <RenderNode key={i} node={n} />
+              ))}
+            </Space>
+          </div>
+        }
+        onChange={(nextPagination, _filters, nextSorter) => {
+          list.setPagination({
+            current: nextPagination.current ?? 1,
+            pageSize: nextPagination.pageSize ?? list.pagination.pageSize,
+          });
+          const single = Array.isArray(nextSorter) ? nextSorter[0] : nextSorter;
+          list.setSorter(
+            single?.field && single.order
+              ? {
+                  field: Array.isArray(single.field)
+                    ? single.field.join(".")
+                    : String(single.field),
+                  order: single.order === "ascend" ? "asc" : "desc",
+                }
+              : undefined,
+          );
+        }}
+      />
+    </Card>
   );
 }

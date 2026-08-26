@@ -18,19 +18,26 @@
   min-width: 0;
 }
 
-.treeLayout {
+.layout {
   display: flex;
   gap: 16px;
   min-height: 520px;
   min-width: 0;
 }
 
-.treePane {
+.layoutStack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.layoutLeft {
   flex: 0 0 280px;
   min-width: 240px;
 }
 
-.treeContent {
+.layoutMain {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -93,7 +100,7 @@
   justify-content: space-between;
   gap: 12px;
   min-height: 48px;
-  padding: 10px 16px;
+  padding: 12px 16px 0;
   width: 100%;
 }
 
@@ -151,11 +158,11 @@
 }
 
 @media (max-width: 900px) {
-  .treeLayout {
+  .layout {
     flex-direction: column;
   }
 
-  .treePane {
+  .layoutLeft {
     flex-basis: auto;
     width: 100%;
     min-width: 0;
