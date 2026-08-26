@@ -1,7 +1,8 @@
 import { useMemo } from "react";
-import { PageRoot } from "@alien-form/engine/react";
+import { PageRoot, useRuntime } from "@alien-form/engine/react";
 import { PageError, PageLoading } from "../../components";
 import { CompilerProvider, useCompiledSchema } from "../../compiler";
+import { FieldServiceContext } from "../../components/service";
 import {
   buildActionPageSchema,
   buildListPageSchema,
@@ -20,8 +21,16 @@ function ModelRuntimePageContent({
   scene,
   recordId,
 }: ModelRuntimePageProps) {
+  const runtime = useRuntime();
   const schemaQuery = useModelSchema(model);
   const compiledQuery = useCompiledSchema(schemaQuery.data);
+  const resolveFieldService = useMemo(
+    () => (code: string) => {
+      const service = runtime.registry.services.resolve(code, model);
+      return service ? { send: (params?: unknown) => service.send(params) } : undefined;
+    },
+    [runtime, model],
+  );
 
   const pageSchema = useMemo(() => {
     if (!schemaQuery.data || !compiledQuery.data) return undefined;
@@ -58,7 +67,11 @@ function ModelRuntimePageContent({
     );
   }
 
-  return <PageRoot key={pageSchema.id} schema={pageSchema} />;
+  return (
+    <FieldServiceContext.Provider value={resolveFieldService}>
+      <PageRoot key={pageSchema.id} schema={pageSchema} />
+    </FieldServiceContext.Provider>
+  );
 }
 
 /**

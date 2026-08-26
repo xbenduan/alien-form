@@ -58,7 +58,9 @@ export function FilterForm({
               {expanded ? "收起" : "展开"}
             </Button>
           ) : null}
-          <Button onClick={handleReset}>重置</Button>
+          <Button loading={loading} onClick={handleReset}>
+            重置
+          </Button>
           <Button
             type="primary"
             loading={loading}

@@ -31,6 +31,7 @@ export function useListBlock(name?: string) {
     refreshVersion: useAtom(block.refreshVersion),
     refresh: () => block.refresh(),
     setFilterPatch: (patch: Record<string, unknown>) => block.setFilterPatch(patch),
+    setFilters: (filters: Record<string, unknown>) => block.setFilters(filters),
     setPagination: (p: { current: number; pageSize: number }) => block.pagination.set(p),
     setSorter: (s: { field: string; order: "asc" | "desc" } | undefined) => block.sorter.set(s),
     setSelection: (rows: unknown[]) => block.selection.set(rows),

@@ -90,6 +90,18 @@ export class ListBlockRuntime extends BlockRuntime {
     });
   }
 
+  setFilters(filters: Record<string, unknown>): void {
+    this.store.batch(() => {
+      this.filters.set(
+        Object.fromEntries(
+          Object.entries(filters).filter(([, value]) => value !== undefined),
+        ),
+      );
+      this.pagination.set({ ...this.pagination.get(), current: 1 });
+      this.refresh();
+    });
+  }
+
   refresh(): void {
     this.refreshVersion.set(this.refreshVersion.get() + 1);
   }
