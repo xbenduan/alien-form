@@ -1,10 +1,20 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { DataSourceItem } from "@alien-form/react";
-import type { FieldService, ServiceResolver } from "../compiler";
+import { refValue, type FieldService, type ServiceResolver } from "../compiler";
+
+const OPTION_LIMIT = 10;
 
 /**
  * 字段数据请求上下文：向消费 dataSource 的组件注入 request。
- * 编译产物中的 props.service 是纯数据（{model,valueKey,labelKey,remoteSearch}），
+ * 编译产物中的 props.service 是纯数据（{ model, valueKey, labelKey }），
  * 不含闭包；真正的请求能力由这里的 Context 提供（由 app 层填值），
  * 实例销毁不影响已缓存的 schema。
  *
@@ -21,55 +31,83 @@ interface AsyncOptionsState {
   options: DataSourceItem[];
   loading: boolean;
   onSearch?: (keyword: string) => void;
+  load: () => void;
 }
 
-function toOptions(service: FieldService, list: Record<string, unknown>[]): DataSourceItem[] {
-  return list.map((item) => ({
-    value: item[service.valueKey],
-    label: String(item[service.labelKey] ?? item[service.valueKey] ?? ""),
-  }));
+function valueKey(value: unknown): string {
+  try {
+    return JSON.stringify(value) ?? "";
+  } catch {
+    return String(value);
+  }
 }
 
 /**
  * props 方案的组件自取逻辑：给定 service 声明，通过注入的 request 拉取选项。
- *  - remoteSearch=false：初次全量拉取，前端本地过滤（返回 onSearch=undefined）。
- *  - remoteSearch=true：初次拉一页，onSearch 时带 keyword 远程搜索。
+ * 首次最多取 10 条。服务端同时批量补回已选项，并返回 total；
+ * total 超过阈值时，组件自动切换到远程搜索。
  */
-export function useAsyncOptions(service?: FieldService): AsyncOptionsState {
+export function useAsyncOptions(service?: FieldService, value?: unknown): AsyncOptionsState {
   const resolveService = useServiceResolver();
   const [options, setOptions] = useState<DataSourceItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [remoteSearch, setRemoteSearch] = useState(false);
   const reqId = useRef(0);
+  const selectedKey = valueKey(value);
+
+  const selected = useMemo(
+    () =>
+      (Array.isArray(value) ? value : [value])
+        .map(refValue)
+        .filter(
+          (item): item is string | number => typeof item === "string" || typeof item === "number",
+        ),
+    [selectedKey],
+  );
 
   const fetchOptions = useCallback(
-    async (keyword?: string) => {
-      const request = resolveService?.("records.list");
+    async (keyword?: string, updateSearchMode = false) => {
+      const request = resolveService?.("records.options");
       if (!service || !request) return;
       const current = ++reqId.current;
       setLoading(true);
       try {
         const result = await request.send({
           model: service.model,
-          filters: keyword ? { [service.labelKey]: keyword } : undefined,
-          pagination: { current: 1, pageSize: service.remoteSearch ? 50 : 1000 },
+          valueKey: service.valueKey,
+          labelKey: service.labelKey,
+          keyword,
+          selectedValues: selected,
+          limit: OPTION_LIMIT,
         });
-        const { list } = result as { list: Record<string, unknown>[] };
-        if (current === reqId.current) setOptions(toOptions(service, list));
+        const { options: nextOptions, total } = result as {
+          options: DataSourceItem[];
+          total: number;
+        };
+        if (current === reqId.current) {
+          setOptions(nextOptions);
+          if (updateSearchMode) setRemoteSearch(total > OPTION_LIMIT);
+        }
       } finally {
         if (current === reqId.current) setLoading(false);
       }
     },
-    [resolveService, service],
+    [resolveService, selected, service],
   );
 
   useEffect(() => {
-    fetchOptions();
+    setRemoteSearch(false);
+  }, [selectedKey, service]);
+
+  const load = useCallback(() => {
+    void fetchOptions(undefined, true);
   }, [fetchOptions]);
 
   return {
     options,
     loading,
-    onSearch: service?.remoteSearch ? (keyword: string) => void fetchOptions(keyword) : undefined,
+    onSearch: remoteSearch ? (keyword: string) => void fetchOptions(keyword) : undefined,
+    load,
   };
 }
 
@@ -80,8 +118,9 @@ export function useAsyncOptions(service?: FieldService): AsyncOptionsState {
 export function useFieldOptions(
   service: FieldService | undefined,
   dataSource: DataSourceItem[] | undefined,
+  value?: unknown,
 ): AsyncOptionsState {
-  const async = useAsyncOptions(service);
+  const async = useAsyncOptions(service, value);
   if (service) return async;
-  return { options: dataSource ?? [], loading: false, onSearch: undefined };
+  return { options: dataSource ?? [], loading: false, onSearch: undefined, load: () => {} };
 }

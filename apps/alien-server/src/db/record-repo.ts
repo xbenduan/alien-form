@@ -16,6 +16,11 @@ export interface ListResult {
   total: number;
 }
 
+export interface OptionResult {
+  options: Array<{ value: string | number; label: string }>;
+  total: number;
+}
+
 function nowMs(): number {
   return Date.now();
 }
@@ -30,6 +35,11 @@ function columnPlans(schema: ModelSchema): ColumnPlan[] {
 
 function relationPlans(schema: ModelSchema): RelationPlan[] {
   return planFields(schema).filter((p): p is RelationPlan => p.kind === "m2m");
+}
+
+function fieldColumn(schema: ModelSchema, field: string): string | undefined {
+  if (field === "id") return "id";
+  return columnPlans(schema).find((plan) => plan.field === field)?.column;
 }
 
 /** 读取一条 m2m 关系的目标 id 数组。 */
@@ -140,6 +150,69 @@ export function listRecords(schema: ModelSchema, params: ListParams): ListResult
 }
 
 /**
+ * 下拉选项查询：返回匹配项的前 N 条，同时批量补回当前已选值。
+ * selectedValues 不受关键词和分页影响，避免编辑态回显退化成逐条详情查询。
+ */
+export function listOptions(
+  schema: ModelSchema,
+  params: {
+    valueKey: string;
+    labelKey: string;
+    keyword?: string;
+    selectedValues?: unknown[];
+    limit?: number;
+  },
+): OptionResult {
+  const valueColumn = fieldColumn(schema, params.valueKey);
+  const labelColumn = fieldColumn(schema, params.labelKey);
+  if (!valueColumn || !labelColumn) {
+    throw new Error(`选项字段不存在：${params.valueKey} / ${params.labelKey}`);
+  }
+
+  const db = getDb();
+  const table = tableName(schema.meta.name);
+  const keyword = params.keyword?.trim();
+  const where = keyword ? `WHERE "${labelColumn}" LIKE ?` : "";
+  const args = keyword ? [`%${keyword}%`] : [];
+  const totalRow = db.prepare(`SELECT COUNT(*) AS c FROM "${table}" ${where}`).get(...args) as {
+    c: number;
+  };
+  const limit = Math.min(Math.max(params.limit ?? 10, 1), 100);
+  const matching = db
+    .prepare(
+      `SELECT "${valueColumn}" AS value, "${labelColumn}" AS label FROM "${table}" ${where} ` +
+        `ORDER BY "${labelColumn}" COLLATE NOCASE ASC LIMIT ?`,
+    )
+    .all(...args, limit) as Array<{ value: string | number; label: unknown }>;
+
+  const selected = [
+    ...new Set(
+      (params.selectedValues ?? []).filter(
+        (value): value is string | number => typeof value === "string" || typeof value === "number",
+      ),
+    ),
+  ];
+  const selectedRows =
+    selected.length === 0
+      ? []
+      : (db
+          .prepare(
+            `SELECT "${valueColumn}" AS value, "${labelColumn}" AS label FROM "${table}" ` +
+              `WHERE "${valueColumn}" IN (${selected.map(() => "?").join(", ")})`,
+          )
+          .all(...selected) as Array<{ value: string | number; label: unknown }>);
+
+  const options = new Map<string, { value: string | number; label: string }>();
+  for (const row of [...selectedRows, ...matching]) {
+    options.set(`${typeof row.value}:${row.value}`, {
+      value: row.value,
+      label: String(row.label ?? row.value),
+    });
+  }
+  return { options: [...options.values()], total: totalRow.c };
+}
+
+/**
  * 子树查询：按业务字段 idField / parentField 收集 parentValue 之下的全部后代（任意层级）。
  * parentValue 为空时返回整棵树（全量记录）。供 treelayout 的 query.subtree service 使用。
  */
@@ -164,7 +237,9 @@ export function listSubtree(
   }
 
   const root =
-    params.parentValue === undefined || params.parentValue === null ? "" : String(params.parentValue);
+    params.parentValue === undefined || params.parentValue === null
+      ? ""
+      : String(params.parentValue);
   if (root === "") return records;
 
   const result: ModelRecord[] = [];

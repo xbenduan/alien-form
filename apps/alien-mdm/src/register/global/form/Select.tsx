@@ -2,29 +2,34 @@ import { Select as AntSelect } from "antd";
 import type { FieldComponentProps } from "../../../types/shared";
 import { useFieldMode } from "../../../components/field-mode";
 import { DisplayValue } from "../../../components/DisplayValue";
-import { refValue, withRefEchoOptions } from "../../../compiler";
-import { useFieldOptions } from "../../../components/service";
+import { RemoteSelect } from "../../../components/RemoteSelect";
+import { parseMultiValue, refValue, serializeMultiValue } from "../../../compiler";
 
-/** 下拉单选。dataSource（handler/静态）与 service（props 自取）双方案。 */
+/** 本地 Select；声明 service 时委托给按需加载的 RemoteSelect。 */
 export default function Select(props: FieldComponentProps) {
   const mode = useFieldMode(props.mode);
-  const { options, loading, onSearch } = useFieldOptions(props.service, props.dataSource);
+  if (props.service) return <RemoteSelect {...props} />;
+
+  const isMulti = props.selectMode === "multiple" || props.selectMode === "tags";
+  const items = isMulti ? parseMultiValue(props.value) : [];
   if (mode === "detail") {
-    return <DisplayValue value={props.value} dataSource={options} format="status" />;
+    return <DisplayValue value={isMulti ? items : props.value} dataSource={props.dataSource} />;
   }
-  // 值可能是服务端展开的引用对象 { $ref, value, label }：显示/匹配用 value，
-  // 并补一个 echo 选项，保证远程分页未拉到该项时仍能回显出 name。
-  const echoOptions = withRefEchoOptions(options, props.value);
+
+  const value = isMulti
+    ? (items.map((item) => refValue(item)) as Array<string | number>)
+    : (refValue(props.value) as string | number | undefined);
   return (
     <AntSelect
       style={{ width: "100%" }}
-      value={refValue(props.value) as string | number | undefined}
-      onChange={(next) => props.onChange?.(next)}
+      mode={props.selectMode}
+      value={value}
+      onChange={(next) => props.onChange?.(isMulti ? serializeMultiValue(next) : next)}
       disabled={props.disabled}
-      loading={props.loading || loading}
+      loading={props.loading}
       placeholder={props.placeholder}
-      showSearch={onSearch ? { onSearch, filterOption: false } : true}
-      options={echoOptions.map((item) => ({ label: item.label, value: item.value }))}
+      showSearch
+      options={props.dataSource?.map((item) => ({ label: item.label, value: item.value }))}
       allowClear
     />
   );

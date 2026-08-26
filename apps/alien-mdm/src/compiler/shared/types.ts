@@ -197,8 +197,6 @@ export interface FieldService {
   model: string;
   valueKey: string;
   labelKey: string;
-  /** true 时组件走远程搜索（onSearch），false 时前端本地过滤。 */
-  remoteSearch: boolean;
 }
 
 // ─── resolve 上下文（插件运行时）────────────────────────────────────────────
@@ -219,7 +217,7 @@ export interface ResolveCtx extends PrefetchCtx {
   /** 当前 marker 在 schema 中的位置（deep path）。 */
   path: (string | number)[];
   scene: Scene;
-  /** 向当前场景 schema 的任意路径写入值（如 props 方案写 props.service）。 */
+  /** 向当前场景 schema 的任意路径写入值。 */
   patch: (path: (string | number)[], value: unknown) => void;
 }
 

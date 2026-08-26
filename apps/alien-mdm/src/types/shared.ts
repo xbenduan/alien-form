@@ -39,8 +39,6 @@ export type FieldKind = "leaf" | "complex" | "layout";
 export interface ComponentMeta {
   fieldType: "string" | "number" | "boolean" | "object" | "array";
   kind: FieldKind;
-  /** 值为数组的多值组件（多选、标签、复选组），内部以 JSON 字符串承载。 */
-  multiValue?: boolean;
 }
 
 /**
@@ -64,12 +62,12 @@ export interface RegistryFieldSchema extends IFieldSchema {
  *  - alias：编辑字段弹窗组件下拉的展示名（buildComponentOptions → FieldEditor 的组件 Select）
  *  - description：编辑字段弹窗「字段 Schema」标签旁的 info 组件说明
  *  - component：交给 @alien-form/react FormProvider 渲染的 React 组件（fieldComponents 由此派生）
- *  - kind / fieldType / multiValue：schema 投影（transform.ts、schema.ts、buildComponentMeta）
+ *  - kind / fieldType：schema 投影（transform.ts、schema.ts、buildComponentMeta）
  *  - schema：选择组件后带入的默认字段 schema（见 RegistryFieldSchema）
  *  - container：是否为可嵌套子字段的容器（object / array），供字段树与编辑器判断
  */
 export interface ComponentRegistryEntry {
-  /** 组件别名（中文展示名），如 CheckboxGroup 的 alias 为「复选框组」。 */
+  /** 组件别名（中文展示名）。 */
   alias: string;
   /**
    * 组件说明：解释该组件是什么、用途，以及特殊 props 的含义
@@ -79,12 +77,10 @@ export interface ComponentRegistryEntry {
   description: string;
   /** React 组件实例（lazy 懒加载，渲染处需包裹 Suspense）。 */
   component: LazyExoticComponent<ComponentType<FieldComponentProps>>;
-  /** 字段基础类型，与 component 绑定；多值组件对外降级为 string。 */
+  /** 字段基础类型，与 component 绑定。 */
   fieldType: ComponentMeta["fieldType"];
   /** 组件形态：叶子 / 复杂（object、array）/ 布局容器。 */
   kind: FieldKind;
-  /** 值为数组的多值组件（多选、标签、复选组），内部以 JSON 字符串承载。 */
-  multiValue?: boolean;
   /** 是否为可容纳子字段的容器（object / array 复杂字段）。 */
   container?: boolean;
   /** 选择该组件时带入的默认字段 schema 模板。 */
@@ -108,13 +104,13 @@ export interface FieldComponentProps {
   loading?: boolean;
   placeholder?: string;
   mode?: FieldMode;
+  selectMode?: "multiple" | "tags";
   dataSource?: DataSourceItem[];
-  /** props 方案的数据源声明：组件通过注入的 request 自取选项。 */
+  /** 远程数据源声明：组件通过注入的 request 自取选项。 */
   service?: {
     model: string;
     valueKey: string;
     labelKey: string;
-    remoteSearch: boolean;
   };
 
   /** 复杂字段在 table 单元格中渲染时为 true：展示摘要 + 详情按钮。 */

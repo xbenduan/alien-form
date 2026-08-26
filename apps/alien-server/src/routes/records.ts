@@ -5,6 +5,7 @@ import {
   deleteRecord,
   deleteRecords,
   getRecord,
+  listOptions,
   listRecords,
   listSubtree,
   updateRecord,
@@ -22,6 +23,15 @@ interface ListBody {
   filters?: Record<string, unknown>;
   pagination?: Pagination;
   sorter?: Sorter;
+}
+
+interface OptionsBody {
+  model: string;
+  valueKey?: string;
+  labelKey?: string;
+  keyword?: string;
+  selectedValues?: unknown[];
+  limit?: number;
 }
 
 function publicRecord(model: string, record: Record<string, unknown>): Record<string, unknown> {
@@ -47,6 +57,22 @@ recordRoutes.post("/list", async (c) => {
     ...result,
     list: expanded.map((record) => publicRecord(body.model, record)),
   });
+});
+
+/** POST /api/records/options → { options, total }。前 N 条搜索结果 + 已选值批量回显。 */
+recordRoutes.post("/options", async (c) => {
+  const body = (await c.req.json()) as OptionsBody;
+  const schema = getSchema(body.model);
+  if (!schema) return c.json({ error: `未知模型：${body.model}` }, 404);
+  return c.json(
+    listOptions(schema, {
+      valueKey: body.valueKey ?? "id",
+      labelKey: body.labelKey ?? body.valueKey ?? "id",
+      keyword: body.keyword,
+      selectedValues: body.selectedValues,
+      limit: body.limit,
+    }),
+  );
 });
 
 /**

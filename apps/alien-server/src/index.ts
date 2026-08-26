@@ -12,10 +12,17 @@ bootstrap();
 const app = new Hono<{ Variables: AuthContext }>();
 
 // 允许前端 dev 跨域（vite 也会代理 /api，这里双保险）
-app.use(
-  "/api/*",
-  cors({ origin: "*", allowHeaders: ["Authorization", "Content-Type"] }),
-);
+app.use("/api/*", cors({ origin: "*", allowHeaders: ["Authorization", "Content-Type"] }));
+
+const developmentDelayEnabled =
+  process.env.NODE_ENV !== "production" && process.env.API_DELAY !== "false";
+if (developmentDelayEnabled) {
+  app.use("/api/*", async (_, next) => {
+    const delay = 100 + Math.floor(Math.random() * 401);
+    await new Promise<void>((resolve) => setTimeout(resolve, delay));
+    await next();
+  });
+}
 
 app.get("/api/health", (c) => c.json({ ok: true }));
 app.route("/api/auth", authRoutes);

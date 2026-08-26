@@ -21,6 +21,13 @@ const recordsServices: ServiceDescriptor[] = [
   createService("records.list", (params) =>
     apiSend<RecordListResult>("POST", "/records/list", params as RecordListParams),
   ),
+  createService("records.options", (params) =>
+    apiSend<{ options: Array<{ value: string | number; label: string }>; total: number }>(
+      "POST",
+      "/records/options",
+      params,
+    ),
+  ),
   createService("records.subtree", (params) =>
     apiSend<{ list: ModelRecord[] }>("POST", "/records/subtree", params as RecordListParams),
   ),

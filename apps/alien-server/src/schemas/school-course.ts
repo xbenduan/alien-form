@@ -75,7 +75,6 @@ export const schoolCourseSchema: ModelSchema = {
           model: "school-user",
           valueKey: "id",
           labelKey: "displayName",
-          remoteSearch: false,
         },
       },
       "x-table": { width: 130 },
@@ -103,7 +102,7 @@ export const schoolCourseSchema: ModelSchema = {
     },
     gradeScope: {
       title: "适用年级",
-      component: "MultiSelect",
+      component: "Select",
       required: true,
       order: 60,
       dataSource: [
@@ -114,7 +113,7 @@ export const schoolCourseSchema: ModelSchema = {
         { label: "五年级", value: "grade-5" },
         { label: "六年级", value: "grade-6" },
       ],
-      props: { placeholder: "请选择适用年级" },
+      props: { placeholder: "请选择适用年级", selectMode: "multiple" },
       "x-table": { width: 180 },
       "x-database": { type: "json", sortable: false },
     },
@@ -160,9 +159,14 @@ export const schoolCourseSchema: ModelSchema = {
     waitlistEnabled: {
       type: "boolean",
       title: "允许候补报名",
-      component: "Switch",
+      component: "Select",
       order: 110,
       default: true,
+      dataSource: [
+        { label: "允许", value: true },
+        { label: "不允许", value: false },
+      ],
+      props: { placeholder: "请选择是否允许候补" },
       "x-table": { width: 110 },
       "x-database": { type: "boolean", default: true, filterable: true },
     },

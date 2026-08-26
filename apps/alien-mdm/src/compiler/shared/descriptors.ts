@@ -97,7 +97,9 @@ const arrayDescriptor: FieldDescriptor = {
  */
 const multiValueDescriptor: FieldDescriptor = {
   name: "multiValue",
-  match: (field) => Boolean(getComponentMeta(field.component)?.multiValue),
+  match: (field) =>
+    field.component === "Select" &&
+    (field.props?.selectMode === "multiple" || field.props?.selectMode === "tags"),
   toForm: (field) => ({
     ...(field as IFieldSchema),
     type: "string",

@@ -338,7 +338,8 @@ $af_scope_service("records.list")?.send({ model, filters, pagination });
 
 1. **编译期**：远程字段不参与通用 compiler plugin 解析；静态 `dataSource` 原样透传。
 2. **运行期**：字段在 `props.service` 声明 model、valueKey、labelKey 等取数元数据，
-   `FieldServiceContext` 注入按 domain 解析的 service resolver，`useAsyncOptions` 通过它调用 `records.list`。
+   `FieldServiceContext` 注入按 domain 解析的 service resolver，`useAsyncOptions` 通过它调用
+   `records.options`。接口返回前 10 条匹配项、总数与已选项的批量回显；总数超过 10 时自动启用远程搜索。
 
 远程字段直接在 `props.service` 声明：
 
@@ -347,8 +348,7 @@ $af_scope_service("records.list")?.send({ model, filters, pagination });
   "service": {
     "model": "school-role",
     "labelKey": "roleName",
-    "valueKey": "id",
-    "remoteSearch": false
+    "valueKey": "id"
   }
 }
 ```

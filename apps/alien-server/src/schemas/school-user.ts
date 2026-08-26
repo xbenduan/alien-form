@@ -72,16 +72,16 @@ export const schoolUserSchema: ModelSchema = {
     },
     roleIds: {
       title: "用户角色",
-      component: "MultiSelect",
+      component: "Select",
       required: true,
       order: 50,
       props: {
         placeholder: "请选择用户角色",
+        selectMode: "multiple",
         service: {
           model: "school-role",
           valueKey: "id",
           labelKey: "roleName",
-          remoteSearch: false,
         },
       },
       "x-table": { width: 180 },
@@ -197,7 +197,6 @@ export const schoolUserSchema: ModelSchema = {
           model: "school-user",
           valueKey: "id",
           labelKey: "displayName",
-          remoteSearch: false,
         },
       },
       "x-table": { width: 110 },

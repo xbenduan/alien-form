@@ -1,5 +1,5 @@
 import type { Runtime } from "@alien-form/engine";
-import { componentRegistry, fieldComponents } from "./registry";
+import { fieldComponents } from "./registry";
 import { FormItem, FilterItem } from "../../../components/decorators";
 
 export function registerFormComponents(runtime: Runtime): void {
@@ -19,6 +19,5 @@ export {
   getRegistryEntry,
   isComplexComponent,
   isContainerComponent,
-  isMultiValueComponent,
   LAYOUT_COMPONENTS,
 } from "./registry";

@@ -79,7 +79,7 @@ export const schoolRoleSchema: ModelSchema = {
     },
     viewableTables: {
       title: "可查看数据表",
-      component: "MultiSelect",
+      component: "Select",
       required: true,
       order: 50,
       dataSource: [
@@ -87,7 +87,7 @@ export const schoolRoleSchema: ModelSchema = {
         { label: "用户管理", value: "school-user" },
         { label: "角色管理", value: "school-role" },
       ],
-      props: { placeholder: "请选择可查看数据表" },
+      props: { placeholder: "请选择可查看数据表", selectMode: "multiple" },
       "x-table": { width: 220 },
       "x-database": { type: "json", sortable: false },
     },
@@ -103,9 +103,14 @@ export const schoolRoleSchema: ModelSchema = {
     enabled: {
       type: "boolean",
       title: "是否启用",
-      component: "Switch",
+      component: "Select",
       order: 70,
       default: true,
+      dataSource: [
+        { label: "启用", value: true },
+        { label: "停用", value: false },
+      ],
+      props: { placeholder: "请选择状态" },
       "x-table": { width: 100 },
       "x-database": { type: "boolean", default: true, filterable: true },
     },

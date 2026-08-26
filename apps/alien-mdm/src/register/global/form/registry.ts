@@ -8,9 +8,6 @@ import type {
 
 /**
  * 组件注册机：alien-form 组件库元信息的唯一来源。
- *
- * ！！！需要用到任一组件的配置（React 组件、别名、字段类型、默认 schema…）时，
- * 都必须走这张表；缺信息就在这里补，不要在别处另写一份配置。
  */
 const registry: ComponentRegistry = {
   Input: {
@@ -105,33 +102,6 @@ const registry: ComponentRegistry = {
     },
   },
 
-  MultiSelect: {
-    alias: "下拉多选",
-    component: lazy(() => import("./MultiSelect")),
-    fieldType: "string",
-    kind: "leaf",
-    multiValue: true,
-    description:
-      "下拉多选框，可选中多个候选项，值为数组（内部以 JSON 字符串承载）。dataSource 支持静态候选项，远程候选项通过 props.service 声明。",
-    schema: {
-      type: "string",
-      title: "下拉多选",
-      description: undefined,
-      default: undefined,
-      dataSource: [
-        { label: "多选 1", value: "1" },
-        { label: "多选 2", value: "2" },
-      ],
-      component: "MultiSelect",
-      props: { placeholder: "请选择" },
-      required: false,
-      disabled: false,
-      display: "visible",
-      "x-validate": "",
-      "x-table": { width: 140, visible: true },
-    },
-  },
-
   DateInput: {
     alias: "日期",
     component: lazy(() => import("./DateInput")),
@@ -178,124 +148,6 @@ const registry: ComponentRegistry = {
       display: "visible",
       "x-validate": "",
       "x-table": { width: 160, visible: true },
-    },
-  },
-
-  Switch: {
-    alias: "开关",
-    component: lazy(() => import("./Switch")),
-    fieldType: "boolean",
-    kind: "leaf",
-    description: "开关，用于布尔值（是/否、启用/停用）。值为 true / false。",
-    schema: {
-      type: "boolean",
-      title: "开关",
-      description: undefined,
-      default: undefined,
-      component: "Switch",
-      props: {},
-      required: false,
-      disabled: false,
-      display: "visible",
-      "x-validate": "",
-      "x-table": { width: 80, visible: true },
-    },
-  },
-
-  Radio: {
-    alias: "单选按钮组",
-    component: lazy(() => import("./Radio")),
-    fieldType: "string",
-    kind: "leaf",
-    description:
-      "单选按钮组，选项平铺展示，适合选项较少（2-5 个）的枚举。dataSource 配置静态候选项，远程候选项通过 props.service 声明。",
-    schema: {
-      type: "string",
-      title: "单选按钮组",
-      description: undefined,
-      default: undefined,
-      dataSource: [
-        { label: "选项 1", value: "1" },
-        { label: "选项 2", value: "2" },
-      ],
-      component: "Radio",
-      props: {},
-      required: false,
-      disabled: false,
-      display: "visible",
-      "x-validate": "",
-      "x-table": { width: 120, visible: true },
-    },
-  },
-
-  CheckboxGroup: {
-    alias: "复选框组",
-    component: lazy(() => import("./CheckboxGroup")),
-    fieldType: "string",
-    kind: "leaf",
-    multiValue: true,
-    description:
-      "复选框组，选项平铺展示，值为数组（内部以 JSON 字符串承载）。dataSource 配置静态选项，远程候选项通过 props.service 声明。",
-    schema: {
-      type: "string",
-      title: "复选框组",
-      description: undefined,
-      default: undefined,
-      dataSource: [
-        { label: "多选 1", value: "1" },
-        { label: "多选 2", value: "2" },
-      ],
-      component: "CheckboxGroup",
-      props: {},
-      required: false,
-      disabled: false,
-      display: "visible",
-      "x-validate": "",
-      "x-table": { width: 140, visible: true },
-    },
-  },
-
-  Rate: {
-    alias: "评分",
-    component: lazy(() => import("./Rate")),
-    fieldType: "number",
-    kind: "leaf",
-    description: "星级评分，值为数字（默认 0-5）。适用于满意度、优先级等打分场景。",
-    schema: {
-      type: "number",
-      title: "评分",
-      description: undefined,
-      default: undefined,
-      component: "Rate",
-      props: {},
-      required: false,
-      disabled: false,
-      display: "visible",
-      "x-validate": "",
-      "x-table": { width: 120, visible: true },
-    },
-  },
-
-  TagsInput: {
-    alias: "标签",
-    component: lazy(() => import("./TagsInput")),
-    fieldType: "string",
-    kind: "leaf",
-    multiValue: true,
-    description:
-      "标签输入，输入后回车即添加，无需预设候选项，值为字符串数组（内部以 JSON 字符串承载）。适用于关键词、标签等自由录入。",
-    schema: {
-      type: "string",
-      title: "标签",
-      description: undefined,
-      default: undefined,
-      component: "TagsInput",
-      props: { placeholder: "输入后回车" },
-      required: false,
-      disabled: false,
-      display: "visible",
-      "x-validate": "",
-      "x-table": { width: 140, visible: true },
     },
   },
 
@@ -393,11 +245,6 @@ export const LAYOUT_COMPONENTS = Object.keys(registry).filter(
   (name) => registry[name].kind === "layout",
 );
 
-/** 组件是否为多值组件（多选、标签、复选组）。 */
-export function isMultiValueComponent(component?: string): boolean {
-  return Boolean(getRegistryEntry(component)?.multiValue);
-}
-
 /** 组件是否为复杂字段（object / array）。 */
 export function isComplexComponent(component?: string): boolean {
   return getRegistryEntry(component)?.kind === "complex";
@@ -415,14 +262,14 @@ export function isContainerComponent(component?: string): boolean {
 export function getComponentMeta(component?: string): ComponentMeta | undefined {
   const entry = getRegistryEntry(component);
   if (!entry) return undefined;
-  return { fieldType: entry.fieldType, kind: entry.kind, multiValue: entry.multiValue };
+  return { fieldType: entry.fieldType, kind: entry.kind };
 }
 
 /** component 名 → 静态元信息（由注册表派生，schema 投影使用）。 */
 export const componentMeta: Record<string, ComponentMeta> = Object.fromEntries(
   Object.entries(registry).map(([name, entry]) => [
     name,
-    { fieldType: entry.fieldType, kind: entry.kind, multiValue: entry.multiValue },
+    { fieldType: entry.fieldType, kind: entry.kind },
   ]),
 );
 

@@ -92,16 +92,19 @@ userType: {
 
 // 多选 → 多对多关系：声明一次，DDL 投影自动产出 junction 表
 roleIds: {
-  component: "MultiSelect",
+  component: "Select",
   required: true,
-  props: { service: { model: "school-role", valueKey: "id", labelKey: "roleName", remoteSearch: false } },
+  props: {
+    selectMode: "multiple",
+    service: { model: "school-role", valueKey: "id", labelKey: "roleName" },
+  },
   "x-database": { relation: "many-to-many", target: "school-role", through: "school_user_role" },
 },
 
 // 单选外键（自引用：班主任也是一个 school-user）
 homeroomTeacherId: {
   component: "Select",
-  props: { service: { model: "school-user", valueKey: "id", labelKey: "displayName", remoteSearch: false } },
+  props: { service: { model: "school-user", valueKey: "id", labelKey: "displayName" } },
   "x-database": { relation: "many-to-one", target: "school-user" },
 },
 
@@ -197,7 +200,7 @@ CREATE INDEX idx_school_user_status    ON school_user(status);
 CREATE INDEX idx_school_user_homeroom  ON school_user(homeroom_teacher_id);
 -- ↑ 这三个 index 由 x-database.index:true 产出，同时也是前端筛选区的三个 filter 字段
 
--- roleIds 是 MultiSelect → 多对多，落地成独立 junction 表（不塞进主表）
+-- roleIds 是 Select(multiple) → 多对多，落地成独立 junction 表（不塞进主表）
 CREATE TABLE school_user_role (
   user_id TEXT NOT NULL REFERENCES school_user(id)  ON DELETE CASCADE,
   role_id TEXT NOT NULL REFERENCES school_role(id)  ON DELETE CASCADE,
@@ -314,7 +317,7 @@ form / table / filter。例如 `userType` 字段：
 | ------ | ----------------------------- | --------------------------------- | --------------------------------- | ----------------------------------- |
 | ① 源头 | canonical schema（唯一手写）  | `dataSource` + `x-database.index` | `props.service` + `relation:m2m`  | `properties` + `x-database:json`    |
 | ② 建库 | `CREATE TABLE`（DDL 投影）    | `TEXT CHECK(...)` + 索引          | 独立 `school_user_role` 表        | 单个 `TEXT` 列（不拆列）            |
-| ② 前端 | form/table/filter（前端投影） | `Select` + `enum` + **进筛选区**  | `MultiSelect` + `props.service`   | 子表单控件（**不进筛选区**）        |
+| ② 前端 | form/table/filter（前端投影） | `Select` + `enum` + **进筛选区**  | `Select(multiple)` + `props.service` | 子表单控件（**不进筛选区**）     |
 | ③ 存库 | SQLite 物理行                 | `'student'`（码值）               | junction 多行                     | `'{"wechat":...}'`（JSON 字符串）   |
 | ④ 接口 | JSON 响应                     | `"student"`（码值）               | `["role-student"]`（聚合回数组）  | `{ "wechat": ... }`（parse 回对象） |
 

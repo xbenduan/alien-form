@@ -1,9 +1,6 @@
 import type { ColumnType, ModelFieldSchema, ModelSchema } from "./types.ts";
 import { junctionName, tableName, toSnake } from "./naming.ts";
 
-/** 值为数组的多值组件：无关系时落 JSON 列，有关系时落 junction。 */
-const MULTI_VALUE_COMPONENTS = new Set(["MultiSelect", "TagsInput", "CheckboxGroup"]);
-
 /** id / createdAt / updatedAt 由仓储统一管理为系统列，不从 schema 字段建列。 */
 export const SYSTEM_MANAGED = new Set(["id", "createdAt", "updatedAt"]);
 
@@ -40,7 +37,8 @@ export interface RelationPlan {
 export type FieldPlan = ColumnPlan | RelationPlan;
 
 function isMultiValue(field: ModelFieldSchema): boolean {
-  return field.component ? MULTI_VALUE_COMPONENTS.has(field.component) : false;
+  const selectMode = (field.props as { selectMode?: unknown } | undefined)?.selectMode;
+  return field.component === "Select" && (selectMode === "multiple" || selectMode === "tags");
 }
 
 /** 推导列类型：x-database.type 优先，否则由 type/component 派生。 */
@@ -50,10 +48,10 @@ function inferColumnType(field: ModelFieldSchema): ColumnType {
 
   if (field.properties || (field.items && !Array.isArray(field.items))) return "json";
   if (isMultiValue(field)) return "json";
-  if (field.type === "number" || field.component === "NumberInput" || field.component === "Rate") {
+  if (field.type === "number" || field.component === "NumberInput") {
     return "real";
   }
-  if (field.type === "boolean" || field.component === "Switch") return "boolean";
+  if (field.type === "boolean") return "boolean";
   return "text";
 }
 
