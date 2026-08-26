@@ -1,14 +1,8 @@
-import { usePage, type ComponentProps } from "@alien-form/engine/react";
+import { usePage, useConstant, type ComponentProps } from "@alien-form/engine/react";
 import { PageBreadcrumb } from "../../../components";
 import { recordListPath } from "../../../app/router/paths";
 import type { ModelPageScene } from "../../../compiler/model-to-page";
 import styles from "../ui.module.css";
-
-const ACTION_TITLE: Record<Exclude<ModelPageScene, "list">, string> = {
-  add: "新增",
-  edit: "编辑",
-  detail: "详情",
-};
 
 /**
  * 记录页面壳由 runtime layout 驱动，统一承接 breadcrumb、页面宽度和动作页样式。
@@ -16,6 +10,7 @@ const ACTION_TITLE: Record<Exclude<ModelPageScene, "list">, string> = {
  */
 export function RecordPage({ children }: ComponentProps) {
   const page = usePage();
+  const ACTION_TITLE = useConstant<Record<"add" | "edit" | "detail", string>>("overlayTitlePrefix");
   const meta = page.schema.meta ?? {};
   const scene = (meta.scene as ModelPageScene | undefined) ?? "list";
   const model = (meta.model as string | undefined) ?? page.domain;
