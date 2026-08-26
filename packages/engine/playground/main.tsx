@@ -273,6 +273,7 @@ const formSchema: IFormSchema = {
 
 const userPageSchema: PageSchema = {
   id: "user-list",
+  domain: "user",
   title: "用户管理",
   blocks: [
     {

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getAppRuntime } from "../runtime/create-runtime";
+import { useRuntime } from "@alien-form/engine/react";
 import type { ModelSchema } from "../compiler/shared";
 import type { ModelSummary } from "../runtime/types";
 
@@ -10,7 +10,7 @@ export const schemaKeys = {
 };
 
 export function useModelSummaries() {
-  const runtime = getAppRuntime();
+  const runtime = useRuntime();
   return useQuery({
     queryKey: schemaKeys.summaries,
     queryFn: async () => {
@@ -22,7 +22,7 @@ export function useModelSummaries() {
 }
 
 export function useModelSchema(name?: string) {
-  const runtime = getAppRuntime();
+  const runtime = useRuntime();
   return useQuery({
     queryKey: schemaKeys.detail(name),
     enabled: Boolean(name),
@@ -36,7 +36,7 @@ export function useModelSchema(name?: string) {
 
 export function useSchemaMutations() {
   const queryClient = useQueryClient();
-  const runtime = getAppRuntime();
+  const runtime = useRuntime();
 
   const createMutation = useMutation({
     mutationFn: async (schema: ModelSchema) => {

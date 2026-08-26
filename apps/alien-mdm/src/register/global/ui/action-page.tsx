@@ -40,7 +40,7 @@ export function RecordActionPageLayout({ node }: ComponentProps) {
 
   const mode = (node.props?.mode as "add" | "edit" | "detail") ?? "add";
   const recordId = node.props?.recordId as string | undefined;
-  const modelName = (node.props?.model as string | undefined) ?? page.schema.id;
+  const modelName = (node.props?.model as string | undefined) ?? page.domain;
   const isReadOnly = mode === "detail";
 
   const recordQuery = useQuery({

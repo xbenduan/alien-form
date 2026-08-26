@@ -1,9 +1,12 @@
+import type { Runtime } from "@alien-form/engine";
 import { SchemaCompiler } from "./shared";
-import { getAppRuntime } from "../runtime/create-runtime";
 import type { ModelSchema } from "./shared";
 
-export function createAppCompiler(locale = "zh", domain?: string): SchemaCompiler {
-  const runtime = getAppRuntime();
+export function createAppCompiler(
+  runtime: Runtime,
+  locale = "zh",
+  domain?: string,
+): SchemaCompiler {
   return new SchemaCompiler({
     service: ((code: string) => runtime.registry.services.resolve(code) ?? undefined) as (code: string) => { send: (params?: unknown) => Promise<unknown> } | undefined,
     constant: (key) => runtime.registry.constants.resolve(key, domain),

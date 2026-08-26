@@ -28,7 +28,10 @@ export class FormBlockRuntime extends BlockRuntime {
 
     const { formSchema } = output as FormBlockOutput;
 
-    const handlers = runtime.registry.form.handlers.all(page.id) as Record<string, RuntimeRuleHandler>;
+    const handlers = runtime.registry.form.handlers.all(page.domain) as Record<
+      string,
+      RuntimeRuleHandler
+    >;
 
     this.form = createForm({
       schema: formSchema,

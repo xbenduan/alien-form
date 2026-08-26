@@ -2,6 +2,8 @@ import type { PageSchema, UiNode } from "@alien-form/engine";
 import type { IFormSchema } from "@alien-form/core";
 import type { Compiled, ModelSchema } from "./shared";
 
+export type ModelPageScene = "list" | "add" | "edit" | "detail";
+
 /** 深拷贝布局节点（layout 已是原生 UiNode，无插件标记）。 */
 function cloneLayout(node: UiNode): UiNode {
   return JSON.parse(JSON.stringify(node)) as UiNode;
@@ -29,12 +31,16 @@ function injectNode(node: UiNode, columns: unknown[], model: string, filterSchem
 }
 
 /** 页面级元信息：透传给注册组件（行操作按 openMode 决定交互形态）。 */
-function pageMeta(modelSchema: ModelSchema): Record<string, unknown> {
+function pageMeta(
+  modelSchema: ModelSchema,
+  scene: ModelPageScene,
+): Record<string, unknown> {
   return {
     model: modelSchema.meta.name,
     title: modelSchema.meta.title,
     singularLabel: modelSchema.meta.singularLabel,
     openMode: modelSchema.meta.openMode,
+    scene,
   };
 }
 
@@ -45,24 +51,18 @@ function pageMeta(modelSchema: ModelSchema): Record<string, unknown> {
  */
 export function buildListPageSchema(compiled: Compiled, modelSchema: ModelSchema): PageSchema {
   const modelName = modelSchema.meta.name;
-  let layout = cloneLayout(compiled.layout as UiNode);
-  layout = injectNode(layout, compiled.columns, modelName, compiled.filter as IFormSchema);
-
-  layout.children = [
-    ...(layout.children ?? []),
-    {
-      component: "record-overlay",
-      props: {
-        formSchema: compiled.form,
-        title: modelSchema.meta.title,
-      },
-    },
-  ];
+  const contentLayout = injectNode(
+    cloneLayout(compiled.layout as UiNode),
+    compiled.columns,
+    modelName,
+    compiled.filter as IFormSchema,
+  );
 
   return {
-    id: modelName,
+    id: `${modelName}:list`,
+    domain: modelName,
     title: modelSchema.meta.title,
-    meta: pageMeta(modelSchema),
+    meta: pageMeta(modelSchema, "list"),
     blocks: [
       {
         name: "main",
@@ -77,7 +77,16 @@ export function buildListPageSchema(compiled: Compiled, modelSchema: ModelSchema
         formSchema: compiled.form as IFormSchema,
       },
     ],
-    layout,
+    layout: {
+      component: "record-page",
+      children: [
+        contentLayout,
+        {
+          component: "record-overlay",
+          props: { title: modelSchema.meta.title },
+        },
+      ],
+    },
   };
 }
 
@@ -93,9 +102,10 @@ export function buildActionPageSchema(
 ): PageSchema {
   const modelName = modelSchema.meta.name;
   return {
-    id: `${modelName}-${mode}`,
+    id: `${modelName}:${mode}:${recordId ?? "new"}`,
+    domain: modelName,
     title: modelSchema.meta.title,
-    meta: pageMeta(modelSchema),
+    meta: pageMeta(modelSchema, mode),
     blocks: [
       {
         name: "form",
@@ -104,7 +114,7 @@ export function buildActionPageSchema(
       },
     ],
     layout: {
-      component: "page",
+      component: "record-page",
       children: [
         {
           component: "record-action-page",

@@ -26,7 +26,7 @@ export function ActionAdd({ node }: ComponentProps) {
   const runtime = useRuntime();
   const navigate = useNavigate();
   const openMode = useOpenMode("add");
-  const model = page.schema.id;
+  const model = page.domain;
   const targetBlock = (node.props?.targetBlock as string) ?? "form";
 
   const onClick = () => {
@@ -77,7 +77,7 @@ export function RowDetail() {
   const navigate = useNavigate();
   const page = usePage();
   const openMode = useOpenMode("detail");
-  const model = page.schema.id;
+  const model = page.domain;
   const id = String(row.id);
 
   const onClick = () => {
@@ -101,7 +101,7 @@ export function RowEdit() {
   const navigate = useNavigate();
   const page = usePage();
   const openMode = useOpenMode("edit");
-  const model = page.schema.id;
+  const model = page.domain;
   const id = String(row.id);
 
   const onClick = () => {

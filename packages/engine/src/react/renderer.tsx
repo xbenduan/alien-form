@@ -13,9 +13,9 @@ export function RenderNode({ node }: { node: UiNode }): React.ReactNode {
   const runtime = useRuntime();
   const page = usePage();
 
-  // 组件解析支持 per-model 覆盖：优先取以 page.id 为 domain 注册的组件，
+  // 组件解析支持 per-model 覆盖：优先取 PageSchema.domain 注册的组件，
   // 未命中回退 global。这让 register/{model}/index.ts 能覆盖特定模型的 UI 组件。
-  const descriptor = runtime.registry.components.resolve(node.component, page.id) as
+  const descriptor = runtime.registry.components.resolve(node.component, page.domain) as
     | ComponentDescriptor<React.ComponentType<ComponentProps>>
     | undefined;
 

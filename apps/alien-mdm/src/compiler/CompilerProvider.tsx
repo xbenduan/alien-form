@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo } from "react";
 import type { ReactNode } from "react";
+import { useRuntime } from "@alien-form/engine/react";
 import type { SchemaCompiler } from "./shared";
 import { createAppCompiler } from "./create-compiler";
 
@@ -14,7 +15,11 @@ export function CompilerProvider({
   domain?: string;
   children: ReactNode;
 }) {
-  const compiler = useMemo(() => createAppCompiler(locale, domain), [locale, domain]);
+  const runtime = useRuntime();
+  const compiler = useMemo(
+    () => createAppCompiler(runtime, locale, domain),
+    [runtime, locale, domain],
+  );
   return <CompilerContext.Provider value={compiler}>{children}</CompilerContext.Provider>;
 }
 

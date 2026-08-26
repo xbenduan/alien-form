@@ -6,6 +6,7 @@ import type { PageScope } from "./scope";
 
 export class PageRuntime {
   readonly id: string;
+  readonly domain: string;
   readonly schema: PageSchema;
   readonly runtime: Runtime;
   readonly store: AtomStore;
@@ -20,6 +21,7 @@ export class PageRuntime {
 
   constructor(schema: PageSchema, runtime: Runtime, compiled: CompiledPage) {
     this.id = schema.id;
+    this.domain = schema.domain;
     this.schema = schema;
     this.runtime = runtime;
     this.store = runtime.store;

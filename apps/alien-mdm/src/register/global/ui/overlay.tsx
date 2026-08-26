@@ -96,7 +96,7 @@ export function RecordOverlay({ node }: ComponentProps) {
     if (!valid) return;
 
     const values = formBlock.form.values();
-    const model = state.model ?? page.schema.id;
+    const model = state.model ?? page.domain;
 
     setSubmitting(true);
     try {
@@ -165,7 +165,7 @@ export function RecordOverlay({ node }: ComponentProps) {
   return (
     <Drawer
       title={title}
-      width={width}
+      size={width}
       open={state !== null}
       onClose={handleClose}
       loading={loading}

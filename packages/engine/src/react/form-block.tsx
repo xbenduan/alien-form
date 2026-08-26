@@ -18,12 +18,20 @@ export function FormBlockRenderer({ blockName }: FormBlockRendererProps) {
   }
 
   const components = useMemo(
-    () => runtime.registry.form.components.all(page.id) as Record<string, React.ComponentType<unknown>>,
-    [runtime, page.id],
+    () =>
+      runtime.registry.form.components.all(page.domain) as Record<
+        string,
+        React.ComponentType<unknown>
+      >,
+    [runtime, page.domain],
   );
   const decorators = useMemo(
-    () => runtime.registry.form.decorators.all(page.id) as Record<string, React.ComponentType<unknown>>,
-    [runtime, page.id],
+    () =>
+      runtime.registry.form.decorators.all(page.domain) as Record<
+        string,
+        React.ComponentType<unknown>
+      >,
+    [runtime, page.domain],
   );
 
   return (

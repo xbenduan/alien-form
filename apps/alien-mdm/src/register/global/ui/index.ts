@@ -15,8 +15,10 @@ import {
 } from "./actions";
 import { RecordOverlay } from "./overlay";
 import { RecordActionPageLayout } from "./action-page";
+import { RecordPage } from "./record-page";
 
 export function registerUIComponents(runtime: Runtime): void {
+  runtime.component("record-page", { component: RecordPage });
   runtime.component("page", { component: Page });
   runtime.component("treelayout", { component: TreeLayout, slots: ["tree", "filter", "table"] });
   runtime.component("filter", { component: Filter });
