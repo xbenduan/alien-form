@@ -34,6 +34,7 @@ export class Runtime {
   router?: RouterAdapter;
 
   private pages = new Map<string, PageRuntime>();
+  private pageSequence = 0;
 
   constructor(options: RuntimeOptions = {}) {
     this.store = options.store ?? new AtomStore();
@@ -118,22 +119,26 @@ export class Runtime {
     const compiled = await this.compiler.compile(schema, {
       locale: this.locale,
       runtime: this,
+      domain: schema.domain,
       store: {},
     });
-    const page = new PageRuntime(schema, this, compiled as CompiledPage);
-    this.pages.set(schema.id, page);
+    const page = new PageRuntime(
+      schema,
+      this,
+      compiled as CompiledPage,
+      `page-${++this.pageSequence}`,
+    );
+    this.pages.set(page.instanceId, page);
     return page;
   }
 
-  getPage(id: string): PageRuntime | undefined {
-    return this.pages.get(id);
+  getPage(instanceId: string): PageRuntime | undefined {
+    return this.pages.get(instanceId);
   }
 
-  destroyPage(id: string): void {
-    const page = this.pages.get(id);
-    if (page) {
-      page.unmount();
-      this.pages.delete(id);
-    }
+  destroyPage(page: PageRuntime): void {
+    if (this.pages.get(page.instanceId) !== page) return;
+    page.unmount();
+    this.pages.delete(page.instanceId);
   }
 }

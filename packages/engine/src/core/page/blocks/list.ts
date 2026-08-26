@@ -76,7 +76,15 @@ export class ListBlockRuntime extends BlockRuntime {
 
   setFilterPatch(patch: Record<string, unknown>): void {
     this.store.batch(() => {
-      this.filters.set({ ...this.filters.get(), ...patch });
+      const filters = { ...this.filters.get() };
+      for (const [key, value] of Object.entries(patch)) {
+        if (value === undefined) {
+          delete filters[key];
+        } else {
+          filters[key] = value;
+        }
+      }
+      this.filters.set(filters);
       this.pagination.set({ ...this.pagination.get(), current: 1 });
       this.refresh();
     });

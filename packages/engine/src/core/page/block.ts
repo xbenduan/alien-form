@@ -21,7 +21,7 @@ export abstract class BlockRuntime {
   }
 
   protected bridgeAtom<T>(key: string, initial: T): Atom<T> {
-    return this.store.atom(`page:${this.page.id}.${this.name}.${key}`, initial);
+    return this.store.atom(`page:${this.page.instanceId}.${this.name}.${key}`, initial);
   }
 
   protected bridge<T>(key: string, source: () => T): Atom<T> {

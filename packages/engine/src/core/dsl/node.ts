@@ -24,7 +24,7 @@ export interface BlockSchema {
 }
 
 export interface PageSchema {
-  /** 页面实例标识，用于 runtime 生命周期与 store 隔离。 */
+  /** 逻辑页面标识，用于路由和 React 重挂载；运行时隔离由 PageRuntime.instanceId 负责。 */
   id: string;
   /** 注册域，组件/表单处理器优先从该 domain 解析，再回退 global。 */
   domain: string;

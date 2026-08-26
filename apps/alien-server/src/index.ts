@@ -4,18 +4,25 @@ import { cors } from "hono/cors";
 import { bootstrap } from "./db/migrate.ts";
 import { schemaRoutes } from "./routes/schemas.ts";
 import { recordRoutes } from "./routes/records.ts";
-import { authRoutes } from "./routes/auth.ts";
+import { authRoutes, requireSession, type AuthContext } from "./routes/auth.ts";
 
 // 启动即建表 + 注册内置 schema（幂等）。演示数据用 `node script/seed.js` 灌入。
 bootstrap();
 
-const app = new Hono();
+const app = new Hono<{ Variables: AuthContext }>();
 
 // 允许前端 dev 跨域（vite 也会代理 /api，这里双保险）
-app.use("/api/*", cors());
+app.use(
+  "/api/*",
+  cors({ origin: "*", allowHeaders: ["Authorization", "Content-Type"] }),
+);
 
 app.get("/api/health", (c) => c.json({ ok: true }));
 app.route("/api/auth", authRoutes);
+app.use("/api/schemas", requireSession);
+app.use("/api/schemas/*", requireSession);
+app.use("/api/records", requireSession);
+app.use("/api/records/*", requireSession);
 app.route("/api/schemas", schemaRoutes);
 app.route("/api/records", recordRoutes);
 

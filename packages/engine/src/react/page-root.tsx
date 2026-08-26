@@ -16,11 +16,15 @@ export function PageRoot({ schema }: { schema: PageSchema }) {
 
   useEffect(() => {
     let cancelled = false;
+    let createdPage: PageRuntime | undefined;
+    setPage(null);
+    setError(null);
     runtime
       .createPage(schema)
       .then((p) => {
+        createdPage = p;
         if (cancelled) {
-          p.unmount();
+          runtime.destroyPage(p);
           return;
         }
         p.mount();
@@ -31,7 +35,7 @@ export function PageRoot({ schema }: { schema: PageSchema }) {
       });
     return () => {
       cancelled = true;
-      runtime.destroyPage(schema.id);
+      if (createdPage) runtime.destroyPage(createdPage);
     };
   }, [schema, runtime]);
 

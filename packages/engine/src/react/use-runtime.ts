@@ -1,4 +1,4 @@
-import { useBlockContext, usePage, useRuntime } from "./context";
+import { useBlockContext, usePage } from "./context";
 import { useAtom } from "./use-atom";
 import type { BlockRuntime } from "../core/page/block";
 import {
@@ -57,13 +57,13 @@ export function useFormBlock(name?: string) {
 }
 
 export function useService(code: string) {
-  const runtime = useRuntime();
-  const svc = runtime.registry.services.resolve(code);
+  const page = usePage();
+  const svc = page.runtime.registry.services.resolve(code, page.domain);
   if (!svc) throw new Error(`[alien-page] service "${code}" not registered`);
   return svc;
 }
 
 export function useConstant<T = unknown>(key: string): T | undefined {
-  const runtime = useRuntime();
-  return runtime.registry.constants.resolve(key) as T | undefined;
+  const page = usePage();
+  return page.runtime.registry.constants.resolve(key, page.domain) as T | undefined;
 }

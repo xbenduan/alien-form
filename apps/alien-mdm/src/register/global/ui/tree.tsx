@@ -1,6 +1,7 @@
 import { Input, Card } from "antd";
 import { useMemo, useState } from "react";
-import { useBlock, useRuntime, type ComponentProps } from "@alien-form/engine/react";
+import { useBlock, useService, type ComponentProps } from "@alien-form/engine/react";
+import { ListBlockRuntime } from "@alien-form/engine";
 import { Tree, collectExpandable } from "../../../components/tree";
 import { refValue } from "../../../compiler/shared";
 import type { TreeNode } from "../../../components/tree";
@@ -9,8 +10,8 @@ import { useQuery } from "@tanstack/react-query";
 import styles from "../ui.module.css";
 
 export function TreePanel({ node }: ComponentProps) {
-  const runtime = useRuntime();
   const block = useBlock(node.block ?? "main");
+  const subtreeService = useService("records.subtree");
   const props = node.props ?? {};
 
   const model = String(props.model ?? "");
@@ -25,9 +26,9 @@ export function TreePanel({ node }: ComponentProps) {
     queryKey: ["records", model, "subtree", idField, parentField],
     enabled: Boolean(model),
     queryFn: async () => {
-      const svc = runtime.registry.services.resolve("records.subtree");
-      if (!svc) throw new Error("records.subtree not registered");
-      return (await svc.send({ model, idField, parentField })) as { list: ModelRecord[] };
+      return (await subtreeService.send({ model, idField, parentField })) as {
+        list: ModelRecord[];
+      };
     },
   });
 
@@ -104,10 +105,10 @@ export function TreePanel({ node }: ComponentProps) {
           onExpand={setExpandedKeys}
           onSelect={(key) => {
             setSelectedKey(key);
-            const listBlock = block as unknown as {
-              setFilterPatch: (source: string, patch: Record<string, unknown>) => void;
-            };
-            listBlock.setFilterPatch("layout", key ? { [targetField]: descendants(key) } : {});
+            if (!(block instanceof ListBlockRuntime)) {
+              throw new Error("TreePanel requires a list block");
+            }
+            block.setFilterPatch({ [targetField]: key ? descendants(key) : undefined });
           }}
         />
       </div>

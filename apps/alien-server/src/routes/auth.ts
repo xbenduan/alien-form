@@ -1,5 +1,6 @@
 import { pbkdf2Sync, randomBytes, timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
+import { createMiddleware } from "hono/factory";
 import { findRecordByField, updateRecord } from "../db/record-repo.ts";
 import { getSchema } from "../db/schema-repo.ts";
 import type { ModelRecord, ModelSchema } from "../schema/types.ts";
@@ -10,7 +11,7 @@ const PASSWORD_ITERATIONS = 120_000;
 const PASSWORD_KEY_LENGTH = 32;
 const PASSWORD_DIGEST = "sha256";
 
-export const authRoutes = new Hono();
+export const authRoutes = new Hono<{ Variables: AuthContext }>();
 
 interface LoginBody {
   provider?: string;
@@ -20,11 +21,17 @@ interface LoginBody {
   openid?: string;
 }
 
-interface Session {
+export interface Session {
   token: string;
   userId: string;
   provider: string;
   createdAt: number;
+  userType?: string;
+  roleIds: string[];
+}
+
+export interface AuthContext {
+  session: Session;
 }
 
 interface AuthProvider {
@@ -33,6 +40,16 @@ interface AuthProvider {
 }
 
 const sessions = new Map<string, Session>();
+
+export const requireSession = createMiddleware<{ Variables: AuthContext }>(
+  async (c, next) => {
+    const token = bearerToken(c.req.header("authorization"));
+    const session = token ? sessions.get(token) : undefined;
+    if (!session) return c.json({ error: "未登录或会话已失效" }, 401);
+    c.set("session", session);
+    await next();
+  },
+);
 
 function publicUser(user: ModelRecord): ModelRecord {
   const { passwordHash: _passwordHash, openid: _openid, ...safeUser } = user;
@@ -109,6 +126,10 @@ authRoutes.post("/login", async (c) => {
     userId: user.id,
     provider: provider.name,
     createdAt: Date.now(),
+    userType: typeof user.userType === "string" ? user.userType : undefined,
+    roleIds: Array.isArray(user.roleIds)
+      ? user.roleIds.filter((roleId): roleId is string => typeof roleId === "string")
+      : [],
   });
   const latestUser =
     updateRecord(userSchema, user.id, { lastLoginAt: new Date().toISOString() }) ?? user;

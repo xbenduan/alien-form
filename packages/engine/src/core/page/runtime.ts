@@ -5,6 +5,8 @@ import { createBlock, type BlockRuntime } from "./blocks";
 import type { PageScope } from "./scope";
 
 export class PageRuntime {
+  /** 唯一运行时实例标识，供 Runtime 和 AtomStore 隔离并存页面。 */
+  readonly instanceId: string;
   readonly id: string;
   readonly domain: string;
   readonly schema: PageSchema;
@@ -19,7 +21,13 @@ export class PageRuntime {
   private blocks = new Map<string, BlockRuntime>();
   private disposers: (() => void)[] = [];
 
-  constructor(schema: PageSchema, runtime: Runtime, compiled: CompiledPage) {
+  constructor(
+    schema: PageSchema,
+    runtime: Runtime,
+    compiled: CompiledPage,
+    instanceId: string,
+  ) {
+    this.instanceId = instanceId;
     this.id = schema.id;
     this.domain = schema.domain;
     this.schema = schema;
@@ -27,9 +35,9 @@ export class PageRuntime {
     this.store = runtime.store;
     this.compiled = compiled;
 
-    this.routeParams = this.store.atom(`page:${schema.id}._routeParams`, {});
-    this.query = this.store.atom(`page:${schema.id}._query`, {});
-    this.mounted = this.store.atom(`page:${schema.id}._mounted`, false);
+    this.routeParams = this.store.atom(`page:${this.instanceId}._routeParams`, {});
+    this.query = this.store.atom(`page:${this.instanceId}._query`, {});
+    this.mounted = this.store.atom(`page:${this.instanceId}._mounted`, false);
 
     for (const blockSchema of schema.blocks) {
       const block = createBlock(
@@ -56,13 +64,13 @@ export class PageRuntime {
   }
 
   async service(code: string, params?: unknown): Promise<unknown> {
-    const svc = this.runtime.registry.services.resolve(code);
+    const svc = this.runtime.registry.services.resolve(code, this.domain);
     if (!svc) throw new Error(`[alien-page] service "${code}" not registered`);
     return svc.send(params, { page: { id: this.id }, runtime: this.runtime });
   }
 
   fn(code: string, ...args: unknown[]): unknown {
-    const fn = this.runtime.registry.functions.resolve(code);
+    const fn = this.runtime.registry.functions.resolve(code, this.domain);
     if (!fn) throw new Error(`[alien-page] function "${code}" not registered`);
     return fn.handler(...args);
   }
@@ -72,7 +80,7 @@ export class PageRuntime {
       block: (name: string) => this.block(name),
       service: (code: string, params?: unknown) => this.service(code, params),
       fn: (code: string, ...args: unknown[]) => this.fn(code, ...args),
-      constant: (key: string) => this.runtime.registry.constants.resolve(key),
+      constant: (key: string) => this.runtime.registry.constants.resolve(key, this.domain),
       params: this.routeParams.get(),
       query: this.query.get(),
     };
@@ -87,7 +95,7 @@ export class PageRuntime {
     this.disposers.forEach((d) => d());
     this.disposers = [];
     this.blocks.forEach((b) => b.dispose());
-    this.store.dispose(`page:${this.id}`);
+    this.store.dispose(`page:${this.instanceId}`);
     this.mounted.set(false);
   }
 }

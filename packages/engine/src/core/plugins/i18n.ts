@@ -14,7 +14,7 @@ export const i18nPlugin: TranslatorPlugin = {
   resolve(marker, ctx) {
     const { key, fallback } = marker as I18nMarker;
     if (typeof key !== "string") return fallback ?? "";
-    const dict = ctx.runtime.registry.constants.resolve("i18n") as
+    const dict = ctx.runtime.registry.constants.resolve("i18n", ctx.domain) as
       | Record<string, Record<string, string>>
       | undefined;
     return dict?.[key]?.[ctx.locale] ?? fallback ?? key;

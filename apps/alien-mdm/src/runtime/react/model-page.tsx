@@ -58,7 +58,7 @@ function ModelRuntimePageContent({
     );
   }
 
-  return <PageRoot schema={pageSchema} />;
+  return <PageRoot key={pageSchema.id} schema={pageSchema} />;
 }
 
 /**

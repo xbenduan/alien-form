@@ -1,9 +1,10 @@
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { PropsWithChildren } from "react";
 import { getAppRuntime } from "../../../runtime/create-runtime";
 import type { AuthUser, LoginPayload, LoginResult } from "../../../runtime";
 
 const AUTH_STORAGE_KEY = "alien-mdm-auth";
+const UNAUTHORIZED_EVENT = "alien-mdm:unauthorized";
 
 interface StoredAuth {
   token: string;
@@ -33,6 +34,12 @@ function readStoredAuth(): StoredAuth | undefined {
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [auth, setAuth] = useState<StoredAuth | undefined>(() => readStoredAuth());
+
+  useEffect(() => {
+    const handleUnauthorized = () => setAuth(undefined);
+    window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+  }, []);
 
   const handleLogin = useCallback(async (payload: LoginPayload) => {
     const service = getAppRuntime().registry.services.resolve("auth.login");

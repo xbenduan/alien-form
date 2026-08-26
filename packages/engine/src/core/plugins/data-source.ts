@@ -11,8 +11,6 @@ interface DataSourceMarker extends PluginMarker {
   label?: string;
 }
 
-const REMOTE_SEARCH_THRESHOLD = 50;
-
 function cacheKey(model: string, valueKey: string, labelKey: string): string {
   return `${DATA_SOURCE_PLUGIN}:${model}:${valueKey}:${labelKey}`;
 }
@@ -30,7 +28,7 @@ export const dataSourcePlugin: TranslatorPlugin = {
     if (ctx.store[key]) return;
 
     const serviceCode = ds.service ?? "records.list";
-    const service = ctx.runtime.registry.services.resolve(serviceCode);
+    const service = ctx.runtime.registry.services.resolve(serviceCode, ctx.domain);
     if (!service) {
       throw new Error(`[alien-page] service "${serviceCode}" not registered for dataSource`);
     }

@@ -5,6 +5,8 @@ import type { PageRuntime } from "../page/runtime";
 export interface TranslateCtx {
   locale: string;
   runtime: Runtime;
+  /** 正在编译的页面注册域。 */
+  domain?: string;
   page?: PageRuntime;
   store: Record<string, unknown>;
 }
