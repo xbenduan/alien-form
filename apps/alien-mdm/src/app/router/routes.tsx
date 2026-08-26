@@ -7,8 +7,10 @@ const HomePage = lazy(() => import("../../domains/homepage/pages/index"));
 const LoginPage = lazy(() => import("../../domains/auth/pages/login"));
 const ModelListPage = lazy(() => import("../../domains/model/pages/list"));
 const ModelActionPage = lazy(() => import("../../domains/model/pages/actions"));
-const RecordListPage = lazy(() => import("../../domains/record/pages/list"));
-const RecordActionPage = lazy(() => import("../../domains/record/pages/actions"));
+const RecordListPage = lazy(() => import("../../record"));
+const RecordActionPage = lazy(() =>
+  import("../../record").then((m) => ({ default: m.RecordActionPage })),
+);
 
 export interface RouteMeta {
   path: string;

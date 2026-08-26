@@ -2,6 +2,22 @@ import { collectMarkers, deletePath, setPath } from "./walker";
 import type { ResolveCtx, TranslateCtx, TranslatorPlugin } from "./types";
 import type { PluginMarker } from "../dsl/marker";
 
+/**
+ * Deep clone that preserves functions (structuredClone throws on them).
+ * Schema translations may already carry runtime artifacts such as
+ * x-format bridges ({ input, output }) that are functions.
+ */
+function deepClone<T>(value: T): T {
+  if (value === null || typeof value !== "object") return value;
+  if (typeof value === "function") return value;
+  if (Array.isArray(value)) return value.map((item) => deepClone(item)) as unknown as T;
+  const result: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    result[key] = deepClone(item);
+  }
+  return result as T;
+}
+
 export class SchemaTranslator {
   private pluginMap = new Map<string, TranslatorPlugin>();
 
@@ -15,7 +31,7 @@ export class SchemaTranslator {
   }
 
   async translate<T>(input: T, ctx: TranslateCtx): Promise<T> {
-    const cloned = structuredClone(input);
+    const cloned = deepClone(input);
     const markers = collectMarkers(cloned);
 
     await this.prefetchAll(markers, ctx);

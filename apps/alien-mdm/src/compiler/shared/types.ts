@@ -7,17 +7,19 @@ import type { GroupConfig, TableColumn } from "../../types/shared";
 export type Scene = "form" | "filter" | "table";
 
 /**
- * 页面级 UI 协议节点。运行时只负责按 component 查找已注册实现。
+ * 页面级 UI 协议节点。协议唯一真相源为 runtime（@alien-form/engine 的 UiNode）：
+ * 节点即 { component, props?, children?, slots? }，不再包 $af-ui 插件标记。
+ * 运行时只负责按 component 查找已注册实现，编译产物可直接塞进 PageSchema.layout。
  *
  * 根节点（page / treelayout）通过 props.services 声明语义化 service 映射：
  * key 为布局语义（见 LAYOUT_SERVICE_KEYS），value 为已注册的 service code。
  * 子组件按语义 key 自取数据，不再在组件实现里写死 service code。
  */
 export interface AfUiNode {
-  plugin: "$af-ui";
   component: string;
   props?: Record<string, unknown>;
-  slot?: string;
+  block?: string;
+  visible?: string;
   children?: AfUiNode[];
   slots?: Record<string, AfUiNode[]>;
 }

@@ -2,6 +2,7 @@ import { Card } from "antd";
 import { useBlock, type ComponentProps } from "@alien-form/engine/react";
 import { FilterForm } from "../../../components/FilterForm";
 import type { IFormSchema } from "@alien-form/core";
+import styles from "../ui.module.css";
 
 export function Filter({ node }: ComponentProps) {
   const block = useBlock(node.block ?? "main");
@@ -10,7 +11,7 @@ export function Filter({ node }: ComponentProps) {
   if (!filterSchema) return null;
 
   return (
-    <Card styles={{ body: { padding: 16 } }}>
+    <Card className={styles.filterCard} styles={{ body: { padding: 16 } }}>
       <FilterForm
         filterSchema={filterSchema}
         onSearch={(values) => {

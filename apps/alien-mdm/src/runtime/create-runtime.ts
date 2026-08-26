@@ -2,8 +2,7 @@ import { Runtime } from "@alien-form/engine";
 import type { ServiceDescriptor } from "@alien-form/engine";
 import { MemoryRouterAdapter } from "@alien-form/engine";
 import { apiGet, apiSend } from "./transport";
-import { registerFormComponents } from "../register/global/form";
-import { registerUIComponents } from "../register/global/ui";
+import { registerAll } from "../register";
 import type {
   LoginPayload,
   LoginResult,
@@ -87,22 +86,6 @@ const authServices: ServiceDescriptor[] = [
   createService("auth.logout", (params) => apiSend<void>("POST", "/auth/logout", params)),
 ];
 
-const globalConstant = {
-  gender: [
-    { label: "男", value: "male" },
-    { label: "女", value: "female" },
-    { label: "未知", value: "unknown" },
-  ],
-  grades: [
-    { label: "一年级", value: "grade-1" },
-    { label: "二年级", value: "grade-2" },
-    { label: "三年级", value: "grade-3" },
-    { label: "四年级", value: "grade-4" },
-    { label: "五年级", value: "grade-5" },
-    { label: "六年级", value: "grade-6" },
-  ],
-};
-
 let appRuntime: Runtime | undefined;
 
 export function createAppRuntime(): Runtime {
@@ -117,12 +100,9 @@ export function createAppRuntime(): Runtime {
   }
 
   runtime.constant("i18n", {});
-  for (const [key, value] of Object.entries(globalConstant)) {
-    runtime.constant(key, value);
-  }
 
-  registerFormComponents(runtime);
-  registerUIComponents(runtime);
+  // 全局 + per-model 组件/常量注册（业务枚举常量在 register/global 内维护）。
+  registerAll(runtime);
 
   appRuntime = runtime;
   return runtime;

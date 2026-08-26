@@ -6,8 +6,9 @@ import {
   type ComponentProps,
 } from "@alien-form/engine/react";
 import { Table } from "../../../components/Table";
+import type { TableColumnAction } from "../../../components/Table";
 import type { TableColumn } from "../../../types/shared";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ModelRecord } from "../../../runtime/types";
 import { RowContext, TableContext, type TableContextValue } from "./table-context";
 import styles from "../ui.module.css";
@@ -21,6 +22,12 @@ export function TableLayout({ node }: ComponentProps) {
   const data = list.data as ModelRecord[];
 
   const model = node.props?.model as string | undefined;
+
+  // 叠加层提交（新增/编辑）后刷新列表。
+  useEffect(() => {
+    return runtime.bus.on("record:changed", () => list.refresh());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runtime]);
 
   const handleDelete = async (id: string) => {
     if (!model) return;
@@ -59,7 +66,7 @@ export function TableLayout({ node }: ComponentProps) {
         fixed: "right" as const,
         width: 180,
         render: (_: unknown, record: ModelRecord) => (
-          <RowContext.Provider value={record}>
+          <RowContext.Provider value={record as ModelRecord}>
             <Space size={4} wrap>
               {rowActions.children?.map((child, i) => (
                 <RenderNode key={i} node={child} />
@@ -67,14 +74,15 @@ export function TableLayout({ node }: ComponentProps) {
             </Space>
           </RowContext.Provider>
         ),
-      }
+      } as unknown as TableColumnAction
     : undefined;
 
   return (
     <TableContext.Provider value={tableCtx}>
       <Card className={styles.tableCard} styles={{ body: { padding: 0 } }}>
         <Table
-          columns={(actionColumn ? [...columns, actionColumn] : columns) as TableColumn[]}
+          columns={columns}
+          actionColumn={actionColumn}
           dataSource={data}
           loading={list.loading}
           total={list.total}

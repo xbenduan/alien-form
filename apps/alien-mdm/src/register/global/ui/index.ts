@@ -14,6 +14,7 @@ import {
   RowEdit,
 } from "./actions";
 import { RecordOverlay } from "./overlay";
+import { RecordActionPageLayout } from "./action-page";
 
 export function registerUIComponents(runtime: Runtime): void {
   runtime.component("page", { component: Page });
@@ -32,4 +33,5 @@ export function registerUIComponents(runtime: Runtime): void {
   runtime.component("edit", { component: RowEdit });
   runtime.component("delete", { component: RowDelete });
   runtime.component("record-overlay", { component: RecordOverlay });
+  runtime.component("record-action-page", { component: RecordActionPageLayout });
 }

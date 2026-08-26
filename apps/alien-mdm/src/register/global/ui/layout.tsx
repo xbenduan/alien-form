@@ -1,5 +1,5 @@
-import { Row, Col } from "antd";
 import { RenderNode, type ComponentProps } from "@alien-form/engine/react";
+import styles from "../ui.module.css";
 
 export function TreeLayout({ node, children }: ComponentProps) {
   const tree = node.slots?.tree ?? [];
@@ -7,13 +7,13 @@ export function TreeLayout({ node, children }: ComponentProps) {
   const table = node.slots?.table ?? [];
 
   return (
-    <Row gutter={16}>
-      <Col span={6}>
+    <div className={styles.treeLayout}>
+      <div className={styles.treePane}>
         {tree.map((n, i) => (
           <RenderNode key={i} node={n} />
         ))}
-      </Col>
-      <Col span={18}>
+      </div>
+      <div className={styles.treeContent}>
         {filter.map((n, i) => (
           <RenderNode key={i} node={n} />
         ))}
@@ -21,7 +21,7 @@ export function TreeLayout({ node, children }: ComponentProps) {
           <RenderNode key={i} node={n} />
         ))}
         {children as React.ReactNode}
-      </Col>
-    </Row>
+      </div>
+    </div>
   );
 }

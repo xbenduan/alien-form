@@ -1,30 +1,54 @@
 import { useEffect, useState } from "react";
-import { Drawer, App } from "antd";
+import { Drawer, Modal, App, Button, Space } from "antd";
 import {
   usePage,
   useRuntime,
   FormBlockRenderer,
   type ComponentProps,
 } from "@alien-form/engine/react";
-import type { IFormSchema } from "@alien-form/core";
 import type { ModelRecord } from "../../../runtime/types";
+import { refValue } from "../../../compiler/shared";
+import { FieldModeScope } from "../../../components/field-mode";
+import styles from "../ui.module.css";
+
+type OverlayMode = "add" | "edit" | "detail";
+type OverlayOpenMode = "drawer" | "modal";
 
 interface OverlayState {
-  mode: "add" | "edit" | "detail";
+  mode: OverlayMode;
   id?: string;
   model?: string;
   block?: string;
+  openMode?: OverlayOpenMode;
 }
 
+const TITLE_PREFIX: Record<OverlayMode, string> = {
+  add: "新建",
+  edit: "编辑",
+  detail: "详情",
+};
+
+/**
+ * 引用对象 {$ref, value, label} 拍回标量，交给 alien-form 叶子字段（拒绝对象）。
+ */
+function unwrapRecord(record: ModelRecord): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(record)) result[key] = refValue(val);
+  return result;
+}
+
+/**
+ * 记录叠加层：承接 drawer / modal 形态的新增/编辑/详情。
+ * add/edit/detail 均由 overlay:open 事件触发，detail 只读且无提交按钮。
+ */
 export function RecordOverlay({ node }: ComponentProps) {
   const { message } = App.useApp();
   const page = usePage();
   const runtime = useRuntime();
   const [state, setState] = useState<OverlayState | null>(null);
-  const [record, setRecord] = useState<ModelRecord | null>(null);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const formSchema = node.props?.formSchema as IFormSchema | undefined;
   const drawerTitle = node.props?.title as string | undefined;
   const width = (node.props?.width as number) ?? 480;
 
@@ -32,45 +56,41 @@ export function RecordOverlay({ node }: ComponentProps) {
     const off = runtime.bus.on("overlay:open", (payload) => {
       const p = payload as OverlayState;
       setState(p);
-      if (p.mode !== "add" && p.id) {
-        loadRecord(p.model!, p.id);
-      } else {
-        setRecord(null);
-      }
+      const blockName = p.block ?? "form";
+      const formBlock = page.block(blockName) as unknown as {
+        reset: () => void;
+        setValues: (v: Record<string, unknown>) => void;
+      };
+      formBlock.reset();
+      if (p.mode !== "add" && p.id) loadRecord(p.model!, p.id, blockName);
     });
     return off;
-  }, [runtime]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runtime, page]);
 
-  const loadRecord = async (model: string, id: string) => {
+  const loadRecord = async (model: string, id: string, blockName: string) => {
     setLoading(true);
     try {
       const svc = runtime.registry.services.resolve("records.get");
-      if (svc) {
-        const data = (await svc.send({ model, id })) as ModelRecord;
-        setRecord(data);
-      }
+      if (!svc) return;
+      const data = (await svc.send({ model, id })) as ModelRecord;
+      const formBlock = page.block(blockName) as unknown as {
+        setValues: (v: Record<string, unknown>) => void;
+      };
+      formBlock.setValues(unwrapRecord(data));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleClose = () => {
-    setState(null);
-    setRecord(null);
-  };
+  const handleClose = () => setState(null);
 
   const handleSubmit = async () => {
-    if (!state) return;
+    if (!state || state.mode === "detail") return;
     const blockName = state.block ?? "form";
     const formBlock = page.block(blockName) as unknown as {
       form: { values: () => Record<string, unknown>; validate: () => Promise<boolean> };
-      setValues: (v: Record<string, unknown>) => void;
     };
-
-    if (state.mode === "detail") {
-      handleClose();
-      return;
-    }
 
     const valid = await formBlock.form.validate();
     if (!valid) return;
@@ -78,6 +98,7 @@ export function RecordOverlay({ node }: ComponentProps) {
     const values = formBlock.form.values();
     const model = state.model ?? page.schema.id;
 
+    setSubmitting(true);
     try {
       if (state.mode === "add") {
         const svc = runtime.registry.services.resolve("records.create");
@@ -92,60 +113,70 @@ export function RecordOverlay({ node }: ComponentProps) {
       handleClose();
     } catch (e) {
       message.error(e instanceof Error ? e.message : "操作失败");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  useEffect(() => {
-    if (state && record && state.mode !== "add") {
-      const blockName = state.block ?? "form";
-      const formBlock = page.block(blockName) as unknown as {
-        setValues: (v: Record<string, unknown>) => void;
-      };
-      formBlock?.setValues(record);
-    }
-  }, [state, record, page]);
+  const mode = state?.mode ?? "add";
+  const isDetail = mode === "detail";
+  const isModal = state?.openMode === "modal";
+  const title = drawerTitle ? `${TITLE_PREFIX[mode]} ${drawerTitle}` : undefined;
 
-  const isDetail = state?.mode === "detail";
+  const footer = isDetail ? null : (
+    <Space>
+      <Button onClick={handleClose}>取消</Button>
+      <Button type="primary" loading={submitting} onClick={handleSubmit}>
+        {mode === "add" ? "创建" : "保存"}
+      </Button>
+    </Space>
+  );
+
+  const body =
+    state !== null ? (
+      <div
+        className={`${styles.recordActionOverlay}${
+          loading ? ` ${styles.recordActionOverlayLoading}` : ""
+        }`}
+      >
+        <FieldModeScope value={mode}>
+          <FormBlockRenderer blockName={state.block ?? "form"} />
+        </FieldModeScope>
+      </div>
+    ) : null;
+
+  if (isModal) {
+    return (
+      <Modal
+        centered
+        destroyOnHidden
+        title={title}
+        open={state !== null}
+        width={width}
+        loading={loading}
+        onCancel={handleClose}
+        footer={footer}
+      >
+        {body}
+      </Modal>
+    );
+  }
 
   return (
     <Drawer
-      title={
-        drawerTitle
-          ? `${state?.mode === "add" ? "新建" : state?.mode === "edit" ? "编辑" : "详情"} ${drawerTitle}`
-          : undefined
-      }
+      title={title}
       width={width}
       open={state !== null}
       onClose={handleClose}
       loading={loading}
-      destroyOnClose
+      destroyOnHidden
       footer={
         isDetail ? null : (
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-            <button
-              onClick={handleClose}
-              style={{ padding: "6px 16px", border: "1px solid #d9d9d9", borderRadius: 6, cursor: "pointer" }}
-            >
-              取消
-            </button>
-            <button
-              onClick={handleSubmit}
-              style={{
-                padding: "6px 16px",
-                background: "#1677ff",
-                color: "#fff",
-                border: "none",
-                borderRadius: 6,
-                cursor: "pointer",
-              }}
-            >
-              提交
-            </button>
-          </div>
+          <div className={styles.overlayFooter}>{footer}</div>
         )
       }
     >
-      {formSchema ? <FormBlockRenderer blockName={state?.block ?? "form"} /> : null}
+      {body}
     </Drawer>
   );
 }

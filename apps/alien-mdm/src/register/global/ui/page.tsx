@@ -1,6 +1,6 @@
-import { Flex } from "antd";
 import type { ComponentProps } from "@alien-form/engine/react";
+import styles from "../ui.module.css";
 
 export function Page({ children }: ComponentProps) {
-  return <Flex vertical gap={16}>{children as React.ReactNode}</Flex>;
+  return <div className={styles.pageStack}>{children as React.ReactNode}</div>;
 }

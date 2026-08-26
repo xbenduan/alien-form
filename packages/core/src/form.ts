@@ -1090,7 +1090,9 @@ export function createForm(config: FormConfig = {}): FormInstance {
         if (path === "") continue;
         const value = getDeepValue(values, path);
         if (value === undefined) continue;
-        if (isPrimitiveField(field)) field.setValue(value);
+        // 对称于 values() 的 output 桥接：写入前先过 x-format.input
+        // （如多值组件 数组 → JSON 字符串），避免把数组塞进只收标量的叶子字段。
+        if (isPrimitiveField(field)) field.setValue(formatFieldValue(ctx, field, "input", value));
         else if (isArrayField(field) && Array.isArray(value)) field.setRows(value);
       }
       endBatch();

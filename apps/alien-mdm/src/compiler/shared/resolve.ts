@@ -34,7 +34,7 @@ export async function prefetch(
   ctx: PrefetchCtx,
 ): Promise<void> {
   const map = pluginMap(plugins);
-  const markers = collectMarkers(schema).filter(({ marker }) => marker.plugin !== "$af-ui");
+  const markers = collectMarkers(schema);
   await Promise.all(
     markers.map(({ marker }) => {
       const plugin = map.get(marker.plugin);
@@ -57,11 +57,9 @@ export async function resolveScene(
   shared: SharedResolveState,
 ): Promise<ModelSchema> {
   const map = pluginMap(plugins);
-  const markers = collectMarkers(sceneSchema)
-    .filter(({ marker }) => marker.plugin !== "$af-ui")
-    .sort(
-      (a, b) => (map.get(a.marker.plugin)?.order ?? 0) - (map.get(b.marker.plugin)?.order ?? 0),
-    );
+  const markers = collectMarkers(sceneSchema).sort(
+    (a, b) => (map.get(a.marker.plugin)?.order ?? 0) - (map.get(b.marker.plugin)?.order ?? 0),
+  );
 
   for (const { marker, path } of markers) {
     const plugin = map.get(marker.plugin);

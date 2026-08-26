@@ -1,4 +1,13 @@
-/** 内置模型的默认页面布局；模型构建器也使用同一份协议形态生成布局。 */
+/**
+ * 内置模型的默认页面布局。
+ *
+ * 协议唯一真相源为 runtime（@alien-form/engine 的 UiNode）：节点即
+ * { component, props?, children?, slots? }，不再包 $af-ui 插件标记。
+ * 前端拿到 x-layout 后可直接塞进 PageSchema.layout 渲染。
+ *
+ * 根节点 props.services 声明「布局语义 → 已注册 service code」的映射，
+ * 数据类组件按语义 key 自取 service，不在组件实现里写死 service code。
+ */
 
 /** 记录型页面的默认 service 语义映射（与前端 DEFAULT_RECORD_SERVICES 同构）。 */
 const RECORD_SERVICES = {
@@ -18,30 +27,27 @@ const TREE_SERVICES = {
 };
 
 export const defaultLayout = {
-  plugin: "$af-ui",
   component: "page",
   props: { services: RECORD_SERVICES },
   children: [
-    { plugin: "$af-ui", component: "filter", props: { scope: "main" } },
+    { component: "filter", props: { scope: "main" } },
     {
-      plugin: "$af-ui",
       component: "table",
       props: { scope: "main" },
       slots: {
-        toolbarLeft: [{ plugin: "$af-ui", component: "action-batch-delete" }],
+        toolbarLeft: [{ component: "action-batch-delete" }],
         toolbarRight: [
-          { plugin: "$af-ui", component: "action-refresh" },
-          { plugin: "$af-ui", component: "action-add" },
+          { component: "action-refresh" },
+          { component: "action-add" },
         ],
       },
       children: [
         {
-          plugin: "$af-ui",
           component: "row-actions",
           children: [
-            { plugin: "$af-ui", component: "detail" },
-            { plugin: "$af-ui", component: "edit" },
-            { plugin: "$af-ui", component: "delete" },
+            { component: "detail" },
+            { component: "edit" },
+            { component: "delete" },
           ],
         },
       ],
@@ -55,13 +61,11 @@ export const defaultLayout = {
  * 这是「组织树驱动成员表」的通用形态——公司/员工等场景把 model/字段换掉即可复用。
  */
 export const schoolUserLayout = {
-  plugin: "$af-ui",
   component: "treelayout",
   props: { services: TREE_SERVICES },
   slots: {
     tree: [
       {
-        plugin: "$af-ui",
         component: "tree",
         props: {
           // 树取自部门模型，过滤打到用户模型的 deptCode 标量列。
@@ -78,27 +82,25 @@ export const schoolUserLayout = {
         },
       },
     ],
-    filter: [{ plugin: "$af-ui", component: "filter", props: { scope: "main" } }],
+    filter: [{ component: "filter", props: { scope: "main" } }],
     table: [
       {
-        plugin: "$af-ui",
         component: "table",
         props: { scope: "main" },
         slots: {
-          toolbarLeft: [{ plugin: "$af-ui", component: "action-batch-delete" }],
+          toolbarLeft: [{ component: "action-batch-delete" }],
           toolbarRight: [
-            { plugin: "$af-ui", component: "action-refresh" },
-            { plugin: "$af-ui", component: "action-add" },
+            { component: "action-refresh" },
+            { component: "action-add" },
           ],
         },
         children: [
           {
-            plugin: "$af-ui",
             component: "row-actions",
             children: [
-              { plugin: "$af-ui", component: "detail" },
-              { plugin: "$af-ui", component: "edit" },
-              { plugin: "$af-ui", component: "delete" },
+              { component: "detail" },
+              { component: "edit" },
+              { component: "delete" },
             ],
           },
         ],
@@ -112,13 +114,11 @@ export const schoolUserLayout = {
  * tree.hideLeaf=false 让班级这类叶子部门也出现在导航树里（用户页仍默认隐藏学生叶子）。
  */
 export const schoolDepartmentLayout = {
-  plugin: "$af-ui",
   component: "treelayout",
   props: { services: TREE_SERVICES },
   slots: {
     tree: [
       {
-        plugin: "$af-ui",
         component: "tree",
         props: {
           model: "school-department",
@@ -134,27 +134,25 @@ export const schoolDepartmentLayout = {
         },
       },
     ],
-    filter: [{ plugin: "$af-ui", component: "filter", props: { scope: "main" } }],
+    filter: [{ component: "filter", props: { scope: "main" } }],
     table: [
       {
-        plugin: "$af-ui",
         component: "table",
         props: { scope: "main" },
         slots: {
-          toolbarLeft: [{ plugin: "$af-ui", component: "action-batch-delete" }],
+          toolbarLeft: [{ component: "action-batch-delete" }],
           toolbarRight: [
-            { plugin: "$af-ui", component: "action-refresh" },
-            { plugin: "$af-ui", component: "action-add" },
+            { component: "action-refresh" },
+            { component: "action-add" },
           ],
         },
         children: [
           {
-            plugin: "$af-ui",
             component: "row-actions",
             children: [
-              { plugin: "$af-ui", component: "detail" },
-              { plugin: "$af-ui", component: "edit" },
-              { plugin: "$af-ui", component: "delete" },
+              { component: "detail" },
+              { component: "edit" },
+              { component: "delete" },
             ],
           },
         ],

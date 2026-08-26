@@ -11,31 +11,28 @@ import type {
 } from "./types";
 
 export const DEFAULT_LAYOUT: AfUiNode = {
-  plugin: "$af-ui",
   component: "page",
   props: { services: DEFAULT_RECORD_SERVICES },
   children: [
-    { plugin: "$af-ui", component: "filter", props: { scope: "main" } },
+    { component: "filter", props: { scope: "main" } },
     {
-      plugin: "$af-ui",
       component: "table",
       props: { scope: "main" },
       children: [
         {
-          plugin: "$af-ui",
           component: "row-actions",
           children: [
-            { plugin: "$af-ui", component: "detail" },
-            { plugin: "$af-ui", component: "edit" },
-            { plugin: "$af-ui", component: "delete" },
+            { component: "detail" },
+            { component: "edit" },
+            { component: "delete" },
           ],
         },
       ],
       slots: {
-        toolbarLeft: [{ plugin: "$af-ui", component: "action-batch-delete" }],
+        toolbarLeft: [{ component: "action-batch-delete" }],
         toolbarRight: [
-          { plugin: "$af-ui", component: "action-refresh" },
-          { plugin: "$af-ui", component: "action-add" },
+          { component: "action-refresh" },
+          { component: "action-add" },
         ],
       },
     },

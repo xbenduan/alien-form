@@ -12,7 +12,7 @@ interface LayoutJsonEditorProps {
 function isLayoutNode(value: unknown): value is AfUiNode {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const node = value as Partial<AfUiNode>;
-  if (node.plugin !== "$af-ui" || typeof node.component !== "string" || !node.component) {
+  if (typeof node.component !== "string" || !node.component) {
     return false;
   }
   if (node.children !== undefined) {
@@ -44,7 +44,7 @@ export function LayoutJsonEditor({ draft, layout, onChange }: LayoutJsonEditorPr
   const apply = () => {
     try {
       const parsed: unknown = JSON.parse(text);
-      if (!isLayoutNode(parsed)) throw new Error("x-layout 必须是合法的 $af-ui 节点树");
+      if (!isLayoutNode(parsed)) throw new Error("x-layout 必须是合法的 UiNode 节点树");
       onChange({ ...draft, layout: parsed });
       setError("");
       message.success("页面布局已更新");

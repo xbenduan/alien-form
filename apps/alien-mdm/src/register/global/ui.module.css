@@ -1,5 +1,28 @@
+.recordRoute {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.actionRoute {
+  width: min(100%, 1000px);
+  margin: 0 auto;
+  padding-bottom: 76px;
+}
+
+.pageStack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
 .treeLayout {
+  display: flex;
+  gap: 16px;
   min-height: 520px;
+  min-width: 0;
 }
 
 .treePane {
@@ -15,9 +38,16 @@
   min-width: 0;
 }
 
+.filterCard {
+  border-color: rgba(22, 119, 255, 0.12);
+  border-radius: 8px;
+}
+
 .treeCard {
   height: 100%;
   min-height: 520px;
+  border-color: rgba(22, 119, 255, 0.12);
+  border-radius: 8px;
 }
 
 .treeCard :global(.ant-card-head) {
@@ -65,4 +95,77 @@
   min-height: 48px;
   padding: 10px 16px;
   width: 100%;
+}
+
+.actionBody {
+  min-width: 0;
+  min-height: 320px;
+  padding: 28px 16px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.actionLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+}
+
+.actionFooterRoot {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  width: 100%;
+  pointer-events: none;
+}
+
+.actionFooter {
+  display: flex;
+  justify-content: flex-end;
+  width: min(calc(100% - 48px), 1000px);
+  margin: 0 auto;
+  padding: 12px 16px;
+  border: 1px solid rgba(22, 119, 255, 0.12);
+  border-radius: 8px 8px 0 0;
+  background: #fff;
+  box-shadow: 0 -4px 16px rgba(23, 32, 51, 0.06);
+  pointer-events: auto;
+}
+
+.recordActionOverlay {
+  min-height: 240px;
+}
+
+.recordActionOverlayLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.overlayFooter {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .treeLayout {
+    flex-direction: column;
+  }
+
+  .treePane {
+    flex-basis: auto;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .treeCard {
+    min-height: 320px;
+  }
+
+  .treeCard :global(.ant-card-body) {
+    min-height: 270px;
+  }
 }

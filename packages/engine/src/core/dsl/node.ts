@@ -26,6 +26,8 @@ export interface BlockSchema {
 export interface PageSchema {
   id: string;
   title?: string;
+  /** 页面级元信息（如 openMode、标签），运行时不解释，透传给注册组件消费。 */
+  meta?: Record<string, unknown>;
   blocks: BlockSchema[];
   layout: UiNode;
 }
