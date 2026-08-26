@@ -1,13 +1,21 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Alert, Empty, Segmented, Typography } from "antd";
-import { SchemaForm } from "../../../components/SchemaForm";
+import { FormRenderer, useCreateForm, type IFormSchema } from "@alien-form/react";
 import { useCompiledSchema } from "../../../compiler";
 import type { ModelSchema } from "../types";
 import { FieldsetCard } from "../../../components";
+import { fieldComponents } from "../../../register/global/form/registry";
+import { fieldDecorators } from "../../../components/field-registry";
 
 interface SchemaPreviewProps {
   schema?: ModelSchema;
   error?: string;
+}
+
+function PreviewForm({ schema, formKey }: { schema: IFormSchema; formKey: string }) {
+  const scope = useMemo(() => ({ mode: "add" }), []);
+  const form = useCreateForm({ schema, scope }, [schema, formKey, scope]);
+  return <FormRenderer form={form} components={fieldComponents} decorators={fieldDecorators} />;
 }
 
 /** schema 预览：表单效果预览 + JSON 源码切换。预览不拉真实外键（resolveData=false）。 */
@@ -38,7 +46,7 @@ export function SchemaPreview({ schema, error }: SchemaPreviewProps) {
     >
       {tab === "form" ? (
         compiled.data ? (
-          <SchemaForm mode="add" formSchema={compiled.data.form} formKey={schema.meta.name} />
+          <PreviewForm schema={compiled.data.form} formKey={schema.meta.name} />
         ) : (
           <Empty description="正在生成预览…" />
         )

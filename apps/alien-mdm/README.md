@@ -46,7 +46,7 @@ apps/alien-cms/src/
 packages/shared/src/
   adapter/                # 通用 adapter registry、catalog 与 scene resolver
   adapters/               # Ant Design 组件适配
-  components/             # SchemaForm、SchemaTable、SchemaDetail
+  components/             # 页面状态、字段展示、复杂字段详情等应用组件
   scenes/                 # form、filter、table 场景实现
 ```
 

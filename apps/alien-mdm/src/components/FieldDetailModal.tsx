@@ -1,7 +1,13 @@
 import { Modal, Empty } from "antd";
 import { useMemo } from "react";
-import type { IFieldSchema, IFormSchema } from "@alien-form/react";
-import { SchemaRenderer } from "./SchemaRenderer";
+import {
+  FormRenderer,
+  useCreateForm,
+  type IFieldSchema,
+  type IFormSchema,
+} from "@alien-form/react";
+import { fieldComponents } from "../register/global/form/registry";
+import { fieldDecorators } from "./field-registry";
 
 export interface FieldDetailModalProps {
   open: boolean;
@@ -11,6 +17,25 @@ export interface FieldDetailModalProps {
   /** 该字段的值。 */
   value?: unknown;
   onClose: () => void;
+}
+
+function DetailFieldForm({
+  schema,
+  value,
+  formKey,
+}: {
+  schema: IFormSchema;
+  value: unknown;
+  formKey: string;
+}) {
+  const scope = useMemo(() => ({ mode: "detail" }), []);
+  const form = useCreateForm({ schema, initialValues: { __detail__: value }, scope }, [
+    schema,
+    value,
+    formKey,
+    scope,
+  ]);
+  return <FormRenderer form={form} components={fieldComponents} decorators={fieldDecorators} />;
 }
 
 /**
@@ -39,12 +64,7 @@ export function FieldDetailModal({ open, title, field, value, onClose }: FieldDe
       onCancel={onClose}
     >
       {schema ? (
-        <SchemaRenderer
-          mode="detail"
-          schema={schema}
-          initialValues={{ __detail__: value }}
-          formKey={open ? "open" : "closed"}
-        />
+        <DetailFieldForm schema={schema} formKey={open ? "open" : "closed"} value={value} />
       ) : (
         <Empty description="暂无字段详情" />
       )}

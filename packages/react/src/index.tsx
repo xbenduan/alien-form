@@ -11,6 +11,7 @@ import {
   useCallback,
   useSyncExternalStore,
   memo,
+  Suspense,
 } from "react";
 import type React from "react";
 import { effect, signal as createSignal } from "@alien-form/core";
@@ -175,6 +176,29 @@ interface FormContextValue {
 
 const FormContext = createContext<FormContextValue | null>(null);
 export { FormContext };
+
+export interface FormRendererProps {
+  form: FormInstance;
+  components?: ComponentMap;
+  decorators?: DecoratorMap;
+  fallback?: React.ReactNode;
+}
+
+/** 使用已创建的 FormInstance 渲染 schema 字段树。 */
+export function FormRenderer({
+  form,
+  components,
+  decorators,
+  fallback = null,
+}: FormRendererProps): React.ReactElement {
+  return (
+    <FormProvider form={form} components={components} decorators={decorators}>
+      <Suspense fallback={fallback}>
+        <SchemaField />
+      </Suspense>
+    </FormProvider>
+  );
+}
 
 export function useCreateForm(
   config: FormConfig = {},

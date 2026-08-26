@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { FormProvider, SchemaField } from "@alien-form/react";
+import { FormRenderer } from "@alien-form/react";
 import { useRuntime, usePage } from "./context";
 import { FormBlockRuntime } from "../core/page/blocks/form";
 export interface FormBlockRendererProps {
@@ -34,9 +34,5 @@ export function FormBlockRenderer({ blockName }: FormBlockRendererProps) {
     [runtime, page.domain],
   );
 
-  return (
-    <FormProvider form={block.form} components={components} decorators={decorators}>
-      <SchemaField />
-    </FormProvider>
-  );
+  return <FormRenderer form={block.form} components={components} decorators={decorators} />;
 }
