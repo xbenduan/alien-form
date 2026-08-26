@@ -22,10 +22,7 @@ export function registerUIComponents(runtime: Runtime): void {
   runtime.component("page", { component: Page });
   runtime.component("treelayout", { component: TreeLayout, slots: ["tree", "filter", "table"] });
   runtime.component("filter", { component: Filter });
-  runtime.component("table", {
-    component: TableLayout,
-    slots: ["toolbarLeft", "toolbarRight"],
-  });
+  runtime.component("table", { component: TableLayout, slots: ["toolbarLeft", "toolbarRight"] });
   runtime.component("tree", { component: TreePanel });
   runtime.component("action-add", { component: ActionAdd });
   runtime.component("action-refresh", { component: ActionRefresh });

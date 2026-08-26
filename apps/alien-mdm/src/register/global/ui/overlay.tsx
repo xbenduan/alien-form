@@ -3,6 +3,7 @@ import { Drawer, Modal, App, Button, Space } from "antd";
 import {
   usePage,
   useRuntime,
+  useConstant,
   FormBlockRenderer,
   type ComponentProps,
 } from "@alien-form/engine/react";
@@ -20,12 +21,6 @@ interface OverlayState {
   block?: string;
   openMode?: OverlayOpenMode;
 }
-
-const TITLE_PREFIX: Record<OverlayMode, string> = {
-  add: "新建",
-  edit: "编辑",
-  detail: "详情",
-};
 
 /**
  * 引用对象 {$ref, value, label} 拍回标量，交给 alien-form 叶子字段（拒绝对象）。
@@ -47,6 +42,7 @@ export function RecordOverlay({ node }: ComponentProps) {
   const [state, setState] = useState<OverlayState | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const TITLE_PREFIX = useConstant<Record<OverlayMode, string>>("overlayTitlePrefix");
 
   const drawerTitle = node.props?.title as string | undefined;
   const width = (node.props?.width as number) ?? 480;
@@ -122,7 +118,7 @@ export function RecordOverlay({ node }: ComponentProps) {
   const mode = state?.mode ?? "add";
   const isDetail = mode === "detail";
   const isModal = state?.openMode === "modal";
-  const title = drawerTitle ? `${TITLE_PREFIX[mode]} ${drawerTitle}` : undefined;
+  const title = drawerTitle ? `${TITLE_PREFIX?.[mode] ?? ""} ${drawerTitle}`.trim() : undefined;
 
   const footer = isDetail ? null : (
     <Space>
@@ -169,11 +165,7 @@ export function RecordOverlay({ node }: ComponentProps) {
       onClose={handleClose}
       loading={loading}
       destroyOnHidden
-      footer={
-        isDetail ? null : (
-          <div className={styles.overlayFooter}>{footer}</div>
-        )
-      }
+      footer={isDetail ? null : <div className={styles.overlayFooter}>{footer}</div>}
     >
       {body}
     </Drawer>
