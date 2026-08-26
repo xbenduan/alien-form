@@ -1,31 +1,24 @@
 import type { ReactNode } from "react";
-import { Suspense } from "react";
 import { Table as AntTable } from "antd";
 import type { TablePaginationConfig, TableProps } from "antd";
 import type { ColumnsType, ColumnType } from "antd/es/table";
 import type { SchemaRecord, TableColumn } from "../types/shared";
-import { fieldComponents } from "../register/global/form/registry";
 import { DisplayValue } from "../components/DisplayValue";
+import { TableComplexCell } from "../components/complex-frame";
 
-/** 依据列定义渲染单元格：复杂列走组件 isTable，叶子列走对应组件的 detail 只读态。 */
+/** 表格不挂载字段组件；统一使用值展示，复杂字段进入独立详情页。 */
 function renderCell(column: TableColumn, value: unknown): ReactNode {
-  const Component = column.component ? fieldComponents[column.component] : undefined;
-
-  if (column.complex && Component) {
-    return (
-      <Suspense fallback={<DisplayValue value={value} ellipsis={column.ellipsis} />}>
-        <Component value={value} schema={column.field} mode="detail" isTable title={column.title} />
-      </Suspense>
-    );
+  if (column.complex) {
+    return <TableComplexCell value={value} schema={column.field} title={column.title} />;
   }
-  if (Component) {
-    return (
-      <Suspense fallback={<DisplayValue value={value} dataSource={column.dataSource} />}>
-        <Component value={value} dataSource={column.dataSource} mode="detail" />
-      </Suspense>
-    );
-  }
-  return <DisplayValue value={value} dataSource={column.dataSource} ellipsis={column.ellipsis} />;
+  return (
+    <DisplayValue
+      value={value}
+      dataSource={column.dataSource}
+      ellipsis={column.ellipsis}
+      format={column.component === "DateInput" ? "date" : undefined}
+    />
+  );
 }
 
 export interface TableColumnAction extends ColumnType<SchemaRecord> {}

@@ -1,6 +1,7 @@
 import type { BlockRuntime } from "./block";
 
 export interface PageScope {
+  mode?: string;
   block: (name: string) => BlockRuntime;
   service: (code: string, params?: unknown) => Promise<unknown>;
   fn: (code: string, ...args: unknown[]) => unknown;

@@ -1,8 +1,7 @@
 import { useCreateForm, FormProvider, SchemaField } from "@alien-form/react";
 import type { FormInstance, IFormSchema } from "@alien-form/react";
-import { createContext, Suspense, useContext, useEffect, useRef } from "react";
+import { createContext, Suspense, useContext, useEffect, useMemo, useRef } from "react";
 import type { FieldMode, SchemaRecord } from "../types/shared";
-import { FieldModeScope } from "./field-mode";
 import { fieldComponents } from "../register/global/form/registry";
 import { fieldDecorators } from "./field-registry";
 
@@ -44,14 +43,18 @@ export function SchemaRenderer({
     preserveValuesOnRebuild && previousFormRef.current
       ? previousFormRef.current.values()
       : initialValues;
+  const scope = useMemo(
+    () => ({ ...resources.scope, mode }),
+    [mode, resources.scope],
+  );
   const form = useCreateForm(
     {
       schema,
       initialValues: rebuildInitialValues,
-      scope: resources.scope,
+      scope,
       handlers: resources.handlers as never,
     },
-    [mode, schema, formKey, resources.scope, resources.handlers],
+    [schema, formKey, scope, resources.handlers],
   );
   useEffect(() => {
     previousFormRef.current = form;
@@ -59,16 +62,14 @@ export function SchemaRenderer({
   }, [form, onFormReady]);
 
   return (
-    <FieldModeScope value={mode}>
-      <FormProvider
-        form={form}
-        components={{ ...fieldComponents, ...resources.components } as never}
-        decorators={{ ...fieldDecorators, ...resources.decorators } as never}
-      >
-        <Suspense fallback={null}>
-          <SchemaField />
-        </Suspense>
-      </FormProvider>
-    </FieldModeScope>
+    <FormProvider
+      form={form}
+      components={{ ...fieldComponents, ...resources.components } as never}
+      decorators={{ ...fieldDecorators, ...resources.decorators } as never}
+    >
+      <Suspense fallback={null}>
+        <SchemaField />
+      </Suspense>
+    </FormProvider>
   );
 }

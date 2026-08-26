@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import { QuestionCircleOutlined } from "@ant-design/icons";
-import type { FieldError, ValidateStatus } from "@alien-form/react";
+import { useFormScope, type FieldError, type ValidateStatus } from "@alien-form/react";
 import { Tooltip } from "antd";
-import { useFieldMode } from "./field-mode";
+import type { FormScope } from "../types/shared";
 
 interface FormItemProps {
   label?: string;
@@ -22,7 +22,7 @@ export function FormItem({
   validateStatus,
   children,
 }: FormItemProps) {
-  const mode = useFieldMode();
+  const { mode = "edit" } = useFormScope<FormScope>();
   const hasError = validateStatus === "error" || errors.length > 0;
   const helpText = errors.map((error) => error.message).join("；");
 

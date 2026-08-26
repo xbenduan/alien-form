@@ -1,13 +1,13 @@
 import { Select as AntSelect } from "antd";
-import type { FieldComponentProps } from "../types/shared";
-import { useFieldMode } from "./field-mode";
+import { useFormScope } from "@alien-form/react";
+import type { FieldComponentProps, FormScope } from "../types/shared";
 import { DisplayValue } from "./DisplayValue";
 import { parseMultiValue, refValue, serializeMultiValue, withRefEchoOptions } from "../compiler";
 import { useFieldOptions } from "./service";
 
 /** 按需加载远程选项的 Select。 */
 export function RemoteSelect(props: FieldComponentProps) {
-  const mode = useFieldMode(props.mode);
+  const { mode = "edit" } = useFormScope<FormScope>();
   const isMulti = props.selectMode === "multiple" || props.selectMode === "tags";
   const items = isMulti ? parseMultiValue(props.value) : [];
   const { options, loading, onSearch, load } = useFieldOptions(

@@ -77,6 +77,7 @@ export class PageRuntime {
 
   get scope(): PageScope {
     return {
+      mode: typeof this.schema.meta?.mode === "string" ? this.schema.meta.mode : undefined,
       block: (name: string) => this.block(name),
       service: (code: string, params?: unknown) => this.service(code, params),
       fn: (code: string, ...args: unknown[]) => this.fn(code, ...args),

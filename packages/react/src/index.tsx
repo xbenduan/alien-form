@@ -208,6 +208,11 @@ export function useForm(): FormInstance {
   return ctx.form;
 }
 
+/** 读取由 createForm 注入的运行时 scope。 */
+export function useFormScope<T extends Record<string, unknown> = Record<string, unknown>>(): T {
+  return useForm().scope as T;
+}
+
 function useRegisterField(form: FormInstance, field: FieldNode): void {
   useEffect(() => {
     form._registerField(field);

@@ -41,6 +41,7 @@ function pageMeta(
     singularLabel: modelSchema.meta.singularLabel,
     openMode: modelSchema.meta.openMode,
     scene,
+    mode: scene === "list" ? "edit" : scene,
   };
 }
 

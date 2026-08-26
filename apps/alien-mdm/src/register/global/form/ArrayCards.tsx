@@ -1,7 +1,7 @@
 import { PlusOutlined } from "@ant-design/icons";
 import { Button, Empty } from "antd";
-import type { FieldComponentProps } from "../../../types/shared";
-import { useFieldMode } from "../../../components/field-mode";
+import { useFormScope } from "@alien-form/react";
+import type { FieldComponentProps, FormScope } from "../../../types/shared";
 import { ComplexFieldFrame, readFieldPropTitle, TableComplexCell } from "../../../components/complex-frame";
 import { renderGridChildren } from "../../../components/grid";
 
@@ -12,7 +12,7 @@ import { renderGridChildren } from "../../../components/grid";
  *  - detail：只读逐行渲染
  */
 export default function ArrayCards(props: FieldComponentProps) {
-  const mode = useFieldMode(props.mode);
+  const { mode = "edit" } = useFormScope<FormScope>();
 
   if (props.isTable) {
     return <TableComplexCell value={props.value} schema={props.schema} title={props.title} />;

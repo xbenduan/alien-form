@@ -8,7 +8,6 @@ import {
 } from "@alien-form/engine/react";
 import type { ModelRecord } from "../../../runtime/types";
 import { refValue } from "../../../compiler/shared";
-import { FieldModeScope } from "../../../components/field-mode";
 import styles from "../ui.module.css";
 
 type OverlayMode = "add" | "edit" | "detail";
@@ -60,7 +59,9 @@ export function RecordOverlay({ node }: ComponentProps) {
       const formBlock = page.block(blockName) as unknown as {
         reset: () => void;
         setValues: (v: Record<string, unknown>) => void;
+        form: { setScope: (scope: Record<string, unknown>) => void };
       };
+      formBlock.form.setScope({ mode: p.mode });
       formBlock.reset();
       if (p.mode !== "add" && p.id) loadRecord(p.model!, p.id, blockName);
     });
@@ -139,9 +140,7 @@ export function RecordOverlay({ node }: ComponentProps) {
           loading ? ` ${styles.recordActionOverlayLoading}` : ""
         }`}
       >
-        <FieldModeScope value={mode}>
-          <FormBlockRenderer blockName={state.block ?? "form"} />
-        </FieldModeScope>
+        <FormBlockRenderer blockName={state.block ?? "form"} />
       </div>
     ) : null;
 

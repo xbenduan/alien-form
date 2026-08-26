@@ -4,6 +4,12 @@ import type { ComponentType, LazyExoticComponent, ReactNode } from "react";
 /** 渲染模式：新增 / 编辑 / 详情（只读）。 */
 export type FieldMode = "add" | "edit" | "detail";
 
+/** 注入 alien-form FormInstance.scope 的页面场景。 */
+export interface FormScope {
+  [key: string]: unknown;
+  mode?: FieldMode;
+}
+
 export type SchemaRecord = Record<string, unknown>;
 
 /**
@@ -103,7 +109,6 @@ export interface FieldComponentProps {
   disabled?: boolean;
   loading?: boolean;
   placeholder?: string;
-  mode?: FieldMode;
   selectMode?: "multiple" | "tags";
   dataSource?: DataSourceItem[];
   /** 远程数据源声明：组件通过注入的 request 自取选项。 */

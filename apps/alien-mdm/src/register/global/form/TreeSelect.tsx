@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { FieldComponentProps } from "../../../types/shared";
-import { useFieldMode } from "../../../components/field-mode";
+import { useFormScope } from "@alien-form/react";
+import type { FieldComponentProps, FormScope } from "../../../types/shared";
 import { DisplayValue } from "../../../components/DisplayValue";
 import { refValue } from "../../../compiler";
 import { useServiceResolver } from "../../../components/service";
@@ -21,7 +21,7 @@ import type { TreeNode } from "../../../components/tree";
  * UI 使用 shared/components/tree 的自绘 TreeSelect（shadcn 视觉），不再依赖 antd。
  */
 export default function TreeSelect(props: FieldComponentProps) {
-  const mode = useFieldMode(props.mode);
+  const { mode = "edit" } = useFormScope<FormScope>();
   const resolveService = useServiceResolver();
 
   const treeModel = String(props.treeModel ?? "");

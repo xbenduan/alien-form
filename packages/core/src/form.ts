@@ -1018,6 +1018,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
   let mounted = false;
   const effectDisposers = new Set<() => void>();
   const initialValues = config.initialValues ? { ...config.initialValues } : {};
+  const scope = { ...config.scope };
   const baseSchema: IFormSchema = config.schema || { type: "object", properties: {} };
   const refDefinitions: Record<string, IFieldSchema> = {
     ...baseSchema.definitions,
@@ -1031,7 +1032,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
   const ctx: FieldContext = {
     fieldsMap,
     mountedFields,
-    config,
+    config: { ...config, scope },
     refDefinitions,
     initialValues,
     emitError(error) {
@@ -1063,6 +1064,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
 
   Object.assign(form, {
     schema,
+    scope,
     root,
     fields: fieldsSignal,
     submitting: submittingSignal,
@@ -1099,6 +1101,9 @@ export function createForm(config: FormConfig = {}): FormInstance {
     },
     setInitialValues(values: Record<string, any>) {
       ctx.initialValues = { ...values };
+    },
+    setScope(values: Record<string, any>) {
+      Object.assign(scope, values);
     },
     reset() {
       startBatch();

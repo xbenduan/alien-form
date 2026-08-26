@@ -253,6 +253,8 @@ export interface FormConfig {
 
 export interface FormInstance {
   schema: IFormSchema;
+  /** 运行时上下文：供表达式和 UI 组件读取场景、服务等环境信息。 */
+  scope: Record<string, any>;
   root: ObjectFieldNode;
   fields: Signal<Map<string, FieldNode>>;
   submitting: Signal<boolean>;
@@ -266,6 +268,7 @@ export interface FormInstance {
   project(selector?: string): any;
   setValues(values: Record<string, any>): void;
   setInitialValues(values: Record<string, any>): void;
+  setScope(values: Record<string, any>): void;
   reset(): void;
   mount(): void;
   unmount(): void;

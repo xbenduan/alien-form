@@ -13,7 +13,6 @@ import {
 } from "@alien-form/engine/react";
 import type { ModelRecord } from "../../../runtime/types";
 import { refValue } from "../../../compiler/shared";
-import { FieldModeScope } from "../../../components/field-mode";
 import { recordListPath } from "../../../app/router/paths";
 import styles from "../ui.module.css";
 
@@ -97,9 +96,7 @@ export function RecordActionPageLayout({ node }: ComponentProps) {
   return (
     <>
       <div className={styles.actionBody}>
-        <FieldModeScope value={mode}>
-          <FormBlockRenderer blockName={node.block ?? "form"} />
-        </FieldModeScope>
+        <FormBlockRenderer blockName={node.block ?? "form"} />
       </div>
       <div className={styles.actionFooterRoot}>
         <div className={styles.actionFooter}>
