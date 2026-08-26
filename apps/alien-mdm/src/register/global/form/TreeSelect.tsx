@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormScope } from "@alien-form/react";
 import type { FieldComponentProps, FormScope } from "../../../types/shared";
-import { DisplayValue } from "../../../components/DisplayValue";
+import { DisplayValue } from "@components/DisplayValue";
 import { refValue } from "../../../compiler";
-import { useServiceResolver } from "../../../components/service";
-import { TreeSelect as TreeSelectCombo } from "../../../components/tree";
-import type { TreeNode } from "../../../components/tree";
+import { useServiceResolver } from "@hooks/service";
+import { TreeSelect as TreeSelectCombo } from "@components/tree";
+import type { TreeNode } from "@components/tree";
 
 /**
  * 树形单选：从一个模型按「父字段 → 自身字段」拼成层级树供选择，

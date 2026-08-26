@@ -1,14 +1,13 @@
 import { useMemo } from "react";
 import { PageRoot, useRuntime } from "@alien-form/engine/react";
-import { PageError, PageLoading } from "../../components";
+import { PageError, PageLoading } from "@components";
 import { CompilerProvider, useCompiledSchema } from "../../compiler";
-import { FieldServiceContext } from "../../components/service";
 import {
   buildActionPageSchema,
   buildListPageSchema,
   type ModelPageScene,
 } from "../../compiler/model-to-page";
-import { useModelSchema } from "../../hooks";
+import { FieldServiceContext, useModelSchema } from "@hooks";
 
 export interface ModelRuntimePageProps {
   model: string;
@@ -16,11 +15,7 @@ export interface ModelRuntimePageProps {
   recordId?: string;
 }
 
-function ModelRuntimePageContent({
-  model,
-  scene,
-  recordId,
-}: ModelRuntimePageProps) {
+function ModelRuntimePageContent({ model, scene, recordId }: ModelRuntimePageProps) {
   const runtime = useRuntime();
   const schemaQuery = useModelSchema(model);
   const compiledQuery = useCompiledSchema(schemaQuery.data);
@@ -36,12 +31,7 @@ function ModelRuntimePageContent({
     if (!schemaQuery.data || !compiledQuery.data) return undefined;
     return scene === "list"
       ? buildListPageSchema(compiledQuery.data, schemaQuery.data)
-      : buildActionPageSchema(
-          compiledQuery.data,
-          schemaQuery.data,
-          scene,
-          recordId,
-        );
+      : buildActionPageSchema(compiledQuery.data, schemaQuery.data, scene, recordId);
   }, [schemaQuery.data, compiledQuery.data, scene, recordId]);
 
   if (schemaQuery.isLoading || compiledQuery.isLoading) {
@@ -50,21 +40,11 @@ function ModelRuntimePageContent({
 
   const error = (schemaQuery.error ?? compiledQuery.error) as Error | null;
   if (error || !schemaQuery.data) {
-    return (
-      <PageError
-        title="模型不存在或加载失败"
-        description={error?.message}
-      />
-    );
+    return <PageError title="模型不存在或加载失败" description={error?.message} />;
   }
 
   if (!pageSchema) {
-    return (
-      <PageError
-        title="模型页面编译失败"
-        description="Schema 必须包含可编译的页面布局。"
-      />
-    );
+    return <PageError title="模型页面编译失败" description="Schema 必须包含可编译的页面布局。" />;
   }
 
   return (

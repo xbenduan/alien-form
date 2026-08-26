@@ -1,7 +1,7 @@
 import { Input as AntInput } from "antd";
 import { useFormScope } from "@alien-form/react";
 import type { FieldComponentProps, FormScope } from "../../../types/shared";
-import { DisplayValue } from "../../../components/DisplayValue";
+import { DisplayValue } from "@components/DisplayValue";
 
 const { TextArea } = AntInput;
 

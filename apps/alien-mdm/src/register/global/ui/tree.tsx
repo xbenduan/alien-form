@@ -2,9 +2,9 @@ import { Input, Card } from "antd";
 import { useMemo, useState } from "react";
 import { useBlock, useService, type ComponentProps } from "@alien-form/engine/react";
 import { ListBlockRuntime } from "@alien-form/engine";
-import { Tree, collectExpandable } from "../../../components/tree";
+import { Tree, collectExpandable } from "@components/tree";
 import { refValue } from "../../../compiler/shared";
-import type { TreeNode } from "../../../components/tree";
+import type { TreeNode } from "@components/tree";
 import type { ModelRecord } from "../../../runtime/types";
 import { useQuery } from "@tanstack/react-query";
 import styles from "../ui.module.css";
@@ -66,9 +66,7 @@ export function TreePanel({ node }: ComponentProps) {
       });
     const collect = (id: string): string[] => [
       ...(includeSelf ? [id] : []),
-      ...(byParent.get(id) ?? []).flatMap((record) =>
-        collect(String(refValue(record[idField]))),
-      ),
+      ...(byParent.get(id) ?? []).flatMap((record) => collect(String(refValue(record[idField])))),
     ];
     return { nodes: build(""), descendants: collect };
   }, [idField, parentField, labelField, records, includeSelf, hideLeaf]);
@@ -93,9 +91,7 @@ export function TreePanel({ node }: ComponentProps) {
         placeholder="搜索节点"
         value={keyword}
         onChange={(event) => setKeyword(event.target.value)}
-        onSearch={() =>
-          setExpandedKeys(records.map((record) => String(refValue(record[idField]))))
-        }
+        onSearch={() => setExpandedKeys(records.map((record) => String(refValue(record[idField]))))}
       />
       <div className={styles.tree}>
         <Tree

@@ -3,8 +3,8 @@ import { Table as AntTable } from "antd";
 import type { TablePaginationConfig, TableProps } from "antd";
 import type { ColumnsType, ColumnType } from "antd/es/table";
 import type { SchemaRecord, TableColumn } from "../types/shared";
-import { DisplayValue } from "../components/DisplayValue";
-import { TableComplexCell } from "../components/complex-frame";
+import { DisplayValue } from "@components/DisplayValue";
+import { TableComplexCell } from "@components/complex-frame";
 
 /** 表格不挂载字段组件；统一使用值展示，复杂字段进入独立详情页。 */
 function renderCell(column: TableColumn, value: unknown): ReactNode {

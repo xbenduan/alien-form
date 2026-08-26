@@ -5,8 +5,8 @@ import {
   RenderNode,
   type ComponentProps,
 } from "@alien-form/engine/react";
-import { Table } from "../../../components/Table";
-import type { TableColumnAction } from "../../../components/Table";
+import { Table } from "@components/Table";
+import type { TableColumnAction } from "@components/Table";
 import type { TableColumn } from "../../../types/shared";
 import { useEffect, useState } from "react";
 import type { ModelRecord } from "../../../runtime/types";
@@ -60,7 +60,7 @@ export function TableLayout({ node }: ComponentProps) {
   const utilityActions = node.slots?.toolbarRight ?? [];
 
   const actionColumn = rowActions
-    ? {
+    ? ({
         title: "操作",
         key: "actions",
         fixed: "right" as const,
@@ -74,7 +74,7 @@ export function TableLayout({ node }: ComponentProps) {
             </Space>
           </RowContext.Provider>
         ),
-      } as unknown as TableColumnAction
+      } as unknown as TableColumnAction)
     : undefined;
 
   return (

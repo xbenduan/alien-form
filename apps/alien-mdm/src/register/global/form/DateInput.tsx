@@ -2,7 +2,7 @@ import { DatePicker } from "antd";
 import dayjs from "dayjs";
 import { useFormScope } from "@alien-form/react";
 import type { FieldComponentProps, FormScope } from "../../../types/shared";
-import { DisplayValue } from "../../../components/DisplayValue";
+import { DisplayValue } from "@components/DisplayValue";
 
 /** 日期选择。 */
 export default function DateInput(props: FieldComponentProps) {

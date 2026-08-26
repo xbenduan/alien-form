@@ -2,8 +2,8 @@ import { PlusOutlined } from "@ant-design/icons";
 import { Button, Empty } from "antd";
 import { useFormScope } from "@alien-form/react";
 import type { FieldComponentProps, FormScope } from "../../../types/shared";
-import { ComplexFieldFrame, readFieldPropTitle, TableComplexCell } from "../../../components/complex-frame";
-import { renderGridChildren } from "../../../components/grid";
+import { ComplexFieldFrame, readFieldPropTitle, TableComplexCell } from "@components/complex-frame";
+import { renderGridChildren } from "@components/grid";
 
 /**
  * 对象数组卡片容器：

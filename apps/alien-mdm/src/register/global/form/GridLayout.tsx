@@ -1,5 +1,5 @@
 import type { FieldComponentProps } from "../../../types/shared";
-import { renderGridChildren } from "../../../components/grid";
+import { renderGridChildren } from "@components/grid";
 
 /** 唯一的分组布局容器：栅格卡片。 */
 export default function GridLayout(props: FieldComponentProps) {

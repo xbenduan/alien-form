@@ -3,7 +3,7 @@ import { useFormScope } from "@alien-form/react";
 import type { FieldComponentProps, FormScope } from "../types/shared";
 import { DisplayValue } from "./DisplayValue";
 import { parseMultiValue, refValue, serializeMultiValue, withRefEchoOptions } from "../compiler";
-import { useFieldOptions } from "./service";
+import { useFieldOptions } from "@hooks/service";
 
 /** 按需加载远程选项的 Select。 */
 export function RemoteSelect(props: FieldComponentProps) {

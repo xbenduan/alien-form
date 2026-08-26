@@ -1,7 +1,7 @@
 import { InputNumber } from "antd";
 import { useFormScope } from "@alien-form/react";
 import type { FieldComponentProps, FormScope } from "../../../types/shared";
-import { DisplayValue } from "../../../components/DisplayValue";
+import { DisplayValue } from "@components/DisplayValue";
 
 /** 数字输入。 */
 export default function NumberInput(props: FieldComponentProps) {

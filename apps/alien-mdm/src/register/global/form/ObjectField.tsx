@@ -1,6 +1,6 @@
 import type { FieldComponentProps } from "../../../types/shared";
-import { ComplexFieldFrame, readFieldPropTitle, TableComplexCell } from "../../../components/complex-frame";
-import { renderGridChildren } from "../../../components/grid";
+import { ComplexFieldFrame, readFieldPropTitle, TableComplexCell } from "@components/complex-frame";
+import { renderGridChildren } from "@components/grid";
 
 /**
  * 对象字段容器：

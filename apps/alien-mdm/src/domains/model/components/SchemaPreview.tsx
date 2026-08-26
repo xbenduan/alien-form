@@ -3,9 +3,9 @@ import { Alert, Empty, Segmented, Typography } from "antd";
 import { FormRenderer, useCreateForm, type IFormSchema } from "@alien-form/react";
 import { useCompiledSchema } from "../../../compiler";
 import type { ModelSchema } from "../types";
-import { FieldsetCard } from "../../../components";
+import { FieldsetCard } from "@components";
 import { fieldComponents } from "../../../register/global/form/registry";
-import { fieldDecorators } from "../../../components/field-registry";
+import { fieldDecorators } from "@components/field-registry";
 
 interface SchemaPreviewProps {
   schema?: ModelSchema;
