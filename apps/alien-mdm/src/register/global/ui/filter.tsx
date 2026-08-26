@@ -24,11 +24,15 @@ export function Filter({ node }: ComponentProps) {
 
   return (
     <Card className={styles.filterCard} styles={{ body: { padding: 16 } }}>
-      <div className={`af-filter${expanded || !hasExtraFields ? "" : " af-filter-collapsed"}`}>
-        <div className="af-filter-fields">
+      <div
+        className={`${styles.filter}${
+          expanded || !hasExtraFields ? "" : ` ${styles.filterCollapsed}`
+        }`}
+      >
+        <div className={styles.filterFields}>
           <FormBlockRenderer blockName={blockName} />
         </div>
-        <div className="af-filter-actions">
+        <div className={styles.filterActions}>
           <Space>
             {hasExtraFields ? (
               <Button type="link" onClick={() => setExpanded((current) => !current)}>

@@ -33,3 +33,149 @@
     overflow: auto;
   }
 }
+
+.formItem {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.formItemLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 22px;
+  margin-bottom: 4px;
+  color: #252b37;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.formItemRequired {
+  color: #ff4d4f;
+  line-height: 1;
+}
+
+.formItemLabelText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.formItemDescIcon {
+  color: #98a2b3;
+}
+
+.formItemControl {
+  min-width: 0;
+}
+
+.formItemControl > :global(.ant-input),
+.formItemControl > :global(.ant-input-affix-wrapper),
+.formItemControl > :global(.ant-input-number),
+.formItemControl > :global(.ant-picker),
+.formItemControl > :global(.ant-select) {
+  width: 100%;
+}
+
+.formItemHelp {
+  min-height: 18px;
+  padding-top: 2px;
+  color: #ff4d4f;
+  font-size: 12px;
+  line-height: 16px;
+  word-break: break-word;
+}
+
+.formItemHelp:empty {
+  min-height: 6px;
+  padding-top: 0;
+}
+
+.filterItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.filterItemLabel {
+  color: #52607a;
+  font-size: 13px;
+}
+
+.filterItem :global(.ant-select),
+.filterItem :global(.ant-input),
+.filterItem :global(.ant-input-number),
+.filterItem :global(.ant-picker) {
+  width: 100%;
+}
+
+.complexField {
+  min-width: 0;
+  margin: 4px 0 16px;
+  padding: 14px 16px 8px;
+  border: 1px dashed #d8dee8;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.complexFieldTitle {
+  padding: 0 6px;
+  color: #344054;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.complexFieldBody {
+  min-width: 0;
+}
+
+.complexFieldDescription {
+  margin: -2px 0 12px;
+  color: #8a94a6;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.tagList {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tagItem:global(.ant-tag) {
+  margin: 0;
+  border-radius: 999px;
+}
+
+.tableToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.tableComplex {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tableComplexSummary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tableEmpty {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 28px 0;
+  color: #667085;
+}

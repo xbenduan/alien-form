@@ -5,6 +5,7 @@ import { Button, Tooltip } from "antd";
 import type { FieldComponentProps } from "../types/shared";
 import { FieldDetailModal } from "./FieldDetailModal";
 import { toDisplayText } from "../compiler";
+import styles from "./index.module.css";
 
 /** 复杂字段（ObjectField / ArrayCards）的通用外观与详情单元格，供 register/ 中两者复用。 */
 export function ComplexFieldFrame({
@@ -17,10 +18,10 @@ export function ComplexFieldFrame({
   children?: ReactNode;
 }) {
   return (
-    <fieldset className="af-complex-field">
-      {title ? <legend className="af-complex-field-title">{title}</legend> : null}
-      {description ? <div className="af-complex-field-description">{description}</div> : null}
-      <div className="af-complex-field-body">{children}</div>
+    <fieldset className={styles.complexField}>
+      {title ? <legend className={styles.complexFieldTitle}>{title}</legend> : null}
+      {description ? <div className={styles.complexFieldDescription}>{description}</div> : null}
+      <div className={styles.complexFieldBody}>{children}</div>
     </fieldset>
   );
 }
@@ -43,8 +44,8 @@ export function TableComplexCell({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="af-table-complex">
-      <span className="af-table-complex-summary">{toDisplayText(value)}</span>
+    <div className={styles.tableComplex}>
+      <span className={styles.tableComplexSummary}>{toDisplayText(value)}</span>
       <Tooltip title={`查看${title ?? ""}详情`}>
         <Button
           type="link"

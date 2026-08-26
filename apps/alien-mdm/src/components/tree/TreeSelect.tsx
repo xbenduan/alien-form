@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Select } from "antd";
 import { Tree, collectExpandable } from "./Tree";
 import type { TreeNode } from "./Tree";
-import "./tree.css";
+import styles from "./index.module.css";
 
 export interface TreeSelectComboProps {
   /** 树数据（层级结构）。 */
@@ -106,7 +106,7 @@ export function TreeSelect({
       }}
       popupMatchSelectWidth
       popupRender={() => (
-        <div className="af-tree-select-list">
+        <div className={styles.selectList}>
           <Tree
             treeData={filtered}
             selectedKey={value}

@@ -1,6 +1,7 @@
 import type { FieldComponentProps } from "../../../types/shared";
 import { ComplexFieldFrame, readFieldPropTitle, TableComplexCell } from "@components/complex-frame";
 import { renderGridChildren } from "@components/grid";
+import styles from "../form.module.css";
 
 /**
  * 对象字段容器：
@@ -14,7 +15,7 @@ export default function ObjectField(props: FieldComponentProps) {
   const title = props.title ?? readFieldPropTitle(props.field);
   return (
     <ComplexFieldFrame title={title} description={props.description}>
-      <div className="af-object-field">
+      <div className={styles.objectField}>
         {renderGridChildren(props.children, {
           gridSpan: props.gridSpan,
           columns: props.columns,

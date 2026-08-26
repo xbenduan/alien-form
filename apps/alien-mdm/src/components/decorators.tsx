@@ -3,6 +3,7 @@ import { QuestionCircleOutlined } from "@ant-design/icons";
 import { useFormScope, type FieldError, type ValidateStatus } from "@alien-form/react";
 import { Tooltip } from "antd";
 import type { FormScope } from "../types/shared";
+import styles from "./index.module.css";
 
 interface FormItemProps {
   label?: string;
@@ -27,21 +28,23 @@ export function FormItem({
   const helpText = errors.map((error) => error.message).join("；");
 
   return (
-    <div className={`af-form-item${hasError ? " af-form-item-error" : ""}`}>
+    <div className={styles.formItem}>
       {label ? (
-        <div className="af-form-item-label">
-          {required && mode !== "detail" ? <span className="af-form-item-required">*</span> : null}
-          <span className="af-form-item-label-text">{label}</span>
+        <div className={styles.formItemLabel}>
+          {required && mode !== "detail" ? (
+            <span className={styles.formItemRequired}>*</span>
+          ) : null}
+          <span className={styles.formItemLabelText}>{label}</span>
           {description ? (
             <Tooltip title={description}>
-              <QuestionCircleOutlined className="af-form-item-desc-icon" />
+              <QuestionCircleOutlined className={styles.formItemDescIcon} />
             </Tooltip>
           ) : null}
         </div>
       ) : null}
-      <div className="af-form-item-control">
+      <div className={styles.formItemControl}>
         {children}
-        <div className="af-form-item-help" role={hasError ? "alert" : undefined}>
+        <div className={styles.formItemHelp} role={hasError ? "alert" : undefined}>
           {hasError ? helpText : ""}
         </div>
       </div>
@@ -52,8 +55,8 @@ export function FormItem({
 /** filter 场景的字段装饰器：仅标签，无必填/校验。 */
 export function FilterItem({ label, children }: { label?: string; children?: ReactNode }) {
   return (
-    <div className="af-filter-item">
-      {label ? <span className="af-filter-item-label">{label}：</span> : null}
+    <div className={styles.filterItem}>
+      {label ? <span className={styles.filterItemLabel}>{label}：</span> : null}
       {children}
     </div>
   );

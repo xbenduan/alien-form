@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 import { RightOutlined } from "@ant-design/icons";
-import "./tree.css";
+import styles from "./index.module.css";
 
 export interface TreeNode {
   /** 节点唯一标识，也是选中回传的值。 */
@@ -34,7 +34,7 @@ export interface TreeProps {
 
 /** 展开/收起箭头（antd RightOutlined），展开态由 CSS 旋转 90°。 */
 function Chevron() {
-  return <RightOutlined className="af-tree-chevron" aria-hidden />;
+  return <RightOutlined className={styles.chevron} aria-hidden />;
 }
 
 /** 收集全部含子节点的 key，用于 defaultExpandAll / 搜索时全展开。 */
@@ -79,9 +79,9 @@ function TreeRow({ node, depth, expanded, selectedKey, onToggle, onSelect }: Row
   };
 
   return (
-    <div className="af-tree-group" role="group">
+    <div className={styles.group} role="group">
       <div
-        className="af-tree-row"
+        className={styles.row}
         role="treeitem"
         tabIndex={node.disabled ? -1 : 0}
         aria-selected={isSelected}
@@ -95,7 +95,7 @@ function TreeRow({ node, depth, expanded, selectedKey, onToggle, onSelect }: Row
         {hasChildren ? (
           <button
             type="button"
-            className="af-tree-toggle"
+            className={styles.toggle}
             data-open={isOpen}
             aria-label={isOpen ? "收起" : "展开"}
             onClick={(event) => {
@@ -106,12 +106,12 @@ function TreeRow({ node, depth, expanded, selectedKey, onToggle, onSelect }: Row
             <Chevron />
           </button>
         ) : (
-          <span className="af-tree-toggle-spacer" aria-hidden />
+          <span className={styles.toggleSpacer} aria-hidden />
         )}
-        <span className="af-tree-title">{node.title}</span>
+        <span className={styles.title}>{node.title}</span>
       </div>
       {hasChildren && isOpen ? (
-        <div className="af-tree-children">
+        <div>
           {node.children!.map((child) => (
             <TreeRow
               key={child.key}
@@ -174,9 +174,9 @@ export function Tree({
   );
 
   return (
-    <div className={className ? `af-tree ${className}` : "af-tree"} role="tree">
+    <div className={className ? `${styles.tree} ${className}` : styles.tree} role="tree">
       {treeData.length === 0 ? (
-        <div className="af-tree-empty">{emptyText}</div>
+        <div className={styles.empty}>{emptyText}</div>
       ) : (
         treeData.map((node) => (
           <TreeRow

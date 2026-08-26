@@ -11,13 +11,6 @@
   padding-bottom: 76px;
 }
 
-.pageStack {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
-}
-
 .layout {
   display: flex;
   gap: 16px;
@@ -48,6 +41,27 @@
 .filterCard {
   border-color: rgba(22, 119, 255, 0.12);
   border-radius: 8px;
+}
+
+.filter {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.filterFields {
+  display: contents;
+}
+
+.filterCollapsed .filterFields > :nth-child(n + 5) {
+  display: none;
+}
+
+.filterActions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
 }
 
 .treeCard {

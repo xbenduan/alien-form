@@ -5,6 +5,7 @@ import type { ColumnsType, ColumnType } from "antd/es/table";
 import type { SchemaRecord, TableColumn } from "../types/shared";
 import { DisplayValue } from "@components/DisplayValue";
 import { TableComplexCell } from "@components/complex-frame";
+import styles from "./index.module.css";
 
 /** 表格不挂载字段组件；统一使用值展示，复杂字段进入独立详情页。 */
 function renderCell(column: TableColumn, value: unknown): ReactNode {
@@ -73,8 +74,8 @@ export function Table({
         };
 
   return (
-    <div className="af-table">
-      {toolbar ? <div className="af-table-toolbar">{toolbar}</div> : null}
+    <div>
+      {toolbar ? <div className={styles.tableToolbar}>{toolbar}</div> : null}
       <AntTable<SchemaRecord>
         style={{ marginInline: 16 }}
         rowKey={rowKey}
@@ -87,7 +88,7 @@ export function Table({
         rowSelection={rowSelection}
         locale={{
           emptyText: (
-            <div className="af-table-empty">
+            <div className={styles.tableEmpty}>
               <div>当前条件下暂无记录。</div>
             </div>
           ),

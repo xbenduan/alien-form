@@ -1,4 +1,3 @@
-export { FieldEditor } from "./FieldEditor";
 export { FieldListEditor } from "./FieldListEditor";
 export { GroupEditor } from "./GroupEditor";
 export { LayoutJsonEditor } from "./LayoutJsonEditor";

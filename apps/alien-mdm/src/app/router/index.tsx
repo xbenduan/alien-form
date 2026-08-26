@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import type { BrowserRouterProps } from "react-router-dom";
-import WorkbenchLayout from "../layout/WorkbenchLayout";
+import Layout from "../layout";
 import { useAuth } from "../../domains/auth/components/AuthProvider";
 import { loginPath } from "./paths";
 import { publicRoutes, routes } from "./routes";
@@ -17,7 +17,7 @@ function ProtectedWorkbench() {
   if (!auth.isAuthenticated) {
     return <Navigate replace to={loginPath()} state={{ from: location }} />;
   }
-  return <WorkbenchLayout />;
+  return <Layout />;
 }
 
 export function AppRouter() {

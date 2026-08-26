@@ -1,6 +1,7 @@
 import { Image, Tag, Typography } from "antd";
 import type { DataSourceItem } from "@alien-form/react";
 import { EMPTY_TEXT, isEmptyValue, optionLabel, refValue, statusColor } from "../compiler";
+import styles from "./index.module.css";
 
 export interface DisplayValueProps {
   value?: unknown;
@@ -27,9 +28,9 @@ export function DisplayValue({ value, dataSource, format, ellipsis }: DisplayVal
       .map((item) => optionLabel(item, dataSource));
     if (items.length === 0) return <>{EMPTY_TEXT}</>;
     return (
-      <span className="af-tag-list">
+      <span className={styles.tagList}>
         {items.map((item, index) => (
-          <Tag key={`${item}:${index}`} className="af-tag-item">
+          <Tag key={`${item}:${index}`} className={styles.tagItem}>
             {item}
           </Tag>
         ))}

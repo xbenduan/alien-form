@@ -9,15 +9,3 @@ export function registerFormComponents(runtime: Runtime): void {
   runtime.formDecorator("FormItem", FormItem);
   runtime.formDecorator("FilterItem", FilterItem);
 }
-
-export {
-  componentRegistry,
-  fieldComponents,
-  buildComponentOptions,
-  getComponentMeta,
-  getDefaultFieldSchema,
-  getRegistryEntry,
-  isComplexComponent,
-  isContainerComponent,
-  LAYOUT_COMPONENTS,
-} from "./registry";
