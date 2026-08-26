@@ -1,8 +1,11 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Form, Input, Select, Tooltip } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
-import { getDefaultFieldSchema, getRegistryEntry } from "../../../register/global/form/registry";
-import type { ModelFieldSchema } from "../../../compiler/shared";
+import {
+  getDefaultFieldSchema,
+  getFieldDefinition,
+} from "../../../register/global/form/registry";
+import type { ModelFieldSchema } from "../builder";
 import type { FieldDraft } from "../types";
 import { FIELD_COMPONENT_OPTIONS, componentDescription } from "../utils";
 import styles from "./index.module.css";
@@ -56,7 +59,7 @@ function stringify(rest: SchemaRest): string {
 
 /** component → 绑定的 schema type（多值组件降级为 string，容器为 object/array/void）。 */
 function typeOfComponent(component: string): ModelFieldSchema["type"] {
-  return getRegistryEntry(component)?.schema.type as ModelFieldSchema["type"];
+  return getFieldDefinition(component)?.authoring.create().type as ModelFieldSchema["type"];
 }
 
 /**

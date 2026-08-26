@@ -25,7 +25,7 @@ function renderCell(column: TableColumn, value: unknown): ReactNode {
 export interface TableColumnAction extends ColumnType<SchemaRecord> {}
 
 export interface TableComponentProps {
-  /** 已编译的 table 列（由 SchemaCompiler.compile 产出）。 */
+  /** ModelPageBuilder 投影出的 table 列。 */
   columns: TableColumn[];
   dataSource: SchemaRecord[];
   loading?: boolean;

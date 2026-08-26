@@ -7,6 +7,10 @@ export interface TranslateCtx {
   runtime: Runtime;
   /** 正在编译的页面注册域。 */
   domain?: string;
+  resources?: {
+    i18n?: Record<string, Record<string, string>>;
+    constants?: Record<string, unknown>;
+  };
   page?: PageRuntime;
   store: Record<string, unknown>;
 }

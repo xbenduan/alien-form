@@ -7,7 +7,7 @@ import type {
   ModelMeta,
   ModelSchema,
   OpenMode,
-} from "../../../compiler/shared";
+} from "../builder";
 import type { GroupConfig } from "../../../types/shared";
 
 export type {

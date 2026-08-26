@@ -5,7 +5,7 @@ import type {
   ModelSchema,
   OpenMode,
   TableFieldMeta,
-} from "../compiler/shared";
+} from "../domains/model/builder";
 
 export type { ModelFieldSchema, ModelGroup, ModelMeta, ModelSchema, OpenMode, TableFieldMeta };
 

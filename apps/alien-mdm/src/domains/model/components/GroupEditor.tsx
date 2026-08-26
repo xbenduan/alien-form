@@ -1,20 +1,22 @@
-import { useEffect } from "react";
-import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import { useEffect, useRef } from "react";
+import {
+  ArrowDownOutlined,
+  ArrowUpOutlined,
+  DeleteOutlined,
+  PlusOutlined,
+} from "@ant-design/icons";
 import { Button, Form, Input, InputNumber, Select } from "antd";
-import type { FieldDraft, GroupDraft } from "../types";
+import { useBuilder, useBuilderAtom } from "@alien-form/builder/react";
+import { ModelCodec, type GroupDraft, type ModelDraft } from "../builder";
 import { GROUP_COMPONENT_OPTIONS } from "../utils";
-import { useCompiler } from "../../../compiler";
 import styles from "./index.module.css";
 
-interface GroupEditorProps {
-  groups: GroupDraft[];
-  fields: FieldDraft[];
-  onChange: (groups: GroupDraft[]) => void;
-}
-
 /** 分组编辑：把顶层字段收进 GridLayout 容器，仅影响 form 渲染。 */
-export function GroupEditor({ groups, fields, onChange }: GroupEditorProps) {
-  const compiler = useCompiler();
+export function GroupEditor() {
+  const builder = useBuilder<ModelDraft>();
+  const document = useBuilderAtom(builder.document);
+  const { groups, fields } = document;
+  const codec = useRef(new ModelCodec()).current;
   const [form] = Form.useForm<{ groups: GroupDraft[] }>();
   const watchedGroups = Form.useWatch("groups", form);
   const fieldOptions = fields.map((field) => ({
@@ -33,7 +35,8 @@ export function GroupEditor({ groups, fields, onChange }: GroupEditorProps) {
       className={`${styles.groupEditor} ${styles.editor}`}
       initialValues={{ groups }}
       onValuesChange={(_, values) =>
-        onChange(
+        builder.dispatch(
+          "groups.replace",
           (values.groups ?? []).map((group) => ({
             ...group,
             gridSpan: group.gridSpan ?? 12,
@@ -42,7 +45,7 @@ export function GroupEditor({ groups, fields, onChange }: GroupEditorProps) {
       }
     >
       <Form.List name="groups">
-        {(items, { add, remove }) => (
+        {(items) => (
           <>
             {items.map(({ key, name }) => (
               <div key={key} className={styles.group}>
@@ -64,9 +67,25 @@ export function GroupEditor({ groups, fields, onChange }: GroupEditorProps) {
                   </Form.Item>
                   <Button
                     type="text"
+                    icon={<ArrowUpOutlined />}
+                    disabled={name === 0}
+                    aria-label="上移分组"
+                    onClick={() => builder.dispatch("group.move", { from: name, to: name - 1 })}
+                  />
+                  <Button
+                    type="text"
+                    icon={<ArrowDownOutlined />}
+                    disabled={name === groups.length - 1}
+                    aria-label="下移分组"
+                    onClick={() => builder.dispatch("group.move", { from: name, to: name + 1 })}
+                  />
+                  <Button
+                    type="text"
                     danger
                     icon={<DeleteOutlined />}
-                    onClick={() => remove(name)}
+                    onClick={() =>
+                      builder.dispatch("group.remove", { id: groups[name]?.id })
+                    }
                   />
                 </div>
                 <Form.Item name={[name, "keys"]} noStyle>
@@ -83,7 +102,7 @@ export function GroupEditor({ groups, fields, onChange }: GroupEditorProps) {
               type="dashed"
               block
               icon={<PlusOutlined />}
-              onClick={() => add(compiler.createGroupDraft())}
+              onClick={() => builder.dispatch("group.add", { group: codec.createGroup() })}
             >
               添加分组
             </Button>

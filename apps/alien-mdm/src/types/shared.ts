@@ -1,5 +1,5 @@
 import type { DataSourceItem, IFieldSchema, IFormSchema } from "@alien-form/react";
-import type { ComponentType, LazyExoticComponent, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 /** 渲染模式：新增 / 编辑 / 详情（只读）。 */
 export type FieldMode = "add" | "edit" | "detail";
@@ -46,55 +46,6 @@ export interface ComponentMeta {
   fieldType: "string" | "number" | "boolean" | "object" | "array";
   kind: FieldKind;
 }
-
-/**
- * 注册项默认 schema：作为“选择组件后自动带入”的字段配置模板。
- * 覆盖单个组件能填写的全部字段（含 props / x-table），
- * 唯独不含 order（order 由拖拽排序生成，不应有默认值）。
- * 消费方：
- *  - register/index.ts 每个组件的 `schema` 字段
- *  - apps/alien-cms 编辑字段弹窗（FieldEditor）选择组件时带入到 JSON 编辑框
- *  - apps/alien-cms schema-to-draft.createFieldDraft 生成新字段草稿
- */
-export interface RegistryFieldSchema extends IFieldSchema {
-  /** table 列展示元信息（对应 CMS 的 x-table）。 */
-  "x-table"?: { width?: number; visible?: boolean; ellipsis?: boolean; sortable?: boolean };
-}
-
-/**
- * 组件注册项：组件库的唯一元信息来源。
- * “需要用到任一组件的配置时都走这张表”，新增元信息只在这里补充。
- * 各字段消费方：
- *  - alias：编辑字段弹窗组件下拉的展示名（buildComponentOptions → FieldEditor 的组件 Select）
- *  - description：编辑字段弹窗「字段 Schema」标签旁的 info 组件说明
- *  - component：交给 @alien-form/react FormProvider 渲染的 React 组件（fieldComponents 由此派生）
- *  - kind / fieldType：schema 投影（transform.ts、schema.ts、buildComponentMeta）
- *  - schema：选择组件后带入的默认字段 schema（见 RegistryFieldSchema）
- *  - container：是否为可嵌套子字段的容器（object / array），供字段树与编辑器判断
- */
-export interface ComponentRegistryEntry {
-  /** 组件别名（中文展示名）。 */
-  alias: string;
-  /**
-   * 组件说明：解释该组件是什么、用途，以及特殊 props 的含义
-   * （例如 Select 的 dataSource 可配置 handler 动态加载）。
-   * 消费方：编辑字段弹窗「字段 Schema」标签旁的 info 提示。
-   */
-  description: string;
-  /** React 组件实例（lazy 懒加载，渲染处需包裹 Suspense）。 */
-  component: LazyExoticComponent<ComponentType<FieldComponentProps>>;
-  /** 字段基础类型，与 component 绑定。 */
-  fieldType: ComponentMeta["fieldType"];
-  /** 组件形态：叶子 / 复杂（object、array）/ 布局容器。 */
-  kind: FieldKind;
-  /** 是否为可容纳子字段的容器（object / array 复杂字段）。 */
-  container?: boolean;
-  /** 选择该组件时带入的默认字段 schema 模板。 */
-  schema: RegistryFieldSchema;
-}
-
-/** 组件注册表：component 名 → 注册项。 */
-export type ComponentRegistry = Record<string, ComponentRegistryEntry>;
 
 /** 编辑字段弹窗组件下拉的选项。 */
 export interface ComponentOption {

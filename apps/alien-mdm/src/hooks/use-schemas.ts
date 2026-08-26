@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRuntime } from "@alien-form/engine/react";
-import type { ModelSchema } from "../compiler/shared";
+import type { ModelSchema } from "../domains/model/builder";
 import type { ModelSummary } from "../runtime/types";
 
 export const schemaKeys = {

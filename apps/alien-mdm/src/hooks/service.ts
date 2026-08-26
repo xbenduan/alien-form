@@ -7,7 +7,7 @@ import {
 } from "react";
 import type { DataSourceItem } from "@alien-form/react";
 import { useOptionalService } from "@alien-form/engine/react";
-import { refValue, type FieldService } from "../compiler";
+import { refValue, type FieldService } from "../utils/field-values";
 
 const OPTION_LIMIT = 10;
 

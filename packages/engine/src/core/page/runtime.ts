@@ -22,15 +22,14 @@ export class PageRuntime {
   private disposers: (() => void)[] = [];
 
   constructor(
-    schema: PageSchema,
     runtime: Runtime,
     compiled: CompiledPage,
     instanceId: string,
   ) {
     this.instanceId = instanceId;
-    this.id = schema.id;
-    this.domain = schema.domain;
-    this.schema = schema;
+    this.id = compiled.schema.id;
+    this.domain = compiled.schema.domain;
+    this.schema = compiled.schema;
     this.runtime = runtime;
     this.store = runtime.store;
     this.compiled = compiled;
@@ -39,7 +38,7 @@ export class PageRuntime {
     this.query = this.store.atom(`page:${this.instanceId}._query`, {});
     this.mounted = this.store.atom(`page:${this.instanceId}._mounted`, false);
 
-    for (const blockSchema of schema.blocks) {
+    for (const blockSchema of compiled.schema.blocks) {
       const block = createBlock(
         blockSchema,
         this,

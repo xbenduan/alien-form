@@ -1,7 +1,7 @@
 import { usePage, useConstant, type ComponentProps } from "@alien-form/engine/react";
 import { PageBreadcrumb } from "../../../components";
 import { recordListPath } from "../../../app/router/paths";
-import type { ModelPageScene } from "../../../compiler/model-to-page";
+import type { ModelPageScene } from "../../../domains/model/builder";
 import styles from "../ui.module.css";
 
 /**

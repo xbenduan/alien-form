@@ -1,17 +1,13 @@
 import { Alert, App, Button, Input } from "antd";
 import { useEffect, useState } from "react";
-import type { AfUiNode, ModelDraft } from "../../../compiler/shared";
+import { useBuilder, useBuilderAtom } from "@alien-form/builder/react";
+import type { UiNode } from "@alien-form/engine";
+import type { ModelDraft } from "../builder";
 import styles from "./index.module.css";
 
-interface LayoutJsonEditorProps {
-  layout: AfUiNode;
-  onChange: (draft: ModelDraft) => void;
-  draft: ModelDraft;
-}
-
-function isLayoutNode(value: unknown): value is AfUiNode {
+function isLayoutNode(value: unknown): value is UiNode {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const node = value as Partial<AfUiNode>;
+  const node = value as Partial<UiNode>;
   if (typeof node.component !== "string" || !node.component) {
     return false;
   }
@@ -31,7 +27,9 @@ function isLayoutNode(value: unknown): value is AfUiNode {
   return true;
 }
 
-export function LayoutJsonEditor({ draft, layout, onChange }: LayoutJsonEditorProps) {
+export function LayoutJsonEditor() {
+  const builder = useBuilder<ModelDraft>();
+  const layout = useBuilderAtom(builder.document).layout;
   const { message } = App.useApp();
   const [text, setText] = useState(() => JSON.stringify(layout, null, 2));
   const [error, setError] = useState("");
@@ -45,7 +43,7 @@ export function LayoutJsonEditor({ draft, layout, onChange }: LayoutJsonEditorPr
     try {
       const parsed: unknown = JSON.parse(text);
       if (!isLayoutNode(parsed)) throw new Error("x-layout 必须是合法的 UiNode 节点树");
-      onChange({ ...draft, layout: parsed });
+      builder.dispatch("layout.update", parsed);
       setError("");
       message.success("页面布局已更新");
     } catch (reason) {

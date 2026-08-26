@@ -124,7 +124,6 @@ export class Runtime {
       store: {},
     });
     const page = new PageRuntime(
-      schema,
       this,
       compiled as CompiledPage,
       `page-${++this.pageSequence}`,

@@ -3,6 +3,7 @@ export type {
   GroupConfig,
   GroupDraft,
   ModelDraft,
+  ModelFieldSchema,
   ModelGroup,
   ModelMeta,
   ModelSchema,

@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { EyeOutlined, SaveOutlined } from "@ant-design/icons";
+import { EyeOutlined, RedoOutlined, SaveOutlined, UndoOutlined } from "@ant-design/icons";
 import { App, Button, Card, Col, Flex, Row, Space, Steps } from "antd";
+import { BuilderProvider } from "@alien-form/builder/react";
 import { PageBreadcrumb, PageError, PageLoading, FieldsetCard } from "../../../components";
 import { modelListPath } from "../../../app/router/paths";
-import { CompilerProvider } from "../../../compiler";
 import { useModelBuilder } from "../hooks";
 import {
   FieldListEditor,
@@ -24,18 +24,21 @@ interface ModelActionPageProps {
 
 /** 模型构建页（新开页面）：add / edit 共用，由 mode 区分。 */
 export default function ModelActionPage({ mode }: ModelActionPageProps) {
+  const { modelName } = useParams();
+  const builder = useModelBuilder(mode === "edit" ? modelName : undefined);
   return (
-    <CompilerProvider>
-      <ModelActionContent mode={mode} />
-    </CompilerProvider>
+    <BuilderProvider builder={builder.runtime}>
+      <ModelActionContent mode={mode} builder={builder} />
+    </BuilderProvider>
   );
 }
 
-function ModelActionContent({ mode }: ModelActionPageProps) {
+function ModelActionContent({
+  mode,
+  builder,
+}: ModelActionPageProps & { builder: ReturnType<typeof useModelBuilder> }) {
   const navigate = useNavigate();
-  const { modelName } = useParams();
   const { message } = App.useApp();
-  const builder = useModelBuilder(mode === "edit" ? modelName : undefined);
   const [step, setStep] = useState(0);
   if (builder.loading) return <PageLoading />;
   if (builder.loadError) {
@@ -43,12 +46,11 @@ function ModelActionContent({ mode }: ModelActionPageProps) {
   }
 
   const handleSave = async () => {
-    if (!builder.draft.name.trim()) {
-      message.error("请填写模型名");
-      return;
-    }
-    if (!/^[a-z][a-z0-9-]*$/.test(builder.draft.name.trim())) {
-      message.error("模型名仅支持小写字母、数字和中划线，且以字母开头");
+    const validationError = builder.errors[0];
+    if (validationError) {
+      message.error(
+        typeof validationError === "string" ? validationError : validationError.message,
+      );
       return;
     }
     if (builder.preview.error) {
@@ -81,15 +83,12 @@ function ModelActionContent({ mode }: ModelActionPageProps) {
           <Row gutter={16} align="stretch" className={styles.fieldsStep}>
             <Col span={8} className={styles.fill}>
               <FieldsetCard title="字段列表" className={styles.fill}>
-                <FieldListEditor
-                  fields={builder.draft.fields}
-                  onChange={(fields) => builder.setDraft({ ...builder.draft, fields })}
-                />
+                <FieldListEditor />
               </FieldsetCard>
             </Col>
             <Col span={16} className={styles.fill}>
               <FieldsetCard title="Schema" className={styles.fill}>
-                <SchemaJsonEditor schema={builder.preview.schema} onApply={builder.setDraft} />
+                <SchemaJsonEditor />
               </FieldsetCard>
             </Col>
           </Row>
@@ -98,25 +97,13 @@ function ModelActionContent({ mode }: ModelActionPageProps) {
         {step === 1 ? (
           <div className={styles.configStack}>
             <FieldsetCard title="模型信息">
-              <ModelMetaForm
-                draft={builder.draft}
-                nameDisabled={mode === "edit"}
-                onChange={builder.setDraft}
-              />
+              <ModelMetaForm nameDisabled={mode === "edit"} />
             </FieldsetCard>
             <FieldsetCard title="表单分组">
-              <GroupEditor
-                groups={builder.draft.groups}
-                fields={builder.draft.fields}
-                onChange={(groups) => builder.setDraft({ ...builder.draft, groups })}
-              />
+              <GroupEditor />
             </FieldsetCard>
             <FieldsetCard title="页面布局（x-layout）">
-              <LayoutJsonEditor
-                draft={builder.draft}
-                layout={builder.draft.layout}
-                onChange={builder.setDraft}
-              />
+              <LayoutJsonEditor />
             </FieldsetCard>
           </div>
         ) : null}
@@ -128,6 +115,18 @@ function ModelActionContent({ mode }: ModelActionPageProps) {
 
       <div className={styles.footer}>
         <Space>
+          <Button
+            icon={<UndoOutlined />}
+            disabled={!builder.canUndo}
+            aria-label="撤销"
+            onClick={() => builder.runtime.undo()}
+          />
+          <Button
+            icon={<RedoOutlined />}
+            disabled={!builder.canRedo}
+            aria-label="重做"
+            onClick={() => builder.runtime.redo()}
+          />
           <Button onClick={() => navigate(modelListPath())}>取消</Button>
           {step > 0 ? <Button onClick={() => setStep((s) => s - 1)}>上一步</Button> : null}
           {step < 2 ? (

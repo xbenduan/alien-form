@@ -1,6 +1,22 @@
-import type { BlockSchema, CompiledPage, PageSchema } from "../dsl";
+import type { CompiledPage, PageSchema } from "../dsl";
 import { SchemaTranslator } from "./translator";
 import type { TranslateCtx } from "./types";
+
+export function createCompiledPage(schema: PageSchema): CompiledPage {
+  const blockOutputs: Record<string, unknown> = {};
+  for (const block of schema.blocks) {
+    if (block.type === "form") {
+      blockOutputs[block.name] = { formSchema: block.formSchema };
+    } else if (block.type === "detail") {
+      blockOutputs[block.name] = { detailSchema: block.formSchema };
+    } else if (block.type === "list") {
+      blockOutputs[block.name] = { columns: block.columns };
+    } else {
+      blockOutputs[block.name] = {};
+    }
+  }
+  return { schema, layout: schema.layout, blockOutputs };
+}
 
 export class PageCompiler {
   translator: SchemaTranslator;
@@ -10,34 +26,10 @@ export class PageCompiler {
   }
 
   async compile(schema: PageSchema, ctx: TranslateCtx): Promise<CompiledPage> {
-    const layout = await this.translator.translate(schema.layout, ctx);
-
-    const blockOutputs: Record<string, unknown> = {};
-    for (const blockSchema of schema.blocks) {
-      blockOutputs[blockSchema.name] = await this.compileBlock(blockSchema, ctx);
-    }
-
-    return { layout, blockOutputs };
-  }
-
-  private async compileBlock(block: BlockSchema, ctx: TranslateCtx): Promise<unknown> {
-    if (block.type === "form" && block.formSchema) {
-      return {
-        formSchema: await this.translator.translate(block.formSchema, ctx),
-      };
-    }
-    if (block.type === "list" && block.columns) {
-      return {
-        columns: await this.translator.translate(block.columns, ctx),
-      };
-    }
-    if (block.type === "detail") {
-      return {
-        detailSchema: block.formSchema
-          ? await this.translator.translate(block.formSchema, ctx)
-          : undefined,
-      };
-    }
-    return {};
+    const translated = await this.translator.translate(schema, {
+      ...ctx,
+      resources: schema.resources,
+    });
+    return createCompiledPage(translated);
   }
 }

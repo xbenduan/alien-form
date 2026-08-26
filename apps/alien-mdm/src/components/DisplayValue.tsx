@@ -1,6 +1,12 @@
 import { Image, Tag, Typography } from "antd";
 import type { DataSourceItem } from "@alien-form/react";
-import { EMPTY_TEXT, isEmptyValue, optionLabel, refValue, statusColor } from "../compiler";
+import {
+  EMPTY_TEXT,
+  isEmptyValue,
+  optionLabel,
+  refValue,
+  statusColor,
+} from "../utils/field-values";
 import styles from "./index.module.css";
 
 export interface DisplayValueProps {

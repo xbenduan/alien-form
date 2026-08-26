@@ -1,13 +1,12 @@
 import { useEffect } from "react";
 import { Form, Input, InputNumber, Select } from "antd";
-import type { ModelDraft } from "../types";
+import { useBuilder, useBuilderAtom } from "@alien-form/builder/react";
+import type { ModelDraft } from "../builder";
 import { MODEL_GROUP_OPTIONS, OPEN_MODE_OPTIONS } from "../utils";
 import styles from "./index.module.css";
 
 interface ModelMetaFormProps {
-  draft: ModelDraft;
   nameDisabled?: boolean;
-  onChange: (draft: ModelDraft) => void;
 }
 
 const OPEN_MODE_FIELDS = [
@@ -17,7 +16,9 @@ const OPEN_MODE_FIELDS = [
 ] as const;
 
 /** 模型元信息编辑：名称、标题、标签、分页与打开方式。 */
-export function ModelMetaForm({ draft, nameDisabled, onChange }: ModelMetaFormProps) {
+export function ModelMetaForm({ nameDisabled }: ModelMetaFormProps) {
+  const builder = useBuilder<ModelDraft>();
+  const draft = useBuilderAtom(builder.document);
   const [form] = Form.useForm<ModelDraft>();
 
   // 外部草稿变化（如 edit 模式异步载入 schema）时同步回表单。
@@ -35,8 +36,7 @@ export function ModelMetaForm({ draft, nameDisabled, onChange }: ModelMetaFormPr
       colon={false}
       initialValues={draft}
       onValuesChange={(_, values) =>
-        onChange({
-          ...draft,
+        builder.dispatch("meta.update", {
           ...values,
           defaultPageSize: values.defaultPageSize ?? 10,
           filterCount: values.filterCount ?? 3,

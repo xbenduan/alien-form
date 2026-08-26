@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormScope } from "@alien-form/react";
 import type { FieldComponentProps, FormScope } from "../../../types/shared";
 import { DisplayValue } from "@components/DisplayValue";
-import { refValue } from "../../../compiler";
+import { refValue } from "../../../utils/field-values";
 import { useOptionalService } from "@alien-form/engine/react";
 import { TreeSelect as TreeSelectCombo } from "@components/tree";
 import type { TreeNode } from "@components/tree";

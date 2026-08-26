@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useBlock, useService, type ComponentProps } from "@alien-form/engine/react";
 import { ListBlockRuntime } from "@alien-form/engine";
 import { Tree, collectExpandable } from "@components/tree";
-import { refValue } from "../../../compiler/shared";
+import { refValue } from "../../../utils/field-values";
 import type { TreeNode } from "@components/tree";
 import type { ModelRecord } from "../../../runtime/types";
 import { useQuery } from "@tanstack/react-query";

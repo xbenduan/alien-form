@@ -4,7 +4,7 @@ import { AppstoreOutlined, DatabaseOutlined, SearchOutlined } from "@ant-design/
 import { Empty, Input, Tabs, Tooltip, Typography } from "antd";
 import { PageError, PageLoading } from "../../../components";
 import { useModelSummaries } from "../../../hooks";
-import type { ModelGroup } from "../../../compiler/shared";
+import type { ModelGroup } from "../../model/builder";
 import type { ModelSummary } from "../../../runtime";
 import { recordListPath } from "../../../app/router/paths";
 import { UserMenu } from "../components";

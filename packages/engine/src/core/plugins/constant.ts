@@ -12,6 +12,9 @@ export const constantPlugin: TranslatorPlugin = {
   order: 5,
   resolve(marker, ctx) {
     const { key } = marker as ConstantMarker;
+    if (Object.prototype.hasOwnProperty.call(ctx.resources?.constants ?? {}, key)) {
+      return ctx.resources?.constants?.[key];
+    }
     return ctx.runtime.registry.constants.resolve(key, ctx.domain);
   },
 };

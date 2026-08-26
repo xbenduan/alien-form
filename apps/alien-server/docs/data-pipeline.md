@@ -13,7 +13,7 @@
                        ┌────────────────────────────┐
    ①源头(手写一份)  →  │      canonical schema       │  = 展示层 marker + x-database 存储层 marker
                        └──────────────┬─────────────┘
-                                      │  SchemaCompiler.project(...)
+                                      │  schema projection
                     ┌─────────────────┴──────────────────┐
                     ▼                                     ▼
         ② DDL 投影(建库)                        ② 前端 schema 投影
@@ -161,7 +161,7 @@ contact: {
 
 ## ② 第一步产出：建库 DDL 投影（SQLite）
 
-`SchemaCompiler` 的 `ddl` 投影读上面的 `x-database`，产出建表语句。
+服务端 DDL 投影读取上面的 `x-database`，产出建表语句。
 命名从 `camelCase` 转 `snake_case`（这是投影的一条规则，前端字段名不受影响）。
 
 ```sql
@@ -216,7 +216,7 @@ CREATE TABLE school_user_role (
 ## ② 第二步产出：面向前端的 schema 投影
 
 前端拿到的配置态 schema **就是 [nail-employee.ts](./nail-employee.ts)**（`x-database` 的存储细节
-前端不关心，但 `index` 布尔会被保留下来驱动 filter）。前端再经 `SchemaCompiler` 投影成
+前端不关心，但 `index` 布尔会被保留下来驱动 filter）。前端再经 `ModelPageBuilder` 投影成
 form / table / filter。例如 `userType` 字段：
 
 ```jsonc

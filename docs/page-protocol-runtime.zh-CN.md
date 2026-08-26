@@ -391,7 +391,7 @@ export default class RuntimeCore {
 | `RuntimeCore` 单例 + `current`                   | 保留                                                       | 注册表与全局能力宿主          |
 | global / domain / scene 三级作用域               | **仅 global + domain**                                     | `scene` 预留接口，首版不实现  |
 | services / ui / enums / constants / utils / form | **ui / services / constant / form**                        | 去 utils；enums 并入 constant |
-| 8 个 parser plugin                               | 复用现有 `SchemaCompiler`（`$af-i18n`）                   | 不重造解析管线                |
+| 8 个 parser plugin                               | 统一由 engine `PageCompiler` 解析（`$af-i18n`）          | 不重造解析管线                |
 | `IConfig = (runtime) => RegisterDescribe`        | 保留                                                       | 每域导出的工厂签名            |
 
 ---
@@ -757,8 +757,8 @@ class DataScope {
 | 接缝          | 现状位置                                                                               | 改动                                                                                                    |
 | ------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | form 资源注入 | `packages/shared/src/components/SchemaRenderer.tsx`                                    | 读 `RuntimeResourceContext`，merge `components/decorators/handlers/scope`                               |
-| 布局透传      | `packages/shared/src/compiler/types.ts`（`Compiled`）                                  | 增 `layout: AfUiNode`，布局缺失或非法直接报错                                                           |
-| 编译期取数    | `apps/alien-cms/src/compiler/create-compiler.ts`（`appRequest`）                       | 改为通过 service resolver 调 `records.list`，删除匿名 request 适配                                      |
+| 布局投影      | `apps/alien-mdm/src/domains/model/builder/model-page-builder.ts`                       | 直接构建 `PageSchema.layout`，布局缺失或非法直接报错                                                     |
+| 编译期解析    | `packages/engine/src/core/compiler/page-compiler.ts`                                   | 整页单次解析 marker，远程字段选项仍由组件按需请求                                                        |
 | 组件自取数    | `packages/shared/src/components/service.ts`（`FieldServiceContext`/`useAsyncOptions`） | 注入从匿名 `RequestFn` 升级为 `scope`；内部改走 `$af_scope_service("records.list")?.send`               |
 | services 删除 | `apps/alien-cms/src/services/*`                                                        | 请求函数 → `register/global` services；类型 → `runtime/types.ts`；`api-client` → `runtime/transport.ts` |
 | 页面渲染      | `apps/alien-cms/src/domains/record/pages/list.tsx`                                     | 由固定 JSX 改为 `resolveLayout` + `<RenderNode>`                                                        |

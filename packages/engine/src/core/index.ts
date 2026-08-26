@@ -20,6 +20,7 @@ export { MemoryRouterAdapter } from "./router";
 export {
   SchemaTranslator,
   PageCompiler,
+  createCompiledPage,
   collectMarkers,
   getPath,
   setPath,

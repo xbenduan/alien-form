@@ -1,13 +1,8 @@
 import { App, Alert, Button, Input } from "antd";
-import { useEffect, useState } from "react";
-import type { ModelDraft, ModelSchema } from "../types";
-import { useCompiler } from "../../../compiler";
+import { useEffect, useMemo, useState } from "react";
+import { useBuilder, useBuilderAtom } from "@alien-form/builder/react";
+import { ModelCodec, type ModelDraft, type ModelSchema } from "../builder";
 import styles from "./index.module.css";
-
-interface SchemaJsonEditorProps {
-  schema?: ModelSchema;
-  onApply: (draft: ModelDraft) => void;
-}
 
 function stringifySchema(schema?: ModelSchema): string {
   return schema ? JSON.stringify(schema, null, 2) : "";
@@ -29,9 +24,12 @@ function isModelSchema(value: unknown): value is ModelSchema {
  * 内联 Schema JSON 编辑面板：整块 TextArea 展示/编辑模型 schema，
  * 点击「更新」才解析并应用到构建器草稿，应用结果通过弹窗提示。
  */
-export function SchemaJsonEditor({ schema, onApply }: SchemaJsonEditorProps) {
+export function SchemaJsonEditor() {
   const { message } = App.useApp();
-  const compiler = useCompiler();
+  const builder = useBuilder<ModelDraft>();
+  const document = useBuilderAtom(builder.document);
+  const codec = useMemo(() => new ModelCodec(), []);
+  const schema = useMemo(() => codec.encode(document), [codec, document]);
   const [text, setText] = useState(() => stringifySchema(schema));
   const [error, setError] = useState("");
 
@@ -47,7 +45,7 @@ export function SchemaJsonEditor({ schema, onApply }: SchemaJsonEditorProps) {
       if (!isModelSchema(parsed)) {
         throw new Error("Schema 必须包含 meta 和 properties");
       }
-      onApply(compiler.toDraft(parsed));
+      builder.replaceDocument(codec.decode(parsed));
       setError("");
       message.success("Schema 已更新");
     } catch (reason) {

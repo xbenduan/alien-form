@@ -2,6 +2,7 @@ import type { Runtime } from "@alien-form/engine";
 import { RecordPage } from "./record-page";
 import { RecordOverlay } from "./overlay";
 import { RecordActionPageLayout } from "./action-page";
+import { BuilderPreview } from "./builder-preview";
 
 /**
  * 页面级节点：整页壳（record-page）、叠加层（overlay）、整页动作（action-page）。
@@ -11,4 +12,5 @@ export function registerPageComponents(runtime: Runtime): void {
   runtime.component("record-page", { component: RecordPage });
   runtime.component("overlay", { component: RecordOverlay });
   runtime.component("action-page", { component: RecordActionPageLayout });
+  runtime.component("builder-preview", { component: BuilderPreview });
 }
