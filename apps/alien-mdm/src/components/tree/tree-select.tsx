@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Select } from "antd";
-import { Tree, collectExpandable } from "./Tree";
-import type { TreeNode } from "./Tree";
+import { Tree, collectExpandable } from "./tree";
+import type { TreeNode } from "./tree";
 import styles from "./index.module.css";
 
 export interface TreeSelectComboProps {

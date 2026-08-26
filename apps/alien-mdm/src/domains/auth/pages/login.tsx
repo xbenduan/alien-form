@@ -1,7 +1,7 @@
 import { AppstoreOutlined, LockOutlined, UserOutlined } from "@ant-design/icons";
 import { App, Button, Form, Input, Typography } from "antd";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../components/AuthProvider";
+import { useAuth } from "../components/auth-provider";
 import { homePath } from "../../../app/router/paths";
 import styles from "./login.module.css";
 

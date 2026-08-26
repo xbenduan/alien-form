@@ -1,7 +1,7 @@
 import { Select as AntSelect } from "antd";
 import { useFormScope } from "@alien-form/react";
 import type { FieldComponentProps, FormScope } from "../types/shared";
-import { DisplayValue } from "./DisplayValue";
+import { DisplayValue } from "./display-value";
 import {
   parseMultiValue,
   refValue,

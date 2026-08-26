@@ -2,8 +2,8 @@ import { useNavigate } from "react-router-dom";
 import { App, Dropdown } from "antd";
 import { LogoutOutlined, SettingOutlined, UserOutlined } from "@ant-design/icons";
 import { loginPath, modelListPath, recordEditPath } from "../../../app/router/paths";
-import { useAuth } from "../../auth/components/AuthProvider";
-import { Identicon } from "./Identicon";
+import { useAuth } from "../../auth/components/auth-provider";
+import { Identicon } from "./identicon";
 import styles from "./index.module.css";
 
 const USER_MODEL = "school-user";

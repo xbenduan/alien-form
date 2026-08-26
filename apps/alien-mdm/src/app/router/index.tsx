@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import type { BrowserRouterProps } from "react-router-dom";
 import Layout from "../layout";
-import { useAuth } from "../../domains/auth/components/AuthProvider";
+import { useAuth } from "../../domains/auth/components/auth-provider";
 import { loginPath } from "./paths";
 import { publicRoutes, routes } from "./routes";
 

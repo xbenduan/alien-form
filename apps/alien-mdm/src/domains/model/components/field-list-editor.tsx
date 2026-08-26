@@ -4,7 +4,7 @@ import { useRef, useState, type DragEvent, type ReactElement } from "react";
 import { useBuilder, useBuilderAtom } from "@alien-form/builder/react";
 import { ModelCodec, type FieldDraft, type ModelDraft } from "../builder";
 import { componentAlias, isContainerField } from "../utils";
-import { FieldEditor, type FieldEditorRef } from "./FieldEditor";
+import { FieldEditor, type FieldEditorRef } from "./field-editor";
 import styles from "./index.module.css";
 
 type EditorState =

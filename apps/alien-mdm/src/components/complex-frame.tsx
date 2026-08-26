@@ -3,7 +3,7 @@ import { useState } from "react";
 import { ProfileOutlined } from "@ant-design/icons";
 import { Button, Tooltip } from "antd";
 import type { FieldComponentProps } from "../types/shared";
-import { FieldDetailModal } from "./FieldDetailModal";
+import { FieldDetailModal } from "./field-detail-modal";
 import { toDisplayText } from "../utils/field-values";
 import styles from "./index.module.css";
 

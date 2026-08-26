@@ -1,4 +1,4 @@
-export { PageError, PageLoading } from "./PageState";
-export { PageBreadcrumb } from "./PageBreadcrumb";
-export type { PageBreadcrumbItem } from "./PageBreadcrumb";
-export { FieldsetCard } from "./FieldsetCard";
+export { PageError, PageLoading } from "./page-state";
+export { PageBreadcrumb } from "./page-breadcrumb";
+export type { PageBreadcrumbItem } from "./page-breadcrumb";
+export { FieldsetCard } from "./fieldset-card";

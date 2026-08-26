@@ -2,7 +2,7 @@ import { ConfigProvider, theme } from "antd";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 import { useState } from "react";
-import { AuthProvider } from "../../domains/auth/components/AuthProvider";
+import { AuthProvider } from "../../domains/auth/components/auth-provider";
 
 const GLOBAL_GC_TIME = 10 * 60 * 1000; // 10 minutes
 

@@ -1,4 +1,4 @@
-export { Tree, collectExpandable } from "./Tree";
-export type { TreeNode, TreeProps } from "./Tree";
-export { TreeSelect } from "./TreeSelect";
-export type { TreeSelectComboProps } from "./TreeSelect";
+export { Tree, collectExpandable } from "./tree";
+export type { TreeNode, TreeProps } from "./tree";
+export { TreeSelect } from "./tree-select";
+export type { TreeSelectComboProps } from "./tree-select";

@@ -1,6 +1,6 @@
-export { FieldListEditor } from "./FieldListEditor";
-export { GroupEditor } from "./GroupEditor";
-export { LayoutJsonEditor } from "./LayoutJsonEditor";
-export { ModelMetaForm } from "./ModelMetaForm";
-export { SchemaPreview } from "./SchemaPreview";
-export { SchemaJsonEditor } from "./SchemaJsonEditor";
+export { FieldListEditor } from "./field-list-editor";
+export { GroupEditor } from "./group-editor";
+export { LayoutJsonEditor } from "./layout-json-editor";
+export { ModelMetaForm } from "./model-meta-form";
+export { SchemaPreview } from "./schema-preview";
+export { SchemaJsonEditor } from "./schema-json-editor";

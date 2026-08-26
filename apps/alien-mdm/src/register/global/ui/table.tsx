@@ -5,8 +5,8 @@ import {
   RenderNode,
   type ComponentProps,
 } from "@alien-form/engine/react";
-import { Table } from "@components/Table";
-import type { TableColumnAction } from "@components/Table";
+import { Table } from "@components/table";
+import type { TableColumnAction } from "@components/table";
 import type { TableColumn } from "../../../types/shared";
 import { useEffect, useState } from "react";
 import type { ModelRecord } from "../../../runtime/types";

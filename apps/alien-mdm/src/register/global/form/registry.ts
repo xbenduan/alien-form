@@ -184,7 +184,7 @@ const selectProjection: RegisteredFieldDefinition["projection"] = {
 export const fieldDefinitions: Record<string, RegisteredFieldDefinition> = {
   Input: definition(
     "Input",
-    lazy(() => import("./Input")),
+    lazy(() => import("./input")),
     "string",
     "单行文本",
     "leaf",
@@ -193,7 +193,7 @@ export const fieldDefinitions: Record<string, RegisteredFieldDefinition> = {
   ),
   Textarea: definition(
     "Textarea",
-    lazy(() => import("./Textarea")),
+    lazy(() => import("./textarea")),
     "string",
     "多行文本",
     "leaf",
@@ -202,7 +202,7 @@ export const fieldDefinitions: Record<string, RegisteredFieldDefinition> = {
   ),
   NumberInput: definition(
     "NumberInput",
-    lazy(() => import("./NumberInput")),
+    lazy(() => import("./number-input")),
     "number",
     "数字",
     "leaf",
@@ -211,7 +211,7 @@ export const fieldDefinitions: Record<string, RegisteredFieldDefinition> = {
   ),
   Select: definition(
     "Select",
-    lazy(() => import("./Select")),
+    lazy(() => import("./select")),
     "string",
     "下拉选择",
     "leaf",
@@ -227,7 +227,7 @@ export const fieldDefinitions: Record<string, RegisteredFieldDefinition> = {
   ),
   DateInput: definition(
     "DateInput",
-    lazy(() => import("./DateInput")),
+    lazy(() => import("./date-input")),
     "string",
     "日期",
     "leaf",
@@ -236,7 +236,7 @@ export const fieldDefinitions: Record<string, RegisteredFieldDefinition> = {
   ),
   TreeSelect: definition(
     "TreeSelect",
-    lazy(() => import("./TreeSelect")),
+    lazy(() => import("./tree-select")),
     "string",
     "树形单选",
     "leaf",
@@ -257,7 +257,7 @@ export const fieldDefinitions: Record<string, RegisteredFieldDefinition> = {
   ),
   ObjectField: definition(
     "ObjectField",
-    lazy(() => import("./ObjectField")),
+    lazy(() => import("./object-field")),
     "object",
     "对象分组",
     "complex",
@@ -270,7 +270,7 @@ export const fieldDefinitions: Record<string, RegisteredFieldDefinition> = {
   ),
   ArrayCards: definition(
     "ArrayCards",
-    lazy(() => import("./ArrayCards")),
+    lazy(() => import("./array-cards")),
     "array",
     "对象数组",
     "complex",
@@ -283,7 +283,7 @@ export const fieldDefinitions: Record<string, RegisteredFieldDefinition> = {
   ),
   GridLayout: definition(
     "GridLayout",
-    lazy(() => import("./GridLayout")),
+    lazy(() => import("./grid-layout")),
     "object",
     "栅格布局",
     "layout",
