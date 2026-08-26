@@ -12,7 +12,6 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "composite": true,
     "paths": {
       "@alien-form/engine": ["./src/index.ts"],
       "@alien-form/engine/react": ["./src/react/index.ts"]

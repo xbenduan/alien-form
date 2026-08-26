@@ -4,6 +4,7 @@ export {
   BlockProvider,
   useRuntime,
   usePage,
+  useOptionalPage,
   useBlockContext,
 } from "./context";
 export { useAtom } from "./use-atom";
@@ -12,6 +13,7 @@ export {
   useListBlock,
   useFormBlock,
   useService,
+  useOptionalService,
   useConstant,
 } from "./use-runtime";
 export { RenderNode, RenderChildren, Slot, type ComponentProps } from "./renderer";

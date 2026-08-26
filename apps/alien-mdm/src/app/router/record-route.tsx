@@ -6,9 +6,9 @@ import {
   buildListPageSchema,
   type ModelPageScene,
 } from "../../compiler/model-to-page";
-import { PageRoot, useRuntime } from "@alien-form/engine/react";
+import { PageRoot } from "@alien-form/engine/react";
 import { PageError, PageLoading } from "@components";
-import { FieldServiceContext, useModelSchema } from "@hooks";
+import { useModelSchema } from "@hooks";
 
 export interface RecordRouteProps {
   scene: ModelPageScene;
@@ -27,16 +27,8 @@ export default function RecordRoute({ scene }: RecordRouteProps) {
 /** 编译相关的 hook 必须在 CompilerProvider 内部消费。 */
 function RecordRouteContent({ scene }: RecordRouteProps) {
   const { modelName = "", recordId } = useParams();
-  const runtime = useRuntime();
   const schemaQuery = useModelSchema(modelName);
   const compiledQuery = useCompiledSchema(schemaQuery.data);
-  const resolveFieldService = useMemo(
-    () => (code: string) => {
-      const service = runtime.registry.services.resolve(code, modelName);
-      return service ? { send: (params?: unknown) => service.send(params) } : undefined;
-    },
-    [runtime, modelName],
-  );
 
   const pageSchema = useMemo(() => {
     if (!schemaQuery.data || !compiledQuery.data) return undefined;
@@ -58,9 +50,6 @@ function RecordRouteContent({ scene }: RecordRouteProps) {
     return <PageError title="模型页面编译失败" description="Schema 必须包含可编译的页面布局。" />;
   }
 
-  return (
-    <FieldServiceContext.Provider value={resolveFieldService}>
-      <PageRoot key={pageSchema.id} schema={pageSchema} />
-    </FieldServiceContext.Provider>
-  );
+  // service 由字段组件通过引擎 useService/useOptionalService 自取，domain 来自 PageRoot 的 PageProvider。
+  return <PageRoot key={pageSchema.id} schema={pageSchema} />;
 }

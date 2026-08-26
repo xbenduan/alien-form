@@ -1,4 +1,4 @@
-import { useBlockContext, usePage } from "./context";
+import { useBlockContext, usePage, useOptionalPage, useRuntime } from "./context";
 import { useAtom } from "./use-atom";
 import type { BlockRuntime } from "../core/page/block";
 import {
@@ -62,6 +62,17 @@ export function useService(code: string) {
   const svc = page.runtime.registry.services.resolve(code, page.domain);
   if (!svc) throw new Error(`[alien-page] service "${code}" not registered`);
   return svc;
+}
+
+/**
+ * 宽容版 useService：不要求 PageProvider。
+ * runtime 来自应用级 RuntimeProvider；domain 有 PageProvider 时取当前页面，否则仅查全局。
+ * 解析不到返回 undefined（适用于脱离页面渲染的场景，如构建器预览）。
+ */
+export function useOptionalService(code: string) {
+  const runtime = useRuntime();
+  const page = useOptionalPage();
+  return runtime.registry.services.resolve(code, page?.domain);
 }
 
 export function useConstant<T = unknown>(key: string): T | undefined {

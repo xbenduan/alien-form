@@ -3,7 +3,7 @@ import { useFormScope } from "@alien-form/react";
 import type { FieldComponentProps, FormScope } from "../../../types/shared";
 import { DisplayValue } from "@components/DisplayValue";
 import { refValue } from "../../../compiler";
-import { useServiceResolver } from "@hooks/service";
+import { useOptionalService } from "@alien-form/engine/react";
 import { TreeSelect as TreeSelectCombo } from "@components/tree";
 import type { TreeNode } from "@components/tree";
 
@@ -22,7 +22,7 @@ import type { TreeNode } from "@components/tree";
  */
 export default function TreeSelect(props: FieldComponentProps) {
   const { mode = "edit" } = useFormScope<FormScope>();
-  const resolveService = useServiceResolver();
+  const request = useOptionalService("records.list");
 
   const treeModel = String(props.treeModel ?? "");
   const idField = String(props.treeIdField ?? "id");
@@ -34,7 +34,6 @@ export default function TreeSelect(props: FieldComponentProps) {
   const reqId = useRef(0);
 
   useEffect(() => {
-    const request = resolveService?.("records.list");
     if (!treeModel || !request) return;
     const current = ++reqId.current;
     setLoading(true);
@@ -47,7 +46,7 @@ export default function TreeSelect(props: FieldComponentProps) {
       .finally(() => {
         if (current === reqId.current) setLoading(false);
       });
-  }, [resolveService, treeModel]);
+  }, [request, treeModel]);
 
   const rawValue = refValue(props.value);
   const currentValue = rawValue == null || rawValue === "" ? undefined : String(rawValue);

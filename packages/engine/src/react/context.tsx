@@ -33,6 +33,10 @@ export function usePage(): PageRuntime {
   return ctx;
 }
 
+export function useOptionalPage(): PageRuntime | null {
+  return useContext(PageContext);
+}
+
 export function useBlockContext(): BlockRuntime | null {
   return useContext(BlockContext);
 }
