@@ -1,5 +1,5 @@
 import { lazy } from "react";
-import type { ModelPageScene } from "../../runtime/react";
+import type { ModelPageScene } from "../../compiler/model-to-page";
 
 /** 路由动作模式：新增 / 编辑 / 详情。 */
 export type ActionMode = Exclude<ModelPageScene, "list">;
