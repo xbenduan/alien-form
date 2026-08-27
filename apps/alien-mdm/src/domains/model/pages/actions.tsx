@@ -93,9 +93,11 @@ function ModelActionContent({
                 </FieldsetCard>
               </Col>
               <Col span={8} className={styles.fill}>
-                <FieldsetCard title="实时验证" className={styles.fill}>
-                  <SchemaPreview schema={builder.preview.schema} error={builder.preview.error} />
-                </FieldsetCard>
+                <SchemaPreview
+                  schema={builder.preview.schema}
+                  error={builder.preview.error}
+                  className={styles.fill}
+                />
               </Col>
             </Row>
             <FieldsetCard title="表单分组">
