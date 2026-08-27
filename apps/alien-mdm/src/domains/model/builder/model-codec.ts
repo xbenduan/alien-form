@@ -125,10 +125,75 @@ export class ModelCodec {
       defaultPageSize: 10,
       filterCount: 3,
       openMode: { add: "drawer", edit: "drawer", detail: "drawer" },
-      fields: [this.createField()],
+      fields: [this.createField(), ...this.defaultFields()],
       groups: [],
       layout: structuredClone(DEFAULT_LAYOUT),
     };
+  }
+
+  /**
+   * 每个模型的默认字段：id / status / 审计人与时间。
+   * 统一策略：table 默认展示、表单不展示（display: hidden）、filter 展示（filterable）。
+   * id / createdAt / updatedAt 是后端系统列（backend 自动维护）；createBy / updateBy / status
+   * 是普通模版字段。status 用 Select，选项取自注册的 status 常量，默认值 normal。
+   */
+  private defaultFields(): FieldDraft[] {
+    const auditText = (key: string, title: string): FieldDraft => ({
+      id: this.createId(),
+      fields: {
+        type: "string",
+        key,
+        title,
+        component: "Input",
+        display: "hidden",
+        "x-table": { visible: true, width: 160 },
+        "x-database": { type: "text", filterable: true },
+      },
+    });
+    const auditTime = (key: string, title: string): FieldDraft => ({
+      id: this.createId(),
+      fields: {
+        type: "string",
+        key,
+        title,
+        component: "DateInput",
+        display: "hidden",
+        "x-table": { visible: true, width: 170 },
+        "x-database": { type: "text", filterable: true },
+      },
+    });
+    return [
+      {
+        id: this.createId(),
+        fields: {
+          type: "string",
+          key: "status",
+          title: "状态",
+          component: "Select",
+          display: "hidden",
+          default: "normal",
+          dataSource: { plugin: "$af-constant", key: "status" },
+          "x-table": { visible: true, width: 100 },
+          "x-database": { type: "text", default: "normal", index: true, filterable: true },
+        },
+      },
+      auditText("createBy", "创建人"),
+      auditTime("createdAt", "创建时间"),
+      auditText("updateBy", "更新人"),
+      auditTime("updatedAt", "更新时间"),
+      {
+        id: this.createId(),
+        fields: {
+          type: "string",
+          key: "id",
+          title: "ID",
+          component: "Input",
+          display: "hidden",
+          "x-table": { visible: true, width: 160 },
+          "x-database": { type: "text", filterable: true },
+        },
+      },
+    ];
   }
 
   createField(component = "Input", domain?: string): FieldDraft {

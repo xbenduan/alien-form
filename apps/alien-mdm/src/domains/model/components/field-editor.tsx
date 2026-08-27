@@ -15,6 +15,7 @@ import { DeleteOutlined, InfoCircleOutlined, PlusOutlined } from "@ant-design/ic
 import type { Registry } from "@alien-form/engine";
 import { useBuilder } from "@alien-form/builder/react";
 import { getDefaultFieldSchema, getFieldDefinition } from "@runtime";
+import { COLUMN_TYPE_OPTIONS, columnTypeToFieldType, type ColumnType } from "@app-types/shared";
 import type { ModelFieldSchema } from "../builder";
 import type { FieldDraft } from "../types";
 import { componentDescription, fieldComponentOptions } from "../utils";
@@ -64,7 +65,7 @@ export interface FieldFormValues {
   tableEllipsis?: boolean;
   tableSortable?: boolean;
   databaseEnabled?: boolean;
-  databaseType?: string;
+  databaseType?: ColumnType;
   databaseNullable?: boolean;
   databaseDefaultText?: string;
   databaseUnique?: boolean;
@@ -186,7 +187,7 @@ export function fieldEditorSchemaOf(
   }
 
   const schema: ModelFieldSchema = {
-    type: definition?.fieldType ?? "string",
+    type: columnTypeToFieldType(values.databaseType) ?? definition?.fieldType ?? "string",
     component: values.component,
     key: values.key.trim(),
     title: values.title?.trim() || undefined,
@@ -216,7 +217,7 @@ export function fieldEditorSchemaOf(
       : undefined,
     "x-database": values.databaseEnabled
       ? {
-          type: values.databaseType?.trim() || undefined,
+          type: values.databaseType || undefined,
           nullable: values.databaseNullable,
           default: parseLoose(values.databaseDefaultText) as string | number | boolean | undefined,
           unique: values.databaseUnique,
@@ -257,6 +258,7 @@ export const FieldEditor = forwardRef<FieldEditorRef, FieldEditorProps>(function
   const [form] = Form.useForm<FieldFormValues>();
   const component = Form.useWatch("component", form) ?? field.fields.component ?? "Input";
   const dataSourceMode = Form.useWatch("dataSourceMode", form);
+  const databaseType = Form.useWatch("databaseType", form);
   const tableEnabled = Form.useWatch("tableEnabled", form);
   const databaseEnabled = Form.useWatch("databaseEnabled", form);
   const options = useMemo(
@@ -328,6 +330,7 @@ export const FieldEditor = forwardRef<FieldEditorRef, FieldEditorProps>(function
                   <Input
                     disabled
                     value={
+                      columnTypeToFieldType(databaseType) ??
                       getFieldDefinition(builder.registry, component, builder.domain)?.fieldType ??
                       "string"
                     }
@@ -501,7 +504,7 @@ export const FieldEditor = forwardRef<FieldEditorRef, FieldEditorProps>(function
                 {databaseEnabled ? (
                   <div className={styles.editorGrid}>
                     <Form.Item label="数据库类型" name="databaseType">
-                      <Input />
+                      <Select allowClear options={COLUMN_TYPE_OPTIONS.slice()} />
                     </Form.Item>
                     <Form.Item label="默认值" name="databaseDefaultText">
                       <Input />

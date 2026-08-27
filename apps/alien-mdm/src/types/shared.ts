@@ -48,6 +48,39 @@ export interface ComponentMeta {
   kind: FieldKind;
 }
 
+/**
+ * 后端列的物理存储类型（与 alien-server ColumnType 对齐）。
+ * alien-form 核心只有 string/number/boolean，字段类型以后端可选类型为准，
+ * 再映射成前端的 schema type。
+ */
+export type ColumnType = "text" | "integer" | "real" | "boolean" | "json";
+
+/** 编辑字段时「数据库类型」下拉的选项。 */
+export const COLUMN_TYPE_OPTIONS: ReadonlyArray<{ label: string; value: ColumnType }> = [
+  { label: "文本 text", value: "text" },
+  { label: "整数 integer", value: "integer" },
+  { label: "小数 real", value: "real" },
+  { label: "布尔 boolean", value: "boolean" },
+  { label: "JSON json", value: "json" },
+];
+
+/** 后端列类型 → 前端 schema type。 */
+export function columnTypeToFieldType(type?: ColumnType): ComponentMeta["fieldType"] | undefined {
+  switch (type) {
+    case "text":
+      return "string";
+    case "integer":
+    case "real":
+      return "number";
+    case "boolean":
+      return "boolean";
+    case "json":
+      return "object";
+    default:
+      return undefined;
+  }
+}
+
 /** 编辑字段弹窗组件下拉的选项。 */
 export interface ComponentOption {
   value: string;

@@ -1,5 +1,6 @@
 import type { ModelSchema } from "../schema/types.ts";
 import { schoolDepartmentLayout } from "./layout.ts";
+import { defaultFields } from "./_defaults.ts";
 
 /**
  * 部门/组织模型：把「组织结构」从 school-user 的自连接人链里拆出来，独立成树。
@@ -153,21 +154,7 @@ export const schoolDepartmentSchema: ModelSchema = {
       "x-table": { visible: false },
       "x-database": { type: "text" },
     },
-    id: { type: "string", title: "ID", display: "none", order: 900, "x-table": { visible: false } },
-    createdAt: {
-      type: "string",
-      title: "创建时间",
-      display: "none",
-      order: 910,
-      "x-table": { visible: false },
-    },
-    updatedAt: {
-      type: "string",
-      title: "更新时间",
-      display: "none",
-      order: 920,
-      "x-table": { visible: false },
-    },
+    ...defaultFields(),
   },
   group: [
     {

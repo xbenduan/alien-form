@@ -1,5 +1,6 @@
 import type { ModelSchema } from "../schema/types.ts";
 import { defaultLayout } from "./layout.ts";
+import { defaultFields } from "./_defaults.ts";
 
 /**
  * 角色模型（权限基础模型，写死）：维护角色及其可查看的数据表。
@@ -124,21 +125,7 @@ export const schoolRoleSchema: ModelSchema = {
       "x-table": { width: 90 },
       "x-database": { type: "real", default: 0, sortable: true },
     },
-    id: { type: "string", title: "ID", display: "none", order: 900, "x-table": { visible: false } },
-    createdAt: {
-      type: "string",
-      title: "创建时间",
-      display: "none",
-      order: 910,
-      "x-table": { visible: false },
-    },
-    updatedAt: {
-      type: "string",
-      title: "更新时间",
-      display: "none",
-      order: 920,
-      "x-table": { visible: false },
-    },
+    ...defaultFields(),
   },
   group: [
     {

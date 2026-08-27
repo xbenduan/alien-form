@@ -2,6 +2,7 @@ import type { IFieldSchema, IFormSchema } from "@alien-form/core";
 import type { FormComponentDefinition, UiNode } from "@alien-form/engine";
 import type { ComponentType, LazyExoticComponent } from "react";
 import type {
+  ColumnType,
   ComponentMeta,
   FieldComponentProps,
   GroupConfig,
@@ -21,7 +22,7 @@ export interface TableFieldMeta {
 }
 
 export interface XDatabaseMeta {
-  type?: string;
+  type?: ColumnType;
   nullable?: boolean;
   default?: string | number | boolean;
   unique?: boolean;

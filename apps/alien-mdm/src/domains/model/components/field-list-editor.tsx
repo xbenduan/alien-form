@@ -208,9 +208,6 @@ export function FieldListEditor() {
   return (
     <div className={styles.fieldTable}>
       <div className={styles.fieldToolbar}>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => addField()}>
-          添加字段
-        </Button>
         <Input
           allowClear
           prefix={<SearchOutlined />}
@@ -218,6 +215,9 @@ export function FieldListEditor() {
           value={keyword}
           onChange={(event) => setKeyword(event.target.value)}
         />
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => addField()}>
+          添加字段
+        </Button>
       </div>
       {rows.length || document.fields.length ? (
         <Table<FieldRow>
