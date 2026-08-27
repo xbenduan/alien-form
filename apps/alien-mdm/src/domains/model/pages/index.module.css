@@ -7,15 +7,14 @@
     min-width: 0;
   }
 
-  .configStack {
+  .formStep {
     display: grid;
     gap: 20px;
   }
 
-  /* 字段步骤：左右卡片等高，超出部分卡片内部滚动。 */
   .fieldsStep {
-    height: calc(100vh - 225px);
-    min-height: 420px;
+    height: calc(100vh - 300px);
+    min-height: 520px;
   }
 
   .fill {

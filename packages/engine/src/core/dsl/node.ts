@@ -5,7 +5,7 @@ export interface UiNode {
   component: string;
   props?: Record<string, unknown>;
   children?: UiNode[];
-  slots?: Record<string, UiNode[]>;
+  slots?: Record<string, UiNode>;
   block?: string;
   visible?: string;
 }

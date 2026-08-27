@@ -1,86 +1,194 @@
-import { useEffect } from "react";
-import { Form, Input, InputNumber, Select } from "antd";
+import { useEffect, useMemo, useRef } from "react";
+import { FormRenderer, useCreateForm } from "@alien-form/react";
+import type { IFormSchema } from "@alien-form/core";
 import { useBuilder, useBuilderAtom } from "@alien-form/builder/react";
+import { getFieldComponents, getFieldDecorators } from "../../../register/global/form/registry";
 import type { ModelDraft } from "../builder";
-import { MODEL_GROUP_OPTIONS, OPEN_MODE_OPTIONS } from "../utils";
-import styles from "./index.module.css";
 
 interface ModelMetaFormProps {
   nameDisabled?: boolean;
 }
 
-const OPEN_MODE_FIELDS = [
-  { key: "add", label: "新增打开方式" },
-  { key: "edit", label: "编辑打开方式" },
-  { key: "detail", label: "详情打开方式" },
-] as const;
+const META_SCHEMA: IFormSchema = {
+  type: "object",
+  properties: {
+    identity: {
+      type: "void",
+      "x-layout": "GridLayout",
+      props: { columns: 3, gutter: 16 },
+      properties: {
+        name: {
+          type: "string",
+          title: "模型名",
+          description: "只能使用字母、数字、下划线和中划线。",
+          component: "Input",
+          decorator: "FormItem",
+          required: true,
+        },
+        title: {
+          type: "string",
+          title: "标题",
+          component: "Input",
+          decorator: "FormItem",
+          required: true,
+        },
+        subtitle: {
+          type: "string",
+          title: "副标题",
+          component: "Input",
+          decorator: "FormItem",
+        },
+        group: {
+          type: "string",
+          title: "类型",
+          component: "Select",
+          decorator: "FormItem",
+          dataSource: [
+            { label: "系统", value: "system" },
+            { label: "其他", value: "other" },
+          ],
+        },
+        singularLabel: {
+          type: "string",
+          title: "单数标签",
+          component: "Input",
+          decorator: "FormItem",
+        },
+        pluralLabel: {
+          type: "string",
+          title: "复数标签",
+          component: "Input",
+          decorator: "FormItem",
+        },
+        filterCount: {
+          type: "number",
+          title: "筛选项数",
+          component: "NumberInput",
+          decorator: "FormItem",
+          props: { min: 0 },
+        },
+        defaultPageSize: {
+          type: "number",
+          title: "每页数",
+          component: "NumberInput",
+          decorator: "FormItem",
+          props: { min: 1 },
+        },
+        addOpenMode: {
+          type: "string",
+          title: "新增打开方式",
+          component: "Select",
+          decorator: "FormItem",
+          dataSource: [
+            { label: "整页", value: "page" },
+            { label: "抽屉", value: "drawer" },
+            { label: "弹窗", value: "modal" },
+          ],
+        },
+        detailOpenMode: {
+          type: "string",
+          title: "详情打开方式",
+          component: "Select",
+          decorator: "FormItem",
+          dataSource: [
+            { label: "整页", value: "page" },
+            { label: "抽屉", value: "drawer" },
+            { label: "弹窗", value: "modal" },
+          ],
+        },
+        editOpenMode: {
+          type: "string",
+          title: "编辑打开方式",
+          component: "Select",
+          decorator: "FormItem",
+          dataSource: [
+            { label: "整页", value: "page" },
+            { label: "抽屉", value: "drawer" },
+            { label: "弹窗", value: "modal" },
+          ],
+        },
+      },
+    },
+    description: {
+      type: "string",
+      title: "描述",
+      component: "Textarea",
+      decorator: "FormItem",
+      props: { rows: 3 },
+    },
+  },
+};
 
-/** 模型元信息编辑：名称、标题、标签、分页与打开方式。 */
+function valuesOf(draft: ModelDraft) {
+  return {
+    name: draft.name,
+    title: draft.title,
+    subtitle: draft.subtitle,
+    description: draft.description,
+    group: draft.group,
+    singularLabel: draft.singularLabel,
+    pluralLabel: draft.pluralLabel,
+    filterCount: draft.filterCount,
+    defaultPageSize: draft.defaultPageSize,
+    addOpenMode: draft.openMode.add,
+    detailOpenMode: draft.openMode.detail,
+    editOpenMode: draft.openMode.edit,
+  };
+}
+
+/** 模型元信息完全通过 alien-form schema 构建和渲染。 */
 export function ModelMetaForm({ nameDisabled }: ModelMetaFormProps) {
   const builder = useBuilder<ModelDraft>();
   const draft = useBuilderAtom(builder.document);
-  const [form] = Form.useForm<ModelDraft>();
+  const components = useMemo(
+    () => getFieldComponents(builder.registry, builder.domain),
+    [builder, builder.domain],
+  );
+  const decorators = useMemo(
+    () => getFieldDecorators(builder.registry, builder.domain),
+    [builder, builder.domain],
+  );
+  const syncing = useRef(false);
+  const initialValues = useMemo(() => valuesOf(draft), []);
+  const schema = useMemo<IFormSchema>(() => {
+    if (!nameDisabled) return META_SCHEMA;
+    const cloned = structuredClone(META_SCHEMA);
+    const identity = cloned.properties?.identity;
+    if (identity?.properties?.name) identity.properties.name.disabled = true;
+    return cloned;
+  }, [nameDisabled]);
+  const form = useCreateForm({ schema, initialValues, scope: { mode: "edit" } }, [schema]);
 
-  // 外部草稿变化（如 edit 模式异步载入 schema）时同步回表单。
   useEffect(() => {
-    form.setFieldsValue(draft);
+    return form.effect(
+      (current) => current.values(),
+      (values) => {
+        if (syncing.current) return;
+        builder.dispatch("meta.update", {
+          name: String(values.name ?? ""),
+          title: String(values.title ?? ""),
+          subtitle: String(values.subtitle ?? ""),
+          description: String(values.description ?? ""),
+          group: values.group === "system" ? "system" : "other",
+          singularLabel: String(values.singularLabel ?? ""),
+          pluralLabel: String(values.pluralLabel ?? ""),
+          filterCount: Number(values.filterCount ?? 0),
+          defaultPageSize: Number(values.defaultPageSize ?? 10),
+          openMode: {
+            add: values.addOpenMode ?? "drawer",
+            detail: values.detailOpenMode ?? "drawer",
+            edit: values.editOpenMode ?? "drawer",
+          },
+        });
+      },
+    );
+  }, [builder, form]);
+
+  useEffect(() => {
+    syncing.current = true;
+    form.setValues(valuesOf(draft));
+    syncing.current = false;
   }, [draft, form]);
 
-  return (
-    <Form
-      className={styles.modelMetaForm}
-      form={form}
-      layout="horizontal"
-      labelCol={{ flex: "110px" }}
-      labelAlign="left"
-      colon={false}
-      initialValues={draft}
-      onValuesChange={(_, values) =>
-        builder.dispatch("meta.update", {
-          ...values,
-          defaultPageSize: values.defaultPageSize ?? 10,
-          filterCount: values.filterCount ?? 3,
-        })
-      }
-    >
-      <Form.Item label="模型名 (name)" name="name">
-        <Input disabled={nameDisabled} placeholder="小写字母、数字和中划线" />
-      </Form.Item>
-      <Form.Item label="标题" name="title">
-        <Input />
-      </Form.Item>
-      <Form.Item label="副标题" name="subtitle">
-        <Input />
-      </Form.Item>
-      <Form.Item label="描述" name="description">
-        <Input.TextArea rows={2} />
-      </Form.Item>
-
-      <div className={styles.grid}>
-        <Form.Item label="模型分组" name="group">
-          <Select options={MODEL_GROUP_OPTIONS} />
-        </Form.Item>
-        <Form.Item label="单数标签" name="singularLabel">
-          <Input />
-        </Form.Item>
-        <Form.Item label="复数标签" name="pluralLabel">
-          <Input />
-        </Form.Item>
-        <Form.Item label="每页条数" name="defaultPageSize">
-          <InputNumber min={1} className={styles.control} />
-        </Form.Item>
-        <Form.Item label="筛选项数" name="filterCount">
-          <InputNumber min={0} className={styles.control} />
-        </Form.Item>
-      </div>
-
-      <div className={styles.grid}>
-        {OPEN_MODE_FIELDS.map(({ key, label }) => (
-          <Form.Item key={key} label={label} name={["openMode", key]}>
-            <Select className={styles.control} options={OPEN_MODE_OPTIONS} />
-          </Form.Item>
-        ))}
-      </div>
-    </Form>
-  );
+  return <FormRenderer form={form} components={components} decorators={decorators} />;
 }

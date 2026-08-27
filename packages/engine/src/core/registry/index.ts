@@ -1,32 +1,39 @@
 import { RegistryNamespace } from "./namespace";
 import type {
-  ComponentDescriptor,
+  FormComponentDefinition,
+  FormDecoratorDefinition,
+  FormHandlerDefinition,
   FormRegistry,
   FunctionDescriptor,
   Registry,
   ServiceDescriptor,
+  UiDefinition,
 } from "./types";
 
 export function createRegistry(): Registry {
   return {
-    components: new RegistryNamespace<ComponentDescriptor>(),
+    ui: new RegistryNamespace<UiDefinition>(),
     services: new RegistryNamespace<ServiceDescriptor>(),
     functions: new RegistryNamespace<FunctionDescriptor>(),
     constants: new RegistryNamespace<unknown>(),
     form: {
-      components: new RegistryNamespace<unknown>(),
-      decorators: new RegistryNamespace<unknown>(),
-      handlers: new RegistryNamespace(),
+      components: new RegistryNamespace<FormComponentDefinition>(),
+      decorators: new RegistryNamespace<FormDecoratorDefinition>(),
+      handlers: new RegistryNamespace<FormHandlerDefinition>(),
     } satisfies FormRegistry,
   };
 }
 
 export { RegistryNamespace } from "./namespace";
 export type {
-  ComponentDescriptor,
+  Definition,
+  FormComponentDefinition,
+  FormDecoratorDefinition,
+  FormHandlerDefinition,
   FormRegistry,
   FunctionDescriptor,
   Registry,
   ServiceContext,
   ServiceDescriptor,
+  UiDefinition,
 } from "./types";

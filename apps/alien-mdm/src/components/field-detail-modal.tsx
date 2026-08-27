@@ -6,8 +6,9 @@ import {
   type IFieldSchema,
   type IFormSchema,
 } from "@alien-form/react";
-import { fieldComponents } from "../register/global/form/registry";
-import { fieldDecorators } from "./field-registry";
+import { useOptionalPage } from "@alien-form/engine/react";
+import { getFieldComponents, getFieldDecorators } from "../register/global/form/registry";
+import { getAppRuntime } from "../runtime/create-runtime";
 
 export interface FieldDetailModalProps {
   open: boolean;
@@ -23,19 +24,24 @@ function DetailFieldForm({
   schema,
   value,
   formKey,
+  domain,
 }: {
   schema: IFormSchema;
   value: unknown;
   formKey: string;
+  domain?: string;
 }) {
   const scope = useMemo(() => ({ mode: "detail" }), []);
+  const registry = getAppRuntime().registry;
+  const components = useMemo(() => getFieldComponents(registry, domain), [domain, registry]);
+  const decorators = useMemo(() => getFieldDecorators(registry, domain), [domain, registry]);
   const form = useCreateForm({ schema, initialValues: { __detail__: value }, scope }, [
     schema,
     value,
     formKey,
     scope,
   ]);
-  return <FormRenderer form={form} components={fieldComponents} decorators={fieldDecorators} />;
+  return <FormRenderer form={form} components={components} decorators={decorators} />;
 }
 
 /**
@@ -43,6 +49,7 @@ function DetailFieldForm({
  * table 下复杂字段点击"详情"即打开此弹窗。
  */
 export function FieldDetailModal({ open, title, field, value, onClose }: FieldDetailModalProps) {
+  const page = useOptionalPage();
   const schema = useMemo<IFormSchema | undefined>(() => {
     if (!field) return undefined;
     return {
@@ -64,7 +71,12 @@ export function FieldDetailModal({ open, title, field, value, onClose }: FieldDe
       onCancel={onClose}
     >
       {schema ? (
-        <DetailFieldForm schema={schema} formKey={open ? "open" : "closed"} value={value} />
+        <DetailFieldForm
+          schema={schema}
+          formKey={open ? "open" : "closed"}
+          value={value}
+          domain={page?.domain}
+        />
       ) : (
         <Empty description="暂无字段详情" />
       )}

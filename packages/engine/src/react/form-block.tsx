@@ -17,22 +17,18 @@ export function FormBlockRenderer({ blockName }: FormBlockRendererProps) {
     throw new Error(`[alien-page] block "${name}" is not a form block`);
   }
 
-  const components = useMemo(
-    () =>
-      runtime.registry.form.components.all(page.domain) as Record<
-        string,
-        React.ComponentType<unknown>
-      >,
-    [runtime, page.domain],
-  );
-  const decorators = useMemo(
-    () =>
-      runtime.registry.form.decorators.all(page.domain) as Record<
-        string,
-        React.ComponentType<unknown>
-      >,
-    [runtime, page.domain],
-  );
+  const components = useMemo(() => {
+    const definitions = runtime.registry.form.components.all(page.domain);
+    return Object.fromEntries(
+      Object.entries(definitions).map(([code, definition]) => [code, definition.component]),
+    ) as Record<string, React.ComponentType<unknown>>;
+  }, [runtime, page.domain]);
+  const decorators = useMemo(() => {
+    const definitions = runtime.registry.form.decorators.all(page.domain);
+    return Object.fromEntries(
+      Object.entries(definitions).map(([code, definition]) => [code, definition.component]),
+    ) as Record<string, React.ComponentType<unknown>>;
+  }, [runtime, page.domain]);
 
   return <FormRenderer form={block.form} components={components} decorators={decorators} />;
 }

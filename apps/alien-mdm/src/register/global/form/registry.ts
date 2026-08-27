@@ -1,5 +1,5 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
-import { BuilderRegistry } from "@alien-form/builder";
+import type { Registry } from "@alien-form/engine";
 import type { IFieldSchema } from "@alien-form/core";
 import type {
   ModelFieldDefinition,
@@ -7,7 +7,12 @@ import type {
   ProjectionContext,
 } from "../../../domains/model/builder/types";
 import { multiValueFormat } from "../../../utils/field-values";
-import type { ComponentMeta, ComponentOption, FieldComponentProps, TableColumn } from "../../../types/shared";
+import type {
+  ComponentMeta,
+  ComponentOption,
+  FieldComponentProps,
+  TableColumn,
+} from "../../../types/shared";
 
 export interface RegisteredFieldDefinition extends ModelFieldDefinition {
   component: LazyExoticComponent<ComponentType<FieldComponentProps>>;
@@ -46,11 +51,7 @@ function leafColumn(field: ModelFieldSchema, key: string): TableColumn {
   };
 }
 
-function complexColumn(
-  field: ModelFieldSchema,
-  key: string,
-  formField: IFieldSchema,
-): TableColumn {
+function complexColumn(field: ModelFieldSchema, key: string, formField: IFieldSchema): TableColumn {
   const meta = tableMeta(field);
   return {
     key,
@@ -86,19 +87,19 @@ function definition(
   description: string,
   schema: ModelFieldSchema,
   options: {
-    container?: boolean;
+    children?: RegisteredFieldDefinition["authoring"]["children"];
     projection?: RegisteredFieldDefinition["projection"];
   } = {},
 ): RegisteredFieldDefinition {
   return {
     code,
+    title,
+    description,
     component,
     fieldType,
     authoring: {
-      title,
       kind,
-      description,
-      container: options.container,
+      children: options.children,
       create: () => structuredClone(schema),
     },
     projection: options.projection ?? leafProjection(),
@@ -168,8 +169,7 @@ const arrayProjection: RegisteredFieldDefinition["projection"] = {
 
 const selectProjection: RegisteredFieldDefinition["projection"] = {
   toForm(field) {
-    const multiple =
-      field.props?.selectMode === "multiple" || field.props?.selectMode === "tags";
+    const multiple = field.props?.selectMode === "multiple" || field.props?.selectMode === "tags";
     return {
       ...(field as IFieldSchema),
       ...(multiple ? { type: "string", "x-format": multiValueFormat } : {}),
@@ -266,7 +266,7 @@ export const fieldDefinitions: Record<string, RegisteredFieldDefinition> = {
       ...base("object", "对象分组", "ObjectField", { columns: 2, gutter: 16 }, 160),
       properties: {},
     },
-    { container: true, projection: objectProjection },
+    { children: "properties", projection: objectProjection },
   ),
   ArrayCards: definition(
     "ArrayCards",
@@ -279,7 +279,7 @@ export const fieldDefinitions: Record<string, RegisteredFieldDefinition> = {
       ...base("array", "对象数组", "ArrayCards", { columns: 2, gutter: 16 }, 160),
       items: { type: "object", properties: {} },
     },
-    { container: true, projection: arrayProjection },
+    { children: "items", projection: arrayProjection },
   ),
   GridLayout: definition(
     "GridLayout",
@@ -299,54 +299,68 @@ export const fieldDefinitions: Record<string, RegisteredFieldDefinition> = {
   ),
 };
 
-export const fieldDefinitionRegistry = new BuilderRegistry();
-fieldDefinitionRegistry.registerGlobal(fieldDefinitions);
-
-export const fieldComponents = Object.fromEntries(
-  Object.values(fieldDefinitions).map((definition) => [definition.code, definition.component]),
-) as Record<string, RegisteredFieldDefinition["component"]>;
-
 export function getFieldDefinition(
+  registry: Registry,
   code?: string,
   domain?: string,
 ): RegisteredFieldDefinition | undefined {
   return code
-    ? fieldDefinitionRegistry.resolve<RegisteredFieldDefinition>(code, domain)
+    ? (registry.form.components.resolve(code, domain) as RegisteredFieldDefinition | undefined)
     : undefined;
 }
 
+export function getFieldComponents(
+  registry: Registry,
+  domain?: string,
+): Record<string, RegisteredFieldDefinition["component"]> {
+  return Object.fromEntries(
+    Object.entries(registry.form.components.all(domain)).map(([code, definition]) => [
+      code,
+      definition.component,
+    ]),
+  ) as Record<string, RegisteredFieldDefinition["component"]>;
+}
+
+export function getFieldDecorators(
+  registry: Registry,
+  domain?: string,
+): Record<string, ComponentType<unknown>> {
+  return Object.fromEntries(
+    Object.entries(registry.form.decorators.all(domain)).map(([code, definition]) => [
+      code,
+      definition.component,
+    ]),
+  ) as Record<string, ComponentType<unknown>>;
+}
+
 export function buildComponentOptions(
+  registry: Registry,
   filter?: (definition: RegisteredFieldDefinition) => boolean,
   domain?: string,
 ): ComponentOption[] {
   return Object.values(
-    fieldDefinitionRegistry.all<RegisteredFieldDefinition>(domain),
+    registry.form.components.all(domain) as Record<string, RegisteredFieldDefinition>,
   )
     .filter((definition) => (filter ? filter(definition) : true))
-    .map((definition) => ({ value: definition.code, label: definition.authoring.title }));
+    .map((definition) => ({ value: definition.code, label: definition.title }));
 }
 
-export const LAYOUT_COMPONENTS = Object.values(fieldDefinitions)
-  .filter((definition) => definition.authoring.kind === "layout")
-  .map((definition) => definition.code);
-
-export function isComplexComponent(component?: string): boolean {
-  return getFieldDefinition(component)?.authoring.kind === "complex";
+export function isContainerComponent(
+  registry: Registry,
+  component?: string,
+  domain?: string,
+): boolean {
+  return Boolean(getFieldDefinition(registry, component, domain)?.authoring.children);
 }
 
-export function isContainerComponent(component?: string): boolean {
-  return Boolean(getFieldDefinition(component)?.authoring.container);
-}
-
-export function getComponentMeta(component?: string): ComponentMeta | undefined {
-  const definition = getFieldDefinition(component);
-  return definition
-    ? { fieldType: definition.fieldType, kind: definition.authoring.kind }
-    : undefined;
-}
-
-export function getDefaultFieldSchema(component: string): ModelFieldSchema {
-  return (
-    getFieldDefinition(component) ?? fieldDefinitions.Input
-  ).authoring.create();
+export function getDefaultFieldSchema(
+  registry: Registry,
+  component: string,
+  domain?: string,
+): ModelFieldSchema {
+  const definition =
+    getFieldDefinition(registry, component, domain) ??
+    getFieldDefinition(registry, "Input", domain);
+  if (!definition) throw new Error(`[alien-mdm] field definition "${component}" not found`);
+  return definition.authoring.create();
 }

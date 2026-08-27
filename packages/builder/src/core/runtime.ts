@@ -1,7 +1,7 @@
 import { effect, signal, startBatch, endBatch } from "alien-signals";
+import type { Registry } from "@alien-form/engine";
 import { executeCommand, type CommandMap } from "./command";
 import { History } from "./history";
-import { BuilderRegistry } from "./registry";
 import type {
   BuilderAtom,
   BuilderError,
@@ -35,7 +35,7 @@ class SignalAtom<T> implements BuilderAtom<T> {
 }
 
 export class BuilderRuntime<TDocument> {
-  readonly registry: BuilderRegistry;
+  readonly registry: Registry;
   readonly document: ReadonlyBuilderAtom<TDocument>;
   readonly selection: ReadonlyBuilderAtom<string[]>;
   readonly dirty: ReadonlyBuilderAtom<boolean>;
@@ -45,6 +45,7 @@ export class BuilderRuntime<TDocument> {
   readonly canRedo: ReadonlyBuilderAtom<boolean>;
 
   private readonly commands = new Map<string, CommandMap<TDocument>[string]>();
+  private readonly resolveDomain: (document: TDocument) => string;
   private readonly history: History<TDocument>;
   private readonly clone: (document: TDocument) => TDocument;
   private readonly validate?: (document: TDocument) => BuilderError[];
@@ -60,7 +61,9 @@ export class BuilderRuntime<TDocument> {
   constructor(options: BuilderRuntimeOptions<TDocument>) {
     this.clone = options.clone ?? ((document) => structuredClone(document));
     const initial = this.clone(options.document);
-    this.registry = options.registry ?? new BuilderRegistry();
+    this.registry = options.registry;
+    this.resolveDomain =
+      typeof options.domain === "function" ? options.domain : () => options.domain as string;
     this.documentState = new SignalAtom(initial);
     this.document = this.documentState;
     this.selection = this.selectionState;
@@ -73,13 +76,21 @@ export class BuilderRuntime<TDocument> {
     this.history = new History(this.clone(initial), options.historyLimit);
     this.validate = options.validate;
     this.registerCommands(options.commands ?? {});
-    this.registerCommand("replaceDocument", (_document, payload) => this.clone(payload as TDocument));
+    this.registerCommand("replaceDocument", (_document, payload) =>
+      this.clone(payload as TDocument),
+    );
     this.refreshState(initial);
+  }
+
+  get domain(): string {
+    return this.resolveDomain(this.document.get());
   }
 
   registerCommand<TPayload>(
     name: string,
-    command: import("./command").Command<TDocument, TPayload> | import("./command").CommandHandler<TDocument, TPayload>,
+    command:
+      | import("./command").Command<TDocument, TPayload>
+      | import("./command").CommandHandler<TDocument, TPayload>,
   ): void {
     this.commands.set(name, command as CommandMap<TDocument>[string]);
   }

@@ -26,9 +26,7 @@ function updateField(
 ): FieldDraft[] {
   return fields.map((field) => {
     if (field.id === id) return update(field);
-    return field.children
-      ? { ...field, children: updateField(field.children, id, update) }
-      : field;
+    return field.children ? { ...field, children: updateField(field.children, id, update) } : field;
   });
 }
 
@@ -88,6 +86,7 @@ function insertInto(
 }
 
 export const modelCommands: CommandMap<ModelDraft> = {
+  "document.replace": (_document, payload: ModelDraft) => payload,
   "field.add": (document, payload: FieldAddPayload) => ({
     ...document,
     fields: payload.parentId
@@ -139,7 +138,10 @@ export const modelCommands: CommandMap<ModelDraft> = {
     groups.splice(Math.min(groups.length, Math.max(0, payload.to)), 0, group);
     return { ...document, groups };
   },
-  "meta.update": (document, payload: Partial<Omit<ModelDraft, "fields" | "groups" | "layout">>) => ({
+  "meta.update": (
+    document,
+    payload: Partial<Omit<ModelDraft, "fields" | "groups" | "layout">>,
+  ) => ({
     ...document,
     ...payload,
   }),

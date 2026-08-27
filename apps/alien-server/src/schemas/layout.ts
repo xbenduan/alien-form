@@ -30,30 +30,24 @@ export const defaultLayout = {
   component: "layout",
   props: { services: RECORD_SERVICES },
   slots: {
-    rightTop: [{ component: "filter", props: { scope: "main" } }],
-    rightBottom: [
-      {
-        component: "table",
-        props: { scope: "main" },
-        slots: {
-          toolbarLeft: [{ component: "action-batch-delete" }],
-          toolbarRight: [
-            { component: "action-refresh" },
-            { component: "action-add" },
-          ],
+    rightTop: { component: "filter", props: { scope: "main" } },
+    rightBottom: {
+      component: "table",
+      props: { scope: "main" },
+      slots: {
+        toolbarLeft: { component: "action-batch-delete" },
+        toolbarRight: {
+          component: "action-group",
+          children: [{ component: "action-refresh" }, { component: "action-add" }],
         },
-        children: [
-          {
-            component: "row-actions",
-            children: [
-              { component: "detail" },
-              { component: "edit" },
-              { component: "delete" },
-            ],
-          },
-        ],
       },
-    ],
+      children: [
+        {
+          component: "row-actions",
+          children: [{ component: "detail" }, { component: "edit" }, { component: "delete" }],
+        },
+      ],
+    },
   },
 } as const;
 
@@ -66,48 +60,40 @@ export const schoolUserLayout = {
   component: "layout",
   props: { services: TREE_SERVICES },
   slots: {
-    left: [
-      {
-        component: "tree",
-        props: {
-          // 树取自部门模型，过滤打到用户模型的 deptCode 标量列。
-          model: "school-department",
-          idField: "deptCode",
-          parentField: "parentCode",
-          labelField: "deptName",
-          searchable: true,
-          publishTo: "main",
-          targetField: "deptCode",
-          includeSelf: true,
-          hideLeaf: false,
-          defaultSelect: "root",
+    left: {
+      component: "tree",
+      props: {
+        // 树取自部门模型，过滤打到用户模型的 deptCode 标量列。
+        model: "school-department",
+        idField: "deptCode",
+        parentField: "parentCode",
+        labelField: "deptName",
+        searchable: true,
+        publishTo: "main",
+        targetField: "deptCode",
+        includeSelf: true,
+        hideLeaf: false,
+        defaultSelect: "root",
+      },
+    },
+    rightTop: { component: "filter", props: { scope: "main" } },
+    rightBottom: {
+      component: "table",
+      props: { scope: "main" },
+      slots: {
+        toolbarLeft: { component: "action-batch-delete" },
+        toolbarRight: {
+          component: "action-group",
+          children: [{ component: "action-refresh" }, { component: "action-add" }],
         },
       },
-    ],
-    rightTop: [{ component: "filter", props: { scope: "main" } }],
-    rightBottom: [
-      {
-        component: "table",
-        props: { scope: "main" },
-        slots: {
-          toolbarLeft: [{ component: "action-batch-delete" }],
-          toolbarRight: [
-            { component: "action-refresh" },
-            { component: "action-add" },
-          ],
+      children: [
+        {
+          component: "row-actions",
+          children: [{ component: "detail" }, { component: "edit" }, { component: "delete" }],
         },
-        children: [
-          {
-            component: "row-actions",
-            children: [
-              { component: "detail" },
-              { component: "edit" },
-              { component: "delete" },
-            ],
-          },
-        ],
-      },
-    ],
+      ],
+    },
   },
 } as const;
 
@@ -119,46 +105,38 @@ export const schoolDepartmentLayout = {
   component: "layout",
   props: { services: TREE_SERVICES },
   slots: {
-    left: [
-      {
-        component: "tree",
-        props: {
-          model: "school-department",
-          idField: "deptCode",
-          parentField: "parentCode",
-          labelField: "deptName",
-          searchable: true,
-          publishTo: "main",
-          targetField: "deptCode",
-          includeSelf: true,
-          hideLeaf: false,
-          defaultSelect: "root",
+    left: {
+      component: "tree",
+      props: {
+        model: "school-department",
+        idField: "deptCode",
+        parentField: "parentCode",
+        labelField: "deptName",
+        searchable: true,
+        publishTo: "main",
+        targetField: "deptCode",
+        includeSelf: true,
+        hideLeaf: false,
+        defaultSelect: "root",
+      },
+    },
+    rightTop: { component: "filter", props: { scope: "main" } },
+    rightBottom: {
+      component: "table",
+      props: { scope: "main" },
+      slots: {
+        toolbarLeft: { component: "action-batch-delete" },
+        toolbarRight: {
+          component: "action-group",
+          children: [{ component: "action-refresh" }, { component: "action-add" }],
         },
       },
-    ],
-    rightTop: [{ component: "filter", props: { scope: "main" } }],
-    rightBottom: [
-      {
-        component: "table",
-        props: { scope: "main" },
-        slots: {
-          toolbarLeft: [{ component: "action-batch-delete" }],
-          toolbarRight: [
-            { component: "action-refresh" },
-            { component: "action-add" },
-          ],
+      children: [
+        {
+          component: "row-actions",
+          children: [{ component: "detail" }, { component: "edit" }, { component: "delete" }],
         },
-        children: [
-          {
-            component: "row-actions",
-            children: [
-              { component: "detail" },
-              { component: "edit" },
-              { component: "delete" },
-            ],
-          },
-        ],
-      },
-    ],
+      ],
+    },
   },
 } as const;

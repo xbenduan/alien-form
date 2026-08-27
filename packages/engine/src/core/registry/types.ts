@@ -1,10 +1,38 @@
 import type { RuntimeRuleHandler } from "@alien-form/core";
 import type { RegistryNamespace } from "./namespace";
 
-export interface ComponentDescriptor<TComponent = unknown> {
+export interface Definition<TAuthoring = unknown> {
+  code: string;
+  title: string;
+  description?: string;
+  authoring: TAuthoring;
+}
+
+export interface UiDefinition<
+  TComponent = unknown,
+  TAuthoring = unknown,
+> extends Definition<TAuthoring> {
   component: TComponent;
   blocks?: string[];
   slots?: string[];
+}
+
+export interface FormComponentDefinition<
+  TComponent = unknown,
+  TAuthoring = unknown,
+> extends Definition<TAuthoring> {
+  component: TComponent;
+}
+
+export interface FormDecoratorDefinition<
+  TComponent = unknown,
+  TAuthoring = unknown,
+> extends Definition<TAuthoring> {
+  component: TComponent;
+}
+
+export interface FormHandlerDefinition<TAuthoring = unknown> extends Definition<TAuthoring> {
+  handler: RuntimeRuleHandler;
 }
 
 export interface ServiceContext {
@@ -23,13 +51,13 @@ export interface FunctionDescriptor {
 }
 
 export interface FormRegistry {
-  components: RegistryNamespace<unknown>;
-  decorators: RegistryNamespace<unknown>;
-  handlers: RegistryNamespace<RuntimeRuleHandler>;
+  components: RegistryNamespace<FormComponentDefinition>;
+  decorators: RegistryNamespace<FormDecoratorDefinition>;
+  handlers: RegistryNamespace<FormHandlerDefinition>;
 }
 
 export interface Registry {
-  components: RegistryNamespace<ComponentDescriptor>;
+  ui: RegistryNamespace<UiDefinition>;
   services: RegistryNamespace<ServiceDescriptor>;
   functions: RegistryNamespace<FunctionDescriptor>;
   constants: RegistryNamespace<unknown>;

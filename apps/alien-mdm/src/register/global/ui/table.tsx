@@ -48,8 +48,8 @@ export function TableLayout({ node }: ComponentProps) {
   };
 
   const rowActions = node.children?.find((n) => n.component === "row-actions");
-  const batchActions = node.slots?.toolbarLeft ?? [];
-  const utilityActions = node.slots?.toolbarRight ?? [];
+  const batchAction = node.slots?.toolbarLeft;
+  const utilityAction = node.slots?.toolbarRight;
 
   const actionColumn = rowActions
     ? ({
@@ -84,13 +84,12 @@ export function TableLayout({ node }: ComponentProps) {
           <div className={styles.tableToolbar}>
             <Space wrap>
               {selectedRowKeys.length
-                ? batchActions.map((n, i) => (
+                ? batchAction && (
                     <RenderNode
-                      key={i}
-                      node={n}
+                      node={batchAction}
                       props={{ selectedRowKeys, onBatchDelete: handleBatchDelete }}
                     />
-                  ))
+                  )
                 : null}
               {selectedRowKeys.length ? (
                 <span>已选择 {selectedRowKeys.length} 条</span>
@@ -98,11 +97,7 @@ export function TableLayout({ node }: ComponentProps) {
                 <span>批量操作</span>
               )}
             </Space>
-            <Space>
-              {utilityActions.map((n, i) => (
-                <RenderNode key={i} node={n} />
-              ))}
-            </Space>
+            <Space>{utilityAction ? <RenderNode node={utilityAction} /> : null}</Space>
           </div>
         }
         onChange={(nextPagination, _filters, nextSorter) => {

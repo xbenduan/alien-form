@@ -297,7 +297,7 @@ const userPageSchema: PageSchema = {
         component: "table",
         block: "main",
         slots: {
-          toolbarRight: [{ component: "action-refresh" }],
+          toolbarRight: { component: "action-refresh" },
         },
       },
       { component: "form-panel", block: "form" },
@@ -311,17 +311,47 @@ const runtime = createRuntime({
 });
 
 // Page-level UI components
-runtime.component("page", { component: Page });
-runtime.component("page-header", { component: PageHeader });
-runtime.component("filter", { component: FilterBar });
-runtime.component("table", { component: UserTable });
-runtime.component("action-refresh", { component: RefreshButton });
-runtime.component("form-panel", { component: FormPanel });
+runtime.ui({ code: "page", title: "Page", component: Page, authoring: {} });
+runtime.ui({
+  code: "page-header",
+  title: "Page Header",
+  component: PageHeader,
+  authoring: {},
+});
+runtime.ui({ code: "filter", title: "Filter", component: FilterBar, authoring: {} });
+runtime.ui({ code: "table", title: "Table", component: UserTable, authoring: {} });
+runtime.ui({
+  code: "action-refresh",
+  title: "Refresh",
+  component: RefreshButton,
+  authoring: {},
+});
+runtime.ui({
+  code: "form-panel",
+  title: "Form Panel",
+  component: FormPanel,
+  authoring: {},
+});
 
 // alien-form field components & decorators
-runtime.formComponent("Input", FieldInput);
-runtime.formComponent("Select", FieldSelect);
-runtime.formDecorator("FormItem", FieldItem);
+runtime.formComponent({
+  code: "Input",
+  title: "Input",
+  component: FieldInput,
+  authoring: {},
+});
+runtime.formComponent({
+  code: "Select",
+  title: "Select",
+  component: FieldSelect,
+  authoring: {},
+});
+runtime.formDecorator({
+  code: "FormItem",
+  title: "Form Item",
+  component: FieldItem,
+  authoring: {},
+});
 
 runtime.service(recordsListService);
 

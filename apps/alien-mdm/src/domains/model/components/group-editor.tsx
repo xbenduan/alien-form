@@ -8,7 +8,7 @@ import {
 import { Button, Form, Input, InputNumber, Select } from "antd";
 import { useBuilder, useBuilderAtom } from "@alien-form/builder/react";
 import { ModelCodec, type GroupDraft, type ModelDraft } from "../builder";
-import { GROUP_COMPONENT_OPTIONS } from "../utils";
+import { groupComponentOptions } from "../utils";
 import styles from "./index.module.css";
 
 /** 分组编辑：把顶层字段收进 GridLayout 容器，仅影响 form 渲染。 */
@@ -16,7 +16,8 @@ export function GroupEditor() {
   const builder = useBuilder<ModelDraft>();
   const document = useBuilderAtom(builder.document);
   const { groups, fields } = document;
-  const codec = useRef(new ModelCodec()).current;
+  const codec = useRef(new ModelCodec(builder.registry)).current;
+  const componentOptions = groupComponentOptions(builder.registry, builder.domain);
   const [form] = Form.useForm<{ groups: GroupDraft[] }>();
   const watchedGroups = Form.useWatch("groups", form);
   const fieldOptions = fields.map((field) => ({
@@ -54,7 +55,7 @@ export function GroupEditor() {
                     <Input className={styles.title} placeholder="分组标题" />
                   </Form.Item>
                   <Form.Item name={[name, "component"]} noStyle>
-                    <Select className={styles.component} options={GROUP_COMPONENT_OPTIONS} />
+                    <Select className={styles.component} options={componentOptions} />
                   </Form.Item>
                   <Form.Item name={[name, "gridSpan"]} noStyle>
                     <InputNumber
@@ -83,9 +84,7 @@ export function GroupEditor() {
                     type="text"
                     danger
                     icon={<DeleteOutlined />}
-                    onClick={() =>
-                      builder.dispatch("group.remove", { id: groups[name]?.id })
-                    }
+                    onClick={() => builder.dispatch("group.remove", { id: groups[name]?.id })}
                   />
                 </div>
                 <Form.Item name={[name, "keys"]} noStyle>

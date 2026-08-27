@@ -1,7 +1,6 @@
 import type { IFieldSchema, IFormSchema } from "@alien-form/core";
-import type { FieldDefinition } from "@alien-form/builder";
-import type { UiNode } from "@alien-form/engine";
-import type { GroupConfig, TableColumn } from "../../../types/shared";
+import type { FormComponentDefinition, UiNode } from "@alien-form/engine";
+import type { ComponentMeta, GroupConfig, TableColumn } from "../../../types/shared";
 
 export type Locale = "zh" | "en" | (string & {});
 export type ModelPageScene = "list" | "add" | "edit" | "detail";
@@ -41,8 +40,10 @@ export interface ModelMeta {
   openMode: Record<"add" | "edit" | "detail", OpenMode>;
 }
 
-export interface ModelFieldSchema
-  extends Omit<IFieldSchema, "dataSource" | "properties" | "items"> {
+export interface ModelFieldSchema extends Omit<
+  IFieldSchema,
+  "dataSource" | "properties" | "items"
+> {
   key?: string;
   "x-table"?: TableFieldMeta;
   "x-database"?: XDatabaseMeta;
@@ -100,9 +101,19 @@ export interface ProjectionContext {
   projectProperties(properties: Record<string, ModelFieldSchema>): Record<string, IFieldSchema>;
 }
 
-export type ModelFieldDefinition = FieldDefinition<
-  ModelFieldSchema,
-  IFieldSchema,
-  TableColumn,
-  unknown
->;
+export interface ModelFieldAuthoring {
+  kind: "leaf" | "complex" | "layout";
+  children?: "properties" | "items";
+  create(): ModelFieldSchema;
+}
+
+export interface ModelFieldProjection {
+  toForm(field: ModelFieldSchema, context: unknown): IFieldSchema;
+  toFilter(field: ModelFieldSchema, key: string, context: unknown): IFieldSchema | undefined;
+  toColumn(field: ModelFieldSchema, key: string, context: unknown): TableColumn;
+}
+
+export type ModelFieldDefinition = FormComponentDefinition<unknown, ModelFieldAuthoring> & {
+  fieldType: ComponentMeta["fieldType"];
+  projection: ModelFieldProjection;
+};

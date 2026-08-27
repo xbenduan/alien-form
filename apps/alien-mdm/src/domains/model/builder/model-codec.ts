@@ -1,13 +1,7 @@
-import type { UiNode } from "@alien-form/engine";
+import type { Registry, UiNode } from "@alien-form/engine";
 import type { GroupConfig } from "../../../types/shared";
 import { getFieldDefinition } from "../../../register/global/form/registry";
-import type {
-  FieldDraft,
-  GroupDraft,
-  ModelDraft,
-  ModelFieldSchema,
-  ModelSchema,
-} from "./types";
+import type { FieldDraft, GroupDraft, ModelDraft, ModelFieldSchema, ModelSchema } from "./types";
 
 const DEFAULT_RECORD_SERVICES = {
   "query.list": "records.list",
@@ -23,37 +17,33 @@ export const DEFAULT_LAYOUT: UiNode = {
   component: "layout",
   props: { services: DEFAULT_RECORD_SERVICES },
   slots: {
-    rightTop: [{ component: "filter", props: { scope: "main" } }],
-    rightBottom: [
-      {
-        component: "table",
-        props: { scope: "main" },
-        children: [
-          {
-            component: "row-actions",
-            children: [
-              { component: "detail" },
-              { component: "edit" },
-              { component: "delete" },
-            ],
-          },
-        ],
-        slots: {
-          toolbarLeft: [{ component: "action-batch-delete" }],
-          toolbarRight: [
-            { component: "action-refresh" },
-            { component: "action-add" },
-          ],
+    rightTop: { component: "filter", props: { scope: "main" } },
+    rightBottom: {
+      component: "table",
+      props: { scope: "main" },
+      children: [
+        {
+          component: "row-actions",
+          children: [{ component: "detail" }, { component: "edit" }, { component: "delete" }],
+        },
+      ],
+      slots: {
+        toolbarLeft: { component: "action-batch-delete" },
+        toolbarRight: {
+          component: "action-group",
+          children: [{ component: "action-refresh" }, { component: "action-add" }],
         },
       },
-    ],
+    },
   },
 };
 
 export class ModelCodec {
+  private readonly registry: Registry;
   private readonly createId: () => string;
 
-  constructor(createId = createIdFactory()) {
+  constructor(registry: Registry, createId = createIdFactory()) {
+    this.registry = registry;
     this.createId = createId;
   }
 
@@ -109,8 +99,7 @@ export class ModelCodec {
         .map(([key, field]) => this.decodeField(key, field, schema.meta.name)),
       groups: (schema.group ?? []).map((group) => ({
         id: this.createId(),
-        title:
-          typeof group.props?.title === "string" ? group.props.title : (group.title ?? ""),
+        title: typeof group.props?.title === "string" ? group.props.title : (group.title ?? ""),
         component: group.component,
         keys: [...group.keys],
         gridSpan:
@@ -144,7 +133,8 @@ export class ModelCodec {
 
   createField(component = "Input", domain?: string): FieldDraft {
     const definition =
-      getFieldDefinition(component, domain) ?? getFieldDefinition("Input", domain);
+      getFieldDefinition(this.registry, component, domain) ??
+      getFieldDefinition(this.registry, "Input", domain);
     if (!definition) throw new Error(`[alien-mdm] field definition "${component}" not found`);
     const suffix = this.createId().split("-").pop();
     return {
@@ -167,15 +157,12 @@ export class ModelCodec {
     };
   }
 
-  private encodeFields(
-    fields: FieldDraft[],
-    domain: string,
-  ): Record<string, ModelFieldSchema> {
+  private encodeFields(fields: FieldDraft[], domain: string): Record<string, ModelFieldSchema> {
     return Object.fromEntries(
       fields.map((draft, index) => {
         const { key = `field_${index + 1}`, ...rest } = draft.fields;
         const field: ModelFieldSchema = { ...rest, order: (index + 1) * 10 };
-        const fieldType = getFieldDefinition(field.component, domain)?.fieldType;
+        const fieldType = getFieldDefinition(this.registry, field.component, domain)?.fieldType;
         if (fieldType === "object") {
           field.type = "object";
           field.properties = this.encodeFields(draft.children ?? [], domain);
@@ -193,12 +180,8 @@ export class ModelCodec {
     );
   }
 
-  private decodeField(
-    key: string,
-    field: ModelFieldSchema,
-    domain: string,
-  ): FieldDraft {
-    const fieldType = getFieldDefinition(field.component, domain)?.fieldType;
+  private decodeField(key: string, field: ModelFieldSchema, domain: string): FieldDraft {
+    const fieldType = getFieldDefinition(this.registry, field.component, domain)?.fieldType;
     const itemProperties =
       field.items && !Array.isArray(field.items) ? field.items.properties : undefined;
     const children =

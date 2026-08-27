@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BuilderRegistry } from "./registry";
+import { createRegistry } from "@alien-form/engine";
 import { BuilderRuntime } from "./runtime";
 
 interface Document {
@@ -8,8 +8,11 @@ interface Document {
 
 describe("BuilderRuntime", () => {
   it("executes commands and supports undo and redo", () => {
+    const registry = createRegistry();
     const builder = new BuilderRuntime<Document>({
       document: { fields: [] },
+      registry,
+      domain: "users",
       commands: {
         "field.add": (document, field: Document["fields"][number]) => ({
           ...document,
@@ -35,32 +38,38 @@ describe("BuilderRuntime", () => {
   });
 
   it("replaces documents only through a command and resets dirty state after save", () => {
-    const builder = new BuilderRuntime({ document: { value: 1 } });
+    const builder = new BuilderRuntime({
+      document: { value: 1 },
+      registry: createRegistry(),
+      domain: "users",
+    });
     builder.replaceDocument({ value: 2 });
     expect(builder.document.get()).toEqual({ value: 2 });
     expect(builder.dirty.get()).toBe(true);
     builder.markClean();
     expect(builder.dirty.get()).toBe(false);
   });
-});
-
-describe("BuilderRegistry", () => {
-  it("lets domain definitions override global definitions", () => {
-    const registry = new BuilderRegistry();
-    const createDefinition = (title: string) => ({
-      code: "Input",
-      component: title,
-      authoring: { title, kind: "leaf" as const, create: () => ({}) },
-      projection: {
-        toForm: (field: unknown) => field,
-        toFilter: (field: unknown) => field,
-        toColumn: (field: unknown) => field,
-      },
+  it("exposes the shared Engine registry and model domain", () => {
+    const registry = createRegistry();
+    const builder = new BuilderRuntime({
+      document: { value: 1 },
+      registry,
+      domain: "users",
     });
-    registry.registerGlobal([createDefinition("global")]);
-    registry.registerDomain("users", [createDefinition("domain")]);
 
-    expect(registry.resolve("Input")?.authoring.title).toBe("global");
-    expect(registry.resolve("Input", "users")?.authoring.title).toBe("domain");
+    expect(builder.registry).toBe(registry);
+    expect(builder.domain).toBe("users");
+  });
+
+  it("derives the active domain from the current document", () => {
+    const builder = new BuilderRuntime({
+      document: { modelId: "users" },
+      registry: createRegistry(),
+      domain: (document) => document.modelId,
+    });
+
+    expect(builder.domain).toBe("users");
+    builder.replaceDocument({ modelId: "orders" });
+    expect(builder.domain).toBe("orders");
   });
 });

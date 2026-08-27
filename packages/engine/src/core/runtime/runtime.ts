@@ -1,12 +1,14 @@
 import { AtomStore } from "../store";
 import {
   createRegistry,
-  type ComponentDescriptor,
+  type FormComponentDefinition,
+  type FormDecoratorDefinition,
+  type FormHandlerDefinition,
   type FunctionDescriptor,
   type Registry,
   type ServiceDescriptor,
+  type UiDefinition,
 } from "../registry";
-import type { RuntimeRuleHandler } from "@alien-form/core";
 import { PageBus } from "../bus/page-bus";
 import { SharedShelf } from "../bus/shelf";
 import { SchemaTranslator } from "../compiler/translator";
@@ -56,11 +58,14 @@ export class Runtime {
     this.router = options.router;
   }
 
-  component<T = unknown>(code: string, descriptor: ComponentDescriptor<T>, domain?: string): void {
+  ui<TComponent = unknown, TAuthoring = unknown>(
+    definition: UiDefinition<TComponent, TAuthoring>,
+    domain?: string,
+  ): void {
     if (domain) {
-      this.registry.components.registerDomain(domain, { [code]: descriptor });
+      this.registry.ui.registerDomain(domain, { [definition.code]: definition });
     } else {
-      this.registry.components.registerGlobal({ [code]: descriptor });
+      this.registry.ui.registerGlobal({ [definition.code]: definition });
     }
   }
 
@@ -88,27 +93,42 @@ export class Runtime {
     }
   }
 
-  formComponent(code: string, component: unknown, domain?: string): void {
+  formComponent<TComponent = unknown, TAuthoring = unknown>(
+    definition: FormComponentDefinition<TComponent, TAuthoring>,
+    domain?: string,
+  ): void {
     if (domain) {
-      this.registry.form.components.registerDomain(domain, { [code]: component });
+      this.registry.form.components.registerDomain(domain, {
+        [definition.code]: definition,
+      });
     } else {
-      this.registry.form.components.registerGlobal({ [code]: component });
+      this.registry.form.components.registerGlobal({ [definition.code]: definition });
     }
   }
 
-  formDecorator(code: string, decorator: unknown, domain?: string): void {
+  formDecorator<TComponent = unknown, TAuthoring = unknown>(
+    definition: FormDecoratorDefinition<TComponent, TAuthoring>,
+    domain?: string,
+  ): void {
     if (domain) {
-      this.registry.form.decorators.registerDomain(domain, { [code]: decorator });
+      this.registry.form.decorators.registerDomain(domain, {
+        [definition.code]: definition,
+      });
     } else {
-      this.registry.form.decorators.registerGlobal({ [code]: decorator });
+      this.registry.form.decorators.registerGlobal({ [definition.code]: definition });
     }
   }
 
-  formHandler(code: string, handler: RuntimeRuleHandler, domain?: string): void {
+  formHandler<TAuthoring = unknown>(
+    definition: FormHandlerDefinition<TAuthoring>,
+    domain?: string,
+  ): void {
     if (domain) {
-      this.registry.form.handlers.registerDomain(domain, { [code]: handler });
+      this.registry.form.handlers.registerDomain(domain, {
+        [definition.code]: definition,
+      });
     } else {
-      this.registry.form.handlers.registerGlobal({ [code]: handler });
+      this.registry.form.handlers.registerGlobal({ [definition.code]: definition });
     }
   }
 
@@ -123,11 +143,7 @@ export class Runtime {
       domain: schema.domain,
       store: {},
     });
-    const page = new PageRuntime(
-      this,
-      compiled as CompiledPage,
-      `page-${++this.pageSequence}`,
-    );
+    const page = new PageRuntime(this, compiled as CompiledPage, `page-${++this.pageSequence}`);
     this.pages.set(page.instanceId, page);
     return page;
   }

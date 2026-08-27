@@ -28,7 +28,7 @@ export function SchemaJsonEditor() {
   const { message } = App.useApp();
   const builder = useBuilder<ModelDraft>();
   const document = useBuilderAtom(builder.document);
-  const codec = useMemo(() => new ModelCodec(), []);
+  const codec = useMemo(() => new ModelCodec(builder.registry), [builder.registry]);
   const schema = useMemo(() => codec.encode(document), [codec, document]);
   const [text, setText] = useState(() => stringifySchema(schema));
   const [error, setError] = useState("");
@@ -45,7 +45,7 @@ export function SchemaJsonEditor() {
       if (!isModelSchema(parsed)) {
         throw new Error("Schema 必须包含 meta 和 properties");
       }
-      builder.replaceDocument(codec.decode(parsed));
+      builder.dispatch("document.replace", codec.decode(parsed));
       setError("");
       message.success("Schema 已更新");
     } catch (reason) {

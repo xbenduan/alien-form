@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { BuilderRuntime } from "@alien-form/builder";
 import { useBuilderAtom } from "@alien-form/builder/react";
 import { useModelSchema, useSchemaMutations } from "@hooks";
-import { fieldDefinitionRegistry } from "../../../register/global/form/registry";
+import { getAppRuntime } from "../../../runtime/create-runtime";
 import { ModelCodec, modelCommands, type ModelDraft } from "../builder";
 
 function validate(draft: ModelDraft) {
@@ -21,16 +21,18 @@ export function useModelBuilder(editName?: string) {
   const isEdit = Boolean(editName);
   const schemaQuery = useModelSchema(editName);
   const mutations = useSchemaMutations();
-  const codec = useMemo(() => new ModelCodec(), []);
+  const appRuntime = getAppRuntime();
+  const codec = useMemo(() => new ModelCodec(appRuntime.registry), [appRuntime.registry]);
   const runtime = useMemo(
     () =>
       new BuilderRuntime<ModelDraft>({
         document: codec.createModel(),
-        registry: fieldDefinitionRegistry,
+        registry: appRuntime.registry,
+        domain: (document) => document.name,
         commands: modelCommands,
         validate,
       }),
-    [codec],
+    [appRuntime.registry, codec],
   );
   const document = useBuilderAtom(runtime.document);
   const dirty = useBuilderAtom(runtime.dirty);

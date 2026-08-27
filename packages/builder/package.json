@@ -17,10 +17,11 @@
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts src/react/index.ts --format esm,cjs --dts --external react --external react-dom",
+    "build": "tsup src/index.ts src/react/index.ts --format esm,cjs --dts --external react --external react-dom --external @alien-form/engine",
     "test": "vitest run"
   },
   "dependencies": {
+    "@alien-form/engine": "workspace:*",
     "alien-signals": "^3.2.1"
   },
   "devDependencies": {

@@ -1,4 +1,10 @@
-import { createForm, type FieldError, type FormInstance, type IFormSchema, type RuntimeRuleHandler } from "@alien-form/core";
+import {
+  createForm,
+  type FieldError,
+  type FormInstance,
+  type IFormSchema,
+  type RuntimeRuleHandler,
+} from "@alien-form/core";
 import type { Atom, AtomStore } from "../../store/atom";
 import type { BlockSchema } from "../../dsl";
 import { BlockRuntime } from "../block";
@@ -28,10 +34,12 @@ export class FormBlockRuntime extends BlockRuntime {
 
     const { formSchema } = output as FormBlockOutput;
 
-    const handlers = runtime.registry.form.handlers.all(page.domain) as Record<
-      string,
-      RuntimeRuleHandler
-    >;
+    const handlers = Object.fromEntries(
+      Object.entries(runtime.registry.form.handlers.all(page.domain)).map(([code, definition]) => [
+        code,
+        definition.handler,
+      ]),
+    ) as Record<string, RuntimeRuleHandler>;
 
     this.form = createForm({
       schema: formSchema,

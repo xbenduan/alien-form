@@ -3,10 +3,8 @@ import { useParams } from "react-router-dom";
 import { PageRoot } from "@alien-form/engine/react";
 import { PageError, PageLoading } from "@components";
 import { useModelSchema } from "@hooks";
-import {
-  buildModelPage,
-  type ModelPageScene,
-} from "../../domains/model/builder";
+import { getAppRuntime } from "../../runtime/create-runtime";
+import { buildModelPage, type ModelPageScene } from "../../domains/model/builder";
 
 export interface RecordRouteProps {
   scene: ModelPageScene;
@@ -18,7 +16,12 @@ export default function RecordRoute({ scene }: RecordRouteProps) {
   const pageSchema = useMemo(
     () =>
       schemaQuery.data
-        ? buildModelPage({ schema: schemaQuery.data, scene, recordId })
+        ? buildModelPage({
+            registry: getAppRuntime().registry,
+            schema: schemaQuery.data,
+            scene,
+            recordId,
+          })
         : undefined,
     [recordId, scene, schemaQuery.data],
   );

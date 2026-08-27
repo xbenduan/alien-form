@@ -1,5 +1,5 @@
 import type { IFieldSchema, IFormSchema } from "@alien-form/core";
-import type { PageSchema, UiNode } from "@alien-form/engine";
+import type { PageSchema, Registry, UiNode } from "@alien-form/engine";
 import { getFieldDefinition } from "../../../register/global/form/registry";
 import type { GroupConfig, TableColumn } from "../../../types/shared";
 import type {
@@ -22,6 +22,7 @@ function context(
   scene: ProjectionContext["scene"],
   locale: Locale,
   domain: string,
+  registry: Registry,
 ): ProjectionContext {
   const projectionContext: ProjectionContext = {
     scene,
@@ -30,7 +31,7 @@ function context(
       return Object.fromEntries(
         sortedEntries(properties).map(([key, field]) => [
           key,
-          definition(field, domain).projection.toForm(field, projectionContext),
+          definition(registry, field, domain).projection.toForm(field, projectionContext),
         ]),
       );
     },
@@ -38,16 +39,21 @@ function context(
   return projectionContext;
 }
 
-function definition(field: ModelFieldSchema, domain: string) {
+function definition(registry: Registry, field: ModelFieldSchema, domain: string) {
   const resolved =
-    getFieldDefinition(field.component, domain) ?? getFieldDefinition("Input", domain);
+    getFieldDefinition(registry, field.component, domain) ??
+    getFieldDefinition(registry, "Input", domain);
   if (!resolved) throw new Error(`[alien-mdm] field definition "${field.component}" not found`);
   return resolved;
 }
 
-export function projectForm(schema: ModelSchema, locale: Locale = "zh"): IFormSchema {
+export function projectForm(
+  registry: Registry,
+  schema: ModelSchema,
+  locale: Locale = "zh",
+): IFormSchema {
   const domain = schema.meta.name;
-  const ctx = context("form", locale, domain);
+  const ctx = context("form", locale, domain, registry);
   const properties = schema.properties ?? {};
   const groups = schema.group ?? [];
   const keyToGroup = new Map<string, number>();
@@ -59,7 +65,7 @@ export function projectForm(schema: ModelSchema, locale: Locale = "zh"): IFormSc
     const groupIndex = keyToGroup.get(key);
     if (groupIndex === undefined) {
       output[key] = {
-        ...definition(field, domain).projection.toForm(field, ctx),
+        ...definition(registry, field, domain).projection.toForm(field, ctx),
         order: field.order ?? index,
       };
       return;
@@ -81,7 +87,7 @@ export function projectForm(schema: ModelSchema, locale: Locale = "zh"): IFormSc
                 [
                   memberKey,
                   {
-                    ...definition(member, domain).projection.toForm(member, ctx),
+                    ...definition(registry, member, domain).projection.toForm(member, ctx),
                     order: memberIndex,
                   },
                 ],
@@ -99,9 +105,13 @@ export function projectForm(schema: ModelSchema, locale: Locale = "zh"): IFormSc
   };
 }
 
-export function projectFilter(schema: ModelSchema, locale: Locale = "zh"): IFormSchema {
+export function projectFilter(
+  registry: Registry,
+  schema: ModelSchema,
+  locale: Locale = "zh",
+): IFormSchema {
   const domain = schema.meta.name;
-  const ctx = context("filter", locale, domain);
+  const ctx = context("filter", locale, domain, registry);
   const properties: Record<string, IFieldSchema> = {};
   const walk = (fields?: Record<string, ModelFieldSchema>) => {
     for (const [key, field] of Object.entries(fields ?? {})) {
@@ -115,7 +125,7 @@ export function projectFilter(schema: ModelSchema, locale: Locale = "zh"): IForm
       if (field.display === "none") continue;
       const filterable = field["x-database"]?.filterable ?? field["x-database"]?.index ?? false;
       if (!filterable) continue;
-      const projected = definition(field, domain).projection.toFilter(field, key, ctx);
+      const projected = definition(registry, field, domain).projection.toFilter(field, key, ctx);
       if (projected) properties[key] = projected;
     }
   };
@@ -123,13 +133,19 @@ export function projectFilter(schema: ModelSchema, locale: Locale = "zh"): IForm
   return { type: "object", properties };
 }
 
-export function projectColumns(schema: ModelSchema, locale: Locale = "zh"): TableColumn[] {
+export function projectColumns(
+  registry: Registry,
+  schema: ModelSchema,
+  locale: Locale = "zh",
+): TableColumn[] {
   const domain = schema.meta.name;
-  const ctx = context("table", locale, domain);
+  const ctx = context("table", locale, domain, registry);
   return sortedEntries(schema.properties)
     .filter(([, field]) => field.display !== "none")
     .filter(([, field]) => field["x-table"]?.visible !== false)
-    .map(([key, field]) => definition(field, domain).projection.toColumn(field, key, ctx));
+    .map(([key, field]) =>
+      definition(registry, field, domain).projection.toColumn(field, key, ctx),
+    );
 }
 
 function injectListNode(node: UiNode, columns: TableColumn[], model: string): UiNode {
@@ -140,12 +156,13 @@ function injectListNode(node: UiNode, columns: TableColumn[], model: string): Ui
     next.block = "filter";
     next.props = { ...next.props, listBlock: "main" };
   }
-  if (next.children) next.children = next.children.map((child) => injectListNode(child, columns, model));
+  if (next.children)
+    next.children = next.children.map((child) => injectListNode(child, columns, model));
   if (next.slots) {
     next.slots = Object.fromEntries(
-      Object.entries(next.slots).map(([name, children]) => [
+      Object.entries(next.slots).map(([name, child]) => [
         name,
-        children.map((child) => injectListNode(child, columns, model)),
+        injectListNode(child, columns, model),
       ]),
     );
   }
@@ -168,20 +185,22 @@ export function buildModelPage({
   scene,
   recordId,
   locale = "zh",
+  registry,
 }: {
+  registry: Registry;
   schema: ModelSchema;
   scene: ModelPageScene;
   recordId?: string;
   locale?: Locale;
 }): PageSchema {
   const model = schema.meta.name;
-  const formSchema = projectForm(schema, locale);
+  const formSchema = projectForm(registry, schema, locale);
   const resources = {
     i18n: schema.i18n as Record<string, Record<string, string>> | undefined,
     constants: schema.constants,
   };
   if (scene === "list") {
-    const columns = projectColumns(schema, locale);
+    const columns = projectColumns(registry, schema, locale);
     return {
       id: `${model}:list`,
       domain: model,
@@ -198,7 +217,11 @@ export function buildModelPage({
           columns,
         },
         { name: "form", type: "form", formSchema },
-        { name: "filter", type: "form", formSchema: projectFilter(schema, locale) },
+        {
+          name: "filter",
+          type: "form",
+          formSchema: projectFilter(registry, schema, locale),
+        },
       ],
       layout: {
         component: "record-page",
@@ -230,7 +253,11 @@ export function buildModelPage({
   };
 }
 
-export function buildPreviewPage(schema: ModelSchema, locale: Locale = "zh"): PageSchema {
+export function buildPreviewPage(
+  registry: Registry,
+  schema: ModelSchema,
+  locale: Locale = "zh",
+): PageSchema {
   return {
     id: `${schema.meta.name || "new-model"}:builder-preview`,
     domain: schema.meta.name || "builder-preview",
@@ -240,7 +267,7 @@ export function buildPreviewPage(schema: ModelSchema, locale: Locale = "zh"): Pa
       i18n: schema.i18n as Record<string, Record<string, string>> | undefined,
       constants: schema.constants,
     },
-    blocks: [{ name: "form", type: "form", formSchema: projectForm(schema, locale) }],
+    blocks: [{ name: "form", type: "form", formSchema: projectForm(registry, schema, locale) }],
     layout: { component: "builder-preview", block: "form" },
   };
 }

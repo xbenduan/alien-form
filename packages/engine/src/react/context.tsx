@@ -7,7 +7,7 @@ import type { BlockRuntime } from "../core/page/block";
 const RuntimeContext = createContext<Runtime | null>(null);
 const PageContext = createContext<PageRuntime | null>(null);
 const BlockContext = createContext<BlockRuntime | null>(null);
-const NodeContext = createContext<{ slots?: Record<string, unknown[]> } | null>(null);
+const NodeContext = createContext<{ slots?: Record<string, unknown> } | null>(null);
 
 export function RuntimeProvider({ runtime, children }: PropsWithChildren<{ runtime: Runtime }>) {
   return <RuntimeContext.Provider value={runtime}>{children}</RuntimeContext.Provider>;
@@ -41,8 +41,8 @@ export function useBlockContext(): BlockRuntime | null {
   return useContext(BlockContext);
 }
 
-export function useNodeSlots<T = unknown>(): Record<string, T[]> | undefined {
-  return useContext(NodeContext)?.slots as Record<string, T[]> | undefined;
+export function useNodeSlots<T = unknown>(): Record<string, T> | undefined {
+  return useContext(NodeContext)?.slots as Record<string, T> | undefined;
 }
 
 export { NodeContext, RuntimeContext, PageContext, BlockContext };

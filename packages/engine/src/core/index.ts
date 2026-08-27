@@ -1,11 +1,15 @@
 export { Runtime, createRuntime, type RuntimeOptions } from "./runtime";
 export type {
-  ComponentDescriptor,
+  Definition,
+  FormComponentDefinition,
+  FormDecoratorDefinition,
+  FormHandlerDefinition,
   FormRegistry,
   FunctionDescriptor,
   Registry,
   ServiceContext,
   ServiceDescriptor,
+  UiDefinition,
 } from "./registry";
 export { RegistryNamespace, createRegistry } from "./registry";
 

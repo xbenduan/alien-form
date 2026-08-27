@@ -9,8 +9,32 @@ import { BuilderPreview } from "./builder-preview";
  * 与 ui 目录的布局/交互组件区分——这里注册的是页面级容器。
  */
 export function registerPageComponents(runtime: Runtime): void {
-  runtime.component("record-page", { component: RecordPage });
-  runtime.component("overlay", { component: RecordOverlay });
-  runtime.component("action-page", { component: RecordActionPageLayout });
-  runtime.component("builder-preview", { component: BuilderPreview });
+  runtime.ui({
+    code: "record-page",
+    title: "记录页面",
+    description: "记录列表和操作页面的统一页面外壳。",
+    component: RecordPage,
+    authoring: {},
+  });
+  runtime.ui({
+    code: "overlay",
+    title: "记录浮层",
+    description: "承载新增、详情和编辑表单的浮层。",
+    component: RecordOverlay,
+    authoring: {},
+  });
+  runtime.ui({
+    code: "action-page",
+    title: "记录操作页",
+    description: "整页新增、详情和编辑布局。",
+    component: RecordActionPageLayout,
+    authoring: {},
+  });
+  runtime.ui({
+    code: "builder-preview",
+    title: "构建预览",
+    description: "在模型构建器中渲染表单预览。",
+    component: BuilderPreview,
+    authoring: {},
+  });
 }

@@ -1,214 +1,548 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { Form, Input, Select, Tooltip } from "antd";
-import { InfoCircleOutlined } from "@ant-design/icons";
+import { forwardRef, useImperativeHandle, useMemo } from "react";
 import {
-  getDefaultFieldSchema,
-  getFieldDefinition,
-} from "../../../register/global/form/registry";
+  Button,
+  Divider,
+  Form,
+  Input,
+  InputNumber,
+  Select,
+  Space,
+  Switch,
+  Tabs,
+  Tooltip,
+} from "antd";
+import { DeleteOutlined, InfoCircleOutlined, PlusOutlined } from "@ant-design/icons";
+import type { Registry } from "@alien-form/engine";
+import { useBuilder } from "@alien-form/builder/react";
+import { getDefaultFieldSchema, getFieldDefinition } from "../../../register/global/form/registry";
 import type { ModelFieldSchema } from "../builder";
 import type { FieldDraft } from "../types";
-import { FIELD_COMPONENT_OPTIONS, componentDescription } from "../utils";
+import { componentDescription, fieldComponentOptions } from "../utils";
+import type { ModelDraft } from "../builder";
 import styles from "./index.module.css";
 
 interface FieldEditorProps {
   field: FieldDraft;
-  onChange: (field: FieldDraft) => void;
 }
 
 export interface FieldEditorRef {
   submit: () => Promise<FieldDraft>;
 }
 
-interface FieldFormValues {
+interface DataSourceRow {
+  label?: string;
+  value?: string;
+  extraText?: string;
+}
+
+export interface FieldFormValues {
   component: string;
   key: string;
   title?: string;
+  description?: string;
+  required?: boolean;
+  disabled?: boolean;
+  display?: string;
+  defaultText?: string;
+  ref?: string;
+  layout?: string;
+  decorator?: string;
+  propsText?: string;
+  decoratorPropsText?: string;
+  dataSourceMode?: "none" | "static" | "plugin";
+  dataSource?: DataSourceRow[];
+  dataSourcePluginText?: string;
+  dataSourcePolicy?: string;
+  service?: string;
+  validateText?: string;
+  reactionText?: string;
+  effectText?: string;
+  formatText?: string;
+  tableEnabled?: boolean;
+  tableWidth?: number;
+  tableVisible?: boolean;
+  tableEllipsis?: boolean;
+  tableSortable?: boolean;
+  databaseEnabled?: boolean;
+  databaseType?: string;
+  databaseNullable?: boolean;
+  databaseDefaultText?: string;
+  databaseUnique?: boolean;
+  databaseIndex?: boolean;
+  databaseFilterable?: boolean;
+  databaseSortable?: boolean;
+  databaseRelation?: "many-to-one" | "many-to-many";
+  databaseTarget?: string;
+  databaseThrough?: string;
 }
 
-/**
- * 由表单直接管理、不在 JSON 编辑框透出的字段：
- *  - component / type / key / title：交给上方三个表单项修改（type 与 component 绑定，完全不透出）
- *  - properties / items：子字段由字段树（FieldListEditor）拖拽管理，不在此编辑
- *  - order：拖拽排序时生成，构建 schema 时统一重写
- */
-const HIDDEN_KEYS = ["component", "type", "key", "title", "properties", "items", "order"] as const;
+function stringify(value: unknown): string {
+  return value === undefined ? "" : JSON.stringify(value, null, 2);
+}
 
-type SchemaRest = Record<string, unknown>;
+function parseJsonObject(
+  text: string | undefined,
+  label: string,
+): Record<string, unknown> | undefined {
+  if (!text?.trim()) return undefined;
+  const value: unknown = JSON.parse(text);
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${label}必须是 JSON 对象`);
+  }
+  return value as Record<string, unknown>;
+}
 
-function parseSchema(text: string): SchemaRest | undefined {
+function parseLoose(text?: string): unknown {
+  if (!text?.trim()) return undefined;
   try {
-    const value = JSON.parse(text) as unknown;
-    return value && typeof value === "object" && !Array.isArray(value)
-      ? (value as SchemaRest)
-      : undefined;
+    return JSON.parse(text);
   } catch {
-    return undefined;
+    return text;
   }
 }
 
-/** 剔除由表单/字段树管理的键，得到 JSON 编辑框展示的「其余 schema」。 */
-function stripHidden(schema: object): SchemaRest {
-  const rest: SchemaRest = { ...(schema as SchemaRest) };
-  for (const key of HIDDEN_KEYS) delete rest[key];
-  return rest;
+export function fieldEditorValuesOf(field: ModelFieldSchema): FieldFormValues {
+  const props = { ...field.props };
+  const service = typeof props.service === "string" ? props.service : undefined;
+  delete props.service;
+  const dataSourceMode = Array.isArray(field.dataSource)
+    ? "static"
+    : field.dataSource
+      ? "plugin"
+      : "none";
+  return {
+    component: field.component ?? "Input",
+    key: field.key ?? "",
+    title: field.title,
+    description: field.description,
+    required: field.required === true,
+    disabled: field.disabled,
+    display: field.display ?? "visible",
+    defaultText: stringify(field.default),
+    ref: field.$ref,
+    layout: field["x-layout"],
+    decorator: field.decorator,
+    propsText: stringify(props),
+    decoratorPropsText: stringify(field.decoratorProps),
+    dataSourceMode,
+    dataSource: Array.isArray(field.dataSource)
+      ? field.dataSource.map((item) => {
+          const { label, value, ...extra } = item;
+          return {
+            label,
+            value: stringify(value),
+            extraText: Object.keys(extra).length ? stringify(extra) : "",
+          };
+        })
+      : [],
+    dataSourcePluginText:
+      field.dataSource && !Array.isArray(field.dataSource) ? stringify(field.dataSource) : "",
+    dataSourcePolicy: field.dataSourcePolicy,
+    service,
+    validateText: stringify(field["x-validate"]),
+    reactionText: stringify(field["x-reaction"]),
+    effectText: stringify(field["x-effect"]),
+    formatText: stringify(field["x-format"]),
+    tableEnabled: Boolean(field["x-table"]),
+    tableWidth: field["x-table"]?.width,
+    tableVisible: field["x-table"]?.visible ?? true,
+    tableEllipsis: field["x-table"]?.ellipsis ?? true,
+    tableSortable: field["x-table"]?.sortable,
+    databaseEnabled: Boolean(field["x-database"]),
+    databaseType: field["x-database"]?.type,
+    databaseNullable: field["x-database"]?.nullable,
+    databaseDefaultText: stringify(field["x-database"]?.default),
+    databaseUnique: field["x-database"]?.unique,
+    databaseIndex: field["x-database"]?.index,
+    databaseFilterable: field["x-database"]?.filterable,
+    databaseSortable: field["x-database"]?.sortable,
+    databaseRelation: field["x-database"]?.relation,
+    databaseTarget: field["x-database"]?.target,
+    databaseThrough: field["x-database"]?.through,
+  };
 }
 
-function stringify(rest: SchemaRest): string {
-  return JSON.stringify(rest, null, 2);
+export function fieldEditorSchemaOf(
+  registry: Registry,
+  values: FieldFormValues,
+  domain?: string,
+): ModelFieldSchema {
+  const definition = getFieldDefinition(registry, values.component, domain);
+  const props = parseJsonObject(values.propsText, "组件属性") ?? {};
+  if (values.service?.trim()) props.service = values.service.trim();
+  let dataSource: ModelFieldSchema["dataSource"];
+  if (values.dataSourceMode === "static") {
+    dataSource = (values.dataSource ?? [])
+      .filter((item) => item.label?.trim())
+      .map((item) => ({
+        ...parseJsonObject(item.extraText, "选项扩展属性"),
+        label: item.label!.trim(),
+        value: parseLoose(item.value),
+      }));
+  } else if (values.dataSourceMode === "plugin") {
+    dataSource = parseJsonObject(values.dataSourcePluginText, "数据源插件") as
+      | { plugin: string; [key: string]: unknown }
+      | undefined;
+  }
+
+  const schema: ModelFieldSchema = {
+    type: definition?.fieldType ?? "string",
+    component: values.component,
+    key: values.key.trim(),
+    title: values.title?.trim() || undefined,
+    description: values.description?.trim() || undefined,
+    default: parseLoose(values.defaultText),
+    required: values.required,
+    disabled: values.disabled,
+    display: values.display as ModelFieldSchema["display"],
+    $ref: values.ref?.trim() || undefined,
+    "x-layout": values.layout?.trim() || undefined,
+    decorator: values.decorator?.trim() || undefined,
+    props: Object.keys(props).length ? props : undefined,
+    decoratorProps: parseJsonObject(values.decoratorPropsText, "装饰器属性"),
+    dataSource,
+    dataSourcePolicy: values.dataSourcePolicy as ModelFieldSchema["dataSourcePolicy"],
+    "x-validate": parseLoose(values.validateText) as ModelFieldSchema["x-validate"],
+    "x-reaction": parseLoose(values.reactionText) as ModelFieldSchema["x-reaction"],
+    "x-effect": parseLoose(values.effectText) as ModelFieldSchema["x-effect"],
+    "x-format": parseLoose(values.formatText) as ModelFieldSchema["x-format"],
+    "x-table": values.tableEnabled
+      ? {
+          width: values.tableWidth,
+          visible: values.tableVisible,
+          ellipsis: values.tableEllipsis,
+          sortable: values.tableSortable,
+        }
+      : undefined,
+    "x-database": values.databaseEnabled
+      ? {
+          type: values.databaseType?.trim() || undefined,
+          nullable: values.databaseNullable,
+          default: parseLoose(values.databaseDefaultText) as string | number | boolean | undefined,
+          unique: values.databaseUnique,
+          index: values.databaseIndex,
+          filterable: values.databaseFilterable,
+          sortable: values.databaseSortable,
+          relation: values.databaseRelation,
+          target: values.databaseTarget?.trim() || undefined,
+          through: values.databaseThrough?.trim() || undefined,
+        }
+      : undefined,
+  };
+  return Object.fromEntries(
+    Object.entries(schema).filter(([, value]) => value !== undefined),
+  ) as ModelFieldSchema;
 }
 
-/** component → 绑定的 schema type（多值组件降级为 string，容器为 object/array/void）。 */
-function typeOfComponent(component: string): ModelFieldSchema["type"] {
-  return getFieldDefinition(component)?.authoring.create().type as ModelFieldSchema["type"];
-}
+const JsonArea = ({
+  name,
+  label,
+  rows = 7,
+}: {
+  name: keyof FieldFormValues;
+  label: string;
+  rows?: number;
+}) => (
+  <Form.Item name={name} label={label}>
+    <Input.TextArea rows={rows} spellCheck={false} className={styles.codeInput} />
+  </Form.Item>
+);
 
-/**
- * 单字段配置面板：
- *  - 表单仅三项，顺序为 选择组件 → key（必填）→ 标题（可空）
- *  - 选择组件后自动带入其注册的默认 schema 到下方 JSON 编辑框
- *  - JSON 编辑框只承载「其余 schema」；component/type/key/title 由表单控制、不可在 JSON 修改
- */
+/** 完整字段配置器：已知结构可视化，开放结构使用 JSON 文本。 */
 export const FieldEditor = forwardRef<FieldEditorRef, FieldEditorProps>(function FieldEditor(
-  { field, onChange },
+  { field },
   ref,
 ) {
+  const builder = useBuilder<ModelDraft>();
   const [form] = Form.useForm<FieldFormValues>();
-  const initialComponent = field.fields.component ?? "Input";
-  // 当前选中组件（用于「字段 Schema」旁展示组件说明 info）。
-  const selectedComponent = Form.useWatch("component", form) ?? initialComponent;
-  const description = componentDescription(selectedComponent);
-  const [jsonText, setJsonText] = useState(() => stringify(stripHidden(field.fields)));
-  const [jsonError, setJsonError] = useState(false);
-  // 最近一次有效的「其余 schema」，供表单项改动时与 key/title/component 重新组合。
-  const restRef = useRef<SchemaRest>(stripHidden(field.fields));
-
-  useEffect(() => {
-    form.setFieldsValue({
-      component: field.fields.component ?? "Input",
-      key: field.fields.key ?? "",
-      title: field.fields.title ?? "",
-    });
-    const rest = stripHidden(field.fields);
-    restRef.current = rest;
-    setJsonText(stringify(rest));
-    setJsonError(false);
-  }, [field.id, form]);
-
-  const compose = (component: string, key: string, title?: string): ModelFieldSchema =>
-    ({
-      ...restRef.current,
-      component,
-      type: typeOfComponent(component),
-      key,
-      title: title ?? "",
-    }) as ModelFieldSchema;
-
-  const emit = (component: string, key: string, title?: string) => {
-    onChange({ ...field, fields: compose(component, key, title) });
-  };
+  const component = Form.useWatch("component", form) ?? field.fields.component ?? "Input";
+  const dataSourceMode = Form.useWatch("dataSourceMode", form);
+  const tableEnabled = Form.useWatch("tableEnabled", form);
+  const databaseEnabled = Form.useWatch("databaseEnabled", form);
+  const options = useMemo(
+    () => fieldComponentOptions(builder.registry, builder.domain),
+    [builder, builder.domain],
+  );
+  const description = componentDescription(builder.registry, component, builder.domain);
 
   useImperativeHandle(
     ref,
     () => ({
       submit: async () => {
-        await form.validateFields();
-        if (!parseSchema(jsonText)) {
-          setJsonError(true);
-          throw new Error("字段 Schema 不是合法的 JSON 对象");
-        }
-        const values = form.getFieldsValue();
+        const values = await form.validateFields();
+        const fields = fieldEditorSchemaOf(builder.registry, values, builder.domain);
         return {
           ...field,
-          fields: compose(values.component, values.key, values.title),
+          fields,
+          children: getFieldDefinition(builder.registry, fields.component, builder.domain)
+            ?.authoring.children
+            ? field.children
+            : undefined,
         };
       },
     }),
-    [field, form, jsonText],
+    [builder, field, form],
   );
 
-  const handleValuesChange = (changed: Partial<FieldFormValues>, all: FieldFormValues) => {
-    // 切换组件：带入该组件注册的默认 schema（标题也同步为默认别名），key 保持不变。
-    if (changed.component !== undefined) {
-      const def = getDefaultFieldSchema(changed.component);
-      const rest = stripHidden(def);
-      restRef.current = rest;
-      const nextTitle = typeof def.title === "string" ? def.title : "";
-      setJsonText(stringify(rest));
-      setJsonError(false);
-      form.setFieldsValue({ title: nextTitle });
-      emit(changed.component, all.key, nextTitle);
-      return;
-    }
-    // key / title 改动：与当前 JSON 的其余 schema 重新组合。
-    emit(all.component, all.key, all.title);
-  };
-
-  // JSON 改动：解析成功则更新其余 schema 并回传；失败仅提示、不覆盖已有草稿。
-  const handleJsonChange = (text: string) => {
-    setJsonText(text);
-    const parsed = parseSchema(text);
-    if (!parsed) {
-      setJsonError(true);
-      return;
-    }
-    setJsonError(false);
-    restRef.current = stripHidden(parsed);
-    const values = form.getFieldsValue();
-    emit(values.component, values.key, values.title);
+  const resetForComponent = (next: string) => {
+    const current = form.getFieldsValue();
+    const schema = getDefaultFieldSchema(builder.registry, next, builder.domain);
+    const defaults = fieldEditorValuesOf({
+      ...schema,
+      key: current.key,
+      title: schema.title,
+    });
+    form.setFieldsValue(defaults);
   };
 
   return (
     <Form
       form={form}
       layout="vertical"
-      className={`${styles.fieldEditor} ${styles.form}`}
-      initialValues={{
-        component: initialComponent,
-        key: field.fields.key ?? "",
-        title: field.fields.title ?? "",
-      }}
-      onValuesChange={handleValuesChange}
+      className={styles.fieldEditor}
+      initialValues={fieldEditorValuesOf(field.fields)}
     >
-      <Form.Item label="组件" name="component">
-        <Select options={FIELD_COMPONENT_OPTIONS} />
-      </Form.Item>
-      <Form.Item
-        label="字段 Key"
-        name="key"
-        rules={[
-          { required: true, whitespace: true, message: "请填写字段 Key" },
-          { pattern: /^[a-zA-Z_][\w-]*$/, message: "字段 Key 只能使用字母、数字、下划线和中划线" },
+      <Tabs
+        items={[
+          {
+            key: "basic",
+            label: "基础",
+            children: (
+              <div className={styles.editorGrid}>
+                <Form.Item
+                  label={
+                    <span className={styles.schemaLabel}>
+                      组件
+                      {description ? (
+                        <Tooltip title={description}>
+                          <InfoCircleOutlined className={styles.schemaInfo} />
+                        </Tooltip>
+                      ) : null}
+                    </span>
+                  }
+                  name="component"
+                >
+                  <Select options={options} onChange={resetForComponent} />
+                </Form.Item>
+                <Form.Item label="Schema 类型">
+                  <Input
+                    disabled
+                    value={
+                      getFieldDefinition(builder.registry, component, builder.domain)?.fieldType ??
+                      "string"
+                    }
+                  />
+                </Form.Item>
+                <Form.Item
+                  label="字段 Key"
+                  name="key"
+                  rules={[
+                    { required: true, whitespace: true, message: "请填写字段 Key" },
+                    {
+                      pattern: /^[a-zA-Z_][\w-]*$/,
+                      message: "只能使用字母、数字、下划线和中划线",
+                    },
+                  ]}
+                >
+                  <Input />
+                </Form.Item>
+                <Form.Item label="标题" name="title">
+                  <Input />
+                </Form.Item>
+                <Form.Item label="描述" name="description" className={styles.fullSpan}>
+                  <Input.TextArea rows={2} />
+                </Form.Item>
+                <Form.Item label="默认值" name="defaultText" className={styles.fullSpan}>
+                  <Input.TextArea rows={3} spellCheck={false} className={styles.codeInput} />
+                </Form.Item>
+                <Form.Item label="显示状态" name="display">
+                  <Select
+                    options={[
+                      { label: "显示", value: "visible" },
+                      { label: "隐藏但保留布局", value: "hidden" },
+                      { label: "不渲染", value: "none" },
+                    ]}
+                  />
+                </Form.Item>
+                <Form.Item label="必填" name="required" valuePropName="checked">
+                  <Switch />
+                </Form.Item>
+                <Form.Item label="禁用" name="disabled" valuePropName="checked">
+                  <Switch />
+                </Form.Item>
+                <Form.Item label="$ref" name="ref">
+                  <Input />
+                </Form.Item>
+                <Form.Item label="x-layout" name="layout">
+                  <Input />
+                </Form.Item>
+                <Form.Item label="装饰器" name="decorator">
+                  <Input />
+                </Form.Item>
+              </div>
+            ),
+          },
+          {
+            key: "props",
+            label: "属性",
+            children: (
+              <>
+                <JsonArea name="propsText" label="组件属性 props" rows={10} />
+                <JsonArea name="decoratorPropsText" label="装饰器属性 decoratorProps" rows={6} />
+              </>
+            ),
+          },
+          {
+            key: "dataSource",
+            label: "数据源",
+            children: (
+              <>
+                <div className={styles.editorGrid}>
+                  <Form.Item label="数据源类型" name="dataSourceMode">
+                    <Select
+                      options={[
+                        { label: "不配置", value: "none" },
+                        { label: "静态选项", value: "static" },
+                        { label: "插件配置", value: "plugin" },
+                      ]}
+                    />
+                  </Form.Item>
+                  <Form.Item label="远程服务 props.service" name="service">
+                    <Input />
+                  </Form.Item>
+                  <Form.Item label="值失效策略" name="dataSourcePolicy">
+                    <Select
+                      allowClear
+                      options={[
+                        { label: "保留", value: "preserve" },
+                        { label: "清空", value: "clear" },
+                        { label: "过滤", value: "filter" },
+                        { label: "选择第一项", value: "first" },
+                      ]}
+                    />
+                  </Form.Item>
+                </div>
+                {dataSourceMode === "static" ? (
+                  <Form.List name="dataSource">
+                    {(items, { add, remove }) => (
+                      <Space direction="vertical" className={styles.fullWidth}>
+                        {items.map(({ key, name }) => (
+                          <Space key={key} align="start" className={styles.dataSourceRow}>
+                            <Form.Item name={[name, "label"]} rules={[{ required: true }]}>
+                              <Input placeholder="显示名称" />
+                            </Form.Item>
+                            <Form.Item name={[name, "value"]}>
+                              <Input placeholder='值，例如 "active" 或 1' />
+                            </Form.Item>
+                            <Form.Item name={[name, "extraText"]}>
+                              <Input placeholder="扩展属性 JSON" />
+                            </Form.Item>
+                            <Button
+                              danger
+                              type="text"
+                              icon={<DeleteOutlined />}
+                              onClick={() => remove(name)}
+                            />
+                          </Space>
+                        ))}
+                        <Button type="dashed" icon={<PlusOutlined />} onClick={() => add()}>
+                          添加选项
+                        </Button>
+                      </Space>
+                    )}
+                  </Form.List>
+                ) : null}
+                {dataSourceMode === "plugin" ? (
+                  <JsonArea name="dataSourcePluginText" label="插件配置" rows={10} />
+                ) : null}
+              </>
+            ),
+          },
+          {
+            key: "rules",
+            label: "规则",
+            children: (
+              <>
+                <JsonArea name="validateText" label="校验 x-validate" />
+                <JsonArea name="reactionText" label="联动 x-reaction" />
+                <JsonArea name="effectText" label="副作用 x-effect" />
+                <JsonArea name="formatText" label="格式化 x-format" />
+              </>
+            ),
+          },
+          {
+            key: "projection",
+            label: "表格与存储",
+            children: (
+              <>
+                <Form.Item label="启用表格配置" name="tableEnabled" valuePropName="checked">
+                  <Switch />
+                </Form.Item>
+                {tableEnabled ? (
+                  <div className={styles.editorGrid}>
+                    <Form.Item label="列宽" name="tableWidth">
+                      <InputNumber min={40} />
+                    </Form.Item>
+                    <Form.Item label="显示列" name="tableVisible" valuePropName="checked">
+                      <Switch />
+                    </Form.Item>
+                    <Form.Item label="内容省略" name="tableEllipsis" valuePropName="checked">
+                      <Switch />
+                    </Form.Item>
+                    <Form.Item label="允许排序" name="tableSortable" valuePropName="checked">
+                      <Switch />
+                    </Form.Item>
+                  </div>
+                ) : null}
+                <Divider />
+                <Form.Item label="启用数据库配置" name="databaseEnabled" valuePropName="checked">
+                  <Switch />
+                </Form.Item>
+                {databaseEnabled ? (
+                  <div className={styles.editorGrid}>
+                    <Form.Item label="数据库类型" name="databaseType">
+                      <Input />
+                    </Form.Item>
+                    <Form.Item label="默认值" name="databaseDefaultText">
+                      <Input />
+                    </Form.Item>
+                    <Form.Item label="可空" name="databaseNullable" valuePropName="checked">
+                      <Switch />
+                    </Form.Item>
+                    <Form.Item label="唯一" name="databaseUnique" valuePropName="checked">
+                      <Switch />
+                    </Form.Item>
+                    <Form.Item label="索引" name="databaseIndex" valuePropName="checked">
+                      <Switch />
+                    </Form.Item>
+                    <Form.Item label="可筛选" name="databaseFilterable" valuePropName="checked">
+                      <Switch />
+                    </Form.Item>
+                    <Form.Item label="可排序" name="databaseSortable" valuePropName="checked">
+                      <Switch />
+                    </Form.Item>
+                    <Form.Item label="关联类型" name="databaseRelation">
+                      <Select
+                        allowClear
+                        options={[
+                          { label: "多对一", value: "many-to-one" },
+                          { label: "多对多", value: "many-to-many" },
+                        ]}
+                      />
+                    </Form.Item>
+                    <Form.Item label="目标模型" name="databaseTarget">
+                      <Input />
+                    </Form.Item>
+                    <Form.Item label="中间模型" name="databaseThrough">
+                      <Input />
+                    </Form.Item>
+                  </div>
+                ) : null}
+              </>
+            ),
+          },
         ]}
-      >
-        <Input />
-      </Form.Item>
-      <Form.Item label="标题" name="title">
-        <Input placeholder="可留空" />
-      </Form.Item>
-
-      <Form.Item
-        label={
-          <span className={styles.schemaLabel}>
-            字段 Schema
-            {description ? (
-              <Tooltip title={description}>
-                <InfoCircleOutlined className={styles.schemaInfo} />
-              </Tooltip>
-            ) : null}
-          </span>
-        }
-        className={styles.schemaJson}
-        wrapperCol={{ span: 24 }}
-        validateStatus={jsonError ? "error" : undefined}
-        help={jsonError ? "请输入合法的 JSON 对象" : undefined}
-      >
-        <Input.TextArea
-          rows={12}
-          spellCheck={false}
-          value={jsonText}
-          onChange={(event) => handleJsonChange(event.target.value)}
-        />
-      </Form.Item>
+      />
     </Form>
   );
 });

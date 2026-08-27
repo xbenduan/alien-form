@@ -9,14 +9,13 @@ import { useModelBuilder } from "../hooks";
 import {
   FieldListEditor,
   GroupEditor,
-  LayoutJsonEditor,
+  LayoutEditor,
   ModelMetaForm,
-  SchemaJsonEditor,
   SchemaPreview,
 } from "../components";
 import styles from "./index.module.css";
 
-const STEPS = [{ title: "字段" }, { title: "分组与元信息" }, { title: "预览保存" }];
+const STEPS = [{ title: "基本信息" }, { title: "表单配置" }, { title: "页面布局" }];
 
 interface ModelActionPageProps {
   mode: "add" | "edit";
@@ -80,36 +79,35 @@ function ModelActionContent({
 
       <div className={styles.body}>
         {step === 0 ? (
-          <Row gutter={16} align="stretch" className={styles.fieldsStep}>
-            <Col span={8} className={styles.fill}>
-              <FieldsetCard title="字段列表" className={styles.fill}>
-                <FieldListEditor />
-              </FieldsetCard>
-            </Col>
-            <Col span={16} className={styles.fill}>
-              <FieldsetCard title="Schema" className={styles.fill}>
-                <SchemaJsonEditor />
-              </FieldsetCard>
-            </Col>
-          </Row>
+          <FieldsetCard title="模型信息">
+            <ModelMetaForm nameDisabled={mode === "edit"} />
+          </FieldsetCard>
         ) : null}
 
         {step === 1 ? (
-          <div className={styles.configStack}>
-            <FieldsetCard title="模型信息">
-              <ModelMetaForm nameDisabled={mode === "edit"} />
-            </FieldsetCard>
+          <div className={styles.formStep}>
+            <Row gutter={16} align="stretch" className={styles.fieldsStep}>
+              <Col span={16} className={styles.fill}>
+                <FieldsetCard title="字段" className={styles.fill}>
+                  <FieldListEditor />
+                </FieldsetCard>
+              </Col>
+              <Col span={8} className={styles.fill}>
+                <FieldsetCard title="实时验证" className={styles.fill}>
+                  <SchemaPreview schema={builder.preview.schema} error={builder.preview.error} />
+                </FieldsetCard>
+              </Col>
+            </Row>
             <FieldsetCard title="表单分组">
               <GroupEditor />
-            </FieldsetCard>
-            <FieldsetCard title="页面布局（x-layout）">
-              <LayoutJsonEditor />
             </FieldsetCard>
           </div>
         ) : null}
 
         {step === 2 ? (
-          <SchemaPreview schema={builder.preview.schema} error={builder.preview.error} />
+          <FieldsetCard title="页面布局（x-layout）">
+            <LayoutEditor />
+          </FieldsetCard>
         ) : null}
       </div>
 
