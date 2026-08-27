@@ -1,5 +1,5 @@
-import { apiGet, apiSend } from "../../../runtime/transport";
-import type { ModelSchema, ModelSummary } from "../../../runtime/types";
+import { apiGet, apiSend } from "@runtime/transport";
+import type { ModelSchema, ModelSummary } from "@runtime/types";
 import type { ServiceSend } from "./index";
 
 /** 模型 schema 的读取与管理 API 客户端。 */

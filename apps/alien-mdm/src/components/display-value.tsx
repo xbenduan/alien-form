@@ -6,7 +6,7 @@ import {
   optionLabel,
   refValue,
   statusColor,
-} from "../utils/field-values";
+} from "@utils/field-values";
 import styles from "./index.module.css";
 
 export interface DisplayValueProps {

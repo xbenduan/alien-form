@@ -1,5 +1,5 @@
-import { apiSend } from "../../../runtime/transport";
-import type { LoginPayload, LoginResult } from "../../../runtime/types";
+import { apiSend } from "@runtime/transport";
+import type { LoginPayload, LoginResult } from "@runtime/types";
 import type { ServiceSend } from "./index";
 
 /** 登录 / 登出 API 客户端。 */

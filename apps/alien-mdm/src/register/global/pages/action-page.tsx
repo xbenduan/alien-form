@@ -11,8 +11,8 @@ import {
   type ComponentProps,
   type FormBlockRuntime,
 } from "@alien-form/engine/react";
-import type { ModelRecord } from "../../../runtime/types";
-import { refValue } from "../../../utils/field-values";
+import type { ModelRecord } from "@runtime/types";
+import { refValue } from "@utils/field-values";
 import { recordListPath } from "../../../app/router/paths";
 import styles from "../ui.module.css";
 

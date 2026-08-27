@@ -1,6 +1,12 @@
 import type { IFieldSchema, IFormSchema } from "@alien-form/core";
 import type { FormComponentDefinition, UiNode } from "@alien-form/engine";
-import type { ComponentMeta, GroupConfig, TableColumn } from "../../../types/shared";
+import type { ComponentType, LazyExoticComponent } from "react";
+import type {
+  ComponentMeta,
+  FieldComponentProps,
+  GroupConfig,
+  TableColumn,
+} from "@app-types/shared";
 
 export type Locale = "zh" | "en" | (string & {});
 export type ModelPageScene = "list" | "add" | "edit" | "detail";
@@ -117,3 +123,9 @@ export type ModelFieldDefinition = FormComponentDefinition<unknown, ModelFieldAu
   fieldType: ComponentMeta["fieldType"];
   projection: ModelFieldProjection;
 };
+
+/** 已注册的字段组件定义：在 ModelFieldDefinition 基础上绑定具体的 React 组件。 */
+export interface RegisteredFieldDefinition extends ModelFieldDefinition {
+  component: LazyExoticComponent<ComponentType<FieldComponentProps>>;
+  fieldType: ComponentMeta["fieldType"];
+}

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { PropsWithChildren } from "react";
-import { getAppRuntime } from "../../../runtime/create-runtime";
-import type { AuthUser, LoginPayload, LoginResult } from "../../../runtime";
+import { getAppRuntime } from "@runtime/create-runtime";
+import type { AuthUser, LoginPayload, LoginResult } from "@runtime";
 
 const AUTH_STORAGE_KEY = "alien-mdm-auth";
 const UNAUTHORIZED_EVENT = "alien-mdm:unauthorized";

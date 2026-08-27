@@ -7,8 +7,8 @@ import {
   FormBlockRenderer,
   type ComponentProps,
 } from "@alien-form/engine/react";
-import type { ModelRecord } from "../../../runtime/types";
-import { refValue } from "../../../utils/field-values";
+import type { ModelRecord } from "@runtime/types";
+import { refValue } from "@utils/field-values";
 import styles from "../ui.module.css";
 
 type OverlayMode = "add" | "edit" | "detail";

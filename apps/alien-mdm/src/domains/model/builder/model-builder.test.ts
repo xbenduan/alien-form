@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { BuilderRuntime } from "@alien-form/builder";
-import { getFieldDefinition } from "../../../register/global/form/registry";
-import type { UiComponentDefinition } from "../../../register/global/ui/registry";
-import { createAppRuntime } from "../../../runtime/create-runtime";
+import { getFieldDefinition } from "@runtime";
+import type { UiComponentDefinition } from "@app-types/shared";
+import { createAppRuntime } from "@runtime/create-runtime";
 import { fieldEditorSchemaOf, fieldEditorValuesOf } from "../components/field-editor";
 import { modelCommands } from "./commands";
 import { ModelCodec } from "./model-codec";

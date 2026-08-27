@@ -1,7 +1,7 @@
 import { PlusOutlined } from "@ant-design/icons";
 import { Button, Empty } from "antd";
 import { useFormScope } from "@alien-form/react";
-import type { FieldComponentProps, FormScope } from "../../../types/shared";
+import type { FieldComponentProps, FormScope } from "@app-types/shared";
 import { ComplexFieldFrame, readFieldPropTitle, TableComplexCell } from "@components/complex-frame";
 import { renderGridChildren } from "@components/grid";
 import styles from "../form.module.css";

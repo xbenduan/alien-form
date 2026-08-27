@@ -8,7 +8,7 @@ import {
 import { Button, Popconfirm } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useBlock, usePage, useRuntime, type ComponentProps } from "@alien-form/engine/react";
-import type { ModelRecord } from "../../../runtime/types";
+import type { ModelRecord } from "@runtime/types";
 import { recordAddPath, recordDetailPath, recordEditPath } from "../../../app/router/paths";
 
 type ActionMode = "add" | "edit" | "detail";

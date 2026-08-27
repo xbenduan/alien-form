@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { getAppRuntime } from "../runtime/create-runtime";
-import type { ModelRecord } from "../runtime/types";
+import { getAppRuntime } from "@runtime/create-runtime";
+import type { ModelRecord } from "@runtime/types";
 
 export const recordKeys = {
   all: ["records"] as const,

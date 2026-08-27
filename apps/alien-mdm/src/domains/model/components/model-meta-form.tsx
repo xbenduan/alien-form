@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { FormRenderer, useCreateForm } from "@alien-form/react";
 import type { IFormSchema } from "@alien-form/core";
 import { useBuilder, useBuilderAtom } from "@alien-form/builder/react";
-import { getFieldComponents, getFieldDecorators } from "../../../register/global/form/registry";
+import { getFieldComponents, getFieldDecorators } from "@runtime";
 import type { ModelDraft } from "../builder";
 
 interface ModelMetaFormProps {

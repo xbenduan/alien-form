@@ -1,7 +1,7 @@
 import { DatePicker } from "antd";
 import dayjs from "dayjs";
 import { useFormScope } from "@alien-form/react";
-import type { FieldComponentProps, FormScope } from "../../../types/shared";
+import type { FieldComponentProps, FormScope } from "@app-types/shared";
 import { DisplayValue } from "@components/display-value";
 
 /** 日期选择。 */

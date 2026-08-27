@@ -1,7 +1,7 @@
 import type { IFieldSchema, IFormSchema } from "@alien-form/core";
 import type { PageSchema, Registry, UiNode } from "@alien-form/engine";
-import { getFieldDefinition } from "../../../register/global/form/registry";
-import type { GroupConfig, TableColumn } from "../../../types/shared";
+import { getFieldDefinition } from "@runtime";
+import type { GroupConfig, TableColumn } from "@app-types/shared";
 import type {
   Locale,
   ModelFieldSchema,

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Table as AntTable } from "antd";
 import type { TablePaginationConfig, TableProps } from "antd";
 import type { ColumnsType, ColumnType } from "antd/es/table";
-import type { SchemaRecord, TableColumn } from "../types/shared";
+import type { SchemaRecord, TableColumn } from "@app-types/shared";
 import { DisplayValue } from "@components/display-value";
 import { TableComplexCell } from "@components/complex-frame";
 import styles from "./index.module.css";

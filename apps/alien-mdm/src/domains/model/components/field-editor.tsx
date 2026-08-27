@@ -14,7 +14,7 @@ import {
 import { DeleteOutlined, InfoCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import type { Registry } from "@alien-form/engine";
 import { useBuilder } from "@alien-form/builder/react";
-import { getDefaultFieldSchema, getFieldDefinition } from "../../../register/global/form/registry";
+import { getDefaultFieldSchema, getFieldDefinition } from "@runtime";
 import type { ModelFieldSchema } from "../builder";
 import type { FieldDraft } from "../types";
 import { componentDescription, fieldComponentOptions } from "../utils";

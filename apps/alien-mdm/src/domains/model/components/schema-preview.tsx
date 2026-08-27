@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Alert, Empty, Tabs } from "antd";
 import { PageRoot } from "@alien-form/engine/react";
 import { buildPreviewPage, type ModelSchema } from "../builder";
-import { getAppRuntime } from "../../../runtime/create-runtime";
+import { getAppRuntime } from "@runtime/create-runtime";
 import { SchemaJsonEditor } from "./schema-json-editor";
 
 interface SchemaPreviewProps {

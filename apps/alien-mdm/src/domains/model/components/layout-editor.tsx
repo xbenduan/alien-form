@@ -9,7 +9,7 @@ import { Alert, Button, Input, Select, Space, Typography } from "antd";
 import { useBuilder, useBuilderAtom } from "@alien-form/builder/react";
 import type { UiNode } from "@alien-form/engine";
 import { FieldsetCard } from "@components";
-import type { UiComponentDefinition } from "../../../register/global/ui/registry";
+import type { UiComponentDefinition } from "@app-types/shared";
 import type { ModelDraft } from "../builder";
 import styles from "./index.module.css";
 
@@ -214,7 +214,7 @@ function LayoutNodeEditor({
         <div className={styles.layoutNodeHeader}>
           <Select value={node.component} options={availableOptions} onChange={changeComponent} />
         </div>
-        {definition?.authoring.props ? (
+        {definition && definition.authoring.props.show !== false ? (
           <JsonPropsEditor
             value={node.props}
             rows={definition.authoring.props.rows}

@@ -1,13 +1,13 @@
 import { Select as AntSelect } from "antd";
 import { useFormScope } from "@alien-form/react";
-import type { FieldComponentProps, FormScope } from "../types/shared";
+import type { FieldComponentProps, FormScope } from "@app-types/shared";
 import { DisplayValue } from "./display-value";
 import {
   parseMultiValue,
   refValue,
   serializeMultiValue,
   withRefEchoOptions,
-} from "../utils/field-values";
+} from "@utils/field-values";
 import { useFieldOptions } from "@hooks/service";
 
 /** 按需加载远程选项的 Select。 */

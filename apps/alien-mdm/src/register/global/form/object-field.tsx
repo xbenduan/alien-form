@@ -1,4 +1,4 @@
-import type { FieldComponentProps } from "../../../types/shared";
+import type { FieldComponentProps } from "@app-types/shared";
 import { ComplexFieldFrame, readFieldPropTitle, TableComplexCell } from "@components/complex-frame";
 import { renderGridChildren } from "@components/grid";
 import styles from "../form.module.css";

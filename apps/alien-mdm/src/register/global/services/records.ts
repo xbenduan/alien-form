@@ -1,5 +1,5 @@
-import { apiGet, apiSend } from "../../../runtime/transport";
-import type { ModelRecord, RecordListParams, RecordListResult } from "../../../runtime/types";
+import { apiGet, apiSend } from "@runtime/transport";
+import type { ModelRecord, RecordListParams, RecordListResult } from "@runtime/types";
 import type { ServiceSend } from "./index";
 
 /** 记录 CRUD 与选项/子树查询的 API 客户端。 */

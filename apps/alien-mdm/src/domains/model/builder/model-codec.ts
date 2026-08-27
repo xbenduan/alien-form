@@ -1,6 +1,6 @@
 import type { Registry, UiNode } from "@alien-form/engine";
-import type { GroupConfig } from "../../../types/shared";
-import { getFieldDefinition } from "../../../register/global/form/registry";
+import type { GroupConfig } from "@app-types/shared";
+import { getFieldDefinition } from "@runtime";
 import type { FieldDraft, GroupDraft, ModelDraft, ModelFieldSchema, ModelSchema } from "./types";
 
 const DEFAULT_RECORD_SERVICES = {

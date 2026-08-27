@@ -3,7 +3,7 @@ import {
   buildComponentOptions,
   getFieldDefinition,
   isContainerComponent,
-} from "../../../register/global/form/registry";
+} from "@runtime";
 
 export function fieldComponentOptions(registry: Registry, domain?: string) {
   return buildComponentOptions(

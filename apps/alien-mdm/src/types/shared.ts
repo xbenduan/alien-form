@@ -1,4 +1,5 @@
 import type { DataSourceItem, IFieldSchema, IFormSchema } from "@alien-form/react";
+import type { UiDefinition, UiNode } from "@alien-form/engine";
 import type { ReactNode } from "react";
 
 /** 渲染模式：新增 / 编辑 / 详情（只读）。 */
@@ -104,3 +105,17 @@ export interface TableColumn {
   /** 已转换为 form 语义的字段 schema，用于详情弹窗。 */
   field: IFieldSchema;
 }
+
+/** 布局（ui）组件的编辑期元信息：父子约束、props 行数、slot 声明。 */
+export interface UiAuthoring {
+  kind: "layout" | "content" | "action";
+  parent?: string;
+  children: boolean;
+  props: UiPropsConfig;
+  create(): UiNode;
+}
+
+/** props JSON 编辑器配置：`show: false` 表示该组件不暴露 props 编辑。 */
+export type UiPropsConfig = { show: false } | { show?: true; rows: number };
+
+export type UiComponentDefinition = UiDefinition<any, UiAuthoring>;

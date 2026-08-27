@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { BuilderRuntime } from "@alien-form/builder";
 import { useBuilderAtom } from "@alien-form/builder/react";
 import { useModelSchema, useSchemaMutations } from "@hooks";
-import { getAppRuntime } from "../../../runtime/create-runtime";
+import { getAppRuntime } from "@runtime/create-runtime";
 import { ModelCodec, modelCommands, type ModelDraft } from "../builder";
 
 function validate(draft: ModelDraft) {

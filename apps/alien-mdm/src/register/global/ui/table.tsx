@@ -7,9 +7,9 @@ import {
 } from "@alien-form/engine/react";
 import { Table } from "@components/table";
 import type { TableColumnAction } from "@components/table";
-import type { TableColumn } from "../../../types/shared";
+import type { TableColumn } from "@app-types/shared";
 import { useEffect, useState } from "react";
-import type { ModelRecord } from "../../../runtime/types";
+import type { ModelRecord } from "@runtime/types";
 import styles from "../ui.module.css";
 
 export function TableLayout({ node }: ComponentProps) {

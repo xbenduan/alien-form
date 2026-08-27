@@ -8,6 +8,9 @@ export default defineConfig({
     alias: {
       "@components": fileURLToPath(new URL("./src/components", import.meta.url)),
       "@hooks": fileURLToPath(new URL("./src/hooks", import.meta.url)),
+      "@runtime": fileURLToPath(new URL("./src/runtime", import.meta.url)),
+      "@utils": fileURLToPath(new URL("./src/utils", import.meta.url)),
+      "@app-types": fileURLToPath(new URL("./src/types", import.meta.url)),
     },
   },
   server: {

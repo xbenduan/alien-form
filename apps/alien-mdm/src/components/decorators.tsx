@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { QuestionCircleOutlined } from "@ant-design/icons";
 import { useFormScope, type FieldError, type ValidateStatus } from "@alien-form/react";
 import { Tooltip } from "antd";
-import type { FormScope } from "../types/shared";
+import type { FormScope } from "@app-types/shared";
 import styles from "./index.module.css";
 
 interface FormItemProps {

@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { PageRoot } from "@alien-form/engine/react";
 import { PageError, PageLoading } from "@components";
 import { useModelSchema } from "@hooks";
-import { getAppRuntime } from "../../runtime/create-runtime";
+import { getAppRuntime } from "@runtime/create-runtime";
 import { buildModelPage, type ModelPageScene } from "../../domains/model/builder";
 
 export interface RecordRouteProps {

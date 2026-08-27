@@ -5,7 +5,7 @@ import { RuntimeProvider } from "@alien-form/engine/react";
 import { AppProviders } from "../providers";
 import { AppRouter } from "../router";
 import "../../styles/global.css";
-import { createAppRuntime } from "../../runtime/create-runtime";
+import { createAppRuntime } from "@runtime/create-runtime";
 
 const runtime = createAppRuntime();
 

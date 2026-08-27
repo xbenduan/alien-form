@@ -7,8 +7,8 @@ import {
   type IFormSchema,
 } from "@alien-form/react";
 import { useOptionalPage } from "@alien-form/engine/react";
-import { getFieldComponents, getFieldDecorators } from "../register/global/form/registry";
-import { getAppRuntime } from "../runtime/create-runtime";
+import { getFieldComponents, getFieldDecorators } from "@runtime";
+import { getAppRuntime } from "@runtime/create-runtime";
 
 export interface FieldDetailModalProps {
   open: boolean;

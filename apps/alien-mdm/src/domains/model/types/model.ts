@@ -8,7 +8,7 @@ import type {
   ModelSchema,
   OpenMode,
 } from "../builder";
-import type { GroupConfig } from "../../../types/shared";
+import type { GroupConfig } from "@app-types/shared";
 
 export type {
   FieldDraft,
