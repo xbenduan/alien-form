@@ -142,7 +142,3 @@ export function RowDelete({ record, onDelete }: RowActionProps) {
     </Popconfirm>
   );
 }
-
-export function RowActions({ children }: ComponentProps) {
-  return <>{children as React.ReactNode}</>;
-}

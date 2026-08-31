@@ -3,11 +3,11 @@ import { Layout } from "./layout";
 import { Filter } from "./filter";
 import { TableLayout } from "./table";
 import { TreePanel } from "./tree";
+import { Space } from "./space";
 import {
   ActionAdd,
   ActionBatchDelete,
   ActionRefresh,
-  RowActions,
   RowDelete,
   RowDetail,
   RowEdit,
@@ -39,23 +39,20 @@ export function registerUIComponents(runtime: Runtime): void {
     children: false,
     props: { rows: 5 },
   });
-  registerUiComponent(runtime, "row-actions", "行操作组", "content", RowActions, {
+  registerUiComponent(runtime, "space", "间距容器", "content", Space, {
+    description: "按 size 间距排列子节点的通用容器（工具栏组、行操作组等）。",
     parent: "table",
     children: true,
     props: { show: false },
-  });
-  registerUiComponent(runtime, "action-group", "操作组", "content", RowActions, {
-    parent: "table",
-    children: true,
-    props: { show: false },
+    defaults: { component: "space", props: { size: "small" } },
   });
   registerUiComponent(runtime, "action-add", "新增", "action", ActionAdd, {
-    parent: "action-group",
+    parent: "space",
     children: false,
     props: { rows: 1 },
   });
   registerUiComponent(runtime, "action-refresh", "刷新", "action", ActionRefresh, {
-    parent: "action-group",
+    parent: "space",
     children: false,
     props: { rows: 1 },
   });
@@ -65,17 +62,17 @@ export function registerUIComponents(runtime: Runtime): void {
     props: { rows: 1 },
   });
   registerUiComponent(runtime, "detail", "详情", "action", RowDetail, {
-    parent: "row-actions",
+    parent: "space",
     children: false,
     props: { rows: 1 },
   });
   registerUiComponent(runtime, "edit", "编辑", "action", RowEdit, {
-    parent: "row-actions",
+    parent: "space",
     children: false,
     props: { rows: 1 },
   });
   registerUiComponent(runtime, "delete", "删除", "action", RowDelete, {
-    parent: "row-actions",
+    parent: "space",
     children: false,
     props: { rows: 1 },
   });

@@ -131,11 +131,9 @@ describe("model builder", () => {
     expect((registry.ui.resolve("filter") as UiComponentDefinition).authoring.parent).toBe(
       "layout",
     );
-    expect((registry.ui.resolve("row-actions") as UiComponentDefinition).authoring.parent).toBe(
-      "table",
-    );
+    expect((registry.ui.resolve("space") as UiComponentDefinition).authoring.parent).toBe("table");
     expect((registry.ui.resolve("detail") as UiComponentDefinition).authoring.parent).toBe(
-      "row-actions",
+      "space",
     );
     expect((registry.ui.resolve("table") as UiComponentDefinition).authoring.children).toBe(true);
     expect((registry.ui.resolve("table") as UiComponentDefinition).authoring.props).toEqual({

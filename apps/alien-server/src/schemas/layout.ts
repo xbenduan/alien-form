@@ -37,13 +37,15 @@ export const defaultLayout = {
       slots: {
         toolbarLeft: { component: "action-batch-delete" },
         toolbarRight: {
-          component: "action-group",
+          component: "space",
+          props: { size: "small" },
           children: [{ component: "action-refresh" }, { component: "action-add" }],
         },
       },
       children: [
         {
-          component: "row-actions",
+          component: "space",
+          props: { size: 4 },
           children: [{ component: "detail" }, { component: "edit" }, { component: "delete" }],
         },
       ],
@@ -83,13 +85,15 @@ export const schoolUserLayout = {
       slots: {
         toolbarLeft: { component: "action-batch-delete" },
         toolbarRight: {
-          component: "action-group",
+          component: "space",
+          props: { size: "small" },
           children: [{ component: "action-refresh" }, { component: "action-add" }],
         },
       },
       children: [
         {
-          component: "row-actions",
+          component: "space",
+          props: { size: 4 },
           children: [{ component: "detail" }, { component: "edit" }, { component: "delete" }],
         },
       ],
@@ -127,13 +131,15 @@ export const schoolDepartmentLayout = {
       slots: {
         toolbarLeft: { component: "action-batch-delete" },
         toolbarRight: {
-          component: "action-group",
+          component: "space",
+          props: { size: "small" },
           children: [{ component: "action-refresh" }, { component: "action-add" }],
         },
       },
       children: [
         {
-          component: "row-actions",
+          component: "space",
+          props: { size: 4 },
           children: [{ component: "detail" }, { component: "edit" }, { component: "delete" }],
         },
       ],

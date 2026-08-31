@@ -47,7 +47,7 @@ export function TableLayout({ node }: ComponentProps) {
     }
   };
 
-  const rowActions = node.children?.find((n) => n.component === "row-actions");
+  const rowActions = node.children?.find((n) => n.component === "space");
   const batchAction = node.slots?.toolbarLeft;
   const utilityAction = node.slots?.toolbarRight;
 
@@ -58,7 +58,7 @@ export function TableLayout({ node }: ComponentProps) {
         fixed: "right" as const,
         width: 180,
         render: (_: unknown, record: ModelRecord) => (
-          <Space size={4} wrap>
+          <Space size={(rowActions.props?.size as number | "small" | "middle" | "large") ?? 4} wrap>
             {rowActions.children?.map((child, i) => (
               <RenderNode key={i} node={child} props={{ record, onDelete: handleDelete }} />
             ))}
