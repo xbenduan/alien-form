@@ -7,7 +7,9 @@ import type { Env } from "../env.ts";
 
 const USER_MODEL = "school-user";
 const PASSWORD_ALGORITHM = "pbkdf2_sha256";
-const PASSWORD_ITERATIONS = 120_000;
+// Cloudflare Workers 的 WebCrypto PBKDF2 迭代上限为 100000，超过会直接抛错，
+// 故这里固定 100000（Node 版可用更高值，两端 seed 需与运行端对齐）。
+const PASSWORD_ITERATIONS = 100_000;
 const PASSWORD_KEY_LENGTH = 32; // bytes
 const PASSWORD_HASH = "SHA-256";
 
@@ -56,7 +58,7 @@ function randomHex(byteLength: number): string {
   return toHex(crypto.getRandomValues(new Uint8Array(byteLength)).buffer);
 }
 
-async function pbkdf2(password: string, salt: string): Promise<string> {
+async function pbkdf2(password: string, salt: string, iterations: number): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(password),
@@ -68,7 +70,7 @@ async function pbkdf2(password: string, salt: string): Promise<string> {
     {
       name: "PBKDF2",
       salt: new TextEncoder().encode(salt),
-      iterations: PASSWORD_ITERATIONS,
+      iterations,
       hash: PASSWORD_HASH,
     },
     key,
@@ -80,7 +82,7 @@ async function pbkdf2(password: string, salt: string): Promise<string> {
 /** 生成新密码哈希：pbkdf2_sha256$iterations$salt$hash（与 Node 版 / seed 同构）。 */
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomHex(16);
-  const hash = await pbkdf2(password, salt);
+  const hash = await pbkdf2(password, salt, PASSWORD_ITERATIONS);
   return `${PASSWORD_ALGORITHM}$${PASSWORD_ITERATIONS}$${salt}$${hash}`;
 }
 
@@ -95,15 +97,19 @@ function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
 async function verifyPassword(password: string, stored: unknown): Promise<boolean> {
   if (typeof stored !== "string" || !stored) return false;
   const [algorithm, iterations, salt, hash] = stored.split("$");
+  const iterationCount = Number(iterations);
+  // 迭代数从存储值动态解析；但 Workers 上限 100000，超过无法校验直接判负。
   if (
     algorithm !== PASSWORD_ALGORITHM ||
-    iterations !== String(PASSWORD_ITERATIONS) ||
+    !Number.isInteger(iterationCount) ||
+    iterationCount < 1 ||
+    iterationCount > 100_000 ||
     !salt ||
     !hash
   ) {
     return false;
   }
-  const actual = hexToBytes(await pbkdf2(password, salt));
+  const actual = hexToBytes(await pbkdf2(password, salt, iterationCount));
   const expected = hexToBytes(hash);
   return timingSafeEqual(actual, expected);
 }

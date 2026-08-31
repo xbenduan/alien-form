@@ -24,3 +24,6 @@ debug**
 **/.dev.vars
 **/.dev.vars.*
 !**/.dev.vars.example
+
+# 种子 SQL 为派生产物（由 scripts/seed.js --sql 生成，含时间戳）
+scripts/seed.sql

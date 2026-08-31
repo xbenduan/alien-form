@@ -18,9 +18,10 @@ const API_BASE = process.env.API_BASE ?? `http://localhost:${process.env.PORT ??
 const DEMO_PASSWORD = "alien123456";
 
 function hashPassword(password) {
+  // 迭代数与运行端对齐：Cloudflare Workers 的 WebCrypto PBKDF2 上限为 100000。
   const salt = randomBytes(16).toString("hex");
-  const hash = pbkdf2Sync(password, salt, 120_000, 32, "sha256").toString("hex");
-  return `pbkdf2_sha256$120000$${salt}$${hash}`;
+  const hash = pbkdf2Sync(password, salt, 100_000, 32, "sha256").toString("hex");
+  return `pbkdf2_sha256$100000$${salt}$${hash}`;
 }
 
 const demoPasswordHash = hashPassword(DEMO_PASSWORD);
@@ -703,7 +704,58 @@ async function main() {
   console.log(`[seed] 完成，共写入 ${total} 条记录。`);
 }
 
-main().catch((err) => {
-  console.error(`[seed] 失败：${err instanceof Error ? err.message : String(err)}`);
-  process.exit(1);
-});
+// ---------------------------------------------------------------------------
+// SQL 生成模式（用于 Cloudflare D1 直灌）：
+//   node scripts/seed.js --sql            # 输出到 scripts/seed.sql
+//   node scripts/seed.js --sql out.sql    # 自定义输出路径
+//
+// Cloudflare Worker 后端的 /api/records/* 需要登录，而种子本身要创建首批用户，
+// 存在「鸡生蛋」。因此对 D1 直接写库：把每条记录拍成 records 表的一行——
+// 系统字段（id/model/created_at/updated_at）成列，其余字段收进 data_content JSON，
+// 与 worker 的存储格式完全一致。生成后执行：
+//   wrangler d1 execute alien-mdm --remote --file scripts/seed.sql
+// 记录用 (model,id) 做 upsert，可重复执行不产生重复数据。
+// ---------------------------------------------------------------------------
+function sqlQuote(text) {
+  return `'${String(text).replaceAll("'", "''")}'`;
+}
+
+function generateSql() {
+  const now = Date.now();
+  const lines = [
+    "-- 由 scripts/seed.js --sql 自动生成，请勿手改。",
+    "-- 执行：wrangler d1 execute alien-mdm --remote --file scripts/seed.sql",
+    "",
+  ];
+  let total = 0;
+  for (const { model, records } of groups) {
+    lines.push(`-- ${model}（${records.length} 条）`);
+    for (const record of records) {
+      const { id, createdAt: _c, updatedAt: _u, ...data } = record;
+      const dataContent = JSON.stringify(data);
+      lines.push(
+        `INSERT INTO "records" (id, model, created_at, updated_at, data_content) VALUES ` +
+          `(${sqlQuote(id)}, ${sqlQuote(model)}, ${now}, ${now}, ${sqlQuote(dataContent)}) ` +
+          `ON CONFLICT(model, id) DO UPDATE SET updated_at = excluded.updated_at, data_content = excluded.data_content;`,
+      );
+      total += 1;
+    }
+    lines.push("");
+  }
+
+  const { writeFileSync } = require("node:fs");
+  const { resolve } = require("node:path");
+  const outArg = process.argv.find((arg, i) => i >= 3 && !arg.startsWith("--"));
+  const outPath = resolve(__dirname, outArg ?? "seed.sql");
+  writeFileSync(outPath, lines.join("\n"), "utf8");
+  console.log(`[seed] 已生成 SQL：${outPath}（共 ${total} 条记录）`);
+}
+
+if (process.argv.includes("--sql")) {
+  generateSql();
+} else {
+  main().catch((err) => {
+    console.error(`[seed] 失败：${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
+  });
+}
