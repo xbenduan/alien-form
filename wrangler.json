@@ -1,8 +1,20 @@
 {
-  "name": "alien-form",
+  "name": "alien-mdm",
+  "main": "apps/alien-worker/src/index.ts",
   "compatibility_date": "2026-06-01",
+  "compatibility_flags": ["nodejs_compat"],
   "assets": {
-    "directory": "./apps/alien-cms/dist",
-    "not_found_handling": "single-page-application"
-  }
+    "directory": "./apps/alien-mdm/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "alien-mdm",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "apps/alien-worker/migrations"
+    }
+  ]
 }

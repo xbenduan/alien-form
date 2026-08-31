@@ -1,0 +1,21 @@
+{
+  "name": "@alien-form/alien-worker",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Alien Form 的 Cloudflare Workers 后端：单 Worker 同时托管 alien-mdm 静态资源与 /api，数据落 D1。schemas / records 两张表，records 系统字段独立成列、其余字段收进 data_content JSON。",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --config ../../wrangler.json",
+    "deploy": "wrangler deploy --config ../../wrangler.json",
+    "migrate:local": "wrangler d1 migrations apply alien-mdm --local --config ../../wrangler.json",
+    "migrate:remote": "wrangler d1 migrations apply alien-mdm --remote --config ../../wrangler.json",
+    "cf-typegen": "wrangler types --config ../../wrangler.json"
+  },
+  "dependencies": {
+    "hono": "^4.7.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240925.0",
+    "wrangler": "^3.80.0"
+  }
+}
