@@ -1,4 +1,4 @@
-import type { RuntimeRuleHandler } from "@alien-form/core";
+import type { ExpressionScope } from "@alien-form/core";
 import { describe, expect, it } from "vitest";
 import { Runtime } from "../runtime";
 
@@ -31,7 +31,7 @@ describe("definition registry", () => {
 
   it("stores form components and handlers as complete definitions", () => {
     const runtime = new Runtime();
-    const handler: RuntimeRuleHandler = () => "handled";
+    const handler = (_scope: ExpressionScope) => "handled";
 
     runtime.formComponent({
       code: "Input",

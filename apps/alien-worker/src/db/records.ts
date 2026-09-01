@@ -1,6 +1,5 @@
 import type {
   ColumnPlan,
-  RelationPlan,
   FieldPlan,
 } from "../../../alien-server/src/schema/field-plan.ts";
 import { planFields } from "../../../alien-server/src/schema/field-plan.ts";

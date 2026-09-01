@@ -8,7 +8,7 @@ import type {
   ArrayFieldNode,
   BaseFieldNode,
   DataSourceItem,
-  DataSourcePolicy,
+  ExpressionScope,
   FieldDisplayTypes,
   FieldError,
   FieldKind,
@@ -27,7 +27,7 @@ import type {
   ValidateStatus,
   VoidFieldNode,
 } from "./types";
-import { evaluateExpression } from "./expression";
+import { compileExpr } from "./expression";
 import { isEmptyValue, normalizeDataSource, normalizeValidationErrors } from "./validation";
 import { getDeepValue, setDeepValue, sortByOrder } from "./path";
 import { resolveSchemaTree } from "./ref-resolve";
@@ -98,34 +98,6 @@ function shallowEqual(a: any, b: any): boolean {
   return true;
 }
 
-function isSelectableFieldValueValid(value: any, dataSource: DataSourceItem[]): boolean {
-  return dataSource.some((item) => Object.is(item.value, value));
-}
-
-function applyDataSourcePolicy(
-  field: PrimitiveFieldNode,
-  dataSource: DataSourceItem[],
-  policy: DataSourcePolicy | undefined,
-) {
-  if (dataSource.length === 0 || policy === "preserve") return;
-  const currentValue = field.value();
-  if (currentValue === undefined || currentValue === null) return;
-
-  // 叶子只承载单个基元:多选/多值请用 array 字段或组件内序列化,不在此处理数组。
-  if (isSelectableFieldValueValid(currentValue, dataSource)) return;
-  if (policy === "clear") {
-    field.setValue(undefined);
-    return;
-  }
-  if (policy === "filter") {
-    field.setValue(undefined);
-    return;
-  }
-  if (policy === "first") {
-    field.setValue(dataSource[0]?.value);
-  }
-}
-
 function createBaseField(
   ctx: FieldContext,
   kind: FieldKind,
@@ -152,7 +124,9 @@ function createBaseField(
     componentProps: signal<Record<string, any>>(schema.props || {}),
     decorator: signal(schema.decorator || "FormItem"),
     decoratorProps: signal<Record<string, any>>(schema.decoratorProps || {}),
-    dataSource: signal<DataSourceItem[]>(normalizeDataSource(schema.dataSource)),
+    dataSource: signal<DataSourceItem[]>(
+      normalizeDataSource(Array.isArray(schema.dataSource) ? schema.dataSource : []),
+    ),
     loading: signal(false),
     _disposers: [],
     dispose() {
@@ -183,14 +157,10 @@ function createBaseField(
       if (base.required() !== value) base.required(value);
     },
     setLoading(loading: boolean) {
-      if (base.loading() !== loading) base.loading(loading);
+      base.loading(loading);
     },
     setDataSource(ds: DataSourceItem[]) {
-      const normalized = normalizeDataSource(ds);
-      if (isPrimitiveField(base as FieldNode)) {
-        applyDataSourcePolicy(base as PrimitiveFieldNode, normalized, schema.dataSourcePolicy);
-      }
-      if (!shallowEqual(base.dataSource(), normalized)) base.dataSource(normalized);
+      base.dataSource(normalizeDataSource(ds));
     },
     setComponent(component: string, props?: Record<string, any>) {
       if (base.component() !== component) base.component(component);
@@ -259,7 +229,6 @@ function createPrimitiveField(
     }
     if (!Object.is(field.value(), value)) field.value(value);
   };
-  applyDataSourcePolicy(field, field.dataSource(), schema.dataSourcePolicy);
   return field;
 }
 
@@ -330,9 +299,8 @@ function buildFieldTree(
   const schema = { ...resolved, required };
   const iv = initialValue !== undefined ? initialValue : getDeepValue(ctx.initialValues, path);
 
-  // 布局节点(void 语义):由 x-layout 声明,不占数据路径、不产生值,
-  // 子字段路径与值扁平上浮到父级。判定优先于 type。
-  if (schema["x-layout"]) {
+  // void 节点不占数据路径，子字段路径和值扁平上浮到父级。
+  if (schema.type === "void" || schema["x-layout"]) {
     const field = createVoidField(ctx, path, schema, options);
     buildChildren(ctx, field, schema, undefined, schema.required);
     return field;
@@ -479,11 +447,52 @@ function installRowRuntime(ctx: FieldContext, row: RowNode) {
 }
 
 function installFieldRuntime(ctx: FieldContext, field: FieldNode) {
+  if (field.schema.dataSource !== undefined && !Array.isArray(field.schema.dataSource)) {
+    installDataSource(ctx, field, field.schema.dataSource);
+  }
   if (field.schema["x-reaction"]) installReactions(ctx, field);
   if (field.schema["x-effect"]) installEffects(ctx, field, field.schema["x-effect"]);
   if (isContainerField(field))
     for (const child of field.children.values()) installFieldRuntime(ctx, child);
   if (isArrayField(field)) for (const row of field.rows()) installRowRuntime(ctx, row);
+}
+
+function installDataSource(ctx: FieldContext, field: FieldNode, rule: SchemaRuntimeValue) {
+  let version = 0;
+  const dispose = effect(() => {
+    const currentVersion = ++version;
+    const runtime = buildRuntimeContext(ctx, field, "x-reaction", "dataSource");
+    const result = executeRuntimeValue(ctx, field, rule, runtime, "dataSource");
+    if (!isPromiseLike(result)) {
+      field.setLoading(false);
+      field.setDataSource(Array.isArray(result) ? result : []);
+      return;
+    }
+
+    field.setLoading(true);
+    result
+      .then((value: any) => {
+        if (currentVersion !== version) return;
+        field.setDataSource(Array.isArray(value) ? value : []);
+      })
+      .catch((err: any) => {
+        if (currentVersion !== version) return;
+        ctx.emitError({
+          scope: "x-reaction",
+          path: field.path,
+          key: "dataSource",
+          message: errorMessage(err),
+          cause: err,
+        });
+      })
+      .finally(() => {
+        if (currentVersion === version) field.setLoading(false);
+      });
+  });
+  field._disposers.push(() => {
+    version += 1;
+    dispose();
+  });
 }
 
 function formatFieldValue(
@@ -841,27 +850,10 @@ function executeRuntimeValue(
   key?: string,
 ): any {
   try {
-    if (typeof rule === "function") return rule(runtime, ctx.form);
+    const scope = buildExpressionScope(ctx, field, runtime);
+    if (typeof rule === "function") return rule(scope);
     if (typeof rule === "string") {
-      if (isExpression(rule))
-        return evaluateExpression(
-          extractExpression(rule),
-          buildExpressionScope(ctx, field, runtime),
-        );
-      if (rule.startsWith("@")) {
-        const name = rule.slice(1);
-        const handler = ctx.config.handlers?.[name];
-        if (!handler) {
-          ctx.emitError({
-            scope: runtime.kind,
-            path: field.path,
-            key,
-            message: `Handler "${name}" not found.`,
-          });
-          return undefined;
-        }
-        return handler(runtime, ctx.form);
-      }
+      if (isExpression(rule)) return compileExpr(rule)(scope);
     }
     return rule;
   } catch (err) {
@@ -881,32 +873,25 @@ function isExpression(value: string): boolean {
   return trimmed.startsWith("{{") && trimmed.endsWith("}}");
 }
 
-function extractExpression(value: string): string {
-  return value.trim().slice(2, -2).trim();
-}
-
 function buildExpressionScope(
   ctx: FieldContext,
   field: FieldNode,
   runtime: RuntimeRuleContext,
-): Record<string, any> {
+): ExpressionScope {
   const values = runtime.values;
-  const scope: Record<string, any> = {
-    ...values,
-    ...ctx.config.scope,
+  const injected = ctx.config.scope || {};
+  return {
+    $values: values,
     $self: field,
     $form: ctx.form,
-    $values: values,
     $value: runtime.value !== undefined ? runtime.value : resolveSelector(ctx, field, "$value"),
     $row: field.row ? projectChildren(ctx, field.row.children, false) || {} : undefined,
     $path: field.path,
-    $get: (selector: string) => runtime.get(selector),
-    $project: (selector?: string) => runtime.project(selector),
+    $service: injected.$service || {},
+    $utils: injected.$utils || {},
+    $enums: injected.$enums || {},
+    $query: injected.$query || {},
   };
-  if (field.row) Object.assign(scope, projectChildren(ctx, field.row.children, false) || {});
-  if (field.parent && isContainerField(field.parent))
-    Object.assign(scope, projectChildren(ctx, field.parent.children, false) || {});
-  return scope;
 }
 
 function applyReactionValue(ctx: FieldContext, field: FieldNode, key: string, value: any) {

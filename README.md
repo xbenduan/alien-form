@@ -153,11 +153,10 @@ const form = createForm({
         type: "string",
         title: "权限",
         component: "Select",
-        dataSourcePolicy: "first",
         "x-reaction": {
-          display: "{{ role ? 'visible' : 'none' }}",
+          display: "{{ $values.role ? 'visible' : 'none' }}",
           dataSource:
-            "{{ role === 'admin' ? [{ label: '全部', value: '*' }] : [{ label: '读取', value: 'read' }] }}",
+            "{{ $values.role === 'admin' ? [{ label: '全部', value: '*' }] : [{ label: '读取', value: 'read' }] }}",
         },
       },
     },
@@ -199,8 +198,7 @@ AlienForm 的 Schema 基于对象树描述字段，并增加少量运行时扩�
 | `component` / `props`          | 指定渲染组件和组件参数。                                                                                         |
 | `decorator` / `decoratorProps` | 指定字段装饰器，例如表单项容器。                                                                                 |
 | `required`                     | 必填 UI 状态和内置必填校验简写。                                                                                 |
-| `dataSource`                   | 选项数据源。                                                                                                     |
-| `dataSourcePolicy`             | 选项变化后当前值的处理策略：`preserve`、`clear`、`filter`、`first`。                                             |
+| `dataSource`                   | 静态或响应式选项数据源；选项变化后的值处理由具体组件负责。                                                       |
 | `definitions` / `$ref`         | `schema.definitions` 是 `$ref` 引用字典；`config.definitions` 会合并到该字典，只有 schema 显式 `$ref` 时才生效。 |
 | `x-reaction`                   | 字段联动规则，可派生值、显隐、禁用、选项、组件、标题等。                                                         |
 | `x-effect`                     | 字段挂载后的副作用规则。                                                                                         |
@@ -211,10 +209,12 @@ AlienForm 的 Schema 基于对象树描述字段，并增加少量运行时扩�
 运行时值统一支持：
 
 - 字面量：`"text"`、`100`、`true`、`{}`、`[]`。
-- 表达式：`"{{ role === 'admin' ? 'visible' : 'none' }}"`。
-- Handler 引用：`"@loadOptions"`。
-- 直接函数：`(ctx, form) => any`。
+- 表达式：`"{{ $values.role === 'admin' ? 'visible' : 'none' }}"`。
+- 直接函数：`(scope) => any`。
 - 运行时值数组：用于组合多个规则。
+
+表达式作用域固定为 `$values`、`$self`、`$form`、`$value`、`$row`、`$path`、
+`$service`、`$utils`、`$enums` 和 `$query`。
 
 更完整的运行时协议见 [`@alien-form/core`](./packages/core/README.md)。
 

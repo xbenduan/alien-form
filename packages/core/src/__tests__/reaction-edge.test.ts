@@ -9,12 +9,12 @@ function primitive(form: ReturnType<typeof createForm>, path: string): Primitive
 }
 
 describe("reaction — inline function rules", () => {
-  it("executes an inline function reaction (not just @handler strings)", () => {
+  it("executes an inline function reaction with one scope argument", () => {
     const schema: IFormSchema = {
       type: "object",
       properties: {
         a: { type: "number" },
-        b: { type: "number", "x-reaction": { value: (rt) => (rt.get("a") ?? 0) + 1 } },
+        b: { type: "number", "x-reaction": { value: ({ $values }) => ($values.a ?? 0) + 1 } },
       },
     };
     const form = createForm({ schema, initialValues: { a: 41 } });
@@ -43,7 +43,7 @@ describe("reaction — inline function rules", () => {
   });
 });
 
-describe("reaction — literal (non-handler, non-expression) rules", () => {
+describe("reaction — literal rules", () => {
   it("treats a plain literal string as the value itself", () => {
     const schema: IFormSchema = {
       type: "object",
@@ -89,15 +89,15 @@ describe("set — $row without an enclosing row", () => {
   });
 });
 
-describe("dataSourcePolicy — single value", () => {
-  it("clear: empties a single-select when its value becomes invalid", () => {
+describe("data source ownership", () => {
+  it("does not change field values when options change", () => {
     const schema: IFormSchema = {
       type: "object",
-      properties: { role: { type: "string", dataSourcePolicy: "clear" } },
+      properties: { role: { type: "string" } },
     };
     const form = createForm({ schema, initialValues: { role: "ghost" } });
     primitive(form, "role").setDataSource([{ label: "Admin", value: "admin" }]);
-    expect(form.get("role")).toBeUndefined();
+    expect(form.get("role")).toBe("ghost");
   });
 });
 

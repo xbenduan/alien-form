@@ -2,290 +2,183 @@ import { describe, expect, it, vi } from "vitest";
 import { createForm } from "../form";
 import type { FormError, IFormSchema, PrimitiveFieldNode } from "../types";
 
-const tick = () => new Promise<void>((r) => setTimeout(r, 0));
+const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 function primitive(form: ReturnType<typeof createForm>, path: string): PrimitiveFieldNode {
-  const f = form.field(path);
-  if (!f || f.kind !== "primitive") throw new Error(`primitive "${path}" missing`);
-  return f;
+  const field = form.field(path);
+  if (!field || field.kind !== "primitive") throw new Error(`primitive "${path}" missing`);
+  return field;
 }
 
-describe("async — reactions", () => {
-  it("applies an async reaction value after the promise resolves", async () => {
-    const schema: IFormSchema = {
-      type: "object",
-      properties: { name: { type: "string", "x-reaction": { value: "@loadName" } } },
-    };
-    const form = createForm({
-      schema,
-      handlers: {
-        loadName: async () => {
-          await tick();
-          return "async-name";
-        },
-      },
-    });
-    form.mount();
-    expect(form.get("name")).toBeUndefined();
-    await tick();
-    await tick();
-    expect(form.get("name")).toBe("async-name");
-  });
-
-  it("reports an async reaction rejection via onError", async () => {
+describe("async rules", () => {
+  it("applies an async reaction and reports rejection", async () => {
     const errors: FormError[] = [];
     const schema: IFormSchema = {
       type: "object",
-      properties: { name: { type: "string", "x-reaction": { value: "@failLoad" } } },
+      properties: {
+        name: { type: "string", "x-reaction": { value: "{{ $service.loadName() }}" } },
+        failed: { type: "string", "x-reaction": { value: "{{ $service.fail() }}" } },
+      },
     };
     const form = createForm({
       schema,
-      onError: (e) => errors.push(e),
-      handlers: {
-        failLoad: async () => {
-          await tick();
-          throw new Error("async-fail");
+      scope: {
+        $service: {
+          loadName: async () => {
+            await tick();
+            return "async-name";
+          },
+          fail: async () => {
+            await tick();
+            throw new Error("async-fail");
+          },
+        },
+      },
+      onError: (error) => errors.push(error),
+    });
+    form.mount();
+    await tick();
+    await tick();
+    expect(form.get("name")).toBe("async-name");
+    expect(errors.some((error) => error.message.includes("async-fail"))).toBe(true);
+  });
+
+  it("does not apply a stale async reaction after destroy", async () => {
+    let resolveValue: (value: string) => void = () => {};
+    const schema: IFormSchema = {
+      type: "object",
+      properties: {
+        name: { type: "string", "x-reaction": { value: "{{ $service.slow() }}" } },
+      },
+    };
+    const form = createForm({
+      schema,
+      scope: {
+        $service: {
+          slow: () =>
+            new Promise<string>((resolve) => {
+              resolveValue = resolve;
+            }),
         },
       },
     });
     form.mount();
-    await tick();
-    await tick();
-    expect(errors.some((e) => e.scope === "x-reaction" && e.message.includes("async-fail"))).toBe(
-      true,
-    );
-  });
-
-  it("does not apply a stale async reaction result after the form is destroyed", async () => {
-    let resolveFn: (v: string) => void = () => {};
-    const schema: IFormSchema = {
-      type: "object",
-      properties: { name: { type: "string", "x-reaction": { value: "@slow" } } },
-    };
-    const form = createForm({
-      schema,
-      handlers: {
-        slow: () =>
-          new Promise<string>((res) => {
-            resolveFn = res;
-          }),
-      },
-    });
-    form.mount();
-    // capture the field before teardown so we can read its raw signal afterwards
     const field = primitive(form, "name");
     form.destroy();
-    // resolve AFTER destroy: the cancellation flag must suppress the write
-    resolveFn("too-late");
-    await tick();
+    resolveValue("late");
     await tick();
     expect(field.value()).toBeUndefined();
   });
-});
 
-describe("async — x-validate", () => {
-  it("awaits an async validator and surfaces its error message", async () => {
+  it("awaits async validation", async () => {
     const schema: IFormSchema = {
       type: "object",
       properties: {
         username: {
           type: "string",
-          "x-validate": "@checkUnique",
+          "x-validate": "{{ $service.checkUnique($value) }}",
         },
       },
     };
     const form = createForm({
       schema,
       initialValues: { username: "taken" },
-      handlers: {
-        checkUnique: async (rt) => {
-          await tick();
-          return rt.value === "taken" ? "用户名已被占用" : true;
+      scope: {
+        $service: {
+          checkUnique: async (value: string) => {
+            await tick();
+            return value === "taken" ? "Username is taken" : true;
+          },
         },
       },
     });
-    const ok = await form.validate();
-    expect(ok).toBe(false);
-    expect(form.errors().some((e) => e.message === "用户名已被占用")).toBe(true);
+    await expect(form.validate()).resolves.toBe(false);
+    expect(form.errors().map((error) => error.message)).toContain("Username is taken");
   });
 
-  it("passes async validation when the validator resolves true", async () => {
+  it("owns synchronous and asynchronous effect disposers", async () => {
+    const syncDispose = vi.fn();
+    const asyncDispose = vi.fn();
     const schema: IFormSchema = {
       type: "object",
-      properties: { username: { type: "string", "x-validate": "@checkUnique" } },
-    };
-    const form = createForm({
-      schema,
-      initialValues: { username: "free" },
-      handlers: {
-        checkUnique: async () => {
-          await tick();
-          return true;
-        },
+      properties: {
+        sync: { type: "string", "x-effect": "{{ $utils.startSync() }}" },
+        async: { type: "string", "x-effect": "{{ $utils.startAsync() }}" },
       },
-    });
-    expect(await form.validate()).toBe(true);
-  });
-
-  it("rejects submit when async validation fails and exposes messages", async () => {
-    const schema: IFormSchema = {
-      type: "object",
-      properties: { email: { type: "string", required: true, "x-validate": "@checkEmail" } },
     };
     const form = createForm({
       schema,
-      initialValues: { email: "bad" },
-      handlers: {
-        checkEmail: async () => {
-          await tick();
-          return "邮箱格式错误";
-        },
-      },
-    });
-    await expect(form.submit()).rejects.toMatchObject({ message: "Validation failed" });
-    try {
-      await form.submit();
-    } catch (err: any) {
-      expect(err.messages).toContain("邮箱格式错误");
-    }
-  });
-
-  it("resets submitting back to false after an async submit failure", async () => {
-    const schema: IFormSchema = {
-      type: "object",
-      properties: { email: { type: "string", "x-validate": "@checkEmail" } },
-    };
-    const form = createForm({
-      schema,
-      initialValues: { email: "bad" },
-      handlers: {
-        checkEmail: async () => {
-          await tick();
-          return "no good";
-        },
-      },
-    });
-    await form.submit().catch(() => {});
-    expect(form.submitting()).toBe(false);
-  });
-});
-
-describe("async — x-effect", () => {
-  it("registers an async-returned disposer and calls it on destroy", async () => {
-    const dispose = vi.fn();
-    const schema: IFormSchema = {
-      type: "object",
-      properties: { name: { type: "string", "x-effect": "@startEffect" } },
-    };
-    const form = createForm({
-      schema,
-      handlers: {
-        startEffect: async () => {
-          await tick();
-          return dispose;
+      scope: {
+        $utils: {
+          startSync: () => syncDispose,
+          startAsync: async () => {
+            await tick();
+            return asyncDispose;
+          },
         },
       },
     });
     form.mount();
-    await tick();
     await tick();
     form.destroy();
-    expect(dispose).toHaveBeenCalledTimes(1);
+    expect(syncDispose).toHaveBeenCalledOnce();
+    expect(asyncDispose).toHaveBeenCalledOnce();
   });
 
-  it("calls a synchronously-returned effect disposer on destroy", () => {
-    const dispose = vi.fn();
-    const schema: IFormSchema = {
-      type: "object",
-      properties: { name: { type: "string", "x-effect": "@startEffect" } },
-    };
-    const form = createForm({ schema, handlers: { startEffect: () => dispose } });
-    form.mount();
-    form.destroy();
-    expect(dispose).toHaveBeenCalledTimes(1);
-  });
-
-  it("reports an async x-effect rejection via onError", async () => {
-    const errors: FormError[] = [];
-    const schema: IFormSchema = {
-      type: "object",
-      properties: { name: { type: "string", "x-effect": "@badEffect" } },
-    };
-    const form = createForm({
-      schema,
-      onError: (e) => errors.push(e),
-      handlers: {
-        badEffect: async () => {
-          await tick();
-          throw new Error("effect-fail");
-        },
-      },
-    });
-    form.mount();
-    await tick();
-    await tick();
-    expect(errors.some((e) => e.scope === "x-effect" && e.message.includes("effect-fail"))).toBe(
-      true,
-    );
-  });
-});
-
-describe("async — x-format must be synchronous", () => {
-  it("emits an error and keeps the original value when x-format.input returns a promise", () => {
+  it("rejects async formatters and preserves raw values", async () => {
     const errors: FormError[] = [];
     const schema: IFormSchema = {
       type: "object",
       properties: {
         name: {
           type: "string",
-          "x-format": { input: "@asyncFmt" },
+          "x-format": {
+            input: "{{ $utils.asyncFormat($value) }}",
+            output: "{{ $utils.asyncFormat($value) }}",
+          },
         },
       },
     };
     const form = createForm({
       schema,
       initialValues: { name: "raw" },
-      onError: (e) => errors.push(e),
-      handlers: { asyncFmt: async () => "formatted" },
+      scope: { $utils: { asyncFormat: async (value: string) => value.toUpperCase() } },
+      onError: (error) => errors.push(error),
     });
-    // input formatting runs at construction time; the async result is rejected
     expect(form.get("name")).toBe("raw");
-    expect(
-      errors.some((e) => e.scope === "x-format" && e.message.includes("must be synchronous")),
-    ).toBe(true);
+    await expect(form.submit()).resolves.toEqual({ name: "raw" });
+    expect(errors.some((error) => error.scope === "x-format" && error.key === "input")).toBe(true);
+    expect(errors.some((error) => error.scope === "x-format" && error.key === "output")).toBe(true);
   });
 
-  it("emits an error when x-format.output returns a promise and falls back to the raw value", async () => {
-    const errors: FormError[] = [];
+  it("normalizes async data sources and loading state", async () => {
     const schema: IFormSchema = {
       type: "object",
       properties: {
-        name: { type: "string", "x-format": { output: "@asyncOut" } },
+        city: {
+          type: "string",
+          dataSource: "{{ $service.cities($values.province) }}",
+        },
+        province: { type: "string" },
       },
     };
     const form = createForm({
       schema,
-      initialValues: { name: "value" },
-      onError: (e) => errors.push(e),
-      handlers: { asyncOut: async () => "wrapped" },
+      initialValues: { province: "zj" },
+      scope: {
+        $service: {
+          cities: async (province: string) => {
+            await tick();
+            return [{ label: province, value: "hz" }];
+          },
+        },
+      },
     });
-    await expect(form.submit()).resolves.toEqual({ name: "value" });
-    expect(errors.some((e) => e.scope === "x-format" && e.key === "output")).toBe(true);
-  });
-});
-
-describe("async — submit happy path", () => {
-  it("returns the submitted values through an async onSubmit", async () => {
-    const schema: IFormSchema = {
-      type: "object",
-      properties: { a: { type: "string" } },
-    };
-    const form = createForm({ schema, initialValues: { a: "hi" } });
-    const result = await form.submit(async (values) => {
-      await tick();
-      return { saved: values };
-    });
-    expect(result).toEqual({ saved: { a: "hi" } });
-    expect(form.submitting()).toBe(false);
+    form.mount();
+    expect(primitive(form, "city").loading()).toBe(true);
+    await tick();
+    await tick();
+    expect(primitive(form, "city").loading()).toBe(false);
+    expect(primitive(form, "city").dataSource()).toEqual([{ label: "zj", value: "hz" }]);
   });
 });

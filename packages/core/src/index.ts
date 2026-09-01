@@ -33,19 +33,19 @@ export type {
   FieldDisplayTypes,
   ValidateStatus,
   SchemaTypes,
-  DataSourcePolicy,
   SchemaRuntimeValue,
   SchemaEffect,
   SchemaReactions,
   SchemaFormat,
   SchemaXValidate,
   SchemaReactionKey,
-  RuntimeRuleHandler,
   RuntimeRuleContext,
+  ExpressionScope,
 } from "./types";
 
 export { resolveSchemaRef, resolveSchemaTree } from "./ref-resolve";
 export type { ResolveRefResult } from "./ref-resolve";
 export { getDeepValue, setDeepValue, sortByOrder } from "./path";
-export { evaluateExpression } from "./expression";
+export { compileExpr, evaluateExpression } from "./expression";
+export type { CompiledExpression } from "./expression";
 export { normalizeDataSource, isEmptyValue } from "./validation";

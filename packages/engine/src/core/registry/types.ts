@@ -1,4 +1,4 @@
-import type { RuntimeRuleHandler } from "@alien-form/core";
+import type { ExpressionScope } from "@alien-form/core";
 import type { RegistryNamespace } from "./namespace";
 
 export interface Definition<TAuthoring = unknown> {
@@ -32,7 +32,7 @@ export interface FormDecoratorDefinition<
 }
 
 export interface FormHandlerDefinition<TAuthoring = unknown> extends Definition<TAuthoring> {
-  handler: RuntimeRuleHandler;
+  handler: (scope: ExpressionScope) => unknown | Promise<unknown>;
 }
 
 export interface ServiceContext {

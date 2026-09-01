@@ -278,7 +278,9 @@ describe("form.onError listener registration", () => {
   it("invokes added listeners and stops after unsubscribe", () => {
     const schema: IFormSchema = {
       type: "object",
-      properties: { a: { type: "string", "x-reaction": { value: "@missing" } } },
+      properties: {
+        a: { type: "string", "x-reaction": { value: "{{ $utils.missing() }}" } },
+      },
     };
     const seen: string[] = [];
     const form = createForm({ schema });

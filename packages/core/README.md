@@ -21,14 +21,14 @@
 - [FieldNode：字段节点 API](#fieldnode字段节点-api)
 - [Selector：选择器语法](#selector选择器语法)
 - [响应式规则（x-reaction / x-effect / x-format / x-validate）](#响应式规则)
-  - [规则值的四种写法](#规则值的四种写法)
+  - [规则值的三种写法](#规则值的三种写法)
   - [x-reaction 字段联动](#x-reaction-字段联动)
   - [x-effect 副作用](#x-effect-副作用)
   - [x-format 输入/输出格式化](#x-format-输入输出格式化)
   - [x-validate 自定义校验](#x-validate-自定义校验)
-  - [RuntimeRuleContext：规则运行时上下文](#runtimerulecontext规则运行时上下文)
+  - [ExpressionScope：规则运行时作用域](#expressionscope规则运行时作用域)
 - [表达式语言 `{{ }}`](#表达式语言--)
-- [数据源与 dataSourcePolicy](#数据源与-datasourcepolicy)
+- [数据源](#数据源)
 - [校验与提交](#校验与提交)
 - [错误处理 onError](#错误处理-onerror)
 - [工具函数导出](#工具函数导出)
@@ -129,8 +129,7 @@ interface IFieldSchema {
   decoratorProps?: Record<string, any>;
 
   // 数据源
-  dataSource?: DataSourceItem[];               // 选项
-  dataSourcePolicy?: "preserve" | "clear" | "filter" | "first";
+  dataSource?: SchemaRuntimeValue; // 静态或响应式选项
 
   // 响应式规则
   "x-reaction"?: SchemaReactions;
@@ -224,15 +223,13 @@ interface FormConfig {
   schema?: IFormSchema; // 表单结构，缺省为空 object
   definitions?: Record<string, IFieldSchema>; // 额外的 $ref 定义（覆盖 schema.definitions）
   initialValues?: Record<string, any>; // 初始值（按点路径匹配字段）
-  scope?: Record<string, any>; // 注入表达式/规则的额外作用域变量
-  handlers?: Record<string, RuntimeRuleHandler>; // 具名处理器，规则里用 "@名字" 调用
+  scope?: Record<string, any>; // 注入 $service/$utils/$enums/$query 命名空间
   onError?: (error: FormError) => void; // 规则/解析错误回调
 }
 ```
 
 - **`initialValues`** 按点路径填充：`{ user: { name: "x" } }` 会填到字段 `user.name`。数组字段会据此生成对应行数。
-- **`scope`** 里的变量在表达式和 `@handler` 里都可直接访问。
-- **`handlers`** 是把命名函数与 schema 解耦的推荐方式：schema 里写 `"@double"`，运行时调用 `handlers.double`。
+- **`scope`** 只读取 `$service`、`$utils`、`$enums`、`$query` 四个命名空间；其他键不会进入表达式作用域。
 
 > `createForm` 构建完字段树后，**响应式规则默认还没启动**，需要调用 `form.mount()`。（`@alien-form/react` 的 `useCreateForm` 会自动挂载。）
 
@@ -348,26 +345,26 @@ off(); // 取消订阅
 
 ### 公共属性（BaseFieldNode）
 
-| 属性                    | 类型                                                              | setter                                         |
-| ----------------------- | ----------------------------------------------------------------- | ---------------------------------------------- |
-| `id`                    | `string`                                                          | —                                              |
-| `path`                  | `string`                                                          | —（数组重排时框架内部维护）                    |
-| `schema`                | `IFieldSchema`                                                    | —                                              |
-| `kind`                  | `"primitive" \| "object" \| "array" \| "void"`                    | —                                              |
-| `parent` / `row`        | 节点 / 所属行                                                     | —                                              |
-| `display`               | `Signal<"visible" \| "hidden" \| "none">`                         | `setDisplay(v)`                                |
-| `disabled`              | `Signal<boolean>`                                                 | `setDisabled(v)`                               |
-| `required`              | `Signal<boolean>`                                                 | `setRequired(v)`                               |
-| `errors`                | `Signal<FieldError[]>`                                            | `setErrors(list)`（并联动 `validateStatus`）   |
-| `warnings`              | `Signal<FieldError[]>`                                            | `setWarnings(list)`                            |
-| `validateStatus`        | `Signal<"success" \| "error" \| "warning" \| "validating" \| "">` | 随 `setErrors` 自动更新                        |
-| `title` / `description` | `Signal<string>`                                                  | 直接调用 signal 写入                           |
-| `component`             | `Signal<string>`                                                  | `setComponent(name, props?)`                   |
-| `componentProps`        | `Signal<Record<string, any>>`                                     | 同上 / reaction                                |
-| `decorator`             | `Signal<string>`（默认 `"FormItem"`）                             | `setDecorator(name, props?)`                   |
-| `decoratorProps`        | `Signal<Record<string, any>>`                                     | 同上                                           |
-| `dataSource`            | `Signal<DataSourceItem[]>`                                        | `setDataSource(ds)`（会应用 dataSourcePolicy） |
-| `loading`               | `Signal<boolean>`                                                 | `setLoading(v)`                                |
+| 属性                    | 类型                                                              | setter                                       |
+| ----------------------- | ----------------------------------------------------------------- | -------------------------------------------- |
+| `id`                    | `string`                                                          | —                                            |
+| `path`                  | `string`                                                          | —（数组重排时框架内部维护）                  |
+| `schema`                | `IFieldSchema`                                                    | —                                            |
+| `kind`                  | `"primitive" \| "object" \| "array" \| "void"`                    | —                                            |
+| `parent` / `row`        | 节点 / 所属行                                                     | —                                            |
+| `display`               | `Signal<"visible" \| "hidden" \| "none">`                         | `setDisplay(v)`                              |
+| `disabled`              | `Signal<boolean>`                                                 | `setDisabled(v)`                             |
+| `required`              | `Signal<boolean>`                                                 | `setRequired(v)`                             |
+| `errors`                | `Signal<FieldError[]>`                                            | `setErrors(list)`（并联动 `validateStatus`） |
+| `warnings`              | `Signal<FieldError[]>`                                            | `setWarnings(list)`                          |
+| `validateStatus`        | `Signal<"success" \| "error" \| "warning" \| "validating" \| "">` | 随 `setErrors` 自动更新                      |
+| `title` / `description` | `Signal<string>`                                                  | 直接调用 signal 写入                         |
+| `component`             | `Signal<string>`                                                  | `setComponent(name, props?)`                 |
+| `componentProps`        | `Signal<Record<string, any>>`                                     | 同上 / reaction                              |
+| `decorator`             | `Signal<string>`（默认 `"FormItem"`）                             | `setDecorator(name, props?)`                 |
+| `decoratorProps`        | `Signal<Record<string, any>>`                                     | 同上                                         |
+| `dataSource`            | `Signal<DataSourceItem[]>`                                        | `setDataSource(ds)`                          |
+| `loading`               | `Signal<boolean>`                                                 | `setLoading(v)`                              |
 
 公共方法：
 
@@ -431,18 +428,13 @@ field.children: Map<string, FieldNode>;
 
 ## Selector：选择器语法
 
-`form.get` / `form.set` / `runtime.get` / `runtime.set` 都用同一套选择器：
+`form.get` / `form.set` 使用同一套选择器：
 
-| 选择器             | 含义                                                           | 示例                                    |
-| ------------------ | -------------------------------------------------------------- | --------------------------------------- |
-| `a.b.c`            | 绝对路径（对 root 而言）                                       | `form.get("user.name")`                 |
-| `a.0.b`            | 数组按下标定位某行的子字段                                     | `form.get("materials.0.name")`          |
-| `./sibling`        | 相对当前字段父级的路径（仅在规则上下文里有意义）               | `rt.get("./price")`                     |
-| `$value`           | 当前字段自身的值                                               | `rt.get("$value")`                      |
-| `$path`            | 当前字段路径                                                   | `rt.get("$path")`                       |
-| `$row.child`       | 当前所在**行**的某个子字段（含嵌套 `$row.profile.city`）       | `rt.get("$row.name")`                   |
-| `arr[].child`      | **集合选择器**：读=返回每行该子字段组成的数组；写=广播到每一行 | `form.get("materials[].name")`          |
-| `$row.arr[].child` | 行内集合广播                                                   | `rt.set("$row.phones[].number", "***")` |
+| 选择器        | 含义                                                           | 示例                           |
+| ------------- | -------------------------------------------------------------- | ------------------------------ |
+| `a.b.c`       | 绝对路径（对 root 而言）                                       | `form.get("user.name")`        |
+| `a.0.b`       | 数组按下标定位某行的子字段                                     | `form.get("materials.0.name")` |
+| `arr[].child` | **集合选择器**：读=返回每行该子字段组成的数组；写=广播到每一行 | `form.get("materials[].name")` |
 
 读写对齐（get/set parity）：能这么读，就能这么写。集合选择器写入是**广播**——把同一个值写进每一行的该子字段。
 
@@ -462,30 +454,27 @@ form.get("contacts[].phones.0.number"); // 每个联系人的第 0 个电话号
 
 ## 响应式规则
 
-四种规则都写在 schema 上，规则值都遵循同一套「[四种写法](#规则值的四种写法)」，并在运行时收到同一个 [RuntimeRuleContext](#runtimerulecontext规则运行时上下文)。
+四种规则都写在 schema 上，规则值都遵循同一套「[三种写法](#规则值的三种写法)」，函数在运行时收到同一个 [ExpressionScope](#expressionscope规则运行时作用域)。
 
-### 规则值的四种写法
+### 规则值的三种写法
 
 任何规则位置（`x-reaction` 的每个 target、`x-effect`、`x-format.input/output`、`x-validate`）都接受：
 
-1. **内联函数** `(ctx, form) => any`——最灵活，直接写逻辑。
-2. **`@handler` 字符串**——调用 `config.handlers` 里的具名函数（推荐，schema 可序列化）。
-3. **`{{ 表达式 }}` 字符串**——受限的 JS 表达式（见下文）。
-4. **字面量**——普通字符串/数字/对象等，直接作为结果值。
+1. **内联函数** `(scope) => any`。
+2. **`{{ 表达式 }}` 字符串**——由 `compileExpr` 编译的 JavaScript 表达式。
+3. **字面量**——普通字符串、数字、对象等，直接作为结果值。
 
 ```ts
 // 1) 内联函数
-{ "x-reaction": { value: (rt) => (rt.get("a") ?? 0) + 1 } }
-// 2) @handler
-{ "x-reaction": { value: "@double" } }   // 需 handlers.double
-// 3) 表达式
-{ "x-reaction": { display: "{{ toggle ? 'visible' : 'none' }}" } }
-// 4) 字面量
+{ "x-reaction": { value: ({ $values }) => ($values.a ?? 0) + 1 } }
+// 2) 表达式
+{ "x-reaction": { display: "{{ $values.toggle ? 'visible' : 'none' }}" } }
+// 3) 字面量
 { "x-reaction": { value: "literal-text" } }  // value 直接变成这段文本
 { "x-reaction": { props: { placeholder: "hi" } } } // 对象直接作为 props payload
 ```
 
-每个 target 也可以传**规则数组**，依次执行（对同一 target，后者覆盖前者）：`{ title: ["@t1", "@t2"] }`。
+每个 target 也可以传**规则数组**，依次执行；对同一 target，后者覆盖前者。
 
 ### x-reaction 字段联动
 
@@ -503,7 +492,7 @@ form.get("contacts[].phones.0.number"); // 每个联系人的第 0 个电话号
 | `decoratorProps`        | 合并进 `decoratorProps`         | 浅合并                        |
 | `component`             | 换组件                          | 字符串或 `[name, props]` 元组 |
 | `decorator`             | 换装饰器                        | 字符串或 `[name, props]` 元组 |
-| `dataSource`            | 设置选项                        | 会应用 dataSourcePolicy       |
+| `dataSource`            | 设置选项                        | 不修改当前字段值              |
 
 ```ts
 const form = createForm({
@@ -511,13 +500,15 @@ const form = createForm({
     type: "object",
     properties: {
       a: { type: "number" },
-      b: { type: "number", "x-reaction": { value: "@double" } }, // b 永远是 a 的两倍
+      b: { type: "number", "x-reaction": { value: "{{ $values.a * 2 }}" } },
       toggle: { type: "boolean" },
-      secret: { type: "string", "x-reaction": { display: "{{ toggle ? 'visible' : 'none' }}" } },
+      secret: {
+        type: "string",
+        "x-reaction": { display: "{{ $values.toggle ? 'visible' : 'none' }}" },
+      },
     },
   },
   initialValues: { a: 3, toggle: false },
-  handlers: { double: (rt) => (rt.get("a") ?? 0) * 2 },
 });
 form.mount();
 form.get("b"); // 6
@@ -537,12 +528,10 @@ form.set("toggle", true); // secret 变为可见
   a: { type: "number" },
   b: {
     type: "number",
-    "x-effect": "@watchA", // handlers.watchA: (rt) => rt.effect(() => log(rt.get("a")))
+    "x-effect": ({ $values, $utils }) => $utils.log($values.a),
   },
 }
 ```
-
-`rt.effect(runner)` 是暴露给规则的原始 effect 注册器，便于在 effect 里精确追踪依赖。
 
 ### x-format 输入/输出格式化
 
@@ -556,8 +545,8 @@ form.set("toggle", true); // secret 变为可见
   name: {
     type: "string",
     "x-format": {
-      input: ({ value }) => (typeof value === "string" ? value.trim() : value),
-      output: "@wrapName", // 提交时 "Bob" -> "[Bob]"
+      input: ({ $value }) => (typeof $value === "string" ? $value.trim() : $value),
+      output: ({ $value }) => `[${$value}]`,
     },
   },
 }
@@ -578,34 +567,30 @@ form.set("toggle", true); // secret 变为可见
 {
   username: {
     type: "string",
-    "x-validate": "@checkUnique",
-    // handlers.checkUnique: async (rt) => rt.value === "taken" ? "用户名已被占用" : true
+    "x-validate": async ({ $value, $service }) =>
+      (await $service.users.exists($value)) ? "用户名已被占用" : true,
   },
 }
 ```
 
 必填校验是内建的（`required` 为真且值为空时报 `"该字段为必填项"`），与 `x-validate` 叠加。
 
-### RuntimeRuleContext：规则运行时上下文
+### ExpressionScope：规则运行时作用域
 
-每条规则的第一个参数是 `ctx`（`RuntimeRuleContext`），第二个参数是 `form`：
+每条规则只接收一个 `scope` 参数。作用域形状固定，不会展开整表值或兄弟字段：
 
 ```ts
-interface RuntimeRuleContext {
-  field: FieldNode; // 当前字段节点
-  form: FormInstance;
-  path: string; // 当前字段路径
-  key?: string; // reaction 的 target 名 / format 的 phase 等
-  kind: "x-reaction" | "x-effect" | "x-format" | "x-validate";
-  schema: IFieldSchema | IFormSchema;
-  row?: RowNode; // 若在数组行内，则为所在行
-  scope: Record<string, any>; // config.scope
-  values: Record<string, any>; // 当前整表值（未应用 output 格式化）
-  value?: any; // 当前相关值（x-format/x-validate 的入参）
-  get(selector): any; // 按选择器读
-  set(selector, value): void; // 按选择器写
-  project(selector?): any; // 投影当前字段 / 指定字段
-  effect(runner): () => void; // 注册原始 effect
+interface ExpressionScope {
+  $values: Record<string, any>;
+  $self: FieldNode;
+  $form: FormInstance;
+  $value: any;
+  $row: Record<string, any> | undefined;
+  $path: string;
+  $service: Record<string, any>;
+  $utils: Record<string, any>;
+  $enums: Record<string, any>;
+  $query: Record<string, any>;
 }
 ```
 
@@ -613,53 +598,36 @@ interface RuntimeRuleContext {
 
 ## 表达式语言 `{{ }}`
 
-`{{ ... }}` 里是一段**受限的、安全的 JS 表达式子集**，由内置解析器求值（**不使用 `eval` / `new Function`**）。
+`{{ ... }}` 由 `compileExpr` 基于 `new Function` 编译，并按源码缓存。它支持标准
+JavaScript 表达式，包括函数调用和箭头函数；Schema 必须来自可信来源。
 
-**支持**：数字/字符串/布尔/`null`/`undefined` 字面量、数组 `[...]`、对象 `{...}`；成员访问 `a.b` / `a["b"]`；一元 `! - +`；算术 `+ - * / %`；比较 `< <= > >=`；相等 `=== !== == !=`；逻辑 `&& || ??`；三元 `? :`；括号分组。成员访问对 `null`/`undefined` 会短路返回 `undefined`。
+表达式只能直接访问固定的 `ExpressionScope` 名称：
 
-**禁止（会抛错）**：函数调用 `foo()`、赋值 `=`、语句分隔 `;`、模板字符串、箭头函数；危险标识符 `globalThis / window / document / process / Function / eval / constructor / prototype / __proto__ / this / import / new` 等；危险成员键 `constructor / prototype / __proto__`。标识符只从作用域的**自有属性**读取（原型链上的如 `toString` 读不到）。
-
-表达式的**作用域**（写规则时可直接引用的变量）由 core 组装：
-
-- 展开的当前整表值（顶层各字段名可直接用，如 `toggle`、`a`）
-- 展开的 `config.scope`
-- `$self`（当前字段节点）、`$form`、`$values`（整表值）、`$value`（当前值）
-- `$row`（所在行的子值对象；行内还会把行子字段名直接展开到作用域）
-- 当前字段父容器的子字段名也会展开
-- `$path`（当前路径）、`$get(selector)`、`$project(selector?)`
+- `$values`：当前整表值。
+- `$self`、`$form`、`$value`、`$row`、`$path`：当前字段上下文。
+- `$service`、`$utils`、`$enums`、`$query`：由 `FormConfig.scope` 注入的命名空间。
 
 ```ts
-{ secret: { type: "string", "x-reaction": { display: "{{ toggle ? 'visible' : 'none' }}" } } }
-{ total: { type: "number", "x-reaction": { value: "{{ price * qty }}" } } } // price/qty 为同级字段
+{ secret: { type: "string", "x-reaction": { display: "{{ $values.toggle ? 'visible' : 'none' }}" } } }
+{ total: { type: "number", "x-reaction": { value: "{{ $values.price * $values.qty }}" } } }
+{ options: { type: "string", dataSource: "{{ $service.catalog.options($values.category) }}" } }
 ```
 
-`evaluateExpression(expr, scope)` 也作为工具函数导出，可独立使用（内部对 AST 有缓存）。
+`compileExpr(raw)` 返回 `(scope) => value`；`evaluateExpression(raw, scope)` 用于直接求值。
 
 ---
 
-## 数据源与 dataSourcePolicy
+## 数据源
 
-`dataSource` 是选项数组（`{ label, value, ...extra }[]`）。`normalizeDataSource` 会把几种常见形态归一化：
+`dataSource` 接受静态选项数组、`{{ }}` 表达式或单参数函数。异步规则执行期间
+`field.loading()` 为 `true`，较旧的异步结果会被丢弃。`normalizeDataSource` 会把几种常见形态归一化：
 
 - 纯字符串/数字 `["a", 1]` → `[{ label: "a", value: "a" }, { label: "1", value: 1 }]`
 - `{ key, title }` 形态 → `{ label: title, value: key, ...原字段 }`
 - 已是 `{ label, value }` → 原样保留
 
-`dataSourcePolicy` 决定「当前值不在新数据源里」时怎么处理（在 `setDataSource` / 初始化时对 primitive 生效）：
-
-| 策略                         | 行为                                                        |
-| ---------------------------- | ----------------------------------------------------------- |
-| `"preserve"`（默认行为等价） | 保留当前值，不动                                            |
-| `"clear"`                    | 当前值失效 → 清空为 `undefined`                             |
-| `"filter"`                   | 当前值失效 → 清空为 `undefined`（语义上是「过滤掉非法项」） |
-| `"first"`                    | 当前值失效 → 自动选中第一个选项                             |
-
-```ts
-{ role: { type: "string", dataSourcePolicy: "first" } }
-// 初始 role = "ghost"，setDataSource([Admin, User]) 后，role 自动变为 "admin"
-```
-
-> 单个 primitive 只承载单值。多选/多值场景请在组件层做 JSON 字符串编解码，core 不在此处理数组。
+core 更新选项时不会修改字段值。清空非法值、保留原值或默认选择首项等交互策略由
+Select 等具体组件通过自身 props 实现。
 
 ---
 
@@ -720,7 +688,7 @@ form.mount(); // 触发 "Handler \"missing\" not found."
 | `getDeepValue(obj, path)`                                 | 按点路径读深层值（支持数组下标段）                                           |
 | `setDeepValue(obj, path, value)`                          | 按点路径写深层值（缺失层自动建对象/数组）                                    |
 | `sortByOrder(properties)`                                 | 按 `order` 升序返回 `[key, schema]` 列表                                     |
-| `evaluateExpression(expr, scope)`                         | 独立求值受限表达式                                                           |
+| `compileExpr(raw)` / `evaluateExpression(raw, scope)`     | 编译或直接求值 JavaScript 表达式                                             |
 | `normalizeDataSource(ds)`                                 | 归一化数据源为 `{ label, value }[]`                                          |
 | `isEmptyValue(value)`                                     | 判空（`undefined/null/""/[]` 为空）                                          |
 
@@ -738,7 +706,7 @@ isEmptyValue([]); // true
 
 以下类型均从包入口导出，可 `import type { ... } from "@alien-form/core"`：
 
-`Signal`, `Computed`, `FieldNode`, `FieldAtoms`, `BaseFieldNode`, `PrimitiveFieldNode`, `ObjectFieldNode`, `ArrayFieldNode`, `VoidFieldNode`, `RowNode`, `FieldKind`, `PrimitiveSchemaType`, `FormInstance`, `FormConfig`, `FormError`, `FormErrorScope`, `IFormSchema`, `IFieldSchema`, `FieldError`, `DataSourceItem`, `FieldDisplayTypes`, `ValidateStatus`, `SchemaTypes`, `DataSourcePolicy`, `SchemaRuntimeValue`, `SchemaEffect`, `SchemaReactions`, `SchemaFormat`, `SchemaXValidate`, `SchemaReactionKey`, `RuntimeRuleHandler`, `RuntimeRuleContext`, `ResolveRefResult`。
+`Signal`, `Computed`, `FieldNode`, `FieldAtoms`, `BaseFieldNode`, `PrimitiveFieldNode`, `ObjectFieldNode`, `ArrayFieldNode`, `VoidFieldNode`, `RowNode`, `FieldKind`, `PrimitiveSchemaType`, `FormInstance`, `FormConfig`, `FormError`, `FormErrorScope`, `IFormSchema`, `IFieldSchema`, `FieldError`, `DataSourceItem`, `FieldDisplayTypes`, `ValidateStatus`, `SchemaTypes`, `SchemaRuntimeValue`, `SchemaEffect`, `SchemaReactions`, `SchemaFormat`, `SchemaXValidate`, `SchemaReactionKey`, `RuntimeRuleContext`, `ExpressionScope`, `CompiledExpression`, `ResolveRefResult`。
 
 ---
 

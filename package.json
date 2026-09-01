@@ -2,8 +2,8 @@
   "name": "alien-form",
   "private": true,
   "scripts": {
-    "dev": "pnpm --parallel --filter @alien-form/alien-mdm --filter @alien-form/alien-server run dev",
-    "dev:web": "pnpm --filter @alien-form/alien-mdm run dev",
+    "dev": "pnpm --parallel --filter @alien-form/alien-mdm-v1 --filter @alien-form/alien-server run dev",
+    "dev:web": "pnpm --filter @alien-form/alien-mdm-v1 run dev",
     "dev:server": "pnpm --filter @alien-form/alien-server run dev",
     "seed": "node scripts/seed.js",
     "build": "pnpm -r run build",

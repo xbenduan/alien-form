@@ -7,7 +7,7 @@ import {
   upsertSchema,
 } from "../db/schema-repo.ts";
 import { migrateSchema } from "../db/migrate.ts";
-import type { ModelSchema } from "../schema/types.ts";
+import { assertModelSchema, formProperties, type ModelSchema } from "../schema/types.ts";
 
 export const schemaRoutes = new Hono();
 
@@ -19,7 +19,7 @@ schemaRoutes.get("/", (c) => {
     subtitle: schema.meta.subtitle,
     description: schema.meta.description,
     group: schema.meta.group,
-    fieldCount: Object.keys(schema.properties ?? {}).length,
+    fieldCount: Object.keys(formProperties(schema)).length,
     updatedAt,
   }));
   return c.json(summaries);
@@ -35,6 +35,7 @@ schemaRoutes.get("/:name", (c) => {
 /** POST /api/schemas → 新建模型（同名报错），建表 + 注册。 */
 schemaRoutes.post("/", async (c) => {
   const schema = (await c.req.json()) as ModelSchema;
+  assertModelSchema(schema);
   if (hasSchema(schema.meta.name)) {
     return c.json({ error: `模型已存在：${schema.meta.name}` }, 409);
   }
@@ -49,6 +50,7 @@ schemaRoutes.put("/:name", async (c) => {
   if (!hasSchema(name)) return c.json({ error: `模型不存在：${name}` }, 404);
   const incoming = (await c.req.json()) as ModelSchema;
   const schema: ModelSchema = { ...incoming, meta: { ...incoming.meta, name } };
+  assertModelSchema(schema);
   migrateSchema(schema);
   const entry = upsertSchema(schema);
   return c.json(entry.schema);

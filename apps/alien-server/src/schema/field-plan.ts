@@ -1,4 +1,9 @@
-import type { ColumnType, ModelFieldSchema, ModelSchema } from "./types.ts";
+import {
+  formProperties,
+  type ColumnType,
+  type ModelFieldSchema,
+  type ModelSchema,
+} from "./types.ts";
 import { junctionName, tableName, toSnake } from "./naming.ts";
 
 /** id / createdAt / updatedAt 由仓储统一管理为系统列，不从 schema 字段建列。 */
@@ -63,7 +68,7 @@ export function planFields(schema: ModelSchema): FieldPlan[] {
   const owner = schema.meta.name;
   const plans: FieldPlan[] = [];
 
-  for (const [key, field] of Object.entries(schema.properties ?? {})) {
+  for (const [key, field] of Object.entries(formProperties(schema))) {
     if (SYSTEM_MANAGED.has(key)) continue;
 
     const xdb = field["x-database"] ?? {};
@@ -150,7 +155,7 @@ interface FieldServiceMeta {
 /** 扫描一份 schema 的所有引用字段。 */
 export function refFields(schema: ModelSchema): RefField[] {
   const refs: RefField[] = [];
-  for (const [key, field] of Object.entries(schema.properties ?? {})) {
+  for (const [key, field] of Object.entries(formProperties(schema))) {
     if (SYSTEM_MANAGED.has(key)) continue;
     const multi = isMultiValue(field);
 

@@ -66,31 +66,59 @@ export interface ModelFieldSchema {
   [key: string]: unknown;
 }
 
-export type ModelGroup = "system" | "other";
-export type OpenMode = "page" | "drawer" | "modal";
-
 export interface ModelMeta {
   name: string;
   title: string;
   subtitle?: string;
   description?: string;
-  group?: ModelGroup;
-  singularLabel: string;
-  pluralLabel: string;
-  defaultPageSize: number;
+  group?: string;
+  singularLabel?: string;
+  pluralLabel?: string;
+  defaultPageSize?: number;
   filterCount?: number;
-  openMode: Record<"add" | "edit" | "detail", OpenMode>;
+  openMode?: string | Record<"add" | "edit" | "detail", string>;
   [key: string]: unknown;
 }
 
-export interface ModelSchema {
-  type?: string;
+export interface XPage {
+  router: string;
   title?: string;
-  description?: string;
+  layout?: { component: string; props?: Record<string, unknown> };
+  schema: { properties: Record<string, ModelFieldSchema> };
+}
+
+export interface ModelSchema {
   meta: ModelMeta;
-  properties: Record<string, ModelFieldSchema>;
-  group?: unknown[];
+  "x-pages": XPage[];
+  definitions: {
+    "form-schema": ModelFieldSchema;
+    [key: string]: ModelFieldSchema;
+  };
   [key: string]: unknown;
+}
+
+export function formProperties(schema: ModelSchema): Record<string, ModelFieldSchema> {
+  const properties = schema.definitions?.["form-schema"]?.properties;
+  if (!properties || Object.keys(properties).length === 0) {
+    throw new Error("definitions['form-schema'].properties 不能为空");
+  }
+  return properties;
+}
+
+export function assertModelSchema(value: unknown): asserts value is ModelSchema {
+  if (!value || typeof value !== "object") throw new Error("模型定义必须是对象");
+  const schema = value as Partial<ModelSchema>;
+  if (!schema.meta?.name || !schema.meta.title) throw new Error("模型 meta.name/meta.title 必填");
+  if (!Array.isArray(schema["x-pages"])) throw new Error("模型 x-pages 必须是数组");
+  const properties = formProperties(schema as ModelSchema);
+  const visit = (current: unknown, path: string): void => {
+    if (typeof current === "string" && current.includes("{{")) {
+      throw new Error(`${path} 不允许包含表达式`);
+    }
+    if (!current || typeof current !== "object") return;
+    for (const [key, child] of Object.entries(current)) visit(child, `${path}.${key}`);
+  };
+  visit(properties, "definitions.form-schema.properties");
 }
 
 /** 记录：任意键值 + 系统字段。 */

@@ -1,10 +1,4 @@
-import {
-  createForm,
-  type FieldError,
-  type FormInstance,
-  type IFormSchema,
-  type RuntimeRuleHandler,
-} from "@alien-form/core";
+import { createForm, type FieldError, type FormInstance, type IFormSchema } from "@alien-form/core";
 import type { Atom, AtomStore } from "../../store/atom";
 import type { BlockSchema } from "../../dsl";
 import { BlockRuntime } from "../block";
@@ -39,12 +33,18 @@ export class FormBlockRuntime extends BlockRuntime {
         code,
         definition.handler,
       ]),
-    ) as Record<string, RuntimeRuleHandler>;
+    );
+    const pageScope = page.scope as unknown as Record<string, unknown>;
 
     this.form = createForm({
       schema: formSchema,
-      scope: page.scope as unknown as Record<string, unknown>,
-      handlers,
+      scope: {
+        ...pageScope,
+        $utils: {
+          ...(pageScope.$utils as Record<string, unknown> | undefined),
+          ...handlers,
+        },
+      },
     });
 
     this.values = this.bridge("values", () => this.form.values());

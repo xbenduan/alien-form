@@ -7,7 +7,7 @@ import {
   SYS_ADMIN_USERNAME,
   SYS_ADMIN_DEFAULT_PASSWORD,
 } from "../schemas/_sys_user.ts";
-import { ensureSchemaTable, listSchemas, removeSchema, upsertSchema } from "./schema-repo.ts";
+import { ensureSchemaTable, upsertSchema } from "./schema-repo.ts";
 import { createRecord, findRecordByField, getRecord } from "./record-repo.ts";
 import { hashPassword } from "../routes/auth.ts";
 import { planFields } from "../schema/field-plan.ts";
@@ -36,23 +36,14 @@ function syncMissingColumns(schema: ModelSchema): void {
   }
 }
 
-/** 清理不再内置的历史模型：删元表登记 + 丢弃物理表（打破式更新，不保留遗留）。 */
-function dropStaleSchemas(): void {
-  const db = getDb();
-  const keep = new Set(builtinSchemas.map((schema) => schema.meta.name));
-  for (const entry of listSchemas()) {
-    const name = entry.schema.meta.name;
-    if (keep.has(name)) continue;
-    removeSchema(name);
-    db.exec(`DROP TABLE IF EXISTS "${tableName(name)}"`);
-  }
-}
-
 /** 写入默认系统管理员（幂等）：账号 _sys_admin，密码 alien123456，创建者为自身。 */
 function ensureSysAdmin(): void {
   const schema = builtinSchemas.find((item) => item.meta.name === "_sys_user");
   if (!schema) return;
-  if (getRecord(schema, SYS_ADMIN_ID) || findRecordByField(schema, "username", SYS_ADMIN_USERNAME)) {
+  if (
+    getRecord(schema, SYS_ADMIN_ID) ||
+    findRecordByField(schema, "username", SYS_ADMIN_USERNAME)
+  ) {
     return;
   }
   createRecord(schema, {
@@ -68,13 +59,11 @@ function ensureSysAdmin(): void {
 /**
  * 启动初始化：
  *  1. 建元表
- *  2. 清理历史（非内置）模型
- *  3. 内置模型：建物理表 + 注册 schema 到元表（幂等）
- *  4. 写入默认系统管理员
+ *  2. 内置模型：建物理表 + 注册 schema 到元表（幂等）
+ *  3. 写入默认系统管理员
  */
 export function bootstrap(): void {
   ensureSchemaTable();
-  dropStaleSchemas();
 
   for (const schema of builtinSchemas) {
     migrateSchema(schema);

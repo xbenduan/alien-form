@@ -18,7 +18,7 @@ export type Computed<T> = () => T;
 
 export type ValidateStatus = "success" | "error" | "warning" | "validating" | "";
 export type PrimitiveSchemaType = "string" | "number" | "boolean";
-export type SchemaTypes = PrimitiveSchemaType | "object" | "array" | (string & {});
+export type SchemaTypes = PrimitiveSchemaType | "object" | "array" | "void" | (string & {});
 export type FieldKind = "primitive" | "object" | "array" | "void";
 export type FieldDisplayTypes = "visible" | "hidden" | "none";
 export type ValidatorFormats =
@@ -32,8 +32,6 @@ export type ValidatorFormats =
   | "ipv6"
   | "zip"
   | (string & {});
-export type DataSourcePolicy = "preserve" | "clear" | "filter" | "first";
-
 export interface FieldError {
   message: string;
   type?: string;
@@ -61,7 +59,20 @@ export type SchemaReactionKey =
   | "decorator"
   | "dataSource";
 
-export type RuntimeExecutable = (ctx: RuntimeRuleContext, form: FormInstance) => any | Promise<any>;
+export interface ExpressionScope {
+  $values: Record<string, any>;
+  $self: FieldNode;
+  $form: FormInstance;
+  $value: any;
+  $row: Record<string, any> | undefined;
+  $path: string;
+  $service: Record<string, any>;
+  $utils: Record<string, any>;
+  $enums: Record<string, any>;
+  $query: Record<string, any>;
+}
+
+export type RuntimeExecutable = (scope: ExpressionScope) => any | Promise<any>;
 export type SchemaRuntimeValue =
   | string
   | number
@@ -98,8 +109,6 @@ export interface RuntimeRuleContext {
   effect(runner: () => void | (() => void)): () => void;
 }
 
-export type RuntimeRuleHandler = RuntimeExecutable;
-
 // ─── IFieldSchema ─────────────────────────────────────────────────────────────
 
 export interface IFieldSchema {
@@ -125,9 +134,7 @@ export interface IFieldSchema {
   "x-effect"?: SchemaEffect;
   "x-format"?: SchemaFormat;
   "x-validate"?: SchemaXValidate;
-  dataSource?: DataSourceItem[];
-  // 数据源策略：保留/清空/过滤/第一个选项
-  dataSourcePolicy?: DataSourcePolicy;
+  dataSource?: SchemaRuntimeValue;
 }
 
 // ─── IFormSchema ──────────────────────────────────────────────────────────────
@@ -245,7 +252,6 @@ export interface FormConfig {
   definitions?: Record<string, IFieldSchema>;
   initialValues?: Record<string, any>;
   scope?: Record<string, any>;
-  handlers?: Record<string, RuntimeRuleHandler>;
   onError?: (error: FormError) => void;
 }
 

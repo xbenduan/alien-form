@@ -18,15 +18,17 @@ AlienForm 已收敛到更小的运行时模型：
 - `x-validate` 是自定义校验入口
 - `x-format.input` 只在初始化时执行
 - `x-format.output` 在输出投影和提交时执行
-- `dataSourcePolicy` 决定选项变化后当前值如何处理
+- `dataSource` 支持静态值和响应式规则，选项变化后的值处理由具体组件负责
 
 运行时值支持：
 
 - 字面量值
-- 表达式字符串：`"{{ a ? b : c }}"`
-- handler 字符串：`"@handlerName"`
-- 直接函数
+- 表达式字符串：`"{{ $values.a ? b : c }}"`
+- 单参数直接函数：`(scope) => any`
 - 运行时值数组
+
+表达式作用域固定为 `$values`、`$self`、`$form`、`$value`、`$row`、`$path`、
+`$service`、`$utils`、`$enums` 和 `$query`，不会扁平展开表单值。
 
 更详细的运行时说明见 [`packages/core/README.md`](./packages/core/README.md)。
 

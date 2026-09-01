@@ -18,32 +18,17 @@ importers:
         specifier: ^5.4.0
         version: 5.4.2
 
-  apps/alien-mdm:
+  apps/alien-mdm-v1:
     dependencies:
-      '@alien-form/builder':
-        specifier: workspace:*
-        version: link:../../packages/builder
       '@alien-form/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@alien-form/engine':
-        specifier: workspace:*
-        version: link:../../packages/engine
-      '@alien-form/react':
-        specifier: workspace:*
-        version: link:../../packages/react
       '@ant-design/icons':
         specifier: ^6.2.5
         version: 6.2.5(react-dom@18.3.1)(react@18.3.1)
-      '@tanstack/react-query':
-        specifier: ^5.80.7
-        version: 5.80.7(react@18.3.1)
       antd:
         specifier: ^6.4.3
         version: 6.4.3(react-dom@18.3.1)(react@18.3.1)
-      dayjs:
-        specifier: ^1.11.13
-        version: 1.11.13
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -2992,19 +2977,6 @@ packages:
     requiresBuild: true
     dev: true
     optional: true
-
-  /@tanstack/query-core@5.80.7:
-    resolution: {integrity: sha512-s09l5zeUKC8q7DCCCIkVSns8zZrK4ZDT6ryEjxNBFi68G4z2EBobBS7rdOY3r6W1WbUDpc1fe5oY+YO/+2UVUg==}
-    dev: false
-
-  /@tanstack/react-query@5.80.7(react@18.3.1):
-    resolution: {integrity: sha512-u2F0VK6+anItoEvB3+rfvTO9GEh2vb00Je05OwlUe/A0lkJBgW1HckiY3f9YZa+jx6IOe4dHPh10dyp9aY3iRQ==}
-    peerDependencies:
-      react: ^18 || ^19
-    dependencies:
-      '@tanstack/query-core': 5.80.7
-      react: 18.3.1
-    dev: false
 
   /@testing-library/dom@10.4.1:
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}

@@ -1,0 +1,85 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  color: #1f2329;
+  background: #f5f6f8;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-sider {
+  border-right: 1px solid #e5e6eb;
+}
+
+.app-brand {
+  display: flex;
+  height: 64px;
+  padding: 0 24px;
+  align-items: center;
+  color: #101828;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.app-header {
+  display: flex;
+  height: 64px;
+  padding: 0 24px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e5e6eb;
+  background: #fff;
+}
+
+.app-content {
+  min-width: 0;
+  padding: 24px;
+}
+
+.login-page {
+  display: grid;
+  min-height: 100vh;
+  padding: 24px;
+  place-items: center;
+  background: #f5f6f8;
+}
+
+.login-panel {
+  width: min(400px, 100%);
+  padding: 32px;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 6%);
+}
+
+.login-panel .ant-alert {
+  margin-bottom: 16px;
+}
+
+@media (max-width: 720px) {
+  .app-sider {
+    display: none;
+  }
+
+  .app-content {
+    padding: 16px;
+  }
+}

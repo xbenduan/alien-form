@@ -57,11 +57,6 @@
       "enum": ["visible", "hidden", "none"],
       "markdownDescription": "字段显示类型：\n- `\"visible\"` — 可见且参与取值\n- `\"hidden\"` — 不可见但参与取值\n- `\"none\"` — 不可见且不参与取值和校验"
     },
-    "DataSourcePolicy": {
-      "type": "string",
-      "enum": ["preserve", "clear", "filter", "first"],
-      "markdownDescription": "数据源变化时的值处理策略：\n- `\"preserve\"` — 保留当前值（默认）\n- `\"clear\"` — 值不在新数据源中时清空\n- `\"filter\"` — 数组值中过滤掉不在新数据源中的项\n- `\"first\"` — 值不在新数据源中时取第一个选项"
-    },
     "SchemaReactionKey": {
       "type": "string",
       "enum": [
@@ -98,7 +93,7 @@
       "anyOf": [
         {
           "type": "string",
-          "markdownDescription": "字符串值。支持普通字符串、`{{ ... }}` 表达式、`@handlerName` 处理器名"
+          "markdownDescription": "普通字符串或 `{{ ... }}` 表达式。表达式作用域固定为 `$values`、`$self`、`$form`、`$value`、`$row`、`$path`、`$service`、`$utils`、`$enums` 和 `$query`"
         },
         {
           "type": "number",
@@ -123,7 +118,7 @@
           "markdownDescription": "数组字面量"
         }
       ],
-      "markdownDescription": "运行时值的 JSON 侧表示。函数无法通过 JSON Schema 精确描述，但在运行时同样支持：\n- `\"{{ a ? b : c }}\"` 表达式\n- `\"@handlerName\"` 命名处理器\n- `(ctx, form) => any` 直接函数\n- 字面量值"
+      "markdownDescription": "运行时值的 JSON 侧表示。函数无法通过 JSON Schema 精确描述，但在运行时同样支持：\n- `\"{{ $values.a ? b : c }}\"` 表达式\n- `(scope) => any` 单参数直接函数\n- 字面量值"
     },
     "SchemaRuntimeValueOrList": {
       "anyOf": [
@@ -188,7 +183,7 @@
         "$ref": "#/definitions/SchemaRuntimeValueOrList",
         "markdownDescription": "自定义反应键（会触发 onError 报告 unsupported reaction key）"
       },
-      "markdownDescription": "**x-reaction** — 字段属性动态派生。每个键对应字段的一个可派生属性，值为运行时值或运行时值数组。\n\n支持字面量、`{{ ... }}` 表达式、`@handlerName` 以及直接函数。"
+      "markdownDescription": "**x-reaction** — 字段属性动态派生。每个键对应字段的一个可派生属性，值为运行时值或运行时值数组。\n\n支持字面量、`{{ ... }}` 表达式以及单参数直接函数。"
     },
     "SchemaFormat": {
       "type": "object",
@@ -285,21 +280,15 @@
         },
         "x-validate": {
           "$ref": "#/definitions/SchemaRuntimeValueOrList",
-          "markdownDescription": "**x-validate** — 动态校验规则。规则返回值含义：\n- `undefined` / `null` / `true` — 通过\n- `false` — 失败（默认消息）\n- `string` — 失败（自定义消息）\n- `{ message: string }` — 失败（带类型的错误对象）\n\n支持异步 handler 和直接函数"
+          "markdownDescription": "**x-validate** — 动态校验规则。规则返回值含义：\n- `undefined` / `null` / `true` — 通过\n- `false` — 失败（默认消息）\n- `string` — 失败（自定义消息）\n- `{ message: string }` — 失败（带类型的错误对象）\n\n支持异步表达式和单参数直接函数"
         },
         "dataSource": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/DataSourceItem"
-          },
-          "markdownDescription": "静态选项列表（数据源）。通常配合 Select/Radio/Checkbox 组件使用"
-        },
-        "dataSourcePolicy": {
-          "$ref": "#/definitions/DataSourcePolicy"
+          "$ref": "#/definitions/SchemaRuntimeValueJson",
+          "markdownDescription": "静态或响应式选项列表。core 只维护数据源信号，选项变化后的当前值处理由具体组件负责"
         }
       },
       "additionalProperties": false,
-      "markdownDescription": "字段 Schema 定义。当前协议聚焦最小运行时模型：`required`、`x-reaction`、`x-format`、`x-validate`、`dataSource`、`dataSourcePolicy`。"
+      "markdownDescription": "字段 Schema 定义。当前协议聚焦最小运行时模型：`required`、`x-reaction`、`x-format`、`x-validate` 和 `dataSource`。"
     }
   }
 }

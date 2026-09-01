@@ -5,10 +5,10 @@
 
 单个 Worker 同时承担两件事：
 
-- 托管 `apps/alien-mdm/dist` 静态资源（SPA，`not_found_handling: single-page-application`）；
+- 托管 `apps/alien-mdm-v1/dist` 静态资源（SPA，`not_found_handling: single-page-application`）；
 - 处理 `/api/*` 请求（`assets.run_worker_first` 保证 API 优先于静态资源命中）。
 
-前端切换后端只改一个环境变量 `VITE_API_BASE`，见 `apps/alien-mdm/.env.example`。
+本地开发时通过 `API_TARGET` 设置 Vite 代理目标；部署后前端与 Worker 使用同源 `/api`。
 
 ## 存储设计：两张通用表
 
@@ -42,7 +42,7 @@ pnpm --filter @alien-form/alien-worker exec wrangler d1 create alien-mdm
 pnpm --filter @alien-form/alien-worker run migrate:local
 
 # 构建前端（Worker 要托管 dist）
-pnpm --filter @alien-form/alien-mdm run build
+pnpm --filter @alien-form/alien-mdm-v1 run build
 
 # 起本地 Worker（默认 http://localhost:8787，含 /api 与静态资源）
 pnpm --filter @alien-form/alien-worker run dev

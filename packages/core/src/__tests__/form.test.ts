@@ -11,7 +11,7 @@ describe("createForm runtime and projection", () => {
         serviceIds: {
           type: "tags",
           "x-reaction": {
-            dataSource: "@loadDataSource",
+            dataSource: "{{ $utils.loadDataSource() }}",
           },
         },
       },
@@ -19,10 +19,12 @@ describe("createForm runtime and projection", () => {
 
     const form = createForm({
       schema,
-      handlers: {
-        loadDataSource() {
-          calls += 1;
-          return [];
+      scope: {
+        $utils: {
+          loadDataSource() {
+            calls += 1;
+            return [];
+          },
         },
       },
     });
@@ -42,7 +44,7 @@ describe("createForm runtime and projection", () => {
         serviceIds: {
           type: "tags",
           "x-reaction": {
-            dataSource: "@loadDataSource",
+            dataSource: "{{ $utils.loadDataSource() }}",
           },
         },
       },
@@ -50,10 +52,12 @@ describe("createForm runtime and projection", () => {
 
     const form = createForm({
       schema,
-      handlers: {
-        loadDataSource() {
-          calls += 1;
-          return [];
+      scope: {
+        $utils: {
+          loadDataSource() {
+            calls += 1;
+            return [];
+          },
         },
       },
     });
@@ -255,8 +259,8 @@ describe("createForm runtime and projection", () => {
         name: {
           type: "string",
           "x-format": {
-            input: ({ value }) => (typeof value === "string" ? value.trim() : value),
-            output: "@wrapName",
+            input: ({ $value }) => (typeof $value === "string" ? $value.trim() : $value),
+            output: "{{ $utils.wrapName($value) }}",
           },
         },
       },
@@ -267,9 +271,11 @@ describe("createForm runtime and projection", () => {
       initialValues: {
         name: "  Alice  ",
       },
-      handlers: {
-        wrapName({ value }) {
-          return typeof value === "string" ? `[${value}]` : value;
+      scope: {
+        $utils: {
+          wrapName(value: unknown) {
+            return typeof value === "string" ? `[${value}]` : value;
+          },
         },
       },
     });
@@ -284,13 +290,12 @@ describe("createForm runtime and projection", () => {
     });
   });
 
-  it("switches to the first option when dataSourcePolicy is first and current value becomes invalid", () => {
+  it("leaves option-change policy to the field component", () => {
     const schema: IFormSchema = {
       type: "object",
       properties: {
         role: {
           type: "string",
-          dataSourcePolicy: "first",
         },
       },
     };
@@ -312,7 +317,7 @@ describe("createForm runtime and projection", () => {
       { label: "User", value: "user" },
     ]);
 
-    expect(form.get("role")).toBe("admin");
+    expect(form.get("role")).toBe("ghost");
   });
 
   it("reads primitive values from array item selectors", () => {
@@ -402,7 +407,7 @@ describe("createForm runtime and projection", () => {
               summary: {
                 type: "string",
                 "x-reaction": {
-                  value: "@readRowName",
+                  value: "{{ $row.name }}",
                 },
               },
             },
@@ -415,11 +420,6 @@ describe("createForm runtime and projection", () => {
       schema,
       initialValues: {
         contacts: [{ name: "Alice" }, { name: "Bob" }],
-      },
-      handlers: {
-        readRowName(runtime) {
-          return runtime.get("$row.name");
-        },
       },
     });
 
@@ -447,7 +447,7 @@ describe("createForm runtime and projection", () => {
               summary: {
                 type: "string",
                 "x-reaction": {
-                  value: "@readRowCity",
+                  value: "{{ $row.profile.city }}",
                 },
               },
             },
@@ -460,11 +460,6 @@ describe("createForm runtime and projection", () => {
       schema,
       initialValues: {
         contacts: [{ profile: { city: "Shanghai" } }, { profile: { city: "Beijing" } }],
-      },
-      handlers: {
-        readRowCity(runtime) {
-          return runtime.get("$row.profile.city");
-        },
       },
     });
 
@@ -536,7 +531,13 @@ describe("set selector get/set parity", () => {
             type: "object",
             properties: {
               profile: { type: "object", properties: { city: { type: "string" } } },
-              trigger: { type: "string", "x-reaction": { value: "@writeCity" } },
+              trigger: {
+                type: "string",
+                "x-reaction": {
+                  value:
+                    "{{ $form.set($path.replace(/\\.trigger$/, '.profile.city'), 'WRITTEN') ?? 'done' }}",
+                },
+              },
             },
           },
         },
@@ -545,12 +546,6 @@ describe("set selector get/set parity", () => {
     const form = createForm({
       schema,
       initialValues: { contacts: [{ profile: { city: "old" } }] },
-      handlers: {
-        writeCity(runtime) {
-          runtime.set("$row.profile.city", "WRITTEN");
-          return "done";
-        },
-      },
     });
 
     form.mount();
@@ -572,7 +567,13 @@ describe("set selector get/set parity", () => {
                 type: "array",
                 items: { type: "object", properties: { number: { type: "string" } } },
               },
-              trigger: { type: "string", "x-reaction": { value: "@maskPhones" } },
+              trigger: {
+                type: "string",
+                "x-reaction": {
+                  value:
+                    "{{ $form.set($path.replace(/\\.trigger$/, '.phones[].number'), '***') ?? 'done' }}",
+                },
+              },
             },
           },
         },
@@ -581,12 +582,6 @@ describe("set selector get/set parity", () => {
     const form = createForm({
       schema,
       initialValues: { contacts: [{ phones: [{ number: "P1" }, { number: "P2" }] }] },
-      handlers: {
-        maskPhones(runtime) {
-          runtime.set("$row.phones[].number", "***");
-          return "done";
-        },
-      },
     });
 
     form.mount();

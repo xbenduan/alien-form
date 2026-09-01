@@ -198,7 +198,7 @@ interface RegisterDescribe {
   form?: {
     components?: Record<string, FormComponentDescribe>; // 直接进 FormProvider.components
     decorators?: Record<string, FormDecoratorDescribe>; // 直接进 FormProvider.decorators
-    handlers?: Record<string, RuntimeRuleHandler>; // 直接进 createForm.handlers（复用 core 类型）
+    utilities?: Record<string, (scope: ExpressionScope) => unknown>; // 注入 $utils 命名空间
   };
 }
 
@@ -251,7 +251,8 @@ interface UINodeProps {
 
 - `form.components` → 合并进 `FormProvider` 的 `components`。
 - `form.decorators` → 合并进 `FormProvider` 的 `decorators`。
-- `form.handlers` → 透传给 `createForm({ handlers })`，Schema 里用 `"@name"` 调用。
+- `form.utilities` → 合并进 `createForm({ scope: { $utils } })`，Schema 通过
+  `{{ $utils.name(...) }}` 调用。
 
 唯一落地接缝：`packages/shared` 新增中性的 **`RuntimeResourceContext`**（仅一个容器，不含 RuntimeCore）：
 
@@ -259,13 +260,12 @@ interface UINodeProps {
 interface RuntimeResource {
   components?: Record<string, unknown>;
   decorators?: Record<string, unknown>;
-  handlers?: Record<string, unknown>;
   scope?: Record<string, unknown>;
 }
 ```
 
-`SchemaRenderer`（现状吃死 `fieldComponents / fieldDecorators`、未透传 `scope / handlers`）改为读取该
-context 并 merge 后交给 `useCreateForm({ schema, initialValues, scope, handlers })` 与
+`SchemaRenderer`（现状吃死 `fieldComponents / fieldDecorators`、未透传 `scope`）改为读取该
+context 并 merge 后交给 `useCreateForm({ schema, initialValues, scope })` 与
 `FormProvider`。`apps` 层用 RuntimeCore 填充该 context。**这是打通「form 直接注册」的唯一必要改动。**
 
 ---

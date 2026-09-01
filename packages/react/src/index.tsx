@@ -53,9 +53,8 @@ export type {
   SchemaFormat,
   SchemaXValidate,
   SchemaReactionKey,
-  RuntimeRuleHandler,
   RuntimeRuleContext,
-  DataSourcePolicy,
+  ExpressionScope,
   SchemaTypes,
   FormErrorScope,
 } from "@alien-form/core";

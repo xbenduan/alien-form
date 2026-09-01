@@ -342,7 +342,7 @@ const b = useSignalValue(form.field("b")!.errors);
 
 **类型：**
 `ComponentMap`, `DecoratorMap`，以及从 core 再导出的
-`Signal`, `Computed`, `FormInstance`, `FormConfig`, `FieldNode`, `PrimitiveFieldNode`, `ObjectFieldNode`, `ArrayFieldNode`, `VoidFieldNode`, `RowNode`, `IFormSchema`, `IFieldSchema`, `FieldError`, `DataSourceItem`, `FieldDisplayTypes`, `ValidateStatus`, `SchemaReactions`, `SchemaFormat`, `SchemaXValidate`, `SchemaReactionKey`, `RuntimeRuleHandler`, `RuntimeRuleContext`, `DataSourcePolicy`, `SchemaTypes`, `FormErrorScope`。
+`Signal`, `Computed`, `FormInstance`, `FormConfig`, `FieldNode`, `PrimitiveFieldNode`, `ObjectFieldNode`, `ArrayFieldNode`, `VoidFieldNode`, `RowNode`, `IFormSchema`, `IFieldSchema`, `FieldError`, `DataSourceItem`, `FieldDisplayTypes`, `ValidateStatus`, `SchemaReactions`, `SchemaFormat`, `SchemaXValidate`, `SchemaReactionKey`, `RuntimeRuleContext`, `ExpressionScope`, `SchemaTypes`, `FormErrorScope`。
 
 ---
 
