@@ -44,8 +44,20 @@ function bearerToken(header: string | undefined): string | undefined {
   return scheme?.toLowerCase() === "bearer" && token ? token : undefined;
 }
 
-function toHex(buffer: ArrayBuffer): string {
+function toHex(buffer: ArrayBufferLike): string {
   return [...new Uint8Array(buffer)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * 把字符串编码为独立的 ArrayBuffer。
+ * 新版 TS 里 Uint8Array 泛型化为 Uint8Array<ArrayBufferLike>，无法直接满足 WebCrypto
+ * 参数要求的具体 ArrayBuffer；这里拷贝到新分配的 ArrayBuffer，规避类型不兼容。
+ */
+function encodeUtf8(text: string): ArrayBuffer {
+  const view = new TextEncoder().encode(text);
+  const buffer = new ArrayBuffer(view.byteLength);
+  new Uint8Array(buffer).set(view);
+  return buffer;
 }
 
 function hexToBytes(hex: string): Uint8Array {
@@ -61,7 +73,7 @@ function randomHex(byteLength: number): string {
 async function pbkdf2(password: string, salt: string, iterations: number): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(password),
+    encodeUtf8(password),
     "PBKDF2",
     false,
     ["deriveBits"],
@@ -69,7 +81,7 @@ async function pbkdf2(password: string, salt: string, iterations: number): Promi
   const bits = await crypto.subtle.deriveBits(
     {
       name: "PBKDF2",
-      salt: new TextEncoder().encode(salt),
+      salt: encodeUtf8(salt),
       iterations,
       hash: PASSWORD_HASH,
     },
