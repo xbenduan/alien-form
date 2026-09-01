@@ -56,7 +56,7 @@ export default function LoginPage() {
         <Form<LoginFormValues>
           layout="vertical"
           className={styles.form}
-          initialValues={{ username: "jiaowu" }}
+          initialValues={{ username: "_sys_admin" }}
           onFinish={handleFinish}
           requiredMark={false}
         >

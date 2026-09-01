@@ -15,8 +15,8 @@ import type { Pagination, Sorter } from "../schema/types.ts";
 
 export const recordRoutes = new Hono();
 
-const USER_MODEL = "school-user";
-const SENSITIVE_USER_FIELDS = new Set(["passwordHash", "openid"]);
+const USER_MODEL = "_sys_user";
+const SENSITIVE_USER_FIELDS = new Set(["passwordHash"]);
 
 interface ListBody {
   model: string;

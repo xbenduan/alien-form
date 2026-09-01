@@ -50,10 +50,7 @@ export interface RecordListResult {
 
 export interface AuthUser extends ModelRecord {
   username?: string;
-  displayName?: string;
-  userType?: string;
-  status?: string;
-  roleIds?: string[];
+  nickname?: string;
 }
 
 export interface LoginPayload {

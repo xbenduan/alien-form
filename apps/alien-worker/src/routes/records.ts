@@ -16,8 +16,8 @@ import type { Env } from "../env.ts";
 
 export const recordRoutes = new Hono<{ Bindings: Env }>();
 
-const USER_MODEL = "school-user";
-const SENSITIVE_USER_FIELDS = new Set(["passwordHash", "openid"]);
+const USER_MODEL = "_sys_user";
+const SENSITIVE_USER_FIELDS = new Set(["passwordHash"]);
 
 interface ListBody {
   model: string;

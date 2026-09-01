@@ -6,7 +6,7 @@ import { useAuth } from "../../auth/components/auth-provider";
 import { Identicon } from "./identicon";
 import styles from "./index.module.css";
 
-const USER_MODEL = "school-user";
+const USER_MODEL = "_sys_user";
 
 /** 顶栏用户头像：hover 展开模型管理、个人信息和退出登录入口。 */
 export function UserMenu() {
@@ -39,7 +39,7 @@ export function UserMenu() {
           {
             key: "profile",
             icon: <UserOutlined />,
-            label: user?.displayName ? `个人信息：${user.displayName}` : "个人信息",
+            label: user?.nickname ? `个人信息：${user.nickname}` : "个人信息",
             onClick: () => {
               if (user?.id) navigate(recordEditPath(USER_MODEL, user.id));
             },

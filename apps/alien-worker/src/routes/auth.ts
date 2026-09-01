@@ -1,11 +1,11 @@
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
-import { findRecordByField, updateRecord } from "../db/records.ts";
+import { findRecordByField } from "../db/records.ts";
 import { getSchema } from "../db/schemas.ts";
 import type { ModelRecord, ModelSchema } from "../../../alien-server/src/schema/types.ts";
 import type { Env } from "../env.ts";
 
-const USER_MODEL = "school-user";
+const USER_MODEL = "_sys_user";
 const PASSWORD_ALGORITHM = "pbkdf2_sha256";
 // Cloudflare Workers 的 WebCrypto PBKDF2 迭代上限为 100000，超过会直接抛错，
 // 故这里固定 100000（Node 版可用更高值，两端 seed 需与运行端对齐）。
@@ -18,8 +18,6 @@ export interface Session {
   userId: string;
   provider: string;
   createdAt: number;
-  userType?: string;
-  roleIds: string[];
 }
 
 export interface AuthContext {
@@ -127,7 +125,7 @@ async function verifyPassword(password: string, stored: unknown): Promise<boolea
 }
 
 function publicUser(user: ModelRecord): ModelRecord {
-  const { passwordHash: _passwordHash, openid: _openid, ...safeUser } = user;
+  const { passwordHash: _passwordHash, ...safeUser } = user;
   return safeUser;
 }
 
@@ -136,15 +134,13 @@ export const requireSession = createMiddleware<Bindings>(async (c, next) => {
   const token = bearerToken(c.req.header("authorization"));
   if (!token) return c.json({ error: "未登录或会话已失效" }, 401);
   const row = await c.env.DB.prepare(
-    `SELECT token, user_id, provider, user_type, role_ids, created_at FROM "sessions" WHERE token = ?`,
+    `SELECT token, user_id, provider, created_at FROM "sessions" WHERE token = ?`,
   )
     .bind(token)
     .first<{
       token: string;
       user_id: string;
       provider: string;
-      user_type: string | null;
-      role_ids: string;
       created_at: number;
     }>();
   if (!row) return c.json({ error: "未登录或会话已失效" }, 401);
@@ -153,20 +149,9 @@ export const requireSession = createMiddleware<Bindings>(async (c, next) => {
     userId: row.user_id,
     provider: row.provider,
     createdAt: row.created_at,
-    userType: row.user_type ?? undefined,
-    roleIds: safeParseArray(row.role_ids),
   });
   await next();
 });
-
-function safeParseArray(text: string): string[] {
-  try {
-    const parsed = JSON.parse(text);
-    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
-  } catch {
-    return [];
-  }
-}
 
 async function authenticatePassword(
   db: D1Database,
@@ -177,7 +162,7 @@ async function authenticatePassword(
   const password = String(body.password ?? "");
   if (!username || !password) return undefined;
   const user = await findRecordByField(db, schema, "username", username);
-  if (!user || user.status !== "active") return undefined;
+  if (!user) return undefined;
   return (await verifyPassword(password, user.passwordHash)) ? user : undefined;
 }
 
@@ -196,28 +181,14 @@ authRoutes.post("/login", async (c) => {
   if (!user) return c.json({ error: "账号或密码错误" }, 401);
 
   const token = randomHex(32);
-  const roleIds = Array.isArray(user.roleIds)
-    ? user.roleIds.filter((roleId): roleId is string => typeof roleId === "string")
-    : [];
   await c.env.DB.prepare(
-    `INSERT INTO "sessions" (token, user_id, provider, user_type, role_ids, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO "sessions" (token, user_id, provider, created_at)
+     VALUES (?, ?, ?, ?)`,
   )
-    .bind(
-      token,
-      user.id,
-      "password",
-      typeof user.userType === "string" ? user.userType : null,
-      JSON.stringify(roleIds),
-      Date.now(),
-    )
+    .bind(token, user.id, "password", Date.now())
     .run();
 
-  const latestUser =
-    (await updateRecord(c.env.DB, userSchema, user.id, {
-      lastLoginAt: new Date().toISOString(),
-    })) ?? user;
-  return c.json({ token, user: publicUser(latestUser), provider: "password" });
+  return c.json({ token, user: publicUser(user), provider: "password" });
 });
 
 /** POST /api/auth/logout → 204。删除会话记录。 */

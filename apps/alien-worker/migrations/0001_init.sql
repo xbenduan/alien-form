@@ -35,7 +35,5 @@ CREATE TABLE IF NOT EXISTS "sessions" (
   "token"      TEXT PRIMARY KEY,
   "user_id"    TEXT NOT NULL,
   "provider"   TEXT NOT NULL,
-  "user_type"  TEXT,
-  "role_ids"   TEXT NOT NULL DEFAULT '[]',
   "created_at" INTEGER NOT NULL
 );

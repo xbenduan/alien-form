@@ -1,11 +1,11 @@
 import { pbkdf2Sync, randomBytes, timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
-import { findRecordByField, updateRecord } from "../db/record-repo.ts";
+import { findRecordByField } from "../db/record-repo.ts";
 import { getSchema } from "../db/schema-repo.ts";
 import type { ModelRecord, ModelSchema } from "../schema/types.ts";
 
-const USER_MODEL = "school-user";
+const USER_MODEL = "_sys_user";
 const PASSWORD_ALGORITHM = "pbkdf2_sha256";
 const PASSWORD_ITERATIONS = 120_000;
 const PASSWORD_KEY_LENGTH = 32;
@@ -26,8 +26,6 @@ export interface Session {
   userId: string;
   provider: string;
   createdAt: number;
-  userType?: string;
-  roleIds: string[];
 }
 
 export interface AuthContext {
@@ -52,7 +50,7 @@ export const requireSession = createMiddleware<{ Variables: AuthContext }>(
 );
 
 function publicUser(user: ModelRecord): ModelRecord {
-  const { passwordHash: _passwordHash, openid: _openid, ...safeUser } = user;
+  const { passwordHash: _passwordHash, ...safeUser } = user;
   return safeUser;
 }
 
@@ -94,7 +92,7 @@ const passwordProvider: AuthProvider = {
     const password = String(body.password ?? "");
     if (!username || !password) return undefined;
     const user = findRecordByField(schema, "username", username);
-    if (!user || user.status !== "active") return undefined;
+    if (!user) return undefined;
     return verifyPassword(password, user.passwordHash) ? user : undefined;
   },
 };
@@ -126,14 +124,8 @@ authRoutes.post("/login", async (c) => {
     userId: user.id,
     provider: provider.name,
     createdAt: Date.now(),
-    userType: typeof user.userType === "string" ? user.userType : undefined,
-    roleIds: Array.isArray(user.roleIds)
-      ? user.roleIds.filter((roleId): roleId is string => typeof roleId === "string")
-      : [],
   });
-  const latestUser =
-    updateRecord(userSchema, user.id, { lastLoginAt: new Date().toISOString() }) ?? user;
-  return c.json({ token, user: publicUser(latestUser), provider: provider.name });
+  return c.json({ token, user: publicUser(user), provider: provider.name });
 });
 
 /** POST /api/auth/logout → 204。当前实现为服务端内存 session，前端同时清本地 token。 */
