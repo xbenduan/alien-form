@@ -55,6 +55,7 @@ export interface ModelFieldSchema extends Omit<
   "x-table"?: TableFieldMeta;
   "x-database"?: XDatabaseMeta;
   dataSource?: IFieldSchema["dataSource"] | { plugin: string; [key: string]: unknown };
+  dataSourcePolicy?: "preserve" | "clear" | "filter" | "first";
   properties?: Record<string, ModelFieldSchema>;
   items?: ModelFieldSchema | ModelFieldSchema[];
 }
