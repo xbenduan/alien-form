@@ -113,6 +113,7 @@ export const builderSchema: BuilderSchema = {
             component: "filter",
             props: {
               schema: { $ref: "form-schema" },
+              fields: "{{ $utils.schemaTofields }}",
               defaultValue: "{{ $query.keyword }}",
             },
           },

@@ -1,8 +1,8 @@
 import type { Runtime } from "@engine";
 import { registerAntd } from "./antd";
 import { ArrayCards, Input, NumberInput, ObjectField, Select, TextArea } from "./fields";
-import { Filter, Layout, Table, Tree } from "./layouts";
-import { Overlay, RecordForm, RecordPage } from "./pages";
+import { registerLayouts } from "./layouts";
+import { registerPages } from "./pages";
 
 export function registerComponents(runtime: Runtime): void {
   registerAntd(runtime);
@@ -44,11 +44,6 @@ export function registerComponents(runtime: Runtime): void {
     meta: { type: "array", kind: "complex", children: "items" },
   });
 
-  runtime.component({ code: "layout", component: Layout, adapter: "alien" });
-  runtime.component({ code: "filter", component: Filter, adapter: "alien" });
-  runtime.component({ code: "table", component: Table, adapter: "alien" });
-  runtime.component({ code: "tree", component: Tree, adapter: "alien" });
-  runtime.component({ code: "record-page", component: RecordPage, adapter: "alien" });
-  runtime.component({ code: "record-form", component: RecordForm, adapter: "alien" });
-  runtime.component({ code: "overlay", component: Overlay, adapter: "alien" });
+  registerLayouts(runtime);
+  registerPages(runtime);
 }

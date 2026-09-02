@@ -167,7 +167,11 @@ export const sysUserSchema: ModelSchema = {
           filter: {
             type: "string",
             component: "filter",
-            props: { schema: { $ref: "form-schema" } },
+            props: {
+              schema: { $ref: "form-schema" },
+              fields: "{{ $utils.schemaToFields }}",
+              defaultValue: "{{ $query.keyword }}",
+            },
           },
           table: {
             type: "void",

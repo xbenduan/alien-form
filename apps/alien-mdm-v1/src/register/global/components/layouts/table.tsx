@@ -4,142 +4,27 @@ import {
   EyeOutlined,
   PlusOutlined,
   ReloadOutlined,
-  SearchOutlined,
 } from "@ant-design/icons";
 import {
   App,
   Button,
   Card,
-  Empty,
-  Input,
-  Layout as AntLayout,
   Popconfirm,
   Space,
-  Spin,
   Table as AntTable,
-  Tree as AntTree,
   type TableColumnsType,
   type TableProps,
 } from "antd";
-import { useCallback, useEffect, useMemo, useState, type Key, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type Key } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { usePage, type ComponentProps } from "@binding";
 import type { FieldSchema, ModelOpenModes, OpenMode } from "@engine";
 import { transport } from "@runtime/transport";
 import { recordRoute } from "@utils/record-route";
-import { RecordActionOverlay, type RecordActionMode } from "../pages";
+import { RecordActionOverlay } from "../pages/record-action-overlay";
+import type { RecordActionMode } from "../pages/record-form";
+import { parseFilter } from "./parse-filter";
 import styles from "./index.module.css";
-
-export function Layout({
-  slots,
-  children,
-}: {
-  slots: Record<string, ReactNode>;
-  children?: ReactNode;
-}) {
-  const main = (
-    <AntLayout.Content
-      className={styles.layoutMain}
-      style={{
-        background: "transparent",
-      }}
-    >
-      {slots.rightTop}
-      {slots.rightBottom}
-      {children}
-    </AntLayout.Content>
-  );
-
-  if (!slots.left) {
-    return <AntLayout className={styles.layoutStack}>{main}</AntLayout>;
-  }
-  return (
-    <AntLayout hasSider className={styles.layout} style={{ background: "transparent" }}>
-      <AntLayout.Sider
-        className={styles.layoutLeft}
-        width={280}
-        theme="light"
-        style={{ minWidth: 240, background: "transparent" }}
-      >
-        {slots.left}
-      </AntLayout.Sider>
-      {main}
-    </AntLayout>
-  );
-}
-
-function parseFilter(value: unknown): Record<string, unknown> {
-  if (typeof value !== "string" || !value) return {};
-  try {
-    return JSON.parse(value) as Record<string, unknown>;
-  } catch {
-    return {};
-  }
-}
-
-export function Filter({ value, onChange, schema }: ComponentProps & { schema?: FieldSchema }) {
-  const page = usePage();
-  const [expanded, setExpanded] = useState(false);
-  const [draft, setDraft] = useState<Record<string, unknown>>(() => parseFilter(value));
-  const fields = Object.entries(schema?.properties ?? {}).filter(
-    ([, field]) =>
-      field["x-table"]?.filterable === true ||
-      (field["x-database"] as { filterable?: boolean } | undefined)?.filterable === true,
-  );
-  const visibleCount = Math.max(1, page.model.meta.filterCount ?? 4);
-  const hasExtraFields = fields.length > visibleCount;
-
-  useEffect(() => {
-    setDraft(parseFilter(value));
-  }, [value]);
-
-  const update = (key: string, next: string) => {
-    setDraft((current) => ({ ...current, [key]: next || undefined }));
-  };
-  const reset = () => {
-    setDraft({});
-    onChange?.("{}");
-  };
-
-  return (
-    <Card className={styles.filterCard} styles={{ body: { padding: 16 } }}>
-      <div className={styles.filter}>
-        <div className={styles.filterFields}>
-          {fields.map(([key, field], index) => (
-            <label
-              key={key}
-              className={styles.filterField}
-              style={!expanded && index >= visibleCount ? { display: "none" } : undefined}
-            >
-              <span className={styles.filterLabel}>{field.title ?? key}</span>
-              <Input
-                allowClear
-                prefix={<SearchOutlined />}
-                placeholder={`请输入${field.title ?? key}`}
-                value={String(draft[key] ?? "")}
-                onChange={(event) => update(key, event.target.value)}
-                onPressEnter={() => onChange?.(JSON.stringify(draft))}
-              />
-            </label>
-          ))}
-        </div>
-        <div className={styles.filterActions}>
-          <Space>
-            {hasExtraFields && (
-              <Button type="link" onClick={() => setExpanded((current) => !current)}>
-                {expanded ? "收起" : "展开"}
-              </Button>
-            )}
-            <Button onClick={reset}>重置</Button>
-            <Button type="primary" onClick={() => onChange?.(JSON.stringify(draft))}>
-              查询
-            </Button>
-          </Space>
-        </div>
-      </div>
-    </Card>
-  );
-}
 
 interface ListResult {
   list: Record<string, unknown>[];
@@ -396,42 +281,5 @@ export function Table({
         />
       )}
     </>
-  );
-}
-
-interface TreeItem {
-  key: string;
-  title: string;
-  children?: TreeItem[];
-}
-
-export function Tree({
-  value,
-  onChange,
-  loadData,
-}: ComponentProps & { loadData?: () => Promise<TreeItem[]> }) {
-  const [nodes, setNodes] = useState<TreeItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  useEffect(() => {
-    if (!loadData) return;
-    setLoading(true);
-    void loadData()
-      .then(setNodes)
-      .finally(() => setLoading(false));
-  }, [loadData]);
-  return (
-    <Card className={styles.treeCard} size="small">
-      <Spin spinning={loading}>
-        {nodes.length ? (
-          <AntTree
-            treeData={nodes}
-            selectedKeys={value == null ? [] : [String(value)]}
-            onSelect={(keys) => onChange?.(keys[0])}
-          />
-        ) : (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无分组" />
-        )}
-      </Spin>
-    </Card>
   );
 }

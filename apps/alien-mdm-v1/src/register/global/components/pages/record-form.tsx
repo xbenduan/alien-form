@@ -1,72 +1,15 @@
 import { useCreateForm } from "@alien-form/react";
 import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
-import { Alert, App, Button, Drawer, Modal, Space, Spin } from "antd";
-import {
-  forwardRef,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { Alert, App, Button, Space, Spin } from "antd";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FormRenderer, useRuntime, type ComponentProps } from "@binding";
-import { compileForm, type FieldSchema, type OpenMode } from "@engine";
+import { compileForm, type FieldSchema } from "@engine";
 import { transport } from "@runtime/transport";
 import { recordListRoute } from "@utils/record-route";
 import styles from "./index.module.css";
 
 export type RecordActionMode = "add" | "edit" | "detail";
-
-export function RecordPage({ children }: Partial<ComponentProps> & { title?: ReactNode }) {
-  return <div className={styles.recordPage}>{children}</div>;
-}
-
-export function Overlay({
-  open = true,
-  title,
-  width = 720,
-  mode = "drawer",
-  onClose,
-  footer,
-  children,
-}: Partial<ComponentProps> & {
-  open?: boolean;
-  title?: ReactNode;
-  width?: number;
-  mode?: Exclude<OpenMode, "page">;
-  onClose?: () => void;
-  footer?: ReactNode;
-}) {
-  if (mode === "modal") {
-    return (
-      <Modal
-        centered
-        destroyOnHidden
-        footer={footer}
-        open={open}
-        title={title}
-        width={width}
-        onCancel={onClose}
-      >
-        {children}
-      </Modal>
-    );
-  }
-  return (
-    <Drawer
-      destroyOnHidden
-      open={open}
-      title={title}
-      width={width}
-      footer={footer ? <div className={styles.overlayFooter}>{footer}</div> : undefined}
-      onClose={onClose}
-    >
-      {children}
-    </Drawer>
-  );
-}
 
 interface RecordFormProps extends Partial<ComponentProps> {
   mode: RecordActionMode;
@@ -196,63 +139,3 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
     </>
   );
 });
-
-export function RecordActionOverlay({
-  openMode,
-  mode,
-  modelCode,
-  recordId,
-  schema,
-  title,
-  onClose,
-  onSaved,
-}: {
-  openMode: Exclude<OpenMode, "page">;
-  mode: RecordActionMode;
-  modelCode: string;
-  recordId?: string;
-  schema: FieldSchema;
-  title: string;
-  onClose: () => void;
-  onSaved: () => void | Promise<void>;
-}) {
-  const formRef = useRef<RecordFormHandle>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const prefix = mode === "add" ? "新建" : mode === "edit" ? "编辑" : "详情";
-  const footer = (
-    <Space>
-      <Button onClick={onClose}>{mode === "detail" ? "关闭" : "取消"}</Button>
-      {mode !== "detail" && (
-        <Button
-          type="primary"
-          icon={<SaveOutlined />}
-          loading={submitting}
-          onClick={async () => {
-            setSubmitting(true);
-            try {
-              await formRef.current?.submit();
-            } finally {
-              setSubmitting(false);
-            }
-          }}
-        >
-          {mode === "add" ? "创建" : "保存"}
-        </Button>
-      )}
-    </Space>
-  );
-  return (
-    <Overlay open mode={openMode} title={`${prefix}${title}`} footer={footer} onClose={onClose}>
-      <RecordForm
-        ref={formRef}
-        embedded
-        mode={mode}
-        modelCode={modelCode}
-        recordId={recordId}
-        schema={schema}
-        onCancel={onClose}
-        onSaved={onSaved}
-      />
-    </Overlay>
-  );
-}

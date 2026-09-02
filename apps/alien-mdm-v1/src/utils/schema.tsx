@@ -61,9 +61,15 @@ export function schemaToFields(schema?: FieldSchema): Array<{
   title: string;
   type?: string;
 }> {
-  return Object.entries(schema?.properties ?? {}).map(([name, field]) => ({
-    name,
-    title: field.title ?? name,
-    type: field.type,
-  }));
+  return Object.entries(schema?.properties ?? {})
+    .filter(
+      ([, field]) =>
+        field["x-table"]?.filterable === true ||
+        (field["x-database"] as { filterable?: boolean } | undefined)?.filterable === true,
+    )
+    .map(([name, field]) => ({
+      name,
+      title: field.title ?? name,
+      type: field.type,
+    }));
 }
