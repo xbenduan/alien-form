@@ -11,6 +11,14 @@ export type PropValue =
   | PropValue[]
   | { [key: string]: PropValue };
 
+export interface FieldGroup {
+  component?: string;
+  keys: string[];
+  title?: string;
+  description?: string;
+  props?: Record<string, PropValue>;
+}
+
 export interface FieldSchema {
   type?: "string" | "number" | "boolean" | "object" | "array" | "void";
   title?: string;
@@ -21,6 +29,7 @@ export interface FieldSchema {
   props?: Record<string, PropValue>;
   properties?: Record<string, FieldSchema>;
   items?: FieldSchema;
+  group?: FieldGroup[];
   $ref?: string;
   dataSource?: PropValue | Expr;
   "x-reaction"?: Record<string, PropValue | Expr>;
@@ -203,6 +212,13 @@ export const builderSchema: BuilderSchema = {
           "x-database": { type: "text", column: "status" },
         },
       },
+      group: [
+        {
+          component: "ObjectField",
+          title: "基础信息",
+          keys: ["name", "status"],
+        },
+      ],
     },
   },
 };

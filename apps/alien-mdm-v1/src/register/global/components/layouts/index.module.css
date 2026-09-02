@@ -1,0 +1,120 @@
+.layout {
+  display: flex;
+  min-width: 0;
+  min-height: 520px;
+  gap: 16px;
+}
+
+.layoutStack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.layoutLeft {
+  min-width: 240px;
+  flex: 0 0 280px;
+}
+
+.layoutMain {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.filterCard {
+  border-color: rgba(22, 119, 255, 0.12);
+  border-radius: 8px;
+}
+
+.filter {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  align-items: end;
+  gap: 12px;
+}
+
+.filterFields {
+  display: contents;
+}
+
+.filterField {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filterLabel {
+  color: #4e5969;
+  font-size: 13px;
+}
+
+.filterCollapsed .filterFields > :nth-child(n + 5) {
+  display: none;
+}
+
+.filterActions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.tableCard {
+  overflow: hidden;
+  border: 1px solid rgba(22, 119, 255, 0.12);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.tableToolbar {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.treeCard {
+  height: 100%;
+  min-height: 520px;
+  border-color: rgba(22, 119, 255, 0.12);
+  border-radius: 8px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    flex-direction: column;
+  }
+
+  .layoutLeft {
+    width: 100%;
+    min-width: 0;
+    flex-basis: auto;
+  }
+
+  .treeCard {
+    min-height: 320px;
+  }
+}
+
+@media (max-width: 640px) {
+  .filter {
+    grid-template-columns: 1fr;
+  }
+
+  .filterCollapsed .filterFields > :nth-child(n + 3) {
+    display: none;
+  }
+
+  .tableToolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    padding-bottom: 12px;
+  }
+}

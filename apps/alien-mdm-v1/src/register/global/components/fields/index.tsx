@@ -1,9 +1,7 @@
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   Button,
-  Card,
-  Flex,
-  Form,
+  Empty,
   Input as AntInput,
   InputNumber as AntInputNumber,
   Select as AntSelect,
@@ -11,61 +9,109 @@ import {
 } from "antd";
 import { useEffect, type ReactNode } from "react";
 import type { ArrayFieldNode, PrimitiveFieldNode } from "@alien-form/core";
-import type { ComponentProps } from "@binding";
+import { useAtom, type ComponentProps } from "@binding";
+import styles from "./index.module.css";
 
-export function Input({ value, onChange, ...props }: ComponentProps) {
+function displayValue(value: unknown): ReactNode {
+  if (value === undefined || value === null || value === "") return "—";
+  if (typeof value === "boolean") return value ? "是" : "否";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function DetailValue({ value }: { value: unknown }) {
+  return <div className={styles.detailValue}>{displayValue(value)}</div>;
+}
+
+function nativeProps(props: ComponentProps): Record<string, unknown> {
+  const result = { ...props };
+  for (const key of [
+    "value",
+    "onChange",
+    "mode",
+    "field",
+    "node",
+    "slots",
+    "children",
+    "dataSource",
+    "loading",
+    "title",
+    "description",
+  ]) {
+    delete result[key];
+  }
+  return result;
+}
+
+export function Input(props: ComponentProps) {
+  if (props.mode === "detail") return <DetailValue value={props.value} />;
   return (
     <AntInput
-      {...props}
-      value={value as string | undefined}
-      onChange={(event) => onChange?.(event.target.value)}
+      {...nativeProps(props)}
+      value={props.value as string | undefined}
+      onChange={(event) => props.onChange?.(event.target.value)}
     />
   );
 }
 
-export function TextArea({ value, onChange, ...props }: ComponentProps) {
+export function TextArea(props: ComponentProps) {
+  if (props.mode === "detail") return <DetailValue value={props.value} />;
   return (
     <AntInput.TextArea
-      {...props}
-      value={value as string | undefined}
-      onChange={(event) => onChange?.(event.target.value)}
+      {...nativeProps(props)}
+      value={props.value as string | undefined}
+      onChange={(event) => props.onChange?.(event.target.value)}
     />
   );
 }
 
-export function NumberInput({ value, onChange, ...props }: ComponentProps) {
+export function NumberInput(props: ComponentProps) {
+  if (props.mode === "detail") return <DetailValue value={props.value} />;
+  const controlProps = nativeProps(props);
   return (
     <AntInputNumber
-      {...props}
-      style={{ width: "100%", ...(props.style as object) }}
-      value={value as number | null | undefined}
-      onChange={(next) => onChange?.(next)}
+      {...controlProps}
+      style={{ width: "100%", ...(controlProps.style as object) }}
+      value={props.value as number | null | undefined}
+      onChange={(next) => props.onChange?.(next)}
     />
   );
 }
 
-export function Switch({ value, onChange, ...props }: ComponentProps) {
-  return <AntSwitch {...props} checked={Boolean(value)} onChange={(next) => onChange?.(next)} />;
+export function Switch(props: ComponentProps) {
+  if (props.mode === "detail") return <DetailValue value={props.value} />;
+  return (
+    <AntSwitch
+      {...nativeProps(props)}
+      checked={Boolean(props.value)}
+      onChange={(next) => props.onChange?.(next)}
+    />
+  );
 }
 
-export function Select({
-  value,
-  onChange,
-  dataSource = [],
-  loading,
-  onOptionsChange = "clear",
-  ...props
-}: ComponentProps & { onOptionsChange?: "preserve" | "clear" | "first" }) {
+export function Select(
+  props: ComponentProps & { onOptionsChange?: "preserve" | "clear" | "first" },
+) {
+  const { value, onChange, dataSource = [], loading, onOptionsChange = "clear" } = props;
   useEffect(() => {
-    if (loading || value == null || onOptionsChange === "preserve") return;
+    if (props.mode === "detail" || loading || value == null || onOptionsChange === "preserve") {
+      return;
+    }
     const options = dataSource as Array<{ value: unknown }>;
     if (options.some((option) => Object.is(option.value, value))) return;
     onChange?.(onOptionsChange === "first" ? options[0]?.value : undefined);
-  }, [dataSource, loading, onChange, onOptionsChange, value]);
+  }, [dataSource, loading, onChange, onOptionsChange, props.mode, value]);
+
+  if (props.mode === "detail") {
+    const option = (dataSource as Array<{ label?: ReactNode; value: unknown }>).find((item) =>
+      Object.is(item.value, value),
+    );
+    return <DetailValue value={option?.label ?? value} />;
+  }
 
   return (
     <AntSelect
-      {...props}
+      {...nativeProps(props)}
       allowClear
       value={value}
       options={dataSource as any[]}
@@ -75,51 +121,140 @@ export function Select({
   );
 }
 
-export function ObjectField({ children }: { children?: ReactNode }) {
+export function ObjectField({
+  children,
+  title,
+  description,
+}: ComponentProps & { title?: string; description?: string }) {
   return (
-    <Flex vertical gap={12}>
-      {children}
-    </Flex>
+    <fieldset className={styles.complexField}>
+      {title ? <legend className={styles.complexFieldTitle}>{title}</legend> : null}
+      {description ? <div className={styles.complexFieldDescription}>{description}</div> : null}
+      <div className={styles.complexFieldBody}>
+        <div className={styles.objectField}>{children}</div>
+      </div>
+    </fieldset>
   );
 }
 
-export function ArrayCards({ field }: ComponentProps) {
+function ArrayPrimitiveField({
+  field,
+  fieldKey,
+  readonly,
+}: {
+  field: PrimitiveFieldNode;
+  fieldKey: string;
+  readonly: boolean;
+}) {
+  const value = useAtom(field.value as () => unknown);
+  const title = useAtom(field.title as () => string | undefined);
+  const description = useAtom(field.description as () => string | undefined);
+  const required = useAtom(field.required as () => boolean);
+  const disabled = useAtom(field.disabled as () => boolean);
+  const display = useAtom(field.display as () => "visible" | "hidden" | "none");
+  const errors = useAtom(field.errors as () => Array<{ message: string }>);
+
+  if (display === "none") return null;
+  return (
+    <div className={styles.arrayField} hidden={display === "hidden"}>
+      <label
+        className={`${styles.arrayFieldLabel}${readonly ? ` ${styles.arrayFieldDetail}` : ""}${
+          !readonly && required ? ` ${styles.arrayFieldRequired}` : ""
+        }`}
+        htmlFor={field.id}
+      >
+        {title ?? fieldKey}
+      </label>
+      {readonly ? (
+        <DetailValue value={value} />
+      ) : (
+        <AntInput
+          id={field.id}
+          value={value as string | undefined}
+          disabled={disabled}
+          aria-invalid={errors.length > 0}
+          aria-describedby={errors.length ? `${field.id}-error` : undefined}
+          onChange={(event) => field.setValue(event.target.value)}
+        />
+      )}
+      {description ? <div className={styles.arrayFieldDescription}>{description}</div> : null}
+      {errors[0]?.message ? (
+        <div id={`${field.id}-error`} className={styles.arrayFieldError} role="alert">
+          {errors[0].message}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function ArrayCards({
+  field,
+  mode,
+  title,
+  description,
+}: ComponentProps & { title?: string; description?: string }) {
   const array = field as ArrayFieldNode;
   const rows = array.rows();
+  const readonly = mode === "detail";
+
   return (
-    <Flex vertical gap={12}>
-      {rows.map((row, index) => (
-        <Card
-          key={row.id}
-          size="small"
-          title={`#${index + 1}`}
-          extra={
-            <Button
-              type="text"
-              danger
-              icon={<DeleteOutlined />}
-              aria-label="删除"
-              onClick={() => array.remove(index)}
-            />
-          }
-        >
-          {Array.from(row.children, ([key, child]) => {
-            if (child.kind !== "primitive") return null;
-            const primitive = child as PrimitiveFieldNode;
-            return (
-              <Form.Item key={child.id} label={child.title() ?? key}>
-                <AntInput
-                  value={primitive.value()}
-                  onChange={(event) => primitive.setValue(event.target.value)}
-                />
-              </Form.Item>
-            );
-          })}
-        </Card>
-      ))}
-      <Button icon={<PlusOutlined />} onClick={() => array.push({})}>
-        添加一项
-      </Button>
-    </Flex>
+    <fieldset className={styles.complexField}>
+      {title ? <legend className={styles.complexFieldTitle}>{title}</legend> : null}
+      {description ? <div className={styles.complexFieldDescription}>{description}</div> : null}
+      <div className={styles.complexFieldBody}>
+        {rows.length === 0 ? (
+          <>
+            <Empty description="暂无数据" style={{ paddingBlock: 16 }} />
+            {readonly ? null : (
+              <Button type="dashed" icon={<PlusOutlined />} onClick={() => array.push({})}>
+                添加一行
+              </Button>
+            )}
+          </>
+        ) : (
+          <div className={styles.arrayCards}>
+            {rows.map((row, index) => (
+              <div className={styles.arrayCard} key={row.id}>
+                <div className={styles.arrayCardHeader}>
+                  <span className={styles.arrayCardIndex}>#{index + 1}</span>
+                  {readonly ? null : (
+                    <Button
+                      type="text"
+                      danger
+                      icon={<DeleteOutlined />}
+                      aria-label="删除"
+                      onClick={() => array.remove(index)}
+                    />
+                  )}
+                </div>
+                <div className={styles.arrayCardBody}>
+                  {Array.from(row.children, ([key, child]) => {
+                    if (child.kind !== "primitive") return null;
+                    return (
+                      <ArrayPrimitiveField
+                        key={child.id}
+                        field={child as PrimitiveFieldNode}
+                        fieldKey={key}
+                        readonly={readonly}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            {readonly ? null : (
+              <Button
+                className={styles.arrayCardAdd}
+                type="dashed"
+                icon={<PlusOutlined />}
+                onClick={() => array.push({})}
+              >
+                添加一行
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    </fieldset>
   );
 }

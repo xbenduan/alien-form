@@ -79,8 +79,15 @@ export const sysUserSchema: ModelSchema = {
     subtitle: "System Users",
     description: "系统登录账号管理。",
     group: "system",
-    defaultPageSize: 10,
-    openMode: "route",
+    singularLabel: "用户",
+    pluralLabel: "用户",
+    filterCount: 4,
+    defaultPageSize: 20,
+    openMode: {
+      add: "drawer",
+      edit: "modal",
+      detail: "page",
+    },
   },
   "x-pages": [
     {
@@ -115,7 +122,7 @@ export const sysUserSchema: ModelSchema = {
     },
     ...(["add", "edit", "detail"] as const).map((mode) => ({
       router: mode,
-      title: `${mode === "add" ? "新增" : mode === "edit" ? "编辑" : ""}用户`,
+      title: `${mode === "add" ? "新建" : mode === "edit" ? "编辑" : "详情"}用户`,
       schema: {
         properties: {
           form: {
@@ -136,6 +143,13 @@ export const sysUserSchema: ModelSchema = {
     "form-schema": {
       type: "object",
       properties: fields,
+      group: [
+        {
+          component: "ObjectField",
+          title: "基础信息",
+          keys: ["username", "nickname", "remark"],
+        },
+      ],
     },
   },
 };

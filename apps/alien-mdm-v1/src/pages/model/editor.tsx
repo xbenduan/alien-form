@@ -1,35 +1,88 @@
 import { createForm } from "@alien-form/core";
-import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
-import { Alert, Button, Card, Flex, Skeleton, Typography, message } from "antd";
+import { SaveOutlined } from "@ant-design/icons";
+import { Alert, App, Button, Card, Flex, Skeleton, Space, Steps } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FormRenderer, useRuntime } from "@binding";
-import type { BuilderSchema } from "@engine";
+import { compileForm, type BuilderSchema } from "@engine";
+import { PageBreadcrumb } from "../../components";
 import { transport } from "@runtime/transport";
-import { decodeModel, encodeModel, type ModelEditorValues } from "./model-codec";
-import { defaultFields, modelEditSchema } from "./model-edit-schema";
+import {
+  createDefaultPages,
+  decodeModel,
+  encodeModel,
+  type ModelEditorValues,
+} from "./model-codec";
+import { defaultFields, defaultGroups, modelEditSchema } from "./model-edit-schema";
+import styles from "./index.module.css";
+
+const STEPS = [
+  {
+    title: "基本信息",
+    fields: [
+      "modelCode",
+      "title",
+      "subtitle",
+      "group",
+      "singularLabel",
+      "pluralLabel",
+      "filterCount",
+      "defaultPageSize",
+      "addOpenMode",
+      "editOpenMode",
+      "detailOpenMode",
+      "description",
+    ],
+  },
+  { title: "表单信息", fields: ["fieldsJson", "groupsJson"] },
+  { title: "页面构建", fields: ["pagesJson"] },
+] as const;
+
+const DEFAULT_VALUES: Partial<ModelEditorValues> = {
+  group: "other",
+  filterCount: 4,
+  defaultPageSize: 20,
+  addOpenMode: "drawer",
+  editOpenMode: "drawer",
+  detailOpenMode: "drawer",
+  fieldsJson: JSON.stringify(defaultFields, null, 2),
+  groupsJson: JSON.stringify(defaultGroups, null, 2),
+  pagesJson: "",
+};
 
 export function ModelEditor({ modelCode }: { modelCode?: string }) {
   const runtime = useRuntime();
   const navigate = useNavigate();
+  const { message } = App.useApp();
+  const [step, setStep] = useState(0);
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(Boolean(modelCode));
   const [error, setError] = useState<string>();
+  const compiled = useMemo(
+    () =>
+      compileForm(
+        { properties: modelEditSchema.properties ?? {} },
+        { "form-schema": { type: "object", properties: {} } },
+      ),
+    [],
+  );
   const form = useMemo(
     () =>
       createForm({
-        schema: modelEditSchema,
-        initialValues: {
-          fieldsJson: JSON.stringify(defaultFields, null, 2),
-        },
+        schema: compiled.schema,
+        initialValues: DEFAULT_VALUES,
         scope: runtime.createScope(undefined, {}),
       }),
-    [runtime],
+    [compiled.schema, runtime],
   );
+  const visibleNodes = useMemo(() => {
+    const fields = new Set<string>(STEPS[step].fields);
+    return compiled.nodes.filter((node) => fields.has(node.key));
+  }, [compiled.nodes, step]);
 
   useEffect(() => {
     if (!modelCode) return;
-    const codeField = form.field("modelCode");
-    codeField?.setDisabled(true);
+    form.field("modelCode")?.setDisabled(true);
     void transport
       .send<BuilderSchema>(`/api/schemas/${modelCode}`)
       .then((model) => form.setValues(decodeModel(model)))
@@ -37,10 +90,47 @@ export function ModelEditor({ modelCode }: { modelCode?: string }) {
       .finally(() => setLoading(false));
   }, [form, modelCode]);
 
-  const save = async () => {
-    setError(undefined);
+  const validateCurrentStep = async (): Promise<boolean> => {
+    const errors = await Promise.all(
+      STEPS[step].fields.map((key) => form.field(key)?.validate() ?? Promise.resolve([])),
+    );
+    if (errors.some((items) => items.length > 0)) return false;
     try {
-      const values = await form.submit<ModelEditorValues>();
+      const values = form.values() as ModelEditorValues;
+      if (step === 1) {
+        encodeModel({ ...values, pagesJson: undefined });
+      }
+      if (step === 2) {
+        const pages = JSON.parse(values.pagesJson || "[]");
+        if (!Array.isArray(pages)) throw new Error("页面 JSON 必须是数组");
+      }
+      return true;
+    } catch (reason) {
+      message.error(reason instanceof Error ? reason.message : String(reason));
+      return false;
+    }
+  };
+
+  const next = async () => {
+    if (!(await validateCurrentStep())) return;
+    if (step === 1) {
+      const values = form.values() as ModelEditorValues;
+      if (!values.pagesJson?.trim()) {
+        form.set(
+          "pagesJson",
+          JSON.stringify(createDefaultPages(values.modelCode, values.title), null, 2),
+        );
+      }
+    }
+    setStep((current) => current + 1);
+  };
+
+  const save = async () => {
+    if (!(await validateCurrentStep())) return;
+    setError(undefined);
+    setSaving(true);
+    try {
+      const values = form.values() as ModelEditorValues;
       const model = encodeModel(values);
       await transport.send<BuilderSchema>(
         modelCode ? `/api/schemas/${modelCode}` : "/api/schemas",
@@ -49,33 +139,61 @@ export function ModelEditor({ modelCode }: { modelCode?: string }) {
           body: JSON.stringify(model),
         },
       );
-      message.success("模型已保存");
+      message.success(modelCode ? "模型保存成功" : "模型创建成功");
       navigate("/models");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setSaving(false);
     }
   };
 
+  const stepClass =
+    step === 0
+      ? styles.basicGrid
+      : step === 1
+        ? `${styles.formJsonGrid} ${styles.jsonEditor}`
+        : styles.jsonEditor;
+
   return (
-    <section>
-      <Flex justify="space-between" align="center" style={{ marginBottom: 20 }}>
-        <div>
-          <Typography.Title level={3}>{modelCode ? "编辑模型" : "新建模型"}</Typography.Title>
-          <Typography.Text type="secondary">
-            字段定义将写入 definitions['form-schema']
-          </Typography.Text>
-        </div>
-        <Flex gap={8}>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/models")}>
-            返回
-          </Button>
-          <Button type="primary" icon={<SaveOutlined />} onClick={() => void save()}>
-            保存
-          </Button>
-        </Flex>
-      </Flex>
-      {error && <Alert type="error" message={error} showIcon style={{ marginBottom: 16 }} />}
-      <Card>{loading ? <Skeleton active /> : <FormRenderer form={form} />}</Card>
-    </section>
+    <Flex className={styles.actionsPage} vertical gap={16}>
+      <PageBreadcrumb
+        items={[
+          { title: "模型管理", to: "/models" },
+          { title: modelCode ? "编辑模型" : "新增模型" },
+        ]}
+      />
+      <Card className={styles.stepCard}>
+        <Steps current={step} items={STEPS.map(({ title }) => ({ title }))} />
+      </Card>
+      {error && <Alert type="error" message={error} showIcon />}
+      <Card className={`${styles.editorCard} ${stepClass}`} title={STEPS[step].title}>
+        {loading ? (
+          <Skeleton active />
+        ) : (
+          <FormRenderer form={form} nodes={visibleNodes} domain={modelCode} />
+        )}
+      </Card>
+      <div className={styles.footer}>
+        <Space>
+          <Button onClick={() => navigate("/models")}>取消</Button>
+          {step > 0 && <Button onClick={() => setStep((current) => current - 1)}>上一步</Button>}
+          {step < STEPS.length - 1 ? (
+            <Button type="primary" onClick={() => void next()}>
+              下一步
+            </Button>
+          ) : (
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              loading={saving}
+              onClick={() => void save()}
+            >
+              {modelCode ? "保存模型" : "创建模型"}
+            </Button>
+          )}
+        </Space>
+      </div>
+    </Flex>
   );
 }

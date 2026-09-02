@@ -1,0 +1,63 @@
+.recordPage {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.actionBody {
+  min-width: 0;
+  min-height: 320px;
+  padding: 28px 16px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.actionLoading {
+  display: flex;
+  min-height: 240px;
+  align-items: center;
+  justify-content: center;
+}
+
+.actionFooterRoot {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  width: 100%;
+  pointer-events: none;
+}
+
+.actionFooter {
+  display: flex;
+  width: min(calc(100% - 48px), 1000px);
+  margin: 0 auto;
+  padding: 12px 16px;
+  justify-content: flex-end;
+  border: 1px solid rgba(22, 119, 255, 0.12);
+  border-radius: 8px 8px 0 0;
+  background: #fff;
+  box-shadow: 0 -4px 16px rgba(23, 32, 51, 0.06);
+  pointer-events: auto;
+}
+
+.overlayBody {
+  min-height: 240px;
+}
+
+.overlayFooter {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .actionBody {
+    padding: 20px 12px;
+  }
+
+  .actionFooter {
+    width: calc(100% - 32px);
+  }
+}

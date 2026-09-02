@@ -881,6 +881,7 @@ function buildExpressionScope(
   const values = runtime.values;
   const injected = ctx.config.scope || {};
   return {
+    mode: injected.mode,
     $values: values,
     $self: field,
     $form: ctx.form,

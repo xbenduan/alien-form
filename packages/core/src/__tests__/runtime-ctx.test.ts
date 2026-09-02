@@ -20,6 +20,7 @@ describe("expression scope", () => {
       schema,
       initialValues: { name: "Alien" },
       scope: {
+        mode: "detail",
         $service: { records: {} },
         $utils: { identity: (value: unknown) => value },
         $enums: { status: [] },
@@ -40,9 +41,11 @@ describe("expression scope", () => {
       "$utils",
       "$value",
       "$values",
+      "mode",
     ]);
     expect(received?.$values).toEqual({ name: "Alien" });
     expect(received?.$path).toBe("name");
+    expect(received?.mode).toBe("detail");
     expect((received as Record<string, unknown>).ignored).toBeUndefined();
   });
 

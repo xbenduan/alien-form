@@ -1,0 +1,55 @@
+.form {
+  display: flex;
+  min-width: 0;
+  margin: 0;
+  flex-direction: column;
+}
+
+.formItem {
+  min-width: 0;
+  margin-bottom: 24px;
+}
+
+.formItem[hidden] {
+  display: none;
+}
+
+.formItemLabel {
+  display: inline-flex;
+  margin-bottom: 8px;
+  align-items: center;
+  color: #262626;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.required::before {
+  margin-inline-end: 4px;
+  color: #ff4d4f;
+  content: "*";
+  font-family: SimSun, sans-serif;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.detailFormItem .formItemLabel {
+  color: #8c8c8c;
+}
+
+.formItemControl {
+  min-width: 0;
+}
+
+.formItemDescription {
+  margin-top: 6px;
+  color: #8c8c8c;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.formItemError {
+  margin-top: 6px;
+  color: #ff4d4f;
+  font-size: 14px;
+  line-height: 20px;
+}

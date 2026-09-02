@@ -40,6 +40,10 @@ describe("compileExpr", () => {
     expect(list).toHaveBeenCalledOnce();
   });
 
+  it("exposes the page mode as a scoped identifier", () => {
+    expect(compileExpr("{{ mode === 'detail' }}")(scope({ mode: "detail" }))).toBe(true);
+  });
+
   it("returns arrow functions without invoking them", () => {
     const handler = compileExpr<(row: { id: number }) => number>(
       "{{ (row) => $service.records.remove(row.id) }}",

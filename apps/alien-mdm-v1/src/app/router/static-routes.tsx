@@ -16,6 +16,7 @@ export const publicRoutes: RouteMeta[] = [{ path: "/login", component: LoginPage
 export const staticRoutes: RouteMeta[] = [
   { path: "/", component: HomePage },
   { path: "/models", component: ModelListPage },
+  { path: "/models/list", component: ModelListPage },
   { path: "/models/add", component: ModelAddPage },
   { path: "/models/:modelCode/edit", component: ModelEditPage },
 ];

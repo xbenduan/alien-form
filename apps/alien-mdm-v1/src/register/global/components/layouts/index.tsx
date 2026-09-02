@@ -1,17 +1,18 @@
 import {
   DeleteOutlined,
+  DownOutlined,
   EditOutlined,
   EyeOutlined,
   PlusOutlined,
   ReloadOutlined,
   SearchOutlined,
+  UpOutlined,
 } from "@ant-design/icons";
 import {
   App,
   Button,
   Card,
   Empty,
-  Flex,
   Input,
   Layout as AntLayout,
   Popconfirm,
@@ -20,15 +21,16 @@ import {
   Table as AntTable,
   Tree as AntTree,
   type TableColumnsType,
+  type TableProps,
 } from "antd";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type Key, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import type { ComponentProps } from "@binding";
-import type { FieldSchema } from "@engine";
+import { usePage, type ComponentProps } from "@binding";
+import type { FieldSchema, ModelOpenModes, OpenMode } from "@engine";
 import { transport } from "@runtime/transport";
 import { recordRoute } from "@utils/record-route";
-
-const GAP = 16;
+import { RecordActionOverlay, type RecordActionMode } from "../pages";
+import styles from "./index.module.css";
 
 export function Layout({
   slots,
@@ -39,11 +41,8 @@ export function Layout({
 }) {
   const main = (
     <AntLayout.Content
+      className={styles.layoutMain}
       style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: GAP,
-        minWidth: 0,
         background: "transparent",
       }}
     >
@@ -53,13 +52,13 @@ export function Layout({
     </AntLayout.Content>
   );
 
-  if (!slots.left) return main;
+  if (!slots.left) {
+    return <AntLayout className={styles.layoutStack}>{main}</AntLayout>;
+  }
   return (
-    <AntLayout
-      hasSider
-      style={{ gap: GAP, minHeight: 520, minWidth: 0, background: "transparent" }}
-    >
+    <AntLayout hasSider className={styles.layout} style={{ background: "transparent" }}>
       <AntLayout.Sider
+        className={styles.layoutLeft}
         width={280}
         theme="light"
         style={{ minWidth: 240, background: "transparent" }}
@@ -81,32 +80,69 @@ function parseFilter(value: unknown): Record<string, unknown> {
 }
 
 export function Filter({ value, onChange, schema }: ComponentProps & { schema?: FieldSchema }) {
+  const page = usePage();
+  const [expanded, setExpanded] = useState(false);
+  const [draft, setDraft] = useState<Record<string, unknown>>(() => parseFilter(value));
   const fields = Object.entries(schema?.properties ?? {}).filter(
     ([, field]) =>
       field["x-table"]?.filterable === true ||
       (field["x-database"] as { filterable?: boolean } | undefined)?.filterable === true,
   );
-  const filter = parseFilter(value);
+  const visibleCount = Math.max(1, page.model.meta.filterCount ?? 4);
+  const hasExtraFields = fields.length > visibleCount;
+
+  useEffect(() => {
+    setDraft(parseFilter(value));
+  }, [value]);
+
   const update = (key: string, next: string) => {
-    const result = { ...filter, [key]: next || undefined };
-    onChange?.(JSON.stringify(result));
+    setDraft((current) => ({ ...current, [key]: next || undefined }));
   };
+  const reset = () => {
+    setDraft({});
+    onChange?.("{}");
+  };
+
   return (
-    <Card size="small">
-      <Flex gap={12} wrap align="center">
-        {fields.slice(0, 4).map(([key, field]) => (
-          <Input
-            key={key}
-            allowClear
-            prefix={<SearchOutlined />}
-            placeholder={field.title ?? key}
-            value={String(filter[key] ?? "")}
-            onChange={(event) => update(key, event.target.value)}
-            style={{ width: 220 }}
-          />
-        ))}
-        <Button onClick={() => onChange?.("{}")}>重置</Button>
-      </Flex>
+    <Card className={styles.filterCard} styles={{ body: { padding: 16 } }}>
+      <div className={styles.filter}>
+        <div className={styles.filterFields}>
+          {fields.map(([key, field], index) => (
+            <label
+              key={key}
+              className={styles.filterField}
+              style={!expanded && index >= visibleCount ? { display: "none" } : undefined}
+            >
+              <span className={styles.filterLabel}>{field.title ?? key}</span>
+              <Input
+                allowClear
+                prefix={<SearchOutlined />}
+                placeholder={`请输入${field.title ?? key}`}
+                value={String(draft[key] ?? "")}
+                onChange={(event) => update(key, event.target.value)}
+                onPressEnter={() => onChange?.(JSON.stringify(draft))}
+              />
+            </label>
+          ))}
+        </div>
+        <div className={styles.filterActions}>
+          <Space>
+            {hasExtraFields && (
+              <Button
+                type="link"
+                icon={expanded ? <UpOutlined /> : <DownOutlined />}
+                onClick={() => setExpanded((current) => !current)}
+              >
+                {expanded ? "收起" : "展开"}
+              </Button>
+            )}
+            <Button onClick={reset}>重置</Button>
+            <Button type="primary" onClick={() => onChange?.(JSON.stringify(draft))}>
+              查询
+            </Button>
+          </Space>
+        </div>
+      </div>
     </Card>
   );
 }
@@ -114,6 +150,12 @@ export function Filter({ value, onChange, schema }: ComponentProps & { schema?: 
 interface ListResult {
   list: Record<string, unknown>[];
   total: number;
+}
+
+interface OverlayState {
+  mode: RecordActionMode;
+  openMode: Exclude<OpenMode, "page">;
+  recordId?: string;
 }
 
 export function Table({
@@ -125,6 +167,7 @@ export function Table({
   slots,
   rowKey = "id",
   modelCode,
+  scroll,
 }: ComponentProps & {
   schema?: FieldSchema;
   columns?:
@@ -135,14 +178,21 @@ export function Table({
   nodeId?: unknown;
   rowKey?: string;
   modelCode?: string;
+  scroll?: TableProps<Record<string, unknown>>["scroll"];
 }) {
   const { message } = App.useApp();
   const navigate = useNavigate();
+  const pageRuntime = usePage();
   const { modelCode: routeModelCode } = useParams();
-  const resolvedModelCode = modelCode ?? routeModelCode;
+  const resolvedModelCode = modelCode ?? routeModelCode ?? pageRuntime.domain;
+  const pageSize = pageRuntime.model.meta.defaultPageSize ?? 20;
+  const recordTitle =
+    pageRuntime.model.meta.singularLabel ?? pageRuntime.model.meta.title ?? resolvedModelCode;
   const [data, setData] = useState<ListResult>({ list: [], total: 0 });
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
+  const [overlay, setOverlay] = useState<OverlayState>();
   const resolvedColumns = useMemo(
     () => (typeof columns === "function" ? columns(schema) : columns) ?? [],
     [columns, schema],
@@ -154,13 +204,30 @@ export function Table({
       setData(
         await loadData({
           filters: { ...parseFilter(filter), nodeId },
-          pagination: { current: page, pageSize: 20 },
+          pagination: { current: page, pageSize },
         }),
       );
     } finally {
       setLoading(false);
     }
-  }, [filter, loadData, nodeId, page]);
+  }, [filter, loadData, nodeId, page, pageSize]);
+  const openAction = useCallback(
+    (mode: RecordActionMode, recordId?: unknown) => {
+      if (!resolvedModelCode) return;
+      const openMode: OpenMode =
+        (pageRuntime.model.meta.openMode as ModelOpenModes | undefined)?.[mode] ?? "drawer";
+      if (openMode === "page") {
+        navigate(recordRoute(resolvedModelCode, mode, recordId));
+        return;
+      }
+      setOverlay({
+        mode,
+        openMode,
+        recordId: recordId === undefined ? undefined : String(recordId),
+      });
+    },
+    [navigate, pageRuntime.model.meta.openMode, resolvedModelCode],
+  );
   const removeRecord = useCallback(
     async (recordId: unknown) => {
       if (!resolvedModelCode) return;
@@ -180,6 +247,23 @@ export function Table({
     },
     [message, refresh, resolvedModelCode],
   );
+  const removeSelected = useCallback(async () => {
+    if (!resolvedModelCode || !selectedRowKeys.length) return;
+    setLoading(true);
+    try {
+      await transport.send(`/api/records/${encodeURIComponent(resolvedModelCode)}/batch-delete`, {
+        method: "POST",
+        body: JSON.stringify({ ids: selectedRowKeys.map(String) }),
+      });
+      message.success(`已删除 ${selectedRowKeys.length} 条记录`);
+      setSelectedRowKeys([]);
+      await refresh();
+    } catch (reason) {
+      message.error(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setLoading(false);
+    }
+  }, [message, refresh, resolvedModelCode, selectedRowKeys]);
   const tableColumns = useMemo<TableColumnsType<Record<string, unknown>>>(() => {
     if (!resolvedModelCode) return resolvedColumns;
     return [
@@ -187,6 +271,7 @@ export function Table({
       {
         key: "$actions",
         title: "操作",
+        fixed: "right",
         width: 220,
         render: (_value, record) => {
           const recordId = record[rowKey];
@@ -200,7 +285,7 @@ export function Table({
                 size="small"
                 icon={<EyeOutlined />}
                 disabled={!hasRecordId}
-                onClick={() => navigate(recordRoute(resolvedModelCode, "detail", recordId))}
+                onClick={() => openAction("detail", recordId)}
               >
                 详情
               </Button>
@@ -209,7 +294,7 @@ export function Table({
                 size="small"
                 icon={<EditOutlined />}
                 disabled={!hasRecordId}
-                onClick={() => navigate(recordRoute(resolvedModelCode, "edit", recordId))}
+                onClick={() => openAction("edit", recordId)}
               >
                 编辑
               </Button>
@@ -237,51 +322,86 @@ export function Table({
         },
       },
     ];
-  }, [navigate, removeRecord, resolvedColumns, resolvedModelCode, rowKey]);
+  }, [openAction, removeRecord, resolvedColumns, resolvedModelCode, rowKey]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
   return (
-    <Card
-      title={
-        <Flex align="center" gap={8}>
-          {resolvedModelCode && (
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => navigate(recordRoute(resolvedModelCode, "add"))}
-            >
-              新增
-            </Button>
-          )}
-          {slots.toolbar}
-        </Flex>
-      }
-      extra={
-        <Button
-          type="text"
-          icon={<ReloadOutlined />}
-          aria-label="刷新"
-          onClick={() => void refresh()}
+    <>
+      <Card className={styles.tableCard} styles={{ body: { padding: 0 } }}>
+        <div className={styles.tableToolbar}>
+          <Space wrap>
+            {selectedRowKeys.length > 0 ? (
+              <>
+                <Popconfirm
+                  title={`确认删除选中的 ${selectedRowKeys.length} 条记录吗？`}
+                  okText="删除"
+                  cancelText="取消"
+                  okButtonProps={{ danger: true }}
+                  onConfirm={removeSelected}
+                >
+                  <Button danger icon={<DeleteOutlined />}>
+                    批量删除
+                  </Button>
+                </Popconfirm>
+                <span>已选择 {selectedRowKeys.length} 条</span>
+              </>
+            ) : (
+              <span>批量操作</span>
+            )}
+          </Space>
+          <Space>
+            {slots.toolbar}
+            <Button icon={<ReloadOutlined />} aria-label="刷新" onClick={() => void refresh()} />
+            {resolvedModelCode && (
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => openAction("add")}>
+                新增
+              </Button>
+            )}
+          </Space>
+        </div>
+        <AntTable
+          rowKey={rowKey}
+          style={{ marginInline: 16 }}
+          columns={tableColumns}
+          dataSource={data.list}
+          loading={loading}
+          scroll={scroll ?? { x: "max-content" }}
+          rowSelection={{
+            selectedRowKeys,
+            onChange: setSelectedRowKeys,
+            getCheckboxProps: (record) => ({
+              disabled:
+                resolvedModelCode === "_sys_user" && String(record[rowKey]) === "_sys_admin",
+            }),
+          }}
+          pagination={{
+            current: page,
+            pageSize,
+            total: data.total,
+            onChange: setPage,
+            showSizeChanger: false,
+          }}
         />
-      }
-    >
-      <AntTable
-        rowKey={rowKey}
-        columns={tableColumns}
-        dataSource={data.list}
-        loading={loading}
-        pagination={{
-          current: page,
-          pageSize: 20,
-          total: data.total,
-          onChange: setPage,
-          showSizeChanger: false,
-        }}
-      />
-    </Card>
+      </Card>
+      {overlay && resolvedModelCode && schema && (
+        <RecordActionOverlay
+          openMode={overlay.openMode}
+          mode={overlay.mode}
+          modelCode={resolvedModelCode}
+          recordId={overlay.recordId}
+          schema={schema}
+          title={recordTitle}
+          onClose={() => setOverlay(undefined)}
+          onSaved={async () => {
+            setOverlay(undefined);
+            await refresh();
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -306,7 +426,7 @@ export function Tree({
       .finally(() => setLoading(false));
   }, [loadData]);
   return (
-    <Card size="small">
+    <Card className={styles.treeCard} size="small">
       <Spin spinning={loading}>
         {nodes.length ? (
           <AntTree

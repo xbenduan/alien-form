@@ -49,6 +49,14 @@ export interface PluginMarker {
   [key: string]: unknown;
 }
 
+export interface FieldGroup {
+  component?: string;
+  keys: string[];
+  title?: string;
+  description?: string;
+  props?: Record<string, unknown>;
+}
+
 /** 模型字段：后端只强类型化关心的字段，其余透传。 */
 export interface ModelFieldSchema {
   type?: string;
@@ -61,6 +69,7 @@ export interface ModelFieldSchema {
   dataSource?: DataSourceItem[] | PluginMarker;
   properties?: Record<string, ModelFieldSchema>;
   items?: ModelFieldSchema | ModelFieldSchema[];
+  group?: FieldGroup[];
   "x-database"?: XDatabase;
   "x-table"?: { width?: number; visible?: boolean; ellipsis?: boolean; sortable?: boolean };
   [key: string]: unknown;
@@ -111,6 +120,17 @@ export function assertModelSchema(value: unknown): asserts value is ModelSchema 
   if (!schema.meta?.name || !schema.meta.title) throw new Error("模型 meta.name/meta.title 必填");
   if (!Array.isArray(schema["x-pages"])) throw new Error("模型 x-pages 必须是数组");
   const properties = formProperties(schema as ModelSchema);
+  const formSchema = schema.definitions?.["form-schema"];
+  const groups = formSchema?.group ?? [];
+  const assigned = new Set<string>();
+  for (const [index, group] of groups.entries()) {
+    if (!Array.isArray(group.keys)) throw new Error(`form-schema.group[${index}].keys 必须是数组`);
+    for (const key of group.keys) {
+      if (!properties[key]) throw new Error(`form-schema.group 引用了不存在的字段：${key}`);
+      if (assigned.has(key)) throw new Error(`form-schema.group 字段重复：${key}`);
+      assigned.add(key);
+    }
+  }
   const visit = (current: unknown, path: string): void => {
     if (typeof current === "string" && current.includes("{{")) {
       throw new Error(`${path} 不允许包含表达式`);
@@ -118,7 +138,7 @@ export function assertModelSchema(value: unknown): asserts value is ModelSchema 
     if (!current || typeof current !== "object") return;
     for (const [key, child] of Object.entries(current)) visit(child, `${path}.${key}`);
   };
-  visit(properties, "definitions.form-schema.properties");
+  visit(formSchema, "definitions.form-schema");
 }
 
 /** 记录：任意键值 + 系统字段。 */

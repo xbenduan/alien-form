@@ -21,6 +21,7 @@ export function compileExpr<T = unknown>(raw: string): CompiledExpression<T> {
   const evaluate = new Function(
     "scope",
     `const {
+      mode,
       $values,
       $self,
       $form,

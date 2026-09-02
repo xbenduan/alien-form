@@ -135,15 +135,58 @@ export function compilePage(model: BuilderSchema, page: XPage): CompiledPage {
   };
 }
 
+function projectGroupedProperties(schema: {
+  properties: Record<string, FieldSchema>;
+  group?: FieldSchema["group"];
+}): Record<string, FieldSchema> {
+  const groups = schema.group ?? [];
+  if (groups.length === 0) return schema.properties;
+
+  const keyToGroup = new Map<string, number>();
+  groups.forEach((group, index) => {
+    group.keys.forEach((key) => {
+      if (schema.properties[key] && !keyToGroup.has(key)) keyToGroup.set(key, index);
+    });
+  });
+
+  const emitted = new Set<number>();
+  const output: Record<string, FieldSchema> = {};
+  for (const [key, field] of Object.entries(schema.properties)) {
+    const groupIndex = keyToGroup.get(key);
+    if (groupIndex === undefined) {
+      output[key] = field;
+      continue;
+    }
+    if (emitted.has(groupIndex)) continue;
+    emitted.add(groupIndex);
+    const group = groups[groupIndex]!;
+    output[`$group-${groupIndex}`] = {
+      type: "void",
+      component: group.component ?? "ObjectField",
+      title: group.title,
+      description: group.description,
+      props: group.props,
+      properties: Object.fromEntries(
+        group.keys.flatMap((memberKey) => {
+          const member = schema.properties[memberKey];
+          return member ? [[memberKey, member]] : [];
+        }),
+      ),
+    };
+  }
+  return output;
+}
+
 export function compileForm(
-  schema: { properties: Record<string, FieldSchema> },
+  schema: Pick<FieldSchema, "properties" | "group">,
   definitions: BuilderSchema["definitions"],
 ): { schema: IFormSchema; nodes: CompiledNode[] } {
+  const projected = projectGroupedProperties({
+    properties: schema.properties ?? {},
+    group: schema.group,
+  });
   const properties = Object.fromEntries(
-    Object.entries(schema.properties).map(([key, field]) => [
-      key,
-      resolveField(field, definitions),
-    ]),
+    Object.entries(projected).map(([key, field]) => [key, resolveField(field, definitions)]),
   );
   return {
     schema: { type: "object", properties: properties as Record<string, IFieldSchema> },

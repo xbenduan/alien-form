@@ -1,17 +1,36 @@
 * {
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(15, 23, 42, 0.2) transparent;
 }
 
-html,
-body,
-#root {
-  min-height: 100%;
-  margin: 0;
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.35);
+}
+
+html {
+  overflow-x: hidden;
 }
 
 body {
+  min-width: 320px;
+  margin: 0;
   color: #1f2329;
-  background: #f5f6f8;
+  background: #f5f7fb;
   font-family:
     Inter,
     -apple-system,
@@ -20,66 +39,7 @@ body {
     sans-serif;
 }
 
-.app-shell {
+#root {
   min-height: 100vh;
-}
-
-.app-sider {
-  border-right: 1px solid #e5e6eb;
-}
-
-.app-brand {
-  display: flex;
-  height: 64px;
-  padding: 0 24px;
-  align-items: center;
-  color: #101828;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.app-header {
-  display: flex;
-  height: 64px;
-  padding: 0 24px;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid #e5e6eb;
-  background: #fff;
-}
-
-.app-content {
-  min-width: 0;
-  padding: 24px;
-}
-
-.login-page {
-  display: grid;
-  min-height: 100vh;
-  padding: 24px;
-  place-items: center;
-  background: #f5f6f8;
-}
-
-.login-panel {
-  width: min(400px, 100%);
-  padding: 32px;
-  border: 1px solid #e5e6eb;
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 6%);
-}
-
-.login-panel .ant-alert {
-  margin-bottom: 16px;
-}
-
-@media (max-width: 720px) {
-  .app-sider {
-    display: none;
-  }
-
-  .app-content {
-    padding: 16px;
-  }
+  min-height: 100dvh;
 }

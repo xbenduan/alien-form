@@ -1,18 +1,10 @@
-import { DatabaseOutlined, HomeOutlined, LogoutOutlined } from "@ant-design/icons";
-import { Button, Layout, Menu, Skeleton, Typography } from "antd";
+import { Skeleton, Spin } from "antd";
 import { Suspense, type ReactNode } from "react";
-import {
-  BrowserRouter,
-  Link,
-  Navigate,
-  Outlet,
-  Route,
-  Routes,
-  useLocation,
-} from "react-router-dom";
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { useAuth } from "../providers";
 import { DynamicPage } from "./dynamic-routes";
 import { publicRoutes, staticRoutes } from "./static-routes";
+import styles from "./index.module.css";
 
 function Protected({ children }: { children: ReactNode }) {
   const auth = useAuth();
@@ -25,49 +17,20 @@ function Protected({ children }: { children: ReactNode }) {
 }
 
 function AppShell() {
-  const location = useLocation();
-  const auth = useAuth();
-  const selected = location.pathname.startsWith("/models")
-    ? "models"
-    : location.pathname.startsWith("/records")
-      ? "models"
-      : "home";
   return (
-    <Layout className="app-shell">
-      <Layout.Sider width={224} theme="light" className="app-sider">
-        <Link to="/" className="app-brand">
-          Alien MDM
-        </Link>
-        <Menu
-          mode="inline"
-          selectedKeys={[selected]}
-          items={[
-            { key: "home", icon: <HomeOutlined />, label: <Link to="/">工作台</Link> },
-            {
-              key: "models",
-              icon: <DatabaseOutlined />,
-              label: <Link to="/models">模型管理</Link>,
-            },
-          ]}
-        />
-      </Layout.Sider>
-      <Layout>
-        <Layout.Header className="app-header">
-          <Typography.Text strong>主数据管理</Typography.Text>
-          <Button
-            type="text"
-            icon={<LogoutOutlined />}
-            aria-label="退出登录"
-            onClick={() => void auth.logout()}
-          />
-        </Layout.Header>
-        <Layout.Content className="app-content">
-          <Suspense fallback={<Skeleton active />}>
-            <Outlet />
-          </Suspense>
-        </Layout.Content>
-      </Layout>
-    </Layout>
+    <div className={styles.shell}>
+      <div className={styles.content}>
+        <Suspense
+          fallback={
+            <div className={styles.loading}>
+              <Spin size="large" />
+            </div>
+          }
+        >
+          <Outlet />
+        </Suspense>
+      </div>
+    </div>
   );
 }
 

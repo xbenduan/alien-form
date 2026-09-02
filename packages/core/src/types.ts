@@ -60,6 +60,7 @@ export type SchemaReactionKey =
   | "dataSource";
 
 export interface ExpressionScope {
+  mode?: string;
   $values: Record<string, any>;
   $self: FieldNode;
   $form: FormInstance;

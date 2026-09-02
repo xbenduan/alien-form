@@ -8,20 +8,40 @@ export type JsonValue =
   | JsonValue[]
   | { [key: string]: JsonValue };
 
+export type OpenMode = "page" | "drawer" | "modal";
+
+export interface ModelOpenModes {
+  add: OpenMode;
+  edit: OpenMode;
+  detail: OpenMode;
+}
+
 export interface ModelMeta {
   name: string;
   title: string;
   subtitle?: string;
   description?: string;
   group?: string;
-  openMode?: string;
+  singularLabel?: string;
+  pluralLabel?: string;
+  filterCount?: number;
+  openMode?: ModelOpenModes;
   defaultPageSize?: number;
+}
+
+export interface FieldGroup {
+  component?: string;
+  keys: string[];
+  title?: string;
+  description?: string;
+  props?: Record<string, unknown>;
 }
 
 export interface FieldSchema extends Omit<IFieldSchema, "properties" | "items" | "props"> {
   properties?: Record<string, FieldSchema>;
   items?: FieldSchema | FieldSchema[];
   props?: Record<string, unknown>;
+  group?: FieldGroup[];
   "x-database"?: Record<string, JsonValue>;
   "x-table"?: {
     visible?: boolean;

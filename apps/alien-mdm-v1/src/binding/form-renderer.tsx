@@ -1,9 +1,10 @@
 import { compileExpr, type FieldNode, type FormInstance } from "@alien-form/core";
-import { Alert, Form } from "antd";
+import { Alert } from "antd";
 import { Fragment, useEffect, type ComponentType, type ReactNode } from "react";
 import { isCompiledValue, type CompiledNode } from "@engine";
 import { useRuntime } from "./runtime-provider";
 import { useAtom } from "./use-atom";
+import styles from "./form-renderer.module.css";
 
 const emptyValue = () => undefined;
 
@@ -13,6 +14,7 @@ export interface ComponentProps {
   slots: Record<string, ReactNode>;
   children?: ReactNode;
   value?: unknown;
+  mode?: string;
   onChange?: (value: unknown) => void;
   dataSource?: unknown[];
   loading?: boolean;
@@ -77,9 +79,14 @@ export function RenderNode({
   const disabled = useAtom(field.disabled as () => boolean);
   const required = useAtom(field.required as () => boolean);
   const title = useAtom(field.title as () => string | undefined);
+  const description = useAtom(field.description as () => string | undefined);
   const loading = useAtom(field.loading as () => boolean);
   const dataSource = useAtom(field.dataSource as () => unknown[]);
-  const value = useAtom((field.kind === "primitive" ? field.value : emptyValue) as () => unknown);
+  const primitiveValue = useAtom(
+    (field.kind === "primitive" ? field.value : emptyValue) as () => unknown,
+  );
+  const value = field.kind === "primitive" ? primitiveValue : form.project(field.path);
+  const mode = typeof form.scope.mode === "string" ? form.scope.mode : undefined;
 
   if (display === "none") return null;
   const registration = runtime.resolveComponent(componentCode, domain);
@@ -130,11 +137,23 @@ export function RenderNode({
   const Component = registration.component as ComponentType<any>;
   const controlProps =
     field.kind === "primitive"
-      ? { ...props, disabled, loading, value, dataSource, onChange: field.setValue }
+      ? {
+          ...props,
+          id: props.id ?? field.id,
+          disabled,
+          loading,
+          value,
+          dataSource,
+          "aria-invalid": errors.length > 0,
+          "aria-describedby": errors.length ? `${field.id}-error` : undefined,
+          onChange: field.setValue,
+        }
       : props;
   const renderedChildren = children.length ? children : undefined;
   const alienProps =
-    registration.adapter === "alien" ? { ...controlProps, field, node, slots } : controlProps;
+    registration.adapter === "alien"
+      ? { ...controlProps, field, node, slots, mode, value, title, description }
+      : controlProps;
   const control = renderedChildren ? (
     <Component {...alienProps}>{renderedChildren}</Component>
   ) : (
@@ -142,16 +161,28 @@ export function RenderNode({
   );
 
   if (field.kind !== "primitive") return control;
+  const showRequired = mode !== "detail" && required;
   return (
-    <Form.Item
-      label={title}
-      required={required}
-      validateStatus={errors.length ? "error" : undefined}
-      help={errors[0]?.message}
+    <div
+      className={`${styles.formItem}${mode === "detail" ? ` ${styles.detailFormItem}` : ""}`}
       hidden={display === "hidden"}
     >
-      {control}
-    </Form.Item>
+      {title ? (
+        <label
+          className={`${styles.formItemLabel}${showRequired ? ` ${styles.required}` : ""}`}
+          htmlFor={field.id}
+        >
+          {title}
+        </label>
+      ) : null}
+      <div className={styles.formItemControl}>{control}</div>
+      {description ? <div className={styles.formItemDescription}>{description}</div> : null}
+      {errors[0]?.message ? (
+        <div id={`${field.id}-error`} className={styles.formItemError} role="alert">
+          {errors[0].message}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -172,7 +203,7 @@ export function FormRenderer({
   const renderNodes =
     nodes ?? Array.from(form.root.children, ([key, field]) => fallbackNode(key, field));
   return (
-    <Form layout="vertical">
+    <div className={styles.form} data-alien-form>
       {renderNodes.map((node) => {
         const field = form.root.children.get(node.key);
         return field ? (
@@ -181,6 +212,6 @@ export function FormRenderer({
           <Fragment key={node.key} />
         );
       })}
-    </Form>
+    </div>
   );
 }

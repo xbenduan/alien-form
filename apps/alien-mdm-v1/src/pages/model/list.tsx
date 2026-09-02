@@ -1,108 +1,135 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Flex, Input, Popconfirm, Table, Typography, message } from "antd";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import type { FieldSchema } from "@engine";
+import {
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+} from "@ant-design/icons";
+import { App, Alert, Button, Flex, Popconfirm, Space, Table } from "antd";
+import type { ColumnsType } from "antd/es/table";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { PageBreadcrumb } from "../../components";
 import type { ModelSummary } from "@app-types";
 import { transport } from "@runtime/transport";
-import { schemaToColumns } from "@utils/schema";
-
-const modelMeta: FieldSchema = {
-  type: "object",
-  properties: {
-    title: { type: "string", title: "模型名称", "x-table": { filterable: true } },
-    name: { type: "string", title: "模型编码", "x-table": { filterable: true } },
-    group: { type: "string", title: "分组", "x-table": { filterable: true } },
-    fieldCount: { type: "number", title: "字段数", "x-table": { width: 100 } },
-    updatedAt: { type: "string", title: "更新时间", "x-table": { width: 190 } },
-  },
-};
+import styles from "./index.module.css";
 
 export default function ModelListPage() {
+  const navigate = useNavigate();
+  const { message } = App.useApp();
   const [models, setModels] = useState<ModelSummary[]>([]);
-  const [keyword, setKeyword] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>();
+
   const load = useCallback(async () => {
     setLoading(true);
+    setError(undefined);
     try {
       setModels(await transport.send<ModelSummary[]>("/api/schemas"));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
       setLoading(false);
     }
   }, []);
+
   useEffect(() => {
     void load();
   }, [load]);
 
-  const data = useMemo(() => {
-    const needle = keyword.trim().toLowerCase();
-    if (!needle) return models;
-    return models.filter((model) =>
-      [model.name, model.title, model.group].some((value) =>
-        String(value ?? "")
-          .toLowerCase()
-          .includes(needle),
+  const columns: ColumnsType<ModelSummary> = [
+    {
+      title: "标题",
+      dataIndex: "title",
+      render: (title: string, record) => (
+        <Button type="link" onClick={() => navigate(`/records/${record.name}/list`)}>
+          {title}
+        </Button>
       ),
-    );
-  }, [keyword, models]);
-  const columns = [
-    ...schemaToColumns<ModelSummary>(modelMeta),
+    },
+    { title: "模型名", dataIndex: "name" },
+    {
+      title: "描述",
+      dataIndex: "description",
+      ellipsis: true,
+      render: (value?: string) => value ?? "—",
+    },
+    { title: "字段数", dataIndex: "fieldCount", width: 100 },
     {
       title: "操作",
       key: "actions",
-      width: 230,
-      fixed: "right" as const,
-      render: (_: unknown, model: ModelSummary) => (
-        <Flex gap={4}>
-          <Link to={`/records/${model.name}/list`}>
-            <Button type="link">记录</Button>
-          </Link>
-          <Link to={`/models/${model.name}/edit`}>
-            <Button type="text" icon={<EditOutlined />} aria-label="编辑" />
-          </Link>
+      fixed: "right",
+      width: 180,
+      render: (_, record) => (
+        <Space size={4} wrap>
+          <Button
+            type="link"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => navigate(`/records/${record.name}/list`)}
+          >
+            详情
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => navigate(`/models/${record.name}/edit`)}
+          >
+            编辑
+          </Button>
           <Popconfirm
-            title="删除模型"
-            description="物理数据表将保留，确认移除模型定义？"
+            title="确认删除该模型吗？"
+            description="删除后该模型的数据也会一并清除。"
+            okText="删除"
+            cancelText="取消"
+            okButtonProps={{ danger: true }}
+            disabled={record.name === "_sys_user"}
             onConfirm={async () => {
-              await transport.send(`/api/schemas/${model.name}`, { method: "DELETE" });
-              message.success("模型已删除");
+              await transport.send(`/api/schemas/${record.name}`, { method: "DELETE" });
+              message.success("删除成功");
               await load();
             }}
           >
-            <Button type="text" danger icon={<DeleteOutlined />} aria-label="删除" />
+            <Button
+              danger
+              type="link"
+              size="small"
+              icon={<DeleteOutlined />}
+              disabled={record.name === "_sys_user"}
+            >
+              删除
+            </Button>
           </Popconfirm>
-        </Flex>
+        </Space>
       ),
     },
   ];
 
   return (
-    <section>
-      <Flex justify="space-between" align="center" style={{ marginBottom: 20 }}>
-        <Typography.Title level={3}>模型管理</Typography.Title>
-        <Link to="/models/add">
-          <Button type="primary" icon={<PlusOutlined />}>
-            新建模型
-          </Button>
-        </Link>
-      </Flex>
-      <Flex style={{ marginBottom: 16 }}>
-        <Input
-          allowClear
-          prefix={<SearchOutlined />}
-          placeholder="筛选名称、编码或分组"
-          value={keyword}
-          onChange={(event) => setKeyword(event.target.value)}
-          style={{ width: 320 }}
+    <Flex vertical gap={16}>
+      <PageBreadcrumb items={[{ title: "模型管理" }]} />
+      {error && <Alert type="error" message="模型列表加载失败" description={error} showIcon />}
+      <div className={styles.tableCard}>
+        <div className={styles.toolbar}>
+          <span className={styles.toolbarTitle}>模型管理</span>
+          <Space>
+            <Button icon={<ReloadOutlined />} onClick={() => void load()} aria-label="刷新" />
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/models/add")}>
+              新增模型
+            </Button>
+          </Space>
+        </div>
+        <Table<ModelSummary>
+          rowKey="name"
+          style={{ marginInline: 16 }}
+          columns={columns}
+          dataSource={models}
+          loading={loading}
+          scroll={{ x: "max-content" }}
+          pagination={false}
         />
-      </Flex>
-      <Table
-        rowKey="name"
-        columns={columns}
-        dataSource={data}
-        loading={loading}
-        scroll={{ x: 900 }}
-      />
-    </section>
+      </div>
+    </Flex>
   );
 }

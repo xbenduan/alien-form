@@ -34,8 +34,13 @@ export class Runtime {
     return this.components.get(code, domain);
   }
 
-  createScope(domain: string | undefined, query: Record<string, string>): Record<string, unknown> {
+  createScope(
+    domain: string | undefined,
+    query: Record<string, string>,
+    mode?: string,
+  ): Record<string, unknown> {
     return {
+      mode,
       $service: toNamespace(
         this.services.values(domain).map(([code, registration]) => [code, registration.send]),
       ),
@@ -62,7 +67,7 @@ export class Runtime {
     const model = await this.loadModel(modelCode);
     const page = matchPage(compileModel(model), routerSegment);
     if (!page) throw new Error(`Page route not found: ${modelCode}/${routerSegment}`);
-    return new PageRuntime(this, modelCode, page, query);
+    return new PageRuntime(this, model, page, query);
   }
 }
 
@@ -71,15 +76,18 @@ export class PageRuntime {
 
   constructor(
     readonly runtime: Runtime,
-    readonly domain: string,
+    readonly model: BuilderSchema,
     readonly page: CompiledPage,
     readonly query: Record<string, string>,
   ) {
+    this.domain = model.meta.name;
     this.form = createForm({
       schema: page.schema,
-      scope: runtime.createScope(domain, query),
+      scope: runtime.createScope(this.domain, query, page.router),
     });
   }
+
+  readonly domain: string;
 
   mount(): void {
     this.form.mount();

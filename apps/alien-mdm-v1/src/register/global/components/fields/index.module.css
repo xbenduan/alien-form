@@ -1,0 +1,116 @@
+.complexField {
+  min-width: 0;
+  margin: 4px 0 16px;
+  padding: 14px 16px 8px;
+  border: 1px dashed #d8dee8;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.complexFieldTitle {
+  padding: 0 6px;
+  color: #344054;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.complexFieldDescription {
+  margin: -2px 0 12px;
+  color: #8a94a6;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.complexFieldBody {
+  min-width: 0;
+}
+
+.objectField {
+  display: grid;
+  gap: 8px;
+}
+
+.arrayCards {
+  display: grid;
+  gap: 10px;
+}
+
+.arrayCard {
+  padding: 12px 12px 4px;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #fafbfc;
+}
+
+.arrayCardHeader {
+  display: flex;
+  min-height: 28px;
+  margin-bottom: 6px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.arrayCardIndex {
+  color: #1677ff;
+  font-weight: 600;
+}
+
+.arrayCardBody {
+  display: grid;
+  gap: 8px;
+}
+
+.arrayCardAdd {
+  justify-self: start;
+}
+
+.detailValue {
+  min-height: 22px;
+  color: #262626;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.arrayField {
+  min-width: 0;
+  margin-bottom: 16px;
+}
+
+.arrayField[hidden] {
+  display: none;
+}
+
+.arrayFieldLabel {
+  display: inline-flex;
+  margin-bottom: 8px;
+  align-items: center;
+  color: #262626;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.arrayFieldRequired::before {
+  margin-inline-end: 4px;
+  color: #ff4d4f;
+  content: "*";
+  font-family: SimSun, sans-serif;
+}
+
+.arrayFieldDetail {
+  color: #8c8c8c;
+}
+
+.arrayFieldDescription {
+  margin-top: 6px;
+  color: #8c8c8c;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.arrayFieldError {
+  margin-top: 6px;
+  color: #ff4d4f;
+  font-size: 14px;
+  line-height: 20px;
+}

@@ -1,0 +1,26 @@
+.userMenu {
+  display: grid;
+  padding: 0;
+  border: 1px solid #e0e7f0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
+  overflow: hidden;
+  place-items: center;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.userMenu:hover,
+.userMenu:focus-visible {
+  border-color: #8bb8f5;
+  box-shadow: 0 4px 12px rgba(30, 65, 110, 0.15);
+  outline: none;
+}
+
+.userMenu svg {
+  display: block;
+  border-radius: 50%;
+}

@@ -1,0 +1,12 @@
+.recordRoute {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.actionRoute {
+  width: min(100%, 1000px);
+  margin: 0 auto;
+  padding-bottom: 76px;
+}

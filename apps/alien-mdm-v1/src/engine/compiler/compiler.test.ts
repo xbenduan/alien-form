@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compileModel, isCompiledValue, matchPage } from ".";
+import { compileForm, compileModel, isCompiledValue, matchPage } from ".";
 import type { BuilderSchema } from "../protocol";
 
 const model: BuilderSchema = {
@@ -31,6 +31,7 @@ const model: BuilderSchema = {
       properties: {
         name: { type: "string", title: "名称" },
       },
+      group: [{ component: "ObjectField", title: "基础信息", keys: ["name"] }],
     },
   },
 };
@@ -52,6 +53,17 @@ describe("page compiler", () => {
 
   it("matches an empty segment to list", () => {
     expect(matchPage(compileModel(model), "")?.router).toBe("list");
+  });
+
+  it("projects form groups into void containers without changing field keys", () => {
+    const compiled = compileForm(model.definitions["form-schema"], model.definitions);
+    expect(compiled.nodes).toHaveLength(1);
+    expect(compiled.nodes[0]?.schema).toMatchObject({
+      type: "void",
+      component: "ObjectField",
+      title: "基础信息",
+    });
+    expect(compiled.nodes[0]?.children.map((child) => child.key)).toEqual(["name"]);
   });
 
   it("rejects models without the form-schema contract", () => {

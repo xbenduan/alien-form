@@ -6,5 +6,9 @@ export function recordRoute(modelCode: string, mode: RecordRouteMode, recordId?:
   if (recordId === undefined || recordId === null || recordId === "") {
     throw new Error(`Record id is required for ${mode}`);
   }
-  return `${base}?id=${encodeURIComponent(String(recordId))}`;
+  return `${base}/${encodeURIComponent(String(recordId))}`;
+}
+
+export function recordListRoute(modelCode: string): string {
+  return `/records/${encodeURIComponent(modelCode)}`;
 }
