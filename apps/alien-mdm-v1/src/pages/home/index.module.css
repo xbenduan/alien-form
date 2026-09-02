@@ -299,14 +299,8 @@
     padding-inline: 16px;
   }
 
-  .kicker,
-  .actionText {
+  .kicker {
     display: none;
-  }
-
-  .topbarActions :global(.ant-btn) {
-    width: 34px;
-    padding-inline: 0;
   }
 
   .mainContent {

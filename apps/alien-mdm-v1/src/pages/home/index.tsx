@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  AppstoreAddOutlined,
   AppstoreOutlined,
   ClockCircleOutlined,
   DatabaseOutlined,
-  PlusOutlined,
   SafetyCertificateOutlined,
   SearchOutlined,
-  SettingOutlined,
   StarFilled,
   StarOutlined,
+  UnorderedListOutlined,
 } from "@ant-design/icons";
 import { Alert, Button, Empty, Input, Skeleton, Tabs, Tooltip, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
@@ -187,12 +187,24 @@ export default function HomePage() {
             </div>
           </div>
           <div className={styles.topbarActions}>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate("/models/add")}>
-              <span className={styles.actionText}>新增模型</span>
-            </Button>
-            <Button type="text" icon={<SettingOutlined />} onClick={() => navigate("/models")}>
-              <span className={styles.actionText}>模型管理</span>
-            </Button>
+            <Tooltip title="新增模型">
+              <Button
+                type="text"
+                shape="circle"
+                icon={<AppstoreAddOutlined />}
+                aria-label="新增模型"
+                onClick={() => navigate("/models/add")}
+              />
+            </Tooltip>
+            <Tooltip title="模型管理">
+              <Button
+                type="text"
+                shape="circle"
+                icon={<UnorderedListOutlined />}
+                aria-label="模型管理"
+                onClick={() => navigate("/models")}
+              />
+            </Tooltip>
             <span className={styles.actionDivider} />
             <UserMenu />
           </div>
