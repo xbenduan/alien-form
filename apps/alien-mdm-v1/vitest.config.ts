@@ -10,7 +10,6 @@ export default defineConfig({
       "@binding": src("binding"),
       "@runtime": src("runtime"),
       "@utils": src("utils"),
-      "@components": src("register/global/components"),
       "@app-types": src("runtime/types.ts"),
     },
   },

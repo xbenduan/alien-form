@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Runtime } from "@engine";
 import { RuntimeProvider } from "@binding";
-import { registerComponents } from "../index";
+import { registerFields } from "./index";
 import { complexValueSummary, TableComplexCell } from "./complex-field";
 
 describe("TableComplexCell", () => {
@@ -14,7 +14,7 @@ describe("TableComplexCell", () => {
 
   it("renders the complex field schema in detail mode", () => {
     const runtime = new Runtime();
-    registerComponents(runtime);
+    registerFields(runtime);
 
     render(
       <RuntimeProvider runtime={runtime}>

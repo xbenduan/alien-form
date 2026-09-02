@@ -1,26 +1,24 @@
-import { SearchOutlined } from "@ant-design/icons";
-import { Button, Card, Input, Space } from "antd";
-import { useEffect, useState } from "react";
+import { Button, Card, Space } from "antd";
+import { useEffect, useMemo, useState } from "react";
 import { usePage, type ComponentProps } from "@binding";
 import type { FieldSchema } from "@engine";
+import type { FilterField } from "@utils/schema";
 import { parseFilter } from "./parse-filter";
 import styles from "./index.module.css";
-
-interface FilterField {
-  name: string;
-  title: string;
-  type?: string;
-}
 
 export function Filter({
   value,
   onChange,
   schema,
-  fields: toFields,
+  filters: toFilters,
   defaultValue,
 }: ComponentProps & {
   schema?: FieldSchema;
-  fields?: (schema?: FieldSchema) => FilterField[];
+  filters?: (
+    schema?: FieldSchema,
+    scope?: Record<string, unknown>,
+    domain?: string,
+  ) => FilterField[];
   defaultValue?: unknown;
 }) {
   const page = usePage();
@@ -28,7 +26,10 @@ export function Filter({
   const [draft, setDraft] = useState<Record<string, unknown>>(() =>
     parseFilter(value ?? defaultValue),
   );
-  const fields = toFields?.(schema) ?? [];
+  const fields = useMemo(() => {
+    const scope = page.runtime.createScope(page.domain, page.query, "edit");
+    return toFilters?.(schema, scope, page.domain) ?? [];
+  }, [page, schema, toFilters]);
   const visibleCount = Math.max(1, page.model.meta.filterCount ?? 4);
   const hasExtraFields = fields.length > visibleCount;
 
@@ -36,8 +37,11 @@ export function Filter({
     setDraft(parseFilter(value ?? defaultValue));
   }, [value, defaultValue]);
 
-  const update = (key: string, next: string) => {
-    setDraft((current) => ({ ...current, [key]: next || undefined }));
+  const update = (key: string, next: unknown) => {
+    setDraft((current) => ({
+      ...current,
+      [key]: next === "" || next == null ? undefined : next,
+    }));
   };
   const reset = () => {
     setDraft({});
@@ -55,14 +59,7 @@ export function Filter({
               style={!expanded && index >= visibleCount ? { display: "none" } : undefined}
             >
               <span className={styles.filterLabel}>{field.title}</span>
-              <Input
-                allowClear
-                prefix={<SearchOutlined />}
-                placeholder={`请输入${field.title}`}
-                value={String(draft[field.name] ?? "")}
-                onChange={(event) => update(field.name, event.target.value)}
-                onPressEnter={() => onChange?.(JSON.stringify(draft))}
-              />
+              {field.render(draft[field.name], (next) => update(field.name, next))}
             </label>
           ))}
         </div>

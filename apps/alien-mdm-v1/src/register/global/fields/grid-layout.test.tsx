@@ -3,11 +3,11 @@ import { createForm, type IFormSchema } from "@alien-form/core";
 import { describe, expect, it } from "vitest";
 import { FormRenderer, RuntimeProvider } from "@binding";
 import { Runtime } from "@engine";
-import { registerComponents } from "../index";
+import { registerFields } from "./index";
 
 function renderForm(schema: IFormSchema, initialValues: Record<string, unknown>) {
   const runtime = new Runtime();
-  registerComponents(runtime);
+  registerFields(runtime);
   const form = createForm({
     schema,
     initialValues,

@@ -54,6 +54,7 @@ function nativeProps(props: ComponentProps): Record<string, unknown> {
     "loading",
     "title",
     "description",
+    "isFilter",
     "gridSpan",
     "columns",
     "gutter",
@@ -101,17 +102,24 @@ export function NumberInput(props: ComponentProps) {
 }
 
 export function Select(
-  props: ComponentProps & { onOptionsChange?: "preserve" | "clear" | "first" },
+  props: ComponentProps & { isFilter?: boolean; onOptionsChange?: "preserve" | "clear" | "first" },
 ) {
-  const { value, onChange, dataSource = [], loading, onOptionsChange = "clear" } = props;
+  const { value, onChange, dataSource = [], loading, isFilter, onOptionsChange = "clear" } = props;
   useEffect(() => {
-    if (props.mode === "detail" || loading || value == null || onOptionsChange === "preserve") {
+    // filter 场景下选项与查询条件相互独立,不做“选项刷新即清值”的联动处理。
+    if (
+      props.mode === "detail" ||
+      isFilter ||
+      loading ||
+      value == null ||
+      onOptionsChange === "preserve"
+    ) {
       return;
     }
     const options = dataSource as Array<{ value: unknown }>;
     if (options.some((option) => Object.is(option.value, value))) return;
     onChange?.(onOptionsChange === "first" ? options[0]?.value : undefined);
-  }, [dataSource, loading, onChange, onOptionsChange, props.mode, value]);
+  }, [dataSource, isFilter, loading, onChange, onOptionsChange, props.mode, value]);
 
   if (props.mode === "detail") {
     const option = (dataSource as Array<{ label?: ReactNode; value: unknown }>).find((item) =>

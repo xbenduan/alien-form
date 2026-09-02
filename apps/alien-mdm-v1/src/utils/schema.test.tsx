@@ -2,13 +2,13 @@ import { render, screen } from "@testing-library/react";
 import type { ColumnType } from "antd/es/table";
 import { describe, expect, it } from "vitest";
 import { Runtime } from "@engine";
-import { registerComponents } from "@components/index";
+import { registerFields } from "../register/global/fields";
 import { schemaToColumns } from "./schema";
 
 describe("schemaToColumns", () => {
   it("renders registered leaf and complex field components", () => {
     const runtime = new Runtime();
-    registerComponents(runtime);
+    registerFields(runtime);
     const columns = schemaToColumns(runtime)(
       {
         type: "object",

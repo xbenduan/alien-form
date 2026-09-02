@@ -59,7 +59,7 @@ export function createDefaultPages(modelCode: string, title: string): XPage[] {
             component: "filter",
             props: {
               schema: { $ref: "form-schema" },
-              fields: "{{ $utils.schemaToFields }}",
+              filters: "{{ $utils.schemaToFilters }}",
               defaultValue: "{{ $query.keyword }}",
             },
           },
