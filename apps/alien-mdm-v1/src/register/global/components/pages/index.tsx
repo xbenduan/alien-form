@@ -1,4 +1,4 @@
-import { createForm } from "@alien-form/core";
+import { useCreateForm } from "@alien-form/react";
 import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
 import { Alert, App, Button, Drawer, Modal, Space, Spin } from "antd";
 import {
@@ -101,16 +101,15 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
       ),
     [schema],
   );
-  const form = useMemo(
-    () =>
-      createForm({
-        schema: compiled.schema,
-        scope: runtime.createScope(
-          modelCode,
-          Object.fromEntries(new URLSearchParams(location.search)),
-          mode,
-        ),
-      }),
+  const form = useCreateForm(
+    {
+      schema: compiled.schema,
+      scope: runtime.createScope(
+        modelCode,
+        Object.fromEntries(new URLSearchParams(location.search)),
+        mode,
+      ),
+    },
     [compiled.schema, location.search, mode, modelCode, runtime],
   );
 

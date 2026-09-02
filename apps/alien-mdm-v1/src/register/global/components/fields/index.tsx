@@ -8,8 +8,9 @@ import {
   Switch as AntSwitch,
 } from "antd";
 import { useEffect, type ReactNode } from "react";
-import type { ArrayFieldNode, PrimitiveFieldNode } from "@alien-form/core";
-import { useAtom, type ComponentProps } from "@binding";
+import type { ArrayFieldNode, FormInstance, PrimitiveFieldNode } from "@alien-form/core";
+import { useFieldSnapshot, useRegisterField, useSignalValue } from "@alien-form/react";
+import type { ComponentProps } from "@binding";
 import styles from "./index.module.css";
 
 function displayValue(value: unknown): ReactNode {
@@ -23,12 +24,25 @@ function DetailValue({ value }: { value: unknown }) {
   return <div className={styles.detailValue}>{displayValue(value)}</div>;
 }
 
+function readArrayPrimitiveSnapshot(field: PrimitiveFieldNode) {
+  return {
+    value: field.value(),
+    title: field.title(),
+    description: field.description(),
+    required: field.required(),
+    disabled: field.disabled(),
+    display: field.display(),
+    errors: field.errors(),
+  };
+}
+
 function nativeProps(props: ComponentProps): Record<string, unknown> {
   const result = { ...props };
   for (const key of [
     "value",
     "onChange",
     "mode",
+    "form",
     "field",
     "node",
     "slots",
@@ -138,21 +152,21 @@ export function ObjectField({
 }
 
 function ArrayPrimitiveField({
+  form,
   field,
   fieldKey,
   readonly,
 }: {
+  form: FormInstance;
   field: PrimitiveFieldNode;
   fieldKey: string;
   readonly: boolean;
 }) {
-  const value = useAtom(field.value as () => unknown);
-  const title = useAtom(field.title as () => string | undefined);
-  const description = useAtom(field.description as () => string | undefined);
-  const required = useAtom(field.required as () => boolean);
-  const disabled = useAtom(field.disabled as () => boolean);
-  const display = useAtom(field.display as () => "visible" | "hidden" | "none");
-  const errors = useAtom(field.errors as () => Array<{ message: string }>);
+  const { value, title, description, required, disabled, display, errors } = useFieldSnapshot(
+    field,
+    readArrayPrimitiveSnapshot,
+  );
+  useRegisterField(form, field);
 
   if (display === "none") return null;
   return (
@@ -188,13 +202,14 @@ function ArrayPrimitiveField({
 }
 
 export function ArrayCards({
+  form,
   field,
   mode,
   title,
   description,
 }: ComponentProps & { title?: string; description?: string }) {
   const array = field as ArrayFieldNode;
-  const rows = array.rows();
+  const rows = useSignalValue(array.rows);
   const readonly = mode === "detail";
 
   return (
@@ -233,6 +248,7 @@ export function ArrayCards({
                     return (
                       <ArrayPrimitiveField
                         key={child.id}
+                        form={form}
                         field={child as PrimitiveFieldNode}
                         fieldKey={key}
                         readonly={readonly}

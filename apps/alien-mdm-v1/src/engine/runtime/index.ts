@@ -13,7 +13,7 @@ export type SchemaLoader = (modelCode: string) => Promise<BuilderSchema>;
 export class Runtime {
   private readonly components = new Registry<ComponentRegistration>();
   private readonly services = new Registry<ServiceRegistration>();
-  private readonly constants = new Registry<unknown>();
+  private readonly enums = new Registry<unknown>();
   private schemaLoader?: SchemaLoader;
 
   constructor(private readonly utilities: Record<string, unknown> = {}) {}
@@ -26,8 +26,8 @@ export class Runtime {
     this.services.set(registration.code, registration, domain);
   }
 
-  constant(key: string, value: unknown, domain?: string): void {
-    this.constants.set(key, value, domain);
+  enum(key: string, value: unknown, domain?: string): void {
+    this.enums.set(key, value, domain);
   }
 
   resolveComponent(code: string, domain?: string): ComponentRegistration | undefined {
@@ -45,7 +45,7 @@ export class Runtime {
         this.services.values(domain).map(([code, registration]) => [code, registration.send]),
       ),
       $utils: this.utilities,
-      $enums: toNamespace(this.constants.values(domain)),
+      $enums: toNamespace(this.enums.values(domain)),
       $query: query,
     };
   }

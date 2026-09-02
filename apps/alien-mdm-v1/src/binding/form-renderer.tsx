@@ -1,14 +1,18 @@
 import { compileExpr, type FieldNode, type FormInstance } from "@alien-form/core";
+import {
+  shallowEqual,
+  useFieldSnapshot,
+  useRegisterField,
+  useSignalSnapshot,
+} from "@alien-form/react";
 import { Alert } from "antd";
-import { Fragment, useEffect, type ComponentType, type ReactNode } from "react";
+import { Fragment, useCallback, type ComponentType, type ReactNode } from "react";
 import { isCompiledValue, type CompiledNode } from "@engine";
 import { useRuntime } from "./runtime-provider";
-import { useAtom } from "./use-atom";
 import styles from "./form-renderer.module.css";
 
-const emptyValue = () => undefined;
-
 export interface ComponentProps {
+  form: FormInstance;
   field: FieldNode;
   node: CompiledNode;
   slots: Record<string, ReactNode>;
@@ -47,6 +51,14 @@ function evaluateValue(value: unknown, scope: Record<string, unknown>): unknown 
   );
 }
 
+function containsExpression(value: unknown): boolean {
+  if (isCompiledValue(value)) return true;
+  if (typeof value === "string")
+    return value.trim().startsWith("{{") && value.trim().endsWith("}}");
+  if (Array.isArray(value)) return value.some(containsExpression);
+  return !!value && typeof value === "object" && Object.values(value).some(containsExpression);
+}
+
 function rowValues(form: FormInstance, field: FieldNode): Record<string, unknown> | undefined {
   if (!field.row) return undefined;
   return Object.fromEntries(
@@ -57,6 +69,46 @@ function rowValues(form: FormInstance, field: FieldNode): Record<string, unknown
 function childField(field: FieldNode, key: string): FieldNode | undefined {
   if (field.kind !== "object" && field.kind !== "void") return undefined;
   return field.children.get(key);
+}
+
+function readFieldSnapshot(field: FieldNode) {
+  return {
+    display: field.display(),
+    componentCode: field.component(),
+    errors: field.errors(),
+    disabled: field.disabled(),
+    required: field.required(),
+    title: field.title(),
+    description: field.description(),
+    loading: field.loading(),
+    dataSource: field.dataSource(),
+    value: field.kind === "primitive" ? field.value() : undefined,
+  };
+}
+
+function useNodeProps(node: CompiledNode, field: FieldNode, form: FormInstance) {
+  const read = useCallback(() => {
+    const fieldProps = field.componentProps();
+    const effectiveProps = Object.fromEntries(
+      Array.from(new Set([...Object.keys(node.props), ...Object.keys(fieldProps)])).map((key) => [
+        key,
+        fieldProps[key] === node.schema.props?.[key] ? node.props[key] : fieldProps[key],
+      ]),
+    );
+    if (!containsExpression(effectiveProps)) return effectiveProps;
+
+    const value = field.kind === "primitive" ? field.value() : form.project(field.path);
+    return evaluateValue(effectiveProps, {
+      ...form.scope,
+      $values: form.values(),
+      $self: field,
+      $form: form,
+      $value: value,
+      $row: rowValues(form, field),
+      $path: field.path,
+    }) as Record<string, unknown>;
+  }, [field, form, node]);
+  return useSignalSnapshot(read, shallowEqual);
 }
 
 export function RenderNode({
@@ -71,21 +123,20 @@ export function RenderNode({
   domain?: string;
 }) {
   const runtime = useRuntime();
-  const display = useAtom(field.display as () => "visible" | "hidden" | "none");
-  const componentCode = useAtom(field.component as () => string);
-  const fieldProps = useAtom(field.componentProps as () => Record<string, unknown>);
-  const values = useAtom(form.values as () => Record<string, unknown>);
-  const errors = useAtom(field.errors as () => Array<{ message: string }>);
-  const disabled = useAtom(field.disabled as () => boolean);
-  const required = useAtom(field.required as () => boolean);
-  const title = useAtom(field.title as () => string | undefined);
-  const description = useAtom(field.description as () => string | undefined);
-  const loading = useAtom(field.loading as () => boolean);
-  const dataSource = useAtom(field.dataSource as () => unknown[]);
-  const primitiveValue = useAtom(
-    (field.kind === "primitive" ? field.value : emptyValue) as () => unknown,
-  );
-  const value = field.kind === "primitive" ? primitiveValue : form.project(field.path);
+  const {
+    display,
+    componentCode,
+    errors,
+    disabled,
+    required,
+    title,
+    description,
+    loading,
+    dataSource,
+    value,
+  } = useFieldSnapshot(field, readFieldSnapshot);
+  const props = useNodeProps(node, field, form);
+  useRegisterField(form, field);
   const mode = typeof form.scope.mode === "string" ? form.scope.mode : undefined;
 
   if (display === "none") return null;
@@ -94,22 +145,6 @@ export function RenderNode({
     return <Alert type="error" message={`Component not registered: ${componentCode}`} />;
   }
 
-  const scope = {
-    ...form.scope,
-    $values: values,
-    $self: field,
-    $form: form,
-    $value: value,
-    $row: rowValues(form, field),
-    $path: field.path,
-  };
-  const effectiveProps = Object.fromEntries(
-    Array.from(new Set([...Object.keys(node.props), ...Object.keys(fieldProps)])).map((key) => [
-      key,
-      fieldProps[key] === node.schema.props?.[key] ? node.props[key] : fieldProps[key],
-    ]),
-  );
-  const props = evaluateValue(effectiveProps, scope) as Record<string, unknown>;
   const slotted = new Set<CompiledNode>();
   const slots = Object.fromEntries(
     Object.entries(node.slots).map(([name, slot]) => {
@@ -152,7 +187,7 @@ export function RenderNode({
   const renderedChildren = children.length ? children : undefined;
   const alienProps =
     registration.adapter === "alien"
-      ? { ...controlProps, field, node, slots, mode, value, title, description }
+      ? { ...controlProps, form, field, node, slots, mode, value, title, description }
       : controlProps;
   const control = renderedChildren ? (
     <Component {...alienProps}>{renderedChildren}</Component>
@@ -195,11 +230,6 @@ export function FormRenderer({
   nodes?: CompiledNode[];
   domain?: string;
 }) {
-  useEffect(() => {
-    form.mount();
-    return () => form.unmount();
-  }, [form]);
-
   const renderNodes =
     nodes ?? Array.from(form.root.children, ([key, field]) => fallbackNode(key, field));
   return (

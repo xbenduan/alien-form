@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Alert, Empty, Segmented, Tabs } from "antd";
+import { Alert, Empty, Segmented } from "antd";
 import { PageRoot } from "@alien-form/engine/react";
 import { buildPreviewPage, type ModelSchema } from "../builder";
 import { getAppRuntime } from "@runtime/create-runtime";

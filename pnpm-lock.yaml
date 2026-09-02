@@ -74,13 +74,16 @@ importers:
         version: 8.0.12(@types/node@24.12.3)
       vitest:
         specifier: ^2.1.9
-        version: 2.1.9(@types/node@24.12.3)
+        version: 2.1.9(@types/node@24.12.3)(happy-dom@15.0.0)
 
   apps/alien-mdm-v1:
     dependencies:
       '@alien-form/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@alien-form/react':
+        specifier: workspace:*
+        version: link:../../packages/react
       '@ant-design/icons':
         specifier: ^6.2.5
         version: 6.2.5(react-dom@18.3.1)(react@18.3.1)
@@ -97,6 +100,9 @@ importers:
         specifier: ^6.30.1
         version: 6.30.1(react-dom@18.3.1)(react@18.3.1)
     devDependencies:
+      '@testing-library/react':
+        specifier: ^16.0.0
+        version: 16.0.0(@testing-library/dom@10.4.1)(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1)(react@18.3.1)
       '@types/node':
         specifier: ^24.12.3
         version: 24.12.3
@@ -109,6 +115,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.0.1
         version: 6.0.1(vite@8.0.12)
+      happy-dom:
+        specifier: ^15.0.0
+        version: 15.0.0
       typescript:
         specifier: ~6.0.2
         version: 6.0.2
@@ -117,7 +126,7 @@ importers:
         version: 8.0.12(@types/node@24.12.3)
       vitest:
         specifier: ^2.1.9
-        version: 2.1.9(@types/node@24.12.3)
+        version: 2.1.9(@types/node@24.12.3)(happy-dom@15.0.0)
 
   apps/alien-server:
     dependencies:
@@ -5141,7 +5150,7 @@ packages:
       fsevents: 2.3.3
     dev: true
 
-  /vitest@2.1.9(@types/node@24.12.3):
+  /vitest@2.1.9(@types/node@24.12.3)(happy-dom@15.0.0):
     resolution: {integrity: sha512-MSmPM9REYqDGBI8439mA4mWhV5sKmDlBKWIYbA3lRb2PTHACE0mgKwA8yQ2xq9vxDTuk4iPrECBAEW2aoFXY0Q==}
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
@@ -5177,6 +5186,7 @@ packages:
       chai: 5.3.3
       debug: 4.4.3
       expect-type: 1.4.0
+      happy-dom: 15.0.0
       magic-string: 0.30.21
       pathe: 1.1.2
       std-env: 3.10.0

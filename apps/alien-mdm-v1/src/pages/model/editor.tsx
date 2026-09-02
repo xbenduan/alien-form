@@ -1,4 +1,4 @@
-import { createForm } from "@alien-form/core";
+import { useCreateForm } from "@alien-form/react";
 import { SaveOutlined } from "@ant-design/icons";
 import { Alert, App, Button, Card, Flex, Skeleton, Space, Steps } from "antd";
 import { useEffect, useMemo, useState } from "react";
@@ -66,13 +66,12 @@ export function ModelEditor({ modelCode }: { modelCode?: string }) {
       ),
     [],
   );
-  const form = useMemo(
-    () =>
-      createForm({
-        schema: compiled.schema,
-        initialValues: DEFAULT_VALUES,
-        scope: runtime.createScope(undefined, {}),
-      }),
+  const form = useCreateForm(
+    {
+      schema: compiled.schema,
+      initialValues: DEFAULT_VALUES,
+      scope: runtime.createScope(undefined, {}),
+    },
     [compiled.schema, runtime],
   );
   const visibleNodes = useMemo(() => {

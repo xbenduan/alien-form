@@ -73,6 +73,62 @@ export function useSignalValue<T>(sig: Signal<T> | Computed<T>): T {
   return useSyncExternalStore(subscribe, getSnapshot);
 }
 
+export type EqualityFn<T> = (previous: T, next: T) => boolean;
+
+export function shallowEqual<T>(previous: T, next: T): boolean {
+  if (Object.is(previous, next)) return true;
+  if (!previous || !next || typeof previous !== "object" || typeof next !== "object") {
+    return false;
+  }
+  const previousRecord = previous as Record<string, unknown>;
+  const nextRecord = next as Record<string, unknown>;
+  const previousKeys = Object.keys(previousRecord);
+  const nextKeys = Object.keys(nextRecord);
+  if (previousKeys.length !== nextKeys.length) return false;
+  return previousKeys.every(
+    (key) =>
+      Object.prototype.hasOwnProperty.call(nextRecord, key) &&
+      Object.is(previousRecord[key], nextRecord[key]),
+  );
+}
+
+/**
+ * Subscribes to every signal read by `read`, while exposing only meaningful
+ * snapshot changes to React.
+ */
+export function useSignalSnapshot<T>(read: () => T, isEqual: EqualityFn<T> = Object.is): T {
+  const snapshotRef = useRef<{ read: () => T; value: T; version: number }>();
+  if (!snapshotRef.current || snapshotRef.current.read !== read) {
+    const value = read();
+    const previous = snapshotRef.current;
+    snapshotRef.current = {
+      read,
+      value: previous && isEqual(previous.value, value) ? previous.value : value,
+      version: (previous?.version ?? 0) + 1,
+    };
+  }
+
+  const subscribe = useCallback(
+    (notify: () => void) =>
+      effect(() => {
+        const next = read();
+        const current = snapshotRef.current!;
+        if (current.read !== read) return;
+        if (isEqual(current.value, next)) return;
+        snapshotRef.current = {
+          read,
+          value: next,
+          version: current.version + 1,
+        };
+        notify();
+      }),
+    [isEqual, read],
+  );
+  const getSnapshot = useCallback(() => snapshotRef.current!.version, []);
+  useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  return snapshotRef.current.value;
+}
+
 /**
  * 聚合订阅：把一个字段在渲染中读取的所有 signal 合并为单个 useSyncExternalStore。
  * 一个 effect 追踪 read(field) 读到的全部 signal，任意一个变化即 bump version；
@@ -82,24 +138,13 @@ export function useSignalValue<T>(sig: Signal<T> | Computed<T>): T {
  * 相比逐属性 useSignalValue（单字段最多 14 个 effect + 14 个 store），
  * 此处每字段仅 1 个 effect + 1 个 store，大幅降低超大表单的挂载开销与 GC 压力。
  */
-function useFieldRender<F extends FieldNode, T>(field: F, read: (field: F) => T): T {
-  const versionRef = useRef(0);
-  const subscribe = useCallback(
-    (notify: () => void) => {
-      let mounted = false;
-      return effect(() => {
-        read(field);
-        if (mounted) {
-          versionRef.current++;
-          notify();
-        } else mounted = true;
-      });
-    },
-    [field],
-  );
-  const getSnapshot = useCallback(() => versionRef.current, []);
-  useSyncExternalStore(subscribe, getSnapshot);
-  return read(field);
+export function useFieldSnapshot<F extends FieldNode, T>(
+  field: F,
+  read: (field: F) => T,
+  isEqual: EqualityFn<T> = shallowEqual,
+): T {
+  const readSnapshot = useCallback(() => read(field), [field, read]);
+  return useSignalSnapshot(readSnapshot, isEqual);
 }
 
 function readPrimitive(field: PrimitiveFieldNode) {
@@ -236,7 +281,7 @@ export function useFormScope<T extends Record<string, unknown> = Record<string, 
   return useForm().scope as T;
 }
 
-function useRegisterField(form: FormInstance, field: FieldNode): void {
+export function useRegisterField(form: FormInstance, field: FieldNode): void {
   useEffect(() => {
     form._registerField(field);
     return () => form._unregisterField(field);
@@ -426,7 +471,7 @@ const PrimitiveFieldSlotInner: React.FC<{ field: PrimitiveFieldNode }> = memo(({
     description,
     validateStatus,
     decoratorProps,
-  } = useFieldRender(field, readPrimitive);
+  } = useFieldSnapshot(field, readPrimitive);
   const onChange = useCallback((v: any) => field.setValue(v), [field]);
   useRegisterField(ctx.form, field);
   if (display === "none") return null;
@@ -487,7 +532,7 @@ const ArrayFieldSlotInner: React.FC<{ field: ArrayFieldNode; schema: IFieldSchem
       componentProps,
       decoratorProps,
       rowNodes,
-    } = useFieldRender(field, readArray);
+    } = useFieldSnapshot(field, readArray);
     useRegisterField(ctx.form, field);
     const componentDisabled = Boolean(
       (componentProps as Record<string, any> | undefined)?.disabled,
@@ -595,7 +640,7 @@ const ObjectFieldSlotInner: React.FC<{ field: ObjectFieldNode; schema: IFieldSch
       required,
       errors,
       decoratorProps,
-    } = useFieldRender(field, readObject);
+    } = useFieldSnapshot(field, readObject);
     useRegisterField(ctx.form, field);
     if (display === "none") return null;
     if (display === "hidden") return <div style={{ display: "none" }} />;
@@ -651,7 +696,7 @@ const VoidFieldSlotInner: React.FC<{ field: FieldNode; schema: IFieldSchema }> =
   ({ field, schema }) => {
     const ctx = useContext(FormContext)!;
     const { components } = ctx;
-    const { display, componentName, componentProps, title, description } = useFieldRender(
+    const { display, componentName, componentProps, title, description } = useFieldSnapshot(
       field,
       readVoid,
     );
