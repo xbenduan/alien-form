@@ -1,23 +1,21 @@
 .home {
   width: 100%;
   min-height: 100vh;
-  padding-bottom: 48px;
+  padding-bottom: 64px;
 }
 
 .topbar {
-  position: relative;
-  z-index: 1;
+  border-bottom: 1px solid #e8edf3;
   background: #fff;
-  box-shadow: 0 3px 12px rgba(23, 32, 51, 0.12);
 }
 
 .topbarPrimary {
   display: flex;
   width: 100%;
   max-width: 1440px;
-  min-height: 72px;
+  min-height: 68px;
   margin: 0 auto;
-  padding: 12px 24px;
+  padding: 10px 32px;
   align-items: center;
   justify-content: space-between;
 }
@@ -30,26 +28,28 @@
 
 .brandMark {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 6px;
-  background: #1677ff;
+  background: #1769e0;
   color: #fff;
   font-size: 18px;
   place-items: center;
 }
 
 .kicker {
-  color: #1677ff;
-  font-size: 12px;
+  display: block;
+  color: #7b8799;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 1.2px;
+  letter-spacing: 1px;
+  line-height: 1.4;
 }
 
 .brandTitle.ant-typography {
-  margin: 2px 0 0;
+  margin: 1px 0 0;
   color: #172033;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.25;
 }
 
@@ -59,22 +59,56 @@
   gap: 4px;
 }
 
-.actionDivider:global(.ant-divider-vertical) {
+.actionDivider {
+  display: block;
   height: 24px;
   margin-inline: 8px;
-  border-color: #d9d9d9;
+  border-left: 1px solid #dfe5ec;
+}
+
+.mainContent {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.favoriteSection {
+  margin-bottom: 28px;
+}
+
+.sectionHeader {
+  display: flex;
+  min-height: 40px;
+  margin-bottom: 16px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.sectionHeader :global(.ant-typography) {
+  display: block;
+}
+
+.sectionHeader h2:global(.ant-typography) {
+  margin: 0 0 2px;
+  color: #172033;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.sectionHeader span:global(.ant-typography) {
+  color: #7b8799;
+  font-size: 12px;
 }
 
 .toolbar {
   display: flex;
-  width: 100%;
-  max-width: 1440px;
   min-height: 56px;
-  margin: 0 auto;
-  padding: 20px 24px 0;
-  align-items: flex-end;
+  margin-bottom: 24px;
+  align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: 12px;
 }
 
 .toolbar :global(.ant-tabs-nav) {
@@ -83,7 +117,6 @@
 
 .search {
   display: flex;
-  min-height: 56px;
   align-items: center;
   gap: 12px;
 }
@@ -99,26 +132,16 @@
   white-space: nowrap;
 }
 
-.mainContent {
-  width: 100%;
-  max-width: 1440px;
-  margin: 0 auto;
-  padding: 24px;
-}
-
 .grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  gap: 14px;
 }
 
 .card {
   position: relative;
-  display: flex;
-  padding: 18px;
-  align-items: flex-start;
-  gap: 16px;
-  border: 1px solid #e0e7f0;
+  overflow: hidden;
+  border: 1px solid #dfe6ee;
   border-radius: 8px;
   background: #fff;
   color: #172033;
@@ -127,15 +150,32 @@
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
-    transform 160ms ease;
+    background-color 160ms ease;
 }
 
 .card:hover,
-.card:focus-visible {
-  border-color: #8bb8f5;
-  box-shadow: 0 10px 24px rgba(30, 65, 110, 0.1);
+.card:focus-within {
+  border-color: #8eb9ee;
+  background: #fbfdff;
+  box-shadow: 0 8px 20px rgba(32, 67, 105, 0.08);
+}
+
+.cardMain {
+  display: flex;
+  width: 100%;
+  min-height: 118px;
+  padding: 16px;
+  align-items: flex-start;
+  gap: 14px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cardMain:focus-visible {
   outline: none;
-  transform: translateY(-2px);
 }
 
 .cardIcon {
@@ -144,10 +184,18 @@
   height: 42px;
   flex: 0 0 42px;
   border-radius: 7px;
-  background: #edf5ff;
-  color: #1677ff;
   font-size: 20px;
   place-items: center;
+}
+
+.systemIcon {
+  background: #edf5ff;
+  color: #1769e0;
+}
+
+.businessIcon {
+  background: #eaf8f2;
+  color: #138a68;
 }
 
 .cardContent {
@@ -156,30 +204,93 @@
   flex: 1;
   flex-direction: column;
   gap: 2px;
+  padding-right: 24px;
 }
 
 .cardTitle {
   overflow: hidden;
   color: #172033;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .cardDesc {
+  display: -webkit-box;
   overflow: hidden;
+  min-height: 20px;
+  margin-top: 2px;
   color: #7b8799;
   font-size: 13px;
   line-height: 20px;
-  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+
+.cardFooter {
+  display: flex;
+  margin-top: 8px;
+  align-items: center;
+  gap: 8px;
+  color: #8b96a7;
+  font-size: 12px;
   white-space: nowrap;
 }
 
-.cardMeta {
-  margin-top: 4px;
-  color: #98a2b3;
-  font-size: 12px;
+.groupTag {
+  display: inline-flex;
+  height: 22px;
+  padding-inline: 7px;
+  align-items: center;
+  border-radius: 4px;
+  background: #eaf8f2;
+  color: #13795b;
+  font-weight: 500;
+}
+
+.systemTag {
+  background: #edf5ff;
+  color: #1769e0;
+}
+
+.updatedAt {
+  display: inline-flex;
+  min-width: 0;
+  margin-left: auto;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.favoriteButton:global(.ant-btn) {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  z-index: 1;
+  color: #a1aab8;
+}
+
+.favoriteButton:global(.ant-btn):hover,
+.favoriteActive:global(.ant-btn) {
+  color: #e49b0f;
+}
+
+.skeletonCard {
+  min-height: 118px;
+  padding: 20px;
+  border: 1px solid #dfe6ee;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.empty {
+  padding: 64px 24px;
+  border: 1px dashed #d7dee8;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.65);
 }
 
 @media (max-width: 640px) {
@@ -188,23 +299,34 @@
     padding-inline: 16px;
   }
 
-  .topbarActions :global(.ant-btn) {
-    padding-inline: 8px;
+  .kicker,
+  .actionText {
+    display: none;
   }
 
-  .toolbar {
-    padding: 16px 16px 0;
-    align-items: stretch;
-    flex-direction: column;
-    gap: 0;
+  .topbarActions :global(.ant-btn) {
+    width: 34px;
+    padding-inline: 0;
   }
 
   .mainContent {
-    padding: 16px;
+    padding: 20px 16px;
+  }
+
+  .sectionHeader {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .toolbar {
+    margin-bottom: 18px;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
   }
 
   .search {
-    min-height: auto;
     justify-content: space-between;
   }
 
@@ -218,7 +340,12 @@
 }
 
 @media (min-width: 641px) and (max-width: 1100px) {
+  .topbarPrimary,
+  .mainContent {
+    padding-inline: 24px;
+  }
+
   .grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

@@ -23,23 +23,38 @@
 
 .tableCard {
   overflow: hidden;
-  border: 1px solid rgba(22, 119, 255, 0.12);
-  border-radius: 12px;
+  border: 1px solid #e1e7ef;
+  border-radius: 8px;
   background: #fff;
+  box-shadow: 0 4px 14px rgba(23, 32, 51, 0.05);
 }
 
-.toolbar {
+.listToolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
+  justify-content: flex-end;
 }
 
-.toolbarTitle {
-  color: #172033;
-  font-size: 15px;
-  font-weight: 600;
+.tableCard :global(.ant-table-pagination.ant-pagination) {
+  margin-inline: var(--ant-margin);
+}
+
+.titleLink:global(.ant-btn) {
+  max-width: 100%;
+  height: auto;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.openModes {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  gap: 2px 12px;
+  color: #4e5969;
+  font-size: 12px;
+  line-height: 20px;
+  white-space: nowrap;
 }
 
 .stepCard :global(.ant-card-body) {
@@ -76,9 +91,8 @@
     left: 16px;
   }
 
-  .toolbar {
-    align-items: flex-start;
-    flex-direction: column;
+  .tableCard {
+    padding-inline: 8px;
   }
 
   .basicGrid :global([data-alien-form]) {

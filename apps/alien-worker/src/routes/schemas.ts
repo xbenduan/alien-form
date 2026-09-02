@@ -15,12 +15,8 @@ export const schemaRoutes = new Hono<{ Bindings: Env }>();
 schemaRoutes.get("/", async (c) => {
   const entries = await listSchemaEntries(c.env.DB);
   const summaries = entries.map(({ schema, updatedAt }) => ({
-    name: schema.meta.name,
-    title: schema.meta.title,
-    subtitle: schema.meta.subtitle,
-    description: schema.meta.description,
-    group: schema.meta.group,
-    fieldCount: Object.keys(schema.properties ?? {}).length,
+    ...schema.meta,
+    fieldCount: Object.keys(schema.definitions?.["form-schema"]?.properties ?? {}).length,
     updatedAt,
   }));
   return c.json(summaries);

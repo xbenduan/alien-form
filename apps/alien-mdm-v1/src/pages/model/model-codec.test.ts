@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createDefaultPages, decodeModel, encodeModel } from "./model-codec";
+import {
+  createDefaultPages,
+  createModelCopyValues,
+  decodeModel,
+  encodeModel,
+  retargetModelPages,
+} from "./model-codec";
 
 describe("model codec", () => {
   it("stores fields only in definitions.form-schema", () => {
@@ -51,6 +57,32 @@ describe("model codec", () => {
       pagesJson: JSON.stringify(pages),
     });
     expect(model["x-pages"][0]?.title).toBe("商品档案");
+  });
+
+  it("creates copy values with a new identity and retargeted pages", () => {
+    const model = encodeModel({
+      modelCode: "products",
+      title: "商品",
+      fieldsJson: JSON.stringify({ name: { type: "string" } }),
+    });
+
+    const copy = createModelCopyValues(model);
+    const pages = JSON.parse(copy.pagesJson ?? "[]");
+
+    expect(copy.modelCode).toBe("products_copy");
+    expect(copy.title).toBe("商品副本");
+    expect(pages[0].schema.properties.table.props.modelCode).toBe("products_copy");
+    expect(pages[0].schema.properties.table.props.loadData).toContain('model: "products_copy"');
+  });
+
+  it("retargets copied pages again when the draft model code changes", () => {
+    const pages = createDefaultPages("products_copy", "商品副本");
+    const retargeted = retargetModelPages(pages, "products_copy", "archived_products");
+
+    expect(retargeted[0]?.schema.properties.table?.props?.modelCode).toBe("archived_products");
+    expect(retargeted[0]?.schema.properties.table?.props?.loadData).toContain(
+      'model: "archived_products"',
+    );
   });
 
   it("stores and restores form groups inside form-schema", () => {

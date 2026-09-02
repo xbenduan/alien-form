@@ -14,11 +14,7 @@ export const schemaRoutes = new Hono();
 /** GET /api/schemas → ModelSummary[]（落地页 / 列表）。 */
 schemaRoutes.get("/", (c) => {
   const summaries = listSchemaEntries().map(({ schema, updatedAt }) => ({
-    name: schema.meta.name,
-    title: schema.meta.title,
-    subtitle: schema.meta.subtitle,
-    description: schema.meta.description,
-    group: schema.meta.group,
+    ...schema.meta,
     fieldCount: Object.keys(formProperties(schema)).length,
     updatedAt,
   }));

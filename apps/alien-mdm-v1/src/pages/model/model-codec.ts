@@ -150,6 +150,50 @@ function parsePages(raw: string | undefined, modelCode: string, title: string): 
   return pages;
 }
 
+function retargetValue<T>(value: T, sourceModelCode: string, targetModelCode: string): T {
+  if (typeof value === "string") {
+    if (value === sourceModelCode) return targetModelCode as T;
+    const sourceLiteral = JSON.stringify(sourceModelCode);
+    const targetLiteral = JSON.stringify(targetModelCode);
+    return value.replaceAll(sourceLiteral, targetLiteral) as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => retargetValue(item, sourceModelCode, targetModelCode)) as T;
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, child]) => [
+        key,
+        retargetValue(child, sourceModelCode, targetModelCode),
+      ]),
+    ) as T;
+  }
+  return value;
+}
+
+export function retargetModelPages(
+  pages: XPage[],
+  sourceModelCode: string,
+  targetModelCode: string,
+): XPage[] {
+  return retargetValue(pages, sourceModelCode, targetModelCode);
+}
+
+export function createModelCopyValues(model: BuilderSchema): ModelEditorValues {
+  const values = decodeModel(model);
+  const modelCode = `${model.meta.name}_copy`;
+  return {
+    ...values,
+    modelCode,
+    title: `${model.meta.title}副本`,
+    pagesJson: JSON.stringify(
+      retargetModelPages(model["x-pages"], model.meta.name, modelCode),
+      null,
+      2,
+    ),
+  };
+}
+
 export function encodeModel(values: ModelEditorValues): BuilderSchema {
   const modelCode = values.modelCode.trim();
   const title = values.title.trim();

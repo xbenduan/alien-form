@@ -1,7 +1,7 @@
 import { Navigate, useParams } from "react-router-dom";
 import { ModelEditor } from "./components/model-editor";
 
-export default function ModelEditPage() {
+export default function ModelCopyPage() {
   const { modelCode } = useParams();
-  return modelCode ? <ModelEditor modelCode={modelCode} /> : <Navigate to="/models" replace />;
+  return modelCode ? <ModelEditor copyFrom={modelCode} /> : <Navigate to="/models" replace />;
 }

@@ -1,11 +1,6 @@
-import type { BuilderSchema } from "@engine";
+import type { BuilderSchema, ModelMeta } from "@engine";
 
-export interface ModelSummary {
-  name: string;
-  title: string;
-  subtitle?: string;
-  description?: string;
-  group?: string;
+export interface ModelSummary extends ModelMeta {
   fieldCount: number;
   updatedAt: string;
 }

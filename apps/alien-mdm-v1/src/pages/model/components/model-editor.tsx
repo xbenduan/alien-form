@@ -5,16 +5,18 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FormRenderer, useRuntime } from "@binding";
 import { compileForm, type BuilderSchema } from "@engine";
-import { PageBreadcrumb } from "../../components";
+import { PageBreadcrumb } from "../../../components";
 import { transport } from "@runtime/transport";
 import {
   createDefaultPages,
+  createModelCopyValues,
   decodeModel,
   encodeModel,
+  retargetModelPages,
   type ModelEditorValues,
-} from "./model-codec";
-import { defaultFields, defaultGroups, modelEditSchema } from "./model-edit-schema";
-import styles from "./index.module.css";
+} from "../model-codec";
+import { defaultFields, defaultGroups, modelEditSchema } from "../model-edit-schema";
+import styles from "../index.module.css";
 
 const STEPS = [
   {
@@ -50,14 +52,17 @@ const DEFAULT_VALUES: Partial<ModelEditorValues> = {
   pagesJson: "",
 };
 
-export function ModelEditor({ modelCode }: { modelCode?: string }) {
+export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyFrom?: string }) {
   const runtime = useRuntime();
   const navigate = useNavigate();
   const { message } = App.useApp();
+  const sourceModelCode = modelCode ?? copyFrom;
+  const isCopy = Boolean(copyFrom);
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(Boolean(modelCode));
+  const [loading, setLoading] = useState(Boolean(sourceModelCode));
   const [error, setError] = useState<string>();
+  const [copyDraftModelCode, setCopyDraftModelCode] = useState<string>();
   const compiled = useMemo(
     () =>
       compileForm(
@@ -80,14 +85,18 @@ export function ModelEditor({ modelCode }: { modelCode?: string }) {
   }, [compiled.nodes, step]);
 
   useEffect(() => {
-    if (!modelCode) return;
-    form.field("modelCode")?.setDisabled(true);
+    if (!sourceModelCode) return;
+    if (modelCode) form.field("modelCode")?.setDisabled(true);
     void transport
-      .send<BuilderSchema>(`/api/schemas/${modelCode}`)
-      .then((model) => form.setValues(decodeModel(model)))
+      .send<BuilderSchema>(`/api/schemas/${sourceModelCode}`)
+      .then((model) => {
+        const values = isCopy ? createModelCopyValues(model) : decodeModel(model);
+        if (isCopy) setCopyDraftModelCode(values.modelCode);
+        form.setValues(values);
+      })
       .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)))
       .finally(() => setLoading(false));
-  }, [form, modelCode]);
+  }, [form, isCopy, modelCode, sourceModelCode]);
 
   const validateCurrentStep = async (): Promise<boolean> => {
     const errors = await Promise.all(
@@ -130,7 +139,13 @@ export function ModelEditor({ modelCode }: { modelCode?: string }) {
     setSaving(true);
     try {
       const values = form.values() as ModelEditorValues;
-      const model = encodeModel(values);
+      let model = encodeModel(values);
+      if (copyDraftModelCode && copyDraftModelCode !== model.meta.name) {
+        model = {
+          ...model,
+          "x-pages": retargetModelPages(model["x-pages"], copyDraftModelCode, model.meta.name),
+        };
+      }
       await transport.send<BuilderSchema>(
         modelCode ? `/api/schemas/${modelCode}` : "/api/schemas",
         {
@@ -138,7 +153,7 @@ export function ModelEditor({ modelCode }: { modelCode?: string }) {
           body: JSON.stringify(model),
         },
       );
-      message.success(modelCode ? "模型保存成功" : "模型创建成功");
+      message.success(modelCode ? "模型保存成功" : isCopy ? "模型复制成功" : "模型创建成功");
       navigate("/models");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -159,18 +174,18 @@ export function ModelEditor({ modelCode }: { modelCode?: string }) {
       <PageBreadcrumb
         items={[
           { title: "模型管理", to: "/models" },
-          { title: modelCode ? "编辑模型" : "新增模型" },
+          { title: modelCode ? "编辑模型" : isCopy ? "复制模型" : "新增模型" },
         ]}
       />
       <Card className={styles.stepCard}>
         <Steps current={step} items={STEPS.map(({ title }) => ({ title }))} />
       </Card>
-      {error && <Alert type="error" message={error} showIcon />}
+      {error && <Alert type="error" title={error} showIcon />}
       <Card className={`${styles.editorCard} ${stepClass}`} title={STEPS[step].title}>
         {loading ? (
           <Skeleton active />
         ) : (
-          <FormRenderer form={form} nodes={visibleNodes} domain={modelCode} />
+          <FormRenderer form={form} nodes={visibleNodes} domain={sourceModelCode} />
         )}
       </Card>
       <div className={styles.footer}>
@@ -188,7 +203,7 @@ export function ModelEditor({ modelCode }: { modelCode?: string }) {
               loading={saving}
               onClick={() => void save()}
             >
-              {modelCode ? "保存模型" : "创建模型"}
+              {modelCode ? "保存模型" : isCopy ? "复制模型" : "创建模型"}
             </Button>
           )}
         </Space>

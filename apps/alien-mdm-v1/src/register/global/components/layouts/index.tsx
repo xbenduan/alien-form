@@ -272,14 +272,14 @@ export function Table({
         key: "$actions",
         title: "操作",
         fixed: "right",
-        width: 220,
+        width: 170,
         render: (_value, record) => {
           const recordId = record[rowKey];
           const hasRecordId = recordId !== undefined && recordId !== null && recordId !== "";
           const protectedAdmin =
             resolvedModelCode === "_sys_user" && String(recordId) === "_sys_admin";
           return (
-            <Space size={0}>
+            <Space size={0} wrap>
               <Button
                 type="link"
                 size="small"
