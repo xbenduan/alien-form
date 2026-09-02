@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type PropsWithChildren,
@@ -53,6 +54,15 @@ function AuthProvider({ children }: PropsWithChildren) {
       setUser(undefined);
       setAuthenticated(false);
     }
+  }, []);
+  useEffect(() => {
+    // Session expiry (401) clears local auth state so Protected routes redirect to /login.
+    transport.setUnauthorizedHandler(() => {
+      localStorage.removeItem(USER_STORAGE_KEY);
+      setUser(undefined);
+      setAuthenticated(false);
+    });
+    return () => transport.setUnauthorizedHandler(undefined);
   }, []);
   const value = useMemo(
     () => ({ authenticated, user, login, logout }),
