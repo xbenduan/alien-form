@@ -1,12 +1,10 @@
 import {
   DeleteOutlined,
-  DownOutlined,
   EditOutlined,
   EyeOutlined,
   PlusOutlined,
   ReloadOutlined,
   SearchOutlined,
-  UpOutlined,
 } from "@ant-design/icons";
 import {
   App,
@@ -128,11 +126,7 @@ export function Filter({ value, onChange, schema }: ComponentProps & { schema?: 
         <div className={styles.filterActions}>
           <Space>
             {hasExtraFields && (
-              <Button
-                type="link"
-                icon={expanded ? <UpOutlined /> : <DownOutlined />}
-                onClick={() => setExpanded((current) => !current)}
-              >
+              <Button type="link" onClick={() => setExpanded((current) => !current)}>
                 {expanded ? "收起" : "展开"}
               </Button>
             )}

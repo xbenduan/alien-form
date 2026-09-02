@@ -23,8 +23,8 @@
 
 .tableCard {
   overflow: hidden;
-  border: 1px solid #e1e7ef;
-  border-radius: 8px;
+  border: 1px solid rgba(22, 119, 255, 0.12);
+  border-radius: 12px;
   background: #fff;
   box-shadow: 0 4px 14px rgba(23, 32, 51, 0.05);
 }
