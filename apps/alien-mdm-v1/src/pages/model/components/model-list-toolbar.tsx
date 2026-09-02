@@ -1,6 +1,6 @@
 import { PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import { Button, Space } from "antd";
-import styles from "../index.module.css";
+import styles from "./index.module.css";
 
 export interface ModelListToolbarProps {
   loading: boolean;

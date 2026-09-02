@@ -14,9 +14,9 @@ import {
   encodeModel,
   retargetModelPages,
   type ModelEditorValues,
-} from "../model-codec";
-import { defaultFields, defaultGroups, modelEditSchema } from "../model-edit-schema";
-import styles from "../index.module.css";
+} from "../utils/model-codec";
+import { defaultFields, defaultGroups, modelEditSchema } from "../utils/model-edit-schema";
+import styles from "./index.module.css";
 
 const STEPS = [
   {

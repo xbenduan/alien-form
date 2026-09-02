@@ -1,6 +1,6 @@
 import type { Runtime } from "@engine";
 import { registerAntd } from "./antd";
-import { ArrayCards, Input, NumberInput, ObjectField, Select, Switch, TextArea } from "./fields";
+import { ArrayCards, Input, NumberInput, ObjectField, Select, TextArea } from "./fields";
 import { Filter, Layout, Table, Tree } from "./layouts";
 import { Overlay, RecordForm, RecordPage } from "./pages";
 
@@ -30,12 +30,6 @@ export function registerComponents(runtime: Runtime): void {
     component: Select,
     adapter: "alien",
     meta: { type: "string", kind: "leaf", dataSource: true },
-  });
-  runtime.component({
-    code: "Switch",
-    component: Switch,
-    adapter: "alien",
-    meta: { type: "boolean", kind: "leaf", dataSource: false },
   });
   runtime.component({
     code: "ObjectField",

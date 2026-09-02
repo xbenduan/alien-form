@@ -4,7 +4,7 @@ import type { ColumnsType } from "antd/es/table";
 import { useMemo } from "react";
 import type { ModelSummary } from "@app-types";
 import type { OpenMode } from "@engine";
-import styles from "../index.module.css";
+import styles from "./index.module.css";
 
 export interface ModelTableProps {
   dataSource: ModelSummary[];
