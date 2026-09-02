@@ -10,7 +10,7 @@ import { useEffect, type ReactNode } from "react";
 import type { ArrayFieldNode, FormInstance, PrimitiveFieldNode } from "@alien-form/core";
 import { useFieldSnapshot, useRegisterField, useSignalValue } from "@alien-form/react";
 import type { ComponentProps } from "@binding";
-import type { FieldSchema } from "@engine";
+import type { FieldSchema, Runtime } from "@engine";
 import { fieldGridItemStyle, fieldGridStyle, type FieldGridProps } from "@utils/field-grid";
 import { ComplexFieldFrame, TableComplexCell } from "./complex-field";
 import styles from "./index.module.css";
@@ -313,4 +313,43 @@ export function ArrayCards(props: ArrayCardsProps) {
     );
   }
   return <ArrayCardsField {...props} />;
+}
+
+export function registerFields(runtime: Runtime): void {
+  runtime.component({
+    code: "Input",
+    component: Input,
+    adapter: "alien",
+    meta: { type: "string", kind: "leaf", dataSource: false },
+  });
+  runtime.component({
+    code: "TextArea",
+    component: TextArea,
+    adapter: "alien",
+    meta: { type: "string", kind: "leaf", dataSource: false },
+  });
+  runtime.component({
+    code: "NumberInput",
+    component: NumberInput,
+    adapter: "alien",
+    meta: { type: "number", kind: "leaf", dataSource: false },
+  });
+  runtime.component({
+    code: "Select",
+    component: Select,
+    adapter: "alien",
+    meta: { type: "string", kind: "leaf", dataSource: true },
+  });
+  runtime.component({
+    code: "ObjectField",
+    component: ObjectField,
+    adapter: "alien",
+    meta: { type: "object", kind: "complex", children: "properties" },
+  });
+  runtime.component({
+    code: "ArrayCards",
+    component: ArrayCards,
+    adapter: "alien",
+    meta: { type: "array", kind: "complex", children: "items" },
+  });
 }
