@@ -1,4 +1,4 @@
-import { LogoutOutlined, SettingOutlined, UserOutlined } from "@ant-design/icons";
+import { LogoutOutlined, UserOutlined } from "@ant-design/icons";
 import { App, Dropdown } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../app/providers";
@@ -18,12 +18,6 @@ export function UserMenu() {
       placement="bottomRight"
       menu={{
         items: [
-          {
-            key: "models",
-            icon: <SettingOutlined />,
-            label: "模型管理",
-            onClick: () => navigate("/models"),
-          },
           {
             key: "profile",
             icon: <UserOutlined />,

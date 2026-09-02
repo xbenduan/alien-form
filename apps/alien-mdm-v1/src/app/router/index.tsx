@@ -1,5 +1,5 @@
-import { Skeleton, Spin } from "antd";
-import { Suspense, type ReactNode } from "react";
+import { Spin } from "antd";
+import { Suspense, type PropsWithChildren, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { useAuth } from "../providers";
 import { DynamicPage } from "./dynamic-routes";
@@ -16,28 +16,28 @@ function Protected({ children }: { children: ReactNode }) {
   );
 }
 
-function AppShell() {
+function AppShell({ noPadding = false, children }: PropsWithChildren<{ noPadding?: boolean }>) {
   return (
-    <div className={styles.shell}>
-      <div className={styles.content}>
-        <Suspense
-          fallback={
-            <div className={styles.loading}>
-              <Spin size="large" />
-            </div>
-          }
-        >
-          <Outlet />
-        </Suspense>
-      </div>
+    <div className={`${styles.shell}${noPadding ? ` ${styles.noPadding}` : ""}`}>
+      <div className={styles.content}>{children ?? <Outlet />}</div>
     </div>
+  );
+}
+
+function AppLoading() {
+  return (
+    <AppShell noPadding>
+      <div className={styles.loading}>
+        <Spin size="large" />
+      </div>
+    </AppShell>
   );
 }
 
 export function AppRouter() {
   return (
     <BrowserRouter>
-      <Suspense fallback={<Skeleton active />}>
+      <Suspense fallback={<AppLoading />}>
         <Routes>
           {publicRoutes.map(({ path, component: Component }) => (
             <Route key={path} path={path} element={<Component />} />
@@ -45,13 +45,26 @@ export function AppRouter() {
           <Route
             element={
               <Protected>
+                <AppShell noPadding />
+              </Protected>
+            }
+          >
+            {staticRoutes
+              .filter(({ path }) => path === "/")
+              .map(({ path, component: Component }) => (
+                <Route key={path} path={path} element={<Component />} />
+              ))}
+          </Route>
+          <Route
+            element={
+              <Protected>
                 <AppShell />
               </Protected>
             }
           >
-            {staticRoutes.map(({ path, component: Component }) => (
-              <Route key={path} path={path} element={<Component />} />
-            ))}
+            {staticRoutes.map(({ path, component: Component }) =>
+              path === "/" ? null : <Route key={path} path={path} element={<Component />} />,
+            )}
             <Route path="/records/:modelCode/*" element={<DynamicPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

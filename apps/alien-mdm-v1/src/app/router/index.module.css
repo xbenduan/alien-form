@@ -4,6 +4,10 @@
   padding: 24px;
 }
 
+.shell.noPadding {
+  padding: 0;
+}
+
 .content {
   display: flex;
   min-width: 0;
@@ -12,7 +16,7 @@
 
 .loading {
   display: flex;
-  min-height: 240px;
+  min-height: 100vh;
   align-items: center;
   justify-content: center;
 }
