@@ -14,16 +14,24 @@ export class Runtime {
   private readonly components = new Registry<ComponentRegistration>();
   private readonly services = new Registry<ServiceRegistration>();
   private readonly enums = new Registry<unknown>();
+  private readonly utilities = new Registry<unknown>();
   private schemaLoader?: SchemaLoader;
 
-  constructor(private readonly utilities: Record<string, unknown> = {}) {}
-
-  component(registration: ComponentRegistration, domain?: string): void {
-    this.components.set(registration.code, registration, domain);
+  component(registration: ComponentRegistration, domain?: string): void;
+  component(code: string, domain?: string): unknown;
+  component(registrationOrCode: ComponentRegistration | string, domain?: string): unknown {
+    if (typeof registrationOrCode === "string") {
+      return this.components.get(registrationOrCode, domain)?.component;
+    }
+    this.components.set(registrationOrCode.code, registrationOrCode, domain);
   }
 
   service(registration: ServiceRegistration, domain?: string): void {
     this.services.set(registration.code, registration, domain);
+  }
+
+  utils(key: string, value: unknown, domain?: string): void {
+    this.utilities.set(key, value, domain);
   }
 
   enum(key: string, value: unknown, domain?: string): void {
@@ -44,7 +52,7 @@ export class Runtime {
       $service: toNamespace(
         this.services.values(domain).map(([code, registration]) => [code, registration.send]),
       ),
-      $utils: this.utilities,
+      $utils: toNamespace(this.utilities.values(domain)),
       $enums: toNamespace(this.enums.values(domain)),
       $query: query,
     };

@@ -172,7 +172,7 @@ export function Table({
   schema?: FieldSchema;
   columns?:
     | TableColumnsType<Record<string, unknown>>
-    | ((schema?: FieldSchema) => TableColumnsType<Record<string, unknown>>);
+    | ((schema?: FieldSchema, domain?: string) => TableColumnsType<Record<string, unknown>>);
   loadData?: (params: Record<string, unknown>) => Promise<ListResult>;
   filter?: string;
   nodeId?: unknown;
@@ -194,8 +194,8 @@ export function Table({
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [overlay, setOverlay] = useState<OverlayState>();
   const resolvedColumns = useMemo(
-    () => (typeof columns === "function" ? columns(schema) : columns) ?? [],
-    [columns, schema],
+    () => (typeof columns === "function" ? columns(schema, resolvedModelCode) : columns) ?? [],
+    [columns, resolvedModelCode, schema],
   );
   const refresh = useCallback(async () => {
     if (!loadData) return;

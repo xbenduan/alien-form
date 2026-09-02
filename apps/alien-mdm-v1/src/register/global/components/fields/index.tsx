@@ -11,6 +11,8 @@ import { useEffect, type ReactNode } from "react";
 import type { ArrayFieldNode, FormInstance, PrimitiveFieldNode } from "@alien-form/core";
 import { useFieldSnapshot, useRegisterField, useSignalValue } from "@alien-form/react";
 import type { ComponentProps } from "@binding";
+import type { FieldSchema } from "@engine";
+import { ComplexFieldFrame, TableComplexCell } from "./complex-field";
 import styles from "./index.module.css";
 
 function displayValue(value: unknown): ReactNode {
@@ -139,15 +141,25 @@ export function ObjectField({
   children,
   title,
   description,
-}: ComponentProps & { title?: string; description?: string }) {
+  isTable,
+  value,
+  schema,
+  domain,
+}: ComponentProps & {
+  title?: string;
+  description?: string;
+  isTable?: boolean;
+  schema?: FieldSchema;
+  domain?: string;
+}) {
+  if (isTable) {
+    return <TableComplexCell value={value} schema={schema} title={title} domain={domain} />;
+  }
+
   return (
-    <fieldset className={styles.complexField}>
-      {title ? <legend className={styles.complexFieldTitle}>{title}</legend> : null}
-      {description ? <div className={styles.complexFieldDescription}>{description}</div> : null}
-      <div className={styles.complexFieldBody}>
-        <div className={styles.objectField}>{children}</div>
-      </div>
-    </fieldset>
+    <ComplexFieldFrame title={title} description={description}>
+      <div className={styles.objectField}>{children}</div>
+    </ComplexFieldFrame>
   );
 }
 
@@ -201,76 +213,88 @@ function ArrayPrimitiveField({
   );
 }
 
-export function ArrayCards({
-  form,
-  field,
-  mode,
-  title,
-  description,
-}: ComponentProps & { title?: string; description?: string }) {
+type ArrayCardsProps = ComponentProps & {
+  title?: string;
+  description?: string;
+  isTable?: boolean;
+  schema?: FieldSchema;
+  domain?: string;
+};
+
+function ArrayCardsField({ form, field, mode, title, description }: ArrayCardsProps) {
   const array = field as ArrayFieldNode;
   const rows = useSignalValue(array.rows);
   const readonly = mode === "detail";
 
   return (
-    <fieldset className={styles.complexField}>
-      {title ? <legend className={styles.complexFieldTitle}>{title}</legend> : null}
-      {description ? <div className={styles.complexFieldDescription}>{description}</div> : null}
-      <div className={styles.complexFieldBody}>
-        {rows.length === 0 ? (
-          <>
-            <Empty description="暂无数据" style={{ paddingBlock: 16 }} />
-            {readonly ? null : (
-              <Button type="dashed" icon={<PlusOutlined />} onClick={() => array.push({})}>
-                添加一行
-              </Button>
-            )}
-          </>
-        ) : (
-          <div className={styles.arrayCards}>
-            {rows.map((row, index) => (
-              <div className={styles.arrayCard} key={row.id}>
-                <div className={styles.arrayCardHeader}>
-                  <span className={styles.arrayCardIndex}>#{index + 1}</span>
-                  {readonly ? null : (
-                    <Button
-                      type="text"
-                      danger
-                      icon={<DeleteOutlined />}
-                      aria-label="删除"
-                      onClick={() => array.remove(index)}
-                    />
-                  )}
-                </div>
-                <div className={styles.arrayCardBody}>
-                  {Array.from(row.children, ([key, child]) => {
-                    if (child.kind !== "primitive") return null;
-                    return (
-                      <ArrayPrimitiveField
-                        key={child.id}
-                        form={form}
-                        field={child as PrimitiveFieldNode}
-                        fieldKey={key}
-                        readonly={readonly}
-                      />
-                    );
-                  })}
-                </div>
+    <ComplexFieldFrame title={title} description={description}>
+      {rows.length === 0 ? (
+        <>
+          <Empty description="暂无数据" style={{ paddingBlock: 16 }} />
+          {readonly ? null : (
+            <Button type="dashed" icon={<PlusOutlined />} onClick={() => array.push({})}>
+              添加一行
+            </Button>
+          )}
+        </>
+      ) : (
+        <div className={styles.arrayCards}>
+          {rows.map((row, index) => (
+            <div className={styles.arrayCard} key={row.id}>
+              <div className={styles.arrayCardHeader}>
+                <span className={styles.arrayCardIndex}>#{index + 1}</span>
+                {readonly ? null : (
+                  <Button
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
+                    aria-label="删除"
+                    onClick={() => array.remove(index)}
+                  />
+                )}
               </div>
-            ))}
-            {readonly ? null : (
-              <Button
-                className={styles.arrayCardAdd}
-                type="dashed"
-                icon={<PlusOutlined />}
-                onClick={() => array.push({})}
-              >
-                添加一行
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-    </fieldset>
+              <div className={styles.arrayCardBody}>
+                {Array.from(row.children, ([key, child]) => {
+                  if (child.kind !== "primitive") return null;
+                  return (
+                    <ArrayPrimitiveField
+                      key={child.id}
+                      form={form}
+                      field={child as PrimitiveFieldNode}
+                      fieldKey={key}
+                      readonly={readonly}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          {readonly ? null : (
+            <Button
+              className={styles.arrayCardAdd}
+              type="dashed"
+              icon={<PlusOutlined />}
+              onClick={() => array.push({})}
+            >
+              添加一行
+            </Button>
+          )}
+        </div>
+      )}
+    </ComplexFieldFrame>
   );
+}
+
+export function ArrayCards(props: ArrayCardsProps) {
+  if (props.isTable) {
+    return (
+      <TableComplexCell
+        value={props.value}
+        schema={props.schema}
+        title={props.title}
+        domain={props.domain}
+      />
+    );
+  }
+  return <ArrayCardsField {...props} />;
 }

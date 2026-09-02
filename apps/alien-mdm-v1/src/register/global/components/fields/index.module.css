@@ -72,6 +72,21 @@
   white-space: pre-wrap;
 }
 
+.tableComplex {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.tableComplexSummary {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .arrayField {
   min-width: 0;
   margin-bottom: 16px;
