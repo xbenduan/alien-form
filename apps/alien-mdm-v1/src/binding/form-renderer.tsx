@@ -8,6 +8,7 @@ import {
 import { Alert } from "antd";
 import { Fragment, useCallback, type ComponentType, type ReactNode } from "react";
 import { isCompiledValue, type CompiledNode } from "@engine";
+import { fieldGridItemStyle } from "@utils/field-grid";
 import { useRuntime } from "./runtime-provider";
 import styles from "./form-renderer.module.css";
 
@@ -201,6 +202,7 @@ export function RenderNode({
     <div
       className={`${styles.formItem}${mode === "detail" ? ` ${styles.detailFormItem}` : ""}`}
       hidden={display === "hidden"}
+      style={fieldGridItemStyle(props.gridSpan)}
     >
       {title ? (
         <label

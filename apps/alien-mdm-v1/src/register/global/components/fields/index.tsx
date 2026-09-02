@@ -12,6 +12,7 @@ import type { ArrayFieldNode, FormInstance, PrimitiveFieldNode } from "@alien-fo
 import { useFieldSnapshot, useRegisterField, useSignalValue } from "@alien-form/react";
 import type { ComponentProps } from "@binding";
 import type { FieldSchema } from "@engine";
+import { fieldGridItemStyle, fieldGridStyle, type FieldGridProps } from "@utils/field-grid";
 import { ComplexFieldFrame, TableComplexCell } from "./complex-field";
 import styles from "./index.module.css";
 
@@ -35,6 +36,7 @@ function readArrayPrimitiveSnapshot(field: PrimitiveFieldNode) {
     disabled: field.disabled(),
     display: field.display(),
     errors: field.errors(),
+    gridSpan: field.componentProps().gridSpan,
   };
 }
 
@@ -53,6 +55,9 @@ function nativeProps(props: ComponentProps): Record<string, unknown> {
     "loading",
     "title",
     "description",
+    "gridSpan",
+    "columns",
+    "gutter",
   ]) {
     delete result[key];
   }
@@ -145,20 +150,26 @@ export function ObjectField({
   value,
   schema,
   domain,
-}: ComponentProps & {
-  title?: string;
-  description?: string;
-  isTable?: boolean;
-  schema?: FieldSchema;
-  domain?: string;
-}) {
+  gridSpan,
+  columns,
+  gutter,
+}: ComponentProps &
+  FieldGridProps & {
+    title?: string;
+    description?: string;
+    isTable?: boolean;
+    schema?: FieldSchema;
+    domain?: string;
+  }) {
   if (isTable) {
     return <TableComplexCell value={value} schema={schema} title={title} domain={domain} />;
   }
 
   return (
     <ComplexFieldFrame title={title} description={description}>
-      <div className={styles.objectField}>{children}</div>
+      <div className={styles.objectField} style={fieldGridStyle({ gridSpan, columns, gutter })}>
+        {children}
+      </div>
     </ComplexFieldFrame>
   );
 }
@@ -174,15 +185,17 @@ function ArrayPrimitiveField({
   fieldKey: string;
   readonly: boolean;
 }) {
-  const { value, title, description, required, disabled, display, errors } = useFieldSnapshot(
-    field,
-    readArrayPrimitiveSnapshot,
-  );
+  const { value, title, description, required, disabled, display, errors, gridSpan } =
+    useFieldSnapshot(field, readArrayPrimitiveSnapshot);
   useRegisterField(form, field);
 
   if (display === "none") return null;
   return (
-    <div className={styles.arrayField} hidden={display === "hidden"}>
+    <div
+      className={styles.arrayField}
+      hidden={display === "hidden"}
+      style={fieldGridItemStyle(gridSpan)}
+    >
       <label
         className={`${styles.arrayFieldLabel}${readonly ? ` ${styles.arrayFieldDetail}` : ""}${
           !readonly && required ? ` ${styles.arrayFieldRequired}` : ""
@@ -213,18 +226,29 @@ function ArrayPrimitiveField({
   );
 }
 
-type ArrayCardsProps = ComponentProps & {
-  title?: string;
-  description?: string;
-  isTable?: boolean;
-  schema?: FieldSchema;
-  domain?: string;
-};
+type ArrayCardsProps = ComponentProps &
+  FieldGridProps & {
+    title?: string;
+    description?: string;
+    isTable?: boolean;
+    schema?: FieldSchema;
+    domain?: string;
+  };
 
-function ArrayCardsField({ form, field, mode, title, description }: ArrayCardsProps) {
+function ArrayCardsField({
+  form,
+  field,
+  mode,
+  title,
+  description,
+  gridSpan,
+  columns,
+  gutter,
+}: ArrayCardsProps) {
   const array = field as ArrayFieldNode;
   const rows = useSignalValue(array.rows);
   const readonly = mode === "detail";
+  const gridStyle = fieldGridStyle({ gridSpan, columns, gutter });
 
   return (
     <ComplexFieldFrame title={title} description={description}>
@@ -253,7 +277,7 @@ function ArrayCardsField({ form, field, mode, title, description }: ArrayCardsPr
                   />
                 )}
               </div>
-              <div className={styles.arrayCardBody}>
+              <div className={styles.arrayCardBody} style={gridStyle}>
                 {Array.from(row.children, ([key, child]) => {
                   if (child.kind !== "primitive") return null;
                   return (

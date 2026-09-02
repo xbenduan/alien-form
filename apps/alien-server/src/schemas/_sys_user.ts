@@ -40,6 +40,71 @@ const fields: Record<string, ModelFieldSchema> = {
     "x-table": { visible: false },
     "x-database": { type: "text" },
   },
+  addressInfo: {
+    type: "object",
+    title: "住址信息",
+    component: "ObjectField",
+    props: { gridSpan: 12 },
+    properties: {
+      nativePlace: {
+        type: "string",
+        title: "籍贯",
+        component: "Input",
+        props: { placeholder: "请输入籍贯" },
+      },
+      currentAddress: {
+        type: "string",
+        title: "现住址",
+        component: "Input",
+        props: { placeholder: "请输入现住址" },
+      },
+      idCardAddress: {
+        type: "string",
+        title: "身份证住址",
+        component: "Input",
+        props: { placeholder: "请输入身份证住址", gridSpan: 24 },
+      },
+    },
+    "x-table": { width: 180 },
+    "x-database": { type: "json" },
+  },
+  studentRecords: {
+    type: "array",
+    title: "学籍信息",
+    props: { gridSpan: 12 },
+    component: "ArrayCards",
+    items: {
+      type: "object",
+      properties: {
+        school: {
+          type: "string",
+          title: "学校",
+          component: "Input",
+          props: { placeholder: "请输入学校" },
+        },
+        headTeacher: {
+          type: "string",
+          title: "联系人（班主任）",
+          component: "Input",
+          props: { placeholder: "请输入班主任姓名或联系方式" },
+        },
+        enrollmentDate: {
+          type: "string",
+          title: "入学时间",
+          component: "Input",
+          props: { placeholder: "YYYY-MM-DD" },
+        },
+        graduationDate: {
+          type: "string",
+          title: "毕业时间",
+          component: "Input",
+          props: { placeholder: "YYYY-MM-DD" },
+        },
+      },
+    },
+    "x-table": { width: 180 },
+    "x-database": { type: "json" },
+  },
   createBy: {
     type: "string",
     title: "创建者",
@@ -84,9 +149,9 @@ export const sysUserSchema: ModelSchema = {
     filterCount: 4,
     defaultPageSize: 20,
     openMode: {
-      add: "drawer",
-      edit: "modal",
-      detail: "page",
+      add: "page",
+      edit: "page",
+      detail: "drawer",
     },
   },
   "x-pages": [
@@ -147,7 +212,8 @@ export const sysUserSchema: ModelSchema = {
         {
           component: "ObjectField",
           title: "基础信息",
-          keys: ["username", "nickname", "remark"],
+          keys: ["username", "nickname"],
+          props: { gridSpan: 12 },
         },
       ],
     },

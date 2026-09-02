@@ -7,7 +7,8 @@
 
 .formItem {
   min-width: 0;
-  margin-bottom: 24px;
+  margin-bottom: 8px;
+  grid-column: span var(--alien-grid-item-span, var(--alien-grid-default-span, 24));
 }
 
 .formItem[hidden] {
@@ -52,4 +53,10 @@
   color: #ff4d4f;
   font-size: 14px;
   line-height: 20px;
+}
+
+@media (max-width: 640px) {
+  .formItem {
+    grid-column: 1 / -1;
+  }
 }

@@ -27,7 +27,9 @@
 
 .objectField {
   display: grid;
-  gap: 8px;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  column-gap: var(--alien-grid-column-gap, 8px);
+  row-gap: var(--alien-grid-row-gap, 8px);
 }
 
 .arrayCards {
@@ -57,7 +59,9 @@
 
 .arrayCardBody {
   display: grid;
-  gap: 8px;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  column-gap: var(--alien-grid-column-gap, 8px);
+  row-gap: var(--alien-grid-row-gap, 8px);
 }
 
 .arrayCardAdd {
@@ -90,6 +94,7 @@
 .arrayField {
   min-width: 0;
   margin-bottom: 16px;
+  grid-column: span var(--alien-grid-item-span, var(--alien-grid-default-span, 24));
 }
 
 .arrayField[hidden] {
@@ -128,4 +133,10 @@
   color: #ff4d4f;
   font-size: 14px;
   line-height: 20px;
+}
+
+@media (max-width: 640px) {
+  .arrayField {
+    grid-column: 1 / -1;
+  }
 }
