@@ -5,7 +5,6 @@ import {
   Input as AntInput,
   InputNumber as AntInputNumber,
   Select as AntSelect,
-  Switch as AntSwitch,
 } from "antd";
 import { useEffect, type ReactNode } from "react";
 import type { ArrayFieldNode, FormInstance, PrimitiveFieldNode } from "@alien-form/core";
@@ -77,9 +76,11 @@ export function Input(props: ComponentProps) {
 
 export function TextArea(props: ComponentProps) {
   if (props.mode === "detail") return <DetailValue value={props.value} />;
+  const controlProps = nativeProps(props);
   return (
     <AntInput.TextArea
-      {...nativeProps(props)}
+      {...controlProps}
+      style={{ width: "100%", ...(controlProps.style as object) }}
       value={props.value as string | undefined}
       onChange={(event) => props.onChange?.(event.target.value)}
     />
@@ -94,17 +95,6 @@ export function NumberInput(props: ComponentProps) {
       {...controlProps}
       style={{ width: "100%", ...(controlProps.style as object) }}
       value={props.value as number | null | undefined}
-      onChange={(next) => props.onChange?.(next)}
-    />
-  );
-}
-
-export function Switch(props: ComponentProps) {
-  if (props.mode === "detail") return <DetailValue value={props.value} />;
-  return (
-    <AntSwitch
-      {...nativeProps(props)}
-      checked={Boolean(props.value)}
       onChange={(next) => props.onChange?.(next)}
     />
   );
@@ -130,10 +120,12 @@ export function Select(
     return <DetailValue value={option?.label ?? value} />;
   }
 
+  const controlProps = nativeProps(props);
   return (
     <AntSelect
-      {...nativeProps(props)}
+      {...controlProps}
       allowClear
+      style={{ width: "100%", ...(controlProps.style as object) }}
       value={value}
       options={dataSource as any[]}
       loading={loading}
