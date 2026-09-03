@@ -40,15 +40,15 @@ export function isContainer(runtime: Runtime, node: FieldNode, domain?: string):
   return Boolean(containerKind(runtime, node.form.component, domain));
 }
 
-/** 可选组件列表（用于字段编辑器下拉）。 */
+/** form-schema 字段可选组件：只列 adapter==="form" 的组件（约束：form-schema 只能用 form）。 */
 export function componentOptions(
   runtime: Runtime,
   domain?: string,
-): { label: string; value: string; meta?: { type?: string; children?: string } }[] {
-  return runtime.componentCodes(domain).map((code) => {
-    const meta = runtime.resolveComponent(code, domain)?.meta;
-    return { label: code, value: code, meta: { type: meta?.type, children: meta?.children } };
-  });
+): { label: string; value: string }[] {
+  return runtime
+    .componentCodes(domain)
+    .filter((code) => runtime.resolveComponent(code, domain)?.adapter === "form")
+    .map((code) => ({ label: code, value: code }));
 }
 
 /** 依据组件推断字段类型。 */
@@ -59,6 +59,15 @@ export function typeForComponent(runtime: Runtime, component: string, domain?: s
   if (meta?.type === "number") return "number";
   if (meta?.type === "boolean") return "boolean";
   return "string";
+}
+
+/** 取组件注册的示例 schema（新增字段选组件时带出，编辑不带出）。 */
+export function componentSample(
+  runtime: Runtime,
+  component: string,
+  domain?: string,
+): Partial<FieldSchema> | undefined {
+  return runtime.resolveComponent(component, domain)?.meta?.sample;
 }
 
 /** 新建一个字段节点（默认 Input，落库字段）。 */
@@ -94,16 +103,12 @@ export function createField(
 // --------------------------------------------------------------------------
 
 function decodeFormConfig(schema: FieldSchema | undefined): FormConfig {
-  return {
-    title: schema?.title,
-    component: schema?.component,
-    required: schema?.required === true,
-    display: typeof schema?.display === "string" ? schema.display : undefined,
-    description: schema?.description,
-    default: schema?.default,
-    props: schema?.props,
-    dataSource: schema?.dataSource,
-  };
+  if (!schema) return {};
+  // 保留全部 IFieldSchema 表现字段；properties/items 由 FieldNode.children 承载，剔除。
+  const rest: Record<string, unknown> = { ...schema };
+  delete rest.properties;
+  delete rest.items;
+  return rest as FormConfig;
 }
 
 function decodeChildren(schema: FieldSchema | undefined): FieldNode[] {
@@ -127,6 +132,39 @@ function decodeExtraNode(key: string, schema: FieldSchema): FieldNode {
   };
   if (type === "object" || type === "array") node.children = decodeChildren(schema);
   return node;
+}
+
+/**
+ * 源码编辑：把手动编辑后的 form-schema.properties 应用回字段树。
+ * 落库字段（source==="field"）保留 storage/id/type/source，仅覆盖 form 与 children；
+ * 未出现的落库字段保持不变（form-schema ⊇ fields 由校验保证），额外 key 作为 extra 展示字段。
+ */
+export function applyFormSchema(
+  current: FieldNode[],
+  properties: Record<string, FieldSchema>,
+): FieldNode[] {
+  const byKey = new Map(current.map((node) => [node.key, node]));
+  const result: FieldNode[] = [];
+  for (const [key, schema] of Object.entries(properties)) {
+    const existing = byKey.get(key);
+    if (existing && existing.source === "field") {
+      result.push({
+        ...existing,
+        form: decodeFormConfig(schema),
+        children:
+          existing.type === "object" || existing.type === "array"
+            ? decodeChildren(schema)
+            : undefined,
+      });
+    } else {
+      result.push(decodeExtraNode(key, schema));
+    }
+  }
+  // 保留未在 properties 中出现的落库字段（避免误删存储定义）。
+  for (const node of current) {
+    if (node.source === "field" && !properties[node.key]) result.push(node);
+  }
+  return result;
 }
 
 function storageFromField(field: DatabaseField): StorageConfig {
@@ -221,16 +259,14 @@ function encodeFormSchema(node: FieldNode): FieldSchema {
   // 表单新增字段(extra)的 required 由 form 自身决定。
   const required =
     node.source === "field" ? node.storage?.nullable === false : node.form.required === true;
+  // 保留 form 上的全部 IFieldSchema 表现字段，再以 type/required 覆盖，properties/items 单独生成。
+  const base: Record<string, unknown> = { ...node.form };
+  delete base.properties;
+  delete base.items;
   const schema: FieldSchema = pruneUndefined({
+    ...base,
     type: node.type,
-    title: node.form.title,
-    component: node.form.component,
     required: required || undefined,
-    display: node.form.display,
-    description: node.form.description,
-    default: node.form.default,
-    props: node.form.props,
-    dataSource: node.form.dataSource,
   }) as FieldSchema;
   if (node.type === "object") {
     schema.properties = Object.fromEntries(

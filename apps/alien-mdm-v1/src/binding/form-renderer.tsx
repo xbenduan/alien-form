@@ -187,7 +187,7 @@ export function RenderNode({
       : props;
   const renderedChildren = children.length ? children : undefined;
   const alienProps =
-    registration.adapter === "alien"
+    registration.adapter !== "antd"
       ? { ...controlProps, form, field, node, slots, mode, value, title, description }
       : controlProps;
   const control = renderedChildren ? (

@@ -1,9 +1,4 @@
-import {
-  DeleteOutlined,
-  EditOutlined,
-  HolderOutlined,
-  PlusOutlined,
-} from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, HolderOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   DndContext,
   PointerSensor,
@@ -12,13 +7,9 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Button, Tag, Tooltip, Typography } from "antd";
+import { Button, Tag, Tooltip } from "antd";
 import type { Runtime } from "@engine";
 import { isContainer, type FieldNode } from "../builder";
 import styles from "./builder.module.css";
@@ -53,20 +44,19 @@ function FieldBar({
   const container = isContainer(runtime, node, domain);
   // fields 派生字段不可删除；仅表单新增(extra)字段可删除。
   const deletable = node.source === "extra";
+  const borderRadius = container ? "8px 8px 0 0" : "8px";
 
   return (
     <div>
       <div
         ref={setNodeRef}
         className={`${styles.fieldBar}${isDragging ? ` ${styles.dragging}` : ""}`}
-        style={{ transform: CSS.Transform.toString(transform), transition }}
+        style={{ transform: CSS.Transform.toString(transform), transition, borderRadius }}
       >
         <span className={styles.dragHandle} {...attributes} {...listeners}>
           <HolderOutlined />
         </span>
-        <Typography.Text code className={styles.barKey}>
-          {node.key}
-        </Typography.Text>
+        <span className={styles.barKey}>{node.key}</span>
         <Tag className={styles.barComponent}>{node.form.component ?? node.type}</Tag>
         <span className={styles.barTitle}>{node.form.title ?? "—"}</span>
         {node.source === "field" ? <Tag color="blue">落库</Tag> : <Tag>展示</Tag>}
@@ -106,9 +96,6 @@ function FieldBar({
       </div>
       {container ? (
         <div className={styles.nested}>
-          <div className={styles.nestedHeader}>
-            <span>{node.type === "array" ? "数组元素字段" : "对象子字段"}</span>
-          </div>
           <FieldBarTree
             fields={node.children ?? []}
             runtime={runtime}
@@ -149,7 +136,11 @@ export function FieldBarTree({
   };
 
   if (fields.length === 0) {
-    return <div className={styles.muted} style={{ padding: "4px 0" }}>暂无字段</div>;
+    return (
+      <div className={styles.muted} style={{ padding: "4px 0" }}>
+        暂无字段
+      </div>
+    );
   }
 
   return (

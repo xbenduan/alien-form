@@ -84,6 +84,9 @@ importers:
       '@alien-form/react':
         specifier: workspace:*
         version: link:../../packages/react
+      '@alien-form/validate':
+        specifier: workspace:*
+        version: link:../../packages/validate
       '@ant-design/icons':
         specifier: ^6.2.5
         version: 6.2.5(react-dom@18.3.1)(react@18.3.1)
@@ -139,6 +142,9 @@ importers:
 
   apps/alien-server:
     dependencies:
+      '@alien-form/validate':
+        specifier: workspace:*
+        version: link:../../packages/validate
       '@hono/node-server':
         specifier: ^1.14.0
         version: 1.14.0(hono@4.7.0)
@@ -155,6 +161,9 @@ importers:
 
   apps/alien-worker:
     dependencies:
+      '@alien-form/validate':
+        specifier: workspace:*
+        version: link:../../packages/validate
       hono:
         specifier: ^4.7.0
         version: 4.7.0
@@ -320,6 +329,25 @@ importers:
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
+      tsup:
+        specifier: ^8.0.0
+        version: 8.0.0(typescript@5.4.2)
+      typescript:
+        specifier: ^5.4.0
+        version: 5.4.2
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(happy-dom@15.0.0)
+
+  packages/validate:
+    dependencies:
+      '@alien-form/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^3.25.0
+        version: 3.25.76
+    devDependencies:
       tsup:
         specifier: ^8.0.0
         version: 8.0.0(typescript@5.4.2)
@@ -5444,4 +5472,3 @@ packages:
 
   /zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
-    dev: true

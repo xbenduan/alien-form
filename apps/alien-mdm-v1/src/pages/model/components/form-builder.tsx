@@ -1,10 +1,10 @@
-import { PlusOutlined } from "@ant-design/icons";
 import { useCreateForm } from "@alien-form/react";
-import { App, Button, Empty } from "antd";
-import { useMemo, useState } from "react";
+import { App, Button, Card, Col, Empty, Flex, Input, Row, Segmented, Typography } from "antd";
+import { useEffect, useMemo, useState } from "react";
 import { FormRenderer, useRuntime } from "@binding";
 import { compileForm } from "@engine";
 import {
+  applyFormSchema,
   createField,
   encodeModel,
   type FieldNode,
@@ -14,6 +14,7 @@ import {
 import { FieldBarTree } from "./field-bar-tree";
 import { GroupEditor } from "./group-editor";
 import { FormFieldModal } from "./form-field-modal";
+import { PlusOutlined } from "@ant-design/icons";
 import styles from "./builder.module.css";
 
 interface EditorState {
@@ -21,6 +22,8 @@ interface EditorState {
   parentId?: string;
   isNew: boolean;
 }
+
+type RightTab = "preview" | "source";
 
 /** 收集全部字段 key（含嵌套），用于 key 唯一校验。 */
 function collectKeys(fields: FieldNode[]): string[] {
@@ -37,6 +40,7 @@ export function FormBuilder({
   const runtime = useRuntime();
   const { message } = App.useApp();
   const [editor, setEditor] = useState<EditorState>();
+  const [rightTab, setRightTab] = useState<RightTab>("preview");
 
   const existingKeys = useMemo(() => collectKeys(draft.fields), [draft.fields]);
 
@@ -45,9 +49,17 @@ export function FormBuilder({
     try {
       const model = encodeModel(draft);
       const compiled = compileForm(model.definitions["form-schema"], model.definitions);
-      return { compiled, error: undefined as string | undefined };
+      return {
+        compiled,
+        formSchema: model.definitions["form-schema"],
+        error: undefined as string | undefined,
+      };
     } catch (reason) {
-      return { compiled: undefined, error: reason instanceof Error ? reason.message : String(reason) };
+      return {
+        compiled: undefined,
+        formSchema: undefined,
+        error: reason instanceof Error ? reason.message : String(reason),
+      };
     }
   }, [draft]);
 
@@ -62,6 +74,32 @@ export function FormBuilder({
     [compiled, runtime, draft.name],
   );
 
+  // 源码编辑：文本框内容随 draft 同步（除非用户正在编辑）。
+  const sourceText = useMemo(
+    () => (preview.formSchema ? JSON.stringify(preview.formSchema, null, 2) : ""),
+    [preview.formSchema],
+  );
+  const [sourceDraft, setSourceDraft] = useState(sourceText);
+  useEffect(() => setSourceDraft(sourceText), [sourceText]);
+
+  const applySource = () => {
+    try {
+      const parsed = JSON.parse(sourceDraft) as {
+        properties?: Record<string, FieldNode["form"] & { type?: string }>;
+      };
+      if (!parsed || typeof parsed !== "object" || !parsed.properties) {
+        throw new Error("form-schema 必须包含 properties 对象");
+      }
+      dispatch({
+        type: "fields.replace",
+        fields: applyFormSchema(draft.fields, parsed.properties as never),
+      });
+      message.success("已应用源码修改");
+    } catch (reason) {
+      message.error(reason instanceof Error ? reason.message : String(reason));
+    }
+  };
+
   const addExtra = () => {
     setEditor({ node: createField(runtime, { source: "extra" }), isNew: true });
   };
@@ -70,50 +108,81 @@ export function FormBuilder({
   };
 
   return (
-    <div className={styles.formBuilder}>
-      <div className={styles.formTop}>
-        <div className={styles.editorPane}>
-          <div className={styles.paneHeader}>
-            <span>字段编辑</span>
-            <Button type="primary" size="small" icon={<PlusOutlined />} onClick={addExtra}>
-              新增展示字段
-            </Button>
-          </div>
-          <div className={styles.paneBody}>
-            <FieldBarTree
-              fields={draft.fields}
-              runtime={runtime}
-              domain={draft.name}
-              onEdit={(node) => setEditor({ node, isNew: false })}
-              onRemove={(node) => dispatch({ type: "field.remove", id: node.id })}
-              onAddChild={addChild}
-              onMove={(id, parentId, toIndex) =>
-                dispatch({ type: "field.move", id, parentId, toIndex })
+    <>
+      <Flex vertical gap={16}>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Card
+              title="字段列表"
+              extra={
+                <Button type="link" icon={<PlusOutlined />} onClick={addExtra}>
+                  新增字段
+                </Button>
               }
-            />
-          </div>
-        </div>
-        <div className={styles.previewPane}>
-          <div className={styles.paneHeader}>
-            <span>表单预览</span>
-          </div>
-          <div className={styles.previewBody}>
-            {preview.error ? (
-              <Empty description={`无法预览：${preview.error}`} />
-            ) : compiled && compiled.nodes.length ? (
-              <FormRenderer form={form} nodes={compiled.nodes} domain={draft.name} />
-            ) : (
-              <Empty description="暂无可预览字段" />
-            )}
-          </div>
-        </div>
-      </div>
-      <div className={styles.groupSection}>
+              classNames={{ body: styles.formBuilderCardBody }}
+            >
+              <FieldBarTree
+                fields={draft.fields}
+                runtime={runtime}
+                domain={draft.name}
+                onEdit={(node) => setEditor({ node, isNew: false })}
+                onRemove={(node) => dispatch({ type: "field.remove", id: node.id })}
+                onAddChild={addChild}
+                onMove={(id, parentId, toIndex) =>
+                  dispatch({ type: "field.move", id, parentId, toIndex })
+                }
+              />
+            </Card>
+          </Col>
+          <Col span={12}>
+            <Card
+              title={
+                <Segmented<RightTab>
+                  value={rightTab}
+                  onChange={setRightTab}
+                  options={[
+                    { label: "表单预览", value: "preview" },
+                    { label: "源码编辑", value: "source" },
+                  ]}
+                />
+              }
+              extra={
+                rightTab !== "preview" && (
+                  <Button type="link" onClick={applySource}>
+                    应用
+                  </Button>
+                )
+              }
+              classNames={{ body: styles.formBuilderCardBody }}
+            >
+              {rightTab === "preview" ? (
+                <>
+                  {preview.error ? (
+                    <Empty description={`无法预览：${preview.error}`} />
+                  ) : compiled && compiled.nodes.length ? (
+                    <FormRenderer form={form} nodes={compiled.nodes} domain={draft.name} />
+                  ) : (
+                    <Empty description="暂无可预览字段" />
+                  )}
+                </>
+              ) : (
+                <Input.TextArea
+                  value={sourceDraft}
+                  onChange={(event) => setSourceDraft(event.target.value)}
+                  spellCheck={false}
+                  className={styles.sourceJson}
+                  style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+                />
+              )}
+            </Card>
+          </Col>
+        </Row>
         <GroupEditor draft={draft} dispatch={dispatch} />
-      </div>
+      </Flex>
       <FormFieldModal
         open={Boolean(editor)}
         node={editor?.node}
+        isNew={editor?.isNew}
         runtime={runtime}
         domain={draft.name}
         existingKeys={existingKeys}
@@ -129,6 +198,6 @@ export function FormBuilder({
           message.success(editor.isNew ? "字段已新增" : "字段已更新");
         }}
       />
-    </div>
+    </>
   );
 }

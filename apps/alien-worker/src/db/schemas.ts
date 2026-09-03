@@ -1,4 +1,4 @@
-import type { ModelSchema } from "../../../alien-server/src/schema/types.ts";
+import type { BuilderSchema as ModelSchema } from "@alien-form/validate";
 
 /** schemas 元表的一行（等价于 Node 版 _schemas）。 */
 export interface SchemaEntry {

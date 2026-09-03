@@ -32,19 +32,11 @@ export interface StorageConfig {
   relation?: DatabaseRelation;
 }
 
-/** 表单表现配置（form-schema 片段；只由「表单配置」编辑）。 */
-export interface FormConfig {
-  /** 表单标签（form-schema.properties[key].title）。 */
-  title?: string;
-  component?: string;
-  /** 仅对表单新增的展示/嵌套字段有效；落库字段的 required 由 storage.nullable 派生。 */
-  required?: boolean;
-  display?: string;
-  description?: string;
-  default?: unknown;
-  props?: Record<string, unknown>;
-  dataSource?: FieldSchema["dataSource"];
-}
+/**
+ * 表单表现配置（form-schema 片段；只由「表单配置」编辑）。
+ * 覆盖 core IFieldSchema 的全部字段，但 properties/items 由 FieldNode.children 承载，故排除。
+ */
+export type FormConfig = Omit<FieldSchema, "properties" | "items">;
 
 /** 构建器统一字段树节点。 */
 export interface FieldNode {

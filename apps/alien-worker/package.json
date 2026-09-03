@@ -12,6 +12,7 @@
     "cf-typegen": "wrangler types --config ../../wrangler.json"
   },
   "dependencies": {
+    "@alien-form/validate": "workspace:*",
     "hono": "^4.7.0"
   },
   "devDependencies": {

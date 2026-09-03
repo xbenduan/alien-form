@@ -11,7 +11,7 @@ import {
   updateRecord,
 } from "../db/records.ts";
 import { expandRefs, expandRefsOne, unwrapRefs } from "../db/ref-expand.ts";
-import type { Pagination, Sorter } from "../../../alien-server/src/schema/types.ts";
+import type { Pagination, Sorter } from "@alien-form/validate";
 import type { Env } from "../env.ts";
 
 export const recordRoutes = new Hono<{ Bindings: Env }>();

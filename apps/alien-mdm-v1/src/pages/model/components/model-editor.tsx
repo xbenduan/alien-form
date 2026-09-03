@@ -53,10 +53,13 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
     setSaving(true);
     try {
       const model = encodeModel(draft);
-      await transport.send<BuilderSchema>(modelCode ? `/api/schemas/${modelCode}` : "/api/schemas", {
-        method: modelCode ? "PUT" : "POST",
-        body: JSON.stringify(model),
-      });
+      await transport.send<BuilderSchema>(
+        modelCode ? `/api/schemas/${modelCode}` : "/api/schemas",
+        {
+          method: modelCode ? "PUT" : "POST",
+          body: JSON.stringify(model),
+        },
+      );
       message.success(modelCode ? "模型保存成功" : isCopy ? "模型复制成功" : "模型创建成功");
       navigate("/models");
     } catch (reason) {
@@ -86,17 +89,15 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
         <Steps current={step} items={STEP_TITLES.map((title) => ({ title }))} />
       </Card>
       {error && <Alert type="error" message={error} showIcon />}
-      <Card className={styles.editorCard} title={STEP_TITLES[step]}>
-        {loading ? (
-          <Skeleton active />
-        ) : step === 0 ? (
-          <BasicInfo draft={draft} dispatch={dispatch} lockName={Boolean(modelCode)} />
-        ) : step === 1 ? (
-          <DatabaseBuilder draft={draft} runtime={runtime} dispatch={dispatch} />
-        ) : (
-          <FormBuilder draft={draft} dispatch={dispatch} />
-        )}
-      </Card>
+      {loading ? (
+        <Skeleton active />
+      ) : step === 0 ? (
+        <BasicInfo draft={draft} dispatch={dispatch} lockName={Boolean(modelCode)} />
+      ) : step === 1 ? (
+        <DatabaseBuilder draft={draft} runtime={runtime} dispatch={dispatch} />
+      ) : (
+        <FormBuilder draft={draft} dispatch={dispatch} />
+      )}
       <div className={styles.footer}>
         <Space>
           <Button onClick={() => navigate("/models")}>取消</Button>

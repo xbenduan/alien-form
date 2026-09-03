@@ -5,7 +5,18 @@ import {
   PlusOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
-import { Button, Input, Popconfirm, Space, Table, Tag, Tooltip, Typography } from "antd";
+import {
+  Button,
+  Card,
+  Flex,
+  Input,
+  Popconfirm,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+} from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useMemo, useState } from "react";
 import type { Runtime } from "@engine";
@@ -17,7 +28,6 @@ import {
   type ModelDraft,
 } from "../builder";
 import { StorageFieldModal } from "./storage-field-modal";
-import styles from "./builder.module.css";
 
 interface EditorState {
   node?: FieldNode;
@@ -92,38 +102,26 @@ export function DatabaseBuilder({
             ))}
           </Space>
         ) : (
-          <span className={styles.muted}>默认</span>
+          <Tag>默认</Tag>
         );
       },
     },
     {
       title: "操作",
       key: "actions",
-      width: 130,
+      width: 150,
       fixed: "right",
       render: (_v, row) => (
-        <Space size={0}>
-          <Tooltip title="复制">
-            <Button
-              type="text"
-              size="small"
-              icon={<CopyOutlined />}
-              aria-label="复制字段"
-              disabled={row.storage?.system}
-              onClick={() =>
-                dispatch({ type: "field.duplicate", id: row.id, node: cloneFieldTree(row) })
-              }
-            />
-          </Tooltip>
-          <Tooltip title="编辑">
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined />}
-              aria-label="编辑字段"
-              onClick={() => setEditor({ node: row })}
-            />
-          </Tooltip>
+        <Space size={0} wrap>
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            aria-label="编辑字段"
+            onClick={() => setEditor({ node: row })}
+          >
+            编辑
+          </Button>
           <Popconfirm
             title="确认删除该字段？"
             okText="删除"
@@ -132,16 +130,16 @@ export function DatabaseBuilder({
             disabled={row.storage?.system}
             onConfirm={() => dispatch({ type: "field.remove", id: row.id })}
           >
-            <Tooltip title="删除">
-              <Button
-                type="text"
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-                aria-label="删除字段"
-                disabled={row.storage?.system}
-              />
-            </Tooltip>
+            <Button
+              type="text"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              aria-label="删除字段"
+              disabled={row.storage?.system}
+            >
+              删除
+            </Button>
           </Popconfirm>
         </Space>
       ),
@@ -149,20 +147,23 @@ export function DatabaseBuilder({
   ];
 
   return (
-    <div className={styles.dbBuilder}>
-      <div className={styles.toolbar}>
+    <Card
+      variant="outlined"
+      styles={{ body: { display: "flex", flexDirection: "column", gap: "16px" } }}
+    >
+      <Flex justify="space-between">
         <Input
           allowClear
+          style={{ width: 340 }}
           prefix={<SearchOutlined />}
           placeholder="搜索字段 Key 或名称"
           value={keyword}
-          className={styles.search}
           onChange={(event) => setKeyword(event.target.value)}
         />
         <Button type="primary" icon={<PlusOutlined />} onClick={addField}>
           新增字段
         </Button>
-      </div>
+      </Flex>
       <Table<FieldNode>
         rowKey="id"
         size="small"
@@ -170,8 +171,6 @@ export function DatabaseBuilder({
         dataSource={rows}
         pagination={false}
         scroll={{ x: 760 }}
-        // fields 只描述顶层物理列：禁用 antd 依据 node.children 自动生成的树表展开，
-        // json 内部形状（子字段）归表单配置步骤，不在数据库构建中展示。
         expandable={{ childrenColumnName: "__no_children__" }}
       />
       <StorageFieldModal
@@ -187,6 +186,6 @@ export function DatabaseBuilder({
           setEditor(undefined);
         }}
       />
-    </div>
+    </Card>
   );
 }

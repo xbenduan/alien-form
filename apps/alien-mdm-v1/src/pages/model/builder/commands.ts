@@ -8,6 +8,7 @@ export type ModelAction =
   | { type: "field.remove"; id: string }
   | { type: "field.duplicate"; id: string; node: FieldNode }
   | { type: "field.move"; id: string; parentId?: string; toIndex: number }
+  | { type: "fields.replace"; fields: FieldNode[] }
   | { type: "groups.replace"; groups: ModelDraft["groups"] }
   | { type: "replace"; draft: ModelDraft };
 
@@ -86,6 +87,8 @@ export function reduceModel(draft: ModelDraft, action: ModelAction): ModelDraft 
       return { ...draft, ...action.patch };
     case "groups.replace":
       return { ...draft, groups: action.groups };
+    case "fields.replace":
+      return { ...draft, fields: action.fields };
     case "field.update":
       return { ...draft, fields: updateNode(draft.fields, action.id, action.node) };
     case "field.remove":

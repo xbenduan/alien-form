@@ -6,7 +6,7 @@ import {
   removeSchema,
   upsertSchema,
 } from "../db/schemas.ts";
-import { assertModelSchema, type ModelSchema } from "../../../alien-server/src/schema/types.ts";
+import { assertBuilderSchema as assertModelSchema, type BuilderSchema as ModelSchema } from "@alien-form/validate";
 import type { Env } from "../env.ts";
 
 export const schemaRoutes = new Hono<{ Bindings: Env }>();

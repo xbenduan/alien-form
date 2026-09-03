@@ -110,11 +110,10 @@
 
 /* 嵌套容器：虚线包裹 */
 .nested {
-  margin-top: 8px;
-  margin-left: 24px;
   padding: 10px 12px;
   border: 1px dashed #c9cdd4;
-  border-radius: 8px;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
   background: #fafbfc;
 }
 
@@ -137,5 +136,14 @@
 @media (max-width: 900px) {
   .formTop {
     grid-template-columns: 1fr;
+  }
+}
+
+.formBuilderCardBody {
+  height: calc(100vh - 350px);
+  overflow: auto;
+
+  .sourceJson {
+    height: 100%;
   }
 }

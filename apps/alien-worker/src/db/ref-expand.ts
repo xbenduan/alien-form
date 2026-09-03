@@ -1,7 +1,7 @@
 import { refFields } from "../../../alien-server/src/schema/field-plan.ts";
 import type { RefField } from "../../../alien-server/src/schema/field-plan.ts";
-import { isPluginMarker } from "../../../alien-server/src/schema/types.ts";
-import type { ModelRecord, ModelSchema } from "../../../alien-server/src/schema/types.ts";
+import { isPluginMarker } from "@alien-form/validate";
+import type { ModelRecord, BuilderSchema as ModelSchema } from "@alien-form/validate";
 import { getSchema } from "./schemas.ts";
 
 /** 引用字段展开后的形状：value 为 join 键原值（回写用），label 为展示名。 */

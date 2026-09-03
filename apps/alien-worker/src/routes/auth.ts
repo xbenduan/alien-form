@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { findRecordByField } from "../db/records.ts";
 import { getSchema } from "../db/schemas.ts";
-import type { ModelRecord, ModelSchema } from "../../../alien-server/src/schema/types.ts";
+import type { ModelRecord, BuilderSchema as ModelSchema } from "@alien-form/validate";
 import type { Env } from "../env.ts";
 
 const USER_MODEL = "_sys_user";

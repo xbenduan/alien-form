@@ -12,7 +12,7 @@ const antd = { Button, Card, Col, Divider, Flex, Row, Space, Table };
 
 export function registerGlobal(runtime: Runtime, transport: Transport): void {
   for (const [code, component] of Object.entries(antd)) {
-    runtime.component({ code, component });
+    runtime.component({ code, component, adapter: "antd" });
   }
   registerFields(runtime);
   registerLayouts(runtime);

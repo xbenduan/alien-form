@@ -5,8 +5,8 @@ import { Table } from "./table";
 import { Tree } from "./tree";
 
 export function registerLayouts(runtime: Runtime): void {
-  runtime.component({ code: "layout", component: Layout, adapter: "alien" });
-  runtime.component({ code: "filter", component: Filter, adapter: "alien" });
-  runtime.component({ code: "table", component: Table, adapter: "alien" });
-  runtime.component({ code: "tree", component: Tree, adapter: "alien" });
+  runtime.component({ code: "layout", component: Layout, adapter: "page" });
+  runtime.component({ code: "filter", component: Filter, adapter: "page" });
+  runtime.component({ code: "table", component: Table, adapter: "page" });
+  runtime.component({ code: "tree", component: Tree, adapter: "page" });
 }

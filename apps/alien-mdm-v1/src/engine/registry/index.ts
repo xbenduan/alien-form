@@ -1,15 +1,23 @@
+import type { FieldSchema } from "@alien-form/validate";
+
+/** 组件使用场景：form-schema 只能用 form；page 的 properties 可用 page 与 antd。 */
+export type ComponentAdapter = "page" | "form" | "antd";
+
 export interface ComponentMeta {
   type?: string;
   kind?: "leaf" | "complex";
   dataSource?: boolean;
   children?: "properties" | "items";
+  /** 选择该组件新增字段时带出的示例 schema（编辑时不带出）。 */
+  sample?: Partial<FieldSchema>;
 }
 
 export interface ComponentRegistration {
   code: string;
   component: unknown;
   meta?: ComponentMeta;
-  adapter?: "native" | "alien";
+  /** 使用场景与渲染注入契约：page/form 均注入 alien props；antd 为原子组件，纯 props 透传。 */
+  adapter?: ComponentAdapter;
 }
 
 export interface ServiceRegistration {

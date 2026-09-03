@@ -5,10 +5,10 @@ import type {
 import { planFields } from "../../../alien-server/src/schema/field-plan.ts";
 import type {
   ModelRecord,
-  ModelSchema,
+  BuilderSchema as ModelSchema,
   Pagination,
   Sorter,
-} from "../../../alien-server/src/schema/types.ts";
+} from "@alien-form/validate";
 
 export interface ListParams {
   filters?: Record<string, unknown>;
