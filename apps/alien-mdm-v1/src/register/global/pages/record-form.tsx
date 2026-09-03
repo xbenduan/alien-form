@@ -3,7 +3,7 @@ import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
 import { Alert, App, Button, Space, Spin } from "antd";
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FormRenderer, useRuntime, type ComponentProps } from "@binding";
+import { FormRenderer, useRuntime } from "@binding";
 import { compileForm, type FieldSchema } from "@engine";
 import { transport } from "@runtime/transport";
 import { recordListRoute } from "@utils/record-route";
@@ -11,7 +11,7 @@ import styles from "./index.module.css";
 
 export type RecordActionMode = "add" | "edit" | "detail";
 
-interface RecordFormProps extends Partial<ComponentProps> {
+interface RecordFormProps {
   mode: RecordActionMode;
   modelCode: string;
   recordId?: string;

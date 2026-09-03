@@ -1,15 +1,9 @@
 import { Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
-import type { BrowserRouterProps } from "react-router-dom";
 import Layout from "../layout";
 import { useAuth } from "../../domains/auth/components/auth-provider";
 import { loginPath } from "./paths";
 import { publicRoutes, routes } from "./routes";
-
-const futureConfig = {
-  v7_startTransition: true,
-  v7_relativeSplatPath: true,
-} satisfies NonNullable<BrowserRouterProps["future"]>;
 
 function ProtectedWorkbench() {
   const auth = useAuth();
@@ -22,7 +16,7 @@ function ProtectedWorkbench() {
 
 export function AppRouter() {
   return (
-    <BrowserRouter future={futureConfig}>
+    <BrowserRouter>
       <Routes>
         {publicRoutes.map((route) => (
           <Route

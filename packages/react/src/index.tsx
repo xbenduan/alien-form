@@ -97,7 +97,7 @@ export function shallowEqual<T>(previous: T, next: T): boolean {
  * snapshot changes to React.
  */
 export function useSignalSnapshot<T>(read: () => T, isEqual: EqualityFn<T> = Object.is): T {
-  const snapshotRef = useRef<{ read: () => T; value: T; version: number }>();
+  const snapshotRef = useRef<{ read: () => T; value: T; version: number } | undefined>(undefined);
   if (!snapshotRef.current || snapshotRef.current.read !== read) {
     const value = read();
     const previous = snapshotRef.current;
