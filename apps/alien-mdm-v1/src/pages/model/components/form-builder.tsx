@@ -111,68 +111,68 @@ export function FormBuilder({
       <Flex vertical gap={16}>
         <Row gutter={16}>
           <Col span={12}>
-            <Card
-              title="字段列表"
-              extra={
-                <Button type="link" icon={<PlusOutlined />} onClick={addExtra}>
+            <Card classNames={{ body: styles.formBuilderCardBody }}>
+              <Flex justify="space-between" align="center">
+                <div className={styles.pageConfigCardTitle}>字段列表</div>
+                <Button type="link" icon={<PlusOutlined />} onClick={() => addExtra()}>
                   新增字段
                 </Button>
-              }
-              classNames={{ body: styles.formBuilderCardBody }}
-            >
-              <FieldBarTree
-                fields={draft.fields}
-                runtime={runtime}
-                domain={draft.name}
-                onEdit={(node) => setEditor({ node, isNew: false })}
-                onRemove={(node) => dispatch({ type: "field.remove", id: node.id })}
-                onAddChild={addChild}
-                onMove={(id, parentId, toIndex) =>
-                  dispatch({ type: "field.move", id, parentId, toIndex })
-                }
-              />
+              </Flex>
+              <div className={styles.formBuilderCardContent}>
+                <FieldBarTree
+                  fields={draft.fields}
+                  runtime={runtime}
+                  domain={draft.name}
+                  onEdit={(node) => setEditor({ node, isNew: false })}
+                  onRemove={(node) => dispatch({ type: "field.remove", id: node.id })}
+                  onAddChild={addChild}
+                  onMove={(id, parentId, toIndex) =>
+                    dispatch({ type: "field.move", id, parentId, toIndex })
+                  }
+                />
+              </div>
             </Card>
           </Col>
           <Col span={12}>
-            <Card
-              title={
-                <Segmented<RightTab>
-                  value={rightTab}
-                  onChange={setRightTab}
-                  options={[
-                    { label: "表单预览", value: "preview" },
-                    { label: "源码编辑", value: "source" },
-                  ]}
-                />
-              }
-              extra={
-                rightTab !== "preview" && (
+            <Card classNames={{ body: styles.formBuilderCardBody }}>
+              <Flex justify="space-between" align="center">
+                <div className={styles.pageConfigCardTitle}>
+                  <Segmented<RightTab>
+                    value={rightTab}
+                    onChange={setRightTab}
+                    options={[
+                      { label: "表单预览", value: "preview" },
+                      { label: "源码编辑", value: "source" },
+                    ]}
+                  />
+                </div>
+                {rightTab !== "preview" && (
                   <Button type="link" onClick={applySource}>
                     应用
                   </Button>
-                )
-              }
-              classNames={{ body: styles.formBuilderCardBody }}
-            >
-              {rightTab === "preview" ? (
-                <>
-                  {preview.error ? (
-                    <Empty description={`无法预览：${preview.error}`} />
-                  ) : compiled && compiled.nodes.length ? (
-                    <FormRenderer form={form} nodes={compiled.nodes} domain={draft.name} />
-                  ) : (
-                    <Empty description="暂无可预览字段" />
-                  )}
-                </>
-              ) : (
-                <Input.TextArea
-                  value={sourceDraft}
-                  onChange={(event) => setSourceDraft(event.target.value)}
-                  spellCheck={false}
-                  className={styles.sourceJson}
-                  style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
-                />
-              )}
+                )}
+              </Flex>
+              <div className={styles.formBuilderCardContent}>
+                {rightTab === "preview" ? (
+                  <>
+                    {preview.error ? (
+                      <Empty description={`无法预览：${preview.error}`} />
+                    ) : compiled && compiled.nodes.length ? (
+                      <FormRenderer form={form} nodes={compiled.nodes} domain={draft.name} />
+                    ) : (
+                      <Empty description="暂无可预览字段" />
+                    )}
+                  </>
+                ) : (
+                  <Input.TextArea
+                    value={sourceDraft}
+                    onChange={(event) => setSourceDraft(event.target.value)}
+                    spellCheck={false}
+                    className={styles.sourceJson}
+                    style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+                  />
+                )}
+              </div>
             </Card>
           </Col>
         </Row>

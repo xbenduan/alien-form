@@ -107,3 +107,8 @@
     grid-column: auto;
   }
 }
+
+.pageConfigCardTitle {
+  font-size: 16px;
+  font-weight: 500;
+}

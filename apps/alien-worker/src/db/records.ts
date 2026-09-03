@@ -3,6 +3,7 @@ import type {
   FieldPlan,
 } from "../../../alien-server/src/schema/field-plan.ts";
 import { planFields } from "../../../alien-server/src/schema/field-plan.ts";
+import { formatRecordId } from "../../../alien-server/src/schema/record-id.ts";
 import type {
   ModelRecord,
   BuilderSchema as ModelSchema,
@@ -38,8 +39,21 @@ function nowMs(): number {
   return Date.now();
 }
 
-function newId(model: string): string {
-  return `${model}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+/**
+ * 分配下一个业务主键：从 _sequences 表按 model 原子自增取号，格式化为 MDM0000000001。
+ * 单条 INSERT ... ON CONFLICT DO UPDATE ... RETURNING 保证 D1 串行写入下并发不重号。
+ */
+async function nextId(db: D1Database, model: string): Promise<string> {
+  const row = await db
+    .prepare(
+      `INSERT INTO "_sequences" (model, next) VALUES (?, 1)
+       ON CONFLICT(model) DO UPDATE SET next = next + 1
+       RETURNING next`,
+    )
+    .bind(model)
+    .first<{ next: number }>();
+  // next 存"最近已分配序号"：首次插入返回 1，此后每次 +1 返回新值，直接作为本次序号。
+  return formatRecordId(row?.next ?? 1);
 }
 
 function columnPlans(schema: ModelSchema): ColumnPlan[] {
@@ -320,7 +334,7 @@ export async function createRecord(
 ): Promise<ModelRecord> {
   const model = schema.meta.name;
   const { id: providedId, data } = splitSystemFields(values);
-  const id = providedId ?? newId(model);
+  const id = providedId ?? (await nextId(db, model));
   const ts = nowMs();
 
   await db

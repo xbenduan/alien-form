@@ -10,7 +10,17 @@ function systemFields(): FieldNode[] {
       key: "id",
       type: "string",
       source: "field",
-      storage: { title: "ID", type: "text", system: true, filterable: true },
+      // id 是所有模型的唯一主键（后端建为 PRIMARY KEY，按模型自增 MDM0000000001），
+      // 故显式声明 唯一 + 非空 + 索引，作为模型的唯一索引。
+      storage: {
+        title: "ID",
+        type: "text",
+        system: true,
+        nullable: false,
+        unique: true,
+        index: true,
+        filterable: true,
+      },
       form: { title: "ID", display: "hidden" },
     },
     {
@@ -60,7 +70,6 @@ export function createDefaultDraft(_runtime: Runtime): ModelDraft {
           title: "名称",
           type: "text",
           nullable: false,
-          unique: true,
           index: true,
           filterable: true,
         },

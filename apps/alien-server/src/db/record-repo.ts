@@ -3,6 +3,7 @@ import { decode, encode } from "./codec.ts";
 import { planFields } from "../schema/field-plan.ts";
 import type { ColumnPlan, RelationPlan } from "../schema/field-plan.ts";
 import { tableName } from "../schema/naming.ts";
+import { formatRecordId } from "../schema/record-id.ts";
 import type { ModelRecord, ModelSchema, Pagination, Sorter } from "../schema/types.ts";
 
 export interface ListParams {
@@ -25,8 +26,19 @@ function nowMs(): number {
   return Date.now();
 }
 
-function newId(model: string): string {
-  return `${model}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+/**
+ * 分配下一个业务主键：从 _sequences 表按 model 原子自增取号，格式化为 MDM0000000001。
+ * 调用点已在 createRecord 的事务内，单条 upsert + RETURNING 保证不重号。
+ */
+function nextId(model: string): string {
+  const row = getDb()
+    .prepare(
+      `INSERT INTO "_sequences" (model, next) VALUES (?, 1)
+       ON CONFLICT(model) DO UPDATE SET next = next + 1
+       RETURNING next`,
+    )
+    .get(model) as { next: number } | undefined;
+  return formatRecordId(row?.next ?? 1);
 }
 
 function columnPlans(schema: ModelSchema): ColumnPlan[] {
@@ -297,7 +309,7 @@ export function createRecord(schema: ModelSchema, values: Record<string, unknown
   const cols = columnPlans(schema);
   const rels = relationPlans(schema);
   const providedId = typeof values.id === "string" && values.id ? values.id : undefined;
-  const id = providedId ?? newId(schema.meta.name);
+  const id = providedId ?? nextId(schema.meta.name);
   const ts = nowMs();
 
   transaction(() => {

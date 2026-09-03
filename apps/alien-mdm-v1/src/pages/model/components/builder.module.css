@@ -140,10 +140,20 @@
 }
 
 .formBuilderCardBody {
-  height: calc(100vh - 280px);
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
+.formBuilderCardContent {
+  height: calc(100vh - 260px);
+  overflow: auto;
   .sourceJson {
     height: 100%;
   }
+}
+
+.pageConfigCardTitle {
+  font-size: 16px;
+  font-weight: 500;
 }

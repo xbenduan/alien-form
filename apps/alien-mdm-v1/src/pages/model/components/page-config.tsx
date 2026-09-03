@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { GroupDraft, ModelAction, ModelDraft, PageDraft } from "../builder";
 import { GroupModal } from "./group-modal";
 import { PageModal } from "./page-modal";
+import styles from "./index.module.css";
 
 /**
  * 页面配置步骤：上方「字段分组」表格，下方「页面配置」表格。
@@ -129,14 +130,13 @@ export function PageConfig({
 
   return (
     <Flex vertical gap={16}>
-      <Card
-        title="字段分组"
-        extra={
+      <Card styles={{ body: { display: "flex", flexDirection: "column", gap: 8 } }}>
+        <Flex justify="space-between" align="center">
+          <div className={styles.pageConfigCardTitle}>字段分组</div>
           <Button type="link" icon={<PlusOutlined />} onClick={() => setGroupEditor({})}>
             新增分组
           </Button>
-        }
-      >
+        </Flex>
         <Table<GroupDraft>
           rowKey="id"
           size="small"
@@ -146,14 +146,13 @@ export function PageConfig({
           locale={{ emptyText: "暂无分组，未分组字段按顺序平铺" }}
         />
       </Card>
-      <Card
-        title="页面配置"
-        extra={
+      <Card styles={{ body: { display: "flex", flexDirection: "column", gap: 8 } }}>
+        <Flex justify="space-between" align="center">
+          <div className={styles.pageConfigCardTitle}>页面配置</div>
           <Button type="link" icon={<PlusOutlined />} onClick={() => setPageEditor({})}>
             新增页面
           </Button>
-        }
-      >
+        </Flex>
         <Table<PageDraft>
           rowKey="id"
           size="small"

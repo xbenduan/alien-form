@@ -3,12 +3,20 @@ import type { ModelSchema } from "../schema/types.ts";
 
 /** 元表：存储所有模型的配置态 schema（JSON）+ 时间戳。 */
 export function ensureSchemaTable(): void {
-  getDb().exec(
+  const db = getDb();
+  db.exec(
     `CREATE TABLE IF NOT EXISTS "_schemas" (
       "name" TEXT PRIMARY KEY,
       "schema" TEXT NOT NULL,
       "created_at" TEXT NOT NULL,
       "updated_at" TEXT NOT NULL
+    )`,
+  );
+  // 记录主键自增序列：每模型一行，next 为最近已分配序号（配合 record-repo.nextId）。
+  db.exec(
+    `CREATE TABLE IF NOT EXISTS "_sequences" (
+      "model" TEXT PRIMARY KEY,
+      "next" INTEGER NOT NULL
     )`,
   );
 }
