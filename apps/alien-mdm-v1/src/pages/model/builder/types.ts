@@ -5,7 +5,7 @@ import type {
   DatabaseValueType,
   FieldGroup,
   FieldSchema,
-  OpenMode,
+  XPage,
 } from "@engine";
 
 /** 表单类型（含不落库的 void 纯展示元素）。 */
@@ -55,6 +55,12 @@ export interface GroupDraft extends FieldGroup {
   id: string;
 }
 
+/** 页面配置草稿：一个 page（XPage）附带稳定 id。 */
+export interface PageDraft {
+  id: string;
+  page: XPage;
+}
+
 export interface ModelDraft {
   name: string;
   title: string;
@@ -64,10 +70,11 @@ export interface ModelDraft {
   singularLabel?: string;
   pluralLabel?: string;
   defaultPageSize: number;
-  openMode: Record<"add" | "edit" | "detail", OpenMode>;
   /** 统一字段树：顶层含落库字段与新增展示元素，嵌套 children 为 object/array 子字段。 */
   fields: FieldNode[];
   groups: GroupDraft[];
+  /** 页面装配：直接编辑 XPage JSON，可从代码写死的模版新增。 */
+  pages: PageDraft[];
 }
 
 export type { BuilderSchema };

@@ -2,7 +2,7 @@ import type { FieldNode, ModelDraft } from "./types";
 
 /** 命令：全部为不可变纯函数（接收 draft 返回新 draft）。 */
 export type ModelAction =
-  | { type: "meta.update"; patch: Partial<Omit<ModelDraft, "fields" | "groups">> }
+  | { type: "meta.update"; patch: Partial<Omit<ModelDraft, "fields" | "groups" | "pages">> }
   | { type: "field.add"; node: FieldNode; parentId?: string; index?: number }
   | { type: "field.update"; id: string; node: FieldNode }
   | { type: "field.remove"; id: string }
@@ -10,6 +10,7 @@ export type ModelAction =
   | { type: "field.move"; id: string; parentId?: string; toIndex: number }
   | { type: "fields.replace"; fields: FieldNode[] }
   | { type: "groups.replace"; groups: ModelDraft["groups"] }
+  | { type: "pages.replace"; pages: ModelDraft["pages"] }
   | { type: "replace"; draft: ModelDraft };
 
 // ---- 树维护工具（同 alien-mdm 参考，纯函数式）----
@@ -87,6 +88,8 @@ export function reduceModel(draft: ModelDraft, action: ModelAction): ModelDraft 
       return { ...draft, ...action.patch };
     case "groups.replace":
       return { ...draft, groups: action.groups };
+    case "pages.replace":
+      return { ...draft, pages: action.pages };
     case "fields.replace":
       return { ...draft, fields: action.fields };
     case "field.update":

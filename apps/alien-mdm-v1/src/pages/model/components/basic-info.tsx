@@ -2,12 +2,6 @@ import { Card, Form, Input, InputNumber, Select } from "antd";
 import { useEffect } from "react";
 import type { ModelAction, ModelDraft } from "../builder";
 
-const OPEN_MODE_OPTIONS = [
-  { label: "整页", value: "page" },
-  { label: "抽屉", value: "drawer" },
-  { label: "弹窗", value: "modal" },
-];
-
 export function BasicInfo({
   draft,
   dispatch,
@@ -28,9 +22,6 @@ export function BasicInfo({
       singularLabel: draft.singularLabel,
       pluralLabel: draft.pluralLabel,
       defaultPageSize: draft.defaultPageSize,
-      addOpenMode: draft.openMode.add,
-      editOpenMode: draft.openMode.edit,
-      detailOpenMode: draft.openMode.detail,
       description: draft.description,
     });
   }, [draft, form]);
@@ -45,14 +36,6 @@ export function BasicInfo({
     if ("pluralLabel" in changed) patch.pluralLabel = changed.pluralLabel as string;
     if ("defaultPageSize" in changed) patch.defaultPageSize = Number(changed.defaultPageSize ?? 20);
     if ("description" in changed) patch.description = changed.description as string;
-    if ("addOpenMode" in changed || "editOpenMode" in changed || "detailOpenMode" in changed) {
-      patch.openMode = {
-        add: (changed.addOpenMode as ModelDraft["openMode"]["add"]) ?? draft.openMode.add,
-        edit: (changed.editOpenMode as ModelDraft["openMode"]["edit"]) ?? draft.openMode.edit,
-        detail:
-          (changed.detailOpenMode as ModelDraft["openMode"]["detail"]) ?? draft.openMode.detail,
-      };
-    }
     dispatch({ type: "meta.update", patch });
   };
 
@@ -93,15 +76,6 @@ export function BasicInfo({
         </Form.Item>
         <Form.Item name="defaultPageSize" label="每页条数">
           <InputNumber min={1} style={{ width: "100%" }} />
-        </Form.Item>
-        <Form.Item name="addOpenMode" label="新增打开方式">
-          <Select options={OPEN_MODE_OPTIONS} />
-        </Form.Item>
-        <Form.Item name="editOpenMode" label="编辑打开方式">
-          <Select options={OPEN_MODE_OPTIONS} />
-        </Form.Item>
-        <Form.Item name="detailOpenMode" label="详情打开方式">
-          <Select options={OPEN_MODE_OPTIONS} />
         </Form.Item>
         <Form.Item name="description" label="描述" style={{ gridColumn: "1 / -1" }}>
           <Input.TextArea rows={3} />

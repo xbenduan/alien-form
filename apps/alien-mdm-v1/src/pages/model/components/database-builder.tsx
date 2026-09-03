@@ -1,32 +1,9 @@
-import {
-  CopyOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  PlusOutlined,
-  SearchOutlined,
-} from "@ant-design/icons";
-import {
-  Button,
-  Card,
-  Flex,
-  Input,
-  Popconfirm,
-  Space,
-  Table,
-  Tag,
-  Tooltip,
-  Typography,
-} from "antd";
+import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
+import { Button, Card, Flex, Input, Popconfirm, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useMemo, useState } from "react";
 import type { Runtime } from "@engine";
-import {
-  cloneFieldTree,
-  createField,
-  type FieldNode,
-  type ModelAction,
-  type ModelDraft,
-} from "../builder";
+import { createField, type FieldNode, type ModelAction, type ModelDraft } from "../builder";
 import { StorageFieldModal } from "./storage-field-modal";
 
 interface EditorState {

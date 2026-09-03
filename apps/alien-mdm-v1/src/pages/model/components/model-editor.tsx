@@ -8,6 +8,8 @@ import { PageBreadcrumb } from "../../../components";
 import { transport } from "@runtime/transport";
 import {
   createDefaultDraft,
+  createDefaultPages,
+  createId,
   decodeModel,
   encodeModel,
   reduceModel,
@@ -16,9 +18,10 @@ import {
 import { BasicInfo } from "./basic-info";
 import { DatabaseBuilder } from "./database-builder";
 import { FormBuilder } from "./form-builder";
+import { PageConfig } from "./page-config";
 import styles from "./index.module.css";
 
-const STEP_TITLES = ["基本信息", "数据库构建", "表单配置"] as const;
+const STEP_TITLES = ["基本信息", "数据库构建", "表单配置", "页面配置"] as const;
 
 export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyFrom?: string }) {
   const runtime = useRuntime();
@@ -77,6 +80,22 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
     return true;
   };
 
+  // 进入「页面配置」步骤前，若尚无页面则用默认模版预置一份（新建模型场景）。
+  const goNext = () => {
+    if (!validateStep()) return;
+    const next = step + 1;
+    if (STEP_TITLES[next] === "页面配置" && draft.pages.length === 0) {
+      dispatch({
+        type: "pages.replace",
+        pages: createDefaultPages(draft.name.trim(), draft.title.trim()).map((page) => ({
+          id: createId(),
+          page,
+        })),
+      });
+    }
+    setStep(next);
+  };
+
   return (
     <Flex className={styles.actionsPage} vertical gap={16}>
       <PageBreadcrumb
@@ -95,20 +114,17 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
         <BasicInfo draft={draft} dispatch={dispatch} lockName={Boolean(modelCode)} />
       ) : step === 1 ? (
         <DatabaseBuilder draft={draft} runtime={runtime} dispatch={dispatch} />
-      ) : (
+      ) : step === 2 ? (
         <FormBuilder draft={draft} dispatch={dispatch} />
+      ) : (
+        <PageConfig draft={draft} dispatch={dispatch} />
       )}
       <div className={styles.footer}>
         <Space>
           <Button onClick={() => navigate("/models")}>取消</Button>
           {step > 0 && <Button onClick={() => setStep((current) => current - 1)}>上一步</Button>}
           {step < STEP_TITLES.length - 1 ? (
-            <Button
-              type="primary"
-              onClick={() => {
-                if (validateStep()) setStep((current) => current + 1);
-              }}
-            >
+            <Button type="primary" onClick={goNext}>
               下一步
             </Button>
           ) : (

@@ -69,6 +69,7 @@ export function Input(props: ComponentProps) {
   return (
     <AntInput
       {...nativeProps(props)}
+      placeholder={props.placeholder || "请输入"}
       value={props.value as string | undefined}
       onChange={(event) => props.onChange?.(event.target.value)}
     />
@@ -81,6 +82,7 @@ export function TextArea(props: ComponentProps) {
   return (
     <AntInput.TextArea
       {...controlProps}
+      placeholder={props.placeholder || "请输入"}
       style={{ width: "100%", ...(controlProps.style as object) }}
       value={props.value as string | undefined}
       onChange={(event) => props.onChange?.(event.target.value)}
@@ -94,6 +96,7 @@ export function NumberInput(props: ComponentProps) {
   return (
     <AntInputNumber
       {...controlProps}
+      placeholder={props.placeholder || "请输入"}
       style={{ width: "100%", ...(controlProps.style as object) }}
       value={props.value as number | null | undefined}
       onChange={(next) => props.onChange?.(next)}
@@ -132,6 +135,7 @@ export function Select(
   return (
     <AntSelect
       {...controlProps}
+      placeholder={props.placeholder || "请选择"}
       allowClear
       style={{ width: "100%", ...(controlProps.style as object) }}
       value={value}

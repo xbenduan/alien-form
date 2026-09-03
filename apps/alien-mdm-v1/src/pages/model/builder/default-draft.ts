@@ -18,7 +18,13 @@ function systemFields(): FieldNode[] {
       key: "createdAt",
       type: "string",
       source: "field",
-      storage: { title: "创建时间", type: "integer", valueType: "string", system: true, filterable: true },
+      storage: {
+        title: "创建时间",
+        type: "integer",
+        valueType: "string",
+        system: true,
+        filterable: true,
+      },
       form: { title: "创建时间", props: { readOnly: true } },
     },
     {
@@ -26,7 +32,13 @@ function systemFields(): FieldNode[] {
       key: "updatedAt",
       type: "string",
       source: "field",
-      storage: { title: "更新时间", type: "integer", valueType: "string", system: true, filterable: true },
+      storage: {
+        title: "更新时间",
+        type: "integer",
+        valueType: "string",
+        system: true,
+        filterable: true,
+      },
       form: { title: "更新时间", props: { readOnly: true } },
     },
   ];
@@ -38,7 +50,6 @@ export function createDefaultDraft(_runtime: Runtime): ModelDraft {
     title: "",
     group: "other",
     defaultPageSize: 20,
-    openMode: { add: "drawer", edit: "drawer", detail: "drawer" },
     fields: [
       {
         id: createId(),
@@ -58,5 +69,6 @@ export function createDefaultDraft(_runtime: Runtime): ModelDraft {
       ...systemFields(),
     ],
     groups: [],
+    pages: [],
   };
 }

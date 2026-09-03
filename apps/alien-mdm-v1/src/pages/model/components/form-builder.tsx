@@ -1,5 +1,5 @@
 import { useCreateForm } from "@alien-form/react";
-import { App, Button, Card, Col, Empty, Flex, Input, Row, Segmented, Typography } from "antd";
+import { App, Button, Card, Col, Empty, Flex, Input, Row, Segmented } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { FormRenderer, useRuntime } from "@binding";
 import { compileForm } from "@engine";
@@ -12,7 +12,6 @@ import {
   type ModelDraft,
 } from "../builder";
 import { FieldBarTree } from "./field-bar-tree";
-import { GroupEditor } from "./group-editor";
 import { FormFieldModal } from "./form-field-modal";
 import { PlusOutlined } from "@ant-design/icons";
 import styles from "./builder.module.css";
@@ -177,7 +176,6 @@ export function FormBuilder({
             </Card>
           </Col>
         </Row>
-        <GroupEditor draft={draft} dispatch={dispatch} />
       </Flex>
       <FormFieldModal
         open={Boolean(editor)}

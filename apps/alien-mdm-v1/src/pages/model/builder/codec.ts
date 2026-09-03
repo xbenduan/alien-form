@@ -8,6 +8,7 @@ import type {
   ModelDraft,
   StorageConfig,
 } from "./types";
+import { createDefaultPages } from "./page-templates";
 
 let idCounter = 0;
 /** 生成命令寻址用的稳定 id。 */
@@ -114,7 +115,9 @@ function decodeFormConfig(schema: FieldSchema | undefined): FormConfig {
 function decodeChildren(schema: FieldSchema | undefined): FieldNode[] {
   const properties =
     schema?.type === "array"
-      ? (schema.items && !Array.isArray(schema.items) ? schema.items.properties : undefined)
+      ? schema.items && !Array.isArray(schema.items)
+        ? schema.items.properties
+        : undefined
       : schema?.properties;
   if (!properties) return [];
   return Object.entries(properties).map(([key, child]) => decodeExtraNode(key, child));
@@ -215,7 +218,13 @@ export function decodeModel(model: BuilderSchema): ModelDraft {
     if (fieldKeys.has(key)) continue;
     fields.push(decodeExtraNode(key, schema));
   }
-  const openMode = resolveOpenMode(model);
+  const pages: ModelDraft["pages"] =
+    model.pages.length > 0
+      ? model.pages.map((page) => ({ id: createId(), page }))
+      : createDefaultPages(model.meta.name, model.meta.title).map((page) => ({
+          id: createId(),
+          page,
+        }));
   return {
     name: model.meta.name,
     title: model.meta.title,
@@ -225,24 +234,12 @@ export function decodeModel(model: BuilderSchema): ModelDraft {
     singularLabel: model.meta.singularLabel,
     pluralLabel: model.meta.pluralLabel,
     defaultPageSize: model.meta.defaultPageSize ?? 20,
-    openMode,
     fields,
     groups: (model.definitions["form-schema"].group ?? []).map((group) => ({
       ...group,
       id: createId(),
     })),
-  };
-}
-
-function resolveOpenMode(model: BuilderSchema): ModelDraft["openMode"] {
-  const list = model.pages.find((page) => page.router === "list");
-  const actions = list?.properties?.table?.props?.["action-btns"] as
-    | Record<string, { openMode?: ModelDraft["openMode"]["add"] }>
-    | undefined;
-  return {
-    add: actions?.add?.openMode ?? "drawer",
-    edit: actions?.edit?.openMode ?? "drawer",
-    detail: actions?.detail?.openMode ?? "drawer",
+    pages,
   };
 }
 
@@ -331,13 +328,16 @@ export function encodeModel(draft: ModelDraft): BuilderSchema {
 
   const group = draft.groups
     .filter((item) => item.keys.length > 0)
-    .map((item) => pruneUndefined({
-      component: item.component?.trim() || "ObjectField",
-      title: item.title,
-      description: item.description,
-      keys: item.keys,
-      props: item.props,
-    }) as GroupDraft);
+    .map(
+      (item) =>
+        pruneUndefined({
+          component: item.component?.trim() || "ObjectField",
+          title: item.title,
+          description: item.description,
+          keys: item.keys,
+          props: item.props,
+        }) as GroupDraft,
+    );
 
   return {
     meta: pruneUndefined({
@@ -351,7 +351,10 @@ export function encodeModel(draft: ModelDraft): BuilderSchema {
       defaultPageSize: draft.defaultPageSize,
     }) as BuilderSchema["meta"],
     fields: dbFields,
-    pages: createPages(name, title, draft.openMode),
+    pages:
+      draft.pages.length > 0
+        ? draft.pages.map((item) => item.page)
+        : createDefaultPages(name, title),
     definitions: {
       "form-schema": {
         type: "object",
@@ -360,65 +363,4 @@ export function encodeModel(draft: ModelDraft): BuilderSchema {
       },
     },
   };
-}
-
-/** 生成 list / add / edit / detail 页面（openMode 写入 list 页 action-btns 按钮）。 */
-export function createPages(
-  modelCode: string,
-  title: string,
-  openMode: ModelDraft["openMode"],
-): BuilderSchema["pages"] {
-  const modelLiteral = JSON.stringify(modelCode);
-  return [
-    {
-      router: "list",
-      title,
-      layout: { component: "layout", props: { rightTop: "filter", rightBottom: "table" } },
-      properties: {
-        filter: {
-          type: "string",
-          component: "filter",
-          props: {
-            schema: { $ref: "form-schema" },
-            filters: "{{ $utils.schemaToFilters }}",
-            defaultValue: "{{ $query.keyword }}",
-          },
-        },
-        table: {
-          type: "void",
-          component: "table",
-          props: {
-            rowKey: "id",
-            modelCode,
-            schema: { $ref: "form-schema" },
-            columns: "{{ $utils.schemaToColumns }}",
-            filter: "{{ $values.filter }}",
-            loadData: `{{ (params) => $service.records.list({ model: ${modelLiteral}, ...params }) }}`,
-            "action-btns": {
-              add: { type: "primary", children: "新增", openMode: openMode.add },
-              edit: { type: "text", children: "编辑", openMode: openMode.edit },
-              detail: { type: "text", children: "详情", openMode: openMode.detail },
-              delete: { type: "text", children: "删除", service: "{{ $service.records.delete }}" },
-            },
-          },
-        },
-      },
-    },
-    ...(["add", "edit", "detail"] as const).map((mode) => ({
-      router: mode,
-      title: `${mode === "add" ? "新建" : mode === "edit" ? "编辑" : "详情"}${title}`,
-      properties: {
-        form: {
-          type: "void" as const,
-          component: "record-form",
-          props: pruneUndefined({
-            mode,
-            modelCode,
-            recordId: mode === "add" ? undefined : "{{ $query.id }}",
-            schema: { $ref: "form-schema" },
-          }),
-        },
-      },
-    })),
-  ];
 }

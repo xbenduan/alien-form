@@ -23,6 +23,7 @@ export interface ComponentProps {
   onChange?: (value: unknown) => void;
   dataSource?: unknown[];
   loading?: boolean;
+  placeholder?: string;
   [key: string]: unknown;
 }
 
