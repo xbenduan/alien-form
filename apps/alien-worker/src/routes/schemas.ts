@@ -6,7 +6,7 @@ import {
   removeSchema,
   upsertSchema,
 } from "../db/schemas.ts";
-import type { ModelSchema } from "../../../alien-server/src/schema/types.ts";
+import { assertModelSchema, type ModelSchema } from "../../../alien-server/src/schema/types.ts";
 import type { Env } from "../env.ts";
 
 export const schemaRoutes = new Hono<{ Bindings: Env }>();
@@ -16,7 +16,7 @@ schemaRoutes.get("/", async (c) => {
   const entries = await listSchemaEntries(c.env.DB);
   const summaries = entries.map(({ schema, updatedAt }) => ({
     ...schema.meta,
-    fieldCount: Object.keys(schema.definitions?.["form-schema"]?.properties ?? {}).length,
+    fieldCount: Object.keys(schema.database?.fields ?? {}).length,
     updatedAt,
   }));
   return c.json(summaries);
@@ -32,6 +32,7 @@ schemaRoutes.get("/:name", async (c) => {
 /** POST /api/schemas → 新建模型（同名报错）。通用表存储，无需建表 DDL。 */
 schemaRoutes.post("/", async (c) => {
   const schema = (await c.req.json()) as ModelSchema;
+  assertModelSchema(schema);
   if (await hasSchema(c.env.DB, schema.meta.name)) {
     return c.json({ error: `模型已存在：${schema.meta.name}` }, 409);
   }
@@ -45,6 +46,7 @@ schemaRoutes.put("/:name", async (c) => {
   if (!(await hasSchema(c.env.DB, name))) return c.json({ error: `模型不存在：${name}` }, 404);
   const incoming = (await c.req.json()) as ModelSchema;
   const schema: ModelSchema = { ...incoming, meta: { ...incoming.meta, name } };
+  assertModelSchema(schema);
   const entry = await upsertSchema(c.env.DB, schema);
   return c.json(entry.schema);
 });

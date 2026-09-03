@@ -38,10 +38,7 @@ interface FilterFieldProps {
 }
 
 function isFilterable(field: FieldSchema): boolean {
-  return (
-    field["x-table"]?.filterable === true ||
-    (field["x-database"] as { filterable?: boolean } | undefined)?.filterable === true
-  );
+  return field["x-table"]?.filterable === true;
 }
 
 function isComplex(field: FieldSchema): boolean {

@@ -7,7 +7,7 @@ import {
   upsertSchema,
 } from "../db/schema-repo.ts";
 import { migrateSchema } from "../db/migrate.ts";
-import { assertModelSchema, formProperties, type ModelSchema } from "../schema/types.ts";
+import { assertModelSchema, type ModelSchema } from "../schema/types.ts";
 
 export const schemaRoutes = new Hono();
 
@@ -15,7 +15,7 @@ export const schemaRoutes = new Hono();
 schemaRoutes.get("/", (c) => {
   const summaries = listSchemaEntries().map(({ schema, updatedAt }) => ({
     ...schema.meta,
-    fieldCount: Object.keys(formProperties(schema)).length,
+    fieldCount: Object.keys(schema.database?.fields ?? {}).length,
     updatedAt,
   }));
   return c.json(summaries);

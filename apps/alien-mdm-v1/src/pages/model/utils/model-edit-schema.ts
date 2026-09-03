@@ -1,5 +1,5 @@
 import type { IFormSchema } from "@alien-form/core";
-import type { FieldGroup } from "@engine";
+import type { DatabaseSchema, FieldGroup } from "@engine";
 
 const OPEN_MODE_OPTIONS = [
   { label: "整页", value: "page" },
@@ -7,13 +7,32 @@ const OPEN_MODE_OPTIONS = [
   { label: "弹窗", value: "modal" },
 ];
 
+export const defaultDatabase: DatabaseSchema = {
+  fields: {
+    name: {
+      title: "名称",
+      type: "text",
+      nullable: false,
+      unique: true,
+      index: true,
+      filterable: true,
+    },
+    status: {
+      title: "状态",
+      type: "text",
+      nullable: false,
+      index: true,
+      filterable: true,
+    },
+  },
+};
+
 export const defaultFields = {
   name: {
     type: "string",
     title: "名称",
     component: "Input",
     required: true,
-    "x-database": { column: "name", length: 128 },
     "x-table": { filterable: true },
   },
   status: {
@@ -24,7 +43,8 @@ export const defaultFields = {
       { label: "启用", value: "active" },
       { label: "停用", value: "inactive" },
     ],
-    "x-database": { column: "status", length: 32 },
+    required: true,
+    "x-table": { filterable: true },
   },
 };
 
@@ -111,6 +131,18 @@ export const modelEditSchema: IFormSchema = {
       title: "描述",
       component: "TextArea",
       props: { rows: 3 },
+    },
+    databaseJson: {
+      type: "string",
+      title: "数据库字段",
+      description: "字段名和存储结构在此确定；后续表单配置只能调整展示与交互。",
+      component: "TextArea",
+      required: true,
+      props: {
+        rows: 24,
+        spellCheck: false,
+        style: { fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" },
+      },
     },
     fieldsJson: {
       type: "string",

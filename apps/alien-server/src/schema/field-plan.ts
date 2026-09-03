@@ -1,9 +1,4 @@
-import {
-  formProperties,
-  type ColumnType,
-  type ModelFieldSchema,
-  type ModelSchema,
-} from "./types.ts";
+import { databaseFields, type ColumnType, type ModelSchema } from "./types.ts";
 import { junctionName, tableName, toSnake } from "./naming.ts";
 
 /** id / createdAt / updatedAt 由仓储统一管理为系统列，不从 schema 字段建列。 */
@@ -41,71 +36,46 @@ export interface RelationPlan {
 
 export type FieldPlan = ColumnPlan | RelationPlan;
 
-function isMultiValue(field: ModelFieldSchema): boolean {
-  const selectMode = (field.props as { selectMode?: unknown } | undefined)?.selectMode;
-  return field.component === "Select" && (selectMode === "multiple" || selectMode === "tags");
-}
-
-/** 推导列类型：x-database.type 优先，否则由 type/component 派生。 */
-function inferColumnType(field: ModelFieldSchema): ColumnType {
-  const explicit = field["x-database"]?.type;
-  if (explicit) return explicit;
-
-  if (field.properties || (field.items && !Array.isArray(field.items))) return "json";
-  if (isMultiValue(field)) return "json";
-  if (field.type === "number" || field.component === "NumberInput") {
-    return "real";
-  }
-  if (field.type === "boolean") return "boolean";
-  return "text";
-}
-
 /**
- * 把一份 schema 的所有字段解析为存储计划。
+ * 把 database.fields 解析为存储计划。
  * 每个字段产出一个 ColumnPlan（含 many-to-one 标量外键）或 RelationPlan（m2m）。
  */
 export function planFields(schema: ModelSchema): FieldPlan[] {
   const owner = schema.meta.name;
   const plans: FieldPlan[] = [];
 
-  for (const [key, field] of Object.entries(formProperties(schema))) {
+  for (const [key, field] of Object.entries(databaseFields(schema))) {
     if (SYSTEM_MANAGED.has(key)) continue;
 
-    const xdb = field["x-database"] ?? {};
-    const relation = xdb.relation;
-    const target = xdb.target;
+    const relation = field.relation;
 
-    // 多对多：junction 表，不在主表建列
-    if (relation === "many-to-many" && target) {
+    if (relation?.kind === "many-to-many") {
       plans.push({
         kind: "m2m",
         field: key,
-        through: xdb.through ?? junctionName(owner, target, key),
+        through: relation.through ?? junctionName(owner, relation.target, key),
         ownerColumn: `${tableName(owner)}_id`,
-        targetColumn: `${tableName(target)}_id`,
-        target,
+        targetColumn: `${tableName(relation.target)}_id`,
+        target: relation.target,
       });
       continue;
     }
 
-    const type = inferColumnType(field);
-    const json = type === "json";
-    const index = xdb.index ?? false;
+    const json = field.type === "json";
+    const index = field.index ?? false;
     plans.push({
       kind: "column",
       field: key,
-      column: toSnake(key),
-      type,
-      nullable: xdb.nullable ?? !field.required,
-      default: xdb.default,
-      unique: xdb.unique ?? false,
+      column: field.column ?? toSnake(key),
+      type: field.type,
+      nullable: field.nullable ?? true,
+      default: field.default,
+      unique: field.unique ?? false,
       index,
       json,
-      // 可筛选 ⟺ 声明 filterable，缺省跟随 index；JSON 列不可筛选
-      filterable: json ? false : (xdb.filterable ?? index),
-      // 可排序：缺省标量列可排序，JSON 列不可
-      sortable: xdb.sortable ?? !json,
-      relationTarget: relation === "many-to-one" ? target : undefined,
+      filterable: json ? false : (field.filterable ?? index),
+      sortable: field.sortable ?? !json,
+      relationTarget: relation?.kind === "many-to-one" ? relation.target : undefined,
     });
   }
 
@@ -120,11 +90,7 @@ export function planByField(schema: ModelSchema): Map<string, FieldPlan> {
 }
 
 /**
- * 引用字段声明：读路径把标量 join 键展开成 { $ref, value, label } 所需的元信息。
- * 由既有的 canonical 声明派生（不额外要求作者重复配置）：
- *  - props.service（字段运行时取数声明）：model/valueKey/labelKey；
- *  - TreeSelect 的 props（自连接业务码软引用，如 deptCode/parentCode）：取 treeModel/treeIdField/treeLabelField；
- *  - 显式 x-ref（可选，未来直接声明）：{ model, value?, label? }。
+ * 引用字段声明：完全来自 database.fields.relation。
  */
 export interface RefField {
   /** 本模型字段名。 */
@@ -139,70 +105,21 @@ export interface RefField {
   multi: boolean;
 }
 
-/** 显式 x-ref 声明（可选）。 */
-interface XRefMeta {
-  model: string;
-  value?: string;
-  label?: string;
-}
-
-interface FieldServiceMeta {
-  model: string;
-  valueKey?: string;
-  labelKey?: string;
-}
-
 /** 扫描一份 schema 的所有引用字段。 */
 export function refFields(schema: ModelSchema): RefField[] {
   const refs: RefField[] = [];
-  for (const [key, field] of Object.entries(formProperties(schema))) {
+  for (const [key, field] of Object.entries(databaseFields(schema))) {
     if (SYSTEM_MANAGED.has(key)) continue;
-    const multi = isMultiValue(field);
-
-    // 1) 显式 x-ref
-    const xref = field["x-ref"] as XRefMeta | undefined;
-    if (xref && typeof xref.model === "string") {
-      const value = typeof xref.value === "string" ? xref.value : "id";
-      refs.push({
-        field: key,
-        model: xref.model,
-        valueKey: value,
-        labelKey: typeof xref.label === "string" ? xref.label : value,
-        multi,
-      });
-      continue;
-    }
-
-    // 2) props.service（字段组件声明的远程取数）
-    const service = (field.props as { service?: unknown } | undefined)?.service as
-      | FieldServiceMeta
-      | undefined;
-    if (service && typeof service.model === "string") {
-      const value = typeof service.valueKey === "string" ? service.valueKey : "id";
-      refs.push({
-        field: key,
-        model: service.model,
-        valueKey: value,
-        labelKey: typeof service.labelKey === "string" ? service.labelKey : value,
-        multi,
-      });
-      continue;
-    }
-
-    // 3) TreeSelect props（自连接业务码软引用）
-    if (field.component === "TreeSelect") {
-      const props = (field.props ?? {}) as Record<string, unknown>;
-      const treeModel = typeof props.treeModel === "string" ? props.treeModel : "";
-      if (!treeModel) continue;
-      const idField = typeof props.treeIdField === "string" ? props.treeIdField : "id";
-      refs.push({
-        field: key,
-        model: treeModel,
-        valueKey: idField,
-        labelKey: typeof props.treeLabelField === "string" ? props.treeLabelField : idField,
-        multi: false,
-      });
-    }
+    const relation = field.relation;
+    if (!relation) continue;
+    const valueKey = relation.valueField ?? "id";
+    refs.push({
+      field: key,
+      model: relation.target,
+      valueKey,
+      labelKey: relation.labelField ?? valueKey,
+      multi: relation.kind === "many-to-many" || field.valueType === "array",
+    });
   }
   return refs;
 }

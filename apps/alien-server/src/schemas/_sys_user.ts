@@ -1,9 +1,52 @@
-import type { ModelFieldSchema, ModelSchema } from "../schema/types.ts";
+import type { DatabaseSchema, ModelFieldSchema, ModelSchema } from "../schema/types.ts";
 
 export const SYS_ADMIN_ID = "_sys_admin";
 export const SYS_ADMIN_USERNAME = "_sys_admin";
 export const SYS_ADMIN_NICKNAME = "系统管理员";
 export const SYS_ADMIN_DEFAULT_PASSWORD = "alien123456";
+
+const database: DatabaseSchema = {
+  fields: {
+    username: {
+      title: "账号",
+      type: "text",
+      nullable: false,
+      unique: true,
+      index: true,
+      filterable: true,
+    },
+    passwordHash: { title: "密码", type: "text" },
+    nickname: {
+      title: "昵称",
+      type: "text",
+      nullable: false,
+      index: true,
+      filterable: true,
+    },
+    remark: { title: "备注", type: "text" },
+    addressInfo: { title: "住址信息", type: "json", valueType: "object" },
+    studentRecords: { title: "学籍信息", type: "json", valueType: "array" },
+    createBy: {
+      title: "创建者",
+      type: "text",
+      default: SYS_ADMIN_ID,
+      filterable: true,
+    },
+    id: { title: "ID", type: "text", filterable: true },
+    createdAt: {
+      title: "创建时间",
+      type: "integer",
+      valueType: "string",
+      filterable: true,
+    },
+    updatedAt: {
+      title: "更新时间",
+      type: "integer",
+      valueType: "string",
+      filterable: true,
+    },
+  },
+};
 
 const fields: Record<string, ModelFieldSchema> = {
   username: {
@@ -12,8 +55,7 @@ const fields: Record<string, ModelFieldSchema> = {
     component: "Input",
     required: true,
     props: { placeholder: "请输入登录账号" },
-    "x-table": { width: 160 },
-    "x-database": { type: "text", unique: true, index: true, filterable: true },
+    "x-table": { width: 160, filterable: true },
   },
   passwordHash: {
     type: "string",
@@ -21,7 +63,6 @@ const fields: Record<string, ModelFieldSchema> = {
     component: "Input",
     display: "none",
     "x-table": { visible: false },
-    "x-database": { type: "text" },
   },
   nickname: {
     type: "string",
@@ -29,8 +70,7 @@ const fields: Record<string, ModelFieldSchema> = {
     component: "Input",
     required: true,
     props: { placeholder: "请输入昵称" },
-    "x-table": { width: 160 },
-    "x-database": { type: "text", index: true, filterable: true },
+    "x-table": { width: 160, filterable: true },
   },
   remark: {
     type: "string",
@@ -38,7 +78,6 @@ const fields: Record<string, ModelFieldSchema> = {
     component: "TextArea",
     props: { rows: 3 },
     "x-table": { visible: false },
-    "x-database": { type: "text" },
   },
   addressInfo: {
     type: "object",
@@ -66,7 +105,6 @@ const fields: Record<string, ModelFieldSchema> = {
       },
     },
     "x-table": { width: 180 },
-    "x-database": { type: "json" },
   },
   studentRecords: {
     type: "array",
@@ -103,7 +141,6 @@ const fields: Record<string, ModelFieldSchema> = {
       },
     },
     "x-table": { width: 180 },
-    "x-database": { type: "json" },
   },
   createBy: {
     type: "string",
@@ -111,29 +148,25 @@ const fields: Record<string, ModelFieldSchema> = {
     component: "Input",
     display: "hidden",
     default: SYS_ADMIN_ID,
-    "x-table": { visible: true, width: 160 },
-    "x-database": { type: "text", default: SYS_ADMIN_ID, filterable: true },
+    "x-table": { visible: true, width: 160, filterable: true },
   },
   id: {
     type: "string",
     title: "ID",
     display: "hidden",
-    "x-table": { visible: true, width: 180 },
-    "x-database": { type: "text", filterable: true },
+    "x-table": { visible: true, width: 180, filterable: true },
   },
   createdAt: {
     type: "string",
     title: "创建时间",
     display: "hidden",
-    "x-table": { visible: true, width: 180 },
-    "x-database": { type: "text", filterable: true },
+    "x-table": { visible: true, width: 180, filterable: true },
   },
   updatedAt: {
     type: "string",
     title: "更新时间",
     display: "hidden",
-    "x-table": { visible: true, width: 180 },
-    "x-database": { type: "text", filterable: true },
+    "x-table": { visible: true, width: 180, filterable: true },
   },
 };
 
@@ -154,6 +187,7 @@ export const sysUserSchema: ModelSchema = {
       detail: "drawer",
     },
   },
+  database,
   "x-pages": [
     {
       router: "list",

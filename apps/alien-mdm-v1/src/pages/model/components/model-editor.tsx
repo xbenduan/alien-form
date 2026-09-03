@@ -12,10 +12,18 @@ import {
   createModelCopyValues,
   decodeModel,
   encodeModel,
+  parseDatabase,
+  retargetModelDatabase,
   retargetModelPages,
+  syncFieldsFromDatabase,
   type ModelEditorValues,
 } from "../utils/model-codec";
-import { defaultFields, defaultGroups, modelEditSchema } from "../utils/model-edit-schema";
+import {
+  defaultDatabase,
+  defaultFields,
+  defaultGroups,
+  modelEditSchema,
+} from "../utils/model-edit-schema";
 import styles from "./index.module.css";
 
 const STEPS = [
@@ -36,7 +44,8 @@ const STEPS = [
       "description",
     ],
   },
-  { title: "表单信息", fields: ["fieldsJson", "groupsJson"] },
+  { title: "数据库构建", fields: ["databaseJson"] },
+  { title: "表单配置", fields: ["fieldsJson", "groupsJson"] },
   { title: "页面构建", fields: ["pagesJson"] },
 ] as const;
 
@@ -47,6 +56,7 @@ const DEFAULT_VALUES: Partial<ModelEditorValues> = {
   addOpenMode: "drawer",
   editOpenMode: "drawer",
   detailOpenMode: "drawer",
+  databaseJson: JSON.stringify(defaultDatabase, null, 2),
   fieldsJson: JSON.stringify(defaultFields, null, 2),
   groupsJson: JSON.stringify(defaultGroups, null, 2),
   pagesJson: "",
@@ -106,9 +116,12 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
     try {
       const values = form.values() as ModelEditorValues;
       if (step === 1) {
-        encodeModel({ ...values, pagesJson: undefined });
+        parseDatabase(values.databaseJson);
       }
       if (step === 2) {
+        encodeModel({ ...values, pagesJson: undefined });
+      }
+      if (step === 3) {
         const pages = JSON.parse(values.pagesJson || "[]");
         if (!Array.isArray(pages)) throw new Error("页面 JSON 必须是数组");
       }
@@ -122,6 +135,12 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
   const next = async () => {
     if (!(await validateCurrentStep())) return;
     if (step === 1) {
+      const values = form.values() as ModelEditorValues;
+      const database = parseDatabase(values.databaseJson);
+      const current = JSON.parse(values.fieldsJson || "{}");
+      form.set("fieldsJson", JSON.stringify(syncFieldsFromDatabase(database, current), null, 2));
+    }
+    if (step === 2) {
       const values = form.values() as ModelEditorValues;
       if (!values.pagesJson?.trim()) {
         form.set(
@@ -143,6 +162,7 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
       if (copyDraftModelCode && copyDraftModelCode !== model.meta.name) {
         model = {
           ...model,
+          database: retargetModelDatabase(model.database, copyDraftModelCode, model.meta.name),
           "x-pages": retargetModelPages(model["x-pages"], copyDraftModelCode, model.meta.name),
         };
       }
@@ -165,7 +185,7 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
   const stepClass =
     step === 0
       ? styles.basicGrid
-      : step === 1
+      : step === 2
         ? `${styles.formJsonGrid} ${styles.jsonEditor}`
         : styles.jsonEditor;
 

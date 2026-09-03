@@ -4,6 +4,11 @@ import type { BuilderSchema } from "../protocol";
 
 const model: BuilderSchema = {
   meta: { name: "products", title: "商品" },
+  database: {
+    fields: {
+      name: { type: "text" },
+    },
+  },
   "x-pages": [
     {
       router: "list",

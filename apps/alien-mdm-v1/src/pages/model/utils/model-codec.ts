@@ -1,5 +1,8 @@
 import type {
   BuilderSchema,
+  DatabaseField,
+  DatabaseSchema,
+  DatabaseValueType,
   FieldGroup,
   FieldSchema,
   ModelOpenModes,
@@ -20,6 +23,7 @@ export interface ModelEditorValues {
   addOpenMode?: OpenMode;
   editOpenMode?: OpenMode;
   detailOpenMode?: OpenMode;
+  databaseJson: string;
   fieldsJson: string;
   groupsJson?: string;
   pagesJson?: string;
@@ -31,14 +35,110 @@ const DEFAULT_OPEN_MODES: ModelOpenModes = {
   detail: "drawer",
 };
 
+const COLUMN_TYPES = new Set(["text", "integer", "real", "boolean", "json"]);
+const VALUE_TYPES = new Set(["string", "number", "boolean", "object", "array"]);
+
 function assertPureSchema(value: unknown, path = "form-schema"): void {
   if (typeof value === "string" && value.includes("{{")) {
     throw new Error(`${path} must not contain expressions`);
   }
   if (!value || typeof value !== "object") return;
   for (const [key, child] of Object.entries(value)) {
+    if (key === "x-database") {
+      throw new Error(`${path} 不允许包含 x-database，存储配置必须写入 database.fields`);
+    }
     assertPureSchema(child, `${path}.${key}`);
   }
+}
+
+export function parseDatabase(raw: string): DatabaseSchema {
+  const database = JSON.parse(raw || "{}") as DatabaseSchema;
+  if (!database || typeof database !== "object" || Array.isArray(database)) {
+    throw new Error("数据库 JSON 必须是对象");
+  }
+  if (!database.fields || typeof database.fields !== "object" || Array.isArray(database.fields)) {
+    throw new Error("数据库 JSON 必须包含 fields 对象");
+  }
+  if (Object.keys(database.fields).length === 0) throw new Error("至少需要一个数据库字段");
+
+  for (const [key, field] of Object.entries(database.fields)) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+      throw new Error(`数据库字段名不合法：${key}`);
+    }
+    if (!field || typeof field !== "object" || !COLUMN_TYPES.has(field.type)) {
+      throw new Error(`数据库字段 ${key} 的 type 不合法`);
+    }
+    if (field.valueType && !VALUE_TYPES.has(field.valueType)) {
+      throw new Error(`数据库字段 ${key} 的 valueType 不合法`);
+    }
+    if (field.column && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(field.column)) {
+      throw new Error(`数据库字段 ${key} 的 column 不合法`);
+    }
+    if (field.type !== "json" && (field.valueType === "object" || field.valueType === "array")) {
+      throw new Error(`数据库字段 ${key} 只有 json 类型可以使用 object/array valueType`);
+    }
+    if (
+      field.relation &&
+      (!["many-to-one", "many-to-many"].includes(field.relation.kind) ||
+        !/^[A-Za-z_][A-Za-z0-9_-]*$/.test(field.relation.target) ||
+        (field.relation.through && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(field.relation.through)))
+    ) {
+      throw new Error(`数据库字段 ${key} 的 relation 必须包含 kind 和 target`);
+    }
+  }
+  return database;
+}
+
+function schemaType(field: DatabaseField): DatabaseValueType {
+  if (field.valueType) return field.valueType;
+  if (field.type === "integer" || field.type === "real") return "number";
+  if (field.type === "boolean") return "boolean";
+  if (field.type === "json") return "object";
+  return "string";
+}
+
+function defaultComponent(type: DatabaseValueType): string {
+  if (type === "number") return "NumberInput";
+  if (type === "boolean") return "Switch";
+  if (type === "object") return "ObjectField";
+  if (type === "array") return "ArrayCards";
+  return "Input";
+}
+
+function fieldTemplate(key: string, field: DatabaseField): FieldSchema {
+  const type = schemaType(field);
+  const template: FieldSchema = {
+    type,
+    title: field.title?.trim() || key,
+    component: defaultComponent(type),
+    ...(field.nullable === false ? { required: true } : {}),
+    ...(field.filterable ? { "x-table": { filterable: true } } : {}),
+  };
+  if (type === "object") template.properties = {};
+  if (type === "array") template.items = { type: "object", properties: {} };
+  return template;
+}
+
+export function syncFieldsFromDatabase(
+  database: DatabaseSchema,
+  current: Record<string, FieldSchema> = {},
+): Record<string, FieldSchema> {
+  return Object.fromEntries(
+    Object.entries(database.fields).map(([key, databaseField]) => {
+      const template = fieldTemplate(key, databaseField);
+      const existing = current[key];
+      if (!existing) return [key, template];
+      const merged: FieldSchema = {
+        ...template,
+        ...existing,
+        type: template.type,
+        required: template.required,
+      };
+      delete (merged as Record<string, unknown>)["x-database"];
+      if (!template.required) delete merged.required;
+      return [key, merged];
+    }),
+  );
 }
 
 export function createDefaultPages(modelCode: string, title: string): XPage[] {
@@ -99,13 +199,29 @@ export function createDefaultPages(modelCode: string, title: string): XPage[] {
   ];
 }
 
-function parseProperties(raw: string): Record<string, FieldSchema> {
+function parseProperties(raw: string, database: DatabaseSchema): Record<string, FieldSchema> {
   const properties = JSON.parse(raw || "{}") as Record<string, FieldSchema>;
   if (!properties || typeof properties !== "object" || Array.isArray(properties)) {
     throw new Error("字段 JSON 必须是对象");
   }
   if (Object.keys(properties).length === 0) throw new Error("至少需要一个模型字段");
   assertPureSchema(properties);
+  const databaseKeys = Object.keys(database.fields);
+  const schemaKeys = Object.keys(properties);
+  const missing = databaseKeys.filter((key) => !properties[key]);
+  const extra = schemaKeys.filter((key) => !database.fields[key]);
+  if (missing.length > 0) throw new Error(`Schema 缺少数据库字段：${missing.join(", ")}`);
+  if (extra.length > 0) throw new Error(`Schema 包含非数据库字段：${extra.join(", ")}`);
+  for (const key of databaseKeys) {
+    const expected = schemaType(database.fields[key]);
+    if (properties[key]?.type !== expected) {
+      throw new Error(`Schema 字段 ${key} 的 type 必须为 ${expected}`);
+    }
+    const required = database.fields[key].nullable === false;
+    if (Boolean(properties[key]?.required) !== required) {
+      throw new Error(`Schema 字段 ${key} 的 required 必须与数据库 nullable 保持一致`);
+    }
+  }
   return properties;
 }
 
@@ -183,6 +299,27 @@ export function retargetModelPages(
   return retargetValue(pages, sourceModelCode, targetModelCode);
 }
 
+export function retargetModelDatabase(
+  database: DatabaseSchema,
+  sourceModelCode: string,
+  targetModelCode: string,
+): DatabaseSchema {
+  return {
+    ...database,
+    fields: Object.fromEntries(
+      Object.entries(database.fields).map(([key, field]) => [
+        key,
+        field.relation?.target === sourceModelCode
+          ? {
+              ...field,
+              relation: { ...field.relation, target: targetModelCode },
+            }
+          : field,
+      ]),
+    ),
+  };
+}
+
 export function createModelCopyValues(model: BuilderSchema): ModelEditorValues {
   const values = decodeModel(model);
   const modelCode = `${model.meta.name}_copy`;
@@ -190,6 +327,11 @@ export function createModelCopyValues(model: BuilderSchema): ModelEditorValues {
     ...values,
     modelCode,
     title: `${model.meta.title}副本`,
+    databaseJson: JSON.stringify(
+      retargetModelDatabase(model.database, model.meta.name, modelCode),
+      null,
+      2,
+    ),
     pagesJson: JSON.stringify(
       retargetModelPages(model["x-pages"], model.meta.name, modelCode),
       null,
@@ -201,7 +343,11 @@ export function createModelCopyValues(model: BuilderSchema): ModelEditorValues {
 export function encodeModel(values: ModelEditorValues): BuilderSchema {
   const modelCode = values.modelCode.trim();
   const title = values.title.trim();
-  const properties = parseProperties(values.fieldsJson);
+  if (!/^[A-Za-z_][A-Za-z0-9_-]*$/.test(modelCode)) {
+    throw new Error("模型名只能使用字母、数字、下划线和中划线，且必须以字母或下划线开头");
+  }
+  const database = parseDatabase(values.databaseJson);
+  const properties = parseProperties(values.fieldsJson, database);
   const groups = parseGroups(values.groupsJson, properties);
   const openMode: ModelOpenModes = {
     add: values.addOpenMode ?? DEFAULT_OPEN_MODES.add,
@@ -222,6 +368,7 @@ export function encodeModel(values: ModelEditorValues): BuilderSchema {
       defaultPageSize: Number(values.defaultPageSize ?? 20),
       openMode,
     },
+    database,
     "x-pages": parsePages(values.pagesJson, modelCode, title),
     definitions: {
       "form-schema": {
@@ -250,6 +397,9 @@ export function decodeModel(model: BuilderSchema): ModelEditorValues {
   if (!formSchema?.properties) {
     throw new Error("模型缺少 definitions['form-schema'].properties");
   }
+  if (!model.database?.fields) {
+    throw new Error("模型缺少 database.fields，请先迁移到数据库优先协议");
+  }
   const openMode = resolveOpenModes(model.meta.openMode);
   return {
     modelCode: model.meta.name,
@@ -264,6 +414,7 @@ export function decodeModel(model: BuilderSchema): ModelEditorValues {
     addOpenMode: openMode.add,
     editOpenMode: openMode.edit,
     detailOpenMode: openMode.detail,
+    databaseJson: JSON.stringify(model.database, null, 2),
     fieldsJson: JSON.stringify(formSchema.properties, null, 2),
     groupsJson: JSON.stringify(formSchema.group ?? [], null, 2),
     pagesJson: JSON.stringify(model["x-pages"], null, 2),

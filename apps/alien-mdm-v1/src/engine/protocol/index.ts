@@ -16,6 +16,36 @@ export interface ModelOpenModes {
   detail: OpenMode;
 }
 
+export type DatabaseColumnType = "text" | "integer" | "real" | "boolean" | "json";
+export type DatabaseValueType = "string" | "number" | "boolean" | "object" | "array";
+export type DatabaseRelationKind = "many-to-one" | "many-to-many";
+
+export interface DatabaseRelation {
+  kind: DatabaseRelationKind;
+  target: string;
+  through?: string;
+  valueField?: string;
+  labelField?: string;
+}
+
+export interface DatabaseField {
+  title?: string;
+  column?: string;
+  type: DatabaseColumnType;
+  valueType?: DatabaseValueType;
+  nullable?: boolean;
+  default?: string | number | boolean;
+  unique?: boolean;
+  index?: boolean;
+  filterable?: boolean;
+  sortable?: boolean;
+  relation?: DatabaseRelation;
+}
+
+export interface DatabaseSchema {
+  fields: Record<string, DatabaseField>;
+}
+
 export interface ModelMeta {
   name: string;
   title: string;
@@ -42,7 +72,6 @@ export interface FieldSchema extends Omit<IFieldSchema, "properties" | "items" |
   items?: FieldSchema | FieldSchema[];
   props?: Record<string, unknown>;
   group?: FieldGroup[];
-  "x-database"?: Record<string, JsonValue>;
   "x-table"?: {
     visible?: boolean;
     width?: number;
@@ -68,6 +97,7 @@ export interface XPage {
 
 export interface BuilderSchema {
   meta: ModelMeta;
+  database: DatabaseSchema;
   "x-pages": XPage[];
   definitions: {
     "form-schema": FieldSchema;

@@ -1,40 +1,41 @@
 /**
  * 后端本地的配置态 schema 类型。
  *
- * 与前端 @alien-form/shared 的 ModelSchema 同构，但后端只关心「建表 + CRUD」
- * 需要的那部分：字段的存储语义（x-database）、多语言/布局等展示细节后端不解释，
- * 用宽松的索引签名透传即可（存进 _schemas 元表原样返回给前端）。
+ * database 是存储事实，definitions.form-schema 是表现配置。
+ * 后端建表、CRUD 和关系查询只解释 database，不从 UI schema 反推存储语义。
  */
 
 /** 列的物理存储类型（映射到 SQLite）。 */
 export type ColumnType = "text" | "integer" | "real" | "boolean" | "json";
 
-/** 关系类型：多对一（外键标量）/ 多对多（junction 表）。 */
 export type RelationKind = "many-to-one" | "many-to-many";
 
-/**
- * x-database：字段的「后端事实」声明。
- * 决定建表列类型、约束、索引，以及 filter 是否可见 / 列是否可排序。
- */
-export interface XDatabase {
-  /** 列类型；缺省由字段 type/component 推导。 */
-  type?: ColumnType;
+export type DatabaseValueType = "string" | "number" | "boolean" | "object" | "array";
+
+export interface DatabaseRelation {
+  kind: RelationKind;
+  target: string;
+  through?: string;
+  valueField?: string;
+  labelField?: string;
+}
+
+export interface DatabaseField {
+  title?: string;
+  column?: string;
+  type: ColumnType;
+  valueType?: DatabaseValueType;
   nullable?: boolean;
-  /** 物理默认值（写入 DEFAULT）。 */
   default?: string | number | boolean;
   unique?: boolean;
-  /** 建索引；同时作为「可高效筛选」的信号。 */
   index?: boolean;
-  /** 是否进入 filter 筛选区（缺省跟随 index）。 */
   filterable?: boolean;
-  /** 表格列是否可排序（缺省 true，复杂/JSON 列为 false）。 */
   sortable?: boolean;
-  /** 关系声明。 */
-  relation?: RelationKind;
-  /** 关系目标模型（modelCode）。 */
-  target?: string;
-  /** many-to-many 的 junction 表名（缺省由两端模型名派生）。 */
-  through?: string;
+  relation?: DatabaseRelation;
+}
+
+export interface DatabaseSchema {
+  fields: Record<string, DatabaseField>;
 }
 
 /** 静态选项项。 */
@@ -70,8 +71,13 @@ export interface ModelFieldSchema {
   properties?: Record<string, ModelFieldSchema>;
   items?: ModelFieldSchema | ModelFieldSchema[];
   group?: FieldGroup[];
-  "x-database"?: XDatabase;
-  "x-table"?: { width?: number; visible?: boolean; ellipsis?: boolean; sortable?: boolean };
+  "x-table"?: {
+    width?: number;
+    visible?: boolean;
+    ellipsis?: boolean;
+    sortable?: boolean;
+    filterable?: boolean;
+  };
   [key: string]: unknown;
 }
 
@@ -98,6 +104,7 @@ export interface XPage {
 
 export interface ModelSchema {
   meta: ModelMeta;
+  database: DatabaseSchema;
   "x-pages": XPage[];
   definitions: {
     "form-schema": ModelFieldSchema;
@@ -114,12 +121,70 @@ export function formProperties(schema: ModelSchema): Record<string, ModelFieldSc
   return properties;
 }
 
+export function databaseFields(schema: ModelSchema): Record<string, DatabaseField> {
+  const fields = schema.database?.fields;
+  if (!fields || Object.keys(fields).length === 0) {
+    throw new Error("database.fields 不能为空");
+  }
+  return fields;
+}
+
+function valueType(field: DatabaseField): DatabaseValueType {
+  if (field.valueType) return field.valueType;
+  if (field.type === "integer" || field.type === "real") return "number";
+  if (field.type === "boolean") return "boolean";
+  if (field.type === "json") return "object";
+  return "string";
+}
+
 export function assertModelSchema(value: unknown): asserts value is ModelSchema {
   if (!value || typeof value !== "object") throw new Error("模型定义必须是对象");
   const schema = value as Partial<ModelSchema>;
   if (!schema.meta?.name || !schema.meta.title) throw new Error("模型 meta.name/meta.title 必填");
+  if (!/^[A-Za-z_][A-Za-z0-9_-]*$/.test(schema.meta.name)) {
+    throw new Error("模型 meta.name 不合法");
+  }
   if (!Array.isArray(schema["x-pages"])) throw new Error("模型 x-pages 必须是数组");
   const properties = formProperties(schema as ModelSchema);
+  const fields = databaseFields(schema as ModelSchema);
+  const columnTypes = new Set<ColumnType>(["text", "integer", "real", "boolean", "json"]);
+  const valueTypes = new Set<DatabaseValueType>(["string", "number", "boolean", "object", "array"]);
+  for (const [key, field] of Object.entries(fields)) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+      throw new Error(`database.fields 字段名不合法：${key}`);
+    }
+    if (!field || !columnTypes.has(field.type)) {
+      throw new Error(`database.fields.${key}.type 不合法`);
+    }
+    if (field.valueType && !valueTypes.has(field.valueType)) {
+      throw new Error(`database.fields.${key}.valueType 不合法`);
+    }
+    if (field.column && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(field.column)) {
+      throw new Error(`database.fields.${key}.column 不合法`);
+    }
+    if (
+      field.relation &&
+      (!["many-to-one", "many-to-many"].includes(field.relation.kind) ||
+        !/^[A-Za-z_][A-Za-z0-9_-]*$/.test(field.relation.target) ||
+        (field.relation.through && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(field.relation.through)))
+    ) {
+      throw new Error(`database.fields.${key}.relation 不合法`);
+    }
+  }
+  const propertyKeys = Object.keys(properties);
+  const fieldKeys = Object.keys(fields);
+  const missing = fieldKeys.filter((key) => !properties[key]);
+  const extra = propertyKeys.filter((key) => !fields[key]);
+  if (missing.length > 0) throw new Error(`form-schema 缺少数据库字段：${missing.join(", ")}`);
+  if (extra.length > 0) throw new Error(`form-schema 包含非数据库字段：${extra.join(", ")}`);
+  for (const [key, field] of Object.entries(fields)) {
+    if (properties[key]?.type !== valueType(field)) {
+      throw new Error(`form-schema 字段 ${key} 的 type 与 database.fields 不一致`);
+    }
+    if (Boolean(properties[key]?.required) !== (field.nullable === false)) {
+      throw new Error(`form-schema 字段 ${key} 的 required 与 database.fields 不一致`);
+    }
+  }
   const formSchema = schema.definitions?.["form-schema"];
   const groups = formSchema?.group ?? [];
   const assigned = new Set<string>();
@@ -136,7 +201,12 @@ export function assertModelSchema(value: unknown): asserts value is ModelSchema 
       throw new Error(`${path} 不允许包含表达式`);
     }
     if (!current || typeof current !== "object") return;
-    for (const [key, child] of Object.entries(current)) visit(child, `${path}.${key}`);
+    for (const [key, child] of Object.entries(current)) {
+      if (key === "x-database") {
+        throw new Error(`${path} 不允许包含 x-database`);
+      }
+      visit(child, `${path}.${key}`);
+    }
   };
   visit(formSchema, "definitions.form-schema");
 }
