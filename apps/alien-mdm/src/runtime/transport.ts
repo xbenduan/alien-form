@@ -1,52 +1,51 @@
-const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
-const AUTH_STORAGE_KEY = "alien-mdm-auth";
-const UNAUTHORIZED_EVENT = "alien-mdm:unauthorized";
+const TOKEN_KEY = "alien-mdm-token";
 
-function authorizationHeader(): Record<string, string> {
-  try {
-    const text = window.localStorage.getItem(AUTH_STORAGE_KEY);
-    const token = text ? (JSON.parse(text) as { token?: unknown }).token : undefined;
-    return typeof token === "string" && token ? { authorization: `Bearer ${token}` } : {};
-  } catch {
-    return {};
+export class HttpError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
   }
 }
 
-function clearAuth(): void {
-  window.localStorage.removeItem(AUTH_STORAGE_KEY);
-  window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
-}
+export class Transport {
+  private onUnauthorized?: () => void;
 
-async function parse<T>(res: Response): Promise<T> {
-  if (res.status === 204) return undefined as T;
-  const text = await res.text();
-  const data = text ? JSON.parse(text) : undefined;
-  if (!res.ok) {
-    if (res.status === 401) clearAuth();
-    const message =
-      data && typeof data === "object" && "error" in data
-        ? String((data as { error: unknown }).error)
-        : `请求失败：${res.status}`;
-    throw new Error(message);
+  get token(): string | null {
+    return localStorage.getItem(TOKEN_KEY);
   }
-  return data as T;
+
+  setToken(token: string | null): void {
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  }
+
+  /** Register a callback fired when the session is rejected (HTTP 401). */
+  setUnauthorizedHandler(handler: (() => void) | undefined): void {
+    this.onUnauthorized = handler;
+  }
+
+  async send<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const headers = new Headers(init.headers);
+    headers.set("Accept", "application/json");
+    if (init.body) headers.set("Content-Type", "application/json");
+    if (this.token) headers.set("Authorization", `Bearer ${this.token}`);
+    const response = await fetch(path, { ...init, headers });
+    if (!response.ok) {
+      if (response.status === 401) {
+        this.setToken(null);
+        this.onUnauthorized?.();
+      }
+      const body = await response.json().catch(() => ({}));
+      throw new HttpError(
+        typeof body.error === "string" ? body.error : `Request failed: ${response.status}`,
+        response.status,
+      );
+    }
+    if (response.status === 204) return undefined as T;
+    return response.json() as Promise<T>;
+  }
 }
 
-export function apiGet<T>(path: string): Promise<T> {
-  return fetch(`${API_BASE}${path}`, { headers: authorizationHeader() }).then((res) => parse<T>(res));
-}
-
-export function apiSend<T>(
-  method: "POST" | "PUT" | "DELETE",
-  path: string,
-  body?: unknown,
-): Promise<T> {
-  return fetch(`${API_BASE}${path}`, {
-    method,
-    headers: {
-      ...authorizationHeader(),
-      ...(body === undefined ? {} : { "content-type": "application/json" }),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  }).then((res) => parse<T>(res));
-}
+export const transport = new Transport();

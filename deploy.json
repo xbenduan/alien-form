@@ -3,7 +3,7 @@
   "deploy": {
     "projectName": "alien-mdm",
     "buildCommand": "pnpm run build",
-    "buildOutputDirectory": "apps/alien-mdm-v1/dist",
+    "buildOutputDirectory": "apps/alien-mdm/dist",
     "rootDirectory": "",
     "environmentVariables": {
       "NODE_VERSION": "20"

@@ -1,21 +1,19 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { App as AntdApp } from "antd";
-import { RuntimeProvider } from "@alien-form/engine/react";
+import { RuntimeProvider } from "@binding";
+import { appRuntime } from "@runtime";
 import { AppProviders } from "../providers";
 import { AppRouter } from "../router";
 import "../../styles/global.css";
-import { createAppRuntime } from "@runtime/create-runtime";
 
-const runtime = createAppRuntime();
+const root = document.getElementById("root");
+if (!root) throw new Error("#root is missing");
 
-createRoot(document.getElementById("root")!).render(
+createRoot(root).render(
   <StrictMode>
-    <RuntimeProvider runtime={runtime}>
+    <RuntimeProvider runtime={appRuntime}>
       <AppProviders>
-        <AntdApp>
-          <AppRouter />
-        </AntdApp>
+        <AppRouter />
       </AppProviders>
     </RuntimeProvider>
   </StrictMode>,

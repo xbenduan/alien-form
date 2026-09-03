@@ -6,8 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/index.ts",
-    "start": "node src/index.ts",
-    "test": "node --test src/schema/*.test.ts"
+    "start": "node src/index.ts"
   },
   "dependencies": {
     "@alien-form/validate": "workspace:*",

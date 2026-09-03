@@ -1,19 +1,14 @@
 import type { ReactNode } from "react";
+import { HomeOutlined } from "@ant-design/icons";
 import { Breadcrumb } from "antd";
 import { Link } from "react-router-dom";
-import { HomeOutlined } from "@ant-design/icons";
 
 export interface PageBreadcrumbItem {
   title: ReactNode;
   to?: string;
 }
 
-interface PageBreadcrumbProps {
-  items?: PageBreadcrumbItem[];
-}
-
-/** 非首页页面统一使用的路由面包屑。 */
-export function PageBreadcrumb({ items = [] }: PageBreadcrumbProps) {
+export function PageBreadcrumb({ items = [] }: { items?: PageBreadcrumbItem[] }) {
   return (
     <Breadcrumb
       items={[

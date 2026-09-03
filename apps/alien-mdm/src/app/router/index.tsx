@@ -1,45 +1,75 @@
-import { Suspense } from "react";
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
-import Layout from "../layout";
-import { useAuth } from "../../domains/auth/components/auth-provider";
-import { loginPath } from "./paths";
-import { publicRoutes, routes } from "./routes";
+import { Spin } from "antd";
+import { Suspense, type PropsWithChildren, type ReactNode } from "react";
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import { useAuth } from "../providers";
+import { DynamicPage } from "./dynamic-routes";
+import { publicRoutes, staticRoutes } from "./static-routes";
+import styles from "./index.module.css";
 
-function ProtectedWorkbench() {
+function Protected({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const location = useLocation();
-  if (!auth.isAuthenticated) {
-    return <Navigate replace to={loginPath()} state={{ from: location }} />;
-  }
-  return <Layout />;
+  return auth.authenticated ? (
+    children
+  ) : (
+    <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />
+  );
+}
+
+function AppShell({ noPadding = false, children }: PropsWithChildren<{ noPadding?: boolean }>) {
+  return (
+    <div className={`${styles.shell}${noPadding ? ` ${styles.noPadding}` : ""}`}>
+      <div className={styles.content}>{children ?? <Outlet />}</div>
+    </div>
+  );
+}
+
+function AppLoading() {
+  return (
+    <AppShell noPadding>
+      <div className={styles.loading}>
+        <Spin size="large" />
+      </div>
+    </AppShell>
+  );
 }
 
 export function AppRouter() {
   return (
     <BrowserRouter>
-      <Routes>
-        {publicRoutes.map((route) => (
-          <Route
-            key={route.path}
-            path={route.path}
-            element={
-              <Suspense fallback={null}>
-                <route.component {...(route.props ?? {})} />
-              </Suspense>
-            }
-          />
-        ))}
-        <Route element={<ProtectedWorkbench />}>
-          {routes.map((route) => (
-            <Route
-              key={route.path}
-              path={route.path}
-              element={<route.component {...(route.props ?? {})} />}
-            />
+      <Suspense fallback={<AppLoading />}>
+        <Routes>
+          {publicRoutes.map(({ path, component: Component }) => (
+            <Route key={path} path={path} element={<Component />} />
           ))}
-          <Route path="*" element={<Navigate replace to="/" />} />
-        </Route>
-      </Routes>
+          <Route
+            element={
+              <Protected>
+                <AppShell noPadding />
+              </Protected>
+            }
+          >
+            {staticRoutes
+              .filter(({ path }) => path === "/")
+              .map(({ path, component: Component }) => (
+                <Route key={path} path={path} element={<Component />} />
+              ))}
+          </Route>
+          <Route
+            element={
+              <Protected>
+                <AppShell />
+              </Protected>
+            }
+          >
+            {staticRoutes.map(({ path, component: Component }) =>
+              path === "/" ? null : <Route key={path} path={path} element={<Component />} />,
+            )}
+            <Route path="/records/:modelCode/*" element={<DynamicPage />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

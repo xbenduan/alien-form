@@ -1,26 +1,86 @@
-import { ConfigProvider, theme } from "antd";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { PropsWithChildren } from "react";
-import { useState } from "react";
-import { AuthProvider } from "../../domains/auth/components/auth-provider";
+import { App as AntdApp, ConfigProvider, theme } from "antd";
+import zhCN from "antd/locale/zh_CN";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type PropsWithChildren,
+} from "react";
+import type { LoginResponse } from "@app-types";
+import { transport } from "@runtime/transport";
 
-const GLOBAL_GC_TIME = 10 * 60 * 1000; // 10 minutes
+const USER_STORAGE_KEY = "alien-mdm-user";
+
+interface AuthValue {
+  authenticated: boolean;
+  user?: Record<string, unknown>;
+  login(username: string, password: string): Promise<void>;
+  logout(): Promise<void>;
+}
+
+const AuthContext = createContext<AuthValue | null>(null);
+
+function storedUser(): Record<string, unknown> | undefined {
+  try {
+    const value = localStorage.getItem(USER_STORAGE_KEY);
+    return value ? (JSON.parse(value) as Record<string, unknown>) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function AuthProvider({ children }: PropsWithChildren) {
+  const [authenticated, setAuthenticated] = useState(Boolean(transport.token));
+  const [user, setUser] = useState<Record<string, unknown> | undefined>(storedUser);
+  const login = useCallback(async (username: string, password: string) => {
+    const result = await transport.send<LoginResponse>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    });
+    transport.setToken(result.token);
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(result.user));
+    setUser(result.user);
+    setAuthenticated(true);
+  }, []);
+  const logout = useCallback(async () => {
+    try {
+      await transport.send("/api/auth/logout", { method: "POST" });
+    } finally {
+      transport.setToken(null);
+      localStorage.removeItem(USER_STORAGE_KEY);
+      setUser(undefined);
+      setAuthenticated(false);
+    }
+  }, []);
+  useEffect(() => {
+    // Session expiry (401) clears local auth state so Protected routes redirect to /login.
+    transport.setUnauthorizedHandler(() => {
+      localStorage.removeItem(USER_STORAGE_KEY);
+      setUser(undefined);
+      setAuthenticated(false);
+    });
+    return () => transport.setUnauthorizedHandler(undefined);
+  }, []);
+  const value = useMemo(
+    () => ({ authenticated, user, login, logout }),
+    [authenticated, user, login, logout],
+  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth(): AuthValue {
+  const auth = useContext(AuthContext);
+  if (!auth) throw new Error("AuthProvider is missing");
+  return auth;
+}
 
 export function AppProviders({ children }: PropsWithChildren) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: Infinity,
-            gcTime: GLOBAL_GC_TIME,
-          },
-        },
-      }),
-  );
-
   return (
     <ConfigProvider
+      locale={zhCN}
       theme={{
         algorithm: theme.defaultAlgorithm,
         token: {
@@ -33,6 +93,8 @@ export function AppProviders({ children }: PropsWithChildren) {
         components: {
           Card: {
             borderRadiusLG: 12,
+            bodyPadding: 16,
+            bodyPaddingSM: 10,
           },
           Drawer: {
             borderRadiusLG: 20,
@@ -46,9 +108,9 @@ export function AppProviders({ children }: PropsWithChildren) {
         },
       }}
     >
-      <QueryClientProvider client={queryClient}>
+      <AntdApp>
         <AuthProvider>{children}</AuthProvider>
-      </QueryClientProvider>
+      </AntdApp>
     </ConfigProvider>
   );
 }

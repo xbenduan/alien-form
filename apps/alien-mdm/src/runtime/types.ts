@@ -1,66 +1,26 @@
-import type {
-  ModelFieldSchema,
-  ModelGroup,
-  ModelMeta,
-  ModelSchema,
-  OpenMode,
-  TableFieldMeta,
-} from "../domains/model/builder";
+import type { BuilderSchema, ModelMeta } from "@alien-form/engine";
 
-export type { ModelFieldSchema, ModelGroup, ModelMeta, ModelSchema, OpenMode, TableFieldMeta };
-
-export interface ModelSummary {
-  name: string;
-  title: string;
-  subtitle?: string;
-  description?: string;
-  group?: ModelGroup;
+export interface ModelSummary extends ModelMeta {
   fieldCount: number;
   updatedAt: string;
 }
 
-export interface ModelRecord {
-  id: string;
-  createdAt?: number;
-  updatedAt?: number;
-  [key: string]: unknown;
-}
-
-export interface Pagination {
-  current: number;
-  pageSize: number;
-}
-
-export interface Sorter {
-  field: string;
-  order: "ascend" | "descend";
-}
-
-export interface RecordListParams {
+export interface ListRequest {
   model: string;
   filters?: Record<string, unknown>;
-  pagination?: Pagination;
-  sorter?: Sorter;
+  pagination?: { current: number; pageSize: number };
+  sorter?: { field: string; order: "ascend" | "descend" };
 }
 
-export interface RecordListResult {
-  list: ModelRecord[];
+export interface ListResponse<T = Record<string, unknown>> {
+  list: T[];
   total: number;
 }
 
-export interface AuthUser extends ModelRecord {
-  username?: string;
-  nickname?: string;
-}
-
-export interface LoginPayload {
-  provider?: "password" | string;
-  username: string;
-  password: string;
-}
-
-export interface LoginResult {
+export interface LoginResponse {
   token: string;
+  user: Record<string, unknown>;
   provider: string;
-  user: AuthUser;
 }
+
+export type { BuilderSchema };
