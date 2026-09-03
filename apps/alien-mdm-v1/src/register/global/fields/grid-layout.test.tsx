@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { createForm, type IFormSchema } from "@alien-form/core";
 import { describe, expect, it } from "vitest";
 import { FormRenderer, RuntimeProvider } from "@binding";
-import { Runtime } from "@engine";
+import { compileForm, Runtime } from "@engine";
 import { registerFields } from "./index";
 
 function renderForm(schema: IFormSchema, initialValues: Record<string, unknown>) {
@@ -16,6 +16,29 @@ function renderForm(schema: IFormSchema, initialValues: Record<string, unknown>)
   return render(
     <RuntimeProvider runtime={runtime}>
       <FormRenderer form={form} />
+    </RuntimeProvider>,
+  );
+}
+
+/** 使用编译后的 nodes 渲染（走行模板复用路径）。 */
+function renderCompiled(
+  properties: Record<string, unknown>,
+  initialValues: Record<string, unknown>,
+) {
+  const runtime = new Runtime();
+  registerFields(runtime);
+  const definitions = {
+    "form-schema": { type: "object" as const, properties: properties as never },
+  };
+  const compiled = compileForm({ properties: properties as never }, definitions);
+  const form = createForm({
+    schema: compiled.schema,
+    initialValues,
+    scope: runtime.createScope(undefined, {}, "edit"),
+  });
+  return render(
+    <RuntimeProvider runtime={runtime}>
+      <FormRenderer form={form} nodes={compiled.nodes} />
     </RuntimeProvider>,
   );
 }
@@ -96,5 +119,37 @@ describe("complex field grid layout", () => {
     expect(grid?.style.getPropertyValue("--alien-grid-default-span")).toBe("12");
     expect(closestGridItem("学校").style.getPropertyValue("--alien-grid-item-span")).toBe("");
     expect(closestGridItem("毕业时间").style.getPropertyValue("--alien-grid-item-span")).toBe("24");
+  });
+
+  it("renders array row fields with their configured component via the row template", () => {
+    renderCompiled(
+      {
+        records: {
+          type: "array",
+          title: "选项集",
+          component: "ArrayCards",
+          items: {
+            type: "object",
+            properties: {
+              level: {
+                type: "string",
+                title: "等级",
+                component: "Select",
+                dataSource: [
+                  { label: "高", value: "high" },
+                  { label: "低", value: "low" },
+                ],
+              },
+            },
+          },
+        },
+      },
+      { records: [{ level: "high" }] },
+    );
+
+    // 行内字段按 schema 配置的 Select 渲染（而非被写死成文本框），
+    // 证明 component/props 经由统一渲染管线生效。
+    expect(screen.getByText("等级")).toBeTruthy();
+    expect(document.querySelector(".ant-select")).toBeTruthy();
   });
 });

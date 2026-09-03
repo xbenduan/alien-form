@@ -37,6 +37,8 @@ export interface CompiledNode {
   props: Record<string, unknown>;
   slots: Record<string, CompiledNode | CompiledNode[]>;
   children: CompiledNode[];
+  /** 数组行模板：由 schema.items 编译而来，每行子字段共用此模板递归渲染。 */
+  items?: CompiledNode;
 }
 
 export interface CompiledPage {

@@ -95,7 +95,13 @@ function compileNode(
       slots[prop] = value.map((item) => childMap.get(item as string)!);
     }
   }
-  return { key, schema, props, slots, children };
+  // 数组行模板：把 items（对象 schema）编译成一份可复用的 CompiledNode，
+  // 每行子字段共用它递归渲染，从而与顶层字段走同一条渲染管线。
+  const items =
+    schema.items && !Array.isArray(schema.items)
+      ? compileNode("$item", schema.items, definitions)
+      : undefined;
+  return { key, schema, props, slots, children, items };
 }
 
 export function compilePage(model: BuilderSchema, page: XPage): CompiledPage {

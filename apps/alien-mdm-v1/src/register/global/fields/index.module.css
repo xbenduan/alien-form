@@ -44,6 +44,11 @@
   background: #fafbfc;
 }
 
+.arrayCardDragging {
+  opacity: 0.6;
+  box-shadow: 0 6px 18px rgba(23, 32, 51, 0.12);
+}
+
 .arrayCardHeader {
   display: flex;
   min-height: 28px;
@@ -52,9 +57,31 @@
   justify-content: space-between;
 }
 
+.arrayCardIndexGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.arrayCardDragHandle {
+  display: inline-flex;
+  color: #86909c;
+  cursor: grab;
+}
+
+.arrayCardDragHandle:active {
+  cursor: grabbing;
+}
+
 .arrayCardIndex {
   color: #1677ff;
   font-weight: 600;
+}
+
+.arrayCardActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .arrayCardBody {
@@ -65,6 +92,7 @@
 }
 
 .arrayCardAdd {
+  margin-top: 8px;
   justify-self: start;
 }
 

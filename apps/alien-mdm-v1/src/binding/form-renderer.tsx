@@ -27,7 +27,7 @@ export interface ComponentProps {
   [key: string]: unknown;
 }
 
-function fallbackNode(key: string, field: FieldNode): CompiledNode {
+export function fallbackNode(key: string, field: FieldNode): CompiledNode {
   const children =
     field.kind === "object" || field.kind === "void"
       ? Array.from(field.children, ([childKey, child]) => fallbackNode(childKey, child))
@@ -189,7 +189,7 @@ export function RenderNode({
   const renderedChildren = children.length ? children : undefined;
   const alienProps =
     registration.adapter !== "antd"
-      ? { ...controlProps, form, field, node, slots, mode, value, title, description }
+      ? { ...controlProps, form, field, node, slots, mode, value, title, description, domain }
       : controlProps;
   const control = renderedChildren ? (
     <Component {...alienProps}>{renderedChildren}</Component>
