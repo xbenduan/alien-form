@@ -4,27 +4,21 @@ import type { BuilderSchema } from "../protocol";
 
 const model: BuilderSchema = {
   meta: { name: "products", title: "商品" },
-  database: {
-    fields: {
-      name: { type: "text" },
-    },
-  },
-  "x-pages": [
+  fields: [{ key: "name", title: "名称", type: "text" }],
+  pages: [
     {
       router: "list",
       layout: {
         component: "layout",
         props: { rightBottom: "table" },
       },
-      schema: {
-        properties: {
-          table: {
-            type: "void",
-            component: "table",
-            props: {
-              schema: { $ref: "form-schema" },
-              filter: "{{ $values.filter }}",
-            },
+      properties: {
+        table: {
+          type: "void",
+          component: "table",
+          props: {
+            schema: { $ref: "form-schema" },
+            filter: "{{ $values.filter }}",
           },
         },
       },

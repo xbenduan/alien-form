@@ -42,6 +42,11 @@ export class Runtime {
     return this.components.get(code, domain);
   }
 
+  /** 枚举已注册组件的 code（用于构建器字段类型下拉）。 */
+  componentCodes(domain?: string): string[] {
+    return this.components.values(domain).map(([code]) => code);
+  }
+
   createScope(
     domain: string | undefined,
     query: Record<string, string>,

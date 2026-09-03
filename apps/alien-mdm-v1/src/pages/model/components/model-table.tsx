@@ -3,7 +3,6 @@ import { Button, Popconfirm, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useMemo } from "react";
 import type { ModelSummary } from "@app-types";
-import type { OpenMode } from "@engine";
 import styles from "./index.module.css";
 
 export interface ModelTableProps {
@@ -14,12 +13,6 @@ export interface ModelTableProps {
   onEdit: (model: ModelSummary) => void;
   onView: (model: ModelSummary) => void;
 }
-
-const OPEN_MODE_LABELS: Record<OpenMode, string> = {
-  page: "整页",
-  drawer: "抽屉",
-  modal: "弹窗",
-};
 
 function optionalText(value?: string) {
   return value || "—";
@@ -70,28 +63,10 @@ export function ModelTable({
       { title: "复数标签", dataIndex: "pluralLabel", width: 120, render: optionalText },
       { title: "字段数", dataIndex: "fieldCount", width: 90 },
       {
-        title: "筛选项数",
-        dataIndex: "filterCount",
-        width: 100,
-        render: (value?: number) => value ?? 4,
-      },
-      {
         title: "每页条数",
         dataIndex: "defaultPageSize",
         width: 100,
         render: (value?: number) => value ?? 20,
-      },
-      {
-        title: "打开方式",
-        dataIndex: "openMode",
-        width: 180,
-        render: (value: ModelSummary["openMode"]) => (
-          <div className={styles.openModes}>
-            <span>新增：{OPEN_MODE_LABELS[value?.add ?? "drawer"]}</span>
-            <span>编辑：{OPEN_MODE_LABELS[value?.edit ?? "drawer"]}</span>
-            <span>详情：{OPEN_MODE_LABELS[value?.detail ?? "drawer"]}</span>
-          </div>
-        ),
       },
       {
         title: "更新时间",

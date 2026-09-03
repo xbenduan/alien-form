@@ -10,12 +10,6 @@ export type JsonValue =
 
 export type OpenMode = "page" | "drawer" | "modal";
 
-export interface ModelOpenModes {
-  add: OpenMode;
-  edit: OpenMode;
-  detail: OpenMode;
-}
-
 export type DatabaseColumnType = "text" | "integer" | "real" | "boolean" | "json";
 export type DatabaseValueType = "string" | "number" | "boolean" | "object" | "array";
 export type DatabaseRelationKind = "many-to-one" | "many-to-many";
@@ -28,22 +22,26 @@ export interface DatabaseRelation {
   labelField?: string;
 }
 
+/** 物理表字段（存储真相源）。数组顺序即列序/表单序。 */
 export interface DatabaseField {
+  /** 字段键名，同时作为默认列名与 form-schema 的对应 key。 */
+  key: string;
   title?: string;
   column?: string;
   type: DatabaseColumnType;
   valueType?: DatabaseValueType;
+  /** 系统字段：构建器禁止编辑/删除其存储定义。 */
+  system?: boolean;
   nullable?: boolean;
   default?: string | number | boolean;
   unique?: boolean;
   index?: boolean;
+  /** table 列的静态初始可见性，默认 true。 */
+  visible?: boolean;
+  /** 是否可作为筛选条件。 */
   filterable?: boolean;
   sortable?: boolean;
   relation?: DatabaseRelation;
-}
-
-export interface DatabaseSchema {
-  fields: Record<string, DatabaseField>;
 }
 
 export interface ModelMeta {
@@ -54,8 +52,6 @@ export interface ModelMeta {
   group?: string;
   singularLabel?: string;
   pluralLabel?: string;
-  filterCount?: number;
-  openMode?: ModelOpenModes;
   defaultPageSize?: number;
 }
 
@@ -72,17 +68,6 @@ export interface FieldSchema extends Omit<IFieldSchema, "properties" | "items" |
   items?: FieldSchema | FieldSchema[];
   props?: Record<string, unknown>;
   group?: FieldGroup[];
-  "x-table"?: {
-    visible?: boolean;
-    width?: number;
-    fixed?: "left" | "right";
-    filterable?: boolean;
-  };
-}
-
-export interface PageSchema {
-  type?: "object";
-  properties: Record<string, FieldSchema>;
 }
 
 export interface XPage {
@@ -92,13 +77,14 @@ export interface XPage {
     component: string;
     props?: Record<string, unknown>;
   };
-  schema: PageSchema;
+  properties: Record<string, FieldSchema>;
 }
 
 export interface BuilderSchema {
   meta: ModelMeta;
-  database: DatabaseSchema;
-  "x-pages": XPage[];
+  /** 物理表定义，唯一存储真相源。 */
+  fields: DatabaseField[];
+  pages: XPage[];
   definitions: {
     "form-schema": FieldSchema;
     [key: string]: FieldSchema;

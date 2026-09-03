@@ -1,7 +1,7 @@
 import { Button, Card, Space } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { usePage, type ComponentProps } from "@binding";
-import type { FieldSchema } from "@engine";
+import type { DatabaseField, FieldSchema } from "@engine";
 import type { FilterField } from "@utils/schema";
 import { parseFilter } from "./parse-filter";
 import styles from "./index.module.css";
@@ -18,6 +18,7 @@ export function Filter({
     schema?: FieldSchema,
     scope?: Record<string, unknown>,
     domain?: string,
+    fields?: DatabaseField[],
   ) => FilterField[];
   defaultValue?: unknown;
 }) {
@@ -28,9 +29,9 @@ export function Filter({
   );
   const fields = useMemo(() => {
     const scope = page.runtime.createScope(page.domain, page.query, "edit");
-    return toFilters?.(schema, scope, page.domain) ?? [];
+    return toFilters?.(schema, scope, page.domain, page.model.fields) ?? [];
   }, [page, schema, toFilters]);
-  const visibleCount = Math.max(1, page.model.meta.filterCount ?? 4);
+  const visibleCount = 4;
   const hasExtraFields = fields.length > visibleCount;
 
   useEffect(() => {

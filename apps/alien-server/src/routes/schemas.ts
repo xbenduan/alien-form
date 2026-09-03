@@ -15,7 +15,7 @@ export const schemaRoutes = new Hono();
 schemaRoutes.get("/", (c) => {
   const summaries = listSchemaEntries().map(({ schema, updatedAt }) => ({
     ...schema.meta,
-    fieldCount: Object.keys(schema.database?.fields ?? {}).length,
+    fieldCount: schema.fields?.length ?? 0,
     updatedAt,
   }));
   return c.json(summaries);

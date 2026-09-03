@@ -1,8 +1,8 @@
 /**
- * 后端本地的配置态 schema 类型。
+ * 后端本地的配置态 schema 类型（对齐 schema.tsx 编写契约）。
  *
- * database 是存储事实，definitions.form-schema 是表现配置。
- * 后端建表、CRUD 和关系查询只解释 database，不从 UI schema 反推存储语义。
+ * fields 是存储真相源，definitions.form-schema 是表现配置。
+ * 后端建表、CRUD 和关系查询只解释 fields，不从 UI schema 反推存储语义。
  */
 
 /** 列的物理存储类型（映射到 SQLite）。 */
@@ -12,6 +12,8 @@ export type RelationKind = "many-to-one" | "many-to-many";
 
 export type DatabaseValueType = "string" | "number" | "boolean" | "object" | "array";
 
+export type OpenMode = "page" | "modal" | "drawer";
+
 export interface DatabaseRelation {
   kind: RelationKind;
   target: string;
@@ -20,22 +22,26 @@ export interface DatabaseRelation {
   labelField?: string;
 }
 
+/** 物理表字段（存储真相源）。数组顺序即列序/表单序。 */
 export interface DatabaseField {
+  /** 字段键名，同时作为默认列名与 form-schema 的对应 key。 */
+  key: string;
   title?: string;
   column?: string;
   type: ColumnType;
   valueType?: DatabaseValueType;
+  /** 系统字段：id / createdAt / updatedAt 等内置字段，构建器禁止编辑/删除其存储定义。 */
+  system?: boolean;
   nullable?: boolean;
   default?: string | number | boolean;
   unique?: boolean;
   index?: boolean;
+  /** table 列的静态初始可见性，默认 true。 */
+  visible?: boolean;
+  /** 是否可作为筛选条件（table 列筛选与 filter 均取自此）。 */
   filterable?: boolean;
   sortable?: boolean;
   relation?: DatabaseRelation;
-}
-
-export interface DatabaseSchema {
-  fields: Record<string, DatabaseField>;
 }
 
 /** 静态选项项。 */
@@ -71,13 +77,6 @@ export interface ModelFieldSchema {
   properties?: Record<string, ModelFieldSchema>;
   items?: ModelFieldSchema | ModelFieldSchema[];
   group?: FieldGroup[];
-  "x-table"?: {
-    width?: number;
-    visible?: boolean;
-    ellipsis?: boolean;
-    sortable?: boolean;
-    filterable?: boolean;
-  };
   [key: string]: unknown;
 }
 
@@ -90,22 +89,21 @@ export interface ModelMeta {
   singularLabel?: string;
   pluralLabel?: string;
   defaultPageSize?: number;
-  filterCount?: number;
-  openMode?: string | Record<"add" | "edit" | "detail", string>;
   [key: string]: unknown;
 }
 
-export interface XPage {
+export interface Page {
   router: string;
   title?: string;
   layout?: { component: string; props?: Record<string, unknown> };
-  schema: { properties: Record<string, ModelFieldSchema> };
+  properties: Record<string, ModelFieldSchema>;
 }
 
 export interface ModelSchema {
   meta: ModelMeta;
-  database: DatabaseSchema;
-  "x-pages": XPage[];
+  /** 物理表定义，唯一存储真相源；数组顺序即列序/表单序。 */
+  fields: DatabaseField[];
+  pages: Page[];
   definitions: {
     "form-schema": ModelFieldSchema;
     [key: string]: ModelFieldSchema;
@@ -121,10 +119,10 @@ export function formProperties(schema: ModelSchema): Record<string, ModelFieldSc
   return properties;
 }
 
-export function databaseFields(schema: ModelSchema): Record<string, DatabaseField> {
-  const fields = schema.database?.fields;
-  if (!fields || Object.keys(fields).length === 0) {
-    throw new Error("database.fields 不能为空");
+export function databaseFields(schema: ModelSchema): DatabaseField[] {
+  const fields = schema.fields;
+  if (!Array.isArray(fields) || fields.length === 0) {
+    throw new Error("fields 不能为空");
   }
   return fields;
 }
@@ -144,23 +142,27 @@ export function assertModelSchema(value: unknown): asserts value is ModelSchema 
   if (!/^[A-Za-z_][A-Za-z0-9_-]*$/.test(schema.meta.name)) {
     throw new Error("模型 meta.name 不合法");
   }
-  if (!Array.isArray(schema["x-pages"])) throw new Error("模型 x-pages 必须是数组");
+  if (!Array.isArray(schema.pages)) throw new Error("模型 pages 必须是数组");
   const properties = formProperties(schema as ModelSchema);
   const fields = databaseFields(schema as ModelSchema);
   const columnTypes = new Set<ColumnType>(["text", "integer", "real", "boolean", "json"]);
   const valueTypes = new Set<DatabaseValueType>(["string", "number", "boolean", "object", "array"]);
-  for (const [key, field] of Object.entries(fields)) {
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
-      throw new Error(`database.fields 字段名不合法：${key}`);
+  const seenKeys = new Set<string>();
+  for (const field of fields) {
+    const key = field?.key;
+    if (!key || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+      throw new Error(`fields 字段名不合法：${key}`);
     }
-    if (!field || !columnTypes.has(field.type)) {
-      throw new Error(`database.fields.${key}.type 不合法`);
+    if (seenKeys.has(key)) throw new Error(`fields 字段名重复：${key}`);
+    seenKeys.add(key);
+    if (!columnTypes.has(field.type)) {
+      throw new Error(`fields.${key}.type 不合法`);
     }
     if (field.valueType && !valueTypes.has(field.valueType)) {
-      throw new Error(`database.fields.${key}.valueType 不合法`);
+      throw new Error(`fields.${key}.valueType 不合法`);
     }
     if (field.column && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(field.column)) {
-      throw new Error(`database.fields.${key}.column 不合法`);
+      throw new Error(`fields.${key}.column 不合法`);
     }
     if (
       field.relation &&
@@ -168,21 +170,21 @@ export function assertModelSchema(value: unknown): asserts value is ModelSchema 
         !/^[A-Za-z_][A-Za-z0-9_-]*$/.test(field.relation.target) ||
         (field.relation.through && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(field.relation.through)))
     ) {
-      throw new Error(`database.fields.${key}.relation 不合法`);
+      throw new Error(`fields.${key}.relation 不合法`);
     }
   }
   const propertyKeys = Object.keys(properties);
-  const fieldKeys = Object.keys(fields);
-  const missing = fieldKeys.filter((key) => !properties[key]);
-  const extra = propertyKeys.filter((key) => !fields[key]);
+  const missing = [...seenKeys].filter((key) => !properties[key]);
+  // form-schema 可额外包含不落库的纯展示元素（type: "void"）；其余多余键视为错误。
+  const extra = propertyKeys.filter((key) => !seenKeys.has(key) && properties[key]?.type !== "void");
   if (missing.length > 0) throw new Error(`form-schema 缺少数据库字段：${missing.join(", ")}`);
   if (extra.length > 0) throw new Error(`form-schema 包含非数据库字段：${extra.join(", ")}`);
-  for (const [key, field] of Object.entries(fields)) {
-    if (properties[key]?.type !== valueType(field)) {
-      throw new Error(`form-schema 字段 ${key} 的 type 与 database.fields 不一致`);
+  for (const field of fields) {
+    if (properties[field.key]?.type !== valueType(field)) {
+      throw new Error(`form-schema 字段 ${field.key} 的 type 与 fields 不一致`);
     }
-    if (Boolean(properties[key]?.required) !== (field.nullable === false)) {
-      throw new Error(`form-schema 字段 ${key} 的 required 与 database.fields 不一致`);
+    if (Boolean(properties[field.key]?.required) !== (field.nullable === false)) {
+      throw new Error(`form-schema 字段 ${field.key} 的 required 与 fields 不一致`);
     }
   }
   const formSchema = schema.definitions?.["form-schema"];

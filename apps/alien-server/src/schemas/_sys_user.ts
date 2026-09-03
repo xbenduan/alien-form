@@ -1,83 +1,75 @@
-import type { DatabaseSchema, ModelFieldSchema, ModelSchema } from "../schema/types.ts";
+import type { DatabaseField, ModelFieldSchema, ModelSchema } from "../schema/types.ts";
 
 export const SYS_ADMIN_ID = "_sys_admin";
 export const SYS_ADMIN_USERNAME = "_sys_admin";
 export const SYS_ADMIN_NICKNAME = "系统管理员";
 export const SYS_ADMIN_DEFAULT_PASSWORD = "alien123456";
 
-const database: DatabaseSchema = {
-  fields: {
-    username: {
-      title: "账号",
-      type: "text",
-      nullable: false,
-      unique: true,
-      index: true,
-      filterable: true,
-    },
-    passwordHash: { title: "密码", type: "text" },
-    nickname: {
-      title: "昵称",
-      type: "text",
-      nullable: false,
-      index: true,
-      filterable: true,
-    },
-    remark: { title: "备注", type: "text" },
-    addressInfo: { title: "住址信息", type: "json", valueType: "object" },
-    studentRecords: { title: "学籍信息", type: "json", valueType: "array" },
-    createBy: {
-      title: "创建者",
-      type: "text",
-      default: SYS_ADMIN_ID,
-      filterable: true,
-    },
-    id: { title: "ID", type: "text", filterable: true },
-    createdAt: {
-      title: "创建时间",
-      type: "integer",
-      valueType: "string",
-      filterable: true,
-    },
-    updatedAt: {
-      title: "更新时间",
-      type: "integer",
-      valueType: "string",
-      filterable: true,
-    },
+/** 物理表定义（存储真相源）。数组顺序即列序/表单序。 */
+const fields: DatabaseField[] = [
+  { key: "id", title: "ID", type: "text", system: true, filterable: true },
+  {
+    key: "username",
+    title: "账号",
+    type: "text",
+    nullable: false,
+    unique: true,
+    index: true,
+    filterable: true,
   },
-};
+  { key: "passwordHash", title: "密码", type: "text", visible: false },
+  {
+    key: "nickname",
+    title: "昵称",
+    type: "text",
+    nullable: false,
+    index: true,
+    filterable: true,
+  },
+  { key: "remark", title: "备注", type: "text", visible: false },
+  { key: "addressInfo", title: "住址信息", type: "json", valueType: "object" },
+  { key: "studentRecords", title: "学籍信息", type: "json", valueType: "array" },
+  { key: "createBy", title: "创建者", type: "text", default: SYS_ADMIN_ID, filterable: true },
+  {
+    key: "createdAt",
+    title: "创建时间",
+    type: "integer",
+    valueType: "string",
+    system: true,
+    filterable: true,
+  },
+  {
+    key: "updatedAt",
+    title: "更新时间",
+    type: "integer",
+    valueType: "string",
+    system: true,
+    filterable: true,
+  },
+];
 
-const fields: Record<string, ModelFieldSchema> = {
+const properties: Record<string, ModelFieldSchema> = {
+  id: { type: "string", title: "ID", display: "hidden" },
   username: {
     type: "string",
     title: "账号",
     component: "Input",
     required: true,
     props: { placeholder: "请输入登录账号" },
-    "x-table": { width: 160, filterable: true },
   },
-  passwordHash: {
-    type: "string",
-    title: "密码",
-    component: "Input",
-    display: "none",
-    "x-table": { visible: false },
-  },
+  passwordHash: { type: "string", title: "密码", component: "Input", display: "none" },
   nickname: {
     type: "string",
     title: "昵称",
     component: "Input",
     required: true,
     props: { placeholder: "请输入昵称" },
-    "x-table": { width: 160, filterable: true },
   },
   remark: {
     type: "string",
     title: "备注",
     component: "TextArea",
     props: { rows: 3 },
-    "x-table": { visible: false },
   },
   addressInfo: {
     type: "object",
@@ -104,13 +96,12 @@ const fields: Record<string, ModelFieldSchema> = {
         props: { placeholder: "请输入身份证住址", gridSpan: 24 },
       },
     },
-    "x-table": { width: 180 },
   },
   studentRecords: {
     type: "array",
     title: "学籍信息",
-    props: { gridSpan: 12 },
     component: "ArrayCards",
+    props: { gridSpan: 12 },
     items: {
       type: "object",
       properties: {
@@ -140,7 +131,6 @@ const fields: Record<string, ModelFieldSchema> = {
         },
       },
     },
-    "x-table": { width: 180 },
   },
   createBy: {
     type: "string",
@@ -148,26 +138,9 @@ const fields: Record<string, ModelFieldSchema> = {
     component: "Input",
     display: "hidden",
     default: SYS_ADMIN_ID,
-    "x-table": { visible: true, width: 160, filterable: true },
   },
-  id: {
-    type: "string",
-    title: "ID",
-    display: "hidden",
-    "x-table": { visible: true, width: 180, filterable: true },
-  },
-  createdAt: {
-    type: "string",
-    title: "创建时间",
-    display: "hidden",
-    "x-table": { visible: true, width: 180, filterable: true },
-  },
-  updatedAt: {
-    type: "string",
-    title: "更新时间",
-    display: "hidden",
-    "x-table": { visible: true, width: 180, filterable: true },
-  },
+  createdAt: { type: "string", title: "创建时间", props: { readOnly: true } },
+  updatedAt: { type: "string", title: "更新时间", props: { readOnly: true } },
 };
 
 export const sysUserSchema: ModelSchema = {
@@ -179,16 +152,10 @@ export const sysUserSchema: ModelSchema = {
     group: "system",
     singularLabel: "用户",
     pluralLabel: "用户",
-    filterCount: 4,
     defaultPageSize: 20,
-    openMode: {
-      add: "page",
-      edit: "page",
-      detail: "drawer",
-    },
   },
-  database,
-  "x-pages": [
+  fields,
+  pages: [
     {
       router: "list",
       title: "用户管理",
@@ -196,28 +163,31 @@ export const sysUserSchema: ModelSchema = {
         component: "layout",
         props: { rightTop: "filter", rightBottom: "table" },
       },
-      schema: {
-        properties: {
-          filter: {
-            type: "string",
-            component: "filter",
-            props: {
-              schema: { $ref: "form-schema" },
-              filters: "{{ $utils.schemaToFilters }}",
-              defaultValue: "{{ $query.keyword }}",
-            },
+      properties: {
+        filter: {
+          type: "string",
+          component: "filter",
+          props: {
+            schema: { $ref: "form-schema" },
+            filters: "{{ $utils.schemaToFilters }}",
+            defaultValue: "{{ $query.keyword }}",
           },
-          table: {
-            type: "void",
-            component: "table",
-            props: {
-              rowKey: "id",
-              modelCode: "_sys_user",
-              schema: { $ref: "form-schema" },
-              columns: "{{ $utils.schemaToColumns }}",
-              filter: "{{ $values.filter }}",
-              loadData:
-                "{{ (params) => $service.records.list({ model: '_sys_user', ...params }) }}",
+        },
+        table: {
+          type: "void",
+          component: "table",
+          props: {
+            rowKey: "id",
+            modelCode: "_sys_user",
+            schema: { $ref: "form-schema" },
+            columns: "{{ $utils.schemaToColumns }}",
+            filter: "{{ $values.filter }}",
+            loadData: "{{ (params) => $service.records.list({ model: '_sys_user', ...params }) }}",
+            "action-btns": {
+              add: { type: "primary", children: "新增", openMode: "page" },
+              edit: { type: "text", children: "编辑", openMode: "page" },
+              detail: { type: "text", children: "详情", openMode: "drawer" },
+              delete: { type: "text", children: "删除", service: "{{ $service.records.delete }}" },
             },
           },
         },
@@ -226,17 +196,15 @@ export const sysUserSchema: ModelSchema = {
     ...(["add", "edit", "detail"] as const).map((mode) => ({
       router: mode,
       title: `${mode === "add" ? "新建" : mode === "edit" ? "编辑" : "详情"}用户`,
-      schema: {
-        properties: {
-          form: {
-            type: "void",
-            component: "record-form",
-            props: {
-              mode,
-              modelCode: "_sys_user",
-              recordId: mode === "add" ? undefined : "{{ $query.id }}",
-              schema: { $ref: "form-schema" },
-            },
+      properties: {
+        form: {
+          type: "void",
+          component: "record-form",
+          props: {
+            mode,
+            modelCode: "_sys_user",
+            recordId: mode === "add" ? undefined : "{{ $query.id }}",
+            schema: { $ref: "form-schema" },
           },
         },
       },
@@ -245,7 +213,7 @@ export const sysUserSchema: ModelSchema = {
   definitions: {
     "form-schema": {
       type: "object",
-      properties: fields,
+      properties,
       group: [
         {
           component: "ObjectField",

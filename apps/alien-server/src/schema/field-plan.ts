@@ -37,15 +37,17 @@ export interface RelationPlan {
 export type FieldPlan = ColumnPlan | RelationPlan;
 
 /**
- * 把 database.fields 解析为存储计划。
+ * 把 fields 解析为存储计划。
  * 每个字段产出一个 ColumnPlan（含 many-to-one 标量外键）或 RelationPlan（m2m）。
+ * 系统字段（system:true，如 id/createdAt/updatedAt）由仓储统一托管，不建列。
  */
 export function planFields(schema: ModelSchema): FieldPlan[] {
   const owner = schema.meta.name;
   const plans: FieldPlan[] = [];
 
-  for (const [key, field] of Object.entries(databaseFields(schema))) {
-    if (SYSTEM_MANAGED.has(key)) continue;
+  for (const field of databaseFields(schema)) {
+    const key = field.key;
+    if (field.system || SYSTEM_MANAGED.has(key)) continue;
 
     const relation = field.relation;
 
@@ -108,8 +110,9 @@ export interface RefField {
 /** 扫描一份 schema 的所有引用字段。 */
 export function refFields(schema: ModelSchema): RefField[] {
   const refs: RefField[] = [];
-  for (const [key, field] of Object.entries(databaseFields(schema))) {
-    if (SYSTEM_MANAGED.has(key)) continue;
+  for (const field of databaseFields(schema)) {
+    const key = field.key;
+    if (field.system || SYSTEM_MANAGED.has(key)) continue;
     const relation = field.relation;
     if (!relation) continue;
     const valueKey = relation.valueField ?? "id";

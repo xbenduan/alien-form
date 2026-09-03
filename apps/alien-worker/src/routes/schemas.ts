@@ -16,7 +16,7 @@ schemaRoutes.get("/", async (c) => {
   const entries = await listSchemaEntries(c.env.DB);
   const summaries = entries.map(({ schema, updatedAt }) => ({
     ...schema.meta,
-    fieldCount: Object.keys(schema.database?.fields ?? {}).length,
+    fieldCount: schema.fields?.length ?? 0,
     updatedAt,
   }));
   return c.json(summaries);

@@ -2,7 +2,7 @@ import type { ComponentType, ReactNode } from "react";
 import { createElement } from "react";
 import type { TableColumnsType } from "antd";
 import { compileExpr, type ExpressionScope } from "@alien-form/core";
-import type { FieldSchema, Runtime } from "@engine";
+import type { DatabaseField, FieldSchema, Runtime } from "@engine";
 
 interface TableFieldProps {
   value?: unknown;
@@ -37,10 +37,6 @@ interface FilterFieldProps {
   [key: string]: unknown;
 }
 
-function isFilterable(field: FieldSchema): boolean {
-  return field["x-table"]?.filterable === true;
-}
-
 function isComplex(field: FieldSchema): boolean {
   return field.type === "object" || field.type === "array";
 }
@@ -62,14 +58,32 @@ function resolveStatic(value: unknown, scope: Record<string, unknown>): unknown 
   );
 }
 
+/**
+ * 遍历 fields（存储真相源）产出 [key, field] 序列；缺省时回退遍历 form-schema.properties。
+ * component/props 始终从 form-schema 按 key 取。
+ */
+function orderedFields(
+  properties: Record<string, FieldSchema>,
+  fields?: DatabaseField[],
+): { key: string; field: FieldSchema; column: DatabaseField }[] {
+  const source = fields ?? Object.keys(properties).map((key) => ({ key }) as DatabaseField);
+  return source
+    .filter((column) => properties[column.key])
+    .map((column) => ({ key: column.key, field: properties[column.key], column }));
+}
+
+/**
+ * 列集合与可见性由 fields 决定：遍历 fields（visible），渲染组件从 form-schema 按 key 取。
+ */
 export function schemaToColumns(runtime: Runtime) {
   return function createColumns<T extends object = Record<string, unknown>>(
     schema?: FieldSchema,
     domain?: string,
+    fields?: DatabaseField[],
   ): TableColumnsType<T> {
-    return Object.entries(schema?.properties ?? {})
-      .filter(([, field]) => field["x-table"]?.visible !== false)
-      .map(([key, field]) => {
+    return orderedFields(schema?.properties ?? {}, fields)
+      .filter(({ column }) => column.visible !== false)
+      .map(({ key, field }) => {
         const Component = runtime.component(field.component ?? defaultComponent(field), domain) as
           | ComponentType<TableFieldProps>
           | undefined;
@@ -77,8 +91,6 @@ export function schemaToColumns(runtime: Runtime) {
           key,
           dataIndex: key,
           title: field.title ?? key,
-          width: field["x-table"]?.width,
-          fixed: field["x-table"]?.fixed,
           ellipsis: field.type !== "object" && field.type !== "array",
           render(value: unknown) {
             if (!Component) return "—";
@@ -99,15 +111,19 @@ export function schemaToColumns(runtime: Runtime) {
   };
 }
 
+/**
+ * 筛选器集合由 fields 决定：遍历 fields（filterable 且非 object/array），组件从 form-schema 按 key 取。
+ */
 export function schemaToFilters(runtime: Runtime) {
   return function createFilters(
     schema?: FieldSchema,
     scope?: Record<string, unknown>,
     domain?: string,
+    fields?: DatabaseField[],
   ): FilterField[] {
-    return Object.entries(schema?.properties ?? {})
-      .filter(([, field]) => isFilterable(field) && !isComplex(field))
-      .map(([name, field]) => {
+    return orderedFields(schema?.properties ?? {}, fields)
+      .filter(({ field, column }) => column.filterable === true && !isComplex(field))
+      .map(({ key: name, field }) => {
         const Component = runtime.component(field.component ?? "Input", domain) as
           | ComponentType<FilterFieldProps>
           | undefined;

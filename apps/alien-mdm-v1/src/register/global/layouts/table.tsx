@@ -18,7 +18,7 @@ import {
 import { useCallback, useEffect, useMemo, useState, type Key } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { usePage, type ComponentProps } from "@binding";
-import type { FieldSchema, ModelOpenModes, OpenMode } from "@engine";
+import type { DatabaseField, FieldSchema, OpenMode } from "@engine";
 import { transport } from "@runtime/transport";
 import { recordRoute } from "@utils/record-route";
 import { RecordActionOverlay } from "../pages/record-action-overlay";
@@ -37,6 +37,15 @@ interface OverlayState {
   recordId?: string;
 }
 
+/** action-btns 中每个按钮的可配置项（openMode 决定打开方式）。 */
+interface ActionButtonConfig {
+  openMode?: OpenMode;
+  children?: string;
+  [key: string]: unknown;
+}
+
+type ActionButtons = Partial<Record<"add" | "edit" | "detail" | "delete", ActionButtonConfig>>;
+
 export function Table({
   schema,
   columns,
@@ -47,17 +56,23 @@ export function Table({
   rowKey = "id",
   modelCode,
   scroll,
+  "action-btns": actionBtns,
 }: ComponentProps & {
   schema?: FieldSchema;
   columns?:
     | TableColumnsType<Record<string, unknown>>
-    | ((schema?: FieldSchema, domain?: string) => TableColumnsType<Record<string, unknown>>);
+    | ((
+        schema?: FieldSchema,
+        domain?: string,
+        fields?: DatabaseField[],
+      ) => TableColumnsType<Record<string, unknown>>);
   loadData?: (params: Record<string, unknown>) => Promise<ListResult>;
   filter?: string;
   nodeId?: unknown;
   rowKey?: string;
   modelCode?: string;
   scroll?: TableProps<Record<string, unknown>>["scroll"];
+  "action-btns"?: ActionButtons;
 }) {
   const { message } = App.useApp();
   const navigate = useNavigate();
@@ -73,8 +88,11 @@ export function Table({
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [overlay, setOverlay] = useState<OverlayState>();
   const resolvedColumns = useMemo(
-    () => (typeof columns === "function" ? columns(schema, resolvedModelCode) : columns) ?? [],
-    [columns, resolvedModelCode, schema],
+    () =>
+      (typeof columns === "function"
+        ? columns(schema, resolvedModelCode, pageRuntime.model.fields)
+        : columns) ?? [],
+    [columns, resolvedModelCode, schema, pageRuntime.model.fields],
   );
   const refresh = useCallback(async () => {
     if (!loadData) return;
@@ -93,8 +111,7 @@ export function Table({
   const openAction = useCallback(
     (mode: RecordActionMode, recordId?: unknown) => {
       if (!resolvedModelCode) return;
-      const openMode: OpenMode =
-        (pageRuntime.model.meta.openMode as ModelOpenModes | undefined)?.[mode] ?? "drawer";
+      const openMode: OpenMode = actionBtns?.[mode]?.openMode ?? "drawer";
       if (openMode === "page") {
         navigate(recordRoute(resolvedModelCode, mode, recordId));
         return;
@@ -105,7 +122,7 @@ export function Table({
         recordId: recordId === undefined ? undefined : String(recordId),
       });
     },
-    [navigate, pageRuntime.model.meta.openMode, resolvedModelCode],
+    [navigate, actionBtns, resolvedModelCode],
   );
   const removeRecord = useCallback(
     async (recordId: unknown) => {

@@ -6,27 +6,27 @@ import { assertModelSchema, type ModelSchema } from "./types.ts";
 function model(): ModelSchema {
   return {
     meta: { name: "orders", title: "订单" },
-    database: {
-      fields: {
-        amount: {
-          title: "金额",
-          type: "real",
-          nullable: false,
-          index: true,
-          filterable: true,
-        },
-        customerId: {
-          title: "客户",
-          type: "text",
-          relation: {
-            kind: "many-to-one",
-            target: "customers",
-            labelField: "name",
-          },
+    fields: [
+      {
+        key: "amount",
+        title: "金额",
+        type: "real",
+        nullable: false,
+        index: true,
+        filterable: true,
+      },
+      {
+        key: "customerId",
+        title: "客户",
+        type: "text",
+        relation: {
+          kind: "many-to-one",
+          target: "customers",
+          labelField: "name",
         },
       },
-    },
-    "x-pages": [],
+    ],
+    pages: [],
     definitions: {
       "form-schema": {
         type: "object",

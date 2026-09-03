@@ -100,7 +100,7 @@ function compileNode(
 
 export function compilePage(model: BuilderSchema, page: XPage): CompiledPage {
   const properties = Object.fromEntries(
-    Object.entries(page.schema.properties).map(([key, schema]) => [
+    Object.entries(page.properties).map(([key, schema]) => [
       key,
       resolveField(schema, model.definitions),
     ]),
@@ -198,7 +198,7 @@ export function compileModel(model: BuilderSchema): CompiledPage[] {
   if (!model.definitions?.["form-schema"]?.properties) {
     throw new Error("definitions['form-schema'].properties is required");
   }
-  return model["x-pages"].map((page) => compilePage(model, page));
+  return model.pages.map((page) => compilePage(model, page));
 }
 
 export function matchPage(pages: CompiledPage[], segment: string): CompiledPage | undefined {
