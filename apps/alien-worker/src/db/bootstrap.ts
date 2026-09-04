@@ -5,15 +5,14 @@ import {
   SYS_ADMIN_USERNAME,
   SYS_ADMIN_DEFAULT_PASSWORD,
 } from "../../../alien-server/src/schemas/_sys_user.ts";
-import { listSchemas, removeSchema, upsertSchema } from "./schemas.ts";
+import { upsertSchema } from "./schemas.ts";
 import { createRecord, findRecordByField, getRecord } from "./records.ts";
 import { hashPassword } from "../routes/auth.ts";
 
 /**
  * 启动初始化（幂等）：
- *  1. 清理历史（非内置）模型登记
- *  2. 把内置模型 schema 强制同步进 schemas 表（以代码为唯一真相源）
- *  3. 写入默认系统管理员
+ *  1. 把内置模型 schema 强制同步进 schemas 表（以代码为唯一真相源）
+ *  2. 写入默认系统管理员
  *
  * 与 Node 版不同，这里没有「一模型一物理表」的 DDL —— 所有记录共用 records 表，
  * 建表由 D1 migrations 完成，故 bootstrap 只需登记 schema 与内置数据。
@@ -23,17 +22,15 @@ import { hashPassword } from "../routes/auth.ts";
  *
  * 内置模型（如 _sys_user）的结构以代码为准：一旦 schema 格式演进，旧格式的
  * 存量记录必须被覆盖，否则 formProperties 之类的运行时校验会持续抛错。
+ *
+ * 注意：动态创建的业务模型（通过 POST /api/schemas）是一等公民，必须持久化。
+ * bootstrap 只负责同步内置模型，绝不能删除非内置模型 —— 否则 isolate 冷启动
+ * 会静默抹掉用户创建的全部业务模型。
  */
 let ensured = false;
 
 export async function ensureBootstrapped(db: D1Database): Promise<void> {
   if (ensured) return;
-
-  const keep = new Set(builtinSchemas.map((schema) => schema.meta.name));
-  for (const entry of await listSchemas(db)) {
-    const name = entry.schema.meta.name;
-    if (!keep.has(name)) await removeSchema(db, name);
-  }
 
   for (const schema of builtinSchemas) {
     await upsertSchema(db, schema);
