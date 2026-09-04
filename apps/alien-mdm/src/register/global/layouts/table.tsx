@@ -2,10 +2,26 @@ import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  HolderOutlined,
   PlusOutlined,
   ReloadOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   App,
   Button,
@@ -21,6 +37,7 @@ import {
   type ButtonProps,
   type TableColumnsType,
   type TableProps,
+  Flex,
 } from "antd";
 import {
   Children,
@@ -130,6 +147,8 @@ interface ColumnPreference {
   visible?: boolean;
   width?: number;
   fixed?: "left" | "right";
+  /** 列在设置中的排序序号（越小越靠前）。缺省时回落到 schema 原始顺序。 */
+  order?: number;
 }
 
 type ColumnPreferences = Record<string, ColumnPreference>;
@@ -262,9 +281,50 @@ export function Table({
     },
     [resolvedModelCode],
   );
+  /**
+   * 列在设置/表格中的展示顺序：按偏好里的 order 稳定排序，缺省回落 schema 原始序。
+   * 拖拽排序、列设置面板、渲染列都以它为准。
+   */
+  const orderedColumns = useMemo(() => {
+    const orderOf = (key: string | undefined, index: number): number => {
+      const order = key ? columnPreferences[key]?.order : undefined;
+      return typeof order === "number" ? order : index;
+    };
+    return resolvedColumns
+      .map((column, index) => ({ column, index, key: columnKey(column) }))
+      .sort((a, b) => {
+        const orderA = orderOf(a.key, a.index);
+        const orderB = orderOf(b.key, b.index);
+        return orderA === orderB ? a.index - b.index : orderA - orderB;
+      })
+      .map((item) => item.column);
+  }, [columnPreferences, resolvedColumns]);
+  /** 拖拽结束：把当前顺序按新位置重排，并把序号回写进每列偏好持久化。 */
+  const moveColumn = useCallback(
+    (activeKey: string, overKey: string) => {
+      if (!resolvedModelCode || activeKey === overKey) return;
+      const keys = orderedColumns.map((column) => columnKey(column)).filter(Boolean) as string[];
+      const from = keys.indexOf(activeKey);
+      const to = keys.indexOf(overKey);
+      if (from < 0 || to < 0) return;
+      const reordered = arrayMove(keys, from, to);
+      setColumnPreferences((current) => {
+        const next = { ...current };
+        reordered.forEach((key, index) => {
+          next[key] = { ...next[key], order: index };
+        });
+        localStorage.setItem(columnStorageKey(resolvedModelCode), JSON.stringify(next));
+        return next;
+      });
+    },
+    [orderedColumns, resolvedModelCode],
+  );
+  const columnSortSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  );
   const configuredColumns = useMemo(
     () =>
-      resolvedColumns.flatMap((column) => {
+      orderedColumns.flatMap((column) => {
         const key = columnKey(column);
         if (!key) return [column];
         const preference = columnPreferences[key];
@@ -286,7 +346,7 @@ export function Table({
           },
         ];
       }),
-    [columnPreferences, resolvedColumns, updateColumnPreference],
+    [columnPreferences, orderedColumns, updateColumnPreference],
   );
 
   useEffect(() => {
@@ -473,60 +533,67 @@ export function Table({
 
   const columnSettings = (
     <div className={styles.columnSettings}>
-      {resolvedColumns.map((column) => {
-        const key = columnKey(column);
-        if (!key) return null;
-        const preference = columnPreferences[key];
-        const title = typeof column.title === "function" ? key : (column.title ?? key);
-        const fixed =
-          preference?.fixed ??
-          (column.fixed === "left" || column.fixed === "right" ? column.fixed : undefined);
-        return (
-          <div className={styles.columnSettingRow} key={key}>
-            <Checkbox
-              checked={preference?.visible ?? column.hidden !== true}
-              onChange={(event) => updateColumnPreference(key, { visible: event.target.checked })}
-            >
-              {title}
-            </Checkbox>
-            <InputNumber
-              aria-label={`${String(title)}列宽`}
-              min={80}
-              max={600}
-              step={10}
-              size="small"
-              value={preference?.width ?? Number(column.width ?? 160)}
-              onChange={(width) =>
-                width !== null && updateColumnPreference(key, { width: Number(width) })
-              }
-            />
-            <Select
-              aria-label={`${String(title)}固定位置`}
-              size="small"
-              value={fixed ?? "none"}
-              options={[
-                { label: "不固定", value: "none" },
-                { label: "左侧", value: "left" },
-                { label: "右侧", value: "right" },
-              ]}
-              onChange={(fixed) =>
-                updateColumnPreference(key, {
-                  fixed: fixed === "left" || fixed === "right" ? fixed : undefined,
-                })
-              }
-            />
-          </div>
-        );
-      })}
-      <Button
-        size="small"
-        onClick={() => {
-          if (resolvedModelCode) localStorage.removeItem(columnStorageKey(resolvedModelCode));
-          setColumnPreferences({});
+      <DndContext
+        sensors={columnSortSensors}
+        collisionDetection={closestCenter}
+        onDragEnd={(event: DragEndEvent) => {
+          const { active, over } = event;
+          if (over && active.id !== over.id) moveColumn(String(active.id), String(over.id));
         }}
       >
-        恢复默认
-      </Button>
+        <SortableContext
+          items={orderedColumns.map((column) => columnKey(column) ?? "").filter(Boolean)}
+          strategy={verticalListSortingStrategy}
+        >
+          {orderedColumns.map((column) => {
+            const key = columnKey(column);
+            if (!key) return null;
+            const preference = columnPreferences[key];
+            const title = typeof column.title === "function" ? key : (column.title ?? key);
+            const fixed =
+              preference?.fixed ??
+              (column.fixed === "left" || column.fixed === "right" ? column.fixed : undefined);
+            return (
+              <SortableColumnRow key={key} id={key}>
+                <Checkbox
+                  checked={preference?.visible ?? column.hidden !== true}
+                  onChange={(event) =>
+                    updateColumnPreference(key, { visible: event.target.checked })
+                  }
+                >
+                  {title}
+                </Checkbox>
+                <InputNumber
+                  aria-label={`${String(title)}列宽`}
+                  min={80}
+                  max={600}
+                  step={10}
+                  size="small"
+                  value={preference?.width ?? Number(column.width ?? 160)}
+                  onChange={(width) =>
+                    width !== null && updateColumnPreference(key, { width: Number(width) })
+                  }
+                />
+                <Select
+                  aria-label={`${String(title)}固定位置`}
+                  size="small"
+                  value={fixed ?? "none"}
+                  options={[
+                    { label: "不固定", value: "none" },
+                    { label: "左侧", value: "left" },
+                    { label: "右侧", value: "right" },
+                  ]}
+                  onChange={(fixed) =>
+                    updateColumnPreference(key, {
+                      fixed: fixed === "left" || fixed === "right" ? fixed : undefined,
+                    })
+                  }
+                />
+              </SortableColumnRow>
+            );
+          })}
+        </SortableContext>
+      </DndContext>
     </div>
   );
 
@@ -565,7 +632,21 @@ export function Table({
             {toolbarChildren}
             <Popover
               content={columnSettings}
-              title="列设置"
+              title={
+                <Flex justify="space-between" align="center">
+                  <div>列设置</div>
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      if (resolvedModelCode)
+                        localStorage.removeItem(columnStorageKey(resolvedModelCode));
+                      setColumnPreferences({});
+                    }}
+                  >
+                    恢复默认
+                  </Button>
+                </Flex>
+              }
               trigger="click"
               placement="bottomRight"
             >
@@ -641,6 +722,29 @@ export function Table({
         />
       )}
     </>
+  );
+}
+
+/** 列设置里的一行：左侧拖拽手柄触发排序，右侧沿用显隐/列宽/固定控件。 */
+function SortableColumnRow({ id, children }: { id: string; children: ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      className={styles.columnSettingRow}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : undefined,
+      }}
+    >
+      <span className={styles.columnDragHandle} {...attributes} {...listeners}>
+        <HolderOutlined />
+      </span>
+      {children}
+    </div>
   );
 }
 

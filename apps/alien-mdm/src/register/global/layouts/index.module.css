@@ -81,6 +81,7 @@
 }
 
 .columnSettings {
+  margin-top: 12px;
   display: flex;
   min-width: 420px;
   max-height: 360px;
@@ -91,9 +92,23 @@
 
 .columnSettingRow {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) 96px 96px;
+  grid-template-columns: 20px minmax(120px, 1fr) 96px 96px;
   align-items: center;
   gap: 8px;
+  background: #fff;
+}
+
+.columnDragHandle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.35);
+  cursor: grab;
+  touch-action: none;
+}
+
+.columnDragHandle:active {
+  cursor: grabbing;
 }
 
 .columnResizeHandle {

@@ -15,10 +15,13 @@ export type ComplexFieldProps = ComponentProps &
   };
 
 /** 详情态下把任意值渲染为可读文本。 */
-export function displayValue(value: unknown): ReactNode {
+export function displayValue(value: any): ReactNode {
   if (value === undefined || value === null || value === "") return "—";
   if (typeof value === "boolean") return value ? "是" : "否";
-  if (typeof value === "object") return JSON.stringify(value);
+  if (typeof value === "object") {
+    if (value?.["$ref"]) return value?.label ?? value?.value;
+    return JSON.stringify(value);
+  }
   return String(value);
 }
 

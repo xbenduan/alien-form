@@ -251,22 +251,25 @@ export default function HomePage() {
             <section className={styles.allModels} aria-label="全部模型">
               <div className={styles.toolbar}>
                 <Tabs
+                  className={styles.tabs}
                   size="large"
                   activeKey={group}
                   items={GROUP_TABS}
                   onChange={(key) => setGroup(key as GroupFilter)}
+                  tabBarExtraContent={
+                    <div className={styles.search}>
+                      <span className={styles.count}>{filtered.length} 个模型</span>
+                      <Input
+                        size="large"
+                        allowClear
+                        prefix={<SearchOutlined />}
+                        placeholder="搜索模型名称、标题或描述"
+                        value={keyword}
+                        onChange={(event) => setKeyword(event.target.value)}
+                      />
+                    </div>
+                  }
                 />
-                <div className={styles.search}>
-                  <span className={styles.count}>{filtered.length} 个模型</span>
-                  <Input
-                    size="large"
-                    allowClear
-                    prefix={<SearchOutlined />}
-                    placeholder="搜索模型名称、标题或描述"
-                    value={keyword}
-                    onChange={(event) => setKeyword(event.target.value)}
-                  />
-                </div>
               </div>
 
               {filtered.length === 0 ? (

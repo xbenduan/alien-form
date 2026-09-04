@@ -9,6 +9,10 @@
   background: #fff;
 }
 
+.tabs {
+  width: 100%;
+}
+
 .topbarPrimary {
   display: flex;
   width: 100%;
