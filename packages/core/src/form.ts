@@ -68,6 +68,16 @@ function isContainerField(field: FieldNode | undefined): field is ObjectFieldNod
 }
 
 /**
+ * 字段是否参与校验:仅当它对用户「可编辑且可见」时才校验。
+ * display 为 none / hidden(不呈现输入)或 disabled(不可编辑)的字段一律豁免 ——
+ * 这些字段的取值不由用户填写(如自动生成的 id、只读时间戳),不应触发必填等校验。
+ */
+function isValidatable(field: FieldNode): boolean {
+  const display = field.display();
+  return display !== "none" && display !== "hidden" && !field.disabled();
+}
+
+/**
  * 叶子写入守卫:叶子字段(onChange 的唯一写入口)只接受单个 string | number | boolean。
  * null / undefined 视为清空放行;数组、对象等复杂结构一律抛 TypeError。
  * 复杂结构请用 items / properties 拆分;简单 object/array 请在组件内序列化为 string。
@@ -1043,7 +1053,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
   const errorsComputed = computed(() => {
     const all: FieldError[] = [];
     for (const field of fieldsSignal().values())
-      if (field.display() !== "none") all.push(...field.errors());
+      if (isValidatable(field)) all.push(...field.errors());
     return all;
   });
   const validComputed = computed(() => errorsComputed().length === 0);
@@ -1109,22 +1119,20 @@ export function createForm(config: FormConfig = {}): FormInstance {
     async validate(names?: string[]) {
       let targets: FieldNode[];
       if (!names || names.length === 0) {
-        targets = Array.from(fieldsSignal().values()).filter(
-          (f: FieldNode) => f.display() !== "none",
-        );
+        targets = Array.from(fieldsSignal().values()).filter((f: FieldNode) => isValidatable(f));
       } else {
         const seen = new Set<FieldNode>();
         for (const name of names) {
           const field = fieldsSignal().get(name);
           if (field) collectFieldAndDescendants(field, seen);
         }
-        targets = Array.from(seen).filter((f) => f.display() !== "none");
+        targets = Array.from(seen).filter((f) => isValidatable(f));
       }
       const results = await Promise.all(targets.map((f) => f.validate()));
       return results.every((errors) => errors.length === 0);
     },
     async validateFast() {
-      const targets = Array.from(mountedFields).filter((f) => f.display() !== "none");
+      const targets = Array.from(mountedFields).filter((f) => isValidatable(f));
       const results = await Promise.all(targets.map((f) => f.validate()));
       return results.every((errors) => errors.length === 0);
     },
