@@ -23,10 +23,12 @@ import {
   type TableProps,
 } from "antd";
 import {
+  Children,
   useCallback,
   useEffect,
   useMemo,
   useState,
+  type ComponentType,
   type HTMLAttributes,
   type Key,
   type MouseEvent as ReactMouseEvent,
@@ -94,7 +96,6 @@ interface ActionButtons {
   add?: ActionButtonConfig;
   edit?: ActionButtonConfig;
   detail?: ActionButtonConfig;
-  delete?: ActionButtonConfig;
   batchDelete?: ActionButtonConfig<BatchActionContext>;
 }
 
@@ -102,7 +103,6 @@ const ACTION_ICONS = {
   add: <PlusOutlined />,
   edit: <EditOutlined />,
   detail: <EyeOutlined />,
-  delete: <DeleteOutlined />,
   batchDelete: <DeleteOutlined />,
 } satisfies Record<keyof ActionButtons, ReactNode>;
 
@@ -110,7 +110,6 @@ const ACTION_LABELS = {
   add: "新增",
   edit: "编辑",
   detail: "详情",
-  delete: "删除",
   batchDelete: "批量删除",
 } satisfies Record<keyof ActionButtons, string>;
 
@@ -201,7 +200,8 @@ export function Table({
   loadData,
   filter,
   nodeId,
-  slots,
+  node,
+  children,
   rowKey = "id",
   modelCode,
   scroll,
@@ -240,6 +240,11 @@ export function Table({
   );
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [overlay, setOverlay] = useState<OverlayState>();
+  const toolbarChildren = useMemo(() => Children.toArray(children), [children]);
+  const rowActionNodes = useMemo(() => {
+    const rowActions = node.slots.rowActions;
+    return rowActions ? (Array.isArray(rowActions) ? rowActions : [rowActions]) : [];
+  }, [node.slots.rowActions]);
   const resolvedColumns = useMemo(
     () =>
       (typeof columns === "function"
@@ -348,30 +353,6 @@ export function Table({
     },
     [actionBtns, navigate, pageRuntime, recordTitle, resolvedModelCode, schema],
   );
-  const removeRecord = useCallback(
-    async (
-      recordId: unknown,
-      record: Record<string, unknown>,
-      service?: ActionButtonConfig["service"],
-    ) => {
-      if (!resolvedModelCode) return;
-      if (!service) {
-        message.error("删除按钮未配置 service");
-        return;
-      }
-      setLoading(true);
-      try {
-        await service({ id: recordId, model: resolvedModelCode, record });
-        message.success("记录已删除");
-        await refresh();
-      } catch (reason) {
-        message.error(reason instanceof Error ? reason.message : String(reason));
-      } finally {
-        setLoading(false);
-      }
-    },
-    [message, refresh, resolvedModelCode],
-  );
   const removeSelected = useCallback(
     async (service?: ActionButtonConfig<BatchActionContext>["service"]) => {
       if (!resolvedModelCode || !selectedRowKeys.length) return;
@@ -399,12 +380,44 @@ export function Table({
     },
     [data.list, message, refresh, resolvedModelCode, rowKey, selectedRowKeys],
   );
+  const renderRowActions = useCallback(
+    (record: Record<string, unknown>) => {
+      const scope = {
+        ...pageRuntime.runtime.createScope(pageRuntime.domain, pageRuntime.query, "list"),
+        $values: pageRuntime.form.values(),
+        $form: pageRuntime.form,
+        $row: record,
+      };
+      return rowActionNodes.flatMap((actionNode) => {
+        const componentCode = actionNode.schema.component;
+        if (!componentCode) return [];
+        const registration = pageRuntime.runtime.resolveComponent(
+          componentCode,
+          pageRuntime.domain,
+        );
+        if (!registration) return [];
+        const Component = registration.component as ComponentType<RowButtonProps>;
+        const props = evaluateProps(actionNode.props, scope) as RowButtonProps;
+        return [
+          <Component
+            {...props}
+            key={actionNode.key}
+            row={record}
+            model={resolvedModelCode}
+            rowKey={rowKey}
+            refresh={refresh}
+          />,
+        ];
+      });
+    },
+    [pageRuntime, refresh, resolvedModelCode, rowActionNodes, rowKey],
+  );
   const tableColumns = useMemo<TableColumnsType<Record<string, unknown>>>(() => {
-    if (
-      !resolvedModelCode ||
-      !actionBtns ||
-      !(["edit", "detail", "delete"] as const).some((mode) => actionBtns[mode])
-    ) {
+    const hasBuiltinActions =
+      resolvedModelCode &&
+      actionBtns &&
+      (["edit", "detail"] as const).some((mode) => actionBtns[mode]);
+    if (!hasBuiltinActions && rowActionNodes.length === 0) {
       return configuredColumns;
     }
     return [
@@ -417,60 +430,46 @@ export function Table({
         render: (_value, record) => {
           const recordId = record[rowKey];
           const hasRecordId = recordId !== undefined && recordId !== null && recordId !== "";
-          const protectedAdmin =
-            resolvedModelCode === "_sys_user" && String(recordId) === "_sys_admin";
-          const inlineActions = (["edit", "detail", "delete"] as const).flatMap((mode) => {
+          const inlineActions = (["edit", "detail"] as const).flatMap((mode) => {
             const config = actionBtns?.[mode];
             if (!config) return [];
             const props = buttonProps(config);
-            const disabled =
-              props.disabled || !hasRecordId || (mode === "delete" && protectedAdmin);
-            const button = (
+            return [
               <Button
                 {...props}
                 key={mode}
                 type={props.type ?? "text"}
                 size={props.size ?? "small"}
-                danger={props.danger ?? mode === "delete"}
+                danger={props.danger}
                 icon={props.icon ?? ACTION_ICONS[mode]}
-                disabled={disabled}
-                onClick={
-                  mode === "delete"
-                    ? props.onClick
-                    : (event) => {
-                        props.onClick?.(event);
-                        openAction(mode, recordId);
-                      }
-                }
+                disabled={props.disabled || !hasRecordId}
+                onClick={(event) => {
+                  props.onClick?.(event);
+                  openAction(mode, recordId);
+                }}
               >
                 {config.children ?? ACTION_LABELS[mode]}
-              </Button>
-            );
-            if (mode !== "delete") return [button];
-            return [
-              <Popconfirm
-                key={mode}
-                title="确认删除这条记录？"
-                description="删除后无法恢复。"
-                okText="删除"
-                cancelText="取消"
-                okButtonProps={{ danger: true }}
-                disabled={disabled}
-                onConfirm={() => removeRecord(recordId, record, config.service)}
-              >
-                {button}
-              </Popconfirm>,
+              </Button>,
             ];
           });
           return (
             <Space size={0} wrap>
+              {renderRowActions(record)}
               {inlineActions}
             </Space>
           );
         },
       },
     ];
-  }, [actionBtns, configuredColumns, openAction, removeRecord, resolvedModelCode, rowKey]);
+  }, [
+    actionBtns,
+    configuredColumns,
+    openAction,
+    renderRowActions,
+    resolvedModelCode,
+    rowActionNodes.length,
+    rowKey,
+  ]);
 
   useEffect(() => {
     void refresh();
@@ -567,7 +566,7 @@ export function Table({
             )}
           </Space>
           <Space>
-            {slots.toolbar}
+            {toolbarChildren}
             <Popover
               content={columnSettings}
               title="列设置"
@@ -647,5 +646,89 @@ export function Table({
         />
       )}
     </>
+  );
+}
+
+interface RowButtonContext {
+  id?: unknown;
+  model?: string;
+  record: Record<string, unknown>;
+}
+
+interface RowButtonProps extends Omit<ButtonProps, "disabled" | "onClick"> {
+  row?: Record<string, unknown>;
+  model?: string;
+  rowKey?: string;
+  refresh?: () => void | Promise<void>;
+  confirm?: ReactNode;
+  confirmDescription?: ReactNode;
+  successMessage?: string;
+  refreshAfterSuccess?: boolean;
+  disabled?: boolean | ((row: Record<string, unknown>) => boolean);
+  onClick?: (row: Record<string, unknown>, context: RowButtonContext) => unknown | Promise<unknown>;
+}
+
+export function RowButton({
+  row,
+  model,
+  rowKey = "id",
+  refresh,
+  confirm,
+  confirmDescription,
+  successMessage,
+  refreshAfterSuccess = false,
+  disabled,
+  onClick,
+  type = "link",
+  size = "small",
+  children,
+  ...props
+}: RowButtonProps) {
+  const { message } = App.useApp();
+  const [loading, setLoading] = useState(false);
+  const resolvedDisabled =
+    !row || !onClick || (typeof disabled === "function" ? disabled(row) : disabled);
+
+  const execute = async () => {
+    if (!row || !onClick) return;
+    setLoading(true);
+    try {
+      await onClick(row, { id: row[rowKey], model, record: row });
+      if (successMessage) message.success(successMessage);
+      if (refreshAfterSuccess) await refresh?.();
+    } catch (reason) {
+      message.error(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const button = (
+    <Button
+      {...props}
+      type={type}
+      size={size}
+      loading={loading}
+      disabled={resolvedDisabled}
+      onClick={confirm ? undefined : () => void execute()}
+    >
+      {children}
+    </Button>
+  );
+
+  return confirm ? (
+    <Popconfirm
+      title={confirm}
+      description={confirmDescription}
+      okText="确认"
+      cancelText="取消"
+      okButtonProps={{ danger: props.danger }}
+      disabled={resolvedDisabled}
+      onConfirm={execute}
+    >
+      {button}
+    </Popconfirm>
+  ) : (
+    button
   );
 }

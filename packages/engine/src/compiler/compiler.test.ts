@@ -19,11 +19,35 @@ const model: BuilderSchema = {
           props: {
             schema: { $ref: "form-schema" },
             filter: "{{ $values.filter }}",
+            rowActions: ["deactivate", "delete"],
             "action-btns": {
-              delete: {
-                children: "移除",
-                service: "{{ $service.records.delete }}",
+              edit: { children: "编辑" },
+            },
+          },
+          properties: {
+            deactivate: {
+              type: "void",
+              component: "row-button",
+              props: { children: "停用" },
+            },
+            delete: {
+              type: "void",
+              component: "row-button",
+              props: {
+                children: "删除",
+                onClick:
+                  "{{ ($row) => $service.records.delete({ model: 'products', id: $row.id }) }}",
               },
+            },
+            import: {
+              type: "void",
+              component: "Button",
+              props: { children: "导入" },
+            },
+            export: {
+              type: "void",
+              component: "Button",
+              props: { children: "导出" },
             },
           },
         },
@@ -48,10 +72,36 @@ describe("page compiler", () => {
     expect((table.props.schema as { properties: unknown }).properties).toBeDefined();
     expect(isCompiledValue(table.props.filter)).toBe(true);
     expect((table.props.filter as any).expression({ $values: { filter: "ok" } })).toBe("ok");
-    const deleteService = (table.props["action-btns"] as any).delete.service;
-    const service = () => "deleted";
-    expect(isCompiledValue(deleteService)).toBe(true);
-    expect(deleteService.expression({ $service: { records: { delete: service } } })).toBe(service);
+    const deleteOnClick = table.children.find((node) => node.key === "delete")?.props.onClick;
+    const service = (context: unknown) => context;
+    expect(isCompiledValue(deleteOnClick)).toBe(true);
+    const onClick = (deleteOnClick as any).expression({
+      $service: { records: { delete: service } },
+    });
+    expect(onClick({ id: "product-1" })).toEqual({ model: "products", id: "product-1" });
+  });
+
+  it("extracts row actions and keeps remaining table properties as ordered children", () => {
+    const [page] = compileModel(model);
+    const table = page.nodes[0].children[0];
+    const rowActions = table.slots.rowActions;
+
+    expect(Array.isArray(rowActions)).toBe(true);
+    expect((rowActions as Array<{ key: string }>).map((node) => node.key)).toEqual([
+      "deactivate",
+      "delete",
+    ]);
+    expect(table.children.map((node) => node.key)).toEqual([
+      "deactivate",
+      "delete",
+      "import",
+      "export",
+    ]);
+    expect(
+      table.children
+        .filter((node) => !(rowActions as Array<{ key: string }>).includes(node))
+        .map((node) => node.key),
+    ).toEqual(["import", "export"]);
   });
 
   it("wraps page layouts without changing value paths", () => {

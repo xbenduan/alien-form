@@ -357,7 +357,8 @@ export const _sys_user: BuilderSchema = {
             columns: "{{ $utils.schemaToColumns }}",
             filter: "{{ $values.filter }}",
             loadData: "{{ (params) => $service.records.list({ model: '_sys_user', ...params }) }}",
-            // children 即所有 table.properties，放入 tableToolbar 右侧
+            // 指定的 properties 进入每行操作列；其余 properties 作为 children 数组进入工具栏右侧
+            rowActions: ["deactivate", "delete"],
             "action-btns": {
               // 新增按钮 props（可填 antd button 其他 props）；openMode 决定打开方式
               add: { type: "primary", children: "新增", openMode: "page" },
@@ -368,8 +369,48 @@ export const _sys_user: BuilderSchema = {
                 danger: true,
                 service: "{{ $service.records.batchDelete }}",
               },
-              // 删除按钮：组件内部调用 props.service({ id: props.record.id })
-              delete: { type: "link", children: "删除", service: "{{ $service.records.delete }}" },
+            },
+          },
+          properties: {
+            deactivate: {
+              type: "void",
+              component: "row-button",
+              props: {
+                danger: true,
+                children: "停用",
+                onClick: "{{ ($row) => $utils.message.info('功能未完善') }}",
+              },
+            },
+            delete: {
+              type: "void",
+              component: "row-button",
+              props: {
+                danger: true,
+                children: "删除",
+                confirm: "确认删除这条记录？",
+                confirmDescription: "删除后无法恢复。",
+                successMessage: "记录已删除",
+                refreshAfterSuccess: true,
+                disabled: "{{ $row.id === '_sys_admin' }}",
+                onClick:
+                  "{{ ($row) => $service.records.delete({ model: '_sys_user', id: $row.id, record: $row }) }}",
+              },
+            },
+            import: {
+              type: "void",
+              component: "Button",
+              props: {
+                children: "导入",
+                onClick: "{{ () => $utils.message.info('功能未完善') }}",
+              },
+            },
+            export: {
+              type: "void",
+              component: "Button",
+              props: {
+                children: "导出",
+                onClick: "{{ () => $utils.message.info('功能未完善') }}",
+              },
             },
           },
         },

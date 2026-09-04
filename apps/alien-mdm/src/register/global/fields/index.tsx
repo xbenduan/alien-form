@@ -3,10 +3,6 @@ import { ArrayCards } from "./array-cards";
 import { ObjectField } from "./object-field";
 import { Input, NumberInput, Select, TextArea } from "./primitive";
 
-export { Input, NumberInput, Select, TextArea } from "./primitive";
-export { ObjectField } from "./object-field";
-export { ArrayCards } from "./array-cards";
-
 export function registerFields(runtime: Runtime): void {
   runtime.component({
     code: "Input",
