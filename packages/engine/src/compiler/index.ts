@@ -31,7 +31,14 @@ function resolveRef(
 }
 
 function resolveField(raw: FieldSchema, definitions: BuilderSchema["definitions"]): FieldSchema {
-  const schema = resolveRef(raw, definitions);
+  const referenced = resolveRef(raw, definitions);
+  const schema: FieldSchema = isExpression(referenced.display)
+    ? {
+        ...referenced,
+        display: "visible",
+        "x-reaction": { ...referenced["x-reaction"], display: referenced.display },
+      }
+    : referenced;
   const properties = schema.properties
     ? Object.fromEntries(
         Object.entries(schema.properties).map(([key, child]) => [

@@ -185,9 +185,14 @@ export const sysUserSchema: ModelSchema = {
             loadData: "{{ (params) => $service.records.list({ model: '_sys_user', ...params }) }}",
             "action-btns": {
               add: { type: "primary", children: "新增", openMode: "page" },
-              edit: { type: "text", children: "编辑", openMode: "page" },
-              detail: { type: "text", children: "详情", openMode: "drawer" },
-              delete: { type: "text", children: "删除", service: "{{ $service.records.delete }}" },
+              edit: { type: "link", children: "编辑", openMode: "page" },
+              detail: { type: "link", children: "详情", openMode: "drawer" },
+              batchDelete: {
+                children: "批量删除",
+                danger: true,
+                service: "{{ $service.records.batchDelete }}",
+              },
+              delete: { type: "link", children: "删除", service: "{{ $service.records.delete }}" },
             },
           },
         },
@@ -201,10 +206,17 @@ export const sysUserSchema: ModelSchema = {
           type: "void",
           component: "record-form",
           props: {
+            ok: mode === "add" ? "确认新增" : mode === "edit" ? "确认修改" : undefined,
             mode,
             modelCode: "_sys_user",
             recordId: mode === "add" ? undefined : "{{ $query.id }}",
             schema: { $ref: "form-schema" },
+            submit:
+              mode === "add"
+                ? "{{ $service.record.add }}"
+                : mode === "edit"
+                  ? "{{ $service.record.edit }}"
+                  : undefined,
           },
         },
       },

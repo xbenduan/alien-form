@@ -81,33 +81,33 @@ export function schemaToColumns(runtime: Runtime) {
     domain?: string,
     fields?: DatabaseField[],
   ): TableColumnsType<T> {
-    return orderedFields(schema?.properties ?? {}, fields)
-      .filter(({ column }) => column.visible !== false)
-      .map(({ key, field }) => {
-        const Component = runtime.component(field.component ?? defaultComponent(field), domain) as
-          | ComponentType<TableFieldProps>
-          | undefined;
-        return {
-          key,
-          dataIndex: key,
-          title: field.title ?? key,
-          ellipsis: field.type !== "object" && field.type !== "array",
-          render(value: unknown) {
-            if (!Component) return "—";
-            return createElement(Component, {
-              ...field.props,
-              value,
-              mode: "detail",
-              isTable: true,
-              schema: field,
-              title: field.title ?? key,
-              description: field.description,
-              dataSource: field.dataSource,
-              domain,
-            });
-          },
-        };
-      });
+    return orderedFields(schema?.properties ?? {}, fields).map(({ key, field, column }) => {
+      const Component = runtime.component(field.component ?? defaultComponent(field), domain) as
+        | ComponentType<TableFieldProps>
+        | undefined;
+      return {
+        key,
+        dataIndex: key,
+        title: field.title ?? column.title ?? key,
+        sorter: column.sortable === true,
+        hidden: column.visible === false,
+        ellipsis: field.type !== "object" && field.type !== "array",
+        render(value: unknown) {
+          if (!Component) return "—";
+          return createElement(Component, {
+            ...field.props,
+            value,
+            mode: "detail",
+            isTable: true,
+            schema: field,
+            title: field.title ?? key,
+            description: field.description,
+            dataSource: field.dataSource,
+            domain,
+          });
+        },
+      };
+    });
   };
 }
 

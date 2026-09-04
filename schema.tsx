@@ -361,10 +361,15 @@ export const _sys_user: BuilderSchema = {
             "action-btns": {
               // 新增按钮 props（可填 antd button 其他 props）；openMode 决定打开方式
               add: { type: "primary", children: "新增", openMode: "page" },
-              edit: { type: "text", children: "编辑", openMode: "page" },
-              detail: { type: "text", children: "详情", openMode: "drawer" },
+              edit: { type: "link", children: "编辑", openMode: "page" },
+              detail: { type: "link", children: "详情", openMode: "drawer" },
+              batchDelete: {
+                children: "批量删除",
+                danger: true,
+                service: "{{ $service.records.batchDelete }}",
+              },
               // 删除按钮：组件内部调用 props.service({ id: props.record.id })
-              delete: { type: "text", children: "删除", service: "{{ $service.records.delete }}" },
+              delete: { type: "link", children: "删除", service: "{{ $service.records.delete }}" },
             },
           },
         },

@@ -19,6 +19,12 @@ const model: BuilderSchema = {
           props: {
             schema: { $ref: "form-schema" },
             filter: "{{ $values.filter }}",
+            "action-btns": {
+              delete: {
+                children: "移除",
+                service: "{{ $service.records.delete }}",
+              },
+            },
           },
         },
       },
@@ -42,6 +48,10 @@ describe("page compiler", () => {
     expect((table.props.schema as { properties: unknown }).properties).toBeDefined();
     expect(isCompiledValue(table.props.filter)).toBe(true);
     expect((table.props.filter as any).expression({ $values: { filter: "ok" } })).toBe("ok");
+    const deleteService = (table.props["action-btns"] as any).delete.service;
+    const service = () => "deleted";
+    expect(isCompiledValue(deleteService)).toBe(true);
+    expect(deleteService.expression({ $service: { records: { delete: service } } })).toBe(service);
   });
 
   it("wraps page layouts without changing value paths", () => {
@@ -63,6 +73,31 @@ describe("page compiler", () => {
       title: "基础信息",
     });
     expect(compiled.nodes[0]?.children.map((child) => child.key)).toEqual(["name"]);
+  });
+
+  it("compiles expression display into a reactive display rule", () => {
+    const dynamicModel: BuilderSchema = {
+      ...model,
+      definitions: {
+        "form-schema": {
+          ...model.definitions["form-schema"],
+          properties: {
+            name: {
+              type: "string",
+              title: "名称",
+              display: "{{ $values.enabled ? 'visible' : 'hidden' }}",
+            },
+          },
+        },
+      },
+    };
+    const compiled = compileForm(dynamicModel.definitions["form-schema"], dynamicModel.definitions);
+    expect(compiled.schema.properties?.["$group-0"].properties?.name).toMatchObject({
+      display: "visible",
+      "x-reaction": {
+        display: "{{ $values.enabled ? 'visible' : 'hidden' }}",
+      },
+    });
   });
 
   it("rejects models without the form-schema contract", () => {

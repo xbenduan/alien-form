@@ -35,12 +35,14 @@ describe("BuilderSchema validation", () => {
     expect(parsed.fields).toHaveLength(2);
   });
 
-  it("allows expressions in pages but rejects them in form-schema", () => {
-    const bad = model();
-    (bad.definitions["form-schema"].properties!.amount as Record<string, unknown>).props = {
-      x: "{{ $values.id }}",
+  it("allows expressions in pages and form-schema presentation fields", () => {
+    const schema = model();
+    schema.definitions["form-schema"].properties!.amount = {
+      ...schema.definitions["form-schema"].properties!.amount,
+      display: "{{ $values.id ? 'visible' : 'hidden' }}",
+      dataSource: "{{ $service.options.list() }}",
     };
-    expect(() => assertBuilderSchema(bad)).toThrow(/不允许包含表达式/);
+    expect(() => assertBuilderSchema(schema)).not.toThrow();
   });
 
   it("rejects form-schema drift from fields", () => {

@@ -46,9 +46,14 @@ function buildListPage(modelCode: string, title: string): XPage {
           loadData: `{{ (params) => $service.records.list({ model: ${modelLiteral}, ...params }) }}`,
           "action-btns": {
             add: { type: "primary", children: "新增", openMode: OPEN_MODE },
-            edit: { type: "text", children: "编辑", openMode: OPEN_MODE },
-            detail: { type: "text", children: "详情", openMode: OPEN_MODE },
-            delete: { type: "text", children: "删除", service: "{{ $service.records.delete }}" },
+            edit: { type: "link", children: "编辑", openMode: OPEN_MODE },
+            detail: { type: "link", children: "详情", openMode: OPEN_MODE },
+            batchDelete: {
+              children: "批量删除",
+              danger: true,
+              service: "{{ $service.records.batchDelete }}",
+            },
+            delete: { type: "link", children: "删除", service: "{{ $service.records.delete }}" },
           },
         },
       },
@@ -69,10 +74,14 @@ function buildRecordPage(
         type: "void",
         component: "record-form",
         props: {
+          ...(mode === "detail" ? {} : { ok: mode === "add" ? "确认新增" : "确认修改" }),
           mode,
           modelCode,
           ...(mode === "add" ? {} : { recordId: "{{ $query.id }}" }),
           schema: { $ref: "form-schema" },
+          ...(mode === "detail"
+            ? {}
+            : { submit: `{{ $service.record.${mode === "add" ? "add" : "edit"} }}` }),
         },
       },
     },

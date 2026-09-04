@@ -7,18 +7,13 @@ import type { IFieldSchema } from "@alien-form/core";
  * satisfies 断言与 core 的 IFieldSchema 保持一致（见文件底部）。
  */
 
-export const displaySchema = z.enum(["visible", "hidden", "none"]);
+const expressionSchema = z.string().regex(/^\s*\{\{[\s\S]*\}\}\s*$/, "必须是 {{...}} 表达式");
+
+export const displaySchema = z.union([z.enum(["visible", "hidden", "none"]), expressionSchema]);
 
 /** dataSource / props / x-* 等允许含表达式（{{...}}）与任意结构，运行时不深校验，只保证是合法 JSON 值。 */
 const jsonValue: z.ZodType<unknown> = z.lazy(() =>
-  z.union([
-    z.string(),
-    z.number(),
-    z.boolean(),
-    z.null(),
-    z.array(jsonValue),
-    z.record(jsonValue),
-  ]),
+  z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(jsonValue), z.record(jsonValue)]),
 );
 
 export const fieldSchema: z.ZodType = z.lazy(() =>
@@ -42,7 +37,9 @@ export const fieldSchema: z.ZodType = z.lazy(() =>
       props: z.record(jsonValue).optional(),
       "x-reaction": z.record(jsonValue).optional(),
       "x-effect": jsonValue.optional(),
-      "x-format": z.object({ input: jsonValue.optional(), output: jsonValue.optional() }).optional(),
+      "x-format": z
+        .object({ input: jsonValue.optional(), output: jsonValue.optional() })
+        .optional(),
       "x-validate": jsonValue.optional(),
       dataSource: jsonValue.optional(),
       group: z.array(z.lazy(() => fieldGroupSchema)).optional(),
@@ -68,18 +65,11 @@ export interface FieldGroup {
 
 /**
  * FieldSchema：在 core IFieldSchema 基础上追加 group（表单分组，仅根节点/对象字段用）。
- * 下方类型级断言保证 FieldSchema 与 core 的 IFieldSchema 结构兼容——form-schema 字段类型
- * 就是 core 的 IFieldSchema（目标 1）。
+ * display 额外接受协议表达式，编译器会将其转换为响应式 display 规则。
  */
-export interface FieldSchema extends Omit<IFieldSchema, "properties" | "items"> {
+export interface FieldSchema extends Omit<IFieldSchema, "properties" | "items" | "display"> {
+  display?: IFieldSchema["display"] | `{{${string}}}`;
   properties?: Record<string, FieldSchema>;
   items?: FieldSchema | FieldSchema[];
   group?: FieldGroup[];
 }
-
-// 类型级保证：FieldSchema 可赋回 core 的 IFieldSchema（去掉 group 后结构一致）。
-type _AssertAlignsWithCore = FieldSchema extends Omit<IFieldSchema, "properties" | "items">
-  ? true
-  : never;
-const _assertAlignsWithCore: _AssertAlignsWithCore = true;
-void _assertAlignsWithCore;

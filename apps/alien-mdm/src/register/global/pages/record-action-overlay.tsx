@@ -1,6 +1,6 @@
 import { SaveOutlined } from "@ant-design/icons";
 import { Button, Space } from "antd";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import type { FieldSchema, OpenMode } from "@alien-form/engine";
 import { Overlay } from "./overlay";
 import { RecordForm, type RecordActionMode, type RecordFormHandle } from "./record-form";
@@ -12,6 +12,8 @@ export function RecordActionOverlay({
   recordId,
   schema,
   title,
+  ok,
+  submit,
   onClose,
   onSaved,
 }: {
@@ -21,12 +23,16 @@ export function RecordActionOverlay({
   recordId?: string;
   schema: FieldSchema;
   title: string;
+  ok?: ReactNode;
+  submit?: (
+    values: Record<string, unknown>,
+    context: { mode: RecordActionMode; modelCode: string; recordId?: string },
+  ) => unknown | Promise<unknown>;
   onClose: () => void;
   onSaved: () => void | Promise<void>;
 }) {
   const formRef = useRef<RecordFormHandle>(null);
   const [submitting, setSubmitting] = useState(false);
-  const prefix = mode === "add" ? "新建" : mode === "edit" ? "编辑" : "详情";
   const footer = (
     <Space>
       <Button onClick={onClose}>{mode === "detail" ? "关闭" : "取消"}</Button>
@@ -44,13 +50,13 @@ export function RecordActionOverlay({
             }
           }}
         >
-          {mode === "add" ? "创建" : "保存"}
+          {ok ?? (mode === "add" ? "创建" : "保存")}
         </Button>
       )}
     </Space>
   );
   return (
-    <Overlay open mode={openMode} title={`${prefix}${title}`} footer={footer} onClose={onClose}>
+    <Overlay open mode={openMode} title={title} footer={footer} onClose={onClose}>
       <RecordForm
         ref={formRef}
         embedded
@@ -58,6 +64,8 @@ export function RecordActionOverlay({
         modelCode={modelCode}
         recordId={recordId}
         schema={schema}
+        ok={ok}
+        submit={submit}
         onCancel={onClose}
         onSaved={onSaved}
       />

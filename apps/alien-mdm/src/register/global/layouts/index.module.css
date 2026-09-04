@@ -80,6 +80,32 @@
   gap: 12px;
 }
 
+.columnSettings {
+  display: flex;
+  min-width: 420px;
+  max-height: 360px;
+  flex-direction: column;
+  gap: 8px;
+  overflow: auto;
+}
+
+.columnSettingRow {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 96px 96px;
+  align-items: center;
+  gap: 8px;
+}
+
+.columnResizeHandle {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  z-index: 1;
+  width: 8px;
+  cursor: col-resize;
+}
+
 .treeCard {
   height: 100%;
   min-height: 520px;

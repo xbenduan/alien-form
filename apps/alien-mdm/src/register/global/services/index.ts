@@ -60,8 +60,10 @@ export function registerServices(runtime: Runtime, transport: Transport): void {
   });
   runtime.service({
     code: "records.get",
-    send: (modelCode: string, id: string) =>
-      transport.send<Record<string, unknown>>(`/api/records/${modelCode}/${id}`),
+    send: ({ model, id }: { model: string; id: string }) =>
+      transport.send<Record<string, unknown>>(
+        `/api/records/${encodeURIComponent(model)}/${encodeURIComponent(id)}`,
+      ),
   });
   runtime.service({
     code: "records.create",
@@ -81,8 +83,41 @@ export function registerServices(runtime: Runtime, transport: Transport): void {
   });
   runtime.service({
     code: "records.delete",
-    send: (modelCode: string, id: string) =>
-      transport.send<void>(`/api/records/${modelCode}/${id}`, { method: "DELETE" }),
+    send: ({ model, id }: { model: string; id: unknown }) =>
+      transport.send<void>(
+        `/api/records/${encodeURIComponent(model)}/${encodeURIComponent(String(id))}`,
+        { method: "DELETE" },
+      ),
+  });
+  runtime.service({
+    code: "records.batchDelete",
+    send: ({ model, ids }: { model: string; ids: string[] }) =>
+      transport.send<void>(`/api/records/${encodeURIComponent(model)}/batch-delete`, {
+        method: "POST",
+        body: JSON.stringify({ ids }),
+      }),
+  });
+  runtime.service({
+    code: "record.add",
+    send: (values: Record<string, unknown>, context: { modelCode: string }) =>
+      transport.send<Record<string, unknown>>(
+        `/api/records/${encodeURIComponent(context.modelCode)}`,
+        {
+          method: "POST",
+          body: JSON.stringify(values),
+        },
+      ),
+  });
+  runtime.service({
+    code: "record.edit",
+    send: (values: Record<string, unknown>, context: { modelCode: string; recordId?: string }) =>
+      transport.send<Record<string, unknown>>(
+        `/api/records/${encodeURIComponent(context.modelCode)}/${encodeURIComponent(context.recordId ?? "")}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(values),
+        },
+      ),
   });
   runtime.service({
     code: "router.go",

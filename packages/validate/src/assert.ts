@@ -33,7 +33,7 @@ export function valueType(field: DatabaseField): DatabaseValueType {
 
 /**
  * 深度校验：结构（zod）+ 协议约束（fields 唯一键、form-schema ⊇ fields 一致性、
- * group、禁止表达式/x-database）。抛错即不合法。
+ * group、禁止 x-database）。抛错即不合法。
  */
 export function assertBuilderSchema(value: unknown): asserts value is BuilderSchema {
   const parsed = builderSchemaSchema.safeParse(value);
@@ -90,11 +90,8 @@ export function assertBuilderSchema(value: unknown): asserts value is BuilderSch
     }
   }
 
-  // form-schema 内禁止表达式与 x-database
+  // 存储定义只能来自 fields，form-schema 不接受旧版 x-database。
   const visit = (current: unknown, path: string): void => {
-    if (typeof current === "string" && current.includes("{{")) {
-      throw new Error(`${path} 不允许包含表达式`);
-    }
     if (!current || typeof current !== "object") return;
     for (const [key, child] of Object.entries(current)) {
       if (key === "x-database") throw new Error(`${path} 不允许包含 x-database`);

@@ -1,11 +1,17 @@
 import { useCreateForm } from "@alien-form/react";
 import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
 import { Alert, App, Button, Space, Spin } from "antd";
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FormRenderer, useRuntime } from "@binding";
 import { compileForm, type FieldSchema } from "@alien-form/engine";
-import { transport } from "@runtime/transport";
 import { recordListRoute } from "@utils/record-route";
 import styles from "./index.module.css";
 
@@ -16,6 +22,11 @@ interface RecordFormProps {
   modelCode: string;
   recordId?: string;
   schema: FieldSchema;
+  ok?: ReactNode;
+  submit?: (
+    values: Record<string, unknown>,
+    context: { mode: RecordActionMode; modelCode: string; recordId?: string },
+  ) => unknown | Promise<unknown>;
   embedded?: boolean;
   onCancel?: () => void;
   onSaved?: () => void | Promise<void>;
@@ -25,8 +36,17 @@ export interface RecordFormHandle {
   submit(): Promise<void>;
 }
 
+interface RecordServices {
+  records?: {
+    get?: (request: {
+      model: string;
+      id: string;
+    }) => Record<string, unknown> | Promise<Record<string, unknown>>;
+  };
+}
+
 export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function RecordForm(
-  { mode, modelCode, recordId, schema, embedded = false, onCancel, onSaved },
+  { mode, modelCode, recordId, schema, ok, submit, embedded = false, onCancel, onSaved },
   ref,
 ) {
   const runtime = useRuntime();
@@ -61,10 +81,14 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
       setLoading(false);
       return;
     }
-    void transport
-      .send<Record<string, unknown>>(
-        `/api/records/${encodeURIComponent(modelCode)}/${encodeURIComponent(recordId)}`,
-      )
+    const services = form.scope.$service as RecordServices | undefined;
+    const getRecord = services?.records?.get;
+    if (!getRecord) {
+      setError("$service.records.get 未注册");
+      setLoading(false);
+      return;
+    }
+    void Promise.resolve(getRecord({ model: modelCode, id: recordId }))
       .then((record) => form.setValues(record))
       .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)))
       .finally(() => setLoading(false));
@@ -80,15 +104,8 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
     setSaving(true);
     try {
       const values = await form.submit<Record<string, unknown>>();
-      await transport.send(
-        mode === "edit"
-          ? `/api/records/${encodeURIComponent(modelCode)}/${encodeURIComponent(recordId ?? "")}`
-          : `/api/records/${encodeURIComponent(modelCode)}`,
-        {
-          method: mode === "edit" ? "PUT" : "POST",
-          body: JSON.stringify(values),
-        },
-      );
+      if (!submit) throw new Error("record-form.props.submit 未配置");
+      await submit(values, { mode, modelCode, recordId });
       message.success(mode === "add" ? "创建成功" : "保存成功");
       if (onSaved) await onSaved();
       else navigate(recordListRoute(modelCode));
@@ -108,7 +125,7 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
       </Button>
       {mode !== "detail" && (
         <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={() => void save()}>
-          {mode === "add" ? "创建" : "保存"}
+          {ok ?? (mode === "add" ? "创建" : "保存")}
         </Button>
       )}
     </Space>
