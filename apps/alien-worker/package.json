@@ -2,7 +2,7 @@
   "name": "@alien-form/alien-worker",
   "version": "0.0.0",
   "private": true,
-  "description": "Alien Form 的 Cloudflare Workers 后端：单 Worker 同时托管 alien-mdm 静态资源与 /api，数据落 D1。schemas / records 两张表，records 系统字段独立成列、其余字段收进 data_content JSON。",
+  "description": "Alien Form 的 Cloudflare Workers 后端：单 Worker 同时托管 alien-mdm 静态资源与 /api，数据落 D1。分层架构 domain / store / services / http，schemas / records 两张通用表承载所有模型，records 系统字段独立成列、其余字段收进 data_content JSON。",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev --config ../../wrangler.json",

@@ -1,4 +1,4 @@
-import type { DatabaseField, ModelFieldSchema, ModelSchema } from "../schema/types.ts";
+import type { DatabaseField, FieldSchema as ModelFieldSchema, BuilderSchema as ModelSchema } from "@alien-form/validate";
 
 export const SYS_ADMIN_ID = "_sys_admin";
 export const SYS_ADMIN_USERNAME = "_sys_admin";

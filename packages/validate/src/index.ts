@@ -2,7 +2,7 @@
  * @alien-form/validate —— 前后端共享的协议类型与 zod 校验单一真源。
  *
  * BuilderSchema（对齐 canonical schema.tsx）的类型定义与校验都出自此包，
- * 供 alien-server / alien-worker / alien-mdm 共同使用。
+ * 供 alien-worker / alien-mdm 共同使用。
  */
 
 export {
