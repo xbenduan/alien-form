@@ -48,6 +48,7 @@ async function ensureSysAdmin(container: Container): Promise<void> {
     nickname: SYS_ADMIN_NICKNAME,
     passwordHash: await hashPassword(SYS_ADMIN_DEFAULT_PASSWORD),
     createBy: SYS_ADMIN_ID,
+    super: true,
     remark: "系统内置管理员（首次启动自动创建）。",
   });
 }

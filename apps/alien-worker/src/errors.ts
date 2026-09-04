@@ -26,3 +26,8 @@ export function conflict(message: string): AppError {
 export function unauthorized(message: string): AppError {
   return new AppError(message, 401);
 }
+
+/** 403：禁止操作（如删除超级管理员）。 */
+export function forbidden(message: string): AppError {
+  return new AppError(message, 403);
+}

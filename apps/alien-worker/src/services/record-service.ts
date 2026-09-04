@@ -1,5 +1,6 @@
-import { notFound } from "../errors.ts";
-import { publicRecord } from "../domain/visibility.ts";
+import { conflict, forbidden, notFound } from "../errors.ts";
+import { publicRecord, USER_MODEL } from "../domain/visibility.ts";
+import { uniqueFields } from "../domain/field-plan.ts";
 import { unwrapRefs } from "../store/ref-expander.ts";
 import type { ModelRecord, BuilderSchema as ModelSchema, Pagination, Sorter } from "@alien-form/validate";
 import type { SchemaStore } from "../store/schema-store.ts";
@@ -86,24 +87,63 @@ export class RecordService {
 
   async create(model: string, values: Record<string, unknown>): Promise<ModelRecord> {
     const schema = await this.requireSchema(model);
-    const record = await this.records.create(schema, unwrapRefs(values)!);
+    const clean = unwrapRefs(values)!;
+    await this.assertUnique(schema, clean);
+    const record = await this.records.create(schema, clean);
     return publicRecord(model, await this.refs.expandOne(schema, record));
   }
 
   async update(model: string, id: string, values: Record<string, unknown>): Promise<ModelRecord> {
     const schema = await this.requireSchema(model);
-    const record = await this.records.update(schema, id, unwrapRefs(values)!);
+    const clean = unwrapRefs(values)!;
+    await this.assertUnique(schema, clean, id);
+    const record = await this.records.update(schema, id, clean);
     if (!record) throw notFound(`记录不存在：${id}`);
     return publicRecord(model, await this.refs.expandOne(schema, record));
   }
 
+  /**
+   * unique 字段写前查重（应用层保证，非 DB 约束）。
+   *
+   * D1 通用两表下业务字段无独立列、无从建唯一索引；这里对 schema 声明 unique:true
+   * 的字段逐个查重，命中即 409。依赖 D1 写入串行化挡住多数并发，严格并发下仍属弱保证。
+   * 只校验本次传入的字段（update 只传部分字段时不误伤未变更字段）。
+   */
+  private async assertUnique(
+    schema: ModelSchema,
+    values: Record<string, unknown>,
+    excludeId?: string,
+  ): Promise<void> {
+    for (const field of uniqueFields(schema)) {
+      if (!Object.prototype.hasOwnProperty.call(values, field)) continue;
+      const value = values[field];
+      if (await this.records.existsByField(schema, field, value, excludeId)) {
+        throw conflict(`${field} 已存在：${String(value)}`);
+      }
+    }
+  }
+
   async remove(model: string, id: string): Promise<void> {
     const schema = await this.requireSchema(model);
+    await this.assertDeletable(schema, [id]);
     await this.records.delete(schema, id);
   }
 
   async removeMany(model: string, ids: string[]): Promise<void> {
     const schema = await this.requireSchema(model);
+    await this.assertDeletable(schema, ids ?? []);
     await this.records.deleteMany(schema, ids ?? []);
+  }
+
+  /**
+   * 删除守卫：超级管理员（_sys_user.super === true）不可删除。
+   * 收口在服务端强制执行，前端按钮 disabled 只是外观，直连 API 仍受此拦截。
+   */
+  private async assertDeletable(schema: ModelSchema, ids: string[]): Promise<void> {
+    if (schema.meta.name !== USER_MODEL || ids.length === 0) return;
+    for (const id of ids) {
+      const record = await this.records.get(schema, id);
+      if (record?.super) throw forbidden("超级管理员不可删除");
+    }
   }
 }

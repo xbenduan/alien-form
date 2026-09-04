@@ -107,17 +107,18 @@ export class RecordStore {
   constructor(private readonly db: D1Database) {}
 
   /**
-   * 分配下一个业务主键：从 _sequences 表按 model 原子自增取号，格式化为 MDM0000000001。
+   * 分配下一个业务主键：从 _sequences 的全局计数器原子自增取号，格式化为 MDM0000000001。
+   *
+   * 所有模型共用同一个计数器（key = __global__），id 因此跨模型全局唯一、单调自增。
    * 单条 INSERT ... ON CONFLICT DO UPDATE ... RETURNING 保证 D1 串行写入下并发不重号。
    */
-  private async nextId(model: string): Promise<string> {
+  private async nextId(): Promise<string> {
     const row = await this.db
       .prepare(
-        `INSERT INTO "_sequences" (model, next) VALUES (?, 1)
+        `INSERT INTO "_sequences" (model, next) VALUES ('__global__', 1)
          ON CONFLICT(model) DO UPDATE SET next = next + 1
          RETURNING next`,
       )
-      .bind(model)
       .first<{ next: number }>();
     return formatRecordId(row?.next ?? 1);
   }
@@ -307,19 +308,45 @@ export class RecordStore {
   }
 
   /**
+   * 模型内是否已存在某字段的取值（可排除自身 id，供更新时查重）。
+   * 供服务层实现 unique 字段的写前查重（非 DB 约束）。
+   */
+  async existsByField(
+    schema: ModelSchema,
+    field: string,
+    value: unknown,
+    excludeId?: string,
+  ): Promise<boolean> {
+    if (value === undefined || value === null || value === "") return false;
+    const plan = planFields(schema).find((p) => p.field === field);
+    if (!plan) return false;
+    const args: Array<string | number> = [schema.meta.name, encodeFilterValue(plan, value)];
+    let sql = `SELECT 1 FROM "records" WHERE "model" = ? AND ${fieldExpr(field)} = ?`;
+    if (excludeId) {
+      sql += ` AND "id" != ?`;
+      args.push(excludeId);
+    }
+    const row = await this.db
+      .prepare(`${sql} LIMIT 1`)
+      .bind(...args)
+      .first();
+    return Boolean(row);
+  }
+
+  /**
    * 新建记录：幂等 upsert（允许传入 id，命中则整体覆盖 data_content）。
    * D1 单表写入天然原子，无需显式事务。
    */
   async create(schema: ModelSchema, values: Record<string, unknown>): Promise<ModelRecord> {
     const model = schema.meta.name;
     const { id: providedId, data } = splitSystemFields(values);
-    const id = providedId ?? (await this.nextId(model));
+    const id = providedId ?? (await this.nextId());
     const ts = nowMs();
 
     await this.db
       .prepare(
         `INSERT INTO "records" (id, model, created_at, updated_at, data_content) VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT(model, id) DO UPDATE SET updated_at = excluded.updated_at, data_content = excluded.data_content`,
+         ON CONFLICT(id) DO UPDATE SET updated_at = excluded.updated_at, data_content = excluded.data_content`,
       )
       .bind(id, model, ts, ts, JSON.stringify(data))
       .run();

@@ -450,8 +450,8 @@ export function Table({
           });
           return (
             <Space size={0} wrap>
-              {renderRowActions(record)}
               {inlineActions}
+              {renderRowActions(record)}
             </Space>
           );
         },
@@ -601,8 +601,7 @@ export function Table({
             selectedRowKeys,
             onChange: setSelectedRowKeys,
             getCheckboxProps: (record) => ({
-              disabled:
-                resolvedModelCode === "_sys_user" && String(record[rowKey]) === "_sys_admin",
+              disabled: Boolean(record.super),
             }),
           }}
           pagination={{
@@ -652,6 +651,7 @@ interface RowButtonContext {
 }
 
 interface RowButtonProps extends Omit<ButtonProps, "disabled" | "onClick"> {
+  icon?: keyof typeof ICON_MAP;
   row?: Record<string, unknown>;
   model?: string;
   rowKey?: string;
@@ -663,6 +663,13 @@ interface RowButtonProps extends Omit<ButtonProps, "disabled" | "onClick"> {
   disabled?: boolean | ((row: Record<string, unknown>) => boolean);
   onClick?: (row: Record<string, unknown>, context: RowButtonContext) => unknown | Promise<unknown>;
 }
+
+const ICON_MAP = {
+  edit: <EditOutlined />,
+  detail: <EyeOutlined />,
+  delete: <DeleteOutlined />,
+  default: undefined,
+};
 
 export function RowButton({
   row,
@@ -706,6 +713,7 @@ export function RowButton({
       size={size}
       loading={loading}
       disabled={resolvedDisabled}
+      icon={ICON_MAP[props?.icon ?? "default"]}
       onClick={confirm ? undefined : () => void execute()}
     >
       {children}

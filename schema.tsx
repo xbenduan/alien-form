@@ -199,6 +199,15 @@ export const _sys_user: BuilderSchema = {
     { key: "studentRecords", title: "学籍信息", type: "json", valueType: "array" },
     { key: "createBy", title: "创建者", type: "text", default: "_sys_admin", filterable: true },
     {
+      key: "super",
+      title: "超级管理员",
+      type: "boolean",
+      valueType: "boolean",
+      default: false,
+      visible: false,
+      filterable: true,
+    },
+    {
       key: "createdAt",
       title: "创建时间",
       type: "integer",
@@ -311,6 +320,12 @@ export const _sys_user: BuilderSchema = {
           display: "hidden",
           default: "_sys_admin",
         },
+        super: {
+          type: "boolean",
+          title: "超级管理员",
+          display: "hidden",
+          default: false,
+        },
         // 系统时间戳：显式出现，表单中只读。
         createdAt: { type: "string", title: "创建时间", props: { readOnly: true } },
         updatedAt: { type: "string", title: "更新时间", props: { readOnly: true } },
@@ -392,7 +407,7 @@ export const _sys_user: BuilderSchema = {
                 confirmDescription: "删除后无法恢复。",
                 successMessage: "记录已删除",
                 refreshAfterSuccess: true,
-                disabled: "{{ $row.id === '_sys_admin' }}",
+                disabled: "{{ $row.super }}",
                 onClick:
                   '{{ ($row) => $service("records.delete")({ model: "_sys_user", id: $row.id, record: $row }) }}',
               },

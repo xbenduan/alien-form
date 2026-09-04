@@ -63,6 +63,22 @@ export function planByField(schema: ModelSchema): Map<string, FieldPlan> {
   return new Map(planFields(schema).map((plan) => [plan.field, plan]));
 }
 
+/**
+ * schema 中声明了 unique:true 的业务字段名。
+ *
+ * D1 通用两表设计下没有物理列，unique 无法交给 DB 约束；由服务层写前查重兜底。
+ * 系统字段（id 走主键，全局唯一）不在此列。
+ */
+export function uniqueFields(schema: ModelSchema): string[] {
+  const fields: string[] = [];
+  for (const field of databaseFields(schema)) {
+    if (field.system || SYSTEM_MANAGED.has(field.key)) continue;
+    if (field.relation?.kind === "many-to-many") continue;
+    if (field.unique) fields.push(field.key);
+  }
+  return fields;
+}
+
 /** 扫描一份 schema 的所有引用字段（供 ref 展开使用）。 */
 export function refFields(schema: ModelSchema): RefField[] {
   const refs: RefField[] = [];

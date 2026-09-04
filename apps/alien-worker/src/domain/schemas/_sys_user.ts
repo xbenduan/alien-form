@@ -1,6 +1,10 @@
-import type { DatabaseField, FieldSchema as ModelFieldSchema, BuilderSchema as ModelSchema } from "@alien-form/validate";
+import type {
+  DatabaseField,
+  FieldSchema as ModelFieldSchema,
+  BuilderSchema as ModelSchema,
+} from "@alien-form/validate";
 
-export const SYS_ADMIN_ID = "_sys_admin";
+export const SYS_ADMIN_ID = "MDM0000000000";
 export const SYS_ADMIN_USERNAME = "_sys_admin";
 export const SYS_ADMIN_NICKNAME = "系统管理员";
 export const SYS_ADMIN_DEFAULT_PASSWORD = "alien123456";
@@ -30,6 +34,15 @@ const fields: DatabaseField[] = [
   { key: "addressInfo", title: "住址信息", type: "json", valueType: "object" },
   { key: "studentRecords", title: "学籍信息", type: "json", valueType: "array" },
   { key: "createBy", title: "创建者", type: "text", default: SYS_ADMIN_ID, filterable: true },
+  {
+    key: "super",
+    title: "超级管理员",
+    type: "boolean",
+    valueType: "boolean",
+    default: false,
+    visible: false,
+    filterable: true,
+  },
   {
     key: "createdAt",
     title: "创建时间",
@@ -139,6 +152,12 @@ const properties: Record<string, ModelFieldSchema> = {
     display: "hidden",
     default: SYS_ADMIN_ID,
   },
+  super: {
+    type: "boolean",
+    title: "超级管理员",
+    display: "hidden",
+    default: false,
+  },
   createdAt: { type: "string", title: "创建时间", props: { readOnly: true } },
   updatedAt: { type: "string", title: "更新时间", props: { readOnly: true } },
 };
@@ -184,7 +203,7 @@ export const sysUserSchema: ModelSchema = {
             filter: "{{ $values.filter }}",
             loadData:
               "{{ (params) => $service(\"records.list\")({ model: '_sys_user', ...params }) }}",
-            rowActions: ["deactivate", "delete"],
+            rowActions: ["delete"],
             "action-btns": {
               add: { type: "primary", children: "新增", openMode: "page" },
               edit: { type: "link", children: "编辑", openMode: "page" },
@@ -197,26 +216,18 @@ export const sysUserSchema: ModelSchema = {
             },
           },
           properties: {
-            deactivate: {
-              type: "void",
-              component: "row-button",
-              props: {
-                danger: true,
-                children: "停用",
-                onClick: '{{ ($row) => $utils("message").info("功能未完善") }}',
-              },
-            },
             delete: {
               type: "void",
               component: "row-button",
               props: {
                 danger: true,
+                icon: "delete",
                 children: "删除",
                 confirm: "确认删除这条记录？",
                 confirmDescription: "删除后无法恢复。",
                 successMessage: "记录已删除",
                 refreshAfterSuccess: true,
-                disabled: "{{ $row.id === '_sys_admin' }}",
+                disabled: "{{ $row.super }}",
                 onClick:
                   '{{ ($row) => $service("records.delete")({ model: "_sys_user", id: $row.id, record: $row }) }}',
               },
