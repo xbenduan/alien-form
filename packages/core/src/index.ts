@@ -40,6 +40,7 @@ export type {
   SchemaXValidate,
   SchemaReactionKey,
   RuntimeRuleContext,
+  RuntimeAccessor,
   ExpressionScope,
 } from "./types";
 

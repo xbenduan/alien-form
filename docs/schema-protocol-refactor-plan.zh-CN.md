@@ -25,13 +25,13 @@
 | 命名空间 | 类型 | 说明 |
 |---|---|---|
 | `$service(code)` | 异步 | 服务工厂，返回可调用函数（改为 lazy factory，见下） |
-| `$utils.xxx` | 同步纯函数 | 需把现有 `registry.functions` / `runtime.fn` 骨架**做实** |
-| `$enums.xxx` | 同步常量 | 由现有 `constant` **整体改名**而来 |
+| `$utils(code)` | 同步纯函数 | 从 utilities 注册中心按完整 code 获取 |
+| `$enum(code)` | 同步常量 | 从 enums 注册中心按完整 code 获取 |
 | `$query.xxx` | 同步读 URL | 当前页 URL 查询参数，注入运行时作用域 |
 
 ### 3. 两层作用域（明确边界）
 
-- **页面运行时 = 整个页面**：承载 `$service` / `$utils` / `$enums` / `$query`，`{{ }}` 在 renderer 求值。**这是新增的核心层。**
+- **页面运行时 = 整个页面**：承载 `$service` / `$utils` / `$enum` / `$query`，`{{ }}` 在 renderer 求值。**这是新增的核心层。**
 - **`useCreateForm` = 仅表单块内部**：承载字段规则的 scope / handlers（如 [model-meta-form.tsx:160](file:///Users/bytedance/Documents/cowork/alien-form/apps/alien-mdm/src/domains/model/components/model-meta-form.tsx#L160)）。表单块挂在页面运行时之下，可继承页面能力。
 
 ### 4. `constant` → `enums` 整体改名
@@ -60,7 +60,7 @@
 - 统一入口，成员名即缓存 key。
 - **声明两者并存分工**：
   - 简单直取 → 纯对象：`{ service: "list" }` / `{ enums: "status" }` / `{ utils: "buildMenuTree", args: {...} }`（可视化配置友好）。
-  - 含加工 / 组合 → `{{ }}` 表达式：`"{{ (p) => $service('detail')({ ...p, t: $utils.test(p) }) }}"`。
+  - 含加工 / 组合 → `{{ }}` 表达式：`"{{ (p) => $service('detail')({ ...p, t: $utils('test')(p) }) }}"`。
   - 内部统一归一成 **lazy factory**（声明期不执行）。
 - **返回值按命名空间分流**：
   - `service` → `{ data, loading, refetch }`（内部 `useQuery([name, args], ...)`）。
@@ -81,7 +81,7 @@
 
 ## 三、落地改造清单（施工顺序）
 
-1. **页面运行时扩展能力门面**：`PageScope` 增补 `$service`（改 lazy factory）/ `$utils` / `$enums` / `$query`（[scope.ts](file:///Users/bytedance/Documents/cowork/alien-form/packages/engine/src/core/page/scope.ts)、[runtime.ts](file:///Users/bytedance/Documents/cowork/alien-form/packages/engine/src/core/page/runtime.ts)）。
+1. **页面运行时扩展能力门面**：`PageScope` 增补 `$service` / `$utils` / `$enum` 三个 code accessor 以及 `$query`（[scope.ts](file:///Users/bytedance/Documents/cowork/alien-form/packages/engine/src/core/page/scope.ts)、[runtime.ts](file:///Users/bytedance/Documents/cowork/alien-form/packages/engine/src/core/page/runtime.ts)）。
 2. **renderer 插入 `{{ }}` 求值**：透传 `node.props` / `slots` 前对表达式求值（[renderer.tsx](file:///Users/bytedance/Documents/cowork/alien-form/packages/engine/src/react/renderer.tsx)）。
 3. **统一表达式引擎**：新建 `new Function` 求值器 → 删除 [expression.ts](file:///Users/bytedance/Documents/cowork/alien-form/packages/core/src/expression.ts) → 改造 [form.ts](file:///Users/bytedance/Documents/cowork/alien-form/packages/core/src/form.ts) 相关调用。
 4. **`constant` → `enums` 改名**：全链路机械替换（见决策 4 波及面）。

@@ -1,41 +1,70 @@
 import { createForm, type FormInstance } from "@alien-form/core";
 import { compileModel, matchPage } from "../compiler";
 import type { BuilderSchema, CompiledPage } from "../protocol";
-import {
-  Registry,
-  toNamespace,
-  type ComponentRegistration,
-  type ServiceRegistration,
-} from "../registry";
+import { Registry, type ComponentRegistration } from "../registry";
 
 export type SchemaLoader = (modelCode: string) => Promise<BuilderSchema>;
+export type RuntimeAccessor<T = unknown> = (code: string) => T;
+export type RuntimeService = (...args: any[]) => unknown;
+type RegistrationKind = "component" | "service" | "enum" | "utils";
+type OverrideKeys = Record<RegistrationKind, Set<string>>;
+
+function createAccessor<T>(
+  registry: Registry<T>,
+  domain: string | undefined,
+  namespace: string,
+): RuntimeAccessor<T> {
+  return (code) => {
+    const value = registry.get(code, domain);
+    if (value === undefined) throw new Error(`${namespace}("${code}") 未注册`);
+    return value;
+  };
+}
 
 export class Runtime {
-  private readonly components = new Registry<ComponentRegistration>();
-  private readonly services = new Registry<ServiceRegistration>();
-  private readonly enums = new Registry<unknown>();
-  private readonly utilities = new Registry<unknown>();
+  private readonly components = new Registry<ComponentRegistration>("component");
+  private readonly services = new Registry<RuntimeService>("service");
+  private readonly enums = new Registry<unknown>("enum");
+  private readonly utilities = new Registry<unknown>("utils");
+  private globalOverrideKeys?: OverrideKeys;
   private schemaLoader?: SchemaLoader;
 
-  component(registration: ComponentRegistration, domain?: string): void;
-  component(code: string, domain?: string): unknown;
-  component(registrationOrCode: ComponentRegistration | string, domain?: string): unknown {
-    if (typeof registrationOrCode === "string") {
-      return this.components.get(registrationOrCode, domain)?.component;
-    }
-    this.components.set(registrationOrCode.code, registrationOrCode, domain);
+  component(registration: ComponentRegistration, domain?: string): void {
+    this.components.set(
+      registration.code,
+      registration,
+      domain,
+      this.canReplaceGlobal("component", registration.code, domain),
+    );
   }
 
-  service(registration: ServiceRegistration, domain?: string): void {
-    this.services.set(registration.code, registration, domain);
+  service(code: string, send: RuntimeService, domain?: string): void {
+    this.services.set(code, send, domain, this.canReplaceGlobal("service", code, domain));
   }
 
   utils(key: string, value: unknown, domain?: string): void {
-    this.utilities.set(key, value, domain);
+    this.utilities.set(key, value, domain, this.canReplaceGlobal("utils", key, domain));
   }
 
   enum(key: string, value: unknown, domain?: string): void {
-    this.enums.set(key, value, domain);
+    this.enums.set(key, value, domain, this.canReplaceGlobal("enum", key, domain));
+  }
+
+  withGlobalOverrides(register: (runtime: Runtime) => void): void {
+    const isRoot = this.globalOverrideKeys === undefined;
+    if (isRoot) {
+      this.globalOverrideKeys = {
+        component: new Set(),
+        service: new Set(),
+        enum: new Set(),
+        utils: new Set(),
+      };
+    }
+    try {
+      register(this);
+    } finally {
+      if (isRoot) this.globalOverrideKeys = undefined;
+    }
   }
 
   resolveComponent(code: string, domain?: string): ComponentRegistration | undefined {
@@ -57,6 +86,16 @@ export class Runtime {
     return this.enums.values(domain);
   }
 
+  private canReplaceGlobal(kind: RegistrationKind, code: string, domain?: string): boolean {
+    if (domain !== undefined || !this.globalOverrideKeys) return false;
+    const keys = this.globalOverrideKeys[kind];
+    if (keys.has(code)) {
+      throw new Error(`${kind} "${code}" 在 overrides 下重复注册`);
+    }
+    keys.add(code);
+    return true;
+  }
+
   createScope(
     domain: string | undefined,
     query: Record<string, string>,
@@ -64,11 +103,9 @@ export class Runtime {
   ): Record<string, unknown> {
     return {
       mode,
-      $service: toNamespace(
-        this.services.values(domain).map(([code, registration]) => [code, registration.send]),
-      ),
-      $utils: toNamespace(this.utilities.values(domain)),
-      $enums: toNamespace(this.enums.values(domain)),
+      $service: createAccessor(this.services, domain, "$service"),
+      $utils: createAccessor(this.utilities, domain, "$utils"),
+      $enum: createAccessor(this.enums, domain, "$enum"),
       $query: query,
     };
   }

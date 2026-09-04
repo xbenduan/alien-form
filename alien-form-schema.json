@@ -93,7 +93,7 @@
       "anyOf": [
         {
           "type": "string",
-          "markdownDescription": "普通字符串或 `{{ ... }}` 表达式。表达式作用域固定为 `$values`、`$self`、`$form`、`$value`、`$row`、`$path`、`$service`、`$utils`、`$enums` 和 `$query`"
+          "markdownDescription": "普通字符串或 `{{ ... }}` 表达式。表达式作用域固定为 `$values`、`$self`、`$form`、`$value`、`$row`、`$path`、`$service(code)`、`$utils(code)`、`$enum(code)` 和 `$query`"
         },
         {
           "type": "number",

@@ -340,7 +340,7 @@ export const _sys_user: BuilderSchema = {
           props: {
             // filter 遍历 fields 中 filterable 且非 object/array 的字段，component/props 从 form-schema 取
             schema: { $ref: "form-schema" },
-            filters: "{{ $utils.schemaToFilters }}",
+            filters: '{{ $utils("schemaToFilters") }}',
             defaultValue: "{{ $query.keyword }}",
           },
         },
@@ -354,9 +354,10 @@ export const _sys_user: BuilderSchema = {
             schema: { $ref: "form-schema" },
             // columns 遍历 fields 生成，渲染组件从 form-schema 按 key 取（收口于 schemaToColumns）；
             // 列初始可见性取自 fields.visible，用户调整后的 visible/width/fixed 由组件读写本地缓存
-            columns: "{{ $utils.schemaToColumns }}",
+            columns: '{{ $utils("schemaToColumns") }}',
             filter: "{{ $values.filter }}",
-            loadData: "{{ (params) => $service.records.list({ model: '_sys_user', ...params }) }}",
+            loadData:
+              "{{ (params) => $service(\"records.list\")({ model: '_sys_user', ...params }) }}",
             // 指定的 properties 进入每行操作列；其余 properties 作为 children 数组进入工具栏右侧
             rowActions: ["deactivate", "delete"],
             "action-btns": {
@@ -367,7 +368,7 @@ export const _sys_user: BuilderSchema = {
               batchDelete: {
                 children: "批量删除",
                 danger: true,
-                service: "{{ $service.records.batchDelete }}",
+                service: '{{ $service("records.batchDelete") }}',
               },
             },
           },
@@ -378,7 +379,7 @@ export const _sys_user: BuilderSchema = {
               props: {
                 danger: true,
                 children: "停用",
-                onClick: "{{ ($row) => $utils.message.info('功能未完善') }}",
+                onClick: '{{ ($row) => $utils("message").info("功能未完善") }}',
               },
             },
             delete: {
@@ -393,7 +394,7 @@ export const _sys_user: BuilderSchema = {
                 refreshAfterSuccess: true,
                 disabled: "{{ $row.id === '_sys_admin' }}",
                 onClick:
-                  "{{ ($row) => $service.records.delete({ model: '_sys_user', id: $row.id, record: $row }) }}",
+                  '{{ ($row) => $service("records.delete")({ model: "_sys_user", id: $row.id, record: $row }) }}',
               },
             },
             import: {
@@ -401,7 +402,7 @@ export const _sys_user: BuilderSchema = {
               component: "Button",
               props: {
                 children: "导入",
-                onClick: "{{ () => $utils.message.info('功能未完善') }}",
+                onClick: '{{ () => $utils("message").info("功能未完善") }}',
               },
             },
             export: {
@@ -409,7 +410,7 @@ export const _sys_user: BuilderSchema = {
               component: "Button",
               props: {
                 children: "导出",
-                onClick: "{{ () => $utils.message.info('功能未完善') }}",
+                onClick: '{{ () => $utils("message").info("功能未完善") }}',
               },
             },
           },
@@ -429,7 +430,7 @@ export const _sys_user: BuilderSchema = {
             modelCode: "_sys_user",
             schema: { $ref: "form-schema" },
             // 组件内部 props.submit(values)
-            submit: "{{ $service.record.add }}",
+            submit: '{{ $service("record.add") }}',
           },
         },
       },
@@ -447,7 +448,7 @@ export const _sys_user: BuilderSchema = {
             modelCode: "_sys_user",
             recordId: "{{ $query.id }}",
             schema: { $ref: "form-schema" },
-            submit: "{{ $service.record.edit }}",
+            submit: '{{ $service("record.edit") }}',
           },
         },
       },

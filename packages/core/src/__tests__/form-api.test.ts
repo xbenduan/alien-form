@@ -279,7 +279,7 @@ describe("form.onError listener registration", () => {
     const schema: IFormSchema = {
       type: "object",
       properties: {
-        a: { type: "string", "x-reaction": { value: "{{ $utils.missing() }}" } },
+        a: { type: "string", "x-reaction": { value: '{{ $utils("missing")() }}' } },
       },
     };
     const seen: string[] = [];

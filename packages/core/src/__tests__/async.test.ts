@@ -3,6 +3,10 @@ import { createForm } from "../form";
 import type { FormError, IFormSchema, PrimitiveFieldNode } from "../types";
 
 const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+const accessor =
+  <T>(entries: Record<string, T>) =>
+  (code: string) =>
+    entries[code];
 
 function primitive(form: ReturnType<typeof createForm>, path: string): PrimitiveFieldNode {
   const field = form.field(path);
@@ -16,14 +20,14 @@ describe("async rules", () => {
     const schema: IFormSchema = {
       type: "object",
       properties: {
-        name: { type: "string", "x-reaction": { value: "{{ $service.loadName() }}" } },
-        failed: { type: "string", "x-reaction": { value: "{{ $service.fail() }}" } },
+        name: { type: "string", "x-reaction": { value: '{{ $service("loadName")() }}' } },
+        failed: { type: "string", "x-reaction": { value: '{{ $service("fail")() }}' } },
       },
     };
     const form = createForm({
       schema,
       scope: {
-        $service: {
+        $service: accessor({
           loadName: async () => {
             await tick();
             return "async-name";
@@ -32,7 +36,7 @@ describe("async rules", () => {
             await tick();
             throw new Error("async-fail");
           },
-        },
+        }),
       },
       onError: (error) => errors.push(error),
     });
@@ -48,18 +52,18 @@ describe("async rules", () => {
     const schema: IFormSchema = {
       type: "object",
       properties: {
-        name: { type: "string", "x-reaction": { value: "{{ $service.slow() }}" } },
+        name: { type: "string", "x-reaction": { value: '{{ $service("slow")() }}' } },
       },
     };
     const form = createForm({
       schema,
       scope: {
-        $service: {
+        $service: accessor({
           slow: () =>
             new Promise<string>((resolve) => {
               resolveValue = resolve;
             }),
-        },
+        }),
       },
     });
     form.mount();
@@ -76,7 +80,7 @@ describe("async rules", () => {
       properties: {
         username: {
           type: "string",
-          "x-validate": "{{ $service.checkUnique($value) }}",
+          "x-validate": '{{ $service("checkUnique")($value) }}',
         },
       },
     };
@@ -84,12 +88,12 @@ describe("async rules", () => {
       schema,
       initialValues: { username: "taken" },
       scope: {
-        $service: {
+        $service: accessor({
           checkUnique: async (value: string) => {
             await tick();
             return value === "taken" ? "Username is taken" : true;
           },
-        },
+        }),
       },
     });
     await expect(form.validate()).resolves.toBe(false);
@@ -102,20 +106,20 @@ describe("async rules", () => {
     const schema: IFormSchema = {
       type: "object",
       properties: {
-        sync: { type: "string", "x-effect": "{{ $utils.startSync() }}" },
-        async: { type: "string", "x-effect": "{{ $utils.startAsync() }}" },
+        sync: { type: "string", "x-effect": '{{ $utils("startSync")() }}' },
+        async: { type: "string", "x-effect": '{{ $utils("startAsync")() }}' },
       },
     };
     const form = createForm({
       schema,
       scope: {
-        $utils: {
+        $utils: accessor({
           startSync: () => syncDispose,
           startAsync: async () => {
             await tick();
             return asyncDispose;
           },
-        },
+        }),
       },
     });
     form.mount();
@@ -133,8 +137,8 @@ describe("async rules", () => {
         name: {
           type: "string",
           "x-format": {
-            input: "{{ $utils.asyncFormat($value) }}",
-            output: "{{ $utils.asyncFormat($value) }}",
+            input: '{{ $utils("asyncFormat")($value) }}',
+            output: '{{ $utils("asyncFormat")($value) }}',
           },
         },
       },
@@ -142,7 +146,9 @@ describe("async rules", () => {
     const form = createForm({
       schema,
       initialValues: { name: "raw" },
-      scope: { $utils: { asyncFormat: async (value: string) => value.toUpperCase() } },
+      scope: {
+        $utils: accessor({ asyncFormat: async (value: string) => value.toUpperCase() }),
+      },
       onError: (error) => errors.push(error),
     });
     expect(form.get("name")).toBe("raw");
@@ -157,7 +163,7 @@ describe("async rules", () => {
       properties: {
         city: {
           type: "string",
-          dataSource: "{{ $service.cities($values.province) }}",
+          dataSource: '{{ $service("cities")($values.province) }}',
         },
         province: { type: "string" },
       },
@@ -166,12 +172,12 @@ describe("async rules", () => {
       schema,
       initialValues: { province: "zj" },
       scope: {
-        $service: {
+        $service: accessor({
           cities: async (province: string) => {
             await tick();
             return [{ label: province, value: "hz" }];
           },
-        },
+        }),
       },
     });
     form.mount();

@@ -169,7 +169,7 @@ export const sysUserSchema: ModelSchema = {
           component: "filter",
           props: {
             schema: { $ref: "form-schema" },
-            filters: "{{ $utils.schemaToFilters }}",
+            filters: '{{ $utils("schemaToFilters") }}',
             defaultValue: "{{ $query.keyword }}",
           },
         },
@@ -180,9 +180,10 @@ export const sysUserSchema: ModelSchema = {
             rowKey: "id",
             modelCode: "_sys_user",
             schema: { $ref: "form-schema" },
-            columns: "{{ $utils.schemaToColumns }}",
+            columns: '{{ $utils("schemaToColumns") }}',
             filter: "{{ $values.filter }}",
-            loadData: "{{ (params) => $service.records.list({ model: '_sys_user', ...params }) }}",
+            loadData:
+              "{{ (params) => $service(\"records.list\")({ model: '_sys_user', ...params }) }}",
             rowActions: ["deactivate", "delete"],
             "action-btns": {
               add: { type: "primary", children: "新增", openMode: "page" },
@@ -191,7 +192,7 @@ export const sysUserSchema: ModelSchema = {
               batchDelete: {
                 children: "批量删除",
                 danger: true,
-                service: "{{ $service.records.batchDelete }}",
+                service: '{{ $service("records.batchDelete") }}',
               },
             },
           },
@@ -202,7 +203,7 @@ export const sysUserSchema: ModelSchema = {
               props: {
                 danger: true,
                 children: "停用",
-                onClick: "{{ ($row) => $utils.message.info('功能未完善') }}",
+                onClick: '{{ ($row) => $utils("message").info("功能未完善") }}',
               },
             },
             delete: {
@@ -217,7 +218,7 @@ export const sysUserSchema: ModelSchema = {
                 refreshAfterSuccess: true,
                 disabled: "{{ $row.id === '_sys_admin' }}",
                 onClick:
-                  "{{ ($row) => $service.records.delete({ model: '_sys_user', id: $row.id, record: $row }) }}",
+                  '{{ ($row) => $service("records.delete")({ model: "_sys_user", id: $row.id, record: $row }) }}',
               },
             },
             import: {
@@ -225,7 +226,7 @@ export const sysUserSchema: ModelSchema = {
               component: "Button",
               props: {
                 children: "导入",
-                onClick: "{{ () => $utils.message.info('功能未完善') }}",
+                onClick: '{{ () => $utils("message").info("功能未完善") }}',
               },
             },
             export: {
@@ -233,7 +234,7 @@ export const sysUserSchema: ModelSchema = {
               component: "Button",
               props: {
                 children: "导出",
-                onClick: "{{ () => $utils.message.info('功能未完善') }}",
+                onClick: '{{ () => $utils("message").info("功能未完善") }}',
               },
             },
           },
@@ -255,9 +256,9 @@ export const sysUserSchema: ModelSchema = {
             schema: { $ref: "form-schema" },
             submit:
               mode === "add"
-                ? "{{ $service.record.add }}"
+                ? '{{ $service("record.add") }}'
                 : mode === "edit"
-                  ? "{{ $service.record.edit }}"
+                  ? '{{ $service("record.edit") }}'
                   : undefined,
           },
         },

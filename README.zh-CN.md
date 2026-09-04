@@ -28,7 +28,7 @@ AlienForm 已收敛到更小的运行时模型：
 - 运行时值数组
 
 表达式作用域固定为 `$values`、`$self`、`$form`、`$value`、`$row`、`$path`、
-`$service`、`$utils`、`$enums` 和 `$query`，不会扁平展开表单值。
+`$service(code)`、`$utils(code)`、`$enum(code)` 和 `$query`，不会扁平展开表单值。
 
 更详细的运行时说明见 [`packages/core/README.md`](./packages/core/README.md)。
 

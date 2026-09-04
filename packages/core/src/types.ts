@@ -43,6 +43,8 @@ export interface DataSourceItem {
   [key: string]: any;
 }
 
+export type RuntimeAccessor<T = any> = (code: string) => T;
+
 // ─── Schema Validate ──────────────────────────────────────────────────────────
 
 export type SchemaReactionKey =
@@ -67,9 +69,9 @@ export interface ExpressionScope {
   $value: any;
   $row: Record<string, any> | undefined;
   $path: string;
-  $service: Record<string, any>;
-  $utils: Record<string, any>;
-  $enums: Record<string, any>;
+  $service: RuntimeAccessor;
+  $utils: RuntimeAccessor;
+  $enum: RuntimeAccessor;
   $query: Record<string, any>;
 }
 

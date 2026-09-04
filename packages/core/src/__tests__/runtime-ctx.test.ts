@@ -21,9 +21,9 @@ describe("expression scope", () => {
       initialValues: { name: "Alien" },
       scope: {
         mode: "detail",
-        $service: { records: {} },
-        $utils: { identity: (value: unknown) => value },
-        $enums: { status: [] },
+        $service: () => undefined,
+        $utils: () => (value: unknown) => value,
+        $enum: () => [],
         $query: { id: "7" },
         ignored: "not exposed",
       },
@@ -31,7 +31,7 @@ describe("expression scope", () => {
     form.mount();
 
     expect(Object.keys(received!).sort()).toEqual([
-      "$enums",
+      "$enum",
       "$form",
       "$path",
       "$query",

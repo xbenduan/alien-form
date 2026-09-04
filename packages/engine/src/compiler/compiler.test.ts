@@ -44,7 +44,7 @@ const model: BuilderSchema = {
               props: {
                 children: "删除",
                 onClick:
-                  "{{ ($row) => $service.records.delete({ model: 'products', id: $row.id }) }}",
+                  '{{ ($row) => $service("records.delete")({ model: "products", id: $row.id }) }}',
               },
             },
             import: {
@@ -84,7 +84,7 @@ describe("page compiler", () => {
     const service = (context: unknown) => context;
     expect(isCompiledValue(deleteOnClick)).toBe(true);
     const onClick = (deleteOnClick as any).expression({
-      $service: { records: { delete: service } },
+      $service: () => service,
     });
     expect(onClick({ id: "product-1" })).toEqual({ model: "products", id: "product-1" });
   });
@@ -100,7 +100,7 @@ describe("page compiler", () => {
       },
       {
         $values: { filter: "active" },
-        $service: { records: { delete: (context: unknown) => context } },
+        $service: () => (context: unknown) => context,
       },
     );
 
@@ -118,15 +118,15 @@ describe("page compiler", () => {
   it("compiles standalone protocol props before runtime rendering", () => {
     const date = new Date(0);
     const compiled = compileRuntimeValue({
-      options: ["static", "{{ $enums.status }}"],
-      onClick: "{{ () => $service.records.list() }}",
+      options: ["static", '{{ $enum("status") }}'],
+      onClick: '{{ () => $service("records.list")() }}',
       date,
     });
     expect(containsCompiledValue(compiled)).toBe(true);
     const list = () => "loaded";
     const resolved = evaluateCompiledValue(compiled, {
-      $enums: { status: ["enabled"] },
-      $service: { records: { list } },
+      $enum: () => ["enabled"],
+      $service: () => list,
     });
 
     expect(resolved.options).toEqual(["static", ["enabled"]]);

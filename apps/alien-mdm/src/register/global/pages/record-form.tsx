@@ -36,14 +36,10 @@ export interface RecordFormHandle {
   submit(): Promise<void>;
 }
 
-interface RecordServices {
-  records?: {
-    get?: (request: {
-      model: string;
-      id: string;
-    }) => Record<string, unknown> | Promise<Record<string, unknown>>;
-  };
-}
+type GetRecord = (request: {
+  model: string;
+  id: string;
+}) => Record<string, unknown> | Promise<Record<string, unknown>>;
 
 export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function RecordForm(
   { mode, modelCode, recordId, schema, ok, submit, embedded = false, onCancel, onSaved },
@@ -81,14 +77,9 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
       setLoading(false);
       return;
     }
-    const services = form.scope.$service as RecordServices | undefined;
-    const getRecord = services?.records?.get;
-    if (!getRecord) {
-      setError("$service.records.get 未注册");
-      setLoading(false);
-      return;
-    }
-    void Promise.resolve(getRecord({ model: modelCode, id: recordId }))
+    const service = form.scope.$service as (code: string) => GetRecord;
+    void Promise.resolve()
+      .then(() => service("records.get")({ model: modelCode, id: recordId }))
       .then((record) => form.setValues(record))
       .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)))
       .finally(() => setLoading(false));

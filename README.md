@@ -214,7 +214,7 @@ AlienForm 的 Schema 基于对象树描述字段，并增加少量运行时扩�
 - 运行时值数组：用于组合多个规则。
 
 表达式作用域固定为 `$values`、`$self`、`$form`、`$value`、`$row`、`$path`、
-`$service`、`$utils`、`$enums` 和 `$query`。
+`$service(code)`、`$utils(code)`、`$enum(code)` 和 `$query`。
 
 更完整的运行时协议见 [`@alien-form/core`](./packages/core/README.md)。
 

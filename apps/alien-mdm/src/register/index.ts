@@ -11,7 +11,7 @@ const reserved = new Set(["global", "overrides"]);
 
 export function registerAll(runtime: Runtime): void {
   registerGlobal(runtime);
-  registerOverrides(runtime);
+  runtime.withGlobalOverrides(registerOverrides);
   for (const [path, module] of Object.entries(domainModules)) {
     const domain = path.split("/")[1];
     if (!domain || reserved.has(domain)) continue;

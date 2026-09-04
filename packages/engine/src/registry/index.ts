@@ -20,11 +20,6 @@ export interface ComponentRegistration {
   adapter?: ComponentAdapter;
 }
 
-export interface ServiceRegistration {
-  code: string;
-  send: (...args: any[]) => unknown;
-}
-
 interface Entry<T> {
   global?: T;
   domains: Map<string, T>;
@@ -33,37 +28,30 @@ interface Entry<T> {
 export class Registry<T> {
   private readonly entries = new Map<string, Entry<T>>();
 
-  set(code: string, value: T, domain?: string): void {
+  constructor(private readonly kind: string) {}
+
+  set(code: string, value: T, domain?: string, replace = false): void {
     const entry = this.entries.get(code) ?? { domains: new Map<string, T>() };
-    if (domain) entry.domains.set(domain, value);
-    else entry.global = value;
+    const scope = domain === undefined ? "global" : `domain "${domain}"`;
+    const duplicated =
+      domain === undefined ? Object.hasOwn(entry, "global") : entry.domains.has(domain);
+    if (duplicated && !replace) {
+      throw new Error(`${this.kind} "${code}" 在 ${scope} 下重复注册`);
+    }
+    if (domain === undefined) entry.global = value;
+    else entry.domains.set(domain, value);
     this.entries.set(code, entry);
   }
 
   get(code: string, domain?: string): T | undefined {
     const entry = this.entries.get(code);
-    return (domain ? entry?.domains.get(domain) : undefined) ?? entry?.global;
+    return (domain !== undefined ? entry?.domains.get(domain) : undefined) ?? entry?.global;
   }
 
   values(domain?: string): Array<[string, T]> {
     return Array.from(this.entries, ([code, entry]) => {
-      const value = (domain ? entry.domains.get(domain) : undefined) ?? entry.global;
+      const value = (domain !== undefined ? entry.domains.get(domain) : undefined) ?? entry.global;
       return [code, value] as const;
     }).filter((entry): entry is [string, T] => entry[1] !== undefined);
   }
-}
-
-export function toNamespace(entries: Array<[string, unknown]>): Record<string, unknown> {
-  const root: Record<string, unknown> = {};
-  for (const [code, value] of entries) {
-    const parts = code.split(".");
-    let target = root;
-    for (const part of parts.slice(0, -1)) {
-      const child = target[part];
-      if (!child || typeof child !== "object") target[part] = {};
-      target = target[part] as Record<string, unknown>;
-    }
-    target[parts.at(-1)!] = value;
-  }
-  return root;
 }

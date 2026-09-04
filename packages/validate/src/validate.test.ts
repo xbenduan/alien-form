@@ -40,7 +40,7 @@ describe("BuilderSchema validation", () => {
     schema.definitions["form-schema"].properties!.amount = {
       ...schema.definitions["form-schema"].properties!.amount,
       display: "{{ $values.id ? 'visible' : 'hidden' }}",
-      dataSource: "{{ $service.options.list() }}",
+      dataSource: '{{ $service("options.list")() }}',
     };
     expect(() => assertBuilderSchema(schema)).not.toThrow();
   });

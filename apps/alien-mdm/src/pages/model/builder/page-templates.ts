@@ -30,7 +30,7 @@ function buildListPage(modelCode: string, title: string): XPage {
         component: "filter",
         props: {
           schema: { $ref: "form-schema" },
-          filters: "{{ $utils.schemaToFilters }}",
+          filters: '{{ $utils("schemaToFilters") }}',
           defaultValue: "{{ $query.keyword }}",
         },
       },
@@ -41,9 +41,9 @@ function buildListPage(modelCode: string, title: string): XPage {
           rowKey: "id",
           modelCode,
           schema: { $ref: "form-schema" },
-          columns: "{{ $utils.schemaToColumns }}",
+          columns: '{{ $utils("schemaToColumns") }}',
           filter: "{{ $values.filter }}",
-          loadData: `{{ (params) => $service.records.list({ model: ${modelLiteral}, ...params }) }}`,
+          loadData: `{{ (params) => $service("records.list")({ model: ${modelLiteral}, ...params }) }}`,
           rowActions: ["deactivate", "delete"],
           "action-btns": {
             add: { type: "primary", children: "新增", openMode: OPEN_MODE },
@@ -52,7 +52,7 @@ function buildListPage(modelCode: string, title: string): XPage {
             batchDelete: {
               children: "批量删除",
               danger: true,
-              service: "{{ $service.records.batchDelete }}",
+              service: '{{ $service("records.batchDelete") }}',
             },
           },
         },
@@ -63,7 +63,7 @@ function buildListPage(modelCode: string, title: string): XPage {
             props: {
               danger: true,
               children: "停用",
-              onClick: "{{ ($row) => $utils.message.info('功能未完善') }}",
+              onClick: '{{ ($row) => $utils("message").info("功能未完善") }}',
             },
           },
           delete: {
@@ -76,7 +76,7 @@ function buildListPage(modelCode: string, title: string): XPage {
               confirmDescription: "删除后无法恢复。",
               successMessage: "记录已删除",
               refreshAfterSuccess: true,
-              onClick: `{{ ($row) => $service.records.delete({ model: ${modelLiteral}, id: $row.id, record: $row }) }}`,
+              onClick: `{{ ($row) => $service("records.delete")({ model: ${modelLiteral}, id: $row.id, record: $row }) }}`,
             },
           },
           import: {
@@ -84,7 +84,7 @@ function buildListPage(modelCode: string, title: string): XPage {
             component: "Button",
             props: {
               children: "导入",
-              onClick: "{{ () => $utils.message.info('功能未完善') }}",
+              onClick: '{{ () => $utils("message").info("功能未完善") }}',
             },
           },
           export: {
@@ -92,7 +92,7 @@ function buildListPage(modelCode: string, title: string): XPage {
             component: "Button",
             props: {
               children: "导出",
-              onClick: "{{ () => $utils.message.info('功能未完善') }}",
+              onClick: '{{ () => $utils("message").info("功能未完善") }}',
             },
           },
         },
@@ -121,7 +121,7 @@ function buildRecordPage(
           schema: { $ref: "form-schema" },
           ...(mode === "detail"
             ? {}
-            : { submit: `{{ $service.record.${mode === "add" ? "add" : "edit"} }}` }),
+            : { submit: `{{ $service("record.${mode === "add" ? "add" : "edit"}") }}` }),
         },
       },
     },

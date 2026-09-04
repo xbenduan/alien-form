@@ -215,7 +215,7 @@ description: "Builds, creates, and edits renderable Alien Form models. Invoke wh
 
 1. 读取 \`references/protocol/builder-schema.ts\`、\`field-schema.ts\` 和 \`core-types.ts\`，以协议为唯一真相源。
 2. 读取 \`references/runtime-components.json\`，只能使用其中存在且 adapter 匹配场景的组件。
-3. 读取 \`references/runtime-utils.json\` 与 \`runtime-enums.json\`，表达式只能调用其中登记的 \`$utils\` 方法和 \`$enums\` 值。
+3. 读取 \`references/runtime-utils.json\` 与 \`runtime-enums.json\`，表达式只能通过 \`$utils("code")\` 和 \`$enum("code")\` 访问其中登记的值。
 4. 读取 \`references/page-templates.json\`，优先吸收模板结构；按模型名替换示例中的 \`example_model\`。
 5. 以 \`templates/model.json\` 为起点生成完整 JSON。存储字段只写入 \`fields\`；表现配置只写入 \`definitions["form-schema"]\`。
 6. 保证每个落库字段在 form-schema properties 中有同名表现定义。不要添加协议外 fallback。

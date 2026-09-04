@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { compileExpr, evaluateExpression } from "../expression";
 import type { ExpressionScope } from "../types";
 
+const emptyAccessor = () => undefined;
+
 function scope(overrides: Partial<ExpressionScope> = {}): ExpressionScope {
   return {
     $values: {},
@@ -10,9 +12,9 @@ function scope(overrides: Partial<ExpressionScope> = {}): ExpressionScope {
     $value: undefined,
     $row: undefined,
     $path: "",
-    $service: {},
-    $utils: {},
-    $enums: {},
+    $service: emptyAccessor,
+    $utils: emptyAccessor,
+    $enum: emptyAccessor,
     $query: {},
     ...overrides,
   };
@@ -31,9 +33,9 @@ describe("compileExpr", () => {
     const list = vi.fn(() => ["a"]);
     expect(
       evaluateExpression(
-        "{{ $service.records.list() }}",
+        '{{ $service("records.list")() }}',
         scope({
-          $service: { records: { list } },
+          $service: () => list,
         }),
       ),
     ).toEqual(["a"]);
@@ -46,10 +48,10 @@ describe("compileExpr", () => {
 
   it("returns arrow functions without invoking them", () => {
     const handler = compileExpr<(row: { id: number }) => number>(
-      "{{ (row) => $service.records.remove(row.id) }}",
+      '{{ (row) => $service("records.remove")(row.id) }}',
     )(
       scope({
-        $service: { records: { remove: (id: number) => id } },
+        $service: () => (id: number) => id,
       }),
     );
     expect(handler({ id: 7 })).toBe(7);

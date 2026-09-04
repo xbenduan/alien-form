@@ -12,17 +12,17 @@
 
 以下决定直接采纳，作为 v1 的设计前提（**采纳结论，不采纳其现有实现**）：
 
-| 决定                                              | 采纳形态（v1）                                                              |
-| ------------------------------------------------- | --------------------------------------------------------------------------- |
-| 一个 page = 一个 core form                        | 动态页面 = 一份 alien-form schema → 一个 `createForm` 实例                  |
-| `{{ }}` + `new Function`，`compileExpr` 归属 core | 表达式唯一语法；编译器在 core，v1 只依赖 core 即可渲染                      |
-| 命名空间对象点访问                                | `$service.xxx` / `$utils.xxx` / `$enums.xxx` / `$query.xxx` / `$values.xxx` |
-| 放弃 scope 通信频道                               | 跨组件联动只走 `form + $values`（signal 响应式）                            |
-| `$ref` 纯静态引用                                 | 只指向 `definitions`，编译期展开，永不含表达式                              |
-| antd 优先                                         | antd 全量注入渲染组件表；仅"调接口/带副作用"才自研组件                      |
-| filter 值字符串化 JSON                            | 不引入 `x-format:"json"` 简写，组件内部自理 parse/stringify                 |
-| 三层注册自动发现                                  | `global → overrides → {modelCode}`（保留此**架构**，实现新写）              |
-| void 语义：数据上浮、渲染不浮                     | `type:"void"` 不占 `form.values`，渲染归属由父插槽控制                      |
+| 决定                                              | 采纳形态（v1）                                                                   |
+| ------------------------------------------------- | -------------------------------------------------------------------------------- |
+| 一个 page = 一个 core form                        | 动态页面 = 一份 alien-form schema → 一个 `createForm` 实例                       |
+| `{{ }}` + `new Function`，`compileExpr` 归属 core | 表达式唯一语法；编译器在 core，v1 只依赖 core 即可渲染                           |
+| 注册能力按 code 访问                              | `$service(code)` / `$utils(code)` / `$enum(code)` / `$query.xxx` / `$values.xxx` |
+| 放弃 scope 通信频道                               | 跨组件联动只走 `form + $values`（signal 响应式）                                 |
+| `$ref` 纯静态引用                                 | 只指向 `definitions`，编译期展开，永不含表达式                                   |
+| antd 优先                                         | antd 全量注入渲染组件表；仅"调接口/带副作用"才自研组件                           |
+| filter 值字符串化 JSON                            | 不引入 `x-format:"json"` 简写，组件内部自理 parse/stringify                      |
+| 三层注册自动发现                                  | `global → overrides → {modelCode}`（保留此**架构**，实现新写）                   |
+| void 语义：数据上浮、渲染不浮                     | `type:"void"` 不占 `form.values`，渲染归属由父插槽控制                           |
 
 > 分析文档里**只与"改造旧包"相关**的条目（删 `packages/builder`、断 engine→react 反向依赖、`domains/model` 只留 UI、`constant→enums` 全链路改名等）在 v1 语境下不适用——v1 是新工程，不存在这些历史包袱；仅吸收其背后的**设计取向**（如 enums 命名、注册中心两级 namespace）。
 
@@ -79,7 +79,7 @@ apps/alien-mdm-v1/src/
 │   │   │   ├── pages/            #     页面级壳（record-page/overlay）
 │   │   │   └── antd.ts           #     直接挂载的 antd 组件
 │   │   ├── services/             #   $service 数据源
-│   │   └── enums.ts              #   $enums 常量
+│   │   └── enums.ts              #   $enum 常量
 │   └── overrides/                #   使用者全局覆盖层（无 domain）
 │
 ├── runtime/                      # 引擎实例装配（薄）
@@ -148,7 +148,7 @@ function DynamicPage() {
 采纳"三层优先级自动发现"这一**架构决定**（实现在 v1 新写，`Runtime` 来自 `src/engine`）。优先级由低到高：
 
 1. **global**（`register/global/**`）——框架基线，使用者不改。`registerGlobal` 汇总 components / services / enums。
-2. **overrides**（`register/overrides/index.ts`）——使用者全局覆盖，无 domain，同 code `last-write-wins`。
+2. **overrides**（`register/overrides/index.ts`）——通过 `runtime.withGlobalOverrides(registerOverrides)` 显式覆盖全局注册；只豁免全局同 code，domain 内重复仍报错。
 3. **{modelCode}**（`register/{modelCode}/index.ts`）——模型定制，`domain = 目录名`，`import.meta.glob("./*/index.ts", { eager:true })` 自动发现；渲染时优先取 domain 覆盖、回退 global。
 
 ```ts
@@ -171,7 +171,7 @@ export function registerAll(runtime: Runtime): void {
 | 注册对象                                | API（统一）                                     | 归属目录（仅组织用途）                                                         |
 | --------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------ |
 | 组件（字段/布局/展示/页面壳/antd…全部） | `runtime.component({ code, component, meta? })` | `global/components/**`（子目录任意分组，如 `fields`/`layouts`/`pages`/`antd`） |
-| 数据源                                  | `runtime.service({ code, send })`               | `global/services`                                                              |
+| 数据源                                  | `runtime.service(code, send)`                   | `global/services`                                                              |
 | 常量/枚举                               | `runtime.constant(key, value)`                  | `global/enums.ts`                                                              |
 
 - **无 ui/form 之分**：`Input`、`Table`、`layout`、`record-page`、antd `Button` 在注册与解析上完全同类，`component` 字符串走同一个两级 namespace 解析（domain 优先、回退 global）。
@@ -328,7 +328,7 @@ export function Layout({ node, children }: ComponentProps) {
     "add": {
       "type": "void",
       "component": "Button",
-      "props": { "children": "新增", "onClick": "{{ () => $service.router.go('add') }}" },
+      "props": { "children": "新增", "onClick": "{{ () => $utils('openRoute')('/add') }}" },
     },
     "refresh": { "type": "void", "component": "Button", "props": { "children": "刷新" } },
   },
@@ -379,7 +379,7 @@ function ModelAddPage() {
     () =>
       createForm({
         schema: modelEditSchema,
-        scope: { $service, $utils, $enums }, // 命名空间注入
+        scope: { $service, $utils, $enum }, // 注册能力注入
       }),
     [],
   );
@@ -387,7 +387,7 @@ function ModelAddPage() {
     const values = await form.submit();
     // 编码为 BuilderSchema：字段结构必须落在 definitions['form-schema']（见 §6.3）
     const builderSchema = encodeModel(values); // 产出 { meta, "x-pages", definitions }
-    await $service.schema.create(builderSchema);
+    await $service("schema.create")(builderSchema);
   };
   return (
     <PageShell onSave={onSave}>
@@ -412,7 +412,7 @@ function ModelAddPage() {
 3. `x-pages` 里对字段结构的引用**一律用** **`$ref: "form-schema"`**，不得内联复制字段定义，避免多处结构漂移。
 
 ```jsonc
-// $service.schema.create 收到的 BuilderSchema（后端据此建表）
+// $service("schema.create") 收到的 BuilderSchema（后端据此建表）
 {
   "meta": { "name": "_sys_models", "title": "模型管理" },
   "x-pages": [
@@ -453,7 +453,7 @@ function ModelAddPage() {
 | `$ref`         | 静态结构引用        | 指向 `definitions`，编译期展开，永不含表达式               |
 | `x-reaction`   | 联动规则            | `{{ ({ $values }) => ({ visible: … }) }}`                  |
 | `x-format`     | 值序列化            | core `input`/`output` 变换钩子（filter JSON 组件内部自理） |
-| `dataSource`   | 选项源              | `{{ $enums.status }}` 或 service                           |
+| `dataSource`   | 选项源              | `{{ $enum("status") }}` 或 service                         |
 
 三组件联动（tree/filter/table，[schema.tsx:82-146](file:///Users/bytedance/Documents/cowork/alien-form/schema.tsx#L82-L146)）：`filter`/`tree` 写 `$values` → `table` 的 `props.filter={{ $values.filter }}`、`props.nodeId={{ $values.tree }}` 重算 → table 内部监听变化调 `loadData`。**联动只靠 form+$values，无 scope、无 bus。**
 
@@ -471,21 +471,21 @@ function ModelAddPage() {
       "type": "string",
       "component": "Select",
       "title": "省",
-      "dataSource": "{{ $service.query.province() }}",
+      "dataSource": "{{ $service('query.province')() }}",
     },
     // 市：dataSource 依赖 $values.province；province 空则不请求（短路成 []）
     "city": {
       "type": "string",
       "component": "Select",
       "title": "市",
-      "dataSource": "{{ !$values.province ? [] : $service.query.city({ province: $values.province }) }}",
+      "dataSource": "{{ !$values.province ? [] : $service('query.city')({ province: $values.province }) }}",
     },
     // 区：dataSource 依赖 $values.city
     "district": {
       "type": "string",
       "component": "Select",
       "title": "区",
-      "dataSource": "{{ !$values.city ? [] : $service.query.district({ city: $values.city }) }}",
+      "dataSource": "{{ !$values.city ? [] : $service('query.district')({ city: $values.city }) }}",
     },
   },
 }
@@ -521,24 +521,24 @@ function Select({ value, onChange, dataSource, onOptionsChange = "clear", ...res
 **运行机制（三点必须成立）**：
 
 1. **表达式随** **`$values`** **重算**：`city.dataSource` 编译成 `(scope)=>...`，内部读了 `$values.province`；province 变化时 signal 触发重算——这是 core 收紧 scope + `compileExpr` 的直接收益，字段间联动零配置。
-2. **`useDataSource`** **归一同步/异步**：`dataSource` 求值结果可能是数组（同步、如 `$enums` 或短路的 `[]`）或 `Promise`（内联 `$service.query.city({...})` 调用返回的 `send(...)`）。`useDataSource` 统一处理：thenable 则进 `loading`、resolve 填 `data`、reject 填 `error`；数组则直接 `data`、`loading:false`。**组件只认** **`{ data, loading, error }`，不关心同步还是异步。**
+2. **`useDataSource`** **归一同步/异步**：`dataSource` 求值结果可能是数组（同步、如 `$enum(code)` 或短路的 `[]`）或 `Promise`（内联 `$service("query.city")({...})` 调用返回的结果）。`useDataSource` 统一处理：thenable 则进 `loading`、resolve 填 `data`、reject 填 `error`；数组则直接 `data`、`loading:false`。**组件只认** **`{ data, loading, error }`，不关心同步还是异步。**
 3. **父变清子（组件 props 决定，非 core）**：省改变 → 市的 `dataSource` 重算并重新取数 → 新 `data` 不含旧的市值 → Select 按自己的 `onOptionsChange` 策略处置（默认 `clear` 置空、`first` 取首项、`preserve` 保留）。core **不再**内建 `dataSourcePolicy`；策略权归组件。
 
-> 为什么放 `dataSource` 而不是 `props.options`：`dataSource` 是协议既有字段（[schema.tsx:42](file:///Users/bytedance/Documents/cowork/alien-form/schema.tsx#L42)），语义就是"选项/数据来源"；options 是组件渲染用的**结果**。把"取数声明"和"渲染结果"分开，组件才能用 `useDataSource` 统一接管 loading/error/防抖/缓存，schema 只声明来源。两种 `$service` 写法仍成立：`{{ $service.query.city }}`（工厂，组件自己决定何时调）vs `{{ $service.query.city({...}) }}`（当场调、给 Promise）——级联场景用后者最直观。
+> 为什么放 `dataSource` 而不是 `props.options`：`dataSource` 是协议既有字段（[schema.tsx:42](file:///Users/bytedance/Documents/cowork/alien-form/schema.tsx#L42)），语义就是"选项/数据来源"；options 是组件渲染用的**结果**。把"取数声明"和"渲染结果"分开，组件才能用 `useDataSource` 统一接管 loading/error/防抖/缓存，schema 只声明来源。`{{ $service("query.city") }}` 返回服务函数，`{{ $service("query.city")({...}) }}` 当场调用并返回结果。
 
 ---
 
 ## 8. 命名空间与数据流
 
-| 命名空间       | 来源                                             | 语义                                                                          |
-| -------------- | ------------------------------------------------ | ----------------------------------------------------------------------------- |
-| `$service.xxx` | `register/global/services`（`runtime.service`）  | 异步服务，返回**未调用**函数；dotted code 两级访问（`$service.records.list`） |
-| `$utils.xxx`   | `runtime.fn`                                     | 同步纯函数，返回未调用函数                                                    |
-| `$enums.xxx`   | `register/global/enums.ts`（`runtime.constant`） | 枚举/常量，扁平 key 直映射                                                    |
-| `$query.xxx`   | 当前 URL 查询参数                                | 外部输入通道（深链接/刷新保持）                                               |
-| `$values.xxx`  | 当前 form 字段值                                 | 组件间联动唯一桥梁                                                            |
+| 命名空间         | 来源                                            | 语义                            |
+| ---------------- | ----------------------------------------------- | ------------------------------- |
+| `$service(code)` | `register/global/services`（`runtime.service`） | 按完整 code 返回服务函数        |
+| `$utils(code)`   | `runtime.utils`                                 | 按完整 code 返回工具值          |
+| `$enum(code)`    | `register/global/enums.ts`（`runtime.enum`）    | 按完整 code 返回枚举值          |
+| `$query.xxx`     | 当前 URL 查询参数                               | 外部输入通道（深链接/刷新保持） |
+| `$values.xxx`    | 当前 form 字段值                                | 组件间联动唯一桥梁              |
 
-> service code 采用 dotted 命名（`records.list`/`schema.get`/`auth.*`），点访问用两级解析。协议保留未调用工厂语义：`{{ $service.records.list }}` 传给组件，组件内部 `props.loadData(params)`。数据请求留组件内部，不进 `form.values`。
+> code 是不透明字符串，`.`、`-` 等字符没有层级语义。`{{ $service("records.list") }}` 可将服务函数传给组件，由组件内部调用；数据请求留在组件内部，不进入 `form.values`。
 
 ---
 
@@ -565,9 +565,9 @@ v1 协议渲染依赖 core 一组前置改造。详见 [system-refactor-analysis
 
 1. **`compileExpr`** **归属 core**（最关键）。core 内置 `compileExpr(raw) => (scope)=>unknown`（`new Function`，隐式 `()=>expr`、含 `=>` 即函数工厂），兼具编译 + 执行。删除旧受限求值器 [expression.ts](file:///Users/bytedance/Documents/cowork/alien-form/packages/core/src/expression.ts)（禁止函数调用，协议跑不了）。**对 v1 尤其关键**：正因 `compileExpr` 在 core，v1 才能只依赖 core 完成协议渲染，`src/engine` 只是构建期复用它做 AOT 预编译。
 2. **rule 调用统一为单参** **`(scope)`**。删旧 `(runtime, form)` 分支；编译后的 fn 只吃 scope（`$form`/`$self` 已在 scope 内）。
-3. **删除** **`@handler`** **与** **`FormConfig.handlers`**。handler 即 `{{ $utils.name }}`。
-4. **收紧** **`buildExpressionScope`** **为闭合形状**：`{ $values, $self, $form, $value, $row, $path, $service, $utils, $enums, $query }`，去掉旧 `...values`/兄弟扁平上浮。v1 协议一律 `{{ $values.x }}` 读，正依赖闭合形状。
-5. **`config.scope`** **= 命名空间注入缝**（非被删的通信频道 scope）。v1 的 `create-runtime`/PageRuntime、model 域手写表单，都通过它注入 `$service/$utils/$enums/$query`。
+3. **删除** **`@handler`** **与** **`FormConfig.handlers`**。handler 即 `{{ $utils("name") }}`。
+4. **收紧** **`buildExpressionScope`** **为闭合形状**：`{ $values, $self, $form, $value, $row, $path, $service, $utils, $enum, $query }`，去掉旧 `...values`/兄弟扁平上浮。v1 协议一律 `{{ $values.x }}` 读，正依赖闭合形状。
+5. **`config.scope`** **= 运行时能力注入缝**（非被删的通信频道 scope）。v1 的 `create-runtime`/PageRuntime、model 域手写表单，都通过它注入 `$service/$utils/$enum/$query`。
 6. **移除** **`dataSourcePolicy`**。core 不再内建"选项变化时如何处置已选值"（`preserve/clear/first`）——这是组件呈现策略。core 只保留 `dataSource`；父变清子等由 Select 组件用自己的 props 决定（见 §7.1）。
 
 > core 改造（含单测）是 v1 **第 0 步**，排在所有 app 步骤之前。

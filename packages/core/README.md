@@ -223,13 +223,13 @@ interface FormConfig {
   schema?: IFormSchema; // 表单结构，缺省为空 object
   definitions?: Record<string, IFieldSchema>; // 额外的 $ref 定义（覆盖 schema.definitions）
   initialValues?: Record<string, any>; // 初始值（按点路径匹配字段）
-  scope?: Record<string, any>; // 注入 $service/$utils/$enums/$query 命名空间
+  scope?: Record<string, any>; // 注入 $service/$utils/$enum/$query
   onError?: (error: FormError) => void; // 规则/解析错误回调
 }
 ```
 
 - **`initialValues`** 按点路径填充：`{ user: { name: "x" } }` 会填到字段 `user.name`。数组字段会据此生成对应行数。
-- **`scope`** 只读取 `$service`、`$utils`、`$enums`、`$query` 四个命名空间；其他键不会进入表达式作用域。
+- **`scope`** 只读取 `$service`、`$utils`、`$enum`、`$query` 四个协议变量；前三者是按完整 code 查询的 accessor，其他键不会进入表达式作用域。
 
 > `createForm` 构建完字段树后，**响应式规则默认还没启动**，需要调用 `form.mount()`。（`@alien-form/react` 的 `useCreateForm` 会自动挂载。）
 
@@ -528,7 +528,7 @@ form.set("toggle", true); // secret 变为可见
   a: { type: "number" },
   b: {
     type: "number",
-    "x-effect": ({ $values, $utils }) => $utils.log($values.a),
+    "x-effect": ({ $values, $utils }) => $utils("log")($values.a),
   },
 }
 ```
@@ -568,7 +568,7 @@ form.set("toggle", true); // secret 变为可见
   username: {
     type: "string",
     "x-validate": async ({ $value, $service }) =>
-      (await $service.users.exists($value)) ? "用户名已被占用" : true,
+      (await $service("users.exists")($value)) ? "用户名已被占用" : true,
   },
 }
 ```
@@ -587,9 +587,9 @@ interface ExpressionScope {
   $value: any;
   $row: Record<string, any> | undefined;
   $path: string;
-  $service: Record<string, any>;
-  $utils: Record<string, any>;
-  $enums: Record<string, any>;
+  $service: (code: string) => any;
+  $utils: (code: string) => any;
+  $enum: (code: string) => any;
   $query: Record<string, any>;
 }
 ```
@@ -605,12 +605,12 @@ JavaScript 表达式，包括函数调用和箭头函数；Schema 必须来自�
 
 - `$values`：当前整表值。
 - `$self`、`$form`、`$value`、`$row`、`$path`：当前字段上下文。
-- `$service`、`$utils`、`$enums`、`$query`：由 `FormConfig.scope` 注入的命名空间。
+- `$service(code)`、`$utils(code)`、`$enum(code)`、`$query`：由 `FormConfig.scope` 注入的运行时能力。
 
 ```ts
 { secret: { type: "string", "x-reaction": { display: "{{ $values.toggle ? 'visible' : 'none' }}" } } }
 { total: { type: "number", "x-reaction": { value: "{{ $values.price * $values.qty }}" } } }
-{ options: { type: "string", dataSource: "{{ $service.catalog.options($values.category) }}" } }
+{ options: { type: "string", dataSource: "{{ $service('catalog.options')($values.category) }}" } }
 ```
 
 `compileExpr(raw)` 返回 `(scope) => value`；`evaluateExpression(raw, scope)` 用于直接求值。

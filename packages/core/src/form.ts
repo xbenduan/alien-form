@@ -888,9 +888,9 @@ function buildExpressionScope(
     $value: runtime.value !== undefined ? runtime.value : resolveSelector(ctx, field, "$value"),
     $row: field.row ? projectChildren(ctx, field.row.children, false) || {} : undefined,
     $path: field.path,
-    $service: injected.$service || {},
-    $utils: injected.$utils || {},
-    $enums: injected.$enums || {},
+    $service: injected.$service,
+    $utils: injected.$utils,
+    $enum: injected.$enum,
     $query: injected.$query || {},
   };
 }

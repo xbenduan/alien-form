@@ -252,7 +252,7 @@ interface UINodeProps {
 - `form.components` → 合并进 `FormProvider` 的 `components`。
 - `form.decorators` → 合并进 `FormProvider` 的 `decorators`。
 - `form.utilities` → 合并进 `createForm({ scope: { $utils } })`，Schema 通过
-  `{{ $utils.name(...) }}` 调用。
+  `{{ $utils("name")(...) }}` 调用。
 
 唯一落地接缝：`packages/shared` 新增中性的 **`RuntimeResourceContext`**（仅一个容器，不含 RuntimeCore）：
 
