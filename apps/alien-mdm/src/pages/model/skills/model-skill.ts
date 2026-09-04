@@ -177,17 +177,14 @@ function connection() {
       create: {
         method: "POST",
         path: "/api/schemas",
-        url: new URL("/api/schemas", `${baseUrl}/`).href,
       },
       get: {
         method: "GET",
         pathTemplate: "/api/schemas/{name}",
-        urlTemplate: new URL("/api/schemas/{name}", `${baseUrl}/`).href,
       },
       update: {
         method: "PUT",
         pathTemplate: "/api/schemas/{name}",
-        urlTemplate: new URL("/api/schemas/{name}", `${baseUrl}/`).href,
       },
       contentType: "application/json",
     },
@@ -210,6 +207,12 @@ description: "Builds, creates, and edits renderable Alien Form models. Invoke wh
 # Alien Form 模型管理
 
 本 Skill 面向下载时所在的服务 \`${baseUrl}\`。目标是生成严格符合当前项目协议、可被当前 Runtime 渲染的模型，并调用该服务新增或编辑模型。
+
+## 项目说明
+
+Alien Form 是一个 Schema 驱动的模型管理和页面渲染系统。一份 \`BuilderSchema\` 同时描述模型元信息、数据库字段、表单表现以及列表/新增/编辑/详情等页面。
+
+模型提交到服务端后会被校验并持久化；前端 Engine 会编译其中的页面定义，Runtime 再注入当前可用的组件、Utils、枚举和服务，最终渲染为可操作的 CRUD 管理界面。因此，本 Skill 产出的 Schema 是可以直接发布和运行的完整业务模型，不只是静态表单配置。
 
 ## 强制流程
 

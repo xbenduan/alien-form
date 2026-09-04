@@ -24,8 +24,9 @@ if (connection.authentication.bearerToken) {
   throw new Error("Skill 中没有可用登录凭证，请重新登录并下载");
 }
 
+const buildUrl = (path) => new URL(path, `${connection.baseUrl}/`).href;
 const modelUrl = (operation, name) =>
-  connection.modelApi[operation].urlTemplate.replace("{name}", encodeURIComponent(name));
+  buildUrl(connection.modelApi[operation].pathTemplate.replace("{name}", encodeURIComponent(name)));
 
 let url;
 let method;
@@ -36,7 +37,7 @@ if (command === "get") {
   method = connection.modelApi.get.method;
 } else if (command === "create") {
   if (!firstArg) throw new Error("create 命令需要模型 JSON 文件");
-  url = connection.modelApi.create.url;
+  url = buildUrl(connection.modelApi.create.path);
   method = connection.modelApi.create.method;
   headers["Content-Type"] = connection.modelApi.contentType;
   requestBody = await readFile(resolve(process.cwd(), firstArg), "utf8");
