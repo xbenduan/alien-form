@@ -47,6 +47,16 @@ export class Runtime {
     return this.components.values(domain).map(([code]) => code);
   }
 
+  /** 枚举当前作用域内生效的工具。 */
+  utilityEntries(domain?: string): Array<[string, unknown]> {
+    return this.utilities.values(domain);
+  }
+
+  /** 枚举当前作用域内生效的枚举。 */
+  enumEntries(domain?: string): Array<[string, unknown]> {
+    return this.enums.values(domain);
+  }
+
   createScope(
     domain: string | undefined,
     query: Record<string, string>,

@@ -5,7 +5,7 @@ import { DetailValue, nativeProps } from "./shared";
 
 export function Input(props: ComponentProps) {
   if (props.mode === "detail" || props.readOnly) return <DetailValue value={props.value} />;
-  console.log("debugger props", props);
+
   return (
     <AntInput
       {...nativeProps(props)}

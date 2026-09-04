@@ -1,4 +1,4 @@
-import { Button, Card, Col, Divider, Flex, Row, Space, Table } from "antd";
+import { Button, Card, Col, Divider, Flex, Menu, Row, Space, Table } from "antd";
 import type { Runtime } from "@alien-form/engine";
 import { registerEnums } from "./enums";
 import { registerFields } from "./fields";
@@ -7,7 +7,7 @@ import { registerPages } from "./pages";
 import { registerServices } from "./services";
 import { registerUtils } from "./utils";
 
-const antd = { Button, Card, Col, Divider, Flex, Row, Space, Table };
+const antd = { Button, Card, Col, Divider, Flex, Row, Space, Table, Menu };
 
 export function registerGlobal(runtime: Runtime): void {
   for (const [code, component] of Object.entries(antd)) {

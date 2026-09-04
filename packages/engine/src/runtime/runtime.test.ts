@@ -13,6 +13,21 @@ describe("Runtime registration", () => {
     });
   });
 
+  it("enumerates effective utilities and enums", () => {
+    const runtime = new Runtime();
+    const globalUtility = () => "global";
+    const domainUtility = () => "domain";
+    runtime.utils("format.value", globalUtility);
+    runtime.utils("format.value", domainUtility, "customer");
+    runtime.enum("status", ["active"]);
+    runtime.enum("status", ["pending"], "customer");
+
+    expect(runtime.utilityEntries("customer")).toEqual([["format.value", domainUtility]]);
+    expect(runtime.utilityEntries("unknown")).toEqual([["format.value", globalUtility]]);
+    expect(runtime.enumEntries("customer")).toEqual([["status", ["pending"]]]);
+    expect(runtime.enumEntries("unknown")).toEqual([["status", ["active"]]]);
+  });
+
   it("reads components using domain fallback", () => {
     const runtime = new Runtime();
     const globalComponent = () => null;

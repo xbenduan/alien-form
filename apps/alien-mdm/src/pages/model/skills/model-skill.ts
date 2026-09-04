@@ -9,6 +9,7 @@ import validateIndexSource from "../../../../../../packages/validate/src/index.t
 import runtimeTypesSource from "../../../../../../packages/validate/src/runtime-types.ts?raw";
 import pageTemplatesSource from "../builder/page-templates.ts?raw";
 import { createDefaultPages, PAGE_TEMPLATES } from "../builder/page-templates";
+import modelScriptSource from "./skill-assets/model.mjs?raw";
 
 const SKILL_NAME = "alien-form-model";
 
@@ -112,6 +113,48 @@ function componentManifest(runtime: Runtime) {
   };
 }
 
+function describeUtility(value: unknown, seen = new WeakSet<object>()): Record<string, unknown> {
+  if (typeof value === "function") {
+    return {
+      type: "function",
+      name: value.name || null,
+      parameterCount: value.length,
+      source: Function.prototype.toString.call(value),
+    };
+  }
+  if (!value || typeof value !== "object") return { type: typeof value, value };
+  if (seen.has(value)) return { type: "circular-reference" };
+  seen.add(value);
+  return {
+    type: Array.isArray(value) ? "array" : "object",
+    members: Object.fromEntries(
+      Object.entries(value).map(([key, member]) => [key, describeUtility(member, seen)]),
+    ),
+  };
+}
+
+function utilityManifest(runtime: Runtime) {
+  return {
+    generatedAt: new Date().toISOString(),
+    source: "当前页面 Runtime 注册表",
+    utilities: runtime
+      .utilityEntries()
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([code, value]) => ({ code, ...describeUtility(value) })),
+  };
+}
+
+function enumManifest(runtime: Runtime) {
+  return {
+    generatedAt: new Date().toISOString(),
+    source: "当前页面 Runtime 注册表",
+    enums: runtime
+      .enumEntries()
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([code, value]) => ({ code, value })),
+  };
+}
+
 function templateManifest() {
   return {
     generatedAt: new Date().toISOString(),
@@ -130,10 +173,22 @@ function connection() {
   const baseUrl = window.location.origin;
   return {
     baseUrl,
-    createModel: {
-      method: "POST",
-      path: "/api/schemas",
-      url: new URL("/api/schemas", `${baseUrl}/`).href,
+    modelApi: {
+      create: {
+        method: "POST",
+        path: "/api/schemas",
+        url: new URL("/api/schemas", `${baseUrl}/`).href,
+      },
+      get: {
+        method: "GET",
+        pathTemplate: "/api/schemas/{name}",
+        urlTemplate: new URL("/api/schemas/{name}", `${baseUrl}/`).href,
+      },
+      update: {
+        method: "PUT",
+        pathTemplate: "/api/schemas/{name}",
+        urlTemplate: new URL("/api/schemas/{name}", `${baseUrl}/`).href,
+      },
       contentType: "application/json",
     },
     authentication: {
@@ -149,24 +204,28 @@ function connection() {
 function skillMarkdown(baseUrl: string): string {
   return `---
 name: "${SKILL_NAME}"
-description: "Builds and creates renderable Alien Form models on the current service. Invoke when generating or publishing a model schema."
+description: "Builds, creates, and edits renderable Alien Form models. Invoke when generating, publishing, or updating a model schema."
 ---
 
-# Alien Form 模型生成
+# Alien Form 模型管理
 
-本 Skill 面向下载时所在的服务 \`${baseUrl}\`。目标是生成严格符合当前项目协议、可被当前 Runtime 渲染的模型，并调用该服务创建模型。
+本 Skill 面向下载时所在的服务 \`${baseUrl}\`。目标是生成严格符合当前项目协议、可被当前 Runtime 渲染的模型，并调用该服务新增或编辑模型。
 
 ## 强制流程
 
 1. 读取 \`references/protocol/builder-schema.ts\`、\`field-schema.ts\` 和 \`core-types.ts\`，以协议为唯一真相源。
 2. 读取 \`references/runtime-components.json\`，只能使用其中存在且 adapter 匹配场景的组件。
-3. 读取 \`references/page-templates.json\`，优先吸收模板结构；按模型名替换示例中的 \`example_model\`。
-4. 以 \`templates/model.json\` 为起点生成完整 JSON。存储字段只写入 \`fields\`；表现配置只写入 \`definitions["form-schema"]\`。
-5. 保证每个落库字段在 form-schema properties 中有同名表现定义。不要添加协议外 fallback。
-6. 创建前检查模型名和字段名约束、重复字段、required 与 nullable 的一致性。
-7. 将最终 JSON 写入工作文件，然后运行 \`node scripts/create-model.mjs <模型文件路径>\`。
+3. 读取 \`references/runtime-utils.json\` 与 \`runtime-enums.json\`，表达式只能调用其中登记的 \`$utils\` 方法和 \`$enums\` 值。
+4. 读取 \`references/page-templates.json\`，优先吸收模板结构；按模型名替换示例中的 \`example_model\`。
+5. 以 \`templates/model.json\` 为起点生成完整 JSON。存储字段只写入 \`fields\`；表现配置只写入 \`definitions["form-schema"]\`。
+6. 保证每个落库字段在 form-schema properties 中有同名表现定义。不要添加协议外 fallback。
+7. 创建前检查模型名和字段名约束、重复字段、required 与 nullable 的一致性。
+8. 新增模型时，将最终 JSON 写入工作文件，然后运行 \`node scripts/model.mjs create <模型文件路径>\`。
+9. 编辑模型时，先运行 \`node scripts/model.mjs get <模型名> > <工作文件路径>\` 获取当前完整模型；仅修改目标内容，再运行 \`node scripts/model.mjs update <模型名> <工作文件路径>\`。
 
-创建接口固定为当前服务地址下的 \`POST /api/schemas\`。常规服务与 Cloudflare 服务使用同一接口协议。完整接口地址和当前会话凭证只从 \`references/connection.json\` 读取，不要在回答、日志或生成的 Schema 中复述凭证。
+模型接口固定在当前服务地址的 \`/api/schemas\` 下。常规服务与 Cloudflare 服务使用同一接口协议。完整服务地址和当前会话凭证只从 \`references/connection.json\` 读取，不要在回答、日志或生成的 Schema 中复述凭证。
+
+编辑必须使用 \`PUT /api/schemas/:name\`，路径中的名称是模型标识；不要通过 POST 创建同名模型，也不要在更新失败时降级为新增。
 
 ## 组件约束
 
@@ -181,61 +240,28 @@ description: "Builds and creates renderable Alien Form models on the current ser
 `;
 }
 
-function apiMarkdown(endpoint: string): string {
-  return `# 创建模型接口
+function apiMarkdown(baseUrl: string): string {
+  const createUrl = new URL("/api/schemas", `${baseUrl}/`).href;
+  const modelUrl = new URL("/api/schemas/{name}", `${baseUrl}/`).href;
+  return `# 模型接口
 
-- 完整地址：\`${endpoint}\`
-- 方法：\`POST\`
-- 路径：\`/api/schemas\`
+- 新增：\`POST ${createUrl}\`
+- 查询：\`GET ${modelUrl}\`
+- 编辑：\`PUT ${modelUrl}\`
 - 请求头：\`Accept: application/json\`、\`Content-Type: application/json\`
 - 认证：优先 \`Authorization: Bearer <token>\`，没有 Token 时使用导出的 Cookie
-- 请求体：完整 \`BuilderSchema\` JSON
-- 成功：HTTP 201，响应体为创建后的模型
+- 新增与编辑的请求体：完整 \`BuilderSchema\` JSON
+- 查询成功：HTTP 200，响应体为当前完整模型
+- 新增成功：HTTP 201，响应体为创建后的模型
+- 编辑成功：HTTP 200，响应体为更新后的模型；服务端以路径中的名称覆盖 \`meta.name\`
 - 同名冲突：HTTP 409
+- 模型不存在：HTTP 404
 - 未认证或会话失效：HTTP 401，应停止并要求用户重新下载 Skill
 - 协议或存储错误：HTTP 400，应依据响应错误修正模型
 
-不要调用记录接口来创建模型，也不要把模型拆成多次请求。
+不要调用记录接口管理模型。编辑前必须查询当前模型，更新时提交完整模型，不要只提交局部字段。
 `;
 }
-
-const CREATE_MODEL_SCRIPT = `import { readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const skillRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const connection = JSON.parse(
-  await readFile(resolve(skillRoot, "references/connection.json"), "utf8"),
-);
-const modelPath = process.argv[2];
-if (!modelPath) {
-  throw new Error("用法: node scripts/create-model.mjs <模型 JSON 文件>");
-}
-
-const model = JSON.parse(await readFile(resolve(process.cwd(), modelPath), "utf8"));
-const headers = {
-  Accept: "application/json",
-  "Content-Type": "application/json",
-};
-if (connection.authentication.bearerToken) {
-  headers.Authorization = \`Bearer \${connection.authentication.bearerToken}\`;
-} else if (connection.authentication.cookie) {
-  headers.Cookie = connection.authentication.cookie;
-} else {
-  throw new Error("Skill 中没有可用登录凭证，请重新登录并下载");
-}
-
-const response = await fetch(connection.createModel.url, {
-  method: connection.createModel.method,
-  headers,
-  body: JSON.stringify(model),
-});
-const body = await response.text();
-if (!response.ok) {
-  throw new Error(\`创建模型失败 (\${response.status}): \${body}\`);
-}
-process.stdout.write(\`\${body}\\n\`);
-`;
 
 export async function downloadModelSkill(runtime: Runtime): Promise<void> {
   const { strToU8, zipSync } = await import("fflate");
@@ -249,9 +275,11 @@ export async function downloadModelSkill(runtime: Runtime): Promise<void> {
 
   add("SKILL.md", skillMarkdown(currentConnection.baseUrl));
   add(".gitignore", "references/connection.json\n");
-  add("references/api.md", apiMarkdown(currentConnection.createModel.url));
+  add("references/api.md", apiMarkdown(currentConnection.baseUrl));
   add("references/connection.json", stringify(currentConnection));
   add("references/runtime-components.json", stringify(componentManifest(runtime)));
+  add("references/runtime-utils.json", stringify(utilityManifest(runtime)));
+  add("references/runtime-enums.json", stringify(enumManifest(runtime)));
   add("references/page-templates.json", stringify(templateManifest()));
   add("references/page-templates.ts", pageTemplatesSource);
   add("references/protocol/index.ts", validateIndexSource);
@@ -261,7 +289,7 @@ export async function downloadModelSkill(runtime: Runtime): Promise<void> {
   add("references/protocol/runtime-types.ts", runtimeTypesSource);
   add("references/protocol/core-types.ts", coreTypesSource);
   add("templates/model.json", stringify(template));
-  add("scripts/create-model.mjs", CREATE_MODEL_SCRIPT);
+  add("scripts/model.mjs", modelScriptSource);
 
   const archive = zipSync(files, { level: 6 });
   const data = archive.buffer.slice(

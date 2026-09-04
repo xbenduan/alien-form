@@ -119,11 +119,4 @@ export function registerServices(runtime: Runtime): void {
         },
       ),
   });
-  runtime.service({
-    code: "router.go",
-    send: (path: string) => {
-      window.history.pushState(null, "", path);
-      window.dispatchEvent(new PopStateEvent("popstate"));
-    },
-  });
 }
