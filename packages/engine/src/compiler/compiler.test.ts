@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { compileForm, compileModel, isCompiledValue, matchPage } from ".";
+import {
+  compileForm,
+  compileModel,
+  compileRuntimeValue,
+  containsCompiledValue,
+  evaluateCompiledValue,
+  isCompiledValue,
+  matchPage,
+} from ".";
 import type { BuilderSchema } from "../protocol";
 
 const model: BuilderSchema = {
@@ -79,6 +87,52 @@ describe("page compiler", () => {
       $service: { records: { delete: service } },
     });
     expect(onClick({ id: "product-1" })).toEqual({ model: "products", id: "product-1" });
+  });
+
+  it("evaluates compiled values recursively without interpreting raw strings", () => {
+    const [page] = compileModel(model);
+    const table = page.nodes[0].children[0];
+    const resolved = evaluateCompiledValue(
+      {
+        filter: table.props.filter,
+        nested: [table.children.find((node) => node.key === "delete")?.props.onClick],
+        raw: "{{ $values.filter }}",
+      },
+      {
+        $values: { filter: "active" },
+        $service: { records: { delete: (context: unknown) => context } },
+      },
+    );
+
+    expect(resolved.filter).toBe("active");
+    expect(typeof resolved.nested[0]).toBe("function");
+    expect(resolved.raw).toBe("{{ $values.filter }}");
+  });
+
+  it("does not confuse protocol objects with compiled values", () => {
+    const protocolValue = { expression: "literal" };
+    expect(isCompiledValue(protocolValue)).toBe(false);
+    expect(evaluateCompiledValue(protocolValue, {})).toEqual(protocolValue);
+  });
+
+  it("compiles standalone protocol props before runtime rendering", () => {
+    const date = new Date(0);
+    const compiled = compileRuntimeValue({
+      options: ["static", "{{ $enums.status }}"],
+      onClick: "{{ () => $service.records.list() }}",
+      date,
+    });
+    expect(containsCompiledValue(compiled)).toBe(true);
+    const list = () => "loaded";
+    const resolved = evaluateCompiledValue(compiled, {
+      $enums: { status: ["enabled"] },
+      $service: { records: { list } },
+    });
+
+    expect(resolved.options).toEqual(["static", ["enabled"]]);
+    expect((resolved.onClick as unknown as () => string)()).toBe("loaded");
+    expect(resolved.date).toBe(date);
+    expect(containsCompiledValue(resolved)).toBe(false);
   });
 
   it("extracts row actions and keeps remaining table properties as ordered children", () => {

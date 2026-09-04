@@ -1,6 +1,6 @@
 import { Button, Card, Space } from "antd";
-import { useEffect, useMemo, useState } from "react";
-import { usePage, type ComponentProps } from "@binding";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePage, type ComponentProps, type ValueSource } from "@binding";
 import type { DatabaseField, FieldSchema } from "@alien-form/engine";
 import type { FilterField } from "@utils/schema";
 import { parseFilter } from "./parse-filter";
@@ -16,7 +16,7 @@ export function Filter({
   schema?: FieldSchema;
   filters?: (
     schema?: FieldSchema,
-    scope?: Record<string, unknown>,
+    scope?: ValueSource<Record<string, unknown>>,
     domain?: string,
     fields?: DatabaseField[],
   ) => FilterField[];
@@ -27,10 +27,17 @@ export function Filter({
   const [draft, setDraft] = useState<Record<string, unknown>>(() =>
     parseFilter(value ?? defaultValue),
   );
+  const expressionScope = useCallback(
+    () => ({
+      ...page.runtime.createScope(page.domain, page.query, "edit"),
+      $values: page.form.values(),
+      $form: page.form,
+    }),
+    [page],
+  );
   const fields = useMemo(() => {
-    const scope = page.runtime.createScope(page.domain, page.query, "edit");
-    return toFilters?.(schema, scope, page.domain, page.model.fields) ?? [];
-  }, [page, schema, toFilters]);
+    return toFilters?.(schema, expressionScope, page.domain, page.model.fields) ?? [];
+  }, [expressionScope, page.domain, page.model.fields, schema, toFilters]);
   const visibleCount = 4;
   const hasExtraFields = fields.length > visibleCount;
 

@@ -6,7 +6,7 @@ import {
   PlusOutlined,
 } from "@ant-design/icons";
 import { Button, Empty, Tooltip } from "antd";
-import type { ArrayFieldNode, FieldNode, RowNode } from "@alien-form/core";
+import type { ArrayFieldNode, RowNode } from "@alien-form/core";
 import { useSignalValue } from "@alien-form/react";
 import {
   DndContext,
@@ -18,7 +18,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { fallbackNode, RenderNode, type ComponentProps } from "@binding";
+import { FieldNodes, type ComponentProps } from "@binding";
 import type { CompiledNode } from "@alien-form/engine";
 import { fieldGridStyle } from "@utils/field-grid";
 import { ComplexFieldFrame, TableComplexCell } from "./complex-field";
@@ -41,8 +41,8 @@ function ArrayCardsField({
   const rows = useSignalValue(array.rows);
   const readonly = mode === "detail";
   const gridStyle = fieldGridStyle({ gridSpan, columns, gutter });
-  // 行子字段共用编译出的行模板（node.items）递归渲染；模板缺失时回退到运行时快照。
-  const template = node?.items;
+  const template = node.items;
+  if (!template) throw new Error(`Compiled array item template not found: ${field.path}`);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -122,7 +122,7 @@ function ArrayCardRow({
   total: number;
   readonly: boolean;
   gridStyle: React.CSSProperties;
-  template: CompiledNode | undefined;
+  template: CompiledNode;
   form: ComponentProps["form"];
   domain?: string;
   onMoveUp: () => void;
@@ -185,27 +185,10 @@ function ArrayCardRow({
         )}
       </div>
       <div className={styles.arrayCardBody} style={gridStyle}>
-        {Array.from(row.children, ([key, child]) => (
-          <RenderNode
-            key={child.id}
-            node={childTemplate(template, key, child)}
-            field={child}
-            form={form}
-            domain={domain}
-          />
-        ))}
+        <FieldNodes nodes={template.children} fields={row.children} form={form} domain={domain} />
       </div>
     </div>
   );
-}
-
-/** 取行模板里对应 key 的子节点；模板缺失时用运行时字段回退生成。 */
-function childTemplate(
-  template: CompiledNode | undefined,
-  key: string,
-  child: FieldNode,
-): CompiledNode {
-  return template?.children.find((item) => item.key === key) ?? fallbackNode(key, child);
 }
 
 export function ArrayCards(props: ComplexFieldProps) {

@@ -1,20 +1,13 @@
 import { compileExpr, type IFieldSchema, type IFormSchema } from "@alien-form/core";
-import type {
-  BuilderSchema,
-  CompiledNode,
-  CompiledPage,
-  CompiledValue,
-  FieldSchema,
-  XPage,
-} from "../protocol";
+import type { BuilderSchema, CompiledNode, CompiledPage, FieldSchema, XPage } from "../protocol";
+import { createCompiledValue, isRuntimeExpression } from "./value";
 
-function isExpression(value: unknown): value is string {
-  return typeof value === "string" && value.trim().startsWith("{{") && value.trim().endsWith("}}");
-}
-
-export function isCompiledValue(value: unknown): value is CompiledValue {
-  return !!value && typeof value === "object" && "expression" in value;
-}
+export {
+  compileRuntimeValue,
+  containsCompiledValue,
+  evaluateCompiledValue,
+  isCompiledValue,
+} from "./value";
 
 function resolveRef(
   schema: FieldSchema,
@@ -32,7 +25,7 @@ function resolveRef(
 
 function resolveField(raw: FieldSchema, definitions: BuilderSchema["definitions"]): FieldSchema {
   const referenced = resolveRef(raw, definitions);
-  const schema: FieldSchema = isExpression(referenced.display)
+  const schema: FieldSchema = isRuntimeExpression(referenced.display)
     ? {
         ...referenced,
         display: "visible",
@@ -55,7 +48,7 @@ function resolveField(raw: FieldSchema, definitions: BuilderSchema["definitions"
 }
 
 function compileValue(value: unknown, definitions: BuilderSchema["definitions"]): unknown {
-  if (isExpression(value)) return { expression: compileExpr(value) } satisfies CompiledValue;
+  if (isRuntimeExpression(value)) return createCompiledValue(value);
   if (Array.isArray(value)) return value.map((item) => compileValue(item, definitions));
   if (!value || typeof value !== "object") return value;
   if ("$ref" in value && typeof value.$ref === "string") {
@@ -67,7 +60,7 @@ function compileValue(value: unknown, definitions: BuilderSchema["definitions"])
 }
 
 function warmExpressions(value: unknown): void {
-  if (isExpression(value)) {
+  if (isRuntimeExpression(value)) {
     compileExpr(value);
     return;
   }

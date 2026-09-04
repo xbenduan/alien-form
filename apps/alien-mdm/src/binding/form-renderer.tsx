@@ -1,15 +1,9 @@
-import { compileExpr, type FieldNode, type FormInstance } from "@alien-form/core";
-import {
-  shallowEqual,
-  useFieldSnapshot,
-  useRegisterField,
-  useSignalSnapshot,
-} from "@alien-form/react";
-import { Alert } from "antd";
-import { Fragment, useCallback, type ComponentType, type ReactNode } from "react";
-import { isCompiledValue, type CompiledNode } from "@alien-form/engine";
+import type { FieldNode, FormInstance } from "@alien-form/core";
+import { useFieldSnapshot, useRegisterField } from "@alien-form/react";
+import { useCallback, type ReactNode } from "react";
+import type { CompiledNode } from "@alien-form/engine";
 import { fieldGridItemStyle } from "@utils/field-grid";
-import { useRuntime } from "./runtime-provider";
+import { RuntimeComponent, useCompiledProps } from "./runtime-component";
 import styles from "./form-renderer.module.css";
 
 export interface ComponentProps {
@@ -27,40 +21,6 @@ export interface ComponentProps {
   [key: string]: unknown;
 }
 
-export function fallbackNode(key: string, field: FieldNode): CompiledNode {
-  const children =
-    field.kind === "object" || field.kind === "void"
-      ? Array.from(field.children, ([childKey, child]) => fallbackNode(childKey, child))
-      : [];
-  return {
-    key,
-    schema: field.schema,
-    props: field.schema.props ?? {},
-    slots: {},
-    children,
-  };
-}
-
-function evaluateValue(value: unknown, scope: Record<string, unknown>): unknown {
-  if (isCompiledValue(value)) return value.expression(scope as any);
-  if (typeof value === "string" && value.trim().startsWith("{{") && value.trim().endsWith("}}")) {
-    return compileExpr(value)(scope as any);
-  }
-  if (Array.isArray(value)) return value.map((item) => evaluateValue(item, scope));
-  if (!value || typeof value !== "object") return value;
-  return Object.fromEntries(
-    Object.entries(value).map(([key, child]) => [key, evaluateValue(child, scope)]),
-  );
-}
-
-function containsExpression(value: unknown): boolean {
-  if (isCompiledValue(value)) return true;
-  if (typeof value === "string")
-    return value.trim().startsWith("{{") && value.trim().endsWith("}}");
-  if (Array.isArray(value)) return value.some(containsExpression);
-  return !!value && typeof value === "object" && Object.values(value).some(containsExpression);
-}
-
 function rowValues(form: FormInstance, field: FieldNode): Record<string, unknown> | undefined {
   if (!field.row) return undefined;
   return Object.fromEntries(
@@ -68,9 +28,13 @@ function rowValues(form: FormInstance, field: FieldNode): Record<string, unknown
   );
 }
 
-function childField(field: FieldNode, key: string): FieldNode | undefined {
-  if (field.kind !== "object" && field.kind !== "void") return undefined;
-  return field.children.get(key);
+function childField(field: FieldNode, key: string): FieldNode {
+  if (field.kind !== "object" && field.kind !== "void") {
+    throw new Error(`Field cannot contain compiled children: ${field.path}`);
+  }
+  const child = field.children.get(key);
+  if (!child) throw new Error(`Compiled child field not found: ${field.path}.${key}`);
+  return child;
 }
 
 function readFieldSnapshot(field: FieldNode) {
@@ -89,18 +53,18 @@ function readFieldSnapshot(field: FieldNode) {
 }
 
 function useNodeProps(node: CompiledNode, field: FieldNode, form: FormInstance) {
-  const read = useCallback(() => {
+  const props = useCallback(() => {
     const fieldProps = field.componentProps();
-    const effectiveProps = Object.fromEntries(
+    return Object.fromEntries(
       Array.from(new Set([...Object.keys(node.props), ...Object.keys(fieldProps)])).map((key) => [
         key,
         fieldProps[key] === node.schema.props?.[key] ? node.props[key] : fieldProps[key],
       ]),
     );
-    if (!containsExpression(effectiveProps)) return effectiveProps;
-
+  }, [field, node]);
+  const scope = useCallback(() => {
     const value = field.kind === "primitive" ? field.value() : form.project(field.path);
-    return evaluateValue(effectiveProps, {
+    return {
       ...form.scope,
       $values: form.values(),
       $self: field,
@@ -108,12 +72,12 @@ function useNodeProps(node: CompiledNode, field: FieldNode, form: FormInstance) 
       $value: value,
       $row: rowValues(form, field),
       $path: field.path,
-    }) as Record<string, unknown>;
+    };
   }, [field, form, node]);
-  return useSignalSnapshot(read, shallowEqual);
+  return useCompiledProps(props, scope);
 }
 
-export function RenderNode({
+export function FieldRenderer({
   node,
   field,
   form,
@@ -124,7 +88,6 @@ export function RenderNode({
   form: FormInstance;
   domain?: string;
 }) {
-  const runtime = useRuntime();
   const {
     display,
     componentCode,
@@ -142,10 +105,6 @@ export function RenderNode({
   const mode = typeof form.scope.mode === "string" ? form.scope.mode : undefined;
 
   if (display === "none") return null;
-  const registration = runtime.resolveComponent(componentCode, domain);
-  if (!registration) {
-    return <Alert type="error" message={`Component not registered: ${componentCode}`} />;
-  }
 
   const slotted = new Set<CompiledNode>();
   const slots = Object.fromEntries(
@@ -156,9 +115,15 @@ export function RenderNode({
         name,
         nodes.map((child) => {
           const target = childField(field, child.key);
-          return target ? (
-            <RenderNode key={target.id} node={child} field={target} form={form} domain={domain} />
-          ) : null;
+          return (
+            <FieldRenderer
+              key={target.id}
+              node={child}
+              field={target}
+              form={form}
+              domain={domain}
+            />
+          );
         }),
       ];
     }),
@@ -167,11 +132,10 @@ export function RenderNode({
     .filter((child) => !slotted.has(child))
     .map((child) => {
       const target = childField(field, child.key);
-      return target ? (
-        <RenderNode key={target.id} node={child} field={target} form={form} domain={domain} />
-      ) : null;
+      return (
+        <FieldRenderer key={target.id} node={child} field={target} form={form} domain={domain} />
+      );
     });
-  const Component = registration.component as ComponentType<any>;
   const controlProps =
     field.kind === "primitive"
       ? {
@@ -187,14 +151,15 @@ export function RenderNode({
         }
       : props;
   const renderedChildren = children.length ? children : undefined;
-  const alienProps =
-    registration.adapter !== "antd"
-      ? { ...controlProps, form, field, node, slots, mode, value, title, description, domain }
-      : controlProps;
-  const control = renderedChildren ? (
-    <Component {...alienProps}>{renderedChildren}</Component>
-  ) : (
-    <Component {...alienProps} />
+  const control = (
+    <RuntimeComponent
+      code={componentCode}
+      domain={domain}
+      props={controlProps}
+      context={{ form, field, node, slots, mode, value, title, description, domain }}
+    >
+      {renderedChildren}
+    </RuntimeComponent>
   );
 
   if (field.kind !== "primitive") return control;
@@ -224,27 +189,36 @@ export function RenderNode({
   );
 }
 
+export function FieldNodes({
+  nodes,
+  fields,
+  form,
+  domain,
+}: {
+  nodes: CompiledNode[];
+  fields: ReadonlyMap<string, FieldNode>;
+  form: FormInstance;
+  domain?: string;
+}) {
+  return nodes.map((node) => {
+    const field = fields.get(node.key);
+    if (!field) throw new Error(`Compiled field not found: ${node.key}`);
+    return <FieldRenderer key={field.id} node={node} field={field} form={form} domain={domain} />;
+  });
+}
+
 export function FormRenderer({
   form,
   nodes,
   domain,
 }: {
   form: FormInstance;
-  nodes?: CompiledNode[];
+  nodes: CompiledNode[];
   domain?: string;
 }) {
-  const renderNodes =
-    nodes ?? Array.from(form.root.children, ([key, field]) => fallbackNode(key, field));
   return (
     <div className={styles.form} data-alien-form>
-      {renderNodes.map((node) => {
-        const field = form.root.children.get(node.key);
-        return field ? (
-          <RenderNode key={field.id} node={node} field={field} form={form} domain={domain} />
-        ) : (
-          <Fragment key={node.key} />
-        );
-      })}
+      <FieldNodes nodes={nodes} fields={form.root.children} form={form} domain={domain} />
     </div>
   );
 }

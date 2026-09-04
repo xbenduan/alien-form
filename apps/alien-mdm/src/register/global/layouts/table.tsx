@@ -28,17 +28,16 @@ import {
   useEffect,
   useMemo,
   useState,
-  type ComponentType,
   type HTMLAttributes,
   type Key,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { usePage, type ComponentProps } from "@binding";
+import { SchemaComponent, usePage, type ComponentProps, type ValueSource } from "@binding";
 import {
   compilePage,
-  isCompiledValue,
+  evaluateCompiledValue,
   type CompiledNode,
   type DatabaseField,
   type FieldSchema,
@@ -127,15 +126,6 @@ function findComponent(nodes: CompiledNode[], component: string): CompiledNode |
   return undefined;
 }
 
-function evaluateProps(value: unknown, scope: Record<string, unknown>): unknown {
-  if (isCompiledValue(value)) return value.expression(scope as never);
-  if (Array.isArray(value)) return value.map((item) => evaluateProps(item, scope));
-  if (!value || typeof value !== "object") return value;
-  return Object.fromEntries(
-    Object.entries(value).map(([key, child]) => [key, evaluateProps(child, scope)]),
-  );
-}
-
 interface ColumnPreference {
   visible?: boolean;
   width?: number;
@@ -212,6 +202,7 @@ export function Table({
     | TableColumnsType<Record<string, unknown>>
     | ((
         schema?: FieldSchema,
+        scope?: ValueSource<Record<string, unknown>>,
         domain?: string,
         fields?: DatabaseField[],
       ) => TableColumnsType<Record<string, unknown>>);
@@ -227,6 +218,14 @@ export function Table({
   const navigate = useNavigate();
   const pageRuntime = usePage();
   const { modelCode: routeModelCode } = useParams();
+  const columnScope = useCallback(
+    () => ({
+      ...pageRuntime.runtime.createScope(pageRuntime.domain, pageRuntime.query, "list"),
+      $values: pageRuntime.form.values(),
+      $form: pageRuntime.form,
+    }),
+    [pageRuntime],
+  );
   const resolvedModelCode = modelCode ?? routeModelCode ?? pageRuntime.domain;
   const pageSize = pageRuntime.model.meta.defaultPageSize ?? 20;
   const recordTitle =
@@ -248,9 +247,9 @@ export function Table({
   const resolvedColumns = useMemo(
     () =>
       (typeof columns === "function"
-        ? columns(schema, resolvedModelCode, pageRuntime.model.fields)
+        ? columns(schema, columnScope, resolvedModelCode, pageRuntime.model.fields)
         : columns) ?? [],
-    [columns, resolvedModelCode, schema, pageRuntime.model.fields],
+    [columnScope, columns, resolvedModelCode, schema, pageRuntime.model.fields],
   );
   const updateColumnPreference = useCallback(
     (key: string, patch: Partial<ColumnPreference>) => {
@@ -329,7 +328,7 @@ export function Table({
         ...(resolvedRecordId ? { id: resolvedRecordId } : {}),
       };
       const formProps = formNode
-        ? (evaluateProps(formNode.props, {
+        ? (evaluateCompiledValue(formNode.props, {
             ...pageRuntime.runtime.createScope(pageRuntime.domain, query, mode),
             $values: pageRuntime.form.values(),
             $form: pageRuntime.form,
@@ -382,30 +381,27 @@ export function Table({
   );
   const renderRowActions = useCallback(
     (record: Record<string, unknown>) => {
-      const scope = {
-        ...pageRuntime.runtime.createScope(pageRuntime.domain, pageRuntime.query, "list"),
-        $values: pageRuntime.form.values(),
-        $form: pageRuntime.form,
-        $row: record,
-      };
       return rowActionNodes.flatMap((actionNode) => {
         const componentCode = actionNode.schema.component;
         if (!componentCode) return [];
-        const registration = pageRuntime.runtime.resolveComponent(
-          componentCode,
-          pageRuntime.domain,
-        );
-        if (!registration) return [];
-        const Component = registration.component as ComponentType<RowButtonProps>;
-        const props = evaluateProps(actionNode.props, scope) as RowButtonProps;
         return [
-          <Component
-            {...props}
+          <SchemaComponent
             key={actionNode.key}
-            row={record}
-            model={resolvedModelCode}
-            rowKey={rowKey}
-            refresh={refresh}
+            code={componentCode}
+            domain={pageRuntime.domain}
+            schemaProps={actionNode.props}
+            scope={() => ({
+              ...pageRuntime.runtime.createScope(pageRuntime.domain, pageRuntime.query, "list"),
+              $values: pageRuntime.form.values(),
+              $form: pageRuntime.form,
+              $row: record,
+            })}
+            bindings={{
+              row: record,
+              model: resolvedModelCode,
+              rowKey,
+              refresh,
+            }}
           />,
         ];
       });
