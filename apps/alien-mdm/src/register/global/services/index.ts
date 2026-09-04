@@ -6,9 +6,9 @@ import type {
   LoginResponse,
   ModelSummary,
 } from "@app-types";
-import type { Transport } from "@runtime/transport";
+import { transport } from "@runtime/transport";
 
-export function registerServices(runtime: Runtime, transport: Transport): void {
+export function registerServices(runtime: Runtime): void {
   runtime.service({
     code: "auth.login",
     send: (body: { username: string; password: string }) =>

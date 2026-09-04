@@ -1,5 +1,4 @@
 import type { Runtime } from "@alien-form/engine";
-import type { Transport } from "@runtime/transport";
 import { registerGlobal } from "./global";
 import registerOverrides from "./overrides";
 
@@ -10,8 +9,8 @@ type DomainModule = {
 const domainModules = import.meta.glob<DomainModule>("./*/index.ts", { eager: true });
 const reserved = new Set(["global", "overrides"]);
 
-export function registerAll(runtime: Runtime, transport: Transport): void {
-  registerGlobal(runtime, transport);
+export function registerAll(runtime: Runtime): void {
+  registerGlobal(runtime);
   registerOverrides(runtime);
   for (const [path, module] of Object.entries(domainModules)) {
     const domain = path.split("/")[1];
