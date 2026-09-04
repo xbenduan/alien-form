@@ -1,24 +1,20 @@
 {
-	"name": "alien-mdm",
-	"main": "apps/alien-worker/src/index.ts",
-	"compatibility_date": "2026-06-01",
-	"compatibility_flags": [
-		"nodejs_compat"
-	],
-	"assets": {
-		"directory": "./apps/alien-mdm/dist",
-		"binding": "ASSETS",
-		"not_found_handling": "single-page-application",
-		"run_worker_first": [
-			"/api/*"
-		]
-	},
-	"d1_databases": [
-		{
-			"binding": "DB",
-			"database_name": "alien-mdm",
-			"database_id": "f4c6db25-fafb-4968-89fd-29ef76095030",
-			"migrations_dir": "apps/alien-worker/migrations"
-		}
-	]
+  "name": "alien-mdm",
+  "main": "apps/alien-worker/src/index.ts",
+  "compatibility_date": "2026-06-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./apps/alien-mdm/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "alien-mdm",
+      "database_id": "853ab275-6ce6-48e0-93db-a6002c1cb640",
+      "migrations_dir": "apps/alien-worker/migrations"
+    }
+  ]
 }
