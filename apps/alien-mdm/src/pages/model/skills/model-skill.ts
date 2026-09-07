@@ -222,7 +222,7 @@ Alien Form 是一个 Schema 驱动的模型管理和页面渲染系统。一份 
 4. 读取 \`references/page-templates.json\`，优先吸收模板结构；按模型名替换示例中的 \`example_model\`。
 5. 以 \`templates/model.json\` 为起点生成完整 JSON。存储字段只写入 \`fields\`；表现配置只写入 \`definitions["form-schema"]\`。
 6. 保证每个落库字段在 form-schema properties 中有同名表现定义。不要添加协议外 fallback。
-7. 创建前检查模型名和字段名约束、重复字段、required 与 nullable 的一致性。
+7. 创建前检查模型名和字段名约束、重复字段、required 与 nullable 的一致性，以及所有关联字段的 RemoteSelect 协议。
 8. 新增模型时，将最终 JSON 写入工作文件，然后运行 \`node scripts/model.mjs create <模型文件路径>\`。
 9. 编辑模型时，先运行 \`node scripts/model.mjs get <模型名> > <工作文件路径>\` 获取当前完整模型；仅修改目标内容，再运行 \`node scripts/model.mjs update <模型名> <工作文件路径>\`。
 
@@ -236,6 +236,33 @@ Alien Form 是一个 Schema 驱动的模型管理和页面渲染系统。一份 
 - \`adapter: "page"\`：用于 \`pages[].properties\` 的页面节点 component。
 - \`adapter: "antd"\`：用于页面中的原子展示节点。
 - 组件 meta.sample 是当前 Runtime 提供的最小合法示例。
+
+## 关联字段协议
+
+\`fields[].relation\` 是关联字段的唯一真相源。配置 relation 后，必须为同名
+\`definitions["form-schema"].properties.<field>\` 写入 \`RemoteSelect\`：
+
+\`\`\`json
+{
+  "type": "string",
+  "component": "RemoteSelect",
+  "props": {
+    "model": "目标模型名",
+    "loadOptions": "{{ $utils(\\"relation\\")($service(\\"records.list\\")) }}",
+    "valueField": "id",
+    "labelField": "name",
+    "pageSize": 10
+  }
+}
+\`\`\`
+
+- \`props.model\` 必须与 \`fields[].relation.target\` 完全一致。
+- \`props.valueField\` 必须与 \`fields[].relation.valueField\` 完全一致；未声明时固定为 \`"id"\`。
+- \`props.labelField\` 必须与 \`fields[].relation.labelField\` 完全一致；未声明时固定为 \`"name"\`。
+- \`loadOptions\` 使用上面的标准表达式。不要为 RemoteSelect 配置 \`dataSource\`；组件会在用户首次展开时加载前 \`pageSize\` 条，在输入搜索词后自动传递 \`keyword/searchFields\`。
+- \`many-to-many\` 关联额外设置 \`props.multiple: true\`，并将 storage 字段配置为 \`type: "json"\`、\`valueType: "array"\`。
+
+服务端会严格校验关联字段。若收到 HTTP 400，读取完整错误中的字段路径、期望值和实际值，直接修正该模型 JSON 后重新提交；不要移除 relation 或改用非协议字段绕过校验。
 
 ## 输出要求
 
