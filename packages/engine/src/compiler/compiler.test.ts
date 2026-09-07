@@ -28,7 +28,7 @@ const model: BuilderSchema = {
             schema: { $ref: "form-schema" },
             filter: "{{ $values.filter }}",
             rowActions: ["deactivate", "delete"],
-            "action-btns": {
+            "actionBtns": {
               edit: { children: "编辑" },
             },
           },

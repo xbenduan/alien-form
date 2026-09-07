@@ -22,12 +22,13 @@ import type { RefExpander } from "../store/ref-expander.ts";
 
 export interface ListInput {
   model: string;
-  filters?: Record<string, unknown>;
+  /** PocketBase 风格的字段筛选表达式。 */
+  filter?: string;
   pagination?: Pagination;
   sorter?: Sorter;
   keyword?: string;
   searchFields?: string[];
-  /** 树节点值：查询该节点自身及所有后代，独立于 filters。 */
+  /** 树节点值：查询该节点自身及所有后代，独立于 filter。 */
   parentId?: string | null;
 }
 
@@ -70,14 +71,15 @@ export class RecordService {
     return relations[0];
   }
 
-  async list(input: ListInput): Promise<ListResult> {
+  async list(input: ListInput, authId: string): Promise<ListResult> {
     const schema = await this.requireSchema(input.model);
     const relation =
       input.parentId === undefined || input.parentId === null || input.parentId === ""
         ? undefined
         : this.selfRelation(schema);
     const result = await this.records.list(schema, {
-      filters: unwrapRefs(input.filters),
+      filter: input.filter,
+      authId,
       pagination: input.pagination,
       sorter: input.sorter,
       keyword: input.keyword,

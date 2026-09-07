@@ -65,7 +65,6 @@ import { recordRoute } from "@utils/record-route";
 import { RecordActionOverlay } from "../pages/record-action-overlay";
 import type { RecordActionMode } from "../pages/record-form";
 import { useLayoutLoading } from "./loading-context";
-import { parseFilter } from "./parse-filter";
 import styles from "./index.module.css";
 
 interface ListResult {
@@ -87,7 +86,7 @@ interface OverlayState {
   ) => unknown | Promise<unknown>;
 }
 
-/** action-btns 中每个按钮的可配置项（openMode 决定打开方式）。 */
+/** actionBtns 中每个按钮的可配置项（openMode 决定打开方式）。 */
 interface ActionContext {
   id?: unknown;
   model: string;
@@ -216,7 +215,7 @@ export function Table({
   rowKey = "id",
   modelCode,
   scroll,
-  "action-btns": actionBtns,
+  actionBtns,
 }: ComponentProps & {
   schema?: FieldSchema;
   columns?:
@@ -233,7 +232,7 @@ export function Table({
   rowKey?: string;
   modelCode?: string;
   scroll?: TableProps<Record<string, unknown>>["scroll"];
-  "action-btns"?: ActionButtons;
+  actionBtns?: ActionButtons;
 }) {
   const { message } = App.useApp();
   const navigate = useNavigate();
@@ -363,12 +362,12 @@ export function Table({
   const refresh = useCallback(async () => {
     const loader = loadDataRef.current;
     if (!loader) return;
-    const parsedFilter = parseFilter(filter);
     const stopLoading = startLoading();
     try {
       setData(
         await loader({
-          filters: parsedFilter,
+          model: resolvedModelCode,
+          filter: filter || undefined,
           parentId:
             parentId === undefined || parentId === null || parentId === ""
               ? undefined

@@ -7,7 +7,7 @@ export const recordRoutes = new Hono<AppEnv>();
 /** POST /api/records/list → { list, total }。 */
 recordRoutes.post("/list", async (c) => {
   const body = (await c.req.json()) as ListInput;
-  return c.json(await c.get("container").recordService.list(body));
+  return c.json(await c.get("container").recordService.list(body, c.get("session").userId));
 });
 
 /** POST /api/records/options → { options, total }。 */

@@ -288,7 +288,7 @@ Alien Form 是一个 Schema 驱动的模型管理和页面渲染系统。一份 
 - \`valueField\` 是节点值字段，\`parentField\` 是父节点字段，\`labelField\` 是显示字段。
 - \`showRoot\` 默认为 \`false\`：仅一个根节点时隐藏根节点并展示其子节点；多个根节点时始终展示根节点。
 - 后端 \`records.subtree\` 返回平铺节点；\`$utils.tree\` 负责将它们组装成嵌套节点。
-- 树驱动表格时，在 table props 中配置 \`"parentId": "{{ $values.tree }}"\`。后端 \`records.list\` 会返回该节点自身及全部后代；不要把树值写进 \`filters\`，因为 filters 只表达字段级直接匹配。
+- 树驱动表格时，在 table props 中配置 \`"parentId": "{{ $values.tree }}"\`。后端 \`records.list\` 会返回该节点自身及全部后代；不要把树值写进 \`filter\`，因为 \`parentId\` 单独表达递归范围。
 
 ## 输出要求
 

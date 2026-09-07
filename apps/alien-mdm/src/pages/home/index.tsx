@@ -203,7 +203,7 @@ export default function HomePage() {
                 className={styles.brandTitle}
                 style={{ marginTop: 0, marginBottom: 0 }}
               >
-                ALIEN CMS
+                ALIEN MDM
               </Typography.Title>
             </div>
           </div>

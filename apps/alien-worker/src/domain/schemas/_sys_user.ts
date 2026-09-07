@@ -212,8 +212,7 @@ export const sysUserSchema: ModelSchema = {
           component: "filter",
           props: {
             schema: { $ref: "form-schema" },
-            filters: "{{ $utils.schemaToFilters }}",
-            defaultValue: "{{ $query.keyword }}",
+            filterFields: "{{ $utils.schemaToFilterFields }}",
           },
         },
         table: {
@@ -225,10 +224,9 @@ export const sysUserSchema: ModelSchema = {
             schema: { $ref: "form-schema" },
             columns: "{{ $utils.schemaToColumns }}",
             filter: "{{ $values.filter }}",
-            loadData:
-              "{{ (params) => $service(\"records.list\")({ model: '_sys_user', ...params }) }}",
+            loadData: '{{ $service("records.list") }}',
             rowActions: ["delete"],
-            "action-btns": {
+            "actionBtns": {
               add: { type: "primary", children: "新增", openMode: "page" },
               edit: { type: "link", children: "编辑", openMode: "page" },
               detail: { type: "link", children: "详情", openMode: "drawer" },

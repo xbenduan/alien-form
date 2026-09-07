@@ -355,8 +355,7 @@ export const _sys_user: BuilderSchema = {
           props: {
             // filter 遍历 fields 中 filterable 且非 object/array 的字段，component/props 从 form-schema 取
             schema: { $ref: "form-schema" },
-            filters: '{{ $utils("schemaToFilters") }}',
-            defaultValue: "{{ $query.keyword }}",
+            filterFields: '{{ $utils("schemaToFilterFields") }}',
           },
         },
         table: {
@@ -375,7 +374,7 @@ export const _sys_user: BuilderSchema = {
               "{{ (params) => $service(\"records.list\")({ model: '_sys_user', ...params }) }}",
             // 指定的 properties 进入每行操作列；其余 properties 作为 children 数组进入工具栏右侧
             rowActions: ["deactivate", "delete"],
-            "action-btns": {
+            "actionBtns": {
               // 新增按钮 props（可填 antd button 其他 props）；openMode 决定打开方式
               add: { type: "primary", children: "新增", openMode: "page" },
               edit: { type: "link", children: "编辑", openMode: "page" },

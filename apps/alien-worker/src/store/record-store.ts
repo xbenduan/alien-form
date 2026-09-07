@@ -1,5 +1,6 @@
 import { planFields, type FieldPlan } from "../domain/field-plan.ts";
 import { formatRecordId } from "../domain/record-id.ts";
+import { compileRecordFilter } from "../domain/record-filter.ts";
 import {
   databaseFields,
   type BuilderSchema as ModelSchema,
@@ -10,7 +11,10 @@ import {
 } from "@alien-form/validate";
 
 export interface ListParams {
-  filters?: Record<string, unknown>;
+  /** PocketBase 风格的受限筛选表达式，会与 keyword、parentId 取交集。 */
+  filter?: string;
+  /** 当前会话用户，仅供 filter 中的 @request.auth.id 使用。 */
+  authId: string;
   pagination?: Pagination;
   sorter?: Sorter;
   keyword?: string;
@@ -135,12 +139,7 @@ export class RecordStore {
     return formatRecordId(row?.next ?? 1);
   }
 
-  /**
-   * 列表查询：
-   *  - filters 仅作用于 filterable 字段；text 模糊、数组 IN、其余精确。
-   *  - sorter 仅作用于 sortable 字段，否则回落 updated_at DESC。
-   *  - 分页在 SQL 层完成。
-   */
+  /** 列表查询：filter、keyword、parentId 共同收敛为 WHERE；分页在 SQL 层完成。 */
   async list(schema: ModelSchema, params: ListParams): Promise<ListResult> {
     const model = schema.meta.name;
     const byField = new Map(planFields(schema).map((p) => [p.field, p]));
@@ -169,22 +168,13 @@ export class RecordStore {
       args.push(...values);
     }
 
-    for (const [field, value] of Object.entries(params.filters ?? {})) {
-      const plan = byField.get(field);
-      if (!plan || !plan.filterable) continue;
-      if (value === undefined || value === null || value === "") continue;
-      const expr = fieldExpr(field);
-      if (Array.isArray(value)) {
-        if (value.length === 0) continue;
-        where.push(`${expr} IN (${value.map(() => "?").join(", ")})`);
-        args.push(...value.map((v) => encodeFilterValue(plan, v)));
-      } else if (plan.type === "text") {
-        where.push(`${expr} LIKE ?`);
-        args.push(`%${value}%`);
-      } else {
-        where.push(`${expr} = ?`);
-        args.push(encodeFilterValue(plan, value));
-      }
+    const compiledFilter = compileRecordFilter(params.filter, {
+      authId: params.authId,
+      fields: byField,
+    });
+    if (compiledFilter) {
+      where.push(compiledFilter.sql);
+      args.push(...compiledFilter.args);
     }
     const keyword = params.keyword?.trim();
     if (keyword && params.searchFields?.length) {

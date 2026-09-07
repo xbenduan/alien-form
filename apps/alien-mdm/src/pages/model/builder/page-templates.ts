@@ -30,8 +30,7 @@ function buildListPage(modelCode: string, title: string): XPage {
         component: "filter",
         props: {
           schema: { $ref: "form-schema" },
-          filters: "{{ $utils.schemaToFilters }}",
-          defaultValue: "{{ $query.keyword }}",
+          filterFields: "{{ $utils.schemaToFilterFields }}",
         },
       },
       table: {
@@ -43,9 +42,9 @@ function buildListPage(modelCode: string, title: string): XPage {
           schema: { $ref: "form-schema" },
           columns: "{{ $utils.schemaToColumns }}",
           filter: "{{ $values.filter }}",
-          loadData: `{{ (params) => $service("records.list")({ model: ${modelLiteral}, ...params }) }}`,
+          loadData: '{{ $service("records.list") }}',
           rowActions: ["deactivate", "delete"],
-          "action-btns": {
+          "actionBtns": {
             add: { type: "primary", children: "新增", openMode: OPEN_MODE },
             edit: { type: "link", children: "编辑", openMode: OPEN_MODE },
             detail: { type: "link", children: "详情", openMode: OPEN_MODE },

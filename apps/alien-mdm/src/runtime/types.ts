@@ -7,7 +7,8 @@ export interface ModelSummary extends ModelMeta {
 
 export interface ListRequest {
   model: string;
-  filters?: Record<string, unknown>;
+  /** PocketBase 风格的字段筛选表达式。 */
+  filter?: string;
   pagination?: { current: number; pageSize: number };
   sorter?: { field: string; order: "ascend" | "descend" };
   keyword?: string;

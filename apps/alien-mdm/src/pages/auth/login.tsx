@@ -34,7 +34,7 @@ export default function LoginPage() {
             <AppstoreOutlined />
           </div>
           <div>
-            <Typography.Text className={styles.kicker}>ALIEN CMS</Typography.Text>
+            <Typography.Text className={styles.kicker}>ALIEN MDM</Typography.Text>
             <Typography.Title
               level={3}
               className={styles.title}

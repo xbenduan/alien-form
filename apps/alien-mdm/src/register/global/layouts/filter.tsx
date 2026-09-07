@@ -1,32 +1,61 @@
 import { Button, Card, Space } from "antd";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { usePage, type ComponentProps, type ValueSource } from "@binding";
 import type { DatabaseField, FieldSchema } from "@alien-form/engine";
-import type { FilterField } from "@utils/schema";
-import { parseFilter } from "./parse-filter";
+import type { FilterField } from "../utils/schema";
 import styles from "./index.module.css";
 
+interface ReferenceValue {
+  value: unknown;
+}
+
+function isReferenceValue(value: unknown): value is ReferenceValue {
+  return typeof value === "object" && value !== null && !Array.isArray(value) && "value" in value;
+}
+
+function scalar(value: unknown): string | number | boolean | undefined {
+  const raw = isReferenceValue(value) ? value.value : value;
+  if (typeof raw === "string" || typeof raw === "number" || typeof raw === "boolean") return raw;
+  return undefined;
+}
+
+function literal(value: string | number | boolean): string {
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return `'${value.replaceAll("\\", "\\\\").replaceAll("'", "\\'")}'`;
+}
+
+/** 筛选表单的临时值 → records.list 的唯一筛选协议。 */
+function toFilter(draft: Record<string, unknown>, fields: FilterField[]): string | undefined {
+  const expressions = fields.flatMap(({ name, type }) => {
+    const value = draft[name];
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) return [];
+    const values = (Array.isArray(value) ? value : [value])
+      .map(scalar)
+      .filter((item): item is string | number | boolean => item !== undefined);
+    if (values.length === 0) return [];
+    const operator = type === "text" ? "~" : "=";
+    const comparisons = values.map((item) => `${name} ${operator} ${literal(item)}`);
+    return comparisons.length === 1 ? comparisons : [`(${comparisons.join(" || ")})`];
+  });
+  return expressions.length > 0 ? expressions.join(" && ") : undefined;
+}
+
 export function Filter({
-  value,
   onChange,
   schema,
-  filters: toFilters,
-  defaultValue,
+  filterFields: buildFilterFields,
 }: ComponentProps & {
   schema?: FieldSchema;
-  filters?: (
+  filterFields?: (
     schema?: FieldSchema,
     scope?: ValueSource<Record<string, unknown>>,
     domain?: string,
     fields?: DatabaseField[],
   ) => FilterField[];
-  defaultValue?: unknown;
 }) {
   const page = usePage();
   const [expanded, setExpanded] = useState(false);
-  const [draft, setDraft] = useState<Record<string, unknown>>(() =>
-    parseFilter(value ?? defaultValue),
-  );
+  const [draft, setDraft] = useState<Record<string, unknown>>({});
   const expressionScope = useCallback(
     () => ({
       ...page.runtime.createScope(page.domain, page.query, "edit"),
@@ -36,14 +65,10 @@ export function Filter({
     [page],
   );
   const fields = useMemo(() => {
-    return toFilters?.(schema, expressionScope, page.domain, page.model.fields) ?? [];
-  }, [expressionScope, page.domain, page.model.fields, schema, toFilters]);
+    return buildFilterFields?.(schema, expressionScope, page.domain, page.model.fields) ?? [];
+  }, [buildFilterFields, expressionScope, page.domain, page.model.fields, schema]);
   const visibleCount = 4;
   const hasExtraFields = fields.length > visibleCount;
-
-  useEffect(() => {
-    setDraft(parseFilter(value ?? defaultValue));
-  }, [value, defaultValue]);
 
   const update = (key: string, next: unknown) => {
     setDraft((current) => ({
@@ -53,7 +78,7 @@ export function Filter({
   };
   const reset = () => {
     setDraft({});
-    onChange?.("{}");
+    onChange?.("");
   };
 
   return (
@@ -79,7 +104,7 @@ export function Filter({
               </Button>
             )}
             <Button onClick={reset}>重置</Button>
-            <Button type="primary" onClick={() => onChange?.(JSON.stringify(draft))}>
+            <Button type="primary" onClick={() => onChange?.(toFilter(draft, fields) ?? "")}>
               查询
             </Button>
           </Space>

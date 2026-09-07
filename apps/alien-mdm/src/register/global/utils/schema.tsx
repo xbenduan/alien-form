@@ -12,6 +12,7 @@ function defaultComponent(field: FieldSchema): string {
 export interface FilterField {
   name: string;
   title: string;
+  type: DatabaseField["type"];
   render(value: unknown, onChange: (value: unknown) => void): ReactNode;
 }
 
@@ -90,7 +91,7 @@ export function schemaToColumns<T extends object = Record<string, unknown>>(
 /**
  * 筛选器集合由 fields 决定：遍历 fields（filterable 且非 object/array），组件从 form-schema 按 key 取。
  */
-export function schemaToFilters(
+export function schemaToFilterFields(
   schema?: FieldSchema,
   scope: ValueSource<Record<string, unknown>> = EMPTY_SCOPE,
   domain?: string,
@@ -98,7 +99,7 @@ export function schemaToFilters(
 ): FilterField[] {
   return orderedFields(schema?.properties ?? {}, fields)
     .filter(({ field, column }) => column.filterable === true && !isComplex(field))
-    .map(({ key: name, field }) => {
+    .map(({ key: name, field, column }) => {
       const schemaProps = compileRuntimeValue({
         ...field.props,
         dataSource: field.dataSource,
@@ -106,6 +107,7 @@ export function schemaToFilters(
       return {
         name,
         title: field.title ?? name,
+        type: column.type,
         render(value: unknown, onChange: (value: unknown) => void): ReactNode {
           return (
             <SchemaComponent
