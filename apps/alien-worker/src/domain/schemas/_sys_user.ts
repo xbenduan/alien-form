@@ -158,14 +158,12 @@ const properties: Record<string, ModelFieldSchema> = {
         enrollmentDate: {
           type: "string",
           title: "入学时间",
-          component: "Input",
-          props: { placeholder: "YYYY-MM-DD" },
+          component: "DatePicker",
         },
         graduationDate: {
           type: "string",
           title: "毕业时间",
-          component: "Input",
-          props: { placeholder: "YYYY-MM-DD" },
+          component: "DatePicker",
         },
       },
     },
@@ -183,8 +181,18 @@ const properties: Record<string, ModelFieldSchema> = {
     display: "hidden",
     default: false,
   },
-  createdAt: { type: "string", title: "创建时间", props: { readOnly: true } },
-  updatedAt: { type: "string", title: "更新时间", props: { readOnly: true } },
+  createdAt: {
+    type: "string",
+    title: "创建时间",
+    component: "DatePicker",
+    props: { readOnly: true, showTime: true },
+  },
+  updatedAt: {
+    type: "string",
+    title: "更新时间",
+    component: "DatePicker",
+    props: { readOnly: true, showTime: true },
+  },
 };
 
 export const sysUserSchema: ModelSchema = {

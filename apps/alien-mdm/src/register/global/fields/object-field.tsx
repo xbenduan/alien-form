@@ -1,27 +1,35 @@
 import { fieldGridStyle } from "@utils/field-grid";
 import { ComplexFieldFrame, TableComplexCell } from "./complex-field";
-import type { ComplexFieldProps } from "./shared";
+import { buildProps, type ComplexFieldProps } from "./shared";
 import styles from "./index.module.css";
 
-export function ObjectField({
-  children,
-  title,
-  description,
-  isTable,
-  value,
-  schema,
-  domain,
-  gridSpan,
-  columns,
-  gutter,
-}: ComplexFieldProps) {
-  if (isTable) {
-    return <TableComplexCell value={value} schema={schema} title={title} domain={domain} />;
+export function ObjectField(props: ComplexFieldProps) {
+  const { children } = props;
+  const { controlProps, value } = buildProps(props);
+  if (controlProps.isTable) {
+    return (
+      <TableComplexCell
+        value={value}
+        schema={controlProps.schema as ComplexFieldProps["schema"]}
+        title={controlProps.title as string | undefined}
+        domain={controlProps.domain as string | undefined}
+      />
+    );
   }
 
   return (
-    <ComplexFieldFrame title={title} description={description}>
-      <div className={styles.objectField} style={fieldGridStyle({ gridSpan, columns, gutter })}>
+    <ComplexFieldFrame
+      title={controlProps.title as string | undefined}
+      description={controlProps.description as string | undefined}
+    >
+      <div
+        className={styles.objectField}
+        style={fieldGridStyle({
+          gridSpan: controlProps.gridSpan as number | undefined,
+          columns: controlProps.columns as number | undefined,
+          gutter: controlProps.gutter as number | undefined,
+        })}
+      >
         {children}
       </div>
     </ComplexFieldFrame>

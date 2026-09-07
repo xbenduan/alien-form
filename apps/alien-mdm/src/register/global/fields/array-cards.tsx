@@ -22,7 +22,7 @@ import { FieldNodes, type ComponentProps } from "@binding";
 import type { CompiledNode } from "@alien-form/engine";
 import { fieldGridStyle } from "@utils/field-grid";
 import { ComplexFieldFrame, TableComplexCell } from "./complex-field";
-import type { ComplexFieldProps } from "./shared";
+import { buildProps, type ComplexFieldProps } from "./shared";
 import styles from "./index.module.css";
 
 function ArrayCardsField({
@@ -192,15 +192,16 @@ function ArrayCardRow({
 }
 
 export function ArrayCards(props: ComplexFieldProps) {
-  if (props.isTable) {
+  const { mode, controlProps, value } = buildProps(props);
+  if (controlProps.isTable) {
     return (
       <TableComplexCell
-        value={props.value}
-        schema={props.schema}
-        title={props.title}
-        domain={props.domain}
+        value={value}
+        schema={controlProps.schema as ComplexFieldProps["schema"]}
+        title={controlProps.title as string | undefined}
+        domain={controlProps.domain as string | undefined}
       />
     );
   }
-  return <ArrayCardsField {...props} />;
+  return <ArrayCardsField {...props} mode={mode} />;
 }

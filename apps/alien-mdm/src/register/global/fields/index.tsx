@@ -1,7 +1,7 @@
 import type { Runtime } from "@alien-form/engine";
 import { ArrayCards } from "./array-cards";
 import { ObjectField } from "./object-field";
-import { Input, NumberInput, Select, TextArea } from "./primitive";
+import { DatePicker, Input, NumberInput, Select, TextArea } from "./primitive";
 import { RemoteSelect } from "./remote-select";
 
 export function registerFields(runtime: Runtime): void {
@@ -36,6 +36,17 @@ export function registerFields(runtime: Runtime): void {
       kind: "leaf",
       dataSource: false,
       sample: { type: "number", component: "NumberInput", props: { min: 0 } },
+    },
+  });
+  runtime.component({
+    code: "DatePicker",
+    component: DatePicker,
+    adapter: "form",
+    meta: {
+      type: "string",
+      kind: "leaf",
+      dataSource: false,
+      sample: { type: "string", component: "DatePicker" },
     },
   });
   runtime.component({

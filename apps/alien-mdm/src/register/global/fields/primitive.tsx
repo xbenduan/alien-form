@@ -1,49 +1,58 @@
-import { Input as AntInput, InputNumber as AntInputNumber, Select as AntSelect } from "antd";
+import {
+  DatePicker as AntDatePicker,
+  Input as AntInput,
+  InputNumber as AntInputNumber,
+  Select as AntSelect,
+} from "antd";
+import dayjs from "dayjs";
+import "dayjs/locale/zh-cn";
 import { useEffect, type ReactNode } from "react";
 import type { DataSourceItem } from "@alien-form/core";
 import type { ComponentProps } from "@binding";
-import { DetailValue, nativeProps } from "./shared";
+import { DetailValue, buildProps } from "./shared";
 
 const EMPTY_OPTIONS: DataSourceItem[] = [];
+dayjs.locale("zh-cn");
 
 export function Input(props: ComponentProps) {
-  if (props.mode === "detail" || props.readOnly) return <DetailValue value={props.value} />;
+  const { mode, controlProps, value, onChange } = buildProps(props);
+  if (mode === "detail") return <DetailValue value={value} />;
 
   return (
     <AntInput
-      {...nativeProps(props)}
-      placeholder={props.placeholder || "请输入"}
-      value={props.value as string | undefined}
-      onChange={(event) => props.onChange?.(event.target.value)}
+      {...controlProps}
+      placeholder={(controlProps.placeholder as string | undefined) || "请输入"}
+      value={value as string | undefined}
+      onChange={(event) => onChange?.(event.target.value)}
     />
   );
 }
 
 export function TextArea(props: ComponentProps) {
-  if (props.mode === "detail" || props.readOnly) return <DetailValue value={props.value} />;
-  const controlProps = nativeProps(props);
-  if (props.isFilter) controlProps.rows = 1;
+  const { mode, controlProps, value, onChange, isFilter } = buildProps(props);
+  if (mode === "detail") return <DetailValue value={value} />;
+  if (isFilter) controlProps.rows = 1;
   return (
     <AntInput.TextArea
       {...controlProps}
-      placeholder={props.placeholder || "请输入"}
+      placeholder={(controlProps.placeholder as string | undefined) || "请输入"}
       style={{ width: "100%", ...(controlProps.style as object) }}
-      value={props.value as string | undefined}
-      onChange={(event) => props.onChange?.(event.target.value)}
+      value={value as string | undefined}
+      onChange={(event) => onChange?.(event.target.value)}
     />
   );
 }
 
 export function NumberInput(props: ComponentProps) {
-  if (props.mode === "detail" || props.readOnly) return <DetailValue value={props.value} />;
-  const controlProps = nativeProps(props);
+  const { mode, controlProps, value, onChange } = buildProps(props);
+  if (mode === "detail") return <DetailValue value={value} />;
   return (
     <AntInputNumber
       {...controlProps}
-      placeholder={props.placeholder || "请输入"}
+      placeholder={(controlProps.placeholder as string | undefined) || "请输入"}
       style={{ width: "100%", ...(controlProps.style as object) }}
-      value={props.value as number | null | undefined}
-      onChange={(next) => props.onChange?.(next)}
+      value={value as number | null | undefined}
+      onChange={(next) => onChange?.(next)}
     />
   );
 }
@@ -51,15 +60,16 @@ export function NumberInput(props: ComponentProps) {
 export function Select(
   props: ComponentProps & { isFilter?: boolean; onOptionsChange?: "preserve" | "clear" | "first" },
 ) {
-  const { value, onChange, loading, isFilter, onOptionsChange = "clear" } = props;
-  const options = (
-    Array.isArray(props.dataSource) ? props.dataSource : EMPTY_OPTIONS
-  ) as DataSourceItem[];
+  const { mode, controlProps, value, onChange, loading, isFilter, dataSource } = buildProps(props);
+  const onOptionsChange = (controlProps.onOptionsChange ?? "clear") as
+    | "preserve"
+    | "clear"
+    | "first";
+  const options = (Array.isArray(dataSource) ? dataSource : EMPTY_OPTIONS) as DataSourceItem[];
   useEffect(() => {
     // filter 场景下选项与查询条件相互独立,不做“选项刷新即清值”的联动处理。
     if (
-      props.mode === "detail" ||
-      props.readOnly ||
+      mode === "detail" ||
       isFilter ||
       loading ||
       value == null ||
@@ -69,26 +79,50 @@ export function Select(
     }
     if (options.some((option) => Object.is(option.value, value))) return;
     onChange?.(onOptionsChange === "first" ? options[0]?.value : undefined);
-  }, [isFilter, loading, onChange, onOptionsChange, options, props.mode, props.readOnly, value]);
-
-  if (props.mode === "detail" || props.readOnly) {
+  }, [isFilter, loading, mode, onChange, onOptionsChange, options, value]);
+  if (mode === "detail") {
     const option = (options as Array<{ label?: ReactNode; value: unknown }>).find((item) =>
       Object.is(item.value, value),
     );
     return <DetailValue value={option?.label ?? value} />;
   }
 
-  const controlProps = nativeProps(props);
   return (
     <AntSelect
       {...controlProps}
-      placeholder={props.placeholder || "请选择"}
+      placeholder={(controlProps.placeholder as string | undefined) || "请选择"}
       allowClear
       style={{ width: "100%", ...(controlProps.style as object) }}
       value={value}
       options={options as any[]}
       loading={loading}
       onChange={(next) => onChange?.(next)}
+    />
+  );
+}
+
+export function DatePicker(props: ComponentProps) {
+  const { mode, controlProps, value, onChange } = buildProps(props);
+  const showTime = controlProps.showTime === true;
+  const format = showTime ? "YYYY-MM-DD HH:mm:ss" : "YYYY-MM-DD";
+  if (mode === "detail") {
+    const date =
+      value === undefined || value === null || value === ""
+        ? null
+        : dayjs(value as string | number);
+    return <DetailValue value={date?.isValid() ? date.format(format) : value} />;
+  }
+
+  const dateValue =
+    value === undefined || value === null || value === "" ? null : dayjs(value as string | number);
+  return (
+    <AntDatePicker
+      {...controlProps}
+      value={dateValue?.isValid() ? dateValue : null}
+      showTime={showTime}
+      format={format}
+      style={{ width: "100%", ...(controlProps.style as object) }}
+      onChange={(next) => onChange?.(next ? next.format(format) : undefined)}
     />
   );
 }

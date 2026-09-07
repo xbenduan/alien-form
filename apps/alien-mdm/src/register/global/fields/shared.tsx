@@ -29,8 +29,24 @@ export function DetailValue({ value }: { value: unknown }) {
   return <div className={styles.detailValue}>{displayValue(value)}</div>;
 }
 
-/** 剔除运行时注入的非原生属性，仅保留可透传给 antd 组件的 props。 */
-export function nativeProps(props: ComponentProps): Record<string, unknown> {
+export type FieldMode = "add" | "edit" | "detail";
+
+export interface BuiltProps {
+  mode: FieldMode;
+  controlProps: Record<string, unknown>;
+  value: unknown;
+  onChange?: (value: unknown) => void;
+  isFilter: boolean;
+  loading?: boolean;
+  dataSource?: unknown[];
+  extraProps: Record<string, unknown>;
+}
+
+/** 统一处理字段场景，并产出组件可消费的控制属性。 */
+export function buildProps(
+  props: ComponentProps,
+  extraRuntimeProps: string[] = [],
+): BuiltProps {
   const result = { ...props };
   for (const key of [
     "value",
@@ -49,8 +65,27 @@ export function nativeProps(props: ComponentProps): Record<string, unknown> {
     "gridSpan",
     "columns",
     "gutter",
+    "onOptionsChange",
+    ...extraRuntimeProps,
   ]) {
     delete result[key];
   }
-  return result;
+  const isFilter = props.isFilter === true;
+  const mode: FieldMode = isFilter
+    ? "edit"
+    : props.isTable === true || props.readOnly === true || props.mode === "detail"
+      ? "detail"
+      : props.mode === "add"
+        ? "add"
+        : "edit";
+  return {
+    mode,
+    controlProps: result,
+    value: props.value,
+    onChange: props.onChange,
+    isFilter,
+    loading: props.loading,
+    dataSource: props.dataSource,
+    extraProps: Object.fromEntries(extraRuntimeProps.map((key) => [key, props[key]])),
+  };
 }

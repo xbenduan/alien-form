@@ -35,7 +35,11 @@ function systemFields(): FieldNode[] {
         system: true,
         filterable: true,
       },
-      form: { title: "创建时间", props: { readOnly: true } },
+      form: {
+        title: "创建时间",
+        component: "DatePicker",
+        props: { readOnly: true, showTime: true },
+      },
     },
     {
       id: createId(),
@@ -49,7 +53,11 @@ function systemFields(): FieldNode[] {
         system: true,
         filterable: true,
       },
-      form: { title: "更新时间", props: { readOnly: true } },
+      form: {
+        title: "更新时间",
+        component: "DatePicker",
+        props: { readOnly: true, showTime: true },
+      },
     },
   ];
 }

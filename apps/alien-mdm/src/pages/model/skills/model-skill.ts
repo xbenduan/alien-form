@@ -79,14 +79,14 @@ function modelTemplate() {
           createdAt: {
             type: "string",
             title: "创建时间",
-            component: "Input",
-            props: { readOnly: true },
+            component: "DatePicker",
+            props: { readOnly: true, showTime: true },
           },
           updatedAt: {
             type: "string",
             title: "更新时间",
-            component: "Input",
-            props: { readOnly: true },
+            component: "DatePicker",
+            props: { readOnly: true, showTime: true },
           },
         },
       },

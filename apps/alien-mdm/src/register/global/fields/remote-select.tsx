@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { DataSourceItem } from "@alien-form/core";
 import type { ListRequest } from "@app-types";
 import type { ComponentProps } from "@binding";
-import { DetailValue, nativeProps } from "./shared";
+import { DetailValue, buildProps } from "./shared";
 
 interface OptionRequest extends ListRequest {
   valueField: string;
@@ -61,16 +61,28 @@ export function RemoteSelect(
   },
 ) {
   const {
+    mode,
+    controlProps,
     value,
     onChange,
     loading,
+    extraProps,
+  } = buildProps(props, ["model", "loadOptions", "valueField", "labelField", "pageSize", "multiple"]);
+  const {
     model,
     loadOptions,
     valueField = "id",
     labelField = "name",
     pageSize = 10,
     multiple = false,
-  } = props;
+  } = extraProps as {
+    model?: string;
+    loadOptions?: OptionLoader;
+    valueField?: string;
+    labelField?: string;
+    pageSize?: number;
+    multiple?: boolean;
+  };
   const refs = useMemo(() => referenceOptions(value), [value]);
   const normalizedValue = useMemo(() => selectedValue(value), [value]);
   const [options, setOptions] = useState<DataSourceItem[]>(refs);
@@ -133,7 +145,7 @@ export function RemoteSelect(
     searchTimer.current = setTimeout(() => void load(keyword.trim() || undefined), 250);
   };
 
-  if (props.mode === "detail" || props.readOnly) {
+  if (mode === "detail") {
     if (isReferenceValue(value)) return <DetailValue value={value.label ?? value.value} />;
     if (Array.isArray(value) && value.every(isReferenceValue)) {
       return <DetailValue value={value.map((item) => item.label ?? item.value).join(", ")} />;
@@ -146,15 +158,13 @@ export function RemoteSelect(
     return <DetailValue value={selected.map((option) => option.label).join(", ") || value} />;
   }
 
-  const controlProps = nativeProps(props);
-  for (const key of ["model", "loadOptions", "valueField", "labelField", "pageSize", "multiple"]) {
-    delete controlProps[key];
-  }
   return (
     <AntSelect
       {...controlProps}
       mode={multiple ? "multiple" : undefined}
-      placeholder={props.placeholder || "请输入关键词搜索"}
+      placeholder={
+        (controlProps.placeholder as string | undefined) || "请输入关键词搜索"
+      }
       allowClear
       showSearch={{ filterOption: false, onSearch: handleSearch }}
       style={{ width: "100%", ...(controlProps.style as object) }}
