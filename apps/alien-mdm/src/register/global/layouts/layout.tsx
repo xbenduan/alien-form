@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import styles from "./index.module.css";
+import styles from "./layout.module.css";
 import { LayoutLoadingProvider } from "./loading-context";
 
 export function Layout({

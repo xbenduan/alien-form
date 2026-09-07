@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { ComponentProps } from "@alien-form/react";
 import type { FieldSchema } from "@alien-form/engine";
 import type { FieldGridProps } from "@utils/field-grid";
-import styles from "./index.module.css";
+import styles from "./shared.module.css";
 
 /** object/array 复合字段共用的表现属性（标题、描述、表格态、schema、domain 与栅格）。 */
 export type ComplexFieldProps = ComponentProps &

@@ -1,0 +1,31 @@
+.layout {
+  display: flex;
+  min-width: 0;
+  min-height: 520px;
+  gap: 16px;
+}
+
+.layoutLeft {
+  min-width: 240px;
+  flex: 0 0 280px;
+}
+
+.layoutMain {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    flex-direction: column;
+  }
+
+  .layoutLeft {
+    width: 100%;
+    min-width: 0;
+    flex-basis: auto;
+  }
+}

@@ -1,7 +1,7 @@
 import type { Runtime } from "@alien-form/engine";
-import { Overlay } from "./overlay";
 import { RecordForm } from "./record-form";
-import { RecordPage } from "./record-page";
+import { Overlay } from "../ui/overlay";
+import { RecordPage } from "../ui/record-page";
 
 export function registerPages(runtime: Runtime): void {
   runtime.component({ code: "record-page", component: RecordPage, adapter: "page" });

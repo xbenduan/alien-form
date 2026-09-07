@@ -1,11 +1,13 @@
 import type { Runtime } from "@alien-form/engine";
 import { ArrayCards } from "./array-cards";
+import { DatePicker } from "./date-picker";
 import { FormItem } from "./form-item";
+import { Input, NumberInput, TextArea } from "./input";
 import { ObjectField } from "./object-field";
-import { DatePicker, Input, NumberInput, Select, TextArea } from "./primitive";
 import { RemoteSelect } from "./remote-select";
+import { Select } from "./select";
 
-export function registerFields(runtime: Runtime): void {
+export function registerComponents(runtime: Runtime): void {
   runtime.component({ code: "FormItem", component: FormItem, adapter: "decorator" });
   runtime.component({
     code: "Input",

@@ -2,7 +2,7 @@ import { SaveOutlined } from "@ant-design/icons";
 import { Button, Space } from "antd";
 import { useRef, useState, type ReactNode } from "react";
 import type { FieldSchema, OpenMode } from "@alien-form/engine";
-import { Overlay } from "./overlay";
+import { Overlay } from "../ui/overlay";
 import { RecordForm, type RecordActionMode, type RecordFormHandle } from "./record-form";
 
 export function RecordActionOverlay({

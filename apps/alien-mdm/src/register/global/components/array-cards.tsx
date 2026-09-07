@@ -21,7 +21,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { fieldGridStyle } from "@utils/field-grid";
 import { ComplexFieldFrame, TableComplexCell } from "./complex-field";
 import { buildProps, type ComplexFieldProps } from "./shared";
-import styles from "./index.module.css";
+import styles from "./array-cards.module.css";
 
 function ArrayCardsField({
   field,

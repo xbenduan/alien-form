@@ -5,7 +5,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { FormRenderer, useRuntime } from "@alien-form/react";
 import { compileForm, type FieldSchema } from "@alien-form/engine";
 import { fieldGridItemStyle } from "@utils/field-grid";
-import styles from "./index.module.css";
+import styles from "./complex-field.module.css";
 
 export function ComplexFieldFrame({
   title,

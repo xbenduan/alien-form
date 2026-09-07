@@ -65,7 +65,7 @@ import { recordRoute } from "@utils/record-route";
 import { RecordActionOverlay } from "../pages/record-action-overlay";
 import type { RecordActionMode } from "../pages/record-form";
 import { useLayoutLoading } from "./loading-context";
-import styles from "./index.module.css";
+import styles from "./table.module.css";
 
 interface ListResult {
   list: Record<string, unknown>[];

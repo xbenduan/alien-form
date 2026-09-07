@@ -1,0 +1,7 @@
+.detailValue {
+  min-height: 22px;
+  color: #262626;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}

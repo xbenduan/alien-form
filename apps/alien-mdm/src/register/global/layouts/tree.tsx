@@ -2,7 +2,7 @@ import { SearchOutlined } from "@ant-design/icons";
 import { Input, Spin } from "antd";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "@alien-form/react";
-import styles from "./index.module.css";
+import styles from "./tree.module.css";
 import { useLayoutLoading } from "./loading-context";
 
 interface TreeItem {

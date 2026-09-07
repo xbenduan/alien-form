@@ -1,0 +1,131 @@
+.treeCard {
+  overflow: hidden;
+  height: 100%;
+  min-height: 520px;
+  border: 1px solid rgba(22, 119, 255, 0.12);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(23, 32, 51, 0.05);
+}
+
+.treeHeader {
+  border-bottom: 1px solid #e8edf3;
+  background: #f8faff;
+  padding: 12px 16px;
+  color: #172033;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.treeContent {
+  min-height: 120px;
+  padding: 10px 8px;
+}
+
+.treeSearch {
+  margin-bottom: 8px;
+  border-radius: 6px;
+}
+
+.tree {
+  margin: 0;
+  padding: 0;
+  color: #172033;
+  font-size: 13px;
+  list-style: none;
+}
+
+.treeBranch {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.treeNode {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  border-radius: 4px;
+}
+
+.treeNode:hover {
+  background: #f5f8fd;
+}
+
+.treeNodeSelected {
+  background: #edf5ff;
+}
+
+.treeToggle,
+.treeTogglePlaceholder {
+  display: inline-flex;
+  width: 20px;
+  height: 28px;
+  flex: 0 0 20px;
+  align-items: center;
+  justify-content: center;
+}
+
+.treeToggle {
+  border: 0;
+  background: transparent;
+  color: #7b8799;
+  cursor: pointer;
+}
+
+.treeToggle:hover {
+  color: #1769e0;
+}
+
+.treeToggle:focus-visible,
+.treeItem:focus-visible {
+  outline: 2px solid rgba(22, 119, 255, 0.35);
+  outline-offset: -2px;
+}
+
+.treeChevron,
+.treeChevronOpen {
+  width: 6px;
+  height: 6px;
+  border-top: 1.5px solid currentcolor;
+  border-right: 1.5px solid currentcolor;
+  transform: rotate(45deg);
+  transition: transform 150ms ease;
+}
+
+.treeChevronOpen {
+  transform: rotate(135deg);
+}
+
+.treeItem {
+  width: 100%;
+  min-height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #172033;
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0 8px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 28px;
+}
+
+.treeItemSelected {
+  color: #1769e0;
+  font-weight: 500;
+}
+
+.treeEmpty {
+  margin: 24px 0;
+  color: #7b8799;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .treeCard {
+    min-height: 320px;
+  }
+}

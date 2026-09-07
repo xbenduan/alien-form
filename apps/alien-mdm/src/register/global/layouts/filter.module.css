@@ -1,0 +1,47 @@
+.filterCard {
+  border-color: rgba(22, 119, 255, 0.12);
+  border-radius: 8px;
+}
+
+.filter {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  align-items: end;
+  gap: 12px;
+}
+
+.filterFields {
+  display: contents;
+}
+
+.filterField {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filterLabel {
+  color: #4e5969;
+  font-size: 13px;
+}
+
+.filterCollapsed .filterFields > :nth-child(n + 5) {
+  display: none;
+}
+
+.filterActions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .filter {
+    grid-template-columns: 1fr;
+  }
+
+  .filterCollapsed .filterFields > :nth-child(n + 3) {
+    display: none;
+  }
+}

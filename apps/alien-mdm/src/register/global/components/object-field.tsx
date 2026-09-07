@@ -1,7 +1,7 @@
 import { fieldGridStyle } from "@utils/field-grid";
 import { ComplexFieldFrame, TableComplexCell } from "./complex-field";
 import { buildProps, type ComplexFieldProps } from "./shared";
-import styles from "./index.module.css";
+import styles from "./object-field.module.css";
 
 export function ObjectField(props: ComplexFieldProps) {
   const {

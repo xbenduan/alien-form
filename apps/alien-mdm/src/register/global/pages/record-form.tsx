@@ -13,7 +13,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { FormRenderer, useRuntime } from "@alien-form/react";
 import { compileForm, type FieldSchema } from "@alien-form/engine";
 import { recordListRoute } from "@utils/record-route";
-import styles from "./index.module.css";
+import styles from "./record-form.module.css";
 
 export type RecordActionMode = "add" | "edit" | "detail";
 

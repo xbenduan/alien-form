@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { usePage, type ComponentProps, type ValueSource } from "@alien-form/react";
 import type { DatabaseField, FieldSchema } from "@alien-form/engine";
 import type { FilterField } from "../utils/schema";
-import styles from "./index.module.css";
+import styles from "./filter.module.css";
 
 interface ReferenceValue {
   value: unknown;

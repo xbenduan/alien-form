@@ -1,0 +1,6 @@
+.objectField {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  column-gap: var(--alien-grid-column-gap, 8px);
+  row-gap: var(--alien-grid-row-gap, 8px);
+}
