@@ -15,6 +15,7 @@ export interface ComponentProps {
   value?: unknown;
   mode?: string;
   onChange?: (value: unknown) => void;
+  isFilter?: boolean;
   dataSource?: unknown[];
   loading?: boolean;
   placeholder?: string;

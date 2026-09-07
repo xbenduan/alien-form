@@ -22,6 +22,7 @@ export function Input(props: ComponentProps) {
 export function TextArea(props: ComponentProps) {
   if (props.mode === "detail" || props.readOnly) return <DetailValue value={props.value} />;
   const controlProps = nativeProps(props);
+  if (props.isFilter) controlProps.rows = 1;
   return (
     <AntInput.TextArea
       {...controlProps}
