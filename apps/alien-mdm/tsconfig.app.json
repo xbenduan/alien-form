@@ -15,8 +15,6 @@
     "moduleDetection": "force",
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@binding": ["./src/binding/index.ts"],
-      "@binding/*": ["./src/binding/*"],
       "@runtime": ["./src/runtime/index.ts"],
       "@runtime/*": ["./src/runtime/*"],
       "@utils/*": ["./src/utils/*"],

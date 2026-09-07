@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { ComponentProps } from "@binding";
+import type { ComponentProps } from "@alien-form/react";
 import type { FieldSchema } from "@alien-form/engine";
 import type { FieldGridProps } from "@utils/field-grid";
 import styles from "./index.module.css";
@@ -34,6 +34,18 @@ export type FieldMode = "add" | "edit" | "detail";
 export interface BuiltProps {
   mode: FieldMode;
   controlProps: Record<string, unknown>;
+  field: ComponentProps["field"];
+  node: ComponentProps["node"];
+  children?: ReactNode;
+  title?: string;
+  description?: string;
+  gridSpan?: unknown;
+  columns?: unknown;
+  gutter?: unknown;
+  domain?: string;
+  isTable: boolean;
+  schema?: FieldSchema;
+  renderRow?: ComponentProps["renderRow"];
   value: unknown;
   onChange?: (value: unknown) => void;
   isFilter: boolean;
@@ -43,20 +55,18 @@ export interface BuiltProps {
 }
 
 /** 统一处理字段场景，并产出组件可消费的控制属性。 */
-export function buildProps(
-  props: ComponentProps,
-  extraRuntimeProps: string[] = [],
-): BuiltProps {
+export function buildProps(props: ComponentProps, extraRuntimeProps: string[] = []): BuiltProps {
   const result = { ...props };
   for (const key of [
     "value",
     "onChange",
     "mode",
     "form",
-    "field",
-    "node",
     "slots",
     "children",
+    "field",
+    "node",
+    "domain",
     "dataSource",
     "loading",
     "title",
@@ -65,6 +75,9 @@ export function buildProps(
     "gridSpan",
     "columns",
     "gutter",
+    "isTable",
+    "schema",
+    "renderRow",
     "onOptionsChange",
     ...extraRuntimeProps,
   ]) {
@@ -81,6 +94,18 @@ export function buildProps(
   return {
     mode,
     controlProps: result,
+    field: props.field,
+    node: props.node,
+    children: props.children,
+    title: props.title as string | undefined,
+    description: props.description as string | undefined,
+    gridSpan: props.gridSpan,
+    columns: props.columns,
+    gutter: props.gutter,
+    domain: props.domain as string | undefined,
+    isTable: props.isTable === true,
+    schema: props.schema as FieldSchema | undefined,
+    renderRow: props.renderRow,
     value: props.value,
     onChange: props.onChange,
     isFilter,

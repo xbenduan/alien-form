@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { TableColumnsType } from "antd";
-import { SchemaComponent, type ValueSource } from "@binding";
+import { SchemaComponent, type ValueSource } from "@alien-form/react";
 import { compileRuntimeValue, type DatabaseField, type FieldSchema } from "@alien-form/engine";
 
 function defaultComponent(field: FieldSchema): string {
@@ -72,7 +72,7 @@ export function schemaToColumns<T extends object = Record<string, unknown>>(
               $value: value,
               $row: record,
             })}
-            bindings={{
+            controlProps={{
               value,
               mode: "detail",
               isTable: true,
@@ -118,7 +118,7 @@ export function schemaToFilterFields(
                 ...readScope(scope),
                 $value: value,
               })}
-              bindings={{
+              controlProps={{
                 value,
                 onChange,
                 mode: "edit",

@@ -52,7 +52,7 @@ import {
   type ReactNode,
 } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { SchemaComponent, usePage, type ComponentProps, type ValueSource } from "@binding";
+import { SchemaComponent, usePage, type ComponentProps, type ValueSource } from "@alien-form/react";
 import {
   compilePage,
   evaluateCompiledValue,
@@ -480,7 +480,7 @@ export function Table({
               $form: pageRuntime.form,
               $row: record,
             })}
-            bindings={{
+            controlProps={{
               row: record,
               model: resolvedModelCode,
               rowKey,

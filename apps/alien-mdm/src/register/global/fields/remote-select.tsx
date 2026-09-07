@@ -2,7 +2,7 @@ import { Select as AntSelect } from "antd";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { DataSourceItem } from "@alien-form/core";
 import type { ListRequest } from "@app-types";
-import type { ComponentProps } from "@binding";
+import type { ComponentProps } from "@alien-form/react";
 import { DetailValue, buildProps } from "./shared";
 
 interface OptionRequest extends ListRequest {

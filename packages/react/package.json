@@ -18,11 +18,12 @@
     }
   },
   "scripts": {
-    "build": "tsup src/index.tsx --format esm,cjs --dts --external react --external react-dom",
+    "build": "tsup src/index.tsx --format esm,cjs --dts --external react --external react-dom --external @alien-form/engine",
     "test": "vitest run"
   },
   "dependencies": {
-    "@alien-form/core": "workspace:*"
+    "@alien-form/core": "workspace:*",
+    "@alien-form/engine": "workspace:*"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.3",

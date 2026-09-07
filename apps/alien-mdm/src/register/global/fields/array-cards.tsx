@@ -18,31 +18,34 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { FieldNodes, type ComponentProps } from "@binding";
-import type { CompiledNode } from "@alien-form/engine";
 import { fieldGridStyle } from "@utils/field-grid";
 import { ComplexFieldFrame, TableComplexCell } from "./complex-field";
 import { buildProps, type ComplexFieldProps } from "./shared";
 import styles from "./index.module.css";
 
 function ArrayCardsField({
-  form,
   field,
-  node,
   mode,
-  domain,
   title,
   description,
   gridSpan,
   columns,
   gutter,
-}: ComplexFieldProps) {
-  const array = field as ArrayFieldNode;
+  renderRow,
+}: {
+  field: ArrayFieldNode;
+  mode: "add" | "edit" | "detail";
+  title?: string;
+  description?: string;
+  gridSpan?: unknown;
+  columns?: unknown;
+  gutter?: unknown;
+  renderRow?: (row: RowNode) => React.ReactNode;
+}) {
+  const array = field;
   const rows = useSignalValue(array.rows);
   const readonly = mode === "detail";
-  const gridStyle = fieldGridStyle({ gridSpan, columns, gutter });
-  const template = node.items;
-  if (!template) throw new Error(`Compiled array item template not found: ${field.path}`);
+  const gridStyle = fieldGridStyle({ columns, gutter });
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -55,7 +58,7 @@ function ArrayCardsField({
   };
 
   return (
-    <ComplexFieldFrame title={title} description={description}>
+    <ComplexFieldFrame title={title} description={description} gridSpan={gridSpan}>
       {rows.length === 0 ? (
         <>
           <Empty description="暂无数据" style={{ paddingBlock: 16 }} />
@@ -77,9 +80,7 @@ function ArrayCardsField({
                   total={rows.length}
                   readonly={readonly}
                   gridStyle={gridStyle}
-                  template={template}
-                  form={form}
-                  domain={domain}
+                  renderRow={renderRow}
                   onMoveUp={() => array.moveUp(index)}
                   onMoveDown={() => array.moveDown(index)}
                   onRemove={() => array.remove(index)}
@@ -110,9 +111,7 @@ function ArrayCardRow({
   total,
   readonly,
   gridStyle,
-  template,
-  form,
-  domain,
+  renderRow,
   onMoveUp,
   onMoveDown,
   onRemove,
@@ -122,9 +121,7 @@ function ArrayCardRow({
   total: number;
   readonly: boolean;
   gridStyle: React.CSSProperties;
-  template: CompiledNode;
-  form: ComponentProps["form"];
-  domain?: string;
+  renderRow?: (row: RowNode) => React.ReactNode;
   onMoveUp: () => void;
   onMoveDown: () => void;
   onRemove: () => void;
@@ -185,23 +182,34 @@ function ArrayCardRow({
         )}
       </div>
       <div className={styles.arrayCardBody} style={gridStyle}>
-        <FieldNodes nodes={template.children} fields={row.children} form={form} domain={domain} />
+        {renderRow?.(row)}
       </div>
     </div>
   );
 }
 
 export function ArrayCards(props: ComplexFieldProps) {
-  const { mode, controlProps, value } = buildProps(props);
-  if (controlProps.isTable) {
+  const built = buildProps(props);
+  if (built.isTable) {
     return (
       <TableComplexCell
-        value={value}
-        schema={controlProps.schema as ComplexFieldProps["schema"]}
-        title={controlProps.title as string | undefined}
-        domain={controlProps.domain as string | undefined}
+        value={built.value}
+        schema={built.schema}
+        title={built.title}
+        domain={built.domain}
       />
     );
   }
-  return <ArrayCardsField {...props} mode={mode} />;
+  return (
+    <ArrayCardsField
+      field={built.field as ArrayFieldNode}
+      mode={built.mode}
+      title={built.title}
+      description={built.description}
+      gridSpan={built.gridSpan}
+      columns={built.columns}
+      gutter={built.gutter}
+      renderRow={built.renderRow}
+    />
+  );
 }

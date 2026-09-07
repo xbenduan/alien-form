@@ -1,6 +1,6 @@
 import { Button, Card, Space } from "antd";
 import { useCallback, useMemo, useState } from "react";
-import { usePage, type ComponentProps, type ValueSource } from "@binding";
+import { usePage, type ComponentProps, type ValueSource } from "@alien-form/react";
 import type { DatabaseField, FieldSchema } from "@alien-form/engine";
 import type { FilterField } from "../utils/schema";
 import styles from "./index.module.css";

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { ComponentProps } from "@binding";
+import type { ComponentProps } from "@alien-form/react";
 import styles from "./index.module.css";
 
 export function RecordPage({ children }: Partial<ComponentProps> & { title?: ReactNode }) {

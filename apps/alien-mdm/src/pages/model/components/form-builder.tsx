@@ -1,7 +1,7 @@
 import { useCreateForm } from "@alien-form/react";
 import { App, Button, Card, Col, Empty, Flex, Input, Row, Segmented } from "antd";
 import { useEffect, useMemo, useState } from "react";
-import { FormRenderer, useRuntime } from "@binding";
+import { FormRenderer, useRuntime } from "@alien-form/react";
 import { compileForm } from "@alien-form/engine";
 import {
   applyFormSchema,

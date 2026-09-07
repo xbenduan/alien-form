@@ -1,7 +1,7 @@
 import { DownloadOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import { App, Button, Space } from "antd";
 import { useState } from "react";
-import { useRuntime } from "@binding";
+import { useRuntime } from "@alien-form/react";
 import styles from "./index.module.css";
 
 export interface ModelListToolbarProps {

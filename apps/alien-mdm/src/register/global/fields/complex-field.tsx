@@ -2,21 +2,24 @@ import { useCreateForm } from "@alien-form/react";
 import { ProfileOutlined } from "@ant-design/icons";
 import { Button, Empty, Modal, Tooltip } from "antd";
 import { useMemo, useState, type ReactNode } from "react";
-import { FormRenderer, useRuntime } from "@binding";
+import { FormRenderer, useRuntime } from "@alien-form/react";
 import { compileForm, type FieldSchema } from "@alien-form/engine";
+import { fieldGridItemStyle } from "@utils/field-grid";
 import styles from "./index.module.css";
 
 export function ComplexFieldFrame({
   title,
   description,
+  gridSpan,
   children,
 }: {
   title?: string;
   description?: string;
+  gridSpan?: unknown;
   children?: ReactNode;
 }) {
   return (
-    <fieldset className={styles.complexField}>
+    <fieldset className={styles.complexField} style={fieldGridItemStyle(gridSpan)}>
       {title ? <legend className={styles.complexFieldTitle}>{title}</legend> : null}
       {description ? <div className={styles.complexFieldDescription}>{description}</div> : null}
       <div className={styles.complexFieldBody}>{children}</div>

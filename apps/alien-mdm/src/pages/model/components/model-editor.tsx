@@ -2,7 +2,7 @@ import { SaveOutlined } from "@ant-design/icons";
 import { App, Alert, Button, Card, Flex, Skeleton, Space, Steps } from "antd";
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useRuntime } from "@binding";
+import { useRuntime } from "@alien-form/react";
 import type { BuilderSchema } from "@alien-form/engine";
 import { assertBuilderSchema } from "@alien-form/validate";
 import { PageBreadcrumb } from "../../../components";

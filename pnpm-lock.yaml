@@ -138,6 +138,9 @@ importers:
       '@alien-form/core':
         specifier: workspace:*
         version: link:../core
+      '@alien-form/engine':
+        specifier: workspace:*
+        version: link:../engine
     devDependencies:
       '@testing-library/react':
         specifier: ^16.3.3

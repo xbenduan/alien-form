@@ -1,7 +1,7 @@
 import type { FieldSchema } from "@alien-form/validate";
 
 /** 组件使用场景：form-schema 只能用 form；page 的 properties 可用 page 与 antd。 */
-export type ComponentAdapter = "page" | "form" | "antd";
+export type ComponentAdapter = "page" | "form" | "decorator" | "antd";
 
 export interface ComponentMeta {
   type?: string;

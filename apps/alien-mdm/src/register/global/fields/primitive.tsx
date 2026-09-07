@@ -8,7 +8,7 @@ import dayjs from "dayjs";
 import "dayjs/locale/zh-cn";
 import { useEffect, type ReactNode } from "react";
 import type { DataSourceItem } from "@alien-form/core";
-import type { ComponentProps } from "@binding";
+import type { ComponentProps } from "@alien-form/react";
 import { DetailValue, buildProps } from "./shared";
 
 const EMPTY_OPTIONS: DataSourceItem[] = [];

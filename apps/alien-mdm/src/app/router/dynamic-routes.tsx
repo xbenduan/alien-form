@@ -1,7 +1,7 @@
 import { Alert, Result, Skeleton } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
-import { FormRenderer, PageProvider, useRuntime } from "@binding";
+import { FormRenderer, PageProvider, useRuntime } from "@alien-form/react";
 import type { PageRuntime } from "@alien-form/engine";
 import { PageBreadcrumb } from "../../components";
 import { recordListRoute } from "@utils/record-route";

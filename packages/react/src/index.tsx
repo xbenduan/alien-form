@@ -1,35 +1,37 @@
 /**
- * @alien-form/react — Value-capability signal bindings for React
+ * @alien-form/react — React bindings for the core and compiled engine protocols.
  */
 
 import {
   createContext,
-  useContext,
-  useMemo,
-  useEffect,
-  useRef,
+  createElement,
   useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
   useSyncExternalStore,
-  memo,
-  Suspense,
+  type ComponentType,
+  type PropsWithChildren,
+  type ReactNode,
+  type DependencyList,
 } from "react";
-import type React from "react";
-import { effect, signal as createSignal } from "@alien-form/core";
 import type {
-  Signal,
-  Computed,
+  FieldNode,
   FormInstance,
   FormConfig,
-  FieldNode,
-  PrimitiveFieldNode,
-  ArrayFieldNode,
-  ObjectFieldNode,
-  IFormSchema,
-  IFieldSchema,
-  FieldError,
-  FieldDisplayTypes,
+  RowNode,
+  Signal,
+  Computed,
 } from "@alien-form/core";
-import { createForm, sortByOrder } from "@alien-form/core";
+import { createForm, effect, signal as createSignal } from "@alien-form/core";
+import {
+  containsCompiledValue,
+  evaluateCompiledValue,
+  type CompiledNode,
+  type PageRuntime,
+  type Runtime,
+} from "@alien-form/engine";
 
 export { createForm } from "@alien-form/core";
 export type {
@@ -38,16 +40,11 @@ export type {
   FormInstance,
   FormConfig,
   FieldNode,
-  PrimitiveFieldNode,
-  ObjectFieldNode,
   ArrayFieldNode,
-  VoidFieldNode,
   RowNode,
-  IFormSchema,
-  IFieldSchema,
   FieldError,
-  DataSourceItem,
   FieldDisplayTypes,
+  DataSourceItem,
   ValidateStatus,
   SchemaReactions,
   SchemaFormat,
@@ -58,22 +55,10 @@ export type {
   SchemaTypes,
   FormErrorScope,
 } from "@alien-form/core";
-
-export function useSignalValue<T>(sig: Signal<T> | Computed<T>): T {
-  const subscribe = useCallback(
-    (notify: () => void) => {
-      return effect(() => {
-        sig();
-        notify();
-      });
-    },
-    [sig],
-  );
-  const getSnapshot = useCallback(() => sig(), [sig]);
-  return useSyncExternalStore(subscribe, getSnapshot);
-}
+export type { CompiledNode, PageRuntime, Runtime } from "@alien-form/engine";
 
 export type EqualityFn<T> = (previous: T, next: T) => boolean;
+export type ValueSource<T> = T | (() => T);
 
 export function shallowEqual<T>(previous: T, next: T): boolean {
   if (Object.is(previous, next)) return true;
@@ -92,10 +77,19 @@ export function shallowEqual<T>(previous: T, next: T): boolean {
   );
 }
 
-/**
- * Subscribes to every signal read by `read`, while exposing only meaningful
- * snapshot changes to React.
- */
+export function useSignalValue<T>(sig: Signal<T> | Computed<T>): T {
+  const subscribe = useCallback(
+    (notify: () => void) =>
+      effect(() => {
+        sig();
+        notify();
+      }),
+    [sig],
+  );
+  const getSnapshot = useCallback(() => sig(), [sig]);
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}
+
 export function useSignalSnapshot<T>(read: () => T, isEqual: EqualityFn<T> = Object.is): T {
   const snapshotRef = useRef<{ read: () => T; value: T; version: number } | undefined>(undefined);
   if (!snapshotRef.current || snapshotRef.current.read !== read) {
@@ -113,13 +107,8 @@ export function useSignalSnapshot<T>(read: () => T, isEqual: EqualityFn<T> = Obj
       effect(() => {
         const next = read();
         const current = snapshotRef.current!;
-        if (current.read !== read) return;
-        if (isEqual(current.value, next)) return;
-        snapshotRef.current = {
-          read,
-          value: next,
-          version: current.version + 1,
-        };
+        if (current.read !== read || isEqual(current.value, next)) return;
+        snapshotRef.current = { read, value: next, version: current.version + 1 };
         notify();
       }),
     [isEqual, read],
@@ -129,15 +118,6 @@ export function useSignalSnapshot<T>(read: () => T, isEqual: EqualityFn<T> = Obj
   return snapshotRef.current.value;
 }
 
-/**
- * 聚合订阅：把一个字段在渲染中读取的所有 signal 合并为单个 useSyncExternalStore。
- * 一个 effect 追踪 read(field) 读到的全部 signal，任意一个变化即 bump version；
- * getSnapshot 只返回稳定的 version（基元），渲染期直接 untracked 读取最新值
- * （React 渲染期间没有 active subscriber，signal 读取天然不建立依赖）。
- *
- * 相比逐属性 useSignalValue（单字段最多 14 个 effect + 14 个 store），
- * 此处每字段仅 1 个 effect + 1 个 store，大幅降低超大表单的挂载开销与 GC 压力。
- */
 export function useFieldSnapshot<F extends FieldNode, T>(
   field: F,
   read: (field: F) => T,
@@ -147,138 +127,16 @@ export function useFieldSnapshot<F extends FieldNode, T>(
   return useSignalSnapshot(readSnapshot, isEqual);
 }
 
-function readPrimitive(field: PrimitiveFieldNode) {
-  return {
-    display: field.display(),
-    componentName: field.component(),
-    decoratorName: field.decorator(),
-    value: field.value(),
-    disabled: field.disabled(),
-    loading: field.loading(),
-    componentProps: field.componentProps(),
-    dataSource: field.dataSource(),
-    title: field.title(),
-    required: field.required(),
-    errors: field.errors(),
-    warnings: field.warnings(),
-    description: field.description(),
-    validateStatus: field.validateStatus(),
-    decoratorProps: field.decoratorProps(),
-  };
-}
-
-function readArray(field: ArrayFieldNode) {
-  return {
-    display: field.display(),
-    componentName: field.component(),
-    decoratorName: field.decorator(),
-    disabled: field.disabled(),
-    title: field.title(),
-    required: field.required(),
-    errors: field.errors(),
-    warnings: field.warnings(),
-    description: field.description(),
-    validateStatus: field.validateStatus(),
-    componentProps: field.componentProps(),
-    decoratorProps: field.decoratorProps(),
-    rowNodes: field.rows(),
-  };
-}
-
-function readObject(field: ObjectFieldNode) {
-  return {
-    display: field.display(),
-    componentName: field.component(),
-    decoratorName: field.decorator(),
-    componentProps: field.componentProps(),
-    title: field.title(),
-    description: field.description(),
-    required: field.required(),
-    errors: field.errors(),
-    decoratorProps: field.decoratorProps(),
-  };
-}
-
-function readVoid(field: FieldNode) {
-  return {
-    display: field.display(),
-    componentName: field.component(),
-    componentProps: field.componentProps(),
-    title: field.title(),
-    description: field.description(),
-  };
-}
-
-export type ComponentMap = Record<string, React.ComponentType<any>>;
-export type DecoratorMap = Record<string, React.ComponentType<any>>;
-
-interface FormContextValue {
-  form: FormInstance;
-  components: ComponentMap;
-  decorators: DecoratorMap;
-}
-
-const FormContext = createContext<FormContextValue | null>(null);
-export { FormContext };
-
-export interface FormRendererProps {
-  form: FormInstance;
-  components?: ComponentMap;
-  decorators?: DecoratorMap;
-  fallback?: React.ReactNode;
-}
-
-/** 使用已创建的 FormInstance 渲染 schema 字段树。 */
-export function FormRenderer({
-  form,
-  components,
-  decorators,
-  fallback = null,
-}: FormRendererProps): React.ReactElement {
-  return (
-    <FormProvider form={form} components={components} decorators={decorators}>
-      <Suspense fallback={fallback}>
-        <SchemaField />
-      </Suspense>
-    </FormProvider>
-  );
-}
-
-export function useCreateForm(
-  config: FormConfig = {},
-  deps: React.DependencyList = [],
-): FormInstance {
-  // 重建判断完全交给 useMemo(deps)，ref 不参与“是否重建”，避免历史上
-  // “ref 缓存旧 schema 导致校验失效”的问题复现。
+export function useCreateForm(config: FormConfig = {}, deps: DependencyList = []): FormInstance {
   const form = useMemo(() => createForm(config), deps);
-  const prevRef = useRef<FormInstance | null>(null);
+  const previous = useRef<FormInstance | undefined>(undefined);
   useEffect(() => {
-    // deps 变化产生新实例时，在此销毁上一个实例（清理 effectDisposers /
-    // errorListeners / 整棵字段树）。destroy 必须放在 setup 而非 cleanup：
-    // StrictMode 会额外触发一次 cleanup，若在 cleanup 内 destroy 会误杀当前
-    // 仍存活的实例；而 setup 内仅销毁 prev !== form 的旧实例，重挂时
-    // prev === form 不会误销毁。
-    if (prevRef.current && prevRef.current !== form) {
-      prevRef.current.destroy();
-    }
-    prevRef.current = form;
+    if (previous.current && previous.current !== form) previous.current.destroy();
+    previous.current = form;
     form.mount();
-    return () => {
-      form.unmount();
-    };
+    return () => form.unmount();
   }, [form]);
   return form;
-}
-
-export function useForm(): FormInstance {
-  const ctx = useContext(FormContext);
-  if (!ctx) throw new Error("[alien-form] useForm must be inside <FormProvider>");
-  return ctx.form;
-}
-
-/** 读取由 createForm 注入的运行时 scope。 */
-export function useFormScope<T extends Record<string, unknown> = Record<string, unknown>>(): T {
-  return useForm().scope as T;
 }
 
 export function useRegisterField(form: FormInstance, field: FieldNode): void {
@@ -288,440 +146,356 @@ export function useRegisterField(form: FormInstance, field: FieldNode): void {
   }, [form, field]);
 }
 
+export function useForm(): FormInstance {
+  const form = useContext(FormContext)?.form;
+  if (!form) throw new Error("[alien-form] useForm must be inside <FormProvider>");
+  return form;
+}
+
+export function useFormScope<T extends Record<string, unknown> = Record<string, unknown>>(): T {
+  return useForm().scope as T;
+}
+
 export function useFieldAtoms(path: string): FieldNode | undefined {
   const form = useForm();
-  const fields = useSignalValue(form.fields);
-  return fields.get(path);
+  return useSignalValue(form.fields).get(path);
 }
 
-export function useFieldValue(path: string): any {
+export function useFieldValue(path: string): unknown {
   const field = useFieldAtoms(path);
-  // 始终调用 useSignalValue，避免条件调用 Hook 违反 Rules of Hooks。
-  // 非 primitive 字段回退到稳定的 undefined signal。
-  const sig = field?.kind === "primitive" ? field.value : undefinedSignal;
-  return useSignalValue(sig);
+  return useSignalValue(field?.kind === "primitive" ? field.value : undefinedSignal);
 }
 
-export function useFieldErrors(path: string): FieldError[] {
-  const field = useFieldAtoms(path);
-  return useSignalValue(field?.errors ?? emptyArraySignal) as FieldError[];
-}
-
-export function useFieldDisplay(path: string): FieldDisplayTypes {
-  const field = useFieldAtoms(path);
-  return useSignalValue(field?.display ?? visibleSignal) as FieldDisplayTypes;
-}
-
-export function useFieldDisabled(path: string): boolean {
-  const field = useFieldAtoms(path);
-  return useSignalValue(field?.disabled ?? falseSignal);
-}
-
-export function useFieldRequired(path: string): boolean {
-  const field = useFieldAtoms(path);
-  return useSignalValue(field?.required ?? falseSignal);
-}
-
-export function useFieldLoading(path: string): boolean {
-  const field = useFieldAtoms(path);
-  return useSignalValue(field?.loading ?? falseSignal);
-}
-
-export function useFormValues(): Record<string, any> {
-  const form = useForm();
-  return useSignalValue(form.values);
-}
-
-export function useFormValid(): boolean {
-  const form = useForm();
-  return useSignalValue(form.valid);
-}
-
-export function useFormSubmitting(): boolean {
-  const form = useForm();
-  return useSignalValue(form.submitting);
-}
-
-export function useFormErrors(): FieldError[] {
-  const form = useForm();
-  return useSignalValue(form.errors);
-}
-
-export function useFormSubmit<T = any>() {
-  const form = useForm();
-  const submitting = useSignalValue(form.submitting);
-  const submit = useCallback(
-    (onSubmit?: (values: Record<string, any>) => T | Promise<T>) => form.submit(onSubmit),
-    [form],
-  );
-  return { submit, submitting };
-}
-
-export function useFormValidate() {
-  const form = useForm();
-  const validate = useCallback(() => form.validate(), [form]);
-  return { validate };
-}
-
-interface FormProviderProps {
+export interface ComponentProps {
   form: FormInstance;
-  components?: ComponentMap;
-  decorators?: DecoratorMap;
-  children?: React.ReactNode;
+  field: FieldNode;
+  node: CompiledNode;
+  slots: Record<string, ReactNode>;
+  children?: ReactNode;
+  value?: unknown;
+  mode?: string;
+  domain?: string;
+  onChange?: (value: unknown) => void;
+  isFilter?: boolean;
+  dataSource?: unknown[];
+  loading?: boolean;
+  placeholder?: string;
+  renderRow?: (row: RowNode) => ReactNode;
+  [key: string]: unknown;
 }
 
-export const FormProvider: React.FC<FormProviderProps> = ({
-  form,
-  components = {},
-  decorators = {},
+interface FormContextValue {
+  form: FormInstance;
+}
+
+const FormContext = createContext<FormContextValue | null>(null);
+const RuntimeContext = createContext<Runtime | null>(null);
+const PageContext = createContext<PageRuntime | null>(null);
+const lifecycleVersions = new WeakMap<PageRuntime, number>();
+const undefinedSignal = createSignal<unknown>(undefined);
+
+export function FormProvider({ form, children }: PropsWithChildren<{ form: FormInstance }>) {
+  return <FormContext.Provider value={{ form }}>{children}</FormContext.Provider>;
+}
+
+export function RuntimeProvider({ runtime, children }: PropsWithChildren<{ runtime: Runtime }>) {
+  return <RuntimeContext.Provider value={runtime}>{children}</RuntimeContext.Provider>;
+}
+
+export function useRuntime(): Runtime {
+  const runtime = useContext(RuntimeContext);
+  if (!runtime) throw new Error("RuntimeProvider is missing");
+  return runtime;
+}
+
+export function PageProvider({ page, children }: PropsWithChildren<{ page: PageRuntime }>) {
+  useEffect(() => {
+    const version = (lifecycleVersions.get(page) ?? 0) + 1;
+    lifecycleVersions.set(page, version);
+    page.mount();
+    return () => {
+      page.form.unmount();
+      queueMicrotask(() => {
+        if (lifecycleVersions.get(page) !== version) return;
+        lifecycleVersions.delete(page);
+        page.destroy();
+      });
+    };
+  }, [page]);
+  return <PageContext.Provider value={page}>{children}</PageContext.Provider>;
+}
+
+export function usePage(): PageRuntime {
+  const page = useContext(PageContext);
+  if (!page) throw new Error("PageProvider is missing");
+  return page;
+}
+
+function readSource<T>(source: ValueSource<T>): T {
+  return typeof source === "function" ? (source as () => T)() : source;
+}
+
+export function useCompiledProps(
+  props: ValueSource<Record<string, unknown>>,
+  scope: ValueSource<Record<string, unknown>>,
+): Record<string, unknown> {
+  const read = useCallback(() => {
+    const source = readSource(props);
+    return containsCompiledValue(source)
+      ? evaluateCompiledValue(source, readSource(scope))
+      : source;
+  }, [props, scope]);
+  return useSignalSnapshot(read, shallowEqual);
+}
+
+interface RuntimeComponentProps {
+  code: string;
+  domain?: string;
+  props?: Record<string, unknown>;
+  context?: Record<string, unknown>;
+  children?: ReactNode;
+}
+
+export function RuntimeComponent({
+  code,
+  domain,
+  props = {},
+  context,
   children,
-}) => {
-  const compRef = useRef(components);
-  const decoRef = useRef(decorators);
-  compRef.current = components;
-  decoRef.current = decorators;
-  const value = useMemo(
-    () => ({
-      form,
-      get components() {
-        return compRef.current;
-      },
-      get decorators() {
-        return decoRef.current;
-      },
-    }),
-    [form],
-  );
-  return <FormContext.Provider value={value}>{children}</FormContext.Provider>;
-};
-
-export const SchemaField: React.FC<{ schema?: IFormSchema }> = () => {
-  const ctx = useContext(FormContext);
-  if (!ctx) throw new Error("[alien-form] SchemaField must be inside <FormProvider>");
-  const schema = ctx.form.schema;
-  const fields = <SchemaProperties schema={schema} parentPath="" />;
-  // 顶层 x-layout:用指定布局组件包裹所有顶层字段,使单个 schema 可声明一整个页面。
-  // 组件未注册时回退为直接渲染字段(不崩溃)。
-  const layoutName = schema["x-layout"];
-  if (!layoutName) return fields;
-  const Layout = ctx.components[layoutName];
-  return Layout ? (
-    <Layout title={schema.title} description={schema.description}>
-      {fields}
-    </Layout>
-  ) : (
-    fields
-  );
-};
-
-const SchemaProperties: React.FC<{ schema: IFormSchema | IFieldSchema; parentPath: string }> = ({
-  schema,
-  parentPath,
-}) => {
-  const properties = (schema as any).properties as Record<string, IFieldSchema> | undefined;
-  if (!properties) return null;
-  return (
-    <>
-      {sortByOrder(properties).map(([key, fieldSchema]) => (
-        <SchemaFieldItem key={key} fieldKey={key} schema={fieldSchema} parentPath={parentPath} />
-      ))}
-    </>
-  );
-};
-
-const SchemaFieldItem: React.FC<{ fieldKey: string; schema: IFieldSchema; parentPath: string }> =
-  memo(({ fieldKey, schema, parentPath }) => {
-    const fullPath = parentPath ? `${parentPath}.${fieldKey}` : fieldKey;
-    if (schema["x-layout"])
-      return <VoidFieldSlot path={fullPath} schema={schema} parentPath={parentPath} />;
-    if (schema.type === "array" && schema.items && !Array.isArray(schema.items))
-      return <ArrayFieldSlot path={fullPath} schema={schema} />;
-    if (schema.type === "object" && schema.properties)
-      return schema.component ? (
-        <ObjectFieldSlot path={fullPath} schema={schema} />
-      ) : (
-        <SchemaProperties schema={schema} parentPath={fullPath} />
-      );
-    return <PrimitiveFieldSlot path={fullPath} />;
-  });
-
-const PrimitiveFieldSlot: React.FC<{ path: string }> = memo(({ path }) => {
-  const ctx = useContext(FormContext)!;
-  const field = useSignalValue(ctx.form.fields).get(path);
-  if (!field || field.kind !== "primitive") return null;
-  return <PrimitiveFieldSlotInner field={field} />;
-});
-
-const PrimitiveFieldSlotInner: React.FC<{ field: PrimitiveFieldNode }> = memo(({ field }) => {
-  const ctx = useContext(FormContext)!;
-  const { components, decorators } = ctx;
-  const {
-    display,
-    componentName,
-    decoratorName,
-    value,
-    disabled,
-    loading,
-    componentProps,
-    dataSource,
-    title,
-    required,
-    errors,
-    warnings,
-    description,
-    validateStatus,
-    decoratorProps,
-  } = useFieldSnapshot(field, readPrimitive);
-  const onChange = useCallback((v: any) => field.setValue(v), [field]);
-  useRegisterField(ctx.form, field);
-  if (display === "none") return null;
-  if (display === "hidden") return <div style={{ display: "none" }} />;
-  const Component = components[componentName];
-  const Decorator = decorators[decoratorName];
-  if (!Component) return <div style={{ color: "red" }}>{`Unknown: ${componentName}`}</div>;
-  const props: Record<string, any> = {
-    ...componentProps,
-    value,
-    onChange,
-    disabled,
-    loading,
-  };
-  if (dataSource.length > 0) props.dataSource = dataSource;
-  const rendered = <Component {...props} />;
-  return Decorator ? (
-    <Decorator
-      label={title}
-      required={required}
-      errors={errors}
-      warnings={warnings}
-      description={description}
-      validateStatus={validateStatus}
-      {...decoratorProps}
-    >
-      {rendered}
-    </Decorator>
-  ) : (
-    rendered
-  );
-});
-
-const ArrayFieldSlot: React.FC<{ path: string; schema: IFieldSchema }> = memo(
-  ({ path, schema }) => {
-    const ctx = useContext(FormContext)!;
-    const field = useSignalValue(ctx.form.fields).get(path);
-    if (!field || field.kind !== "array") return null;
-    return <ArrayFieldSlotInner field={field} schema={schema} />;
-  },
-);
-
-const ArrayFieldSlotInner: React.FC<{ field: ArrayFieldNode; schema: IFieldSchema }> = memo(
-  ({ field, schema }) => {
-    const ctx = useContext(FormContext)!;
-    const { components, decorators } = ctx;
-    const {
-      display,
-      componentName,
-      decoratorName,
-      disabled,
-      title,
-      required,
-      errors,
-      warnings,
-      description,
-      validateStatus,
-      componentProps,
-      decoratorProps,
-      rowNodes,
-    } = useFieldSnapshot(field, readArray);
-    useRegisterField(ctx.form, field);
-    const componentDisabled = Boolean(
-      (componentProps as Record<string, any> | undefined)?.disabled,
-    );
-    if (display === "none") return null;
-    if (display === "hidden") return <div style={{ display: "none" }} />;
-    const ArrayComponent = components[componentName];
-    const Decorator = decorators[decoratorName];
-    const itemSchema = schema.items as IFieldSchema;
-    const rows: React.ReactNode[][] = [];
-    const rowFields: Record<string, React.ReactNode>[] = [];
-    for (const row of rowNodes) {
-      const children: React.ReactNode[] = [];
-      const fieldMap: Record<string, React.ReactNode> = {};
-      if (itemSchema.properties) {
-        for (const [childKey, childSchema] of sortByOrder(itemSchema.properties)) {
-          const node = renderRowChild(row.path, childKey, childSchema);
-          children.push(node);
-          fieldMap[childKey] = node;
-        }
-      }
-      rows.push(children);
-      rowFields.push(fieldMap);
-    }
-    const arrayProps = {
-      ...componentProps,
-      field,
-      rows,
-      rowNodes,
-      rowFields,
-      onAdd: (iv?: Record<string, any>) => field.push(iv),
-      onRemove: (i: number) => field.remove(i),
-      onMoveUp: (i: number) => field.moveUp(i),
-      onMoveDown: (i: number) => field.moveDown(i),
-      onMove: (from: number, to: number) => field.move(from, to),
-      disabled: disabled || componentDisabled,
-    };
-    const decoProps = {
-      label: title,
-      required,
-      errors,
-      warnings,
-      description,
-      validateStatus,
-      ...decoratorProps,
-    };
-    if (ArrayComponent) {
-      const rendered = <ArrayComponent {...arrayProps} />;
-      return Decorator ? <Decorator {...decoProps}>{rendered}</Decorator> : rendered;
-    }
-    return (
-      <div>
-        {rows.map((row, i) => (
-          <div key={rowNodes[i]?.id || i}>{row}</div>
-        ))}
-        {!disabled && (
-          <button type="button" onClick={() => field.push()}>
-            + Add
-          </button>
-        )}
-      </div>
-    );
-  },
-);
-
-function renderRowChild(
-  rowPath: string,
-  childKey: string,
-  childSchema: IFieldSchema,
-): React.ReactNode {
-  const path = `${rowPath}.${childKey}`;
-  if (childSchema["x-layout"])
-    return <VoidFieldSlot key={childKey} path={path} schema={childSchema} parentPath={rowPath} />;
-  if (childSchema.type === "array" && childSchema.items && !Array.isArray(childSchema.items))
-    return <ArrayFieldSlot key={childKey} path={path} schema={childSchema} />;
-  if (childSchema.type === "object" && childSchema.properties)
-    return childSchema.component ? (
-      <ObjectFieldSlot key={childKey} path={path} schema={childSchema} />
-    ) : (
-      <SchemaProperties key={childKey} schema={childSchema} parentPath={path} />
-    );
-  return <PrimitiveFieldSlot key={childKey} path={path} />;
+}: RuntimeComponentProps) {
+  const runtime = useRuntime();
+  const registration = runtime.resolveComponent(code, domain);
+  if (!registration) throw new Error(`Component "${code}" 未注册`);
+  const Component = registration.component as ComponentType<Record<string, unknown>>;
+  const componentProps = registration.adapter === "antd" ? props : { ...props, ...context };
+  return children === undefined
+    ? createElement(Component, componentProps)
+    : createElement(Component, componentProps, children);
 }
 
-const ObjectFieldSlot: React.FC<{ path: string; schema: IFieldSchema }> = memo(
-  ({ path, schema }) => {
-    const ctx = useContext(FormContext)!;
-    const field = useSignalValue(ctx.form.fields).get(path);
-    if (!field || field.kind !== "object") return null;
-    return <ObjectFieldSlotInner field={field} schema={schema} />;
-  },
-);
+interface SchemaComponentProps extends Omit<RuntimeComponentProps, "props"> {
+  schemaProps: ValueSource<Record<string, unknown>>;
+  scope: ValueSource<Record<string, unknown>>;
+  controlProps?: Record<string, unknown>;
+}
 
-const ObjectFieldSlotInner: React.FC<{ field: ObjectFieldNode; schema: IFieldSchema }> = memo(
-  ({ field, schema }) => {
-    const ctx = useContext(FormContext)!;
-    const { components, decorators } = ctx;
-    const {
-      display,
-      componentName,
-      decoratorName,
-      componentProps,
-      title,
-      description,
-      required,
-      errors,
-      decoratorProps,
-    } = useFieldSnapshot(field, readObject);
-    useRegisterField(ctx.form, field);
-    if (display === "none") return null;
-    if (display === "hidden") return <div style={{ display: "none" }} />;
-    const ObjectComponent = components[componentName];
-    const Decorator = decorators[decoratorName];
-    const sorted = schema.properties ? sortByOrder(schema.properties) : [];
-    const children = sorted.map(([k, s]) => (
-      <SchemaFieldItem key={k} fieldKey={k} schema={s} parentPath={field.path} />
-    ));
-    const fieldMap: Record<string, React.ReactNode> = {};
-    for (const [k, s] of sorted) fieldMap[k] = renderRowChild(field.path, k, s);
-    if (ObjectComponent) {
-      const rendered = (
-        <ObjectComponent
-          {...componentProps}
-          field={field}
-          fields={fieldMap}
-          title={title}
-          description={description}
-        >
-          {children}
-        </ObjectComponent>
+export function SchemaComponent({
+  schemaProps,
+  scope,
+  controlProps,
+  ...props
+}: SchemaComponentProps) {
+  return (
+    <RuntimeComponent
+      {...props}
+      props={{ ...useCompiledProps(schemaProps, scope), ...controlProps }}
+    />
+  );
+}
+
+function rowValues(form: FormInstance, field: FieldNode): Record<string, unknown> | undefined {
+  if (!field.row) return undefined;
+  return Object.fromEntries(
+    Array.from(field.row.children, ([key, child]) => [key, form.project(child.path)]),
+  );
+}
+
+function childField(field: FieldNode, key: string): FieldNode {
+  if (field.kind !== "object" && field.kind !== "void") {
+    throw new Error(`Field cannot contain compiled children: ${field.path}`);
+  }
+  const child = field.children.get(key);
+  if (!child) throw new Error(`Compiled child field not found: ${field.path}.${key}`);
+  return child;
+}
+
+function readFieldSnapshot(field: FieldNode) {
+  return {
+    display: field.display(),
+    componentCode: field.component(),
+    decoratorCode: field.decorator(),
+    decoratorProps: field.decoratorProps(),
+    errors: field.errors(),
+    warnings: field.warnings(),
+    validateStatus: field.validateStatus(),
+    disabled: field.disabled(),
+    required: field.required(),
+    title: field.title(),
+    description: field.description(),
+    loading: field.loading(),
+    dataSource: field.dataSource(),
+    value: field.kind === "primitive" ? field.value() : undefined,
+  };
+}
+
+function useNodeProps(node: CompiledNode, field: FieldNode, form: FormInstance) {
+  const props = useCallback(() => {
+    const fieldProps = field.componentProps();
+    return Object.fromEntries(
+      Array.from(new Set([...Object.keys(node.props), ...Object.keys(fieldProps)])).map((key) => [
+        key,
+        fieldProps[key] === node.schema.props?.[key] ? node.props[key] : fieldProps[key],
+      ]),
+    );
+  }, [field, node]);
+  const scope = useCallback(() => {
+    const value = field.kind === "primitive" ? field.value() : form.project(field.path);
+    return {
+      ...form.scope,
+      $values: form.values(),
+      $self: field,
+      $form: form,
+      $value: value,
+      $row: rowValues(form, field),
+      $path: field.path,
+    };
+  }, [field, form]);
+  return useCompiledProps(props, scope);
+}
+
+function RenderField({
+  node,
+  field,
+  form,
+  domain,
+}: {
+  node: CompiledNode;
+  field: FieldNode;
+  form: FormInstance;
+  domain?: string;
+}): React.ReactElement | null {
+  const snapshot = useFieldSnapshot(field, readFieldSnapshot);
+  const props = useNodeProps(node, field, form);
+  useRegisterField(form, field);
+  if (snapshot.display === "none") return null;
+
+  const slotted = new Set<CompiledNode>();
+  const slots = Object.fromEntries(
+    Object.entries(node.slots).map(([name, slot]) => {
+      const nodes = Array.isArray(slot) ? slot : [slot];
+      nodes.forEach((child) => slotted.add(child));
+      return [
+        name,
+        nodes.map((child) => {
+          const target = childField(field, child.key);
+          return (
+            <RenderField key={target.id} node={child} field={target} form={form} domain={domain} />
+          );
+        }),
+      ];
+    }),
+  );
+  const children = node.children
+    .filter((child) => !slotted.has(child))
+    .map((child) => {
+      const target = childField(field, child.key);
+      return (
+        <RenderField key={target.id} node={child} field={target} form={form} domain={domain} />
       );
-      return Decorator ? (
-        <Decorator label={title} required={required} errors={errors} {...decoratorProps}>
-          {rendered}
-        </Decorator>
-      ) : (
-        rendered
-      );
-    }
-    return <>{children}</>;
-  },
-);
+    });
+  const renderRow =
+    field.kind === "array" && node.items
+      ? (row: RowNode) => (
+          <FieldNodes
+            nodes={node.items!.children}
+            fields={row.children}
+            form={form}
+            domain={domain}
+          />
+        )
+      : undefined;
+  const controlProps =
+    field.kind === "primitive"
+      ? {
+          ...props,
+          id: props.id ?? field.id,
+          value: snapshot.value,
+          onChange: field.setValue,
+          disabled: snapshot.disabled,
+          loading: snapshot.loading,
+          dataSource: snapshot.dataSource,
+          "aria-invalid": snapshot.errors.length > 0,
+          "aria-describedby": snapshot.errors.length ? `${field.id}-error` : undefined,
+        }
+      : props;
+  const context = {
+    form,
+    field,
+    node,
+    slots,
+    mode: typeof form.scope.mode === "string" ? form.scope.mode : undefined,
+    domain,
+    value: snapshot.value,
+    title: snapshot.title,
+    description: snapshot.description,
+    renderRow,
+  };
+  const control = (
+    <RuntimeComponent
+      code={snapshot.componentCode}
+      domain={domain}
+      props={controlProps}
+      context={context}
+    >
+      {children.length ? children : undefined}
+    </RuntimeComponent>
+  );
+  if (field.kind !== "primitive") return control;
 
-const VoidFieldSlot: React.FC<{ path: string; schema: IFieldSchema; parentPath: string }> = memo(
-  ({ path, schema, parentPath }) => {
-    const ctx = useContext(FormContext)!;
-    const field = useSignalValue(ctx.form.fields).get(path);
-    if (field && field.kind === "void") return <VoidFieldSlotInner field={field} schema={schema} />;
-    const sorted = schema.properties ? sortByOrder(schema.properties) : [];
-    return (
-      <>
-        {sorted.map(([k, s]) => (
-          <SchemaFieldItem key={k} fieldKey={k} schema={s} parentPath={parentPath} />
-        ))}
-      </>
-    );
-  },
-);
+  const decorated = (
+    <RuntimeComponent
+      code={snapshot.decoratorCode}
+      domain={domain}
+      props={{
+        ...snapshot.decoratorProps,
+        title: snapshot.title,
+        required: snapshot.required && context.mode !== "detail",
+        errors: snapshot.errors,
+        warnings: snapshot.warnings,
+        description: snapshot.description,
+        validateStatus: snapshot.validateStatus,
+        gridSpan: props.gridSpan,
+      }}
+      context={{ form, field, node, domain, mode: context.mode }}
+    >
+      {control}
+    </RuntimeComponent>
+  );
+  return snapshot.display === "hidden" ? <div hidden>{decorated}</div> : decorated;
+}
 
-const VoidFieldSlotInner: React.FC<{ field: FieldNode; schema: IFieldSchema }> = memo(
-  ({ field, schema }) => {
-    const ctx = useContext(FormContext)!;
-    const { components } = ctx;
-    const { display, componentName, componentProps, title, description } = useFieldSnapshot(
-      field,
-      readVoid,
-    );
-    useRegisterField(ctx.form, field);
-    if (display === "none") return null;
-    if (display === "hidden") return <div style={{ display: "none" }} />;
-    const sorted = schema.properties ? sortByOrder(schema.properties) : [];
-    const parentPath = field.path.includes(".")
-      ? field.path.slice(0, field.path.lastIndexOf("."))
-      : "";
-    const children = sorted.map(([k, s]) => (
-      <SchemaFieldItem key={k} fieldKey={k} schema={s} parentPath={parentPath} />
-    ));
-    const Layout = components[componentName];
-    return Layout ? (
-      <Layout title={title} description={description} {...componentProps}>
-        {children}
-      </Layout>
-    ) : (
-      <>{children}</>
-    );
-  },
-);
+export function FieldNodes({
+  nodes,
+  fields,
+  form,
+  domain,
+}: {
+  nodes: CompiledNode[];
+  fields: ReadonlyMap<string, FieldNode>;
+  form: FormInstance;
+  domain?: string;
+}) {
+  return nodes.map((node) => {
+    const field = fields.get(node.key);
+    if (!field) throw new Error(`Compiled field not found: ${node.key}`);
+    return <RenderField key={field.id} node={node} field={field} form={form} domain={domain} />;
+  });
+}
 
-const emptyArraySignal = createSignal([]);
-const visibleSignal = createSignal("visible" as FieldDisplayTypes);
-const falseSignal = createSignal(false);
-const undefinedSignal = createSignal<any>(undefined);
+export function FormRenderer({
+  form,
+  nodes,
+  domain,
+}: {
+  form: FormInstance;
+  nodes: CompiledNode[];
+  domain?: string;
+}) {
+  return (
+    <FormProvider form={form}>
+      <div data-alien-form>
+        <FieldNodes nodes={nodes} fields={form.root.children} form={form} domain={domain} />
+      </div>
+    </FormProvider>
+  );
+}

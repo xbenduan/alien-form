@@ -1,10 +1,3 @@
-.form {
-  display: flex;
-  min-width: 0;
-  margin: 0;
-  flex-direction: column;
-}
-
 .formItem {
   min-width: 0;
   margin-bottom: 8px;
