@@ -15,6 +15,10 @@ export interface ListParams {
   sorter?: Sorter;
   keyword?: string;
   searchFields?: string[];
+  parentId?: string | null;
+  /** 由 RecordService 根据模型自关联推导，非 HTTP 协议字段。 */
+  idField?: string;
+  parentField?: string;
 }
 
 export interface ListResult {
@@ -143,6 +147,27 @@ export class RecordStore {
 
     const where: string[] = [`"model" = ?`];
     const args: Array<string | number> = [model];
+
+    if (params.parentId !== undefined && params.parentId !== null && params.parentId !== "") {
+      const idField = params.idField ?? "id";
+      const parentField = params.parentField;
+      if (!parentField) throw new Error("parentId 查询缺少模型自关联字段");
+      const descendants = await this.subtree(schema, {
+        idField,
+        parentField,
+        parentValue: params.parentId,
+      });
+      const ids = [
+        String(params.parentId),
+        ...descendants.flatMap((record) => {
+          const value = record[idField];
+          return value === undefined || value === null || value === "" ? [] : [String(value)];
+        }),
+      ];
+      const values = [...new Set(ids)];
+      where.push(`${fieldExpr(idField)} IN (${values.map(() => "?").join(", ")})`);
+      args.push(...values);
+    }
 
     for (const [field, value] of Object.entries(params.filters ?? {})) {
       const plan = byField.get(field);

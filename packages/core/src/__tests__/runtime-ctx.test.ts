@@ -22,8 +22,8 @@ describe("expression scope", () => {
       scope: {
         mode: "detail",
         $service: () => undefined,
-        $utils: () => (value: unknown) => value,
-        $enum: () => [],
+        $utils: { identity: (value: unknown) => value },
+        $enums: { empty: [] },
         $query: { id: "7" },
         ignored: "not exposed",
       },
@@ -31,7 +31,7 @@ describe("expression scope", () => {
     form.mount();
 
     expect(Object.keys(received!).sort()).toEqual([
-      "$enum",
+      "$enums",
       "$form",
       "$path",
       "$query",
@@ -46,7 +46,7 @@ describe("expression scope", () => {
     expect(received?.$values).toEqual({ name: "Alien" });
     expect(received?.$path).toBe("name");
     expect(received?.mode).toBe("detail");
-    expect((received as Record<string, unknown>).ignored).toBeUndefined();
+    expect((received as unknown as Record<string, unknown>).ignored).toBeUndefined();
   });
 
   it("provides row values without flattening them into the root scope", () => {

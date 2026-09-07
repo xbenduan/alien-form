@@ -64,6 +64,7 @@ import {
 import { recordRoute } from "@utils/record-route";
 import { RecordActionOverlay } from "../pages/record-action-overlay";
 import type { RecordActionMode } from "../pages/record-form";
+import { useLayoutLoading } from "./loading-context";
 import { parseFilter } from "./parse-filter";
 import styles from "./index.module.css";
 
@@ -209,8 +210,7 @@ export function Table({
   columns,
   loadData,
   filter,
-  nodeId,
-  nodeField,
+  parentId,
   node,
   children,
   rowKey = "id",
@@ -229,8 +229,7 @@ export function Table({
       ) => TableColumnsType<Record<string, unknown>>);
   loadData?: (params: Record<string, unknown>) => Promise<ListResult>;
   filter?: string;
-  nodeId?: unknown;
-  nodeField?: string;
+  parentId?: unknown;
   rowKey?: string;
   modelCode?: string;
   scroll?: TableProps<Record<string, unknown>>["scroll"];
@@ -253,7 +252,7 @@ export function Table({
   const recordTitle =
     pageRuntime.model.meta.singularLabel ?? pageRuntime.model.meta.title ?? resolvedModelCode;
   const [data, setData] = useState<ListResult>({ list: [], total: 0 });
-  const [loading, setLoading] = useState(false);
+  const { loading, startLoading } = useLayoutLoading();
   const [page, setPage] = useState(1);
   const [sorter, setSorter] = useState<{ field: string; order: "ascend" | "descend" }>();
   const [columnPreferences, setColumnPreferences] = useState<ColumnPreferences>(() =>
@@ -365,22 +364,23 @@ export function Table({
     const loader = loadDataRef.current;
     if (!loader) return;
     const parsedFilter = parseFilter(filter);
-    if (nodeField && nodeId !== undefined && nodeId !== null && nodeId !== "") {
-      parsedFilter[nodeField] = nodeId;
-    }
-    setLoading(true);
+    const stopLoading = startLoading();
     try {
       setData(
         await loader({
           filters: parsedFilter,
+          parentId:
+            parentId === undefined || parentId === null || parentId === ""
+              ? undefined
+              : String(parentId),
           pagination: { current: page, pageSize },
           sorter,
         }),
       );
     } finally {
-      setLoading(false);
+      stopLoading();
     }
-  }, [filter, nodeField, nodeId, page, pageSize, sorter]);
+  }, [filter, page, pageSize, parentId, sorter, startLoading]);
   const openAction = useCallback(
     (mode: RecordActionMode, recordId?: unknown) => {
       if (!resolvedModelCode) return;
@@ -434,7 +434,7 @@ export function Table({
       }
       const ids = selectedRowKeys.map(String);
       const selected = new Set(ids);
-      setLoading(true);
+      const stopLoading = startLoading();
       try {
         await service({
           model: resolvedModelCode,
@@ -447,10 +447,10 @@ export function Table({
       } catch (reason) {
         message.error(reason instanceof Error ? reason.message : String(reason));
       } finally {
-        setLoading(false);
+        stopLoading();
       }
     },
-    [data.list, message, refresh, resolvedModelCode, rowKey, selectedRowKeys],
+    [data.list, message, refresh, resolvedModelCode, rowKey, selectedRowKeys, startLoading],
   );
   const renderRowActions = useCallback(
     (record: Record<string, unknown>) => {
@@ -546,7 +546,7 @@ export function Table({
 
   useEffect(() => {
     setPage(1);
-  }, [filter, nodeField, nodeId]);
+  }, [filter, parentId]);
 
   const columnSettings = (
     <div className={styles.columnSettings}>

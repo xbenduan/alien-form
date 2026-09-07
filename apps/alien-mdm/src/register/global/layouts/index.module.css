@@ -138,6 +138,11 @@
   padding: 10px 8px;
 }
 
+.treeSearch {
+  margin-bottom: 8px;
+  border-radius: 6px;
+}
+
 .tree {
   margin: 0;
   padding: 0;
@@ -161,6 +166,10 @@
 
 .treeNode:hover {
   background: #f5f8fd;
+}
+
+.treeNodeSelected {
+  background: #edf5ff;
 }
 
 .treeToggle,
@@ -221,7 +230,6 @@
 }
 
 .treeItemSelected {
-  background: #edf5ff;
   color: #1769e0;
   font-weight: 500;
 }

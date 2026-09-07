@@ -100,7 +100,7 @@ const properties: Record<string, ModelFieldSchema> = {
       valueField: "id",
       labelField: "roleName",
       pageSize: 50,
-      loadOptions: '{{ $utils("relation")($service("records.list")) }}',
+      loadOptions: '{{ $utils.relation($service("records.list")) }}',
     },
   },
   remark: {
@@ -212,7 +212,7 @@ export const sysUserSchema: ModelSchema = {
           component: "filter",
           props: {
             schema: { $ref: "form-schema" },
-            filters: '{{ $utils("schemaToFilters") }}',
+            filters: "{{ $utils.schemaToFilters }}",
             defaultValue: "{{ $query.keyword }}",
           },
         },
@@ -223,7 +223,7 @@ export const sysUserSchema: ModelSchema = {
             rowKey: "id",
             modelCode: "_sys_user",
             schema: { $ref: "form-schema" },
-            columns: '{{ $utils("schemaToColumns") }}',
+            columns: "{{ $utils.schemaToColumns }}",
             filter: "{{ $values.filter }}",
             loadData:
               "{{ (params) => $service(\"records.list\")({ model: '_sys_user', ...params }) }}",
@@ -261,7 +261,7 @@ export const sysUserSchema: ModelSchema = {
               component: "Button",
               props: {
                 children: "导入",
-                onClick: '{{ () => $utils("message").info("功能未完善") }}',
+                onClick: '{{ () => $utils.message.info("功能未完善") }}',
               },
             },
             export: {
@@ -269,7 +269,7 @@ export const sysUserSchema: ModelSchema = {
               component: "Button",
               props: {
                 children: "导出",
-                onClick: '{{ () => $utils("message").info("功能未完善") }}',
+                onClick: '{{ () => $utils.message.info("功能未完善") }}',
               },
             },
           },

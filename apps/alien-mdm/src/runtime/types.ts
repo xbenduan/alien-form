@@ -12,6 +12,7 @@ export interface ListRequest {
   sorter?: { field: string; order: "ascend" | "descend" };
   keyword?: string;
   searchFields?: string[];
+  parentId?: string | null;
 }
 
 export interface ListResponse<T = Record<string, unknown>> {

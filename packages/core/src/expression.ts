@@ -30,7 +30,7 @@ export function compileExpr<T = unknown>(raw: string): CompiledExpression<T> {
       $path,
       $service,
       $utils,
-      $enum,
+      $enums,
       $query
     } = scope;
     return (${source});`,

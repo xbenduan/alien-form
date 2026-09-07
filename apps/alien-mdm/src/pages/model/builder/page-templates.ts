@@ -30,7 +30,7 @@ function buildListPage(modelCode: string, title: string): XPage {
         component: "filter",
         props: {
           schema: { $ref: "form-schema" },
-          filters: '{{ $utils("schemaToFilters") }}',
+          filters: "{{ $utils.schemaToFilters }}",
           defaultValue: "{{ $query.keyword }}",
         },
       },
@@ -41,7 +41,7 @@ function buildListPage(modelCode: string, title: string): XPage {
           rowKey: "id",
           modelCode,
           schema: { $ref: "form-schema" },
-          columns: '{{ $utils("schemaToColumns") }}',
+          columns: "{{ $utils.schemaToColumns }}",
           filter: "{{ $values.filter }}",
           loadData: `{{ (params) => $service("records.list")({ model: ${modelLiteral}, ...params }) }}`,
           rowActions: ["deactivate", "delete"],
@@ -63,7 +63,7 @@ function buildListPage(modelCode: string, title: string): XPage {
             props: {
               danger: true,
               children: "停用",
-              onClick: '{{ ($row) => $utils("message").info("功能未完善") }}',
+              onClick: '{{ ($row) => $utils.message.info("功能未完善") }}',
             },
           },
           delete: {
@@ -84,7 +84,7 @@ function buildListPage(modelCode: string, title: string): XPage {
             component: "Button",
             props: {
               children: "导入",
-              onClick: '{{ () => $utils("message").info("功能未完善") }}',
+              onClick: '{{ () => $utils.message.info("功能未完善") }}',
             },
           },
           export: {
@@ -92,7 +92,7 @@ function buildListPage(modelCode: string, title: string): XPage {
             component: "Button",
             props: {
               children: "导出",
-              onClick: '{{ () => $utils("message").info("功能未完善") }}',
+              onClick: '{{ () => $utils.message.info("功能未完善") }}',
             },
           },
         },

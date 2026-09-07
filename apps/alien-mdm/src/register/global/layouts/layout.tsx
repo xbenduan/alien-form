@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import styles from "./index.module.css";
+import { LayoutLoadingProvider } from "./loading-context";
 
 export function Layout({
   slots,
@@ -13,12 +14,14 @@ export function Layout({
     .map(([name, content]) => <div key={name}>{content}</div>);
 
   return (
-    <div className={styles.layout}>
-      {slots.left ? <aside className={styles.layoutLeft}>{slots.left}</aside> : null}
-      <main className={styles.layoutMain}>
-        {rightSlots}
-        {children}
-      </main>
-    </div>
+    <LayoutLoadingProvider>
+      <div className={styles.layout}>
+        {slots.left ? <aside className={styles.layoutLeft}>{slots.left}</aside> : null}
+        <main className={styles.layoutMain}>
+          {rightSlots}
+          {children}
+        </main>
+      </div>
+    </LayoutLoadingProvider>
   );
 }

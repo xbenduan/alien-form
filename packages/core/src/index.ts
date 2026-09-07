@@ -41,6 +41,7 @@ export type {
   SchemaReactionKey,
   RuntimeRuleContext,
   RuntimeAccessor,
+  RuntimeNamespace,
   ExpressionScope,
 } from "./types";
 

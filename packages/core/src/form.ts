@@ -922,7 +922,7 @@ function buildExpressionScope(
     $path: field.path,
     $service: injected.$service,
     $utils: injected.$utils,
-    $enum: injected.$enum,
+    $enums: injected.$enums,
     $query: injected.$query || {},
   };
 }

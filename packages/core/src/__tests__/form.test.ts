@@ -2,10 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createForm } from "../form";
 import type { IFormSchema } from "../types";
 
-const accessor =
-  <T>(entries: Record<string, T>) =>
-  (code: string) =>
-    entries[code];
+const namespace = <T>(entries: Record<string, T>) => entries;
 
 describe("createForm runtime and projection", () => {
   it("defers runtime reactions until mount", async () => {
@@ -16,7 +13,7 @@ describe("createForm runtime and projection", () => {
         serviceIds: {
           type: "tags",
           "x-reaction": {
-            dataSource: '{{ $utils("loadDataSource")() }}',
+            dataSource: "{{ $utils.loadDataSource() }}",
           },
         },
       },
@@ -25,7 +22,7 @@ describe("createForm runtime and projection", () => {
     const form = createForm({
       schema,
       scope: {
-        $utils: accessor({
+        $utils: namespace({
           loadDataSource() {
             calls += 1;
             return [];
@@ -49,7 +46,7 @@ describe("createForm runtime and projection", () => {
         serviceIds: {
           type: "tags",
           "x-reaction": {
-            dataSource: '{{ $utils("loadDataSource")() }}',
+            dataSource: "{{ $utils.loadDataSource() }}",
           },
         },
       },
@@ -58,7 +55,7 @@ describe("createForm runtime and projection", () => {
     const form = createForm({
       schema,
       scope: {
-        $utils: accessor({
+        $utils: namespace({
           loadDataSource() {
             calls += 1;
             return [];
@@ -265,7 +262,7 @@ describe("createForm runtime and projection", () => {
           type: "string",
           "x-format": {
             input: ({ $value }) => (typeof $value === "string" ? $value.trim() : $value),
-            output: '{{ $utils("wrapName")($value) }}',
+            output: "{{ $utils.wrapName($value) }}",
           },
         },
       },
@@ -277,7 +274,7 @@ describe("createForm runtime and projection", () => {
         name: "  Alice  ",
       },
       scope: {
-        $utils: accessor({
+        $utils: namespace({
           wrapName(value: unknown) {
             return typeof value === "string" ? `[${value}]` : value;
           },

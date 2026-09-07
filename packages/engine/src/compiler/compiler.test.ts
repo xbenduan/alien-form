@@ -118,14 +118,14 @@ describe("page compiler", () => {
   it("compiles standalone protocol props before runtime rendering", () => {
     const date = new Date(0);
     const compiled = compileRuntimeValue({
-      options: ["static", '{{ $enum("status") }}'],
+      options: ["static", "{{ $enums.status }}"],
       onClick: '{{ () => $service("records.list")() }}',
       date,
     });
     expect(containsCompiledValue(compiled)).toBe(true);
     const list = () => "loaded";
     const resolved = evaluateCompiledValue(compiled, {
-      $enum: () => ["enabled"],
+      $enums: { status: ["enabled"] },
       $service: () => list,
     });
 

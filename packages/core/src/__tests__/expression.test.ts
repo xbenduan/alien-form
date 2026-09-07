@@ -3,6 +3,7 @@ import { compileExpr, evaluateExpression } from "../expression";
 import type { ExpressionScope } from "../types";
 
 const emptyAccessor = () => undefined;
+const emptyNamespace = {};
 
 function scope(overrides: Partial<ExpressionScope> = {}): ExpressionScope {
   return {
@@ -13,8 +14,8 @@ function scope(overrides: Partial<ExpressionScope> = {}): ExpressionScope {
     $row: undefined,
     $path: "",
     $service: emptyAccessor,
-    $utils: emptyAccessor,
-    $enum: emptyAccessor,
+    $utils: emptyNamespace,
+    $enums: emptyNamespace,
     $query: {},
     ...overrides,
   };

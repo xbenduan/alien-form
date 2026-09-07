@@ -4,21 +4,33 @@ import type { BuilderSchema, CompiledPage } from "../protocol";
 import { Registry, type ComponentRegistration } from "../registry";
 
 export type SchemaLoader = (modelCode: string) => Promise<BuilderSchema>;
-export type RuntimeAccessor<T = unknown> = (code: string) => T;
 export type RuntimeService = (...args: any[]) => unknown;
 type RegistrationKind = "component" | "service" | "enum" | "utils";
 type OverrideKeys = Record<RegistrationKind, Set<string>>;
+const namespaceMember = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
-function createAccessor<T>(
-  registry: Registry<T>,
+function createServiceAccessor(
+  registry: Registry<RuntimeService>,
   domain: string | undefined,
-  namespace: string,
-): RuntimeAccessor<T> {
+): (code: string) => RuntimeService {
   return (code) => {
     const value = registry.get(code, domain);
-    if (value === undefined) throw new Error(`${namespace}("${code}") 未注册`);
+    if (value === undefined) throw new Error(`$service("${code}") 未注册`);
     return value;
   };
+}
+
+function createNamespace<T>(
+  registry: Registry<T>,
+  domain: string | undefined,
+): Readonly<Record<string, T>> {
+  return Object.freeze(Object.fromEntries(registry.values(domain)));
+}
+
+function assertNamespaceMember(kind: "utils" | "enum", key: string): void {
+  if (!namespaceMember.test(key)) {
+    throw new Error(`${kind} "${key}" 必须是合法的 JavaScript 属性名，以支持命名空间表达式访问`);
+  }
 }
 
 export class Runtime {
@@ -43,10 +55,12 @@ export class Runtime {
   }
 
   utils(key: string, value: unknown, domain?: string): void {
+    assertNamespaceMember("utils", key);
     this.utilities.set(key, value, domain, this.canReplaceGlobal("utils", key, domain));
   }
 
   enum(key: string, value: unknown, domain?: string): void {
+    assertNamespaceMember("enum", key);
     this.enums.set(key, value, domain, this.canReplaceGlobal("enum", key, domain));
   }
 
@@ -103,9 +117,9 @@ export class Runtime {
   ): Record<string, unknown> {
     return {
       mode,
-      $service: createAccessor(this.services, domain, "$service"),
-      $utils: createAccessor(this.utilities, domain, "$utils"),
-      $enum: createAccessor(this.enums, domain, "$enum"),
+      $service: createServiceAccessor(this.services, domain),
+      $utils: createNamespace(this.utilities, domain),
+      $enums: createNamespace(this.enums, domain),
       $query: query,
     };
   }

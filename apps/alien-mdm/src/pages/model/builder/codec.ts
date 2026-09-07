@@ -72,7 +72,7 @@ export function synchronizeRelationForm(
     props: {
       ...props,
       model: relation.target,
-      loadOptions: '{{ $utils("relation")($service("records.list")) }}',
+      loadOptions: '{{ $utils.relation($service("records.list")) }}',
       valueField: relation.valueField ?? "id",
       labelField: relation.labelField ?? "name",
       pageSize: 10,

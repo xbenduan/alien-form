@@ -1,13 +1,15 @@
-import { conflict, forbidden, notFound } from "../errors.ts";
+import { AppError, conflict, forbidden, notFound } from "../errors.ts";
 import { publicRecord, USER_MODEL } from "../domain/visibility.ts";
 import { uniqueFields } from "../domain/field-plan.ts";
 import { unwrapRefs } from "../store/ref-expander.ts";
 import type {
+  DatabaseField,
   ModelRecord,
   BuilderSchema as ModelSchema,
   Pagination,
   Sorter,
 } from "@alien-form/validate";
+import { databaseFields } from "@alien-form/validate";
 import type { SchemaStore } from "../store/schema-store.ts";
 import type {
   ListResult,
@@ -25,6 +27,8 @@ export interface ListInput {
   sorter?: Sorter;
   keyword?: string;
   searchFields?: string[];
+  /** 树节点值：查询该节点自身及所有后代，独立于 filters。 */
+  parentId?: string | null;
 }
 
 export interface OptionsInput extends Partial<OptionsParams> {
@@ -52,14 +56,35 @@ export class RecordService {
     return schema;
   }
 
+  private selfRelation(schema: ModelSchema): DatabaseField {
+    const relations = databaseFields(schema).filter(
+      (field) =>
+        field.relation?.kind === "many-to-one" && field.relation.target === schema.meta.name,
+    );
+    if (relations.length !== 1) {
+      throw new AppError(
+        `模型 ${schema.meta.name} 必须且只能定义一个 many-to-one 自关联字段才能使用 parentId 查询`,
+        400,
+      );
+    }
+    return relations[0];
+  }
+
   async list(input: ListInput): Promise<ListResult> {
     const schema = await this.requireSchema(input.model);
+    const relation =
+      input.parentId === undefined || input.parentId === null || input.parentId === ""
+        ? undefined
+        : this.selfRelation(schema);
     const result = await this.records.list(schema, {
       filters: unwrapRefs(input.filters),
       pagination: input.pagination,
       sorter: input.sorter,
       keyword: input.keyword,
       searchFields: input.searchFields,
+      parentId: input.parentId,
+      idField: relation?.relation?.valueField ?? "id",
+      parentField: relation?.key,
     });
     const expanded = await this.refs.expand(schema, result.list);
     return { ...result, list: expanded.map((record) => publicRecord(input.model, record)) };

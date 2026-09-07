@@ -2,10 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createForm } from "../form";
 import type { FormError, IFormSchema, PrimitiveFieldNode } from "../types";
 
-const accessor =
-  <T>(entries: Record<string, T>) =>
-  (code: string) =>
-    entries[code];
+const namespace = <T>(entries: Record<string, T>) => entries;
 
 function primitive(form: ReturnType<typeof createForm>, path: string): PrimitiveFieldNode {
   const field = form.field(path);
@@ -34,13 +31,13 @@ describe("reactions", () => {
       type: "object",
       properties: {
         a: { type: "number" },
-        b: { type: "number", "x-reaction": { value: '{{ $utils("double")($values.a) }}' } },
+        b: { type: "number", "x-reaction": { value: "{{ $utils.double($values.a) }}" } },
       },
     };
     const form = createForm({
       schema,
       initialValues: { a: 4 },
-      scope: { $utils: accessor({ double: (value: number) => value * 2 }) },
+      scope: { $utils: namespace({ double: (value: number) => value * 2 }) },
     });
     form.mount();
     expect(form.get("b")).toBe(8);
@@ -101,12 +98,12 @@ describe("reactions", () => {
       properties: {
         role: {
           type: "string",
-          "x-reaction": { dataSource: '{{ $enum("roles") }}' },
+          "x-reaction": { dataSource: "{{ $enums.roles }}" },
         },
       },
     };
     const roles = [{ label: "Admin", value: "admin" }];
-    const form = createForm({ schema, scope: { $enum: accessor({ roles }) } });
+    const form = createForm({ schema, scope: { $enums: namespace({ roles }) } });
     form.mount();
     expect(primitive(form, "role").dataSource()).toEqual(roles);
   });
@@ -118,13 +115,13 @@ describe("reactions", () => {
         items: {
           type: "array",
           items: { type: "object", properties: { name: { type: "string" } } },
-          "x-reaction": { rows: '{{ $utils("seed")() }}' },
+          "x-reaction": { rows: "{{ $utils.seed() }}" },
         },
       },
     };
     const form = createForm({
       schema,
-      scope: { $utils: accessor({ seed: () => [{ name: "first" }, { name: "second" }] }) },
+      scope: { $utils: namespace({ seed: () => [{ name: "first" }, { name: "second" }] }) },
     });
     form.mount();
     expect(form.get("items[].name")).toEqual(["first", "second"]);
@@ -144,7 +141,7 @@ describe("reactions", () => {
           type: "string",
           "x-reaction": {
             unknown: "{{ 1 }}",
-            title: '{{ $utils("fail")() }}',
+            title: "{{ $utils.fail() }}",
           } as any,
         },
       },
@@ -152,7 +149,7 @@ describe("reactions", () => {
     const form = createForm({
       schema,
       scope: {
-        $utils: accessor({
+        $utils: namespace({
           fail: () => {
             throw new Error("failed");
           },
@@ -171,10 +168,10 @@ describe("reactions", () => {
     const schema: IFormSchema = {
       type: "object",
       properties: {
-        name: { type: "string", "x-reaction": { value: '{{ $utils("call")() }}' } },
+        name: { type: "string", "x-reaction": { value: "{{ $utils.call() }}" } },
       },
     };
-    createForm({ schema, scope: { $utils: accessor({ call }) } });
+    createForm({ schema, scope: { $utils: namespace({ call }) } });
     expect(call).not.toHaveBeenCalled();
   });
 });

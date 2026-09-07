@@ -3,10 +3,11 @@ import { createForm } from "../form";
 import type { FormError, IFormSchema, PrimitiveFieldNode } from "../types";
 
 const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
-const accessor =
+const serviceAccessor =
   <T>(entries: Record<string, T>) =>
   (code: string) =>
     entries[code];
+const namespace = <T>(entries: Record<string, T>) => entries;
 
 function primitive(form: ReturnType<typeof createForm>, path: string): PrimitiveFieldNode {
   const field = form.field(path);
@@ -27,8 +28,8 @@ describe("async rules", () => {
     const form = createForm({
       schema,
       scope: {
-        $service: accessor({
-          loadName: async () => {
+        $service: serviceAccessor({
+          loadName: async (): Promise<string> => {
             await tick();
             return "async-name";
           },
@@ -58,7 +59,7 @@ describe("async rules", () => {
     const form = createForm({
       schema,
       scope: {
-        $service: accessor({
+        $service: serviceAccessor({
           slow: () =>
             new Promise<string>((resolve) => {
               resolveValue = resolve;
@@ -88,7 +89,7 @@ describe("async rules", () => {
       schema,
       initialValues: { username: "taken" },
       scope: {
-        $service: accessor({
+        $service: serviceAccessor({
           checkUnique: async (value: string) => {
             await tick();
             return value === "taken" ? "Username is taken" : true;
@@ -106,14 +107,14 @@ describe("async rules", () => {
     const schema: IFormSchema = {
       type: "object",
       properties: {
-        sync: { type: "string", "x-effect": '{{ $utils("startSync")() }}' },
-        async: { type: "string", "x-effect": '{{ $utils("startAsync")() }}' },
+        sync: { type: "string", "x-effect": "{{ $utils.startSync() }}" },
+        async: { type: "string", "x-effect": "{{ $utils.startAsync() }}" },
       },
     };
     const form = createForm({
       schema,
       scope: {
-        $utils: accessor({
+        $utils: namespace({
           startSync: () => syncDispose,
           startAsync: async () => {
             await tick();
@@ -137,8 +138,8 @@ describe("async rules", () => {
         name: {
           type: "string",
           "x-format": {
-            input: '{{ $utils("asyncFormat")($value) }}',
-            output: '{{ $utils("asyncFormat")($value) }}',
+            input: "{{ $utils.asyncFormat($value) }}",
+            output: "{{ $utils.asyncFormat($value) }}",
           },
         },
       },
@@ -147,7 +148,7 @@ describe("async rules", () => {
       schema,
       initialValues: { name: "raw" },
       scope: {
-        $utils: accessor({ asyncFormat: async (value: string) => value.toUpperCase() }),
+        $utils: namespace({ asyncFormat: async (value: string) => value.toUpperCase() }),
       },
       onError: (error) => errors.push(error),
     });
@@ -172,7 +173,7 @@ describe("async rules", () => {
       schema,
       initialValues: { province: "zj" },
       scope: {
-        $service: accessor({
+        $service: serviceAccessor({
           cities: async (province: string) => {
             await tick();
             return [{ label: province, value: "hz" }];

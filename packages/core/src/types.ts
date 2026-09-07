@@ -44,6 +44,7 @@ export interface DataSourceItem {
 }
 
 export type RuntimeAccessor<T = any> = (code: string) => T;
+export type RuntimeNamespace<T = any> = Readonly<Record<string, T>>;
 
 // ─── Schema Validate ──────────────────────────────────────────────────────────
 
@@ -70,8 +71,8 @@ export interface ExpressionScope {
   $row: Record<string, any> | undefined;
   $path: string;
   $service: RuntimeAccessor;
-  $utils: RuntimeAccessor;
-  $enum: RuntimeAccessor;
+  $utils: RuntimeNamespace;
+  $enums: RuntimeNamespace;
   $query: Record<string, any>;
 }
 

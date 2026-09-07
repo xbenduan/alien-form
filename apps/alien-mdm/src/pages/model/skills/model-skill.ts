@@ -218,7 +218,7 @@ Alien Form 是一个 Schema 驱动的模型管理和页面渲染系统。一份 
 
 1. 读取 \`references/protocol/builder-schema.ts\`、\`field-schema.ts\` 和 \`core-types.ts\`，以协议为唯一真相源。
 2. 读取 \`references/runtime-components.json\`，只能使用其中存在且 adapter 匹配场景的组件。
-3. 读取 \`references/runtime-utils.json\` 与 \`runtime-enums.json\`，表达式只能通过 \`$utils("code")\` 和 \`$enum("code")\` 访问其中登记的值。
+3. 读取 \`references/runtime-utils.json\` 与 \`runtime-enums.json\`。工具通过 \`$utils.code\` 访问，枚举通过 \`$enums.code\` 访问；服务保持 \`$service("code")(params)\` 形式。
 4. 读取 \`references/page-templates.json\`，优先吸收模板结构；按模型名替换示例中的 \`example_model\`。
 5. 以 \`templates/model.json\` 为起点生成完整 JSON。存储字段只写入 \`fields\`；表现配置只写入 \`definitions["form-schema"]\`。
 6. 保证每个落库字段在 form-schema properties 中有同名表现定义。不要添加协议外 fallback。
@@ -248,7 +248,7 @@ Alien Form 是一个 Schema 驱动的模型管理和页面渲染系统。一份 
   "component": "RemoteSelect",
   "props": {
     "model": "目标模型名",
-    "loadOptions": "{{ $utils(\\"relation\\")($service(\\"records.list\\")) }}",
+    "loadOptions": "{{ $utils.relation($service(\\"records.list\\")) }}",
     "valueField": "id",
     "labelField": "name",
     "pageSize": 10
@@ -277,7 +277,8 @@ Alien Form 是一个 Schema 驱动的模型管理和页面渲染系统。一份 
     "valueField": "id",
     "parentField": "parentId",
     "labelField": "name",
-    "loadData": "{{ $utils(\\"tree\\")($service(\\"records.subtree\\")) }}"
+    "showRoot": false,
+    "loadData": "{{ $utils.tree($service(\\"records.subtree\\")) }}"
   }
 }
 \`\`\`
@@ -285,7 +286,9 @@ Alien Form 是一个 Schema 驱动的模型管理和页面渲染系统。一份 
 - \`tree\` 只支持单模型自关联；不得配置额外模型、用户聚合或内联数据转换。
 - \`loadData\` 只允许使用上面的 \`$utils + $service\` 标准表达式；模型和字段映射必须声明在组件 \`props\`。
 - \`valueField\` 是节点值字段，\`parentField\` 是父节点字段，\`labelField\` 是显示字段。
-- 后端 \`records.subtree\` 返回平铺节点；\`$utils("tree")\` 负责将它们组装成嵌套节点。
+- \`showRoot\` 默认为 \`false\`：仅一个根节点时隐藏根节点并展示其子节点；多个根节点时始终展示根节点。
+- 后端 \`records.subtree\` 返回平铺节点；\`$utils.tree\` 负责将它们组装成嵌套节点。
+- 树驱动表格时，在 table props 中配置 \`"parentId": "{{ $values.tree }}"\`。后端 \`records.list\` 会返回该节点自身及全部后代；不要把树值写进 \`filters\`，因为 filters 只表达字段级直接匹配。
 
 ## 输出要求
 

@@ -1,6 +1,9 @@
+import { SearchOutlined } from "@ant-design/icons";
+import { Input, Spin } from "antd";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "@binding";
 import styles from "./index.module.css";
+import { useLayoutLoading } from "./loading-context";
 
 interface TreeItem {
   key: string;
@@ -13,12 +16,22 @@ interface TreeDataOptions {
   parentField: string;
   labelField: string;
   valueField?: string;
+  showRoot?: boolean;
 }
 
 function collectExpandableKeys(nodes: TreeItem[]): string[] {
   return nodes.flatMap((node) =>
     node.children?.length ? [node.key, ...collectExpandableKeys(node.children)] : [],
   );
+}
+
+function filterTree(nodes: TreeItem[], keyword: string): TreeItem[] {
+  if (!keyword) return nodes;
+  return nodes.flatMap((node) => {
+    const children = filterTree(node.children ?? [], keyword);
+    if (!node.title.toLocaleLowerCase().includes(keyword) && children.length === 0) return [];
+    return [{ ...node, children }];
+  });
 }
 
 function TreeNode({
@@ -41,7 +54,10 @@ function TreeNode({
   const selected = selectedKey === node.key;
   return (
     <li>
-      <div className={styles.treeNode} style={{ paddingLeft: `${depth * 16 + 8}px` }}>
+      <div
+        className={`${styles.treeNode}${selected ? ` ${styles.treeNodeSelected}` : ""}`}
+        style={{ paddingLeft: `${depth * 16 + 8}px` }}
+      >
         {hasChildren ? (
           <button
             type="button"
@@ -92,15 +108,17 @@ export function Tree({
   parentField,
   labelField,
   valueField,
+  showRoot = false,
 }: ComponentProps &
   TreeDataOptions & {
     title?: string;
     loadData?: (options: TreeDataOptions) => Promise<TreeItem[]>;
   }) {
   const [nodes, setNodes] = useState<TreeItem[]>([]);
-  const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [keyword, setKeyword] = useState("");
   const loaderRef = useRef(loadData);
+  const { loading, startLoading } = useLayoutLoading();
   const selectedKey = value == null ? undefined : String(value);
 
   useEffect(() => {
@@ -111,7 +129,7 @@ export function Tree({
     const loader = loaderRef.current;
     if (!loader) return;
     let active = true;
-    setLoading(true);
+    const stopLoading = startLoading();
     void loader({
       model,
       parentField,
@@ -124,16 +142,28 @@ export function Tree({
         setExpanded(new Set(collectExpandableKeys(nextNodes)));
       })
       .finally(() => {
-        if (active) setLoading(false);
+        stopLoading();
       });
     return () => {
       active = false;
     };
   }, []);
 
+  const visibleNodes = useMemo(
+    () => (showRoot || nodes.length !== 1 ? nodes : (nodes[0]?.children ?? [])),
+    [nodes, showRoot],
+  );
+  const filteredNodes = useMemo(
+    () => filterTree(visibleNodes, keyword.trim().toLocaleLowerCase()),
+    [keyword, visibleNodes],
+  );
+  useEffect(() => {
+    if (!keyword.trim()) return;
+    setExpanded(new Set(collectExpandableKeys(filteredNodes)));
+  }, [filteredNodes, keyword]);
   const tree = useMemo(
     () =>
-      nodes.map((node) => (
+      filteredNodes.map((node) => (
         <TreeNode
           key={node.key}
           node={node}
@@ -151,19 +181,29 @@ export function Tree({
           }
         />
       )),
-    [expanded, nodes, onChange, selectedKey],
+    [expanded, filteredNodes, onChange, selectedKey],
   );
 
   return (
     <section className={styles.treeCard}>
       {title ? <header className={styles.treeHeader}>{title}</header> : null}
-      <div className={styles.treeContent} aria-busy={loading}>
-        {nodes.length ? (
-          <ul className={styles.tree}>{tree}</ul>
-        ) : (
-          <p className={styles.treeEmpty}>暂无分组</p>
-        )}
-      </div>
+      <Spin spinning={loading}>
+        <div className={styles.treeContent} aria-busy={loading}>
+          <Input
+            className={styles.treeSearch}
+            allowClear
+            placeholder="搜索节点"
+            prefix={<SearchOutlined />}
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+          />
+          {filteredNodes.length ? (
+            <ul className={styles.tree}>{tree}</ul>
+          ) : (
+            <p className={styles.treeEmpty}>{keyword ? "未找到匹配节点" : "暂无分组"}</p>
+          )}
+        </div>
+      </Spin>
     </section>
   );
 }

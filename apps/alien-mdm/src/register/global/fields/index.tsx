@@ -69,7 +69,7 @@ export function registerFields(runtime: Runtime): void {
         component: "RemoteSelect",
         props: {
           model: "example_model",
-          loadOptions: '{{ $utils("relation")($service("records.list")) }}',
+          loadOptions: '{{ $utils.relation($service("records.list")) }}',
           valueField: "id",
           labelField: "name",
           pageSize: 10,
