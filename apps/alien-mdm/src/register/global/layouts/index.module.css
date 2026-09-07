@@ -57,10 +57,38 @@
 }
 
 .tableCard {
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid rgba(22, 119, 255, 0.12);
   border-radius: 12px;
   background: #fff;
+}
+
+.tableCard :global(.ant-table-sticky-holder) {
+  z-index: 10 !important;
+  background: #fff;
+}
+
+.tableCard :global(.ant-table-sticky-holder .ant-table-thead > tr > th) {
+  z-index: 12 !important;
+}
+
+.tableCard :global(.ant-table-tbody > tr > td.ant-table-cell-fix-start) {
+  z-index: 1 !important;
+}
+
+.tableCard :global(.ant-table-tbody > tr > td.ant-table-cell-fix-end) {
+  z-index: 1 !important;
+}
+
+.tableCard :global(.ant-table-thead > tr > th.ant-table-cell-fix-right),
+.tableCard :global(.ant-table-thead > tr > th.ant-table-cell-fix-left),
+.tableCard :global(.ant-table-thead > tr > th.ant-table-cell-fix-end),
+.tableCard :global(.ant-table-thead > tr > th.ant-table-cell-fix-start),
+.tableCard :global(.ant-table-sticky-holder .ant-table-cell-fix-left-first),
+.tableCard :global(.ant-table-sticky-holder .ant-table-cell-fix-left-last),
+.tableCard :global(.ant-table-sticky-holder .ant-table-cell-fix-start) {
+  z-index: 11 !important;
+  background: #f8faff;
 }
 
 .tableToolbar {

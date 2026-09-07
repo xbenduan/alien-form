@@ -693,6 +693,7 @@ export function Table({
           columns={tableColumns}
           dataSource={data.list}
           loading={loading}
+          sticky={{ offsetHeader: 0 }}
           scroll={scroll ?? { x: "max-content" }}
           rowSelection={{
             selectedRowKeys,
