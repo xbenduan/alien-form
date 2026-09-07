@@ -7,6 +7,7 @@ export function Layout({
   children,
 }: {
   slots: Record<string, ReactNode>;
+  left?: string;
   children?: ReactNode;
 }) {
   const rightSlots = Object.entries(slots)

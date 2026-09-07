@@ -213,8 +213,40 @@ export const sysUserSchema: ModelSchema = {
       title: "用户管理",
       layout: {
         component: "layout",
+        props: { left: "menu" },
       },
       properties: {
+        menu: {
+          type: "void",
+          component: "Menu",
+          props: {
+            title: "用户管理",
+            items: [
+              {
+                key: "list",
+                label: "用户列表",
+                onClick: '{{ () => $utils.openRoute("/_sys_user/list") }}',
+              },
+              {
+                key: "add",
+                label: "新建用户",
+                onClick: '{{ () => $utils.openRoute("/_sys_user/add") }}',
+              },
+              {
+                key: "edit",
+                label: "编辑当前用户",
+                onClick:
+                  '{{ () => $utils.openRoute("/_sys_user/edit?id=" + ($query.id ?? "")) }}',
+              },
+              {
+                key: "detail",
+                label: "查看当前用户",
+                onClick:
+                  '{{ () => $utils.openRoute("/_sys_user/detail?id=" + ($query.id ?? "")) }}',
+              },
+            ],
+          },
+        },
         filter: {
           type: "string",
           component: "filter",

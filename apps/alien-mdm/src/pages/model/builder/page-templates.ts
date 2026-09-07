@@ -104,9 +104,9 @@ function buildListPage(modelCode: string, title: string): XPage {
 function buildTreeListPage(modelCode: string, title: string): XPage {
   const modelLiteral = JSON.stringify(modelCode);
   return {
-    router: "tree-list",
+    router: "list",
     title,
-    layout: { component: "layout" },
+    layout: { component: "layout", props: { left: "left" } },
     properties: {
       left: {
         type: "string",

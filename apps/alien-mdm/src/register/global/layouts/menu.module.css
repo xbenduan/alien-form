@@ -1,0 +1,51 @@
+.menu {
+  box-sizing: border-box;
+  display: flex;
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+  flex-direction: column;
+  overflow-y: auto;
+  border: 1px solid rgba(22, 119, 255, 0.12);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(23, 32, 51, 0.05);
+  padding: 12px 10px;
+  scrollbar-gutter: stable;
+}
+
+.title {
+  padding: 8px 12px 12px;
+  color: #172033;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.antdMenu {
+  flex: 1;
+  min-height: 0;
+  border-inline-end: 0 !important;
+  background: transparent !important;
+}
+
+.antdMenu :global(.ant-menu-item) {
+  height: 38px;
+  margin: 4px 0;
+  border-radius: 7px;
+  line-height: 38px;
+}
+
+.antdMenu :global(.ant-menu-item-selected) {
+  background: #eaf3ff;
+  color: #1769e0;
+  font-weight: 600;
+}
+
+.antdMenu :global(.ant-menu-item:hover) {
+  background: #f2f6fc;
+  color: #1769e0;
+}
+
+.antdMenu :global(.ant-menu-item-selected::after) {
+  display: none;
+}

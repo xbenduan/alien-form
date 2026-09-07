@@ -55,7 +55,7 @@ export function DynamicPage() {
   if (!modelCode) return <Result status="404" title="模型编码缺失" />;
   if (error) return <Alert type="error" message="动态页面加载失败" description={error} showIcon />;
   if (!page) return <Skeleton active />;
-  const isAction = !["list", "tree-list"].includes(page.page.router);
+  const isAction = page.page.router !== "list";
   return (
     <PageProvider page={page}>
       <div className={`${styles.recordRoute}${isAction ? ` ${styles.actionRoute}` : ""}`}>
