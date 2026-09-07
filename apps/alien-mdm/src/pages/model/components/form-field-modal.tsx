@@ -49,6 +49,17 @@ function parseJson(text: string | undefined, label: string): unknown {
   }
 }
 
+const jsonRule = (label: string) => ({
+  validator: (_r: unknown, value: string) => {
+    try {
+      parseJson(value, label);
+      return Promise.resolve();
+    } catch (error) {
+      return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+    }
+  },
+});
+
 function toValues(node: FieldNode): FormFieldValues {
   const form = node.form as FieldSchema & Record<string, unknown>;
   return {
@@ -73,17 +84,6 @@ function toValues(node: FieldNode): FormFieldValues {
     validateJson: toJson(form["x-validate"]),
   };
 }
-
-const jsonRule = (label: string) => ({
-  validator: (_r: unknown, value: string) => {
-    try {
-      parseJson(value, label);
-      return Promise.resolve();
-    } catch (error) {
-      return Promise.reject(error instanceof Error ? error : new Error(String(error)));
-    }
-  },
-});
 
 /**
  * 「表单配置」字段弹窗：编辑 form-schema 表现，覆盖全部 IFieldSchema 字段。

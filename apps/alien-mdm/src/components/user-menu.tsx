@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../app/providers";
 import { recordRoute } from "../utils/record-route";
 import { Identicon } from "./identicon";
-import styles from "./index.module.css";
+import styles from "./user-menu.module.css";
 
 export function UserMenu() {
   const navigate = useNavigate();

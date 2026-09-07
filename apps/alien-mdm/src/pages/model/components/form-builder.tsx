@@ -14,7 +14,7 @@ import {
 import { FieldBarTree } from "./field-bar-tree";
 import { FormFieldModal } from "./form-field-modal";
 import { PlusOutlined } from "@ant-design/icons";
-import styles from "./builder.module.css";
+import styles from "./form-builder.module.css";
 
 interface EditorState {
   node: FieldNode;
@@ -113,7 +113,7 @@ export function FormBuilder({
           <Col span={12}>
             <Card classNames={{ body: styles.formBuilderCardBody }}>
               <Flex justify="space-between" align="center">
-                <div className={styles.pageConfigCardTitle}>字段列表</div>
+                <div className={styles.sectionTitle}>字段列表</div>
                 <Button type="link" icon={<PlusOutlined />} onClick={() => addExtra()}>
                   新增字段
                 </Button>
@@ -136,7 +136,7 @@ export function FormBuilder({
           <Col span={12}>
             <Card classNames={{ body: styles.formBuilderCardBody }}>
               <Flex justify="space-between" align="center">
-                <div className={styles.pageConfigCardTitle}>
+                <div className={styles.sectionTitle}>
                   <Segmented<RightTab>
                     value={rightTab}
                     onChange={setRightTab}

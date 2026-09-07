@@ -3,7 +3,7 @@ import { Button, Popconfirm, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useMemo } from "react";
 import type { ModelSummary } from "@app-types";
-import styles from "./index.module.css";
+import styles from "./model-table.module.css";
 
 export interface ModelTableProps {
   canManageModels: boolean;

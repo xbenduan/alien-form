@@ -1,0 +1,25 @@
+.tableCard {
+  overflow: hidden;
+  border: 1px solid rgba(22, 119, 255, 0.12);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(23, 32, 51, 0.05);
+}
+
+.tableCard :global(.ant-table-pagination.ant-pagination) {
+  margin-inline: var(--ant-margin);
+}
+
+.titleLink:global(.ant-btn) {
+  max-width: 100%;
+  height: auto;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .tableCard {
+    padding-inline: 8px;
+  }
+}

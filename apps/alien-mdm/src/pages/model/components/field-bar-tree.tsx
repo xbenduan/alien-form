@@ -12,7 +12,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button, Tag, Tooltip } from "antd";
 import type { Runtime } from "@alien-form/engine";
 import { isContainer, type FieldNode } from "../builder";
-import styles from "./builder.module.css";
+import styles from "./field-bar-tree.module.css";
 
 interface FieldBarTreeProps {
   fields: FieldNode[];

@@ -1,0 +1,19 @@
+.formBuilderCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formBuilderCardContent {
+  height: calc(100vh - 260px);
+  overflow: auto;
+}
+
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.sourceJson {
+  height: 100%;
+}

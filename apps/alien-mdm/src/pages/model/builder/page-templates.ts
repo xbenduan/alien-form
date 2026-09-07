@@ -44,7 +44,7 @@ function buildListPage(modelCode: string, title: string): XPage {
           filter: "{{ $values.filter }}",
           loadData: '{{ $service("records.list") }}',
           rowActions: ["deactivate", "delete"],
-          "actionBtns": {
+          actionBtns: {
             add: { type: "primary", children: "新增", openMode: OPEN_MODE },
             edit: { type: "link", children: "编辑", openMode: OPEN_MODE },
             detail: { type: "link", children: "详情", openMode: OPEN_MODE },

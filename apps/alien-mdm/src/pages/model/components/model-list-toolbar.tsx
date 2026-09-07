@@ -2,7 +2,7 @@ import { DownloadOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icon
 import { App, Button, Space } from "antd";
 import { useState } from "react";
 import { useRuntime } from "@alien-form/react";
-import styles from "./index.module.css";
+import styles from "./model-list-toolbar.module.css";
 
 export interface ModelListToolbarProps {
   loading: boolean;

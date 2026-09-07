@@ -20,7 +20,7 @@ import { BasicInfo } from "./basic-info";
 import { DatabaseBuilder } from "./database-builder";
 import { FormBuilder } from "./form-builder";
 import { PageConfig } from "./page-config";
-import styles from "./index.module.css";
+import styles from "./model-editor.module.css";
 
 const STEP_TITLES = ["基本信息", "数据库构建", "表单配置", "页面配置"] as const;
 
