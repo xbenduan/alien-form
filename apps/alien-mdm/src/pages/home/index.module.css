@@ -1,12 +1,23 @@
 .home {
+  position: relative;
+  isolation: isolate;
   width: 100%;
   min-height: 100vh;
   padding-bottom: 64px;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 214, 165, 0.38), transparent 28rem),
+    radial-gradient(circle at 92% 10%, rgba(172, 221, 255, 0.42), transparent 30rem),
+    linear-gradient(135deg, #f8fbff 0%, #f8f7ff 48%, #fffaf7 100%);
 }
 
 .topbar {
-  border-bottom: 1px solid #e8edf3;
-  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.46);
+  background: rgba(255, 255, 255, 0.24);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 2px 8px rgba(77, 93, 131, 0.035);
 }
 
 .tabs {
@@ -75,6 +86,8 @@
 }
 
 .mainContent {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 1440px;
   margin: 0 auto;
@@ -83,12 +96,18 @@
 
 .favoriteSection {
   margin-bottom: 28px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 4px 14px rgba(77, 93, 131, 0.035);
 }
 
 .sectionHeader {
   display: flex;
   min-height: 40px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
@@ -146,12 +165,18 @@
   gap: 14px;
 }
 
+.favoriteGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .card {
   position: relative;
   overflow: hidden;
   border: 1px solid #dfe6ee;
   border-radius: 8px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.86);
   color: #172033;
   cursor: pointer;
   text-align: left;
@@ -180,6 +205,36 @@
   color: inherit;
   cursor: pointer;
   text-align: left;
+}
+
+.favoriteCard {
+  border-color: rgba(226, 206, 190, 0.8);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.favoriteCard .cardMain {
+  min-height: 82px;
+  padding: 11px 12px;
+  align-items: center;
+  gap: 10px;
+}
+
+.favoriteCard .cardIcon {
+  width: 34px;
+  height: 34px;
+  flex-basis: 34px;
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+.favoriteCard .cardContent {
+  padding-right: 40px;
+}
+
+.favoriteCard .cardDesc {
+  margin-top: 1px;
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .cardMain:focus-visible {
@@ -281,12 +336,22 @@
   color: #a1aab8;
 }
 
+.favoriteCard .favoriteButton:global(.ant-btn) {
+  top: 7px;
+  right: 7px;
+}
+
 .editButton:global(.ant-btn) {
   position: absolute;
   top: 9px;
   right: 41px;
   z-index: 1;
   color: #7b8799;
+}
+
+.favoriteCard .editButton:global(.ant-btn) {
+  top: 7px;
+  right: 35px;
 }
 
 .editButton:global(.ant-btn):hover {
@@ -351,6 +416,14 @@
   .grid {
     grid-template-columns: 1fr;
   }
+
+  .favoriteSection {
+    padding: 14px;
+  }
+
+  .favoriteGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (min-width: 641px) and (max-width: 1100px) {
@@ -361,5 +434,15 @@
 
   .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .favoriteGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1101px) and (max-width: 1280px) {
+  .favoriteGrid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }

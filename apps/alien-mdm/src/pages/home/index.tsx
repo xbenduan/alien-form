@@ -60,6 +60,60 @@ function formatUpdatedAt(value: string): string {
   return `${UPDATED_AT_FORMATTER.format(date)} 更新`;
 }
 
+function ModelIcon({ model }: { model: ModelSummary }) {
+  const isSystem = model.group === "system";
+  return (
+    <span className={`${styles.cardIcon} ${isSystem ? styles.systemIcon : styles.businessIcon}`}>
+      {isSystem ? <SafetyCertificateOutlined /> : <DatabaseOutlined />}
+    </span>
+  );
+}
+
+function CardActions({
+  model,
+  favorite,
+  onToggleFavorite,
+  onEdit,
+}: {
+  model: ModelSummary;
+  favorite: boolean;
+  onToggleFavorite: (model: ModelSummary) => void;
+  onEdit?: (model: ModelSummary) => void;
+}) {
+  return (
+    <>
+      {onEdit ? (
+        <Tooltip title="编辑模型">
+          <Button
+            type="text"
+            shape="circle"
+            className={styles.editButton}
+            icon={<EditOutlined />}
+            aria-label={`编辑${model.title}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onEdit(model);
+            }}
+          />
+        </Tooltip>
+      ) : null}
+      <Tooltip title={favorite ? "取消收藏" : "收藏"}>
+        <Button
+          type="text"
+          shape="circle"
+          className={`${styles.favoriteButton}${favorite ? ` ${styles.favoriteActive}` : ""}`}
+          icon={favorite ? <StarFilled /> : <StarOutlined />}
+          aria-label={favorite ? `取消收藏${model.title}` : `收藏${model.title}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleFavorite(model);
+          }}
+        />
+      </Tooltip>
+    </>
+  );
+}
+
 function ModelCard({
   model,
   onOpen,
@@ -79,11 +133,7 @@ function ModelCard({
   return (
     <article className={styles.card}>
       <button type="button" className={styles.cardMain} onClick={() => onOpen(model)}>
-        <span
-          className={`${styles.cardIcon} ${isSystem ? styles.systemIcon : styles.businessIcon}`}
-        >
-          {isSystem ? <SafetyCertificateOutlined /> : <DatabaseOutlined />}
-        </span>
+        <ModelIcon model={model} />
         <span className={styles.cardContent}>
           <strong className={styles.cardTitle}>{model.title}</strong>
           <Tooltip title={description}>
@@ -101,28 +151,46 @@ function ModelCard({
           </span>
         </span>
       </button>
-      <Tooltip title={favorite ? "取消收藏" : "收藏"}>
-        <Button
-          type="text"
-          shape="circle"
-          className={`${styles.favoriteButton}${favorite ? ` ${styles.favoriteActive}` : ""}`}
-          icon={favorite ? <StarFilled /> : <StarOutlined />}
-          aria-label={favorite ? `取消收藏${model.title}` : `收藏${model.title}`}
-          onClick={() => onToggleFavorite(model)}
-        />
-      </Tooltip>
-      {onEdit ? (
-        <Tooltip title="编辑模型">
-          <Button
-            type="text"
-            shape="circle"
-            className={styles.editButton}
-            icon={<EditOutlined />}
-            aria-label={`编辑${model.title}`}
-            onClick={() => onEdit(model)}
-          />
-        </Tooltip>
-      ) : null}
+      <CardActions
+        model={model}
+        favorite={favorite}
+        onToggleFavorite={onToggleFavorite}
+        onEdit={onEdit}
+      />
+    </article>
+  );
+}
+
+function FavoriteModelCard({
+  model,
+  onOpen,
+  onToggleFavorite,
+  onEdit,
+}: {
+  model: ModelSummary;
+  onOpen: (model: ModelSummary) => void;
+  onToggleFavorite: (model: ModelSummary) => void;
+  onEdit?: (model: ModelSummary) => void;
+}) {
+  const description = model.description || model.subtitle || model.name;
+
+  return (
+    <article className={`${styles.card} ${styles.favoriteCard}`}>
+      <button type="button" className={styles.cardMain} onClick={() => onOpen(model)}>
+        <ModelIcon model={model} />
+        <span className={styles.cardContent}>
+          <strong className={styles.cardTitle}>{model.title}</strong>
+          <Tooltip title={description}>
+            <span className={styles.cardDesc}>{description}</span>
+          </Tooltip>
+        </span>
+      </button>
+      <CardActions
+        model={model}
+        favorite
+        onToggleFavorite={onToggleFavorite}
+        onEdit={onEdit}
+      />
     </article>
   );
 }
@@ -256,12 +324,11 @@ export default function HomePage() {
                     <Typography.Text>固定常用的数据入口</Typography.Text>
                   </div>
                 </div>
-                <div className={styles.grid}>
+                <div className={styles.favoriteGrid}>
                   {favoriteModels.map((model) => (
-                    <ModelCard
+                    <FavoriteModelCard
                       key={model.name}
                       model={model}
-                      favorite
                       onOpen={openModel}
                       onToggleFavorite={toggleFavorite}
                       onEdit={canManageModels ? editModel : undefined}
