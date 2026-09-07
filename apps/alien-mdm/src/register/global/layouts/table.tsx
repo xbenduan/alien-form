@@ -44,6 +44,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type HTMLAttributes,
   type Key,
@@ -260,6 +261,7 @@ export function Table({
   );
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [overlay, setOverlay] = useState<OverlayState>();
+  const loadDataRef = useRef(loadData);
   const toolbarChildren = useMemo(() => Children.toArray(children), [children]);
   const rowActionNodes = useMemo(() => {
     const rowActions = node.slots.rowActions;
@@ -355,8 +357,13 @@ export function Table({
     setColumnPreferences(resolvedModelCode ? readColumnPreferences(resolvedModelCode) : {});
   }, [resolvedModelCode]);
 
+  useEffect(() => {
+    loadDataRef.current = loadData;
+  }, [loadData]);
+
   const refresh = useCallback(async () => {
-    if (!loadData) return;
+    const loader = loadDataRef.current;
+    if (!loader) return;
     const parsedFilter = parseFilter(filter);
     if (nodeField && nodeId !== undefined && nodeId !== null && nodeId !== "") {
       parsedFilter[nodeField] = nodeId;
@@ -364,7 +371,7 @@ export function Table({
     setLoading(true);
     try {
       setData(
-        await loadData({
+        await loader({
           filters: parsedFilter,
           pagination: { current: page, pageSize },
           sorter,
@@ -373,7 +380,7 @@ export function Table({
     } finally {
       setLoading(false);
     }
-  }, [filter, loadData, nodeField, nodeId, page, pageSize, sorter]);
+  }, [filter, nodeField, nodeId, page, pageSize, sorter]);
   const openAction = useCallback(
     (mode: RecordActionMode, recordId?: unknown) => {
       if (!resolvedModelCode) return;

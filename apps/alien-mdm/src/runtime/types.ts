@@ -19,6 +19,17 @@ export interface ListResponse<T = Record<string, unknown>> {
   total: number;
 }
 
+export interface SubtreeRequest {
+  model: string;
+  idField: string;
+  parentField: string;
+  parentValue?: string | null;
+}
+
+export interface SubtreeResponse<T = Record<string, unknown>> {
+  list: T[];
+}
+
 export interface LoginResponse {
   token: string;
   user: Record<string, unknown>;

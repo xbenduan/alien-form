@@ -1,6 +1,6 @@
-import type { ListRequest, ListResponse } from "@app-types";
+import type { SubtreeRequest, SubtreeResponse } from "@app-types";
 
-type ListService = (request: ListRequest) => ListResponse | Promise<ListResponse>;
+type SubtreeService = (request: SubtreeRequest) => SubtreeResponse | Promise<SubtreeResponse>;
 
 interface ReferenceValue {
   $ref: string;
@@ -18,7 +18,6 @@ export interface TreeOptions {
   parentField: string;
   labelField: string;
   valueField?: string;
-  pageSize?: number;
 }
 
 function referenceValue(value: unknown): unknown {
@@ -34,16 +33,12 @@ function referenceValue(value: unknown): unknown {
   return value;
 }
 
-function listRequest(model: string, pageSize: number): ListRequest {
-  return { model, pagination: { current: 1, pageSize } };
-}
-
-/** 将单模型平铺记录按自关联字段转换为可渲染树。 */
-export function tree(service: ListService) {
+/** 消费 records.subtree 返回的平铺节点，并装配为嵌套树。 */
+export function tree(service: SubtreeService) {
   return async (options: TreeOptions): Promise<TreeNode[]> => {
-    const { model, parentField, labelField, valueField = "id", pageSize = 100 } = options;
+    const { model, parentField, labelField, valueField = "id" } = options;
 
-    const records = await service(listRequest(model, pageSize));
+    const records = await service({ model, idField: valueField, parentField });
 
     const nodes = new Map<string, TreeNode>();
     for (const record of records.list) {

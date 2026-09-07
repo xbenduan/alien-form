@@ -13,7 +13,6 @@ interface TreeDataOptions {
   parentField: string;
   labelField: string;
   valueField?: string;
-  pageSize?: number;
 }
 
 function collectExpandableKeys(nodes: TreeItem[]): string[] {
@@ -93,7 +92,6 @@ export function Tree({
   parentField,
   labelField,
   valueField,
-  pageSize,
 }: ComponentProps &
   TreeDataOptions & {
     title?: string;
@@ -119,7 +117,6 @@ export function Tree({
       parentField,
       labelField,
       valueField,
-      pageSize,
     })
       .then((nextNodes) => {
         if (!active) return;

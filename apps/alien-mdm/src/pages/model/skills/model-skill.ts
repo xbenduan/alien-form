@@ -264,6 +264,29 @@ Alien Form 是一个 Schema 驱动的模型管理和页面渲染系统。一份 
 
 服务端会严格校验关联字段。若收到 HTTP 400，读取完整错误中的字段路径、期望值和实际值，直接修正该模型 JSON 后重新提交；不要移除 relation 或改用非协议字段绕过校验。
 
+## 自关联树协议
+
+\`tree\` 是单模型自关联树组件。数据加载必须通过 \`records.subtree\`，由组件 props 描述模型与字段映射：
+
+\`\`\`json
+{
+  "type": "string",
+  "component": "tree",
+  "props": {
+    "model": "example_model",
+    "valueField": "id",
+    "parentField": "parentId",
+    "labelField": "name",
+    "loadData": "{{ $utils(\\"tree\\")($service(\\"records.subtree\\")) }}"
+  }
+}
+\`\`\`
+
+- \`tree\` 只支持单模型自关联；不得配置额外模型、用户聚合或内联数据转换。
+- \`loadData\` 只允许使用上面的 \`$utils + $service\` 标准表达式；模型和字段映射必须声明在组件 \`props\`。
+- \`valueField\` 是节点值字段，\`parentField\` 是父节点字段，\`labelField\` 是显示字段。
+- 后端 \`records.subtree\` 返回平铺节点；\`$utils("tree")\` 负责将它们组装成嵌套节点。
+
 ## 输出要求
 
 只提交可解析的 JSON 模型，不输出 TypeScript 函数。表达式必须保持 \`{{ ... }}\` 字符串形式。接口返回非 2xx 时停止，不得自动改用其他接口或认证方式。

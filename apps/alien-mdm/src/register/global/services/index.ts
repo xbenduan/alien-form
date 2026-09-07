@@ -5,10 +5,15 @@ import type {
   ListResponse,
   LoginResponse,
   ModelSummary,
+  SubtreeRequest,
+  SubtreeResponse,
 } from "@app-types";
 import { transport } from "@runtime/transport";
+import { coalesceRequest } from "@runtime/request-coalescer";
 
 export function registerServices(runtime: Runtime): void {
+  const pendingRecordLists = new Map<string, Promise<ListResponse>>();
+  const pendingSubtrees = new Map<string, Promise<SubtreeResponse>>();
   runtime.service("auth.login", (body: { username: string; password: string }) =>
     transport.send<LoginResponse>("/api/auth/login", {
       method: "POST",
@@ -37,12 +42,24 @@ export function registerServices(runtime: Runtime): void {
   runtime.service("schema.delete", (modelCode: string) =>
     transport.send<void>(`/api/schemas/${modelCode}`, { method: "DELETE" }),
   );
-  runtime.service("records.list", (request: ListRequest) =>
-    transport.send<ListResponse>("/api/records/list", {
-      method: "POST",
-      body: JSON.stringify(request),
-    }),
-  );
+  runtime.service("records.list", (request: ListRequest) => {
+    const body = JSON.stringify(request);
+    return coalesceRequest(pendingRecordLists, body, () =>
+      transport.send<ListResponse>("/api/records/list", {
+        method: "POST",
+        body,
+      }),
+    );
+  });
+  runtime.service("records.subtree", (request: SubtreeRequest) => {
+    const body = JSON.stringify(request);
+    return coalesceRequest(pendingSubtrees, body, () =>
+      transport.send<SubtreeResponse>("/api/records/subtree", {
+        method: "POST",
+        body,
+      }),
+    );
+  });
   runtime.service("records.get", ({ model, id }: { model: string; id: string }) =>
     transport.send<Record<string, unknown>>(
       `/api/records/${encodeURIComponent(model)}/${encodeURIComponent(id)}`,
