@@ -1,16 +1,20 @@
 import { planFields, type FieldPlan } from "../domain/field-plan.ts";
 import { formatRecordId } from "../domain/record-id.ts";
-import type {
-  ModelRecord,
-  BuilderSchema as ModelSchema,
-  Pagination,
-  Sorter,
+import {
+  databaseFields,
+  type BuilderSchema as ModelSchema,
+  type DatabaseField,
+  type ModelRecord,
+  type Pagination,
+  type Sorter,
 } from "@alien-form/validate";
 
 export interface ListParams {
   filters?: Record<string, unknown>;
   pagination?: Pagination;
   sorter?: Sorter;
+  keyword?: string;
+  searchFields?: string[];
 }
 
 export interface ListResult {
@@ -59,6 +63,10 @@ function fieldExpr(field: string): string {
   if (field === "createdAt") return `"created_at"`;
   if (field === "updatedAt") return `"updated_at"`;
   return `json_extract(data_content, '$.${field}')`;
+}
+
+function searchableField(schema: ModelSchema, key: string): DatabaseField | undefined {
+  return databaseFields(schema).find((field) => field.key === key);
 }
 
 /** 过滤 / 排序取值编码：布尔转 1/0 与 json_extract 的返回对齐，其余原样。 */
@@ -151,6 +159,18 @@ export class RecordStore {
       } else {
         where.push(`${expr} = ?`);
         args.push(encodeFilterValue(plan, value));
+      }
+    }
+    const keyword = params.keyword?.trim();
+    if (keyword && params.searchFields?.length) {
+      const searchable = [...new Set(params.searchFields)].filter((field) =>
+        searchableField(schema, field),
+      );
+      if (searchable.length > 0) {
+        where.push(
+          `(${searchable.map((field) => `CAST(${fieldExpr(field)} AS TEXT) LIKE ?`).join(" OR ")})`,
+        );
+        args.push(...searchable.map(() => `%${keyword}%`));
       }
     }
     const whereSql = `WHERE ${where.join(" AND ")}`;

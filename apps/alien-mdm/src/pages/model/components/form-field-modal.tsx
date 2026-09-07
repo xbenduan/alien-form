@@ -1,7 +1,13 @@
 import { Form, Input, Modal, Select, Tabs } from "antd";
 import { useEffect, useMemo, useRef } from "react";
 import type { FieldSchema, Runtime } from "@alien-form/engine";
-import { componentOptions, componentSample, typeForComponent, type FieldNode } from "../builder";
+import {
+  componentOptions,
+  componentSample,
+  synchronizeRelationForm,
+  typeForComponent,
+  type FieldNode,
+} from "../builder";
 
 /**
  * 表单字段编辑器的表单值：覆盖 core IFieldSchema 的全部字段。
@@ -108,6 +114,7 @@ export function FormFieldModal({
   const options = useMemo(() => componentOptions(runtime, domain), [runtime, domain]);
   const isDbField = node?.source === "field";
   const isSystem = node?.storage?.system === true;
+  const isRelation = Boolean(node?.storage?.relation);
   // 记录初始组件：仅当新增字段且用户"改变"组件时才带出示例，避免打开即覆盖。
   const initialComponent = useRef<string | undefined>(undefined);
 
@@ -183,7 +190,7 @@ export function FormFieldModal({
       ...node,
       key: isDbField ? node.key : values.key.trim(),
       type: nextType,
-      form: nextForm,
+      form: synchronizeRelationForm(nextForm, nextType, node.storage?.relation),
       children: nextType === "object" || nextType === "array" ? (node.children ?? []) : undefined,
     };
     onSubmit(next);
@@ -246,7 +253,12 @@ export function FormFieldModal({
               <Input placeholder="请输入" />
             </Form.Item>
             <Form.Item name="component" label="组件">
-              <Select options={options} disabled={isSystem} showSearch onChange={applySample} />
+              <Select
+                options={options}
+                disabled={isSystem || isRelation}
+                showSearch
+                onChange={applySample}
+              />
             </Form.Item>
             <Form.Item name="description" label="描述">
               <Input.TextArea placeholder="请输入" rows={2} />
@@ -293,7 +305,11 @@ export function FormFieldModal({
                 label="选项数据源(JSON)"
                 rules={[jsonRule("dataSource")]}
               >
-                <Input.TextArea rows={3} placeholder='[{"label":"启用","value":"active"}]' />
+                <Input.TextArea
+                  disabled={isRelation}
+                  rows={3}
+                  placeholder='[{"label":"启用","value":"active"}]'
+                />
               </Form.Item>
             ) : null}
             <Form.Item name="propsJson" label="组件 props(JSON)" rules={[jsonRule("props")]}>

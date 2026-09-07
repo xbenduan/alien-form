@@ -1,7 +1,10 @@
 import { Input as AntInput, InputNumber as AntInputNumber, Select as AntSelect } from "antd";
 import { useEffect, type ReactNode } from "react";
+import type { DataSourceItem } from "@alien-form/core";
 import type { ComponentProps } from "@binding";
 import { DetailValue, nativeProps } from "./shared";
+
+const EMPTY_OPTIONS: DataSourceItem[] = [];
 
 export function Input(props: ComponentProps) {
   if (props.mode === "detail" || props.readOnly) return <DetailValue value={props.value} />;
@@ -47,7 +50,10 @@ export function NumberInput(props: ComponentProps) {
 export function Select(
   props: ComponentProps & { isFilter?: boolean; onOptionsChange?: "preserve" | "clear" | "first" },
 ) {
-  const { value, onChange, dataSource = [], loading, isFilter, onOptionsChange = "clear" } = props;
+  const { value, onChange, loading, isFilter, onOptionsChange = "clear" } = props;
+  const options = (
+    Array.isArray(props.dataSource) ? props.dataSource : EMPTY_OPTIONS
+  ) as DataSourceItem[];
   useEffect(() => {
     // filter 场景下选项与查询条件相互独立,不做“选项刷新即清值”的联动处理。
     if (
@@ -60,13 +66,12 @@ export function Select(
     ) {
       return;
     }
-    const options = dataSource as Array<{ value: unknown }>;
     if (options.some((option) => Object.is(option.value, value))) return;
     onChange?.(onOptionsChange === "first" ? options[0]?.value : undefined);
-  }, [dataSource, isFilter, loading, onChange, onOptionsChange, props.mode, value]);
+  }, [isFilter, loading, onChange, onOptionsChange, options, props.mode, props.readOnly, value]);
 
   if (props.mode === "detail" || props.readOnly) {
-    const option = (dataSource as Array<{ label?: ReactNode; value: unknown }>).find((item) =>
+    const option = (options as Array<{ label?: ReactNode; value: unknown }>).find((item) =>
       Object.is(item.value, value),
     );
     return <DetailValue value={option?.label ?? value} />;
@@ -80,7 +85,7 @@ export function Select(
       allowClear
       style={{ width: "100%", ...(controlProps.style as object) }}
       value={value}
-      options={dataSource as any[]}
+      options={options as any[]}
       loading={loading}
       onChange={(next) => onChange?.(next)}
     />

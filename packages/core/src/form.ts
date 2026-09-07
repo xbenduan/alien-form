@@ -78,17 +78,39 @@ function isValidatable(field: FieldNode): boolean {
 }
 
 /**
- * 叶子写入守卫:叶子字段(onChange 的唯一写入口)只接受单个 string | number | boolean。
- * null / undefined 视为清空放行;数组、对象等复杂结构一律抛 TypeError。
- * 复杂结构请用 items / properties 拆分;简单 object/array 请在组件内序列化为 string。
+ * 叶子写入守卫：接受标量、后端展开的原子引用，以及无 items 的标量数组。
+ * 具有 properties / items 的复杂结构仍必须通过对应容器字段维护。
  */
-function assertPrimitiveValue(value: any, path: string): void {
+function isReferenceValue(value: unknown): boolean {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    typeof (value as Record<string, unknown>).$ref === "string" &&
+    "value" in value
+  );
+}
+
+function assertPrimitiveValue(value: any, path: string, schema: IFieldSchema): void {
   if (value == null) return; // null/undefined 视为清空,放行
   const t = typeof value;
   if (t === "string" || t === "number" || t === "boolean") return;
+  if (isReferenceValue(value)) return;
+  if (
+    schema.type === "array" &&
+    !schema.items &&
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        item == null ||
+        ["string", "number", "boolean"].includes(typeof item) ||
+        isReferenceValue(item),
+    )
+  ) {
+    return;
+  }
   throw new TypeError(
-    `字段 "${path}" 的值只接受 string | number | boolean,收到 ${Array.isArray(value) ? "array" : t}。` +
-      `复杂结构请用 properties / items 拆成子字段,简单 object/array 请在组件内序列化为 string,不要往叶子塞对象或数组。`,
+    `字段 "${path}" 的值只接受标量、引用值或无 items 的标量数组,收到 ${Array.isArray(value) ? "array" : t}。`,
   );
 }
 
@@ -233,7 +255,7 @@ function createPrimitiveField(
   const formattedInitial = formatFieldValue(ctx, field, "input", initial);
   field.value = signal(formattedInitial);
   field.setValue = (value: any) => {
-    assertPrimitiveValue(value, path);
+    assertPrimitiveValue(value, path, schema);
     if (options.row && rowChildKey && options.row.children.get(rowChildKey) !== field) {
       options.row.children.set(rowChildKey, field);
     }

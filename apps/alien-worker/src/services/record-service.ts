@@ -2,7 +2,12 @@ import { conflict, forbidden, notFound } from "../errors.ts";
 import { publicRecord, USER_MODEL } from "../domain/visibility.ts";
 import { uniqueFields } from "../domain/field-plan.ts";
 import { unwrapRefs } from "../store/ref-expander.ts";
-import type { ModelRecord, BuilderSchema as ModelSchema, Pagination, Sorter } from "@alien-form/validate";
+import type {
+  ModelRecord,
+  BuilderSchema as ModelSchema,
+  Pagination,
+  Sorter,
+} from "@alien-form/validate";
 import type { SchemaStore } from "../store/schema-store.ts";
 import type {
   ListResult,
@@ -18,6 +23,8 @@ export interface ListInput {
   filters?: Record<string, unknown>;
   pagination?: Pagination;
   sorter?: Sorter;
+  keyword?: string;
+  searchFields?: string[];
 }
 
 export interface OptionsInput extends Partial<OptionsParams> {
@@ -51,6 +58,8 @@ export class RecordService {
       filters: unwrapRefs(input.filters),
       pagination: input.pagination,
       sorter: input.sorter,
+      keyword: input.keyword,
+      searchFields: input.searchFields,
     });
     const expanded = await this.refs.expand(schema, result.list);
     return { ...result, list: expanded.map((record) => publicRecord(input.model, record)) };

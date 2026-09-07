@@ -1,4 +1,4 @@
-import type { DatabaseField, FieldSchema, Runtime } from "@alien-form/engine";
+import type { DatabaseField, DatabaseRelation, FieldSchema, Runtime } from "@alien-form/engine";
 import type {
   BuilderSchema,
   FieldNode,
@@ -25,6 +25,61 @@ const COLUMN_FOR_TYPE: Record<FieldType, StorageConfig["type"]> = {
   array: "json",
   void: "text",
 };
+
+const COMPONENT_FOR_TYPE: Record<FieldType, string> = {
+  string: "Input",
+  number: "NumberInput",
+  boolean: "Select",
+  object: "ObjectField",
+  array: "ArrayCards",
+  void: "Input",
+};
+
+/** relation 是关联表单表现的唯一真相源，组件与远程加载 props 不允许独立漂移。 */
+export function synchronizeRelationForm(
+  form: FormConfig,
+  type: FieldType,
+  relation?: DatabaseRelation,
+): FormConfig {
+  if (!relation) {
+    if (form.component !== "RemoteSelect") return form;
+    const props = { ...form.props };
+    delete props.model;
+    delete props.loadOptions;
+    delete props.valueField;
+    delete props.labelField;
+    delete props.pageSize;
+    delete props.multiple;
+    return {
+      ...form,
+      component: COMPONENT_FOR_TYPE[type],
+      dataSource: undefined,
+      props: Object.keys(props).length > 0 ? props : undefined,
+    };
+  }
+
+  const props = { ...form.props };
+  delete props.model;
+  delete props.loadOptions;
+  delete props.valueField;
+  delete props.labelField;
+  delete props.pageSize;
+  delete props.multiple;
+  return {
+    ...form,
+    component: "RemoteSelect",
+    dataSource: undefined,
+    props: {
+      ...props,
+      model: relation.target,
+      loadOptions: '{{ $utils("relation")($service("records.list")) }}',
+      valueField: relation.valueField ?? "id",
+      labelField: relation.labelField ?? "name",
+      pageSize: 10,
+      ...(relation.kind === "many-to-many" ? { multiple: true } : {}),
+    },
+  };
+}
 
 /** 组件是否为容器（object→properties / array→items）。 */
 export function containerKind(
@@ -153,7 +208,11 @@ export function applyFormSchema(
     if (existing && existing.source === "field") {
       result.push({
         ...existing,
-        form: decodeFormConfig(schema),
+        form: synchronizeRelationForm(
+          decodeFormConfig(schema),
+          existing.type,
+          existing.storage?.relation,
+        ),
         children:
           existing.type === "object" || existing.type === "array"
             ? decodeChildren(schema)
@@ -210,6 +269,7 @@ export function decodeModel(model: BuilderSchema): ModelDraft {
       storage: storageFromField(field),
       form: decodeFormConfig(schema),
     };
+    node.form = synchronizeRelationForm(node.form, type, field.relation);
     if (type === "object" || type === "array") node.children = decodeChildren(schema);
     return node;
   });
@@ -257,7 +317,8 @@ function encodeFormSchema(node: FieldNode): FieldSchema {
   const required =
     node.source === "field" ? node.storage?.nullable === false : node.form.required === true;
   // 保留 form 上的全部 IFieldSchema 表现字段，再以 type/required 覆盖，properties/items 单独生成。
-  const base: Record<string, unknown> = { ...node.form };
+  const form = synchronizeRelationForm(node.form, node.type, node.storage?.relation);
+  const base: Record<string, unknown> = { ...form };
   delete base.properties;
   delete base.items;
   const schema: FieldSchema = pruneUndefined({
@@ -270,7 +331,7 @@ function encodeFormSchema(node: FieldNode): FieldSchema {
       (node.children ?? []).map((child) => [child.key, encodeFormSchema(child)]),
     );
   }
-  if (node.type === "array") {
+  if (node.type === "array" && !node.storage?.relation) {
     schema.items = {
       type: "object",
       properties: Object.fromEntries(

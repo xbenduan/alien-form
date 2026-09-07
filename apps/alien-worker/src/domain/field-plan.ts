@@ -91,7 +91,7 @@ export function refFields(schema: ModelSchema): RefField[] {
       field: field.key,
       model: relation.target,
       valueKey,
-      labelKey: relation.labelField ?? valueKey,
+      labelKey: relation.labelField ?? "name",
       multi: relation.kind === "many-to-many" || field.valueType === "array",
     });
   }

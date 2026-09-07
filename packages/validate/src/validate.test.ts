@@ -62,4 +62,57 @@ describe("BuilderSchema validation", () => {
     bad.fields.push({ key: "amount", type: "text" });
     expect(() => assertBuilderSchema(bad)).toThrow(/重复|不一致/);
   });
+
+  it("requires relation props to match the database relation exactly", () => {
+    const schema = model();
+    schema.fields.push({
+      key: "productId",
+      type: "text",
+      relation: {
+        kind: "many-to-one",
+        target: "inv_product",
+        valueField: "id",
+        labelField: "name",
+      },
+    });
+    schema.definitions["form-schema"].properties!.productId = {
+      type: "string",
+      component: "RemoteSelect",
+      props: {
+        model: "wrong_product",
+        valueField: "code",
+        labelField: "title",
+      },
+    };
+
+    expect(() => assertBuilderSchema(schema)).toThrow(
+      /fields\.productId\.relation\.target.*inv_product/,
+    );
+    expect(() => assertBuilderSchema(schema)).toThrow(
+      /fields\.productId\.relation\.valueField.*"id"/,
+    );
+    expect(() => assertBuilderSchema(schema)).toThrow(
+      /fields\.productId\.relation\.labelField.*"name"/,
+    );
+  });
+
+  it("accepts default id and name relation props", () => {
+    const schema = model();
+    schema.fields.push({
+      key: "productId",
+      type: "text",
+      relation: { kind: "many-to-one", target: "inv_product" },
+    });
+    schema.definitions["form-schema"].properties!.productId = {
+      type: "string",
+      component: "RemoteSelect",
+      props: {
+        model: "inv_product",
+        valueField: "id",
+        labelField: "name",
+      },
+    };
+
+    expect(() => assertBuilderSchema(schema)).not.toThrow();
+  });
 });

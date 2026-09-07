@@ -732,6 +732,30 @@ describe("leaf value type guard", () => {
     expect(() => field.setValue([1, 2])).toThrow(TypeError);
     expect(field.value()).toBe("keep");
   });
+
+  it("accepts an expanded reference as an atomic primitive value", () => {
+    const form = makeForm();
+    const field = form.field("name");
+    if (!field || field.kind !== "primitive") throw new Error("name missing");
+    const reference = { $ref: "product", value: "p1", label: "Product 1" };
+
+    expect(() => field.setValue(reference)).not.toThrow();
+    expect(field.value()).toEqual(reference);
+  });
+
+  it("accepts a scalar array when an array schema has no items", () => {
+    const form = createForm({
+      schema: {
+        type: "object",
+        properties: { products: { type: "array" } },
+      },
+    });
+    const field = form.field("products");
+    if (!field || field.kind !== "primitive") throw new Error("products missing");
+
+    expect(() => field.setValue(["p1", "p2"])).not.toThrow();
+    expect(field.value()).toEqual(["p1", "p2"]);
+  });
 });
 
 describe("x-layout layout nodes", () => {

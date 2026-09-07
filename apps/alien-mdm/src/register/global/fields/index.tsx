@@ -2,6 +2,7 @@ import type { Runtime } from "@alien-form/engine";
 import { ArrayCards } from "./array-cards";
 import { ObjectField } from "./object-field";
 import { Input, NumberInput, Select, TextArea } from "./primitive";
+import { RemoteSelect } from "./remote-select";
 
 export function registerFields(runtime: Runtime): void {
   runtime.component({
@@ -52,6 +53,27 @@ export function registerFields(runtime: Runtime): void {
           { label: "选项一", value: "a" },
           { label: "选项二", value: "b" },
         ],
+      },
+    },
+  });
+  runtime.component({
+    code: "RemoteSelect",
+    component: RemoteSelect,
+    adapter: "form",
+    meta: {
+      type: "string",
+      kind: "leaf",
+      dataSource: false,
+      sample: {
+        type: "string",
+        component: "RemoteSelect",
+        props: {
+          model: "example_model",
+          loadOptions: '{{ $utils("relation")($service("records.list")) }}',
+          valueField: "id",
+          labelField: "name",
+          pageSize: 10,
+        },
       },
     },
   });

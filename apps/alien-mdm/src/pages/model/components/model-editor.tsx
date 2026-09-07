@@ -4,6 +4,7 @@ import { useEffect, useMemo, useReducer, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRuntime } from "@binding";
 import type { BuilderSchema } from "@alien-form/engine";
+import { assertBuilderSchema } from "@alien-form/validate";
 import { PageBreadcrumb } from "../../../components";
 import { transport } from "@runtime/transport";
 import {
@@ -56,6 +57,7 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
     setSaving(true);
     try {
       const model = encodeModel(draft);
+      assertBuilderSchema(model);
       await transport.send<BuilderSchema>(
         modelCode ? `/api/schemas/${modelCode}` : "/api/schemas",
         {

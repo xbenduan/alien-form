@@ -10,6 +10,8 @@ export interface ListRequest {
   filters?: Record<string, unknown>;
   pagination?: { current: number; pageSize: number };
   sorter?: { field: string; order: "ascend" | "descend" };
+  keyword?: string;
+  searchFields?: string[];
 }
 
 export interface ListResponse<T = Record<string, unknown>> {

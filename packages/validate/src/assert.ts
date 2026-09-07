@@ -31,6 +31,67 @@ export function valueType(field: DatabaseField): DatabaseValueType {
   return "string";
 }
 
+function formatValue(value: unknown): string {
+  return value === undefined ? "未配置" : JSON.stringify(value);
+}
+
+function assertRelationFormProperties(
+  fields: DatabaseField[],
+  properties: Record<string, FieldSchema>,
+): void {
+  const issues: string[] = [];
+
+  for (const field of fields) {
+    const relation = field.relation;
+    if (!relation) continue;
+    const path = `definitions["form-schema"].properties.${field.key}`;
+    const prop = properties[field.key];
+    const props = prop?.props;
+    const expectedValueField = relation.valueField ?? "id";
+    const expectedLabelField = relation.labelField ?? "name";
+
+    if (prop?.component !== "RemoteSelect") {
+      issues.push(
+        `${path}.component 必须为 "RemoteSelect"，因为 fields.${field.key}.relation 已配置`,
+      );
+    }
+    if (!props || typeof props !== "object" || Array.isArray(props)) {
+      issues.push(
+        `${path}.props 必须包含关联配置。请设置 model=${JSON.stringify(relation.target)}、` +
+          `valueField=${JSON.stringify(expectedValueField)}、` +
+          `labelField=${JSON.stringify(expectedLabelField)}`,
+      );
+      continue;
+    }
+
+    if (props.model !== relation.target) {
+      issues.push(
+        `${path}.props.model 必须与 fields.${field.key}.relation.target 完全一致；` +
+          `期望 ${JSON.stringify(relation.target)}，实际 ${formatValue(props.model)}。` +
+          `请将 ${path}.props.model 改为 ${JSON.stringify(relation.target)}`,
+      );
+    }
+    if (props.valueField !== expectedValueField) {
+      issues.push(
+        `${path}.props.valueField 必须与 fields.${field.key}.relation.valueField 完全一致；` +
+          `期望 ${JSON.stringify(expectedValueField)}，实际 ${formatValue(props.valueField)}。` +
+          `请将 ${path}.props.valueField 改为 ${JSON.stringify(expectedValueField)}`,
+      );
+    }
+    if (props.labelField !== expectedLabelField) {
+      issues.push(
+        `${path}.props.labelField 必须与 fields.${field.key}.relation.labelField 完全一致；` +
+          `期望 ${JSON.stringify(expectedLabelField)}，实际 ${formatValue(props.labelField)}。` +
+          `请将 ${path}.props.labelField 改为 ${JSON.stringify(expectedLabelField)}`,
+      );
+    }
+  }
+
+  if (issues.length > 0) {
+    throw new Error(`关联字段表单协议不合法：\n- ${issues.join("\n- ")}`);
+  }
+}
+
 /**
  * 深度校验：结构（zod）+ 协议约束（fields 唯一键、form-schema ⊇ fields 一致性、
  * group、禁止 x-database）。抛错即不合法。
@@ -76,6 +137,7 @@ export function assertBuilderSchema(value: unknown): asserts value is BuilderSch
       throw new Error(`form-schema 字段 ${field.key} 的 required 与 fields 不一致`);
     }
   }
+  assertRelationFormProperties(fields, properties);
 
   // group 引用校验
   const formSchema = schema.definitions["form-schema"];
