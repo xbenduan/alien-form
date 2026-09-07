@@ -277,6 +277,18 @@
   color: #a1aab8;
 }
 
+.editButton:global(.ant-btn) {
+  position: absolute;
+  top: 9px;
+  right: 41px;
+  z-index: 1;
+  color: #7b8799;
+}
+
+.editButton:global(.ant-btn):hover {
+  color: #1769e0;
+}
+
 .favoriteButton:global(.ant-btn):hover,
 .favoriteActive:global(.ant-btn) {
   color: #e49b0f;

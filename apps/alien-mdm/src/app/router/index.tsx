@@ -2,6 +2,7 @@ import { Spin } from "antd";
 import { Suspense, type PropsWithChildren, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { useAuth } from "../providers";
+import { isSuperAdmin } from "@runtime/user-info";
 import { DynamicPage } from "./dynamic-routes";
 import { publicRoutes, staticRoutes } from "./static-routes";
 import styles from "./index.module.css";
@@ -14,6 +15,10 @@ function Protected({ children }: { children: ReactNode }) {
   ) : (
     <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />
   );
+}
+
+function SuperAdmin({ children }: { children: ReactNode }) {
+  return isSuperAdmin() ? children : <Navigate to="/" replace />;
 }
 
 function AppShell({ noPadding = false, children }: PropsWithChildren<{ noPadding?: boolean }>) {
@@ -62,8 +67,22 @@ export function AppRouter() {
               </Protected>
             }
           >
-            {staticRoutes.map(({ path, component: Component }) =>
-              path === "/" ? null : <Route key={path} path={path} element={<Component />} />,
+            {staticRoutes.map(({ path, component: Component, superAdminOnly }) =>
+              path === "/" ? null : (
+                <Route
+                  key={path}
+                  path={path}
+                  element={
+                    superAdminOnly ? (
+                      <SuperAdmin>
+                        <Component />
+                      </SuperAdmin>
+                    ) : (
+                      <Component />
+                    )
+                  }
+                />
+              ),
             )}
             <Route path="/records/:modelCode/*" element={<DynamicPage />} />
           </Route>

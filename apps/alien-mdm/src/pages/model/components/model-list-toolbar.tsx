@@ -6,7 +6,7 @@ import styles from "./index.module.css";
 
 export interface ModelListToolbarProps {
   loading: boolean;
-  onAdd: () => void;
+  onAdd?: () => void;
   onRefresh: () => void;
 }
 
@@ -42,9 +42,11 @@ export function ModelListToolbar({ loading, onAdd, onRefresh }: ModelListToolbar
         <Button icon={<DownloadOutlined />} loading={downloading} onClick={() => void download()}>
           下载 Skills
         </Button>
-        <Button type="primary" icon={<PlusOutlined />} onClick={onAdd}>
-          新增模型
-        </Button>
+        {onAdd ? (
+          <Button type="primary" icon={<PlusOutlined />} onClick={onAdd}>
+            新增模型
+          </Button>
+        ) : null}
       </Space>
     </div>
   );

@@ -4,6 +4,7 @@ import {
   AppstoreOutlined,
   ClockCircleOutlined,
   DatabaseOutlined,
+  EditOutlined,
   SafetyCertificateOutlined,
   SearchOutlined,
   StarFilled,
@@ -15,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 import { UserMenu } from "../../components";
 import type { ModelSummary } from "@app-types";
 import { transport } from "@runtime/transport";
+import { isSuperAdmin } from "@runtime/user-info";
 import styles from "./index.module.css";
 
 type GroupFilter = "all" | "system" | "other";
@@ -64,11 +66,13 @@ function ModelCard({
   onOpen,
   favorite,
   onToggleFavorite,
+  onEdit,
 }: {
   model: ModelSummary;
   onOpen: (model: ModelSummary) => void;
   favorite: boolean;
   onToggleFavorite: (model: ModelSummary) => void;
+  onEdit?: (model: ModelSummary) => void;
 }) {
   const isSystem = model.group === "system";
   const description = model.description || model.subtitle || model.name;
@@ -108,12 +112,25 @@ function ModelCard({
           onClick={() => onToggleFavorite(model)}
         />
       </Tooltip>
+      {onEdit ? (
+        <Tooltip title="编辑模型">
+          <Button
+            type="text"
+            shape="circle"
+            className={styles.editButton}
+            icon={<EditOutlined />}
+            aria-label={`编辑${model.title}`}
+            onClick={() => onEdit(model)}
+          />
+        </Tooltip>
+      ) : null}
     </article>
   );
 }
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const canManageModels = isSuperAdmin();
   const [models, setModels] = useState<ModelSummary[]>();
   const [error, setError] = useState<string>();
   const [keyword, setKeyword] = useState("");
@@ -155,6 +172,10 @@ export default function HomePage() {
     },
     [navigate],
   );
+  const editModel = useCallback(
+    (model: ModelSummary) => navigate(`/models/${model.name}/edit`),
+    [navigate],
+  );
 
   const toggleFavorite = useCallback(
     (model: ModelSummary) => {
@@ -187,15 +208,17 @@ export default function HomePage() {
             </div>
           </div>
           <div className={styles.topbarActions}>
-            <Tooltip title="新增模型">
-              <Button
-                type="text"
-                shape="circle"
-                icon={<AppstoreAddOutlined />}
-                aria-label="新增模型"
-                onClick={() => navigate("/models/add")}
-              />
-            </Tooltip>
+            {canManageModels ? (
+              <Tooltip title="新增模型">
+                <Button
+                  type="text"
+                  shape="circle"
+                  icon={<AppstoreAddOutlined />}
+                  aria-label="新增模型"
+                  onClick={() => navigate("/models/add")}
+                />
+              </Tooltip>
+            ) : null}
             <Tooltip title="模型管理">
               <Button
                 type="text"
@@ -242,6 +265,7 @@ export default function HomePage() {
                       favorite
                       onOpen={openModel}
                       onToggleFavorite={toggleFavorite}
+                      onEdit={canManageModels ? editModel : undefined}
                     />
                   ))}
                 </div>
@@ -285,6 +309,7 @@ export default function HomePage() {
                       favorite={favoriteModelNameSet.has(model.name)}
                       onOpen={openModel}
                       onToggleFavorite={toggleFavorite}
+                      onEdit={canManageModels ? editModel : undefined}
                     />
                   ))}
                 </div>

@@ -3,6 +3,7 @@ import { lazy, type ComponentType, type LazyExoticComponent } from "react";
 export interface RouteMeta {
   path: string;
   component: LazyExoticComponent<ComponentType>;
+  superAdminOnly?: boolean;
 }
 
 const HomePage = lazy(() => import("../../pages/home"));
@@ -18,7 +19,7 @@ export const staticRoutes: RouteMeta[] = [
   { path: "/", component: HomePage },
   { path: "/models", component: ModelListPage },
   { path: "/models/list", component: ModelListPage },
-  { path: "/models/add", component: ModelAddPage },
-  { path: "/models/:modelCode/copy", component: ModelCopyPage },
-  { path: "/models/:modelCode/edit", component: ModelEditPage },
+  { path: "/models/add", component: ModelAddPage, superAdminOnly: true },
+  { path: "/models/:modelCode/copy", component: ModelCopyPage, superAdminOnly: true },
+  { path: "/models/:modelCode/edit", component: ModelEditPage, superAdminOnly: true },
 ];

@@ -1,14 +1,12 @@
 import { AppstoreOutlined, LockOutlined, UserOutlined } from "@ant-design/icons";
 import { App, Button, Input, Typography } from "antd";
 import { useState, type FormEvent } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "../../app/providers";
 import styles from "./login.module.css";
 
 export default function LoginPage() {
   const auth = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
   const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState("_sys_admin");
@@ -21,8 +19,6 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await auth.login(username, password);
-      const target = (location.state as { from?: string } | null)?.from ?? "/";
-      navigate(target, { replace: true });
     } catch (reason) {
       message.error(reason instanceof Error ? reason.message : "登录失败");
     } finally {

@@ -11,62 +11,48 @@ import {
 } from "react";
 import type { LoginResponse } from "@app-types";
 import { transport } from "@runtime/transport";
-
-const USER_STORAGE_KEY = "alien-mdm-user";
+import { clearUserInfo, setUserInfo, userInfo, type UserInfo } from "@runtime/user-info";
 
 interface AuthValue {
   authenticated: boolean;
-  user?: Record<string, unknown>;
+  user?: UserInfo;
   login(username: string, password: string): Promise<void>;
   logout(): Promise<void>;
 }
 
 const AuthContext = createContext<AuthValue | null>(null);
 
-function storedUser(): Record<string, unknown> | undefined {
-  try {
-    const value = localStorage.getItem(USER_STORAGE_KEY);
-    return value ? (JSON.parse(value) as Record<string, unknown>) : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 function AuthProvider({ children }: PropsWithChildren) {
-  const [authenticated, setAuthenticated] = useState(Boolean(transport.token));
-  const [user, setUser] = useState<Record<string, unknown> | undefined>(storedUser);
+  const [authenticated, setAuthenticated] = useState(() => Boolean(transport.token && userInfo()));
   const login = useCallback(async (username: string, password: string) => {
     const result = await transport.send<LoginResponse>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify({ username, password }),
     });
+    setUserInfo(result.user);
     transport.setToken(result.token);
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(result.user));
-    setUser(result.user);
-    setAuthenticated(true);
+    window.location.reload();
   }, []);
   const logout = useCallback(async () => {
     try {
       await transport.send("/api/auth/logout", { method: "POST" });
     } finally {
       transport.setToken(null);
-      localStorage.removeItem(USER_STORAGE_KEY);
-      setUser(undefined);
+      clearUserInfo();
       setAuthenticated(false);
     }
   }, []);
   useEffect(() => {
     // Session expiry (401) clears local auth state so Protected routes redirect to /login.
     transport.setUnauthorizedHandler(() => {
-      localStorage.removeItem(USER_STORAGE_KEY);
-      setUser(undefined);
+      clearUserInfo();
       setAuthenticated(false);
     });
     return () => transport.setUnauthorizedHandler(undefined);
   }, []);
   const value = useMemo(
-    () => ({ authenticated, user, login, logout }),
-    [authenticated, user, login, logout],
+    () => ({ authenticated, user: userInfo(), login, logout }),
+    [authenticated, login, logout],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

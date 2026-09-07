@@ -4,12 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { PageBreadcrumb } from "../../components";
 import type { ModelSummary } from "@app-types";
 import { transport } from "@runtime/transport";
+import { isSuperAdmin } from "@runtime/user-info";
 import { ModelListToolbar } from "./components/model-list-toolbar";
 import { ModelTable } from "./components/model-table";
 
 export default function ModelListPage() {
   const navigate = useNavigate();
   const { message } = App.useApp();
+  const canManageModels = isSuperAdmin();
   const [models, setModels] = useState<ModelSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
@@ -57,12 +59,13 @@ export default function ModelListPage() {
       <ModelListToolbar
         loading={loading}
         onRefresh={() => void load()}
-        onAdd={() => navigate("/models/add")}
+        onAdd={canManageModels ? () => navigate("/models/add") : undefined}
       />
       {error && <Alert type="error" title="模型列表加载失败" description={error} showIcon />}
       <ModelTable
         dataSource={models}
         loading={loading}
+        canManageModels={canManageModels}
         onView={viewModel}
         onEdit={editModel}
         onCopy={copyModel}

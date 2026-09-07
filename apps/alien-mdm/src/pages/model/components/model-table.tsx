@@ -6,6 +6,7 @@ import type { ModelSummary } from "@app-types";
 import styles from "./index.module.css";
 
 export interface ModelTableProps {
+  canManageModels: boolean;
   dataSource: ModelSummary[];
   loading: boolean;
   onCopy: (model: ModelSummary) => void;
@@ -24,6 +25,7 @@ function formatDateTime(value: string) {
 }
 
 export function ModelTable({
+  canManageModels,
   dataSource,
   loading,
   onCopy,
@@ -74,43 +76,57 @@ export function ModelTable({
         width: 180,
         render: formatDateTime,
       },
-      {
-        title: "操作",
-        key: "actions",
-        fixed: "right",
-        width: 170,
-        render: (_, record) => (
-          <Space size={0} wrap>
-            <Button type="link" size="small" icon={<EditOutlined />} onClick={() => onEdit(record)}>
-              编辑
-            </Button>
-            <Button type="link" size="small" icon={<CopyOutlined />} onClick={() => onCopy(record)}>
-              复制
-            </Button>
-            <Popconfirm
-              title="确认删除该模型吗？"
-              description="删除后该模型的数据也会一并清除。"
-              okText="删除"
-              cancelText="取消"
-              okButtonProps={{ danger: true }}
-              disabled={record.name === "_sys_user"}
-              onConfirm={() => onDelete(record)}
-            >
-              <Button
-                danger
-                type="link"
-                size="small"
-                icon={<DeleteOutlined />}
-                disabled={record.name === "_sys_user"}
-              >
-                删除
-              </Button>
-            </Popconfirm>
-          </Space>
-        ),
-      },
+      ...(canManageModels
+        ? [
+            {
+              title: "操作",
+              key: "actions",
+              fixed: "right",
+              width: 170,
+              render: (_, record) => (
+                <Space size={0} wrap>
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<EditOutlined />}
+                    onClick={() => onEdit(record)}
+                  >
+                    编辑
+                  </Button>
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<CopyOutlined />}
+                    onClick={() => onCopy(record)}
+                  >
+                    复制
+                  </Button>
+                  <Popconfirm
+                    title="确认删除该模型吗？"
+                    description="删除后该模型的数据也会一并清除。"
+                    okText="删除"
+                    cancelText="取消"
+                    okButtonProps={{ danger: true }}
+                    disabled={record.name === "_sys_user"}
+                    onConfirm={() => onDelete(record)}
+                  >
+                    <Button
+                      danger
+                      type="link"
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      disabled={record.name === "_sys_user"}
+                    >
+                      删除
+                    </Button>
+                  </Popconfirm>
+                </Space>
+              ),
+            } satisfies ColumnsType<ModelSummary>[number],
+          ]
+        : []),
     ],
-    [onCopy, onDelete, onEdit, onView],
+    [canManageModels, onCopy, onDelete, onEdit, onView],
   );
 
   return (
