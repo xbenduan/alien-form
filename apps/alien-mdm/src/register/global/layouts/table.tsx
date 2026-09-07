@@ -209,6 +209,7 @@ export function Table({
   loadData,
   filter,
   nodeId,
+  nodeField,
   node,
   children,
   rowKey = "id",
@@ -228,6 +229,7 @@ export function Table({
   loadData?: (params: Record<string, unknown>) => Promise<ListResult>;
   filter?: string;
   nodeId?: unknown;
+  nodeField?: string;
   rowKey?: string;
   modelCode?: string;
   scroll?: TableProps<Record<string, unknown>>["scroll"];
@@ -355,11 +357,15 @@ export function Table({
 
   const refresh = useCallback(async () => {
     if (!loadData) return;
+    const parsedFilter = parseFilter(filter);
+    if (nodeField && nodeId !== undefined && nodeId !== null && nodeId !== "") {
+      parsedFilter[nodeField] = nodeId;
+    }
     setLoading(true);
     try {
       setData(
         await loadData({
-          filters: { ...parseFilter(filter), nodeId },
+          filters: parsedFilter,
           pagination: { current: page, pageSize },
           sorter,
         }),
@@ -367,7 +373,7 @@ export function Table({
     } finally {
       setLoading(false);
     }
-  }, [filter, loadData, nodeId, page, pageSize, sorter]);
+  }, [filter, loadData, nodeField, nodeId, page, pageSize, sorter]);
   const openAction = useCallback(
     (mode: RecordActionMode, recordId?: unknown) => {
       if (!resolvedModelCode) return;
@@ -531,6 +537,10 @@ export function Table({
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [filter, nodeField, nodeId]);
+
   const columnSettings = (
     <div className={styles.columnSettings}>
       <DndContext
@@ -689,18 +699,19 @@ export function Table({
             current: page,
             pageSize,
             total: data.total,
-            onChange: setPage,
             showSizeChanger: false,
           }}
-          onChange={(_pagination, _filters, nextSorter) => {
+          onChange={(pagination, _filters, nextSorter) => {
             const active = Array.isArray(nextSorter) ? nextSorter[0] : nextSorter;
             const field = active?.field ?? active?.columnKey;
-            setSorter(
+            const nextSort =
               field && (active?.order === "ascend" || active?.order === "descend")
                 ? { field: String(field), order: active.order }
-                : undefined,
-            );
-            setPage(1);
+                : undefined;
+            const sorterChanged =
+              sorter?.field !== nextSort?.field || sorter?.order !== nextSort?.order;
+            setSorter(nextSort);
+            setPage(sorterChanged ? 1 : (pagination.current ?? 1));
           }}
         />
       </Card>

@@ -9,5 +9,25 @@ export function registerLayouts(runtime: Runtime): void {
   runtime.component({ code: "layout", component: Layout, adapter: "page" });
   runtime.component({ code: "filter", component: Filter, adapter: "page" });
   runtime.component({ code: "table", component: Table, adapter: "page" });
-  runtime.component({ code: "tree", component: Tree, adapter: "page" });
+  runtime.component({
+    code: "tree",
+    component: Tree,
+    adapter: "page",
+    meta: {
+      type: "string",
+      kind: "leaf",
+      sample: {
+        type: "string",
+        component: "tree",
+        props: {
+          model: "example_model",
+          valueField: "id",
+          parentField: "parentId",
+          labelField: "name",
+          pageSize: 100,
+          loadData: '{{ $utils("tree")($service("records.list")) }}',
+        },
+      },
+    },
+  });
 }

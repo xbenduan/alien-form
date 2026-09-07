@@ -30,6 +30,19 @@ const fields: DatabaseField[] = [
     index: true,
     filterable: true,
   },
+  {
+    key: "roleId",
+    title: "组织角色",
+    type: "text",
+    index: true,
+    filterable: true,
+    relation: {
+      kind: "many-to-one",
+      target: "rbac_role",
+      valueField: "id",
+      labelField: "roleName",
+    },
+  },
   { key: "remark", title: "备注", type: "text", visible: false },
   { key: "addressInfo", title: "住址信息", type: "json", valueType: "object" },
   { key: "studentRecords", title: "学籍信息", type: "json", valueType: "array" },
@@ -77,6 +90,18 @@ const properties: Record<string, ModelFieldSchema> = {
     component: "Input",
     required: true,
     props: { placeholder: "请输入昵称" },
+  },
+  roleId: {
+    type: "string",
+    title: "组织角色",
+    component: "RemoteSelect",
+    props: {
+      model: "rbac_role",
+      valueField: "id",
+      labelField: "roleName",
+      pageSize: 50,
+      loadOptions: '{{ $utils("relation")($service("records.list")) }}',
+    },
   },
   remark: {
     type: "string",
@@ -180,7 +205,6 @@ export const sysUserSchema: ModelSchema = {
       title: "用户管理",
       layout: {
         component: "layout",
-        props: { rightTop: "filter", rightBottom: "table" },
       },
       properties: {
         filter: {
@@ -284,7 +308,7 @@ export const sysUserSchema: ModelSchema = {
         {
           component: "ObjectField",
           title: "基础信息",
-          keys: ["username", "nickname"],
+          keys: ["username", "nickname", "roleId"],
           props: { gridSpan: 12 },
         },
       ],

@@ -23,7 +23,7 @@ function buildListPage(modelCode: string, title: string): XPage {
   return {
     router: "list",
     title,
-    layout: { component: "layout", props: { rightTop: "filter", rightBottom: "table" } },
+    layout: { component: "layout" },
     properties: {
       filter: {
         type: "string",

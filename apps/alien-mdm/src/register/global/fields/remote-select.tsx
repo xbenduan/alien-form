@@ -5,7 +5,12 @@ import type { ListRequest } from "@app-types";
 import type { ComponentProps } from "@binding";
 import { DetailValue, nativeProps } from "./shared";
 
-type OptionLoader = (request: ListRequest) => Promise<Record<string, unknown>[]>;
+interface OptionRequest extends ListRequest {
+  valueField: string;
+  labelField: string;
+}
+
+type OptionLoader = (request: OptionRequest) => Promise<DataSourceItem[]>;
 
 interface ReferenceValue {
   $ref: string;
@@ -43,21 +48,6 @@ function referenceOptions(value: unknown): DataSourceItem[] {
   return values.flatMap((item) =>
     isReferenceValue(item) ? [{ value: item.value, label: String(item.label ?? item.value) }] : [],
   );
-}
-
-function optionFromRecord(
-  record: Record<string, unknown>,
-  valueField: string,
-  labelField: string,
-): DataSourceItem | undefined {
-  const rawValue = record[valueField];
-  const value = isReferenceValue(rawValue) ? rawValue.value : rawValue;
-  if (value === undefined || value === null || value === "") return;
-  const rawLabel = record[labelField] ?? rawValue;
-  return {
-    value,
-    label: String(isReferenceValue(rawLabel) ? (rawLabel.label ?? rawLabel.value) : rawLabel),
-  };
 }
 
 export function RemoteSelect(
@@ -110,17 +100,15 @@ export function RemoteSelect(
       setLoadFailed(false);
       setRemoteLoading(true);
       try {
-        const records = await loadOptions({
+        const loaded = await loadOptions({
           model,
+          valueField,
+          labelField,
           keyword: keyword || undefined,
           searchFields: [...new Set([valueField, labelField])],
           pagination: { current: 1, pageSize },
         });
         if (version !== requestVersion.current) return;
-        const loaded = records.flatMap((record) => {
-          const option = optionFromRecord(record, valueField, labelField);
-          return option ? [option] : [];
-        });
         cache.current.set(key, loaded);
         setOptions(mergeOptions(refs, loaded));
       } catch {

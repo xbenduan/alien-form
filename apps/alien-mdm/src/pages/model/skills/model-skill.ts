@@ -259,7 +259,7 @@ Alien Form 是一个 Schema 驱动的模型管理和页面渲染系统。一份 
 - \`props.model\` 必须与 \`fields[].relation.target\` 完全一致。
 - \`props.valueField\` 必须与 \`fields[].relation.valueField\` 完全一致；未声明时固定为 \`"id"\`。
 - \`props.labelField\` 必须与 \`fields[].relation.labelField\` 完全一致；未声明时固定为 \`"name"\`。
-- \`loadOptions\` 使用上面的标准表达式。不要为 RemoteSelect 配置 \`dataSource\`；组件会在用户首次展开时加载前 \`pageSize\` 条，在输入搜索词后自动传递 \`keyword/searchFields\`。
+- \`loadOptions\` 只允许使用上面的 \`$utils + $service\` 标准表达式；模型、\`valueField\`、\`labelField\`、\`pageSize\` 等配置必须写在组件 \`props\`，不得写入表达式。不要为 RemoteSelect 配置 \`dataSource\`；组件会在用户首次展开时加载前 \`pageSize\` 条，在输入搜索词后自动传递 \`keyword/searchFields\`。
 - \`many-to-many\` 关联额外设置 \`props.multiple: true\`，并将 storage 字段配置为 \`type: "json"\`、\`valueType: "array"\`。
 
 服务端会严格校验关联字段。若收到 HTTP 400，读取完整错误中的字段路径、期望值和实际值，直接修正该模型 JSON 后重新提交；不要移除 relation 或改用非协议字段绕过校验。

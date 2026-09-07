@@ -1,4 +1,3 @@
-import { Layout as AntLayout } from "antd";
 import type { ReactNode } from "react";
 import styles from "./index.module.css";
 
@@ -9,33 +8,17 @@ export function Layout({
   slots: Record<string, ReactNode>;
   children?: ReactNode;
 }) {
-  const main = (
-    <AntLayout.Content
-      className={styles.layoutMain}
-      style={{
-        background: "transparent",
-      }}
-    >
-      {slots.rightTop}
-      {slots.rightBottom}
-      {children}
-    </AntLayout.Content>
-  );
+  const rightSlots = Object.entries(slots)
+    .filter(([name]) => name !== "left")
+    .map(([name, content]) => <div key={name}>{content}</div>);
 
-  if (!slots.left) {
-    return <AntLayout className={styles.layoutStack}>{main}</AntLayout>;
-  }
   return (
-    <AntLayout hasSider className={styles.layout} style={{ background: "transparent" }}>
-      <AntLayout.Sider
-        className={styles.layoutLeft}
-        width={280}
-        theme="light"
-        style={{ minWidth: 240, background: "transparent" }}
-      >
-        {slots.left}
-      </AntLayout.Sider>
-      {main}
-    </AntLayout>
+    <div className={styles.layout}>
+      {slots.left ? <aside className={styles.layoutLeft}>{slots.left}</aside> : null}
+      <main className={styles.layoutMain}>
+        {rightSlots}
+        {children}
+      </main>
+    </div>
   );
 }
