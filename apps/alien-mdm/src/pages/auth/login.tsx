@@ -1,4 +1,4 @@
-import { AppstoreOutlined, LockOutlined, UserOutlined } from "@ant-design/icons";
+import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { App, Button, Input, Typography } from "antd";
 import { useState, type FormEvent } from "react";
 import { Navigate } from "react-router-dom";
@@ -31,7 +31,7 @@ export default function LoginPage() {
       <section className={styles.panel} aria-label="登录">
         <div className={styles.brand}>
           <div className={styles.brandMark}>
-            <AppstoreOutlined />
+            <img src="/favicon.svg" alt="" aria-hidden="true" />
           </div>
           <div>
             <Typography.Text className={styles.kicker}>ALIEN MDM</Typography.Text>

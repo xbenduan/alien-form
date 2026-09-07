@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AppstoreAddOutlined,
-  AppstoreOutlined,
   ClockCircleOutlined,
   DatabaseOutlined,
   EditOutlined,
@@ -194,7 +193,7 @@ export default function HomePage() {
         <div className={styles.topbarPrimary}>
           <div className={styles.brand}>
             <span className={styles.brandMark}>
-              <AppstoreOutlined />
+              <img src="/favicon.svg" alt="" aria-hidden="true" />
             </span>
             <div>
               <Typography.Text className={styles.kicker}>CONTENT OPERATIONS</Typography.Text>
