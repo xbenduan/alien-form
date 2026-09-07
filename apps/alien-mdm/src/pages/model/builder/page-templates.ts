@@ -100,6 +100,78 @@ function buildListPage(modelCode: string, title: string): XPage {
   };
 }
 
+/** 树形列表页：左侧自关联树，右侧筛选与后代记录表格。 */
+function buildTreeListPage(modelCode: string, title: string): XPage {
+  const modelLiteral = JSON.stringify(modelCode);
+  return {
+    router: "tree-list",
+    title,
+    layout: { component: "layout" },
+    properties: {
+      left: {
+        type: "string",
+        component: "tree",
+        props: {
+          title,
+          model: modelCode,
+          valueField: "id",
+          parentField: "parentId",
+          labelField: "name",
+          showRoot: false,
+          loadData: '{{ $utils.tree($service("records.subtree")) }}',
+        },
+      },
+      filter: {
+        type: "string",
+        component: "filter",
+        props: {
+          schema: { $ref: "form-schema" },
+          filterFields: "{{ $utils.schemaToFilterFields }}",
+        },
+      },
+      table: {
+        type: "void",
+        component: "table",
+        props: {
+          rowKey: "id",
+          modelCode,
+          schema: { $ref: "form-schema" },
+          columns: "{{ $utils.schemaToColumns }}",
+          filter: "{{ $values.filter }}",
+          parentId: "{{ $values.left }}",
+          loadData: '{{ $service("records.list") }}',
+          rowActions: ["delete"],
+          actionBtns: {
+            add: { type: "primary", children: "新增", openMode: OPEN_MODE },
+            edit: { type: "link", children: "编辑", openMode: OPEN_MODE },
+            detail: { type: "link", children: "详情", openMode: OPEN_MODE },
+            batchDelete: {
+              children: "批量删除",
+              danger: true,
+              service: '{{ $service("records.batchDelete") }}',
+            },
+          },
+        },
+        properties: {
+          delete: {
+            type: "void",
+            component: "row-button",
+            props: {
+              danger: true,
+              children: "删除",
+              confirm: "确认删除这条记录？",
+              confirmDescription: "删除后无法恢复。",
+              successMessage: "记录已删除",
+              refreshAfterSuccess: true,
+              onClick: `{{ ($row) => $service("records.delete")({ model: ${modelLiteral}, id: $row.id, record: $row }) }}`,
+            },
+          },
+        },
+      },
+    },
+  };
+}
+
 /** 记录表单页（新建/编辑/详情共用一套结构，仅 mode/router 不同）。 */
 function buildRecordPage(
   mode: "add" | "edit" | "detail",
@@ -136,6 +208,12 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
     build: buildListPage,
   },
   {
+    key: "tree-list",
+    label: "树形列表页",
+    description: "左侧自关联树 + 右侧筛选与后代记录表格",
+    build: buildTreeListPage,
+  },
+  {
     key: "add",
     label: "新建页",
     description: "record-form（新建模式）",
@@ -155,6 +233,8 @@ export const PAGE_TEMPLATES: PageTemplate[] = [
   },
 ];
 
+const DEFAULT_PAGE_TEMPLATE_KEYS = new Set(["list", "add", "edit", "detail"]);
+
 /** 依 key 取模版。 */
 export function findPageTemplate(key: string): PageTemplate | undefined {
   return PAGE_TEMPLATES.find((template) => template.key === key);
@@ -162,5 +242,7 @@ export function findPageTemplate(key: string): PageTemplate | undefined {
 
 /** 新建模型默认页面集合：list / add / edit / detail。 */
 export function createDefaultPages(modelCode: string, title: string): XPage[] {
-  return PAGE_TEMPLATES.map((template) => template.build(modelCode, title));
+  return PAGE_TEMPLATES.filter((template) => DEFAULT_PAGE_TEMPLATE_KEYS.has(template.key)).map(
+    (template) => template.build(modelCode, title),
+  );
 }
