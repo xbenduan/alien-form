@@ -87,7 +87,7 @@
 .tableCard :global(.ant-table-sticky-holder .ant-table-cell-fix-left-first),
 .tableCard :global(.ant-table-sticky-holder .ant-table-cell-fix-left-last),
 .tableCard :global(.ant-table-sticky-holder .ant-table-cell-fix-start) {
-  z-index: 11 !important;
+  z-index: 20 !important;
   background: #f8faff;
 }
 

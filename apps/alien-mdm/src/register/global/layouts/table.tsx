@@ -214,6 +214,8 @@ export function Table({
   children,
   rowKey = "id",
   modelCode,
+  pageSize: configuredPageSize,
+  pagination,
   scroll,
   actionBtns,
 }: ComponentProps & {
@@ -231,6 +233,8 @@ export function Table({
   parentId?: unknown;
   rowKey?: string;
   modelCode?: string;
+  pageSize?: number;
+  pagination?: TableProps<Record<string, unknown>>["pagination"];
   scroll?: TableProps<Record<string, unknown>>["scroll"];
   actionBtns?: ActionButtons;
 }) {
@@ -247,12 +251,15 @@ export function Table({
     [pageRuntime],
   );
   const resolvedModelCode = modelCode ?? routeModelCode ?? pageRuntime.domain;
-  const pageSize = pageRuntime.model.meta.defaultPageSize ?? 20;
+  const paginationConfig = typeof pagination === "object" ? pagination : {};
+  const defaultPageSize =
+    configuredPageSize ?? paginationConfig.pageSize ?? pageRuntime.model.meta.defaultPageSize ?? 20;
   const recordTitle =
     pageRuntime.model.meta.singularLabel ?? pageRuntime.model.meta.title ?? resolvedModelCode;
   const [data, setData] = useState<ListResult>({ list: [], total: 0 });
   const { loading, startLoading } = useLayoutLoading();
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(defaultPageSize);
   const [sorter, setSorter] = useState<{ field: string; order: "ascend" | "descend" }>();
   const [columnPreferences, setColumnPreferences] = useState<ColumnPreferences>(() =>
     resolvedModelCode ? readColumnPreferences(resolvedModelCode) : {},
@@ -354,6 +361,11 @@ export function Table({
   useEffect(() => {
     setColumnPreferences(resolvedModelCode ? readColumnPreferences(resolvedModelCode) : {});
   }, [resolvedModelCode]);
+
+  useEffect(() => {
+    setPageSize(defaultPageSize);
+    setPage(1);
+  }, [defaultPageSize]);
 
   useEffect(() => {
     loadDataRef.current = loadData;
@@ -703,10 +715,13 @@ export function Table({
             }),
           }}
           pagination={{
+            ...paginationConfig,
             current: page,
             pageSize,
             total: data.total,
-            showSizeChanger: false,
+            pageSizeOptions: [5, 10, 20, 50],
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 个模型`,
           }}
           onChange={(pagination, _filters, nextSorter) => {
             const active = Array.isArray(nextSorter) ? nextSorter[0] : nextSorter;
@@ -718,6 +733,11 @@ export function Table({
             const sorterChanged =
               sorter?.field !== nextSort?.field || sorter?.order !== nextSort?.order;
             setSorter(nextSort);
+            if (pagination.pageSize && pagination.pageSize !== pageSize) {
+              setPageSize(pagination.pageSize);
+              setPage(1);
+              return;
+            }
             setPage(sorterChanged ? 1 : (pagination.current ?? 1));
           }}
         />
