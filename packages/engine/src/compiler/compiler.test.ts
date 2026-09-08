@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildFormSchema,
+  buildRuntimeDefinitions,
   compileForm,
   compileModel,
   compileRuntimeValue,
@@ -8,11 +10,21 @@ import {
   isCompiledValue,
   matchPage,
 } from ".";
-import type { BuilderSchema } from "../protocol";
+import type { ModelSchema } from "../protocol";
 
-const model: BuilderSchema = {
-  meta: { name: "products", title: "商品" },
-  fields: [{ key: "name", title: "名称", type: "text" }],
+const model: ModelSchema = {
+  name: "products",
+  title: "商品",
+  version: 1,
+  fields: [
+    {
+      id: "products.name",
+      key: "name",
+      storage: "physical",
+      database: { type: "text" },
+      form: { type: "string", title: "名称" },
+    },
+  ],
   pages: [
     {
       router: "list",
@@ -28,7 +40,7 @@ const model: BuilderSchema = {
             schema: { $ref: "form-schema" },
             filter: "{{ $values.filter }}",
             rowActions: ["deactivate", "delete"],
-            "actionBtns": {
+            actionBtns: {
               edit: { children: "编辑" },
             },
           },
@@ -62,15 +74,6 @@ const model: BuilderSchema = {
       },
     },
   ],
-  definitions: {
-    "form-schema": {
-      type: "object",
-      properties: {
-        name: { type: "string", title: "名称" },
-      },
-      group: [{ component: "ObjectField", title: "基础信息", keys: ["name"] }],
-    },
-  },
 };
 
 describe("page compiler", () => {
@@ -169,7 +172,9 @@ describe("page compiler", () => {
   });
 
   it("projects form groups into void containers without changing field keys", () => {
-    const compiled = compileForm(model.definitions["form-schema"], model.definitions);
+    const groups = [{ component: "ObjectField", title: "基础信息", keys: ["name"] }];
+    const schema = buildFormSchema(model, groups);
+    const compiled = compileForm(schema, buildRuntimeDefinitions(model, groups));
     expect(compiled.nodes).toHaveLength(1);
     expect(compiled.nodes[0]?.schema).toMatchObject({
       type: "void",
@@ -180,23 +185,20 @@ describe("page compiler", () => {
   });
 
   it("compiles expression display into a reactive display rule", () => {
-    const dynamicModel: BuilderSchema = {
+    const dynamicModel: ModelSchema = {
       ...model,
-      definitions: {
-        "form-schema": {
-          ...model.definitions["form-schema"],
-          properties: {
-            name: {
-              type: "string",
-              title: "名称",
-              display: "{{ $values.enabled ? 'visible' : 'hidden' }}",
-            },
-          },
+      fields: model.fields.map((field) => ({
+        ...field,
+        form: {
+          ...field.form,
+          display: "{{ $values.enabled ? 'visible' : 'hidden' }}",
         },
-      },
+      })),
     };
-    const compiled = compileForm(dynamicModel.definitions["form-schema"], dynamicModel.definitions);
-    expect(compiled.schema.properties?.["$group-0"].properties?.name).toMatchObject({
+    const groups = [{ component: "ObjectField", title: "基础信息", keys: ["name"] }];
+    const schema = buildFormSchema(dynamicModel, groups);
+    const compiled = compileForm(schema, buildRuntimeDefinitions(dynamicModel, groups));
+    expect(compiled.schema.properties?.["$group-0"]?.properties?.name).toMatchObject({
       display: "visible",
       "x-reaction": {
         display: "{{ $values.enabled ? 'visible' : 'hidden' }}",
@@ -204,9 +206,9 @@ describe("page compiler", () => {
     });
   });
 
-  it("rejects models without the form-schema contract", () => {
-    expect(() =>
-      compileModel({ ...model, definitions: {} as BuilderSchema["definitions"] }),
-    ).toThrow("definitions['form-schema'].properties is required");
+  it("derives form-schema from fields", () => {
+    expect(buildRuntimeDefinitions(model)["form-schema"].properties?.name).toEqual(
+      model.fields[0].form,
+    );
   });
 });

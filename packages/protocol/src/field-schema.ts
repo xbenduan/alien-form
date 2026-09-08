@@ -1,10 +1,8 @@
 import { z } from "zod";
-import type { IFieldSchema } from "@alien-form/core";
+import type { IFieldSchema } from "./form-types.ts";
 
 /**
- * FieldSchema —— 前端表单字段描述（form-schema 片段），结构对齐 @alien-form/core 的 IFieldSchema。
- * 这里用 zod 复刻 IFieldSchema 的形状，作为前后端共享的运行时校验；类型侧通过
- * satisfies 断言与 core 的 IFieldSchema 保持一致（见文件底部）。
+ * IFieldSchema 的运行时校验。类型与校验均由 protocol 提供。
  */
 
 const expressionSchema = z.string().regex(/^\s*\{\{[\s\S]*\}\}\s*$/, "必须是 {{...}} 表达式");
@@ -42,34 +40,12 @@ export const fieldSchema: z.ZodType = z.lazy(() =>
         .optional(),
       "x-validate": jsonValue.optional(),
       dataSource: jsonValue.optional(),
-      group: z.array(z.lazy(() => fieldGroupSchema)).optional(),
     })
     .passthrough(),
 );
 
-export const fieldGroupSchema = z.object({
-  component: z.string().optional(),
-  keys: z.array(z.string()),
-  title: z.string().optional(),
-  description: z.string().optional(),
-  props: z.record(jsonValue).optional(),
-});
-
-export interface FieldGroup {
-  component?: string;
-  keys: string[];
-  title?: string;
-  description?: string;
-  props?: Record<string, unknown>;
-}
-
-/**
- * FieldSchema：在 core IFieldSchema 基础上追加 group（表单分组，仅根节点/对象字段用）。
- * display 额外接受协议表达式，编译器会将其转换为响应式 display 规则。
- */
 export interface FieldSchema extends Omit<IFieldSchema, "properties" | "items" | "display"> {
   display?: IFieldSchema["display"] | `{{${string}}}`;
   properties?: Record<string, FieldSchema>;
   items?: FieldSchema | FieldSchema[];
-  group?: FieldGroup[];
 }

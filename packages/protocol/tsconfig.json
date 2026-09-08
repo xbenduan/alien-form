@@ -11,7 +11,7 @@
     "noEmit": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@alien-form/validate": ["./src/index.ts"]
+      "@alien-form/protocol": ["./src/index.ts"]
     }
   },
   "include": ["src"],

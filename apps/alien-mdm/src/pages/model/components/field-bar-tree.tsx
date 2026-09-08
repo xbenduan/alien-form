@@ -42,8 +42,8 @@ function FieldBar({
     id: node.id,
   });
   const container = isContainer(runtime, node, domain);
-  // fields 派生字段不可删除；仅表单新增(extra)字段可删除。
-  const deletable = node.source === "extra";
+  // 已发布物理字段不可删除，virtual 字段可自由调整。
+  const deletable = node.source === "virtual";
   const borderRadius = container ? "8px 8px 0 0" : "8px";
 
   return (
@@ -59,7 +59,7 @@ function FieldBar({
         <span className={styles.barKey}>{node.key}</span>
         <Tag className={styles.barComponent}>{node.form.component ?? node.type}</Tag>
         <span className={styles.barTitle}>{node.form.title ?? "—"}</span>
-        {node.source === "field" ? <Tag color="blue">落库</Tag> : <Tag>展示</Tag>}
+        {node.source === "physical" ? <Tag color="blue">物理</Tag> : <Tag>虚拟</Tag>}
         <span className={styles.barActions}>
           {container ? (
             <Tooltip title="新增子项">
@@ -81,7 +81,7 @@ function FieldBar({
               onClick={() => onEdit(node)}
             />
           </Tooltip>
-          <Tooltip title={deletable ? "删除" : "派生字段不可删除"}>
+          <Tooltip title={deletable ? "删除" : "物理字段不可删除"}>
             <Button
               type="text"
               size="small"

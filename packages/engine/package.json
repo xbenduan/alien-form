@@ -13,12 +13,12 @@
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --external @alien-form/core --external @alien-form/validate",
+    "build": "tsup src/index.ts --format esm,cjs --dts --external @alien-form/core --external @alien-form/protocol",
     "test": "vitest run"
   },
   "dependencies": {
     "@alien-form/core": "workspace:*",
-    "@alien-form/validate": "workspace:*"
+    "@alien-form/protocol": "workspace:*"
   },
   "devDependencies": {
     "tsup": "^8.0.0",

@@ -1,9 +1,9 @@
 import { createForm, type FormInstance } from "@alien-form/core";
 import { compileModel, matchPage } from "../compiler";
-import type { BuilderSchema, CompiledPage } from "../protocol";
+import type { ModelSchema, CompiledPage } from "../protocol";
 import { Registry, type ComponentRegistration } from "../registry";
 
-export type SchemaLoader = (modelCode: string) => Promise<BuilderSchema>;
+export type SchemaLoader = (modelCode: string) => Promise<ModelSchema>;
 export type RuntimeService = (...args: any[]) => unknown;
 type RegistrationKind = "component" | "service" | "enum" | "utils";
 type OverrideKeys = Record<RegistrationKind, Set<string>>;
@@ -52,6 +52,12 @@ export class Runtime {
 
   service(code: string, send: RuntimeService, domain?: string): void {
     this.services.set(code, send, domain, this.canReplaceGlobal("service", code, domain));
+  }
+
+  getService(code: string, domain?: string): RuntimeService {
+    const service = this.services.get(code, domain);
+    if (!service) throw new Error(`service "${code}" 未注册`);
+    return service;
   }
 
   utils(key: string, value: unknown, domain?: string): void {
@@ -128,7 +134,7 @@ export class Runtime {
     this.schemaLoader = loader;
   }
 
-  async loadModel(modelCode: string): Promise<BuilderSchema> {
+  async loadModel(modelCode: string): Promise<ModelSchema> {
     if (!this.schemaLoader) throw new Error("Schema loader is not configured");
     return this.schemaLoader(modelCode);
   }
@@ -150,11 +156,11 @@ export class PageRuntime {
 
   constructor(
     readonly runtime: Runtime,
-    readonly model: BuilderSchema,
+    readonly model: ModelSchema,
     readonly page: CompiledPage,
     readonly query: Record<string, string>,
   ) {
-    this.domain = model.meta.name;
+    this.domain = model.name;
     this.form = createForm({
       schema: page.schema,
       scope: runtime.createScope(this.domain, query, page.router),

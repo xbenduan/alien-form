@@ -54,23 +54,20 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { SchemaComponent, usePage, type ComponentProps, type ValueSource } from "@alien-form/react";
 import {
+  buildFormSchema,
   compilePage,
   evaluateCompiledValue,
   type CompiledNode,
-  type DatabaseField,
+  type ModelFieldSchema,
   type FieldSchema,
   type OpenMode,
 } from "@alien-form/engine";
+import type { ListResponse } from "@alien-form/protocol";
 import { recordRoute } from "@utils/record-route";
 import { RecordActionOverlay } from "../pages/record-action-overlay";
 import type { RecordActionMode } from "../pages/record-form";
 import { useLayoutLoading } from "./loading-context";
 import styles from "./table.module.css";
-
-interface ListResult {
-  list: Record<string, unknown>[];
-  total: number;
-}
 
 interface OverlayState {
   mode: RecordActionMode;
@@ -226,9 +223,9 @@ export function Table({
         schema?: FieldSchema,
         scope?: ValueSource<Record<string, unknown>>,
         domain?: string,
-        fields?: DatabaseField[],
+        fields?: ModelFieldSchema[],
       ) => TableColumnsType<Record<string, unknown>>);
-  loadData?: (params: Record<string, unknown>) => Promise<ListResult>;
+  loadData?: (params: Record<string, unknown>) => Promise<ListResponse>;
   filter?: string;
   parentId?: unknown;
   rowKey?: string;
@@ -253,10 +250,10 @@ export function Table({
   const resolvedModelCode = modelCode ?? routeModelCode ?? pageRuntime.domain;
   const paginationConfig = typeof pagination === "object" ? pagination : {};
   const defaultPageSize =
-    configuredPageSize ?? paginationConfig.pageSize ?? pageRuntime.model.meta.defaultPageSize ?? 20;
+    configuredPageSize ?? paginationConfig.pageSize ?? pageRuntime.model.defaultPageSize ?? 20;
   const recordTitle =
-    pageRuntime.model.meta.singularLabel ?? pageRuntime.model.meta.title ?? resolvedModelCode;
-  const [data, setData] = useState<ListResult>({ list: [], total: 0 });
+    pageRuntime.model.singularLabel ?? pageRuntime.model.title ?? resolvedModelCode;
+  const [data, setData] = useState<ListResponse>({ list: [], total: 0 });
   const { loading, startLoading } = useLayoutLoading();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
@@ -428,7 +425,7 @@ export function Table({
         schema:
           formProps?.schema && typeof formProps.schema === "object"
             ? formProps.schema
-            : (schema ?? pageRuntime.model.definitions["form-schema"]),
+            : (schema ?? buildFormSchema(pageRuntime.model, actionPage?.groups)),
         title: actionPage?.title ?? `${titlePrefix}${recordTitle}`,
         ok: formProps?.ok,
         submit: typeof formProps?.submit === "function" ? formProps.submit : undefined,

@@ -1,115 +1,109 @@
 import type {
-  DatabaseField,
-  FieldSchema as ModelFieldSchema,
-  BuilderSchema as ModelSchema,
-} from "@alien-form/validate";
+  FieldSchema,
+  ModelFieldDatabase,
+  ModelFieldSchema,
+  ModelSchema,
+} from "@alien-form/protocol";
 
 export const SYS_ADMIN_ID = "MDM0000000000";
 export const SYS_ADMIN_USERNAME = "_sys_admin";
 export const SYS_ADMIN_NICKNAME = "系统管理员";
 export const SYS_ADMIN_DEFAULT_PASSWORD = "alien123456";
 
-/** 物理表定义（存储真相源）。数组顺序即列序/表单序。 */
-const fields: DatabaseField[] = [
-  { key: "id", title: "ID", type: "text", system: true, filterable: true },
-  {
-    key: "username",
-    title: "账号",
-    type: "text",
-    nullable: false,
-    unique: true,
-    index: true,
-    filterable: true,
-  },
-  { key: "passwordHash", title: "密码", type: "text", visible: false },
-  {
-    key: "nickname",
-    title: "昵称",
-    type: "text",
-    nullable: false,
-    index: true,
-    filterable: true,
-  },
-  {
-    key: "roleId",
-    title: "组织角色",
-    type: "text",
-    index: true,
-    filterable: true,
-    relation: {
-      kind: "many-to-one",
-      target: "rbac_role",
-      valueField: "id",
-      labelField: "roleName",
-    },
-  },
-  { key: "remark", title: "备注", type: "text", visible: false },
-  { key: "addressInfo", title: "住址信息", type: "json", valueType: "object" },
-  { key: "studentRecords", title: "学籍信息", type: "json", valueType: "array" },
-  { key: "createBy", title: "创建者", type: "text", default: SYS_ADMIN_ID, filterable: true },
-  {
-    key: "super",
-    title: "超级管理员",
-    type: "boolean",
-    valueType: "boolean",
-    default: false,
-    visible: false,
-    filterable: true,
-  },
-  {
-    key: "createdAt",
-    title: "创建时间",
-    type: "integer",
-    valueType: "string",
-    system: true,
-    filterable: true,
-  },
-  {
-    key: "updatedAt",
-    title: "更新时间",
-    type: "integer",
-    valueType: "string",
-    system: true,
-    filterable: true,
-  },
-];
+function physical(
+  key: string,
+  database: ModelFieldDatabase,
+  form: FieldSchema,
+  options: Pick<ModelFieldSchema, "relation" | "table" | "filter"> = {},
+): ModelFieldSchema {
+  return {
+    id: `_sys_user.${key}`,
+    key,
+    storage: "physical",
+    database,
+    form,
+    ...options,
+  };
+}
 
-const properties: Record<string, ModelFieldSchema> = {
-  id: { type: "string", title: "ID", display: "hidden" },
-  username: {
-    type: "string",
-    title: "账号",
-    component: "Input",
-    required: true,
-    props: { placeholder: "请输入登录账号" },
-  },
-  passwordHash: { type: "string", title: "密码", component: "Input", display: "none" },
-  nickname: {
-    type: "string",
-    title: "昵称",
-    component: "Input",
-    required: true,
-    props: { placeholder: "请输入昵称" },
-  },
-  roleId: {
-    type: "string",
-    title: "组织角色",
-    component: "RemoteSelect",
-    props: {
-      model: "rbac_role",
-      valueField: "id",
-      labelField: "roleName",
-      pageSize: 50,
-      loadOptions: '{{ $utils.relation($service("records.list")) }}',
+function virtual(key: string, form: FieldSchema): ModelFieldSchema {
+  return {
+    id: `_sys_user.${key}`,
+    key,
+    storage: "virtual",
+    form,
+  };
+}
+
+const fields: ModelFieldSchema[] = [
+  physical(
+    "id",
+    { type: "text", system: true, nullable: false, unique: true, index: true },
+    { type: "string", title: "ID", display: "hidden" },
+    { table: { title: "ID" } },
+  ),
+  physical(
+    "username",
+    { type: "text", nullable: false, unique: true, index: true },
+    {
+      type: "string",
+      title: "账号",
+      component: "Input",
+      required: true,
+      props: { placeholder: "请输入登录账号" },
     },
-  },
-  remark: {
+    { table: { title: "账号" } },
+  ),
+  physical(
+    "passwordHash",
+    { type: "text" },
+    { type: "string", title: "密码", component: "Input", display: "none" },
+    { table: { title: "密码", hidden: true }, filter: { hidden: true } },
+  ),
+  physical(
+    "nickname",
+    { type: "text", nullable: false, index: true },
+    {
+      type: "string",
+      title: "昵称",
+      component: "Input",
+      required: true,
+      props: { placeholder: "请输入昵称" },
+    },
+    { table: { title: "昵称" } },
+  ),
+  physical(
+    "roleId",
+    { type: "text", index: true },
+    {
+      type: "string",
+      title: "组织角色",
+      component: "RemoteSelect",
+      props: {
+        model: "rbac_role",
+        valueField: "id",
+        labelField: "roleName",
+        pageSize: 50,
+        loadOptions: '{{ $utils.relation($service("records.list")) }}',
+      },
+    },
+    {
+      relation: {
+        kind: "many-to-one",
+        target: "rbac_role",
+        valueField: "id",
+        labelField: "roleName",
+      },
+      table: { title: "组织角色" },
+    },
+  ),
+  virtual("remark", {
     type: "string",
     title: "备注",
     component: "TextArea",
     props: { rows: 3 },
-  },
-  addressInfo: {
+  }),
+  virtual("addressInfo", {
     type: "object",
     title: "住址信息",
     component: "ObjectField",
@@ -134,8 +128,8 @@ const properties: Record<string, ModelFieldSchema> = {
         props: { placeholder: "请输入身份证住址", gridSpan: 24 },
       },
     },
-  },
-  studentRecords: {
+  }),
+  virtual("studentRecords", {
     type: "array",
     title: "学籍信息",
     component: "ArrayCards",
@@ -167,45 +161,95 @@ const properties: Record<string, ModelFieldSchema> = {
         },
       },
     },
+  }),
+  physical(
+    "createBy",
+    { type: "text", default: SYS_ADMIN_ID, index: true },
+    {
+      type: "string",
+      title: "创建者",
+      component: "Input",
+      display: "hidden",
+      default: SYS_ADMIN_ID,
+    },
+    { table: { title: "创建者" } },
+  ),
+  physical(
+    "super",
+    { type: "boolean", valueType: "boolean", default: false, index: true },
+    {
+      type: "boolean",
+      title: "超级管理员",
+      display: "hidden",
+      default: false,
+    },
+    { table: { title: "超级管理员", hidden: true } },
+  ),
+  physical(
+    "createdAt",
+    { type: "integer", valueType: "string", system: true, nullable: false },
+    {
+      type: "string",
+      title: "创建时间",
+      component: "DatePicker",
+      props: { readOnly: true, showTime: true },
+    },
+    { table: { title: "创建时间" } },
+  ),
+  physical(
+    "updatedAt",
+    { type: "integer", valueType: "string", system: true, nullable: false },
+    {
+      type: "string",
+      title: "更新时间",
+      component: "DatePicker",
+      props: { readOnly: true, showTime: true },
+    },
+    { table: { title: "更新时间" } },
+  ),
+];
+
+const recordPages = (["add", "edit", "detail"] as const).map((mode) => ({
+  router: mode,
+  title: `${mode === "add" ? "新建" : mode === "edit" ? "编辑" : "详情"}用户`,
+  groups: [
+    {
+      component: "ObjectField",
+      title: "基础信息",
+      keys: ["username", "nickname", "roleId"],
+      props: { gridSpan: 12 },
+    },
+  ],
+  properties: {
+    form: {
+      type: "void",
+      component: "record-form",
+      props: {
+        ...(mode === "add" ? { ok: "确认新增" } : mode === "edit" ? { ok: "确认修改" } : {}),
+        mode,
+        modelCode: "_sys_user",
+        ...(mode === "add" ? {} : { recordId: "{{ $query.id }}" }),
+        schema: { $ref: "form-schema" },
+        ...(mode === "add"
+          ? { submit: '{{ $service("record.add") }}' }
+          : mode === "edit"
+            ? { submit: '{{ $service("record.edit") }}' }
+            : {}),
+      },
+    },
   },
-  createBy: {
-    type: "string",
-    title: "创建者",
-    component: "Input",
-    display: "hidden",
-    default: SYS_ADMIN_ID,
-  },
-  super: {
-    type: "boolean",
-    title: "超级管理员",
-    display: "hidden",
-    default: false,
-  },
-  createdAt: {
-    type: "string",
-    title: "创建时间",
-    component: "DatePicker",
-    props: { readOnly: true, showTime: true },
-  },
-  updatedAt: {
-    type: "string",
-    title: "更新时间",
-    component: "DatePicker",
-    props: { readOnly: true, showTime: true },
-  },
-};
+}));
 
 export const sysUserSchema: ModelSchema = {
-  meta: {
-    name: "_sys_user",
-    title: "用户管理",
-    subtitle: "System Users",
-    description: "系统登录账号管理。",
-    group: "system",
-    singularLabel: "用户",
-    pluralLabel: "用户",
-    defaultPageSize: 20,
-  },
+  name: "_sys_user",
+  title: "用户管理",
+  version: 0,
+  subtitle: "System Users",
+  description: "系统登录账号管理。",
+  group: "system",
+  singularLabel: "用户",
+  pluralLabel: "用户",
+  defaultPageSize: 20,
   fields,
   pages: [
     {
@@ -213,40 +257,8 @@ export const sysUserSchema: ModelSchema = {
       title: "用户管理",
       layout: {
         component: "layout",
-        props: { left: "menu" },
       },
       properties: {
-        menu: {
-          type: "void",
-          component: "Menu",
-          props: {
-            title: "用户管理",
-            items: [
-              {
-                key: "list",
-                label: "用户列表",
-                onClick: '{{ () => $utils.openRoute("/_sys_user/list") }}',
-              },
-              {
-                key: "add",
-                label: "新建用户",
-                onClick: '{{ () => $utils.openRoute("/_sys_user/add") }}',
-              },
-              {
-                key: "edit",
-                label: "编辑当前用户",
-                onClick:
-                  '{{ () => $utils.openRoute("/_sys_user/edit?id=" + ($query.id ?? "")) }}',
-              },
-              {
-                key: "detail",
-                label: "查看当前用户",
-                onClick:
-                  '{{ () => $utils.openRoute("/_sys_user/detail?id=" + ($query.id ?? "")) }}',
-              },
-            ],
-          },
-        },
         filter: {
           type: "string",
           component: "filter",
@@ -266,7 +278,7 @@ export const sysUserSchema: ModelSchema = {
             filter: "{{ $values.filter }}",
             loadData: '{{ $service("records.list") }}',
             rowActions: ["delete"],
-            "actionBtns": {
+            actionBtns: {
               add: { type: "primary", children: "新增", openMode: "page" },
               edit: { type: "link", children: "编辑", openMode: "page" },
               detail: { type: "link", children: "详情", openMode: "drawer" },
@@ -294,62 +306,10 @@ export const sysUserSchema: ModelSchema = {
                   '{{ ($row) => $service("records.delete")({ model: "_sys_user", id: $row.id, record: $row }) }}',
               },
             },
-            import: {
-              type: "void",
-              component: "Button",
-              props: {
-                children: "导入",
-                onClick: '{{ () => $utils.message.info("功能未完善") }}',
-              },
-            },
-            export: {
-              type: "void",
-              component: "Button",
-              props: {
-                children: "导出",
-                onClick: '{{ () => $utils.message.info("功能未完善") }}',
-              },
-            },
           },
         },
       },
     },
-    ...(["add", "edit", "detail"] as const).map((mode) => ({
-      router: mode,
-      title: `${mode === "add" ? "新建" : mode === "edit" ? "编辑" : "详情"}用户`,
-      properties: {
-        form: {
-          type: "void",
-          component: "record-form",
-          props: {
-            ok: mode === "add" ? "确认新增" : mode === "edit" ? "确认修改" : undefined,
-            mode,
-            modelCode: "_sys_user",
-            recordId: mode === "add" ? undefined : "{{ $query.id }}",
-            schema: { $ref: "form-schema" },
-            submit:
-              mode === "add"
-                ? '{{ $service("record.add") }}'
-                : mode === "edit"
-                  ? '{{ $service("record.edit") }}'
-                  : undefined,
-          },
-        },
-      },
-    })),
+    ...recordPages,
   ],
-  definitions: {
-    "form-schema": {
-      type: "object",
-      properties,
-      group: [
-        {
-          component: "ObjectField",
-          title: "基础信息",
-          keys: ["username", "nickname", "roleId"],
-          props: { gridSpan: 12 },
-        },
-      ],
-    },
-  },
 };

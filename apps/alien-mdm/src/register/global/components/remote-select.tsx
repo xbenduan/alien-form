@@ -60,14 +60,14 @@ export function RemoteSelect(
     multiple?: boolean;
   },
 ) {
-  const {
-    mode,
-    controlProps,
-    value,
-    onChange,
-    loading,
-    extraProps,
-  } = buildProps(props, ["model", "loadOptions", "valueField", "labelField", "pageSize", "multiple"]);
+  const { mode, controlProps, value, onChange, loading, extraProps } = buildProps(props, [
+    "model",
+    "loadOptions",
+    "valueField",
+    "labelField",
+    "pageSize",
+    "multiple",
+  ]);
   const {
     model,
     loadOptions,
@@ -162,9 +162,7 @@ export function RemoteSelect(
     <AntSelect
       {...controlProps}
       mode={multiple ? "multiple" : undefined}
-      placeholder={
-        (controlProps.placeholder as string | undefined) || "请输入关键词搜索"
-      }
+      placeholder={(controlProps.placeholder as string | undefined) || "请输入关键词搜索"}
       allowClear
       showSearch={{ filterOption: false, onSearch: handleSearch }}
       style={{ width: "100%", ...(controlProps.style as object) }}

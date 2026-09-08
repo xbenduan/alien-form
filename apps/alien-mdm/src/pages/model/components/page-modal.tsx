@@ -1,6 +1,6 @@
 import { App, Input, Modal, Select, Space, Typography } from "antd";
 import { useEffect, useState } from "react";
-import type { XPage } from "@alien-form/engine";
+import type { PageSchema } from "@alien-form/engine";
 import {
   PAGE_TEMPLATES,
   createId,
@@ -10,7 +10,7 @@ import {
 } from "../builder";
 
 /**
- * 页面配置弹窗：新增/编辑一个页面（XPage）。
+ * 页面配置弹窗：新增/编辑一个页面（PageSchema）。
  * 新增与编辑都直接编辑 JSON；可选择模版，选择后覆盖编辑器原始内容。
  */
 export function PageModal({
@@ -47,9 +47,9 @@ export function PageModal({
   };
 
   const submit = () => {
-    let parsed: XPage;
+    let parsed: PageSchema;
     try {
-      parsed = JSON.parse(text) as XPage;
+      parsed = JSON.parse(text) as PageSchema;
     } catch {
       message.error("页面 JSON 格式不合法");
       return;
@@ -99,7 +99,7 @@ export function PageModal({
         <Input.TextArea
           value={text}
           onChange={(event) => setText(event.target.value)}
-          placeholder="在此编辑页面 JSON（XPage），或先选择上方模版"
+          placeholder="在此编辑页面 JSON（PageSchema），或先选择上方模版"
           autoSize={{ minRows: 14, maxRows: 28 }}
           spellCheck={false}
           style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}

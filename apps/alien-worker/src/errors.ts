@@ -12,6 +12,10 @@ export class AppError extends Error {
   }
 }
 
+export function badRequest(message: string): AppError {
+  return new AppError(message, 400);
+}
+
 /** 404：资源不存在。 */
 export function notFound(message: string): AppError {
   return new AppError(message, 404);

@@ -3,10 +3,8 @@ import { App, Alert, Button, Card, Flex, Skeleton, Space, Steps } from "antd";
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRuntime } from "@alien-form/react";
-import type { BuilderSchema } from "@alien-form/engine";
-import { assertBuilderSchema } from "@alien-form/validate";
+import type { ModelSchema } from "@alien-form/protocol";
 import { PageBreadcrumb } from "../../../components";
-import { transport } from "@runtime/transport";
 import {
   createDefaultDraft,
   createDefaultPages,
@@ -39,32 +37,42 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
 
   useEffect(() => {
     if (!sourceModelCode) return;
-    void transport
-      .send<BuilderSchema>(`/api/schemas/${sourceModelCode}`)
+    const getModel = runtime.getService("model.get") as (modelCode: string) => Promise<ModelSchema>;
+    void getModel(sourceModelCode)
       .then((model) => {
         const decoded = decodeModel(model);
         const next: ModelDraft = isCopy
-          ? { ...decoded, name: `${decoded.name}_copy`, title: `${decoded.title}副本` }
+          ? {
+              ...decoded,
+              name: `${decoded.name}_copy`,
+              title: `${decoded.title}副本`,
+              version: 0,
+              fields: decoded.fields.map((field) => ({ ...field, persisted: false })),
+            }
           : decoded;
         dispatch({ type: "replace", draft: next });
       })
       .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)))
       .finally(() => setLoading(false));
-  }, [isCopy, sourceModelCode]);
+  }, [isCopy, runtime, sourceModelCode]);
 
   const save = async () => {
     setError(undefined);
     setSaving(true);
     try {
       const model = encodeModel(draft);
-      assertBuilderSchema(model);
-      await transport.send<BuilderSchema>(
-        modelCode ? `/api/schemas/${modelCode}` : "/api/schemas",
-        {
-          method: modelCode ? "PUT" : "POST",
-          body: JSON.stringify(model),
-        },
-      );
+      if (modelCode) {
+        const update = runtime.getService("model.update") as (
+          modelCode: string,
+          model: ModelSchema,
+        ) => Promise<ModelSchema>;
+        await update(modelCode, model);
+      } else {
+        const create = runtime.getService("model.create") as (
+          model: ModelSchema,
+        ) => Promise<ModelSchema>;
+        await create(model);
+      }
       message.success(modelCode ? "模型保存成功" : isCopy ? "模型复制成功" : "模型创建成功");
       navigate("/models");
     } catch (reason) {

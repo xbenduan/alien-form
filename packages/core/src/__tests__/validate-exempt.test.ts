@@ -10,7 +10,10 @@ import type { IFormSchema } from "../types";
  * 若纳入必填校验会导致 form.validate() 恒为 false、submit 抛 "Validation failed"。
  */
 describe("validate — 豁免 hidden / none / disabled 的必填字段", () => {
-  const schemaWith = (idDisplay: "hidden" | "none", extra?: IFormSchema["properties"]): IFormSchema => ({
+  const schemaWith = (
+    idDisplay: "hidden" | "none",
+    extra?: IFormSchema["properties"],
+  ): IFormSchema => ({
     type: "object",
     properties: {
       name: { type: "string", component: "Input", required: true },

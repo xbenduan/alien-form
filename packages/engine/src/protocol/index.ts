@@ -1,23 +1,36 @@
 import type { CompiledExpression, IFormSchema } from "@alien-form/core";
 
 /**
- * 协议类型统一出自 @alien-form/validate（前后端共享的 zod 单一真源）。
+ * 协议类型统一出自 @alien-form/protocol（前后端共享的 zod 单一真源）。
  * 本文件只保留前端编译产物类型（CompiledNode 等）与本地 JSON 值别名。
  */
 
 export type {
-  BuilderSchema,
-  BuilderMeta as ModelMeta,
+  ModelSchema,
+  ModelSummary,
   FieldSchema,
   FieldGroup,
-  XPage,
-  DatabaseField,
+  PageSchema,
+  ModelFieldSchema,
   DatabaseRelation,
   DatabaseColumnType,
   DatabaseValueType,
   DatabaseRelationKind,
   OpenMode,
-} from "@alien-form/validate";
+} from "@alien-form/protocol";
+
+export type ModelMeta = Pick<
+  import("@alien-form/protocol").ModelSchema,
+  | "name"
+  | "title"
+  | "version"
+  | "subtitle"
+  | "description"
+  | "group"
+  | "singularLabel"
+  | "pluralLabel"
+  | "defaultPageSize"
+>;
 
 export type JsonValue =
   | string
@@ -33,7 +46,7 @@ export interface CompiledValue {
 
 export interface CompiledNode {
   key: string;
-  schema: import("@alien-form/validate").FieldSchema;
+  schema: import("@alien-form/protocol").FieldSchema;
   props: Record<string, unknown>;
   slots: Record<string, CompiledNode | CompiledNode[]>;
   children: CompiledNode[];

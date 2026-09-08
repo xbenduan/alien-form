@@ -25,7 +25,7 @@ const AuthContext = createContext<AuthValue | null>(null);
 function AuthProvider({ children }: PropsWithChildren) {
   const [authenticated, setAuthenticated] = useState(() => Boolean(transport.token && userInfo()));
   const login = useCallback(async (username: string, password: string) => {
-    const result = await transport.send<LoginResponse>("/api/auth/login", {
+    const result = await transport.send<LoginResponse>("/api/v1/auth/login", {
       method: "POST",
       body: JSON.stringify({ username, password }),
     });
@@ -35,7 +35,7 @@ function AuthProvider({ children }: PropsWithChildren) {
   }, []);
   const logout = useCallback(async () => {
     try {
-      await transport.send("/api/auth/logout", { method: "POST" });
+      await transport.send("/api/v1/auth/logout", { method: "POST" });
     } finally {
       transport.setToken(null);
       clearUserInfo();

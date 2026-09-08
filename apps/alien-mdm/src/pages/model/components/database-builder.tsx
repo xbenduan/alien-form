@@ -24,7 +24,7 @@ export function DatabaseBuilder({
 
   // 数据库构建只展示落库的顶层字段。
   const dbFields = useMemo(
-    () => draft.fields.filter((node) => node.source === "field"),
+    () => draft.fields.filter((node) => node.source === "physical"),
     [draft.fields],
   );
   const rows = useMemo(() => {
@@ -41,7 +41,7 @@ export function DatabaseBuilder({
 
   const existingKeys = useMemo(() => draft.fields.map((node) => node.key), [draft.fields]);
 
-  const addField = () => setEditor({ node: createField(runtime, { source: "field" }) });
+  const addField = () => setEditor({ node: createField(runtime, { source: "physical" }) });
 
   const columns: ColumnsType<FieldNode> = [
     {
@@ -104,7 +104,7 @@ export function DatabaseBuilder({
             okText="删除"
             cancelText="取消"
             okButtonProps={{ danger: true }}
-            disabled={row.storage?.system}
+            disabled={row.storage?.system || row.persisted}
             onConfirm={() => dispatch({ type: "field.remove", id: row.id })}
           >
             <Button
@@ -113,7 +113,7 @@ export function DatabaseBuilder({
               danger
               icon={<DeleteOutlined />}
               aria-label="删除字段"
-              disabled={row.storage?.system}
+              disabled={row.storage?.system || row.persisted}
             >
               删除
             </Button>

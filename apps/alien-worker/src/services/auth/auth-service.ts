@@ -1,8 +1,8 @@
 import { AppError, unauthorized } from "../../errors.ts";
 import { USER_MODEL, publicRecord } from "../../domain/visibility.ts";
 import { randomHex, verifyPassword } from "./password.ts";
-import type { ModelRecord } from "@alien-form/validate";
-import type { SchemaStore } from "../../store/schema-store.ts";
+import type { LoginRequest, LoginResponse, ModelRecord } from "@alien-form/protocol";
+import type { ModelStore } from "../../store/model-store.ts";
 import type { RecordStore } from "../../store/record-store.ts";
 import type { SessionStore } from "../../store/session-store.ts";
 
@@ -13,27 +13,13 @@ export interface Session {
   createdAt: number;
 }
 
-export interface LoginBody {
-  provider?: string;
-  username?: string;
-  account?: string;
-  password?: string;
-  openid?: string;
-}
-
-export interface LoginResult {
-  token: string;
-  user: ModelRecord;
-  provider: string;
-}
-
 /**
  * 登录 provider 契约：给定登录参数，认证成功返回用户记录，否则 undefined。
  * 新增登录方式（如 openid / sso）只需实现此接口并在 PROVIDERS 里登记。
  */
 export interface AuthProvider {
   readonly name: string;
-  authenticate(ctx: AuthService, body: LoginBody): Promise<ModelRecord | undefined>;
+  authenticate(ctx: AuthService, body: LoginRequest): Promise<ModelRecord | undefined>;
 }
 
 /** 账号密码 provider。 */
@@ -56,19 +42,19 @@ const PROVIDERS: Record<string, AuthProvider> = {
 /** 认证服务：登录 / 登出 / 会话查询，编排 provider 与各 store。 */
 export class AuthService {
   constructor(
-    private readonly schemas: SchemaStore,
+    private readonly models: ModelStore,
     private readonly records: RecordStore,
     private readonly sessions: SessionStore,
   ) {}
 
   /** 按用户名查用户记录（供 provider 复用）。 */
   async findUserByUsername(username: string): Promise<ModelRecord | undefined> {
-    const schema = await this.schemas.get(USER_MODEL);
+    const schema = await this.models.get(USER_MODEL);
     if (!schema) throw new AppError("用户模型未注册", 500);
     return this.records.findByField(schema, "username", username);
   }
 
-  async login(body: LoginBody): Promise<LoginResult> {
+  async login(body: LoginRequest): Promise<LoginResponse> {
     const providerName = body.provider ?? "password";
     const provider = PROVIDERS[providerName];
     if (!provider) throw new AppError(`不支持的登录方式：${providerName}`, 400);

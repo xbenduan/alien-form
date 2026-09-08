@@ -14,6 +14,7 @@ import { Alert, Button, Empty, Input, Skeleton, Tabs, Tooltip, Typography } from
 import { useNavigate } from "react-router-dom";
 import { UserMenu } from "../../components";
 import type { ModelSummary } from "@app-types";
+import { parseModelSummaries } from "@alien-form/protocol";
 import { transport } from "@runtime/transport";
 import { isSuperAdmin } from "@runtime/user-info";
 import styles from "./index.module.css";
@@ -185,12 +186,7 @@ function FavoriteModelCard({
           </Tooltip>
         </span>
       </button>
-      <CardActions
-        model={model}
-        favorite
-        onToggleFavorite={onToggleFavorite}
-        onEdit={onEdit}
-      />
+      <CardActions model={model} favorite onToggleFavorite={onToggleFavorite} onEdit={onEdit} />
     </article>
   );
 }
@@ -206,7 +202,8 @@ export default function HomePage() {
 
   useEffect(() => {
     void transport
-      .send<ModelSummary[]>("/api/schemas")
+      .send<unknown>("/api/v1/models")
+      .then(parseModelSummaries)
       .then(setModels)
       .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
   }, []);

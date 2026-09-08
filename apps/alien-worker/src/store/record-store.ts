@@ -1,26 +1,32 @@
-import { planFields, type FieldPlan } from "../domain/field-plan.ts";
+import type {
+  ModelFieldSchema,
+  ModelRecord,
+  ModelSchema,
+  Pagination,
+  Sorter,
+} from "@alien-form/protocol";
+import { columnName, fieldExpression, planByField, type FieldPlan } from "../domain/field-plan.ts";
 import { formatRecordId } from "../domain/record-id.ts";
 import { compileRecordFilter } from "../domain/record-filter.ts";
-import {
-  databaseFields,
-  type BuilderSchema as ModelSchema,
-  type DatabaseField,
-  type ModelRecord,
-  type Pagination,
-  type Sorter,
-} from "@alien-form/validate";
+import { compileStorageManifest } from "../domain/storage-compiler.ts";
+import { quoteColumn, quoteTable } from "../domain/sql.ts";
+
+type SqlValue = string | number | null;
+type RecordRow = Record<string, unknown> & {
+  id: string;
+  created_at: number;
+  updated_at: number;
+  data_content: string;
+};
 
 export interface ListParams {
-  /** PocketBase 风格的受限筛选表达式，会与 keyword、parentId 取交集。 */
   filter?: string;
-  /** 当前会话用户，仅供 filter 中的 @request.auth.id 使用。 */
   authId: string;
   pagination?: Pagination;
   sorter?: Sorter;
   keyword?: string;
   searchFields?: string[];
   parentId?: string | null;
-  /** 由 RecordService 根据模型自关联推导，非 HTTP 协议字段。 */
   idField?: string;
   parentField?: string;
 }
@@ -49,103 +55,112 @@ export interface SubtreeParams {
   parentValue?: string | null;
 }
 
-/** records 表的一行：系统列 + data_content JSON。 */
-interface RecordRow {
-  id: string;
-  created_at: number;
-  updated_at: number;
-  data_content: string;
+function decodePhysical(field: ModelFieldSchema, value: unknown): unknown {
+  if (value === null || value === undefined) return undefined;
+  if (field.database?.type === "boolean") return value === 1 || value === true;
+  if (field.database?.type === "json" && typeof value === "string") return JSON.parse(value);
+  return value;
 }
 
-function nowMs(): number {
-  return Date.now();
-}
-
-/**
- * 字段 → 可用于 WHERE / ORDER BY / SELECT 的 SQL 表达式。
- *  - 系统字段（id / createdAt / updatedAt）直取物理列；
- *  - 其余业务字段一律从 data_content JSON 里 json_extract 取值。
- */
-function fieldExpr(field: string): string {
-  if (field === "id") return `"id"`;
-  if (field === "createdAt") return `"created_at"`;
-  if (field === "updatedAt") return `"updated_at"`;
-  return `json_extract(data_content, '$.${field}')`;
-}
-
-function searchableField(schema: ModelSchema, key: string): DatabaseField | undefined {
-  return databaseFields(schema).find((field) => field.key === key);
-}
-
-/** 过滤 / 排序取值编码：布尔转 1/0 与 json_extract 的返回对齐，其余原样。 */
-function encodeFilterValue(plan: FieldPlan | undefined, value: unknown): string | number {
-  if (plan?.type === "boolean") return value ? 1 : 0;
-  if (plan && (plan.type === "real" || plan.type === "integer")) {
-    const num = typeof value === "number" ? value : Number(value);
-    return Number.isFinite(num) ? num : (value as string | number);
+function encodePhysical(field: ModelFieldSchema, value: unknown): SqlValue {
+  if (value === undefined || value === null || value === "") return null;
+  const type = field.database?.type;
+  if (type === "boolean") return value ? 1 : 0;
+  if (type === "integer" || type === "real") {
+    const number = typeof value === "number" ? value : Number(value);
+    if (!Number.isFinite(number)) throw new Error(`字段 ${field.key} 必须为数字`);
+    return number;
   }
-  return value as string | number;
+  if (type === "date") {
+    const timestamp = typeof value === "number" ? value : Date.parse(String(value));
+    if (!Number.isFinite(timestamp)) throw new Error(`字段 ${field.key} 必须为有效日期`);
+    return timestamp;
+  }
+  if (type === "json") return JSON.stringify(value);
+  return String(value);
 }
 
-/** DB 行 → 领域记录：data_content 展开为业务字段 + 系统字段。 */
-function rowToRecord(row: RecordRow): ModelRecord {
-  let data: Record<string, unknown> = {};
-  try {
-    data = JSON.parse(row.data_content) as Record<string, unknown>;
-  } catch {
-    data = {};
-  }
-  return {
+function rowToRecord(schema: ModelSchema, row: RecordRow): ModelRecord {
+  const data = JSON.parse(row.data_content) as Record<string, unknown>;
+  const record: ModelRecord = {
     ...data,
     id: String(row.id),
-    createdAt: row.created_at ?? undefined,
-    updatedAt: row.updated_at ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
+  for (const field of schema.fields) {
+    if (
+      field.storage !== "physical" ||
+      field.relation?.kind === "many-to-many" ||
+      field.key === "id" ||
+      field.key === "createdAt" ||
+      field.key === "updatedAt"
+    ) {
+      continue;
+    }
+    record[field.key] = decodePhysical(field, row[columnName(field)]);
+  }
+  return record;
 }
 
-/** 把领域值拆成 { 系统字段, data_content }：系统字段单独成列，其余进 JSON。 */
-function splitSystemFields(values: Record<string, unknown>): {
-  id?: string;
-  data: Record<string, unknown>;
-} {
-  const { id, createdAt: _c, updatedAt: _u, ...rest } = values;
-  return {
-    id: typeof id === "string" && id ? id : undefined,
-    data: rest,
-  };
+function relationValues(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [
+    ...new Set(
+      value.flatMap((item) =>
+        typeof item === "string" || typeof item === "number" ? [String(item)] : [],
+      ),
+    ),
+  ];
 }
 
-/**
- * 记录仓储：records / _sequences 表的读写收口。
- * 所有模型共用两张通用表，业务字段收进 data_content JSON。
- */
 export class RecordStore {
   constructor(private readonly db: D1Database) {}
 
-  /**
-   * 分配下一个业务主键：从 _sequences 的全局计数器原子自增取号，格式化为 MDM0000000001。
-   *
-   * 所有模型共用同一个计数器（key = __global__），id 因此跨模型全局唯一、单调自增。
-   * 单条 INSERT ... ON CONFLICT DO UPDATE ... RETURNING 保证 D1 串行写入下并发不重号。
-   */
-  private async nextId(): Promise<string> {
+  async allocateId(): Promise<string> {
     const row = await this.db
       .prepare(
-        `INSERT INTO "_sequences" (model, next) VALUES ('__global__', 1)
-         ON CONFLICT(model) DO UPDATE SET next = next + 1
+        `INSERT INTO "_sequences" (name, next) VALUES ('__global__', 1)
+         ON CONFLICT(name) DO UPDATE SET next = next + 1
          RETURNING next`,
       )
       .first<{ next: number }>();
-    return formatRecordId(row?.next ?? 1);
+    if (!row) throw new Error("记录 ID 分配失败");
+    return formatRecordId(row.next);
   }
 
-  /** 列表查询：filter、keyword、parentId 共同收敛为 WHERE；分页在 SQL 层完成。 */
-  async list(schema: ModelSchema, params: ListParams): Promise<ListResult> {
-    const model = schema.meta.name;
-    const byField = new Map(planFields(schema).map((p) => [p.field, p]));
+  private async attachManyRelations(
+    schema: ModelSchema,
+    records: ModelRecord[],
+  ): Promise<ModelRecord[]> {
+    if (records.length === 0) return records;
+    const ids = records.map((record) => String(record.id));
+    const byId = new Map(records.map((record) => [String(record.id), record]));
+    const relations = compileStorageManifest(schema).relations;
 
-    const where: string[] = [`"model" = ?`];
-    const args: Array<string | number> = [model];
+    for (const relation of relations) {
+      const { results } = await this.db
+        .prepare(
+          `SELECT "source_id", "target_value" FROM ${quoteTable(relation.table)}
+           WHERE "source_id" IN (${ids.map(() => "?").join(", ")})
+           ORDER BY "source_id", "target_value"`,
+        )
+        .bind(...ids)
+        .all<{ source_id: string; target_value: string }>();
+      for (const record of records) record[relation.field] = [];
+      for (const row of results) {
+        const record = byId.get(row.source_id);
+        if (record) (record[relation.field] as string[]).push(row.target_value);
+      }
+    }
+    return records;
+  }
+
+  async list(schema: ModelSchema, params: ListParams): Promise<ListResult> {
+    const table = quoteTable(schema.name);
+    const fields = planByField(schema);
+    const where: string[] = [];
+    const args: SqlValue[] = [];
 
     if (params.parentId !== undefined && params.parentId !== null && params.parentId !== "") {
       const idField = params.idField ?? "id";
@@ -164,88 +179,83 @@ export class RecordStore {
         }),
       ];
       const values = [...new Set(ids)];
-      where.push(`${fieldExpr(idField)} IN (${values.map(() => "?").join(", ")})`);
+      const idPlan = fields.get(idField);
+      if (!idPlan) throw new Error(`未知树 ID 字段：${idField}`);
+      where.push(`${fieldExpression(idPlan)} IN (${values.map(() => "?").join(", ")})`);
       args.push(...values);
     }
 
     const compiledFilter = compileRecordFilter(params.filter, {
       authId: params.authId,
-      fields: byField,
+      fields,
     });
     if (compiledFilter) {
       where.push(compiledFilter.sql);
       args.push(...compiledFilter.args);
     }
+
     const keyword = params.keyword?.trim();
     if (keyword && params.searchFields?.length) {
-      const searchable = [...new Set(params.searchFields)].filter((field) =>
-        searchableField(schema, field),
-      );
+      const searchable = [...new Set(params.searchFields)]
+        .map((key) => fields.get(key))
+        .filter((plan): plan is FieldPlan => plan !== undefined && !plan.json);
       if (searchable.length > 0) {
         where.push(
-          `(${searchable.map((field) => `CAST(${fieldExpr(field)} AS TEXT) LIKE ?`).join(" OR ")})`,
+          `(${searchable
+            .map((plan) => `CAST(${fieldExpression(plan)} AS TEXT) LIKE ?`)
+            .join(" OR ")})`,
         );
         args.push(...searchable.map(() => `%${keyword}%`));
       }
     }
-    const whereSql = `WHERE ${where.join(" AND ")}`;
-
-    const totalRow = await this.db
-      .prepare(`SELECT COUNT(*) AS c FROM "records" ${whereSql}`)
-      .bind(...args)
-      .first<{ c: number }>();
-    const total = totalRow?.c ?? 0;
+    const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
 
     let orderSql = `ORDER BY "updated_at" DESC`;
     if (params.sorter) {
-      const plan = byField.get(params.sorter.field);
+      const plan = fields.get(params.sorter.field);
       if (plan?.sortable) {
-        const dir = params.sorter.order === "descend" ? "DESC" : "ASC";
-        orderSql = `ORDER BY ${fieldExpr(params.sorter.field)} ${dir}`;
+        const direction = params.sorter.order === "descend" ? "DESC" : "ASC";
+        orderSql = `ORDER BY ${fieldExpression(plan)} ${direction}`;
       }
     }
 
     const pagination = params.pagination ?? { current: 1, pageSize: 10 };
     const limit = pagination.pageSize;
     const offset = (pagination.current - 1) * pagination.pageSize;
-
-    const { results } = await this.db
-      .prepare(`SELECT * FROM "records" ${whereSql} ${orderSql} LIMIT ? OFFSET ?`)
-      .bind(...args, limit, offset)
-      .all<RecordRow>();
-
-    return { list: results.map(rowToRecord), total };
+    const [countResult, dataResult] = await this.db.batch([
+      this.db.prepare(`SELECT COUNT(*) AS c FROM ${table} ${whereSql}`).bind(...args),
+      this.db
+        .prepare(`SELECT * FROM ${table} ${whereSql} ${orderSql} LIMIT ? OFFSET ?`)
+        .bind(...args, limit, offset),
+    ]);
+    const countRow = countResult.results[0] as { c?: number } | undefined;
+    const records = dataResult.results.map((row) => rowToRecord(schema, row as RecordRow));
+    await this.attachManyRelations(schema, records);
+    return { list: records, total: countRow?.c ?? 0 };
   }
 
-  /**
-   * 下拉选项查询：返回匹配项前 N 条 + 批量补回已选值。
-   * value / label 允许是系统字段或业务字段（走 json_extract）。
-   */
   async options(schema: ModelSchema, params: OptionsParams): Promise<OptionResult> {
-    const model = schema.meta.name;
-    const valueExpr = fieldExpr(params.valueKey);
-    const labelExpr = fieldExpr(params.labelKey);
+    const fields = planByField(schema);
+    const valuePlan = fields.get(params.valueKey);
+    const labelPlan = fields.get(params.labelKey);
+    if (!valuePlan || !labelPlan) throw new Error("选项字段不存在或不支持查询");
+    const valueExpr = fieldExpression(valuePlan);
+    const labelExpr = fieldExpression(labelPlan);
     const keyword = params.keyword?.trim();
-
-    const baseWhere = `"model" = ?`;
-    const where = keyword ? `${baseWhere} AND ${labelExpr} LIKE ?` : baseWhere;
-    const args: Array<string | number> = keyword ? [model, `%${keyword}%`] : [model];
-
-    const totalRow = await this.db
-      .prepare(`SELECT COUNT(*) AS c FROM "records" WHERE ${where}`)
-      .bind(...args)
-      .first<{ c: number }>();
-    const total = totalRow?.c ?? 0;
-
+    const where = keyword ? `${labelExpr} LIKE ?` : "1 = 1";
+    const args: SqlValue[] = keyword ? [`%${keyword}%`] : [];
+    const table = quoteTable(schema.name);
     const limit = Math.min(Math.max(params.limit ?? 10, 1), 100);
-    const { results: matching } = await this.db
-      .prepare(
-        `SELECT ${valueExpr} AS value, ${labelExpr} AS label FROM "records" WHERE ${where} ` +
-          `ORDER BY ${labelExpr} COLLATE NOCASE ASC LIMIT ?`,
-      )
-      .bind(...args, limit)
-      .all<{ value: string | number; label: unknown }>();
 
+    const [countResult, matchResult] = await this.db.batch([
+      this.db.prepare(`SELECT COUNT(*) AS c FROM ${table} WHERE ${where}`).bind(...args),
+      this.db
+        .prepare(
+          `SELECT ${valueExpr} AS value, ${labelExpr} AS label FROM ${table}
+           WHERE ${where} ORDER BY ${labelExpr} COLLATE NOCASE ASC LIMIT ?`,
+        )
+        .bind(...args, limit),
+    ]);
     const selected = [
       ...new Set(
         (params.selectedValues ?? []).filter(
@@ -256,174 +266,226 @@ export class RecordStore {
     ];
     let selectedRows: Array<{ value: string | number; label: unknown }> = [];
     if (selected.length > 0) {
-      const { results } = await this.db
+      const result = await this.db
         .prepare(
-          `SELECT ${valueExpr} AS value, ${labelExpr} AS label FROM "records" ` +
-            `WHERE "model" = ? AND ${valueExpr} IN (${selected.map(() => "?").join(", ")})`,
+          `SELECT ${valueExpr} AS value, ${labelExpr} AS label FROM ${table}
+           WHERE ${valueExpr} IN (${selected.map(() => "?").join(", ")})`,
         )
-        .bind(model, ...selected)
+        .bind(...selected)
         .all<{ value: string | number; label: unknown }>();
-      selectedRows = results;
+      selectedRows = result.results;
     }
 
     const options = new Map<string, { value: string | number; label: string }>();
+    const matching = matchResult.results as Array<{ value: string | number; label: unknown }>;
     for (const row of [...selectedRows, ...matching]) {
       options.set(`${typeof row.value}:${row.value}`, {
         value: row.value,
         label: String(row.label ?? row.value),
       });
     }
-    return { options: [...options.values()], total };
+    const countRow = countResult.results[0] as { c?: number } | undefined;
+    return { options: [...options.values()], total: countRow?.c ?? 0 };
   }
 
-  /**
-   * 子树查询：按业务字段 idField / parentField 收集 parentValue 之下的全部后代。
-   * parentValue 为空返回整棵树（全量记录）。
-   */
   async subtree(schema: ModelSchema, params: SubtreeParams): Promise<ModelRecord[]> {
-    const { results } = await this.db
-      .prepare(`SELECT * FROM "records" WHERE "model" = ?`)
-      .bind(schema.meta.name)
-      .all<RecordRow>();
-    const records = results.map(rowToRecord);
-
+    const result = await this.db.prepare(`SELECT * FROM ${quoteTable(schema.name)}`).all();
+    const records = result.results.map((row) => rowToRecord(schema, row as RecordRow));
     const childrenOf = new Map<string, ModelRecord[]>();
     for (const record of records) {
       const raw = record[params.parentField];
       const parent = raw === undefined || raw === null ? "" : String(raw);
-      const arr = childrenOf.get(parent) ?? [];
-      arr.push(record);
-      childrenOf.set(parent, arr);
+      const children = childrenOf.get(parent) ?? [];
+      children.push(record);
+      childrenOf.set(parent, children);
     }
-
     const root =
       params.parentValue === undefined || params.parentValue === null
         ? ""
         : String(params.parentValue);
-    if (root === "") return records;
+    if (root === "") return this.attachManyRelations(schema, records);
 
-    const result: ModelRecord[] = [];
+    const output: ModelRecord[] = [];
     const queue = [root];
     const seen = new Set<string>();
-    while (queue.length) {
+    while (queue.length > 0) {
       const current = queue.shift()!;
       if (seen.has(current)) continue;
       seen.add(current);
-      const kids = childrenOf.get(current) ?? [];
-      result.push(...kids);
-      for (const kid of kids) {
-        const id = kid[params.idField];
+      const children = childrenOf.get(current) ?? [];
+      output.push(...children);
+      for (const child of children) {
+        const id = child[params.idField];
         if (id !== undefined && id !== null) queue.push(String(id));
       }
     }
-    return result;
+    return this.attachManyRelations(schema, output);
   }
 
   async get(schema: ModelSchema, id: string): Promise<ModelRecord | undefined> {
     const row = await this.db
-      .prepare(`SELECT * FROM "records" WHERE "model" = ? AND "id" = ?`)
-      .bind(schema.meta.name, id)
+      .prepare(`SELECT * FROM ${quoteTable(schema.name)} WHERE "id" = ?`)
+      .bind(id)
       .first<RecordRow>();
-    return row ? rowToRecord(row) : undefined;
+    if (!row) return undefined;
+    return (await this.attachManyRelations(schema, [rowToRecord(schema, row)]))[0];
   }
 
-  /** 按一个业务字段精确查询单条记录（供登录等场景复用）。 */
   async findByField(
     schema: ModelSchema,
     field: string,
     value: string | number,
   ): Promise<ModelRecord | undefined> {
-    const plan = planFields(schema).find((p) => p.field === field);
+    const plan = planByField(schema).get(field);
     if (!plan) return undefined;
     const row = await this.db
-      .prepare(`SELECT * FROM "records" WHERE "model" = ? AND ${fieldExpr(field)} = ? LIMIT 1`)
-      .bind(schema.meta.name, encodeFilterValue(plan, value))
-      .first<RecordRow>();
-    return row ? rowToRecord(row) : undefined;
-  }
-
-  /**
-   * 模型内是否已存在某字段的取值（可排除自身 id，供更新时查重）。
-   * 供服务层实现 unique 字段的写前查重（非 DB 约束）。
-   */
-  async existsByField(
-    schema: ModelSchema,
-    field: string,
-    value: unknown,
-    excludeId?: string,
-  ): Promise<boolean> {
-    if (value === undefined || value === null || value === "") return false;
-    const plan = planFields(schema).find((p) => p.field === field);
-    if (!plan) return false;
-    const args: Array<string | number> = [schema.meta.name, encodeFilterValue(plan, value)];
-    let sql = `SELECT 1 FROM "records" WHERE "model" = ? AND ${fieldExpr(field)} = ?`;
-    if (excludeId) {
-      sql += ` AND "id" != ?`;
-      args.push(excludeId);
-    }
-    const row = await this.db
-      .prepare(`${sql} LIMIT 1`)
-      .bind(...args)
-      .first();
-    return Boolean(row);
-  }
-
-  /**
-   * 新建记录：幂等 upsert（允许传入 id，命中则整体覆盖 data_content）。
-   * D1 单表写入天然原子，无需显式事务。
-   */
-  async create(schema: ModelSchema, values: Record<string, unknown>): Promise<ModelRecord> {
-    const model = schema.meta.name;
-    const { id: providedId, data } = splitSystemFields(values);
-    const id = providedId ?? (await this.nextId());
-    const ts = nowMs();
-
-    await this.db
       .prepare(
-        `INSERT INTO "records" (id, model, created_at, updated_at, data_content) VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET updated_at = excluded.updated_at, data_content = excluded.data_content`,
+        `SELECT * FROM ${quoteTable(schema.name)}
+         WHERE ${fieldExpression(plan)} = ? LIMIT 1`,
       )
-      .bind(id, model, ts, ts, JSON.stringify(data))
-      .run();
-
-    return (await this.get(schema, id))!;
+      .bind(encodeQueryValue(plan, value))
+      .first<RecordRow>();
+    if (!row) return undefined;
+    return (await this.attachManyRelations(schema, [rowToRecord(schema, row)]))[0];
   }
 
-  /** 更新记录：仅合并传入字段（未传入的 data_content 键保持不变），系统字段忽略。 */
+  async create(schema: ModelSchema, values: Record<string, unknown>): Promise<ModelRecord> {
+    const id = typeof values.id === "string" && values.id ? values.id : await this.allocateId();
+    const timestamp = Date.now();
+    const { columns, args, virtual, many } = splitRecord(schema, { ...values, id });
+    const statements: D1PreparedStatement[] = [
+      this.db
+        .prepare(
+          `INSERT INTO ${quoteTable(schema.name)}
+           (${["id", "created_at", "updated_at", "data_content", ...columns]
+             .map(quoteColumn)
+             .join(", ")})
+           VALUES (${Array.from({ length: columns.length + 4 }, () => "?").join(", ")})`,
+        )
+        .bind(id, timestamp, timestamp, JSON.stringify(virtual), ...args),
+      ...relationStatements(this.db, schema, id, many),
+    ];
+    await this.db.batch(statements);
+    const record = await this.get(schema, id);
+    if (!record) throw new Error(`记录创建后无法读取：${id}`);
+    return record;
+  }
+
   async update(
     schema: ModelSchema,
     id: string,
     values: Record<string, unknown>,
   ): Promise<ModelRecord | undefined> {
-    const existing = await this.get(schema, id);
-    if (!existing) return undefined;
-
-    const { data: incoming } = splitSystemFields(values);
-    const { id: _id, createdAt: _c, updatedAt: _u, ...currentData } = existing;
-    const merged = { ...currentData, ...incoming };
-
-    await this.db
-      .prepare(
-        `UPDATE "records" SET updated_at = ?, data_content = ? WHERE "model" = ? AND "id" = ?`,
-      )
-      .bind(nowMs(), JSON.stringify(merged), schema.meta.name, id)
-      .run();
-
+    if (!(await this.get(schema, id))) return undefined;
+    const { columns, args, virtual, many } = splitRecord(schema, { ...values, id });
+    const assignments = [
+      `"updated_at" = ?`,
+      `"data_content" = ?`,
+      ...columns.map((column) => `${quoteColumn(column)} = ?`),
+    ];
+    const statements: D1PreparedStatement[] = [
+      this.db
+        .prepare(`UPDATE ${quoteTable(schema.name)} SET ${assignments.join(", ")} WHERE "id" = ?`)
+        .bind(Date.now(), JSON.stringify(virtual), ...args, id),
+      ...relationStatements(this.db, schema, id, many),
+    ];
+    await this.db.batch(statements);
     return this.get(schema, id);
   }
 
-  /** 删除单条（幂等）。 */
   async delete(schema: ModelSchema, id: string): Promise<void> {
-    await this.db
-      .prepare(`DELETE FROM "records" WHERE "model" = ? AND "id" = ?`)
-      .bind(schema.meta.name, id)
-      .run();
+    const statements = compileStorageManifest(schema).relations.map((relation) =>
+      this.db.prepare(`DELETE FROM ${quoteTable(relation.table)} WHERE "source_id" = ?`).bind(id),
+    );
+    statements.push(
+      this.db.prepare(`DELETE FROM ${quoteTable(schema.name)} WHERE "id" = ?`).bind(id),
+    );
+    await this.db.batch(statements);
   }
 
-  /** 批量删除：D1 batch 单次往返。 */
   async deleteMany(schema: ModelSchema, ids: string[]): Promise<void> {
     if (ids.length === 0) return;
-    const stmt = this.db.prepare(`DELETE FROM "records" WHERE "model" = ? AND "id" = ?`);
-    await this.db.batch(ids.map((id) => stmt.bind(schema.meta.name, id)));
+    const statements: D1PreparedStatement[] = [];
+    for (const id of ids) {
+      for (const relation of compileStorageManifest(schema).relations) {
+        statements.push(
+          this.db
+            .prepare(`DELETE FROM ${quoteTable(relation.table)} WHERE "source_id" = ?`)
+            .bind(id),
+        );
+      }
+      statements.push(
+        this.db.prepare(`DELETE FROM ${quoteTable(schema.name)} WHERE "id" = ?`).bind(id),
+      );
+    }
+    await this.db.batch(statements);
   }
+}
+
+function encodeQueryValue(plan: FieldPlan, value: string | number): string | number {
+  if (plan.type === "boolean") return value ? 1 : 0;
+  if (plan.type === "integer" || plan.type === "real" || plan.type === "date") {
+    const number = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(number) ? number : value;
+  }
+  return value;
+}
+
+function splitRecord(
+  schema: ModelSchema,
+  values: Record<string, unknown>,
+): {
+  columns: string[];
+  args: SqlValue[];
+  virtual: Record<string, unknown>;
+  many: Map<string, string[]>;
+} {
+  const known = new Set(schema.fields.map((field) => field.key));
+  for (const key of Object.keys(values)) {
+    if (!known.has(key)) throw new Error(`未知字段：${key}`);
+  }
+
+  const columns: string[] = [];
+  const args: SqlValue[] = [];
+  const virtual: Record<string, unknown> = {};
+  const many = new Map<string, string[]>();
+
+  for (const field of schema.fields) {
+    if (field.key === "id" || field.key === "createdAt" || field.key === "updatedAt") continue;
+    const value = values[field.key];
+    if (field.storage === "physical" && field.relation?.kind === "many-to-many") {
+      many.set(field.key, relationValues(value));
+    } else if (field.storage === "physical") {
+      columns.push(columnName(field));
+      args.push(encodePhysical(field, value));
+    } else if (value !== undefined) {
+      virtual[field.key] = value;
+    }
+  }
+  return { columns, args, virtual, many };
+}
+
+function relationStatements(
+  db: D1Database,
+  schema: ModelSchema,
+  id: string,
+  values: Map<string, string[]>,
+): D1PreparedStatement[] {
+  const statements: D1PreparedStatement[] = [];
+  for (const relation of compileStorageManifest(schema).relations) {
+    statements.push(
+      db.prepare(`DELETE FROM ${quoteTable(relation.table)} WHERE "source_id" = ?`).bind(id),
+    );
+    for (const value of values.get(relation.field) ?? []) {
+      statements.push(
+        db
+          .prepare(
+            `INSERT INTO ${quoteTable(relation.table)} ("source_id", "target_value")
+             VALUES (?, ?)`,
+          )
+          .bind(id, value),
+      );
+    }
+  }
+  return statements;
 }

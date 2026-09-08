@@ -1,5 +1,12 @@
 import { compileExpr, type IFieldSchema, type IFormSchema } from "@alien-form/core";
-import type { BuilderSchema, CompiledNode, CompiledPage, FieldSchema, XPage } from "../protocol";
+import type {
+  CompiledNode,
+  CompiledPage,
+  FieldGroup,
+  FieldSchema,
+  ModelSchema,
+  PageSchema,
+} from "../protocol";
 import { createCompiledValue, isRuntimeExpression } from "./value";
 
 export {
@@ -9,21 +16,24 @@ export {
   isCompiledValue,
 } from "./value";
 
+type RuntimeDefinitions = Record<string, FieldSchema>;
+
 function resolveRef(
   schema: FieldSchema,
-  definitions: BuilderSchema["definitions"],
+  definitions: RuntimeDefinitions,
   stack: string[] = [],
 ): FieldSchema {
   if (!schema.$ref) return schema;
   const code = schema.$ref.replace(/^#\/definitions\//, "");
-  if (stack.includes(code))
+  if (stack.includes(code)) {
     throw new Error(`Circular schema reference: ${[...stack, code].join(" -> ")}`);
+  }
   const target = definitions[code];
   if (!target) throw new Error(`Schema reference not found: ${code}`);
   return resolveRef({ ...target, ...schema, $ref: undefined }, definitions, [...stack, code]);
 }
 
-function resolveField(raw: FieldSchema, definitions: BuilderSchema["definitions"]): FieldSchema {
+function resolveField(raw: FieldSchema, definitions: RuntimeDefinitions): FieldSchema {
   const referenced = resolveRef(raw, definitions);
   const schema: FieldSchema = isRuntimeExpression(referenced.display)
     ? {
@@ -47,7 +57,7 @@ function resolveField(raw: FieldSchema, definitions: BuilderSchema["definitions"
   return { ...schema, properties, items };
 }
 
-function compileValue(value: unknown, definitions: BuilderSchema["definitions"]): unknown {
+function compileValue(value: unknown, definitions: RuntimeDefinitions): unknown {
   if (isRuntimeExpression(value)) return createCompiledValue(value);
   if (Array.isArray(value)) return value.map((item) => compileValue(item, definitions));
   if (!value || typeof value !== "object") return value;
@@ -68,11 +78,7 @@ function warmExpressions(value: unknown): void {
   for (const child of Object.values(value)) warmExpressions(child);
 }
 
-function compileNode(
-  key: string,
-  raw: FieldSchema,
-  definitions: BuilderSchema["definitions"],
-): CompiledNode {
+function compileNode(key: string, raw: FieldSchema, definitions: RuntimeDefinitions): CompiledNode {
   const schema = resolveField(raw, definitions);
   warmExpressions(schema);
   const children = Object.entries(schema.properties ?? {}).map(([childKey, child]) =>
@@ -95,8 +101,6 @@ function compileNode(
       slots[prop] = value.map((item) => childMap.get(item as string)!);
     }
   }
-  // 数组行模板：把 items（对象 schema）编译成一份可复用的 CompiledNode，
-  // 每行子字段共用它递归渲染，从而与顶层字段走同一条渲染管线。
   const items =
     schema.items && !Array.isArray(schema.items)
       ? compileNode("$item", schema.items, definitions)
@@ -104,60 +108,22 @@ function compileNode(
   return { key, schema, props, slots, children, items };
 }
 
-export function compilePage(model: BuilderSchema, page: XPage): CompiledPage {
-  const properties = Object.fromEntries(
-    Object.entries(page.properties).map(([key, schema]) => [
-      key,
-      resolveField(schema, model.definitions),
-    ]),
-  );
-  const pageNodes = Object.entries(properties).map(([key, schema]) =>
-    compileNode(key, schema, model.definitions),
-  );
-
-  if (!page.layout) {
-    return {
-      router: page.router,
-      title: page.title ?? model.meta.title,
-      schema: { type: "object", properties: properties as Record<string, IFieldSchema> },
-      nodes: pageNodes,
-    };
-  }
-
-  const wrapper: FieldSchema = {
-    type: "void",
-    component: page.layout.component,
-    props: page.layout.props,
-    properties,
-  };
-  return {
-    router: page.router,
-    title: page.title ?? model.meta.title,
-    schema: {
-      type: "object",
-      properties: { $page: wrapper as IFieldSchema },
-    },
-    nodes: [compileNode("$page", wrapper, model.definitions)],
-  };
-}
-
-function projectGroupedProperties(schema: {
-  properties: Record<string, FieldSchema>;
-  group?: FieldSchema["group"];
-}): Record<string, FieldSchema> {
-  const groups = schema.group ?? [];
-  if (groups.length === 0) return schema.properties;
+function projectGroupedProperties(
+  properties: Record<string, FieldSchema>,
+  groups: FieldGroup[] = [],
+): Record<string, FieldSchema> {
+  if (groups.length === 0) return properties;
 
   const keyToGroup = new Map<string, number>();
   groups.forEach((group, index) => {
     group.keys.forEach((key) => {
-      if (schema.properties[key] && !keyToGroup.has(key)) keyToGroup.set(key, index);
+      if (properties[key] && !keyToGroup.has(key)) keyToGroup.set(key, index);
     });
   });
 
   const emitted = new Set<number>();
   const output: Record<string, FieldSchema> = {};
-  for (const [key, field] of Object.entries(schema.properties)) {
+  for (const [key, field] of Object.entries(properties)) {
     const groupIndex = keyToGroup.get(key);
     if (groupIndex === undefined) {
       output[key] = field;
@@ -174,7 +140,7 @@ function projectGroupedProperties(schema: {
       props: group.props,
       properties: Object.fromEntries(
         group.keys.flatMap((memberKey) => {
-          const member = schema.properties[memberKey];
+          const member = properties[memberKey];
           return member ? [[memberKey, member]] : [];
         }),
       ),
@@ -183,16 +149,71 @@ function projectGroupedProperties(schema: {
   return output;
 }
 
-export function compileForm(
-  schema: Pick<FieldSchema, "properties" | "group">,
-  definitions: BuilderSchema["definitions"],
-): { schema: IFormSchema; nodes: CompiledNode[] } {
-  const projected = projectGroupedProperties({
-    properties: schema.properties ?? {},
-    group: schema.group,
-  });
+export function buildFormSchema(model: ModelSchema, groups: FieldGroup[] = []): FieldSchema {
+  const properties = Object.fromEntries(model.fields.map((field) => [field.key, field.form]));
+  return {
+    type: "object",
+    properties: projectGroupedProperties(properties, groups),
+  };
+}
+
+export function buildRuntimeDefinitions(
+  model: ModelSchema,
+  groups: FieldGroup[] = [],
+): RuntimeDefinitions {
+  return {
+    ...model.definitions,
+    "form-schema": buildFormSchema(model, groups),
+  };
+}
+
+export function compilePage(model: ModelSchema, page: PageSchema): CompiledPage {
+  const definitions = buildRuntimeDefinitions(model, page.groups);
   const properties = Object.fromEntries(
-    Object.entries(projected).map(([key, field]) => [key, resolveField(field, definitions)]),
+    Object.entries(page.properties).map(([key, schema]) => [
+      key,
+      resolveField(schema, definitions),
+    ]),
+  );
+  const pageNodes = Object.entries(properties).map(([key, schema]) =>
+    compileNode(key, schema, definitions),
+  );
+
+  if (!page.layout) {
+    return {
+      router: page.router,
+      title: page.title ?? model.title,
+      schema: { type: "object", properties: properties as Record<string, IFieldSchema> },
+      nodes: pageNodes,
+    };
+  }
+
+  const wrapper: FieldSchema = {
+    type: "void",
+    component: page.layout.component,
+    props: page.layout.props,
+    properties,
+  };
+  return {
+    router: page.router,
+    title: page.title ?? model.title,
+    schema: {
+      type: "object",
+      properties: { $page: wrapper as IFieldSchema },
+    },
+    nodes: [compileNode("$page", wrapper, definitions)],
+  };
+}
+
+export function compileForm(
+  schema: Pick<FieldSchema, "properties">,
+  definitions: RuntimeDefinitions = {},
+): { schema: IFormSchema; nodes: CompiledNode[] } {
+  const properties = Object.fromEntries(
+    Object.entries(schema.properties ?? {}).map(([key, field]) => [
+      key,
+      resolveField(field, definitions),
+    ]),
   );
   return {
     schema: { type: "object", properties: properties as Record<string, IFieldSchema> },
@@ -200,10 +221,7 @@ export function compileForm(
   };
 }
 
-export function compileModel(model: BuilderSchema): CompiledPage[] {
-  if (!model.definitions?.["form-schema"]?.properties) {
-    throw new Error("definitions['form-schema'].properties is required");
-  }
+export function compileModel(model: ModelSchema): CompiledPage[] {
   return model.pages.map((page) => compilePage(model, page));
 }
 

@@ -1,7 +1,7 @@
 {
   "name": "alien-mdm",
   "main": "apps/alien-worker/src/index.ts",
-  "compatibility_date": "2026-06-01",
+  "compatibility_date": "2026-09-08",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "./apps/alien-mdm/dist",
@@ -16,5 +16,11 @@
       "database_id": "853ab275-6ce6-48e0-93db-a6002c1cb640",
       "migrations_dir": "apps/alien-worker/migrations"
     }
-  ]
+  ],
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "head_sampling_rate": 1
+    }
+  }
 }

@@ -1,7 +1,12 @@
 import type { ReactNode } from "react";
 import type { TableColumnsType } from "antd";
 import { SchemaComponent, type ValueSource } from "@alien-form/react";
-import { compileRuntimeValue, type DatabaseField, type FieldSchema } from "@alien-form/engine";
+import {
+  compileRuntimeValue,
+  type DatabaseColumnType,
+  type ModelFieldSchema,
+  type FieldSchema,
+} from "@alien-form/engine";
 
 function defaultComponent(field: FieldSchema): string {
   if (field.type === "array") return "ArrayCards";
@@ -12,7 +17,7 @@ function defaultComponent(field: FieldSchema): string {
 export interface FilterField {
   name: string;
   title: string;
-  type: DatabaseField["type"];
+  type: DatabaseColumnType;
   render(value: unknown, onChange: (value: unknown) => void): ReactNode;
 }
 
@@ -32,9 +37,9 @@ function readScope(scope: ValueSource<Record<string, unknown>>): Record<string, 
  */
 function orderedFields(
   properties: Record<string, FieldSchema>,
-  fields?: DatabaseField[],
-): { key: string; field: FieldSchema; column: DatabaseField }[] {
-  const source = fields ?? Object.keys(properties).map((key) => ({ key }) as DatabaseField);
+  fields?: ModelFieldSchema[],
+): { key: string; field: FieldSchema; column: ModelFieldSchema }[] {
+  const source = fields ?? [];
   return source
     .filter((column) => properties[column.key])
     .map((column) => ({ key: column.key, field: properties[column.key], column }));
@@ -47,7 +52,7 @@ export function schemaToColumns<T extends object = Record<string, unknown>>(
   schema?: FieldSchema,
   scope: ValueSource<Record<string, unknown>> = EMPTY_SCOPE,
   domain?: string,
-  fields?: DatabaseField[],
+  fields?: ModelFieldSchema[],
 ): TableColumnsType<T> {
   return orderedFields(schema?.properties ?? {}, fields).map(({ key, field, column }) => {
     const schemaProps = compileRuntimeValue({
@@ -57,9 +62,9 @@ export function schemaToColumns<T extends object = Record<string, unknown>>(
     return {
       key,
       dataIndex: key,
-      title: field.title ?? column.title ?? key,
-      sorter: column.sortable === true,
-      hidden: column.visible === false,
+      title: field.title ?? column.table?.title ?? key,
+      sorter: column.storage === "physical" && column.database?.type !== "json",
+      hidden: column.table?.hidden === true,
       ellipsis: field.type !== "object" && field.type !== "array",
       render(value: unknown, record: T) {
         return (
@@ -95,10 +100,10 @@ export function schemaToFilterFields(
   schema?: FieldSchema,
   scope: ValueSource<Record<string, unknown>> = EMPTY_SCOPE,
   domain?: string,
-  fields?: DatabaseField[],
+  fields?: ModelFieldSchema[],
 ): FilterField[] {
   return orderedFields(schema?.properties ?? {}, fields)
-    .filter(({ field, column }) => column.filterable === true && !isComplex(field))
+    .filter(({ field, column }) => column.filter?.hidden !== true && !isComplex(field))
     .map(({ key: name, field, column }) => {
       const schemaProps = compileRuntimeValue({
         ...field.props,
@@ -107,7 +112,7 @@ export function schemaToFilterFields(
       return {
         name,
         title: field.title ?? name,
-        type: column.type,
+        type: column.database?.type ?? "text",
         render(value: unknown, onChange: (value: unknown) => void): ReactNode {
           return (
             <SchemaComponent

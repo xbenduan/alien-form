@@ -18,10 +18,11 @@
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "build": "tsup src/index.ts --format esm,cjs --dts --external @alien-form/protocol",
     "test": "vitest run"
   },
   "dependencies": {
+    "@alien-form/protocol": "workspace:*",
     "alien-signals": "^3.2.1"
   },
   "devDependencies": {

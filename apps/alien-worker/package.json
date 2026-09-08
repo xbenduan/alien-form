@@ -2,21 +2,24 @@
   "name": "@alien-form/alien-worker",
   "version": "0.0.0",
   "private": true,
-  "description": "Alien Form 的 Cloudflare Workers 后端：单 Worker 同时托管 alien-mdm 静态资源与 /api，数据落 D1。分层架构 domain / store / services / http，schemas / records 两张通用表承载所有模型，records 系统字段独立成列、其余字段收进 data_content JSON。",
+  "description": "Alien Form Cloudflare Workers + D1 backend with one physical table per model",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --config ../../wrangler.json",
+    "build": "tsc --noEmit && XDG_CONFIG_HOME=../../.wrangler/config-home WRANGLER_LOG_PATH=../../.wrangler/logs/build.log wrangler deploy --dry-run --config ../../wrangler.json --outdir dist",
+    "dev": "pnpm run migrate:local && XDG_CONFIG_HOME=../../.wrangler/config-home WRANGLER_LOG_PATH=../../.wrangler/logs/dev.log wrangler dev --config ../../wrangler.json",
     "deploy": "wrangler deploy --config ../../wrangler.json",
-    "migrate:local": "wrangler d1 migrations apply alien-mdm --local --config ../../wrangler.json",
+    "test": "vitest run",
+    "migrate:local": "XDG_CONFIG_HOME=../../.wrangler/config-home WRANGLER_LOG_PATH=../../.wrangler/logs/migrate-local.log wrangler d1 migrations apply alien-mdm --local --config ../../wrangler.json",
     "migrate:remote": "wrangler d1 migrations apply alien-mdm --remote --config ../../wrangler.json",
-    "cf-typegen": "wrangler types --config ../../wrangler.json"
+    "cf-typegen": "wrangler types src/worker-configuration.d.ts --config ../../wrangler.json"
   },
   "dependencies": {
-    "@alien-form/validate": "workspace:*",
+    "@alien-form/protocol": "workspace:*",
     "hono": "^4.7.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260903.1",
-    "wrangler": "^4.127.0"
+    "@cloudflare/workers-types": "^5.20260908.1",
+    "vitest": "^2.1.9",
+    "wrangler": "^4.129.0"
   }
 }

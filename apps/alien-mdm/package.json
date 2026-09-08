@@ -11,8 +11,8 @@
   "dependencies": {
     "@alien-form/core": "workspace:*",
     "@alien-form/engine": "workspace:*",
+    "@alien-form/protocol": "workspace:*",
     "@alien-form/react": "workspace:*",
-    "@alien-form/validate": "workspace:*",
     "@ant-design/icons": "^6.2.5",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",

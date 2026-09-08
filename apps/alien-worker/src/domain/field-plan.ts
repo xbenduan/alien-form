@@ -1,99 +1,81 @@
-import { databaseFields } from "@alien-form/validate";
-import type { DatabaseColumnType, BuilderSchema as ModelSchema } from "@alien-form/validate";
+import type { DatabaseColumnType, ModelFieldSchema, ModelSchema } from "@alien-form/protocol";
+import { quoteColumn } from "./sql.ts";
 
-/** id / createdAt / updatedAt 由仓储统一托管为系统列，不参与字段计划。 */
-export const SYSTEM_MANAGED = new Set(["id", "createdAt", "updatedAt"]);
-
-/**
- * 字段查询计划：可用于 WHERE / ORDER BY 的字段元信息。
- *
- * D1 通用两表设计下没有「一模型一物理表」，业务字段一律落在 records.data_content
- * JSON 里，靠 json_extract 取值。因此计划里不含物理列名 / DDL / junction 表 ——
- * 那些都是 Node 版专属的死代码，这里一并砍掉。
- */
 export interface FieldPlan {
-  /** schema 字段名（camelCase），也是 json_extract 的 key。 */
   field: string;
   type: DatabaseColumnType;
-  /** JSON 值（object/array）：不可过滤。 */
+  storage: "physical" | "virtual";
+  column?: string;
   json: boolean;
   filterable: boolean;
   sortable: boolean;
 }
 
-/** 引用字段声明：完全来自 database.fields.relation。 */
 export interface RefField {
-  /** 本模型字段名。 */
   field: string;
-  /** 目标模型 modelCode。 */
   model: string;
-  /** 目标模型上的 join 键（回写用原值，如 id / deptCode）。 */
   valueKey: string;
-  /** 目标模型上的展示字段（如 displayName / deptName）。 */
   labelKey: string;
-  /** 数组值（many-to-many / 多值组件），展开为 ref 对象数组。 */
   multi: boolean;
 }
 
-/**
- * 把 fields 解析为查询计划。系统字段与多对多字段不产出计划：
- *  - 系统字段由仓储托管为独立列；
- *  - 多对多以 JSON 数组落在 data_content，不作为可过滤 / 排序列（仍可被 ref 展开）。
- */
-export function planFields(schema: ModelSchema): FieldPlan[] {
-  const plans: FieldPlan[] = [];
-  for (const field of databaseFields(schema)) {
-    if (field.system || SYSTEM_MANAGED.has(field.key)) continue;
-    if (field.relation?.kind === "many-to-many") continue;
-    const json = field.type === "json";
-    const index = field.index ?? false;
-    plans.push({
-      field: field.key,
-      type: field.type,
-      json,
-      filterable: json ? false : (field.filterable ?? index),
-      sortable: field.sortable ?? !json,
-    });
-  }
-  return plans;
+export function columnName(field: ModelFieldSchema): string {
+  if (field.key === "createdAt") return "created_at";
+  if (field.key === "updatedAt") return "updated_at";
+  return field.database?.column ?? field.key;
 }
 
-/** 便捷：按 field 名索引 plan。 */
+function inferredType(field: ModelFieldSchema): DatabaseColumnType {
+  if (field.database) return field.database.type;
+  if (field.form.type === "number") return "real";
+  if (field.form.type === "boolean") return "boolean";
+  if (field.form.type === "object" || field.form.type === "array") return "json";
+  return "text";
+}
+
+export function planFields(schema: ModelSchema): FieldPlan[] {
+  return schema.fields
+    .filter((field) => field.relation?.kind !== "many-to-many")
+    .map((field) => {
+      const type = inferredType(field);
+      const json = type === "json";
+      return {
+        field: field.key,
+        type,
+        storage: field.storage,
+        column: field.storage === "physical" ? columnName(field) : undefined,
+        json,
+        filterable: field.filter?.hidden !== true && !json,
+        sortable: !json,
+      };
+    });
+}
+
 export function planByField(schema: ModelSchema): Map<string, FieldPlan> {
   return new Map(planFields(schema).map((plan) => [plan.field, plan]));
 }
 
-/**
- * schema 中声明了 unique:true 的业务字段名。
- *
- * D1 通用两表设计下没有物理列，unique 无法交给 DB 约束；由服务层写前查重兜底。
- * 系统字段（id 走主键，全局唯一）不在此列。
- */
-export function uniqueFields(schema: ModelSchema): string[] {
-  const fields: string[] = [];
-  for (const field of databaseFields(schema)) {
-    if (field.system || SYSTEM_MANAGED.has(field.key)) continue;
-    if (field.relation?.kind === "many-to-many") continue;
-    if (field.unique) fields.push(field.key);
-  }
-  return fields;
+export function fieldExpression(plan: FieldPlan): string {
+  if (plan.storage === "physical" && plan.column) return quoteColumn(plan.column);
+  return `json_extract("data_content", '$.${plan.field}')`;
 }
 
-/** 扫描一份 schema 的所有引用字段（供 ref 展开使用）。 */
+export function modelField(schema: ModelSchema, key: string): ModelFieldSchema | undefined {
+  return schema.fields.find((field) => field.key === key);
+}
+
 export function refFields(schema: ModelSchema): RefField[] {
-  const refs: RefField[] = [];
-  for (const field of databaseFields(schema)) {
-    if (field.system || SYSTEM_MANAGED.has(field.key)) continue;
+  return schema.fields.flatMap((field) => {
     const relation = field.relation;
-    if (!relation) continue;
-    const valueKey = relation.valueField ?? "id";
-    refs.push({
-      field: field.key,
-      model: relation.target,
-      valueKey,
-      labelKey: relation.labelField ?? "name",
-      multi: relation.kind === "many-to-many" || field.valueType === "array",
-    });
-  }
-  return refs;
+    if (!relation) return [];
+    return [
+      {
+        field: field.key,
+        model: relation.target,
+        valueKey: relation.valueField ?? "id",
+        labelKey: relation.labelField ?? "name",
+        multi: relation.kind === "many-to-many" || field.form.type === "array",
+      },
+    ];
+  });
 }

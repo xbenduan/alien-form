@@ -53,11 +53,7 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
   const compiled = useMemo(
-    () =>
-      compileForm(
-        { properties: schema.properties ?? {}, group: schema.group },
-        { "form-schema": schema },
-      ),
+    () => compileForm({ properties: schema.properties ?? {} }, { "form-schema": schema }),
     [schema],
   );
   const form = useCreateForm(

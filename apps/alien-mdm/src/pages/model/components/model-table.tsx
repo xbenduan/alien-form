@@ -1,5 +1,5 @@
-import { CopyOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
-import { Button, Popconfirm, Space, Table, Tag, Typography } from "antd";
+import { CopyOutlined, EditOutlined } from "@ant-design/icons";
+import { Button, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useMemo } from "react";
 import type { ModelSummary } from "@app-types";
@@ -10,7 +10,6 @@ export interface ModelTableProps {
   dataSource: ModelSummary[];
   loading: boolean;
   onCopy: (model: ModelSummary) => void;
-  onDelete: (model: ModelSummary) => Promise<void>;
   onEdit: (model: ModelSummary) => void;
   onView: (model: ModelSummary) => void;
 }
@@ -29,7 +28,6 @@ export function ModelTable({
   dataSource,
   loading,
   onCopy,
-  onDelete,
   onEdit,
   onView,
 }: ModelTableProps) {
@@ -101,32 +99,13 @@ export function ModelTable({
                   >
                     复制
                   </Button>
-                  <Popconfirm
-                    title="确认删除该模型吗？"
-                    description="删除后该模型的数据也会一并清除。"
-                    okText="删除"
-                    cancelText="取消"
-                    okButtonProps={{ danger: true }}
-                    disabled={record.name === "_sys_user"}
-                    onConfirm={() => onDelete(record)}
-                  >
-                    <Button
-                      danger
-                      type="link"
-                      size="small"
-                      icon={<DeleteOutlined />}
-                      disabled={record.name === "_sys_user"}
-                    >
-                      删除
-                    </Button>
-                  </Popconfirm>
                 </Space>
               ),
             } satisfies ColumnsType<ModelSummary>[number],
           ]
         : []),
     ],
-    [canManageModels, onCopy, onDelete, onEdit, onView],
+    [canManageModels, onCopy, onEdit, onView],
   );
 
   return (

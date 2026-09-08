@@ -1,6 +1,7 @@
-import type { DatabaseField, DatabaseRelation, FieldSchema, Runtime } from "@alien-form/engine";
+import type { ModelFieldSchema, DatabaseRelation, FieldSchema, Runtime } from "@alien-form/engine";
+import { parseModelSchema } from "@alien-form/protocol";
 import type {
-  BuilderSchema,
+  ModelSchema,
   FieldNode,
   FieldType,
   FormConfig,
@@ -132,7 +133,7 @@ export function createField(
   options: { component?: string; source?: FieldNode["source"]; domain?: string } = {},
 ): FieldNode {
   const component = options.component ?? "Input";
-  const source = options.source ?? "field";
+  const source = options.source ?? "physical";
   const type = typeForComponent(runtime, component, options.domain);
   const key = `field_${idCounter + 1}`;
   const node: FieldNode = {
@@ -143,7 +144,7 @@ export function createField(
     // 表单表现默认值（form-schema ⊇ fields：落库字段必须有对应表现描述，组件按类型推断）。
     form: { title: "新字段", component },
   };
-  if (source === "field") {
+  if (source === "physical") {
     node.storage = {
       title: "新字段",
       type: COLUMN_FOR_TYPE[type],
@@ -155,7 +156,7 @@ export function createField(
 }
 
 // --------------------------------------------------------------------------
-// decode: BuilderSchema -> ModelDraft
+// decode: ModelSchema -> ModelDraft
 // --------------------------------------------------------------------------
 
 function decodeFormConfig(schema: FieldSchema | undefined): FormConfig {
@@ -175,17 +176,17 @@ function decodeChildren(schema: FieldSchema | undefined): FieldNode[] {
         : undefined
       : schema?.properties;
   if (!properties) return [];
-  return Object.entries(properties).map(([key, child]) => decodeExtraNode(key, child));
+  return Object.entries(properties).map(([key, child]) => decodeVirtualNode(key, child));
 }
 
-/** 解码非落库的嵌套子字段（source=extra）。 */
-function decodeExtraNode(key: string, schema: FieldSchema): FieldNode {
+/** 解码 virtual 字段或嵌套字段。 */
+function decodeVirtualNode(key: string, schema: FieldSchema): FieldNode {
   const type = (schema.type ?? "string") as FieldType;
   const node: FieldNode = {
     id: createId(),
     key,
     type,
-    source: "extra",
+    source: "virtual",
     form: decodeFormConfig(schema),
   };
   if (type === "object" || type === "array") node.children = decodeChildren(schema);
@@ -194,8 +195,8 @@ function decodeExtraNode(key: string, schema: FieldSchema): FieldNode {
 
 /**
  * 源码编辑：把手动编辑后的 form-schema.properties 应用回字段树。
- * 落库字段（source==="field"）保留 storage/id/type/source，仅覆盖 form 与 children；
- * 未出现的落库字段保持不变（form-schema ⊇ fields 由校验保证），额外 key 作为 extra 展示字段。
+ * physical 字段保留 storage/id/type/source，仅覆盖 form 与 children；
+ * 新字段作为 virtual 字段加入。
  */
 export function applyFormSchema(
   current: FieldNode[],
@@ -205,7 +206,7 @@ export function applyFormSchema(
   const result: FieldNode[] = [];
   for (const [key, schema] of Object.entries(properties)) {
     const existing = byKey.get(key);
-    if (existing && existing.source === "field") {
+    if (existing) {
       result.push({
         ...existing,
         form: synchronizeRelationForm(
@@ -219,83 +220,76 @@ export function applyFormSchema(
             : undefined,
       });
     } else {
-      result.push(decodeExtraNode(key, schema));
+      result.push(decodeVirtualNode(key, schema));
     }
   }
-  // 保留未在 properties 中出现的落库字段（避免误删存储定义）。
+  // 保留未在 properties 中出现的 physical 字段，virtual 字段允许从表单配置移除。
   for (const node of current) {
-    if (node.source === "field" && !properties[node.key]) result.push(node);
+    if (node.source === "physical" && !properties[node.key]) result.push(node);
   }
   return result;
 }
 
-function storageFromField(field: DatabaseField): StorageConfig {
+function storageFromField(field: ModelFieldSchema): StorageConfig {
+  const database = field.database;
+  if (!database) throw new Error(`physical 字段缺少 database：${field.key}`);
   return {
-    title: field.title,
-    type: field.type,
-    valueType: field.valueType,
-    column: field.column,
-    system: field.system,
-    nullable: field.nullable,
-    default: field.default,
-    unique: field.unique,
-    index: field.index,
-    visible: field.visible,
-    filterable: field.filterable,
-    sortable: field.sortable,
+    title: field.table?.title,
+    type: database.type,
+    valueType: database.valueType,
+    column: database.column,
+    system: database.system,
+    nullable: database.nullable,
+    default: database.default ?? undefined,
+    unique: database.unique,
+    index: database.index,
+    visible: field.table?.hidden ? false : undefined,
+    filterable: field.filter?.hidden ? false : undefined,
     relation: field.relation,
   };
 }
 
-function fieldType(field: DatabaseField): FieldType {
-  if (field.valueType) return field.valueType;
-  if (field.type === "integer" || field.type === "real") return "number";
-  if (field.type === "boolean") return "boolean";
-  if (field.type === "json") return "object";
-  return "string";
+function fieldType(field: ModelFieldSchema): FieldType {
+  return (field.form.type ?? "string") as FieldType;
 }
 
-export function decodeModel(model: BuilderSchema): ModelDraft {
-  const properties = model.definitions["form-schema"].properties ?? {};
-  const fieldKeys = new Set(model.fields.map((field) => field.key));
+export function decodeModel(model: ModelSchema): ModelDraft {
   const fields: FieldNode[] = model.fields.map((field) => {
-    const schema = properties[field.key];
     const type = fieldType(field);
     const node: FieldNode = {
-      id: createId(),
+      id: field.id,
       key: field.key,
       type,
-      source: "field",
-      storage: storageFromField(field),
-      form: decodeFormConfig(schema),
+      source: field.storage,
+      persisted: true,
+      storage: field.storage === "physical" ? storageFromField(field) : undefined,
+      form: decodeFormConfig(field.form),
     };
     node.form = synchronizeRelationForm(node.form, type, field.relation);
-    if (type === "object" || type === "array") node.children = decodeChildren(schema);
+    if (type === "object" || type === "array") node.children = decodeChildren(field.form);
     return node;
   });
-  // form-schema 中额外的 void 展示元素（不落库）。
-  for (const [key, schema] of Object.entries(properties)) {
-    if (fieldKeys.has(key)) continue;
-    fields.push(decodeExtraNode(key, schema));
-  }
   const pages: ModelDraft["pages"] =
     model.pages.length > 0
       ? model.pages.map((page) => ({ id: createId(), page }))
-      : createDefaultPages(model.meta.name, model.meta.title).map((page) => ({
+      : createDefaultPages(model.name, model.title).map((page) => ({
           id: createId(),
           page,
         }));
+  const groups = model.pages.find((page) => page.groups?.length)?.groups ?? [];
   return {
-    name: model.meta.name,
-    title: model.meta.title,
-    subtitle: model.meta.subtitle,
-    description: model.meta.description,
-    group: model.meta.group ?? "other",
-    singularLabel: model.meta.singularLabel,
-    pluralLabel: model.meta.pluralLabel,
-    defaultPageSize: model.meta.defaultPageSize ?? 20,
+    name: model.name,
+    title: model.title,
+    version: model.version,
+    subtitle: model.subtitle,
+    description: model.description,
+    group: model.group ?? "other",
+    singularLabel: model.singularLabel,
+    pluralLabel: model.pluralLabel,
+    defaultPageSize: model.defaultPageSize ?? 20,
+    definitions: model.definitions,
     fields,
-    groups: (model.definitions["form-schema"].group ?? []).map((group) => ({
+    groups: groups.map((group) => ({
       ...group,
       id: createId(),
     })),
@@ -304,7 +298,7 @@ export function decodeModel(model: BuilderSchema): ModelDraft {
 }
 
 // --------------------------------------------------------------------------
-// encode: ModelDraft -> BuilderSchema
+// encode: ModelDraft -> ModelSchema
 // --------------------------------------------------------------------------
 
 function pruneUndefined<T extends Record<string, unknown>>(value: T): T {
@@ -315,7 +309,7 @@ function encodeFormSchema(node: FieldNode): FieldSchema {
   // 落库字段的 required 由存储 nullable 派生（form-schema 不定义存储语义）；
   // 表单新增字段(extra)的 required 由 form 自身决定。
   const required =
-    node.source === "field" ? node.storage?.nullable === false : node.form.required === true;
+    node.source === "physical" ? node.storage?.nullable === false : node.form.required === true;
   // 保留 form 上的全部 IFieldSchema 表现字段，再以 type/required 覆盖，properties/items 单独生成。
   const form = synchronizeRelationForm(node.form, node.type, node.storage?.relation);
   const base: Record<string, unknown> = { ...form };
@@ -342,28 +336,45 @@ function encodeFormSchema(node: FieldNode): FieldSchema {
   return schema;
 }
 
-function encodeDatabaseField(node: FieldNode): DatabaseField {
-  // 完全从 storage 取值；不读取任何 form 表现配置。
+function encodeModelField(node: FieldNode): ModelFieldSchema {
   const storage = node.storage ?? { type: COLUMN_FOR_TYPE[node.type] };
+  const form = encodeFormSchema(node);
   return pruneUndefined({
+    id: node.id,
     key: node.key,
-    title: storage.title,
-    type: storage.type,
-    valueType: storage.valueType,
-    column: storage.column,
-    system: storage.system || undefined,
-    nullable: storage.nullable,
-    default: storage.default,
-    unique: storage.unique || undefined,
-    index: storage.index || undefined,
-    visible: storage.visible,
-    filterable: storage.filterable || undefined,
-    sortable: storage.sortable,
+    storage: node.source,
+    database:
+      node.source === "physical"
+        ? pruneUndefined({
+            type: storage.type,
+            valueType: storage.valueType,
+            column: storage.column,
+            system: storage.system || undefined,
+            nullable: storage.nullable,
+            default: storage.default,
+            unique: storage.unique || undefined,
+            index: storage.index || undefined,
+          })
+        : undefined,
     relation: storage.relation,
-  }) as DatabaseField;
+    form,
+    table:
+      storage.title || storage.visible === false
+        ? pruneUndefined({
+            title: storage.title,
+            hidden: storage.visible === false ? true : undefined,
+          })
+        : undefined,
+    filter:
+      storage.filterable === false
+        ? {
+            hidden: true,
+          }
+        : undefined,
+  }) as ModelFieldSchema;
 }
 
-export function encodeModel(draft: ModelDraft): BuilderSchema {
+export function encodeModel(draft: ModelDraft): ModelSchema {
   const name = draft.name.trim();
   if (!/^[A-Za-z_][A-Za-z0-9_-]*$/.test(name)) {
     throw new Error("模型名只能使用字母、数字、下划线和中划线，且必须以字母或下划线开头");
@@ -379,15 +390,7 @@ export function encodeModel(draft: ModelDraft): BuilderSchema {
     seen.add(node.key);
   }
 
-  const properties = Object.fromEntries(
-    draft.fields.map((node) => [node.key, encodeFormSchema(node)]),
-  );
-  const dbFields = draft.fields
-    .filter((node) => node.source === "field")
-    .map((node) => encodeDatabaseField(node));
-  if (dbFields.length === 0) throw new Error("至少需要一个落库字段");
-
-  const group = draft.groups
+  const groups = draft.groups
     .filter((item) => item.keys.length > 0)
     .map(
       (item) =>
@@ -400,28 +403,33 @@ export function encodeModel(draft: ModelDraft): BuilderSchema {
         }) as GroupDraft,
     );
 
-  return {
-    meta: pruneUndefined({
-      name,
-      title,
-      subtitle: draft.subtitle?.trim() || undefined,
-      description: draft.description?.trim() || undefined,
-      group: draft.group,
-      singularLabel: draft.singularLabel?.trim() || title,
-      pluralLabel: draft.pluralLabel?.trim() || title,
-      defaultPageSize: draft.defaultPageSize,
-    }) as BuilderSchema["meta"],
-    fields: dbFields,
-    pages:
-      draft.pages.length > 0
-        ? draft.pages.map((item) => item.page)
-        : createDefaultPages(name, title),
-    definitions: {
-      "form-schema": {
-        type: "object",
-        properties,
-        ...(group.length > 0 ? { group } : {}),
-      },
-    },
-  };
+  const pages =
+    draft.pages.length > 0
+      ? draft.pages.map(({ page }) => ({
+          ...page,
+          ...(["add", "edit", "detail"].includes(page.router) && groups.length > 0
+            ? { groups }
+            : { groups: undefined }),
+        }))
+      : createDefaultPages(name, title).map((page) => ({
+          ...page,
+          ...(["add", "edit", "detail"].includes(page.router) && groups.length > 0
+            ? { groups }
+            : {}),
+        }));
+
+  return parseModelSchema({
+    name,
+    title,
+    version: draft.version,
+    subtitle: draft.subtitle?.trim() || undefined,
+    description: draft.description?.trim() || undefined,
+    group: draft.group,
+    singularLabel: draft.singularLabel?.trim() || title,
+    pluralLabel: draft.pluralLabel?.trim() || title,
+    defaultPageSize: draft.defaultPageSize,
+    fields: draft.fields.map(encodeModelField),
+    definitions: draft.definitions,
+    pages,
+  });
 }

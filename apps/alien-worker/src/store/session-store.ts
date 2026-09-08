@@ -27,9 +27,7 @@ export class SessionStore {
 
   async create(session: Session): Promise<void> {
     await this.db
-      .prepare(
-        `INSERT INTO "sessions" (token, user_id, provider, created_at) VALUES (?, ?, ?, ?)`,
-      )
+      .prepare(`INSERT INTO "sessions" (token, user_id, provider, created_at) VALUES (?, ?, ?, ?)`)
       .bind(session.token, session.userId, session.provider, session.createdAt)
       .run();
   }

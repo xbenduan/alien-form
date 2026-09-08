@@ -1,16 +1,16 @@
-import { App, Alert, Flex } from "antd";
+import { Alert, Flex } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useRuntime } from "@alien-form/react";
 import { PageBreadcrumb } from "../../components";
 import type { ModelSummary } from "@app-types";
-import { transport } from "@runtime/transport";
 import { isSuperAdmin } from "@runtime/user-info";
 import { ModelListToolbar } from "./components/model-list-toolbar";
 import { ModelTable } from "./components/model-table";
 
 export default function ModelListPage() {
   const navigate = useNavigate();
-  const { message } = App.useApp();
+  const runtime = useRuntime();
   const canManageModels = isSuperAdmin();
   const [models, setModels] = useState<ModelSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,13 +20,14 @@ export default function ModelListPage() {
     setLoading(true);
     setError(undefined);
     try {
-      setModels(await transport.send<ModelSummary[]>("/api/schemas"));
+      const listModels = runtime.getService("model.list") as () => Promise<ModelSummary[]>;
+      setModels(await listModels());
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [runtime]);
 
   useEffect(() => {
     void load();
@@ -44,15 +45,6 @@ export default function ModelListPage() {
     (model: ModelSummary) => navigate(`/models/${model.name}/copy`),
     [navigate],
   );
-  const deleteModel = useCallback(
-    async (model: ModelSummary) => {
-      await transport.send(`/api/schemas/${model.name}`, { method: "DELETE" });
-      message.success("删除成功");
-      await load();
-    },
-    [load, message],
-  );
-
   return (
     <Flex vertical gap={16}>
       <PageBreadcrumb items={[{ title: "模型管理" }]} />
@@ -69,7 +61,6 @@ export default function ModelListPage() {
         onView={viewModel}
         onEdit={editModel}
         onCopy={copyModel}
-        onDelete={deleteModel}
       />
     </Flex>
   );

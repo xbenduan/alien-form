@@ -2,7 +2,7 @@ import { useCreateForm } from "@alien-form/react";
 import { App, Button, Card, Col, Empty, Flex, Input, Row, Segmented } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { FormRenderer, useRuntime } from "@alien-form/react";
-import { compileForm } from "@alien-form/engine";
+import { buildFormSchema, buildRuntimeDefinitions, compileForm } from "@alien-form/engine";
 import {
   applyFormSchema,
   createField,
@@ -47,10 +47,11 @@ export function FormBuilder({
   const preview = useMemo(() => {
     try {
       const model = encodeModel(draft);
-      const compiled = compileForm(model.definitions["form-schema"], model.definitions);
+      const formSchema = buildFormSchema(model, draft.groups);
+      const compiled = compileForm(formSchema, buildRuntimeDefinitions(model, draft.groups));
       return {
         compiled,
-        formSchema: model.definitions["form-schema"],
+        formSchema,
         error: undefined as string | undefined,
       };
     } catch (reason) {
@@ -100,10 +101,10 @@ export function FormBuilder({
   };
 
   const addExtra = () => {
-    setEditor({ node: createField(runtime, { source: "extra" }), isNew: true });
+    setEditor({ node: createField(runtime, { source: "virtual" }), isNew: true });
   };
   const addChild = (parentId: string) => {
-    setEditor({ node: createField(runtime, { source: "extra" }), parentId, isNew: true });
+    setEditor({ node: createField(runtime, { source: "virtual" }), parentId, isNew: true });
   };
 
   return (

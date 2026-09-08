@@ -64,7 +64,7 @@ export function DynamicPage() {
             isAction
               ? [
                   {
-                    title: `${page.model.meta.pluralLabel ?? page.model.meta.title}列表`,
+                    title: `${page.model.pluralLabel ?? page.model.title}列表`,
                     to: recordListRoute(page.domain),
                   },
                   { title: page.page.title },

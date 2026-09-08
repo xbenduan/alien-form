@@ -1,8 +1,8 @@
-import type { OpenMode, XPage } from "@alien-form/engine";
+import type { OpenMode, PageSchema } from "@alien-form/engine";
 
 /**
  * 页面模版：由代码写死，供「页面配置」步骤新增页面时选择套用。
- * 模版通过 modelCode/title 生成完整 XPage，用户选择后覆盖 JSON 编辑器内容，可再纯手写调整。
+ * 模版通过 modelCode/title 生成完整 PageSchema，用户选择后覆盖 JSON 编辑器内容，可再纯手写调整。
  */
 export interface PageTemplate {
   /** 模版唯一标识（下拉选项 value）。 */
@@ -11,14 +11,14 @@ export interface PageTemplate {
   label: string;
   /** 模版说明。 */
   description?: string;
-  /** 依据模型生成一个 XPage。 */
-  build: (modelCode: string, title: string) => XPage;
+  /** 依据模型生成一个 PageSchema。 */
+  build: (modelCode: string, title: string) => PageSchema;
 }
 
 const OPEN_MODE: OpenMode = "drawer";
 
 /** 列表页：筛选 + 表格 + 行内新增/编辑/详情/删除按钮。 */
-function buildListPage(modelCode: string, title: string): XPage {
+function buildListPage(modelCode: string, title: string): PageSchema {
   const modelLiteral = JSON.stringify(modelCode);
   return {
     router: "list",
@@ -101,7 +101,7 @@ function buildListPage(modelCode: string, title: string): XPage {
 }
 
 /** 树形列表页：左侧自关联树，右侧筛选与后代记录表格。 */
-function buildTreeListPage(modelCode: string, title: string): XPage {
+function buildTreeListPage(modelCode: string, title: string): PageSchema {
   const modelLiteral = JSON.stringify(modelCode);
   return {
     router: "list",
@@ -175,7 +175,7 @@ function buildTreeListPage(modelCode: string, title: string): XPage {
 /** 记录表单页（新建/编辑/详情共用一套结构，仅 mode/router 不同）。 */
 function buildRecordPage(
   mode: "add" | "edit" | "detail",
-): (modelCode: string, title: string) => XPage {
+): (modelCode: string, title: string) => PageSchema {
   const prefix = mode === "add" ? "新建" : mode === "edit" ? "编辑" : "详情";
   return (modelCode, title) => ({
     router: mode,
@@ -241,7 +241,7 @@ export function findPageTemplate(key: string): PageTemplate | undefined {
 }
 
 /** 新建模型默认页面集合：list / add / edit / detail。 */
-export function createDefaultPages(modelCode: string, title: string): XPage[] {
+export function createDefaultPages(modelCode: string, title: string): PageSchema[] {
   return PAGE_TEMPLATES.filter((template) => DEFAULT_PAGE_TEMPLATE_KEYS.has(template.key)).map(
     (template) => template.build(modelCode, title),
   );

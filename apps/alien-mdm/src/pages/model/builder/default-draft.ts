@@ -9,7 +9,7 @@ function systemFields(): FieldNode[] {
       id: createId(),
       key: "id",
       type: "string",
-      source: "field",
+      source: "physical",
       // id 是所有模型的唯一主键（后端建为 PRIMARY KEY，按模型自增 MDM0000000001），
       // 故显式声明 唯一 + 非空 + 索引，作为模型的唯一索引。
       storage: {
@@ -27,7 +27,7 @@ function systemFields(): FieldNode[] {
       id: createId(),
       key: "createdAt",
       type: "string",
-      source: "field",
+      source: "physical",
       storage: {
         title: "创建时间",
         type: "integer",
@@ -45,7 +45,7 @@ function systemFields(): FieldNode[] {
       id: createId(),
       key: "updatedAt",
       type: "string",
-      source: "field",
+      source: "physical",
       storage: {
         title: "更新时间",
         type: "integer",
@@ -66,6 +66,7 @@ export function createDefaultDraft(_runtime: Runtime): ModelDraft {
   return {
     name: "",
     title: "",
+    version: 0,
     group: "other",
     defaultPageSize: 20,
     fields: [
@@ -73,7 +74,7 @@ export function createDefaultDraft(_runtime: Runtime): ModelDraft {
         id: createId(),
         key: "name",
         type: "string",
-        source: "field",
+        source: "physical",
         storage: {
           title: "名称",
           type: "text",

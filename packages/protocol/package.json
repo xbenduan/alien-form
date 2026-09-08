@@ -1,7 +1,7 @@
 {
-  "name": "@alien-form/validate",
+  "name": "@alien-form/protocol",
   "version": "0.1.0",
-  "description": "Zod-based shared schema & API validation for alien-form (frontend + backend)",
+  "description": "Alien Form shared protocol types and runtime validation",
   "license": "MIT",
   "type": "module",
   "main": "./src/index.ts",
@@ -13,11 +13,10 @@
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --external @alien-form/core",
+    "build": "tsup src/index.ts --format esm,cjs --dts",
     "test": "vitest run"
   },
   "dependencies": {
-    "@alien-form/core": "workspace:*",
     "zod": "^3.25.0"
   },
   "devDependencies": {

@@ -1,4 +1,4 @@
-import type { ModelRecord } from "@alien-form/validate";
+import type { ModelRecord } from "@alien-form/protocol";
 
 /** 用户模型标识（登录、账号管理的内置模型）。 */
 export const USER_MODEL = "_sys_user";

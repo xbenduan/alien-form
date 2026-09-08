@@ -1,5 +1,5 @@
 import { AppError } from "../errors.ts";
-import type { FieldPlan } from "./field-plan.ts";
+import { fieldExpression, type FieldPlan } from "./field-plan.ts";
 
 type Scalar = string | number | boolean | null;
 
@@ -31,14 +31,41 @@ interface Token {
 }
 
 const systemFields = new Map<string, FieldPlan>([
-  ["id", { field: "id", type: "text", json: false, filterable: true, sortable: true }],
+  [
+    "id",
+    {
+      field: "id",
+      type: "text",
+      storage: "physical",
+      column: "id",
+      json: false,
+      filterable: true,
+      sortable: true,
+    },
+  ],
   [
     "createdAt",
-    { field: "createdAt", type: "integer", json: false, filterable: true, sortable: true },
+    {
+      field: "createdAt",
+      type: "integer",
+      storage: "physical",
+      column: "created_at",
+      json: false,
+      filterable: true,
+      sortable: true,
+    },
   ],
   [
     "updatedAt",
-    { field: "updatedAt", type: "integer", json: false, filterable: true, sortable: true },
+    {
+      field: "updatedAt",
+      type: "integer",
+      storage: "physical",
+      column: "updated_at",
+      json: false,
+      filterable: true,
+      sortable: true,
+    },
   ],
 ]);
 
@@ -233,13 +260,6 @@ function fieldPlan(name: string, context: RecordFilterContext): FieldPlan {
   return plan;
 }
 
-function fieldExpr(field: string): string {
-  if (field === "id") return `"id"`;
-  if (field === "createdAt") return `"created_at"`;
-  if (field === "updatedAt") return `"updated_at"`;
-  return `json_extract(data_content, '$.${field}')`;
-}
-
 function scalarValue(operand: Operand, context: RecordFilterContext): Scalar {
   if (operand.kind === "literal") return operand.value;
   if (operand.kind === "auth") return context.authId;
@@ -256,6 +276,11 @@ function encodeValue(plan: FieldPlan, value: Scalar): string | number {
     if (typeof value !== "number") invalid(`字段 "${plan.field}" 只能与数字比较`);
     return value;
   }
+  if (plan.type === "date") {
+    const timestamp = typeof value === "number" ? value : Date.parse(String(value));
+    if (!Number.isFinite(timestamp)) invalid(`字段 "${plan.field}" 只能与日期比较`);
+    return timestamp;
+  }
   if (typeof value !== "string" && typeof value !== "number") {
     invalid(`字段 "${plan.field}" 只能与字符串或数字比较`);
   }
@@ -269,7 +294,7 @@ function compileComparison(
   if (expression.left.kind !== "field") invalid("比较表达式左侧必须是模型字段");
   const plan = fieldPlan(expression.left.name, context);
   const value = scalarValue(expression.right, context);
-  const sql = fieldExpr(plan.field);
+  const sql = fieldExpression(plan);
 
   if (value === null) {
     if (expression.operator === "=") return { sql: `${sql} IS NULL`, args: [] };

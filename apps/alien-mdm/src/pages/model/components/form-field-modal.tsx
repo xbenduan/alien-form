@@ -87,8 +87,8 @@ function toValues(node: FieldNode): FormFieldValues {
 
 /**
  * 「表单配置」字段弹窗：编辑 form-schema 表现，覆盖全部 IFieldSchema 字段。
- * 落库字段（source==="field"）：key 与 type 由数据库构建决定，此处锁定不可编辑；其余可编辑。
- * required 对落库字段由存储 nullable 派生（不在此编辑）；extra 字段全可编辑。
+ * physical 字段的 key/type 由数据库构建决定；required 由 nullable 派生。
+ * virtual 字段可自由编辑。
  * 新增字段时选择组件会带出该组件的示例 schema；编辑已有字段不自动带出。
  */
 export function FormFieldModal({
@@ -112,7 +112,7 @@ export function FormFieldModal({
 }) {
   const [form] = Form.useForm<FormFieldValues>();
   const options = useMemo(() => componentOptions(runtime, domain), [runtime, domain]);
-  const isDbField = node?.source === "field";
+  const isDbField = node?.source === "physical";
   const isSystem = node?.storage?.system === true;
   const isRelation = Boolean(node?.storage?.relation);
   // 记录初始组件：仅当新增字段且用户"改变"组件时才带出示例，避免打开即覆盖。

@@ -1,70 +1,104 @@
-import { AppError, conflict, forbidden, notFound } from "../errors.ts";
-import { publicRecord, USER_MODEL } from "../domain/visibility.ts";
-import { uniqueFields } from "../domain/field-plan.ts";
-import { unwrapRefs } from "../store/ref-expander.ts";
 import type {
-  DatabaseField,
+  ModelFieldSchema,
   ModelRecord,
-  BuilderSchema as ModelSchema,
-  Pagination,
-  Sorter,
-} from "@alien-form/validate";
-import { databaseFields } from "@alien-form/validate";
-import type { SchemaStore } from "../store/schema-store.ts";
+  ModelSchema,
+  ListRequest,
+  OptionsRequest,
+  SubtreeRequest,
+} from "@alien-form/protocol";
+import { AppError, badRequest, conflict, notFound } from "../errors.ts";
+import { publicRecord } from "../domain/visibility.ts";
 import type {
-  ListResult,
-  OptionResult,
-  OptionsParams,
-  RecordStore,
-  SubtreeParams,
-} from "../store/record-store.ts";
+  ModelLifecycleContext,
+  ModelRegistry,
+  ModelValidationContext,
+} from "../register/index.ts";
+import type { ModelStore } from "../store/model-store.ts";
+import type { ListResult, OptionResult, RecordStore } from "../store/record-store.ts";
 import type { RefExpander } from "../store/ref-expander.ts";
+import { unwrapRefs } from "../store/ref-expander.ts";
 
-export interface ListInput {
-  model: string;
-  /** PocketBase 风格的字段筛选表达式。 */
-  filter?: string;
-  pagination?: Pagination;
-  sorter?: Sorter;
-  keyword?: string;
-  searchFields?: string[];
-  /** 树节点值：查询该节点自身及所有后代，独立于 filter。 */
-  parentId?: string | null;
+export type ListInput = ListRequest;
+export type OptionsInput = OptionsRequest;
+export type SubtreeInput = SubtreeRequest;
+
+function isEmpty(value: unknown): boolean {
+  return value === undefined || value === null || value === "";
 }
 
-export interface OptionsInput extends Partial<OptionsParams> {
-  model: string;
+function assertFieldValue(field: ModelFieldSchema, value: unknown): void {
+  if (isEmpty(value)) {
+    if (field.form.required === true) throw new AppError(`${field.key} 必填`, 400);
+    return;
+  }
+  const type = field.form.type;
+  if (type === "string" && typeof value !== "string") {
+    throw new AppError(`${field.key} 必须为字符串`, 400);
+  }
+  if (type === "number" && typeof value !== "number") {
+    throw new AppError(`${field.key} 必须为数字`, 400);
+  }
+  if (type === "boolean" && typeof value !== "boolean") {
+    throw new AppError(`${field.key} 必须为布尔值`, 400);
+  }
+  if (type === "object" && (typeof value !== "object" || Array.isArray(value))) {
+    throw new AppError(`${field.key} 必须为对象`, 400);
+  }
+  if (type === "array" && !Array.isArray(value)) {
+    throw new AppError(`${field.key} 必须为数组`, 400);
+  }
 }
 
-export interface SubtreeInput extends Partial<SubtreeParams> {
-  model: string;
+function normalizeRecord(schema: ModelSchema, values: Record<string, unknown>): ModelRecord {
+  const fields = new Map(schema.fields.map((field) => [field.key, field]));
+  for (const key of Object.keys(values)) {
+    if (!fields.has(key)) throw new AppError(`未知字段：${key}`, 400);
+  }
+  const record: ModelRecord = { id: String(values.id ?? "") };
+  for (const field of schema.fields) {
+    if (field.key === "id" || field.key === "createdAt" || field.key === "updatedAt") {
+      continue;
+    }
+    let value = values[field.key];
+    if (value === undefined && field.database?.default !== undefined) {
+      value = field.database.default;
+    }
+    if (value === undefined && field.form.default !== undefined) value = field.form.default;
+    assertFieldValue(field, value);
+    if (value !== undefined) record[field.key] = value;
+  }
+  return record;
 }
 
-/**
- * 记录服务：所有记录操作先按 model 解析 schema（不存在即 404），
- * 再走仓储读写 + 引用展开 + 敏感字段脱敏。写路径统一 unwrapRefs。
- */
+function immutable(record: ModelRecord): Readonly<ModelRecord> {
+  return Object.freeze({ ...record });
+}
+
+function isUniqueViolation(reason: unknown): boolean {
+  return reason instanceof Error && reason.message.includes("UNIQUE constraint failed");
+}
+
 export class RecordService {
   constructor(
-    private readonly schemas: SchemaStore,
+    private readonly models: ModelStore,
     private readonly records: RecordStore,
     private readonly refs: RefExpander,
+    private readonly registry: ModelRegistry,
   ) {}
 
-  private async requireSchema(model: string): Promise<ModelSchema> {
-    const schema = await this.schemas.get(model);
+  private async requireModel(model: string): Promise<ModelSchema> {
+    const schema = await this.models.get(model);
     if (!schema) throw notFound(`未知模型：${model}`);
     return schema;
   }
 
-  private selfRelation(schema: ModelSchema): DatabaseField {
-    const relations = databaseFields(schema).filter(
-      (field) =>
-        field.relation?.kind === "many-to-one" && field.relation.target === schema.meta.name,
+  private selfRelation(schema: ModelSchema): ModelFieldSchema {
+    const relations = schema.fields.filter(
+      (field) => field.relation?.kind === "many-to-one" && field.relation.target === schema.name,
     );
     if (relations.length !== 1) {
       throw new AppError(
-        `模型 ${schema.meta.name} 必须且只能定义一个 many-to-one 自关联字段才能使用 parentId 查询`,
+        `模型 ${schema.name} 必须且只能定义一个 many-to-one 自关联字段才能使用 parentId 查询`,
         400,
       );
     }
@@ -72,7 +106,7 @@ export class RecordService {
   }
 
   async list(input: ListInput, authId: string): Promise<ListResult> {
-    const schema = await this.requireSchema(input.model);
+    const schema = await this.requireModel(input.model);
     const relation =
       input.parentId === undefined || input.parentId === null || input.parentId === ""
         ? undefined
@@ -93,7 +127,7 @@ export class RecordService {
   }
 
   async options(input: OptionsInput): Promise<OptionResult> {
-    const schema = await this.requireSchema(input.model);
+    const schema = await this.requireModel(input.model);
     return this.records.options(schema, {
       valueKey: input.valueKey ?? "id",
       labelKey: input.labelKey ?? input.valueKey ?? "id",
@@ -104,7 +138,7 @@ export class RecordService {
   }
 
   async subtree(input: SubtreeInput): Promise<{ list: ModelRecord[] }> {
-    const schema = await this.requireSchema(input.model);
+    const schema = await this.requireModel(input.model);
     const list = await this.records.subtree(schema, {
       idField: input.idField ?? "id",
       parentField: input.parentField ?? "id",
@@ -115,71 +149,170 @@ export class RecordService {
   }
 
   async get(model: string, id: string): Promise<ModelRecord> {
-    const schema = await this.requireSchema(model);
+    const schema = await this.requireModel(model);
     const record = await this.records.get(schema, id);
     if (!record) throw notFound(`记录不存在：${id}`);
     return publicRecord(model, await this.refs.expandOne(schema, record));
   }
 
-  async create(model: string, values: Record<string, unknown>): Promise<ModelRecord> {
-    const schema = await this.requireSchema(model);
-    const clean = unwrapRefs(values)!;
-    await this.assertUnique(schema, clean);
-    const record = await this.records.create(schema, clean);
-    return publicRecord(model, await this.refs.expandOne(schema, record));
-  }
-
-  async update(model: string, id: string, values: Record<string, unknown>): Promise<ModelRecord> {
-    const schema = await this.requireSchema(model);
-    const clean = unwrapRefs(values)!;
-    await this.assertUnique(schema, clean, id);
-    const record = await this.records.update(schema, id, clean);
-    if (!record) throw notFound(`记录不存在：${id}`);
-    return publicRecord(model, await this.refs.expandOne(schema, record));
-  }
-
-  /**
-   * unique 字段写前查重（应用层保证，非 DB 约束）。
-   *
-   * D1 通用两表下业务字段无独立列、无从建唯一索引；这里对 schema 声明 unique:true
-   * 的字段逐个查重，命中即 409。依赖 D1 写入串行化挡住多数并发，严格并发下仍属弱保证。
-   * 只校验本次传入的字段（update 只传部分字段时不误伤未变更字段）。
-   */
-  private async assertUnique(
-    schema: ModelSchema,
+  async create(
+    model: string,
     values: Record<string, unknown>,
-    excludeId?: string,
-  ): Promise<void> {
-    for (const field of uniqueFields(schema)) {
-      if (!Object.prototype.hasOwnProperty.call(values, field)) continue;
-      const value = values[field];
-      if (await this.records.existsByField(schema, field, value, excludeId)) {
-        throw conflict(`${field} 已存在：${String(value)}`);
-      }
+    actorId: string,
+  ): Promise<ModelRecord> {
+    const schema = await this.requireModel(model);
+    const clean = unwrapRefs(values) ?? {};
+    const id =
+      typeof clean.id === "string" && clean.id ? clean.id : await this.records.allocateId();
+    const candidate = normalizeRecord(schema, { ...clean, id });
+    await this.validate(schema, candidate, actorId, "create");
+    await this.runBefore(model, "beforeCreate", {
+      model: schema,
+      actorId,
+      operation: "create",
+      record: immutable(candidate),
+    });
+    try {
+      const record = await this.records.create(schema, candidate);
+      await this.runAfter(model, "afterCreate", schema, actorId, record);
+      return publicRecord(model, await this.refs.expandOne(schema, record));
+    } catch (reason) {
+      if (isUniqueViolation(reason)) throw conflict("唯一字段值已存在");
+      throw reason;
     }
   }
 
-  async remove(model: string, id: string): Promise<void> {
-    const schema = await this.requireSchema(model);
-    await this.assertDeletable(schema, [id]);
+  async update(
+    model: string,
+    id: string,
+    values: Record<string, unknown>,
+    actorId: string,
+  ): Promise<ModelRecord> {
+    const schema = await this.requireModel(model);
+    const previous = await this.records.get(schema, id);
+    if (!previous) throw notFound(`记录不存在：${id}`);
+    const clean = unwrapRefs(values) ?? {};
+    const candidate = normalizeRecord(schema, { ...previous, ...clean, id });
+    await this.validate(schema, candidate, actorId, "update", previous);
+    await this.runBefore(model, "beforeUpdate", {
+      model: schema,
+      actorId,
+      operation: "update",
+      previous: immutable(previous),
+      record: immutable(candidate),
+    });
+    try {
+      const record = await this.records.update(schema, id, candidate);
+      if (!record) throw notFound(`记录不存在：${id}`);
+      await this.runAfter(model, "afterUpdate", schema, actorId, record, previous);
+      return publicRecord(model, await this.refs.expandOne(schema, record));
+    } catch (reason) {
+      if (isUniqueViolation(reason)) throw conflict("唯一字段值已存在");
+      throw reason;
+    }
+  }
+
+  async remove(model: string, id: string, actorId: string): Promise<void> {
+    const schema = await this.requireModel(model);
+    const record = await this.records.get(schema, id);
+    if (!record) return;
+    await this.runBefore(model, "beforeDelete", {
+      model: schema,
+      actorId,
+      operation: "delete",
+      record: immutable(record),
+    });
     await this.records.delete(schema, id);
+    await this.runAfter(model, "afterDelete", schema, actorId, record);
   }
 
-  async removeMany(model: string, ids: string[]): Promise<void> {
-    const schema = await this.requireSchema(model);
-    await this.assertDeletable(schema, ids ?? []);
-    await this.records.deleteMany(schema, ids ?? []);
+  async removeMany(model: string, ids: string[], actorId: string): Promise<void> {
+    const schema = await this.requireModel(model);
+    const records = (await Promise.all(ids.map((id) => this.records.get(schema, id)))).filter(
+      (record): record is ModelRecord => record !== undefined,
+    );
+    for (const record of records) {
+      await this.runBefore(model, "beforeDelete", {
+        model: schema,
+        actorId,
+        operation: "delete",
+        record: immutable(record),
+      });
+    }
+    await this.records.deleteMany(
+      schema,
+      records.map((record) => record.id),
+    );
+    for (const record of records) {
+      await this.runAfter(model, "afterDelete", schema, actorId, record);
+    }
   }
 
-  /**
-   * 删除守卫：超级管理员（_sys_user.super === true）不可删除。
-   * 收口在服务端强制执行，前端按钮 disabled 只是外观，直连 API 仍受此拦截。
-   */
-  private async assertDeletable(schema: ModelSchema, ids: string[]): Promise<void> {
-    if (schema.meta.name !== USER_MODEL || ids.length === 0) return;
-    for (const id of ids) {
-      const record = await this.records.get(schema, id);
-      if (record?.super) throw forbidden("超级管理员不可删除");
+  private async validate(
+    schema: ModelSchema,
+    record: ModelRecord,
+    actorId: string,
+    operation: "create" | "update",
+    previous?: ModelRecord,
+  ): Promise<void> {
+    const registration = this.registry.get(schema.name);
+    if (!registration) return;
+    const context: ModelValidationContext = {
+      model: schema,
+      actorId,
+      operation,
+      record: immutable(record),
+      previous: previous ? immutable(previous) : undefined,
+    };
+    try {
+      for (const [field, validator] of Object.entries(registration.validators ?? {})) {
+        await validator(record[field], context);
+      }
+      await registration.validate?.(context);
+    } catch (reason) {
+      if (reason instanceof AppError) throw reason;
+      throw badRequest(reason instanceof Error ? reason.message : String(reason));
+    }
+  }
+
+  private async runBefore(
+    model: string,
+    hook: "beforeCreate" | "beforeUpdate" | "beforeDelete",
+    context: ModelLifecycleContext,
+  ): Promise<void> {
+    try {
+      await this.registry.get(model)?.hooks?.[hook]?.(context);
+    } catch (reason) {
+      if (reason instanceof AppError) throw reason;
+      throw badRequest(reason instanceof Error ? reason.message : String(reason));
+    }
+  }
+
+  private async runAfter(
+    model: string,
+    hook: "afterCreate" | "afterUpdate" | "afterDelete",
+    schema: ModelSchema,
+    actorId: string,
+    record: ModelRecord,
+    previous?: ModelRecord,
+  ): Promise<void> {
+    try {
+      await this.registry.get(model)?.hooks?.[hook]?.({
+        model: schema,
+        actorId,
+        operation: hook === "afterCreate" ? "create" : hook === "afterUpdate" ? "update" : "delete",
+        record: immutable(record),
+        previous: previous ? immutable(previous) : undefined,
+      });
+    } catch (reason) {
+      console.error(
+        JSON.stringify({
+          message: "model lifecycle after hook failed",
+          model,
+          hook,
+          error: reason instanceof Error ? reason.message : String(reason),
+        }),
+      );
     }
   }
 }

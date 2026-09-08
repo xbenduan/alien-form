@@ -1,8 +1,8 @@
 import { Checkbox, Divider, Form, Input, Modal, Select, Switch } from "antd";
 import { useEffect, useState } from "react";
 import type { DatabaseColumnType, DatabaseRelation } from "@alien-form/engine";
+import { useRuntime } from "@alien-form/react";
 import type { ModelSummary } from "@app-types";
-import { transport } from "@runtime/transport";
 import {
   synchronizeRelationForm,
   type FieldNode,
@@ -10,7 +10,7 @@ import {
   type StorageConfig,
 } from "../builder";
 
-const COLUMN_TYPES: DatabaseColumnType[] = ["text", "integer", "real", "boolean", "json"];
+const COLUMN_TYPES: DatabaseColumnType[] = ["text", "integer", "real", "boolean", "date", "json"];
 
 /** 存储类型 → 应用值类型（table/表单类型）。 */
 function valueTypeFor(type: DatabaseColumnType, current?: StorageConfig["valueType"]): FieldType {
@@ -40,7 +40,6 @@ interface StorageFormValues {
   unique?: boolean;
   index?: boolean;
   filterable?: boolean;
-  sortable?: boolean;
   visible?: boolean;
   relationEnabled?: boolean;
   relationKind?: DatabaseRelation["kind"];
@@ -61,8 +60,7 @@ function toValues(node: FieldNode): StorageFormValues {
     required: storage?.nullable === false,
     unique: storage?.unique,
     index: storage?.index,
-    filterable: storage?.filterable,
-    sortable: storage?.sortable,
+    filterable: storage?.filterable !== false,
     visible: storage?.visible !== false,
     relationEnabled: Boolean(storage?.relation),
     relationKind: storage?.relation?.kind ?? "many-to-one",
@@ -91,9 +89,11 @@ export function StorageFieldModal({
   onSubmit: (node: FieldNode) => void;
 }) {
   const [form] = Form.useForm<StorageFormValues>();
+  const runtime = useRuntime();
   const [models, setModels] = useState<ModelSummary[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
   const isSystem = node?.storage?.system === true;
+  const storageLocked = isSystem || node?.persisted === true;
 
   useEffect(() => {
     if (open && node) {
@@ -110,8 +110,8 @@ export function StorageFieldModal({
     if (!open) return;
     let active = true;
     setModelsLoading(true);
-    void transport
-      .send<ModelSummary[]>("/api/schemas")
+    const listModels = runtime.getService("model.list") as () => Promise<ModelSummary[]>;
+    void listModels()
       .then((result) => {
         if (active) setModels(result);
       })
@@ -124,7 +124,7 @@ export function StorageFieldModal({
     return () => {
       active = false;
     };
-  }, [open]);
+  }, [open, runtime]);
 
   const submit = async () => {
     const values = await form.validateFields();
@@ -155,7 +155,6 @@ export function StorageFieldModal({
       unique: values.unique || undefined,
       index: values.index || undefined,
       filterable: values.filterable || undefined,
-      sortable: values.sortable || undefined,
       visible: values.visible === false ? false : undefined,
       relation,
     };
@@ -209,21 +208,21 @@ export function StorageFieldModal({
             },
           ]}
         >
-          <Input disabled={isSystem} placeholder="例如 username" />
+          <Input disabled={storageLocked} placeholder="例如 username" />
         </Form.Item>
         <Form.Item name="title" label="字段名称">
           <Input placeholder="例如 账号" />
         </Form.Item>
         <Form.Item name="columnType" label="存储类型">
           <Select
-            disabled={isSystem || relationKind === "many-to-many"}
+            disabled={storageLocked || relationKind === "many-to-many"}
             options={COLUMN_TYPES.map((value) => ({ label: value, value }))}
           />
         </Form.Item>
         {columnType === "json" ? (
           <Form.Item name="jsonValueType" label="JSON 值类型">
             <Select
-              disabled={relationKind === "many-to-many"}
+              disabled={storageLocked || relationKind === "many-to-many"}
               options={[
                 { label: "对象(object)", value: "object" },
                 { label: "数组(array)", value: "array" },
@@ -232,35 +231,32 @@ export function StorageFieldModal({
           </Form.Item>
         ) : null}
         <Form.Item name="column" label="物理列名(缺省用 Key)">
-          <Input disabled={isSystem} placeholder="snake_case" />
+          <Input disabled={storageLocked} placeholder="snake_case" />
         </Form.Item>
         <Form.Item name="required" valuePropName="checked">
-          <Checkbox disabled={isSystem}>必填(非空)</Checkbox>
+          <Checkbox disabled={storageLocked}>必填(非空)</Checkbox>
         </Form.Item>
         <Form.Item name="unique" valuePropName="checked">
-          <Checkbox disabled={isSystem}>唯一约束</Checkbox>
+          <Checkbox disabled={isSystem || node?.storage?.unique === true}>唯一约束</Checkbox>
         </Form.Item>
         <Form.Item name="index" valuePropName="checked">
-          <Checkbox disabled={isSystem}>建立索引</Checkbox>
+          <Checkbox disabled={isSystem || node?.storage?.index === true}>建立索引</Checkbox>
         </Form.Item>
         <Form.Item name="filterable" valuePropName="checked">
           <Checkbox>可筛选</Checkbox>
-        </Form.Item>
-        <Form.Item name="sortable" valuePropName="checked">
-          <Checkbox>可排序</Checkbox>
         </Form.Item>
         <Form.Item name="visible" valuePropName="checked">
           <Checkbox>列表默认可见</Checkbox>
         </Form.Item>
         <Divider titlePlacement="left">关联关系</Divider>
         <Form.Item name="relationEnabled" label="关联字段" valuePropName="checked">
-          <Switch disabled={isSystem} />
+          <Switch disabled={storageLocked} />
         </Form.Item>
         {relationEnabled ? (
           <>
             <Form.Item name="relationKind" label="关系类型" rules={[{ required: true }]}>
               <Select
-                disabled={isSystem}
+                disabled={storageLocked}
                 options={[
                   { label: "多对一", value: "many-to-one" },
                   { label: "多对多", value: "many-to-many" },
@@ -278,7 +274,7 @@ export function StorageFieldModal({
               rules={[{ required: true, message: "请选择目标模型" }]}
             >
               <Select
-                disabled={isSystem}
+                disabled={storageLocked}
                 loading={modelsLoading}
                 showSearch={{ optionFilterProp: ["label", "value"] }}
                 options={models.map((model) => ({
@@ -290,14 +286,14 @@ export function StorageFieldModal({
             </Form.Item>
             {relationKind === "many-to-many" ? (
               <Form.Item name="relationThrough" label="中间模型">
-                <Input disabled={isSystem} placeholder="可选" />
+                <Input disabled={storageLocked} placeholder="可选" />
               </Form.Item>
             ) : null}
             <Form.Item name="relationValueField" label="值字段">
-              <Input disabled={isSystem} placeholder="id" />
+              <Input disabled={storageLocked} placeholder="id" />
             </Form.Item>
             <Form.Item name="relationLabelField" label="展示字段">
-              <Input disabled={isSystem} placeholder="name" />
+              <Input disabled={storageLocked} placeholder="name" />
             </Form.Item>
           </>
         ) : null}
