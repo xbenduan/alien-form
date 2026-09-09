@@ -249,6 +249,27 @@ function storageFromField(field: ModelFieldSchema): StorageConfig {
   };
 }
 
+/**
+ * virtual 字段的存储元信息（title / 列表可见 / 可筛选 / 关联）。
+ * 仅当存在可承载的元信息时才重建 storage，避免纯表单字段被强加空存储配置。
+ */
+function storageFromVirtualField(field: ModelFieldSchema): StorageConfig | undefined {
+  const title = field.table?.title;
+  const hidden = field.table?.hidden === true;
+  const filterHidden = field.filter?.hidden === true;
+  const relation = field.relation;
+  if (!title && !hidden && !filterHidden && !relation) return undefined;
+  const type = (field.form.type ?? "string") as FieldType;
+  return {
+    title,
+    type: COLUMN_FOR_TYPE[type],
+    valueType: type === "object" || type === "array" ? type : undefined,
+    visible: hidden ? false : undefined,
+    filterable: filterHidden ? false : undefined,
+    relation,
+  };
+}
+
 function fieldType(field: ModelFieldSchema): FieldType {
   return (field.form.type ?? "string") as FieldType;
 }
@@ -262,7 +283,8 @@ export function decodeModel(model: ModelSchema): ModelDraft {
       type,
       source: field.storage,
       persisted: true,
-      storage: field.storage === "physical" ? storageFromField(field) : undefined,
+      storage:
+        field.storage === "physical" ? storageFromField(field) : storageFromVirtualField(field),
       form: decodeFormConfig(field.form),
     };
     node.form = synchronizeRelationForm(node.form, type, field.relation);

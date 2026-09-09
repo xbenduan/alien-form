@@ -22,11 +22,8 @@ export function DatabaseBuilder({
   const [keyword, setKeyword] = useState("");
   const [editor, setEditor] = useState<EditorState>();
 
-  // 数据库构建只展示落库的顶层字段。
-  const dbFields = useMemo(
-    () => draft.fields.filter((node) => node.source === "physical"),
-    [draft.fields],
-  );
+  // 数据库构建展示全部顶层字段（含 physical 与 virtual），存储方式在字段弹窗中选择。
+  const dbFields = draft.fields;
   const rows = useMemo(() => {
     const query = keyword.trim().toLowerCase();
     if (!query) return dbFields;
@@ -58,9 +55,19 @@ export function DatabaseBuilder({
     },
     { title: "名称", width: 140, render: (_v, row) => row.storage?.title || "—" },
     {
-      title: "存储类型",
+      title: "存储",
+      width: 90,
+      render: (_v, row) =>
+        row.source === "physical" ? <Tag color="blue">物理</Tag> : <Tag>虚拟</Tag>,
+    },
+    {
+      title: "类型",
       width: 100,
-      render: (_v, row) => <Typography.Text code>{row.storage?.type}</Typography.Text>,
+      render: (_v, row) => (
+        <Typography.Text code>
+          {row.source === "physical" ? row.storage?.type : row.type}
+        </Typography.Text>
+      ),
     },
     { title: "值类型", width: 90, render: (_v, row) => row.type },
     {
