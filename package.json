@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "pnpm --parallel --filter @alien-form/alien-mdm --filter @alien-form/alien-worker run dev",
+    "dev:local": "node scripts/dev.mjs",
     "dev:web": "pnpm --filter @alien-form/alien-mdm run dev",
     "dev:worker": "pnpm --filter @alien-form/alien-worker run dev",
     "build": "pnpm -r run build",

@@ -44,7 +44,21 @@ app.onError((err, c) => {
   return fail(c, "Internal server error", 500);
 });
 
-// 非 /api 请求交给静态资源（SPA fallback 由 wrangler assets 的 single-page-application 处理）。
-app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));
+// 兜底路由。
+//
+// 注意：只把 GET/HEAD 转发给静态资源。把带 body 的请求（POST/PUT/…）转发给
+// `ASSETS.fetch` 会让 workerd 抛出
+// "Can't read from request stream after response has been sent"，
+// 该异常不受 onError 保护，会直接打挂 wrangler dev 进程。
+// 未匹配的 /api/* 也不应回落到 SPA，否则接口 404 会伪装成 200 HTML。
+app.all("*", (c) => {
+  if (c.req.path.startsWith("/api/")) {
+    return fail(c, `No route for ${c.req.method} ${c.req.path}`, 404);
+  }
+  if (c.req.method !== "GET" && c.req.method !== "HEAD") {
+    return fail(c, `Method ${c.req.method} not allowed`, 405);
+  }
+  return c.env.ASSETS.fetch(c.req.raw);
+});
 
 export default app;
