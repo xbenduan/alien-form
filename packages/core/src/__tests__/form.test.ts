@@ -98,8 +98,8 @@ describe("createForm runtime and projection", () => {
       },
     });
 
-    form.set("landingPage", "https://after.example.com");
-    form.set("trackingCode", "NEW");
+    form.setFieldValue("landingPage", "https://after.example.com");
+    form.setFieldValue("trackingCode", "NEW");
 
     await expect(form.submit()).resolves.toEqual({
       landingPage: "https://after.example.com",
@@ -144,9 +144,9 @@ describe("createForm runtime and projection", () => {
       },
     });
 
-    form.set("materials.0.name", "新素材");
-    form.set("materials.0.format", "video");
-    form.set("materials.0.owner", "Mika");
+    form.setFieldValue("materials.0.name", "新素材");
+    form.setFieldValue("materials.0.format", "video");
+    form.setFieldValue("materials.0.owner", "Mika");
 
     await expect(form.submit()).resolves.toEqual({
       materials: [
@@ -193,10 +193,10 @@ describe("createForm runtime and projection", () => {
       },
     });
 
-    form.set("materials.0.name", "111");
-    form.set("materials.0.format", "banner");
-    form.set("materials.0.owner", "111");
-    form.set("materials.0.enabled", true);
+    form.setFieldValue("materials.0.name", "111");
+    form.setFieldValue("materials.0.format", "banner");
+    form.setFieldValue("materials.0.owner", "111");
+    form.setFieldValue("materials.0.enabled", true);
 
     await expect(form.submit()).resolves.toEqual({
       materials: [
@@ -205,50 +205,6 @@ describe("createForm runtime and projection", () => {
           format: "banner",
           owner: "111",
           enabled: true,
-        },
-      ],
-    });
-  });
-
-  it("relinks stale row children before projecting array item values", async () => {
-    const schema: IFormSchema = {
-      type: "object",
-      properties: {
-        materials: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              name: { type: "string" },
-              format: { type: "string" },
-            },
-          },
-        },
-      },
-    };
-
-    const form = createForm({
-      schema,
-      initialValues: {
-        materials: [{}],
-      },
-    });
-
-    const materials = form.field("materials");
-    if (!materials || materials.kind !== "array") {
-      throw new Error("materials field missing");
-    }
-
-    materials.rows()[0]?.children.clear();
-
-    form.set("materials.0.name", "修复后素材");
-    form.set("materials.0.format", "video");
-
-    await expect(form.submit()).resolves.toEqual({
-      materials: [
-        {
-          name: "修复后素材",
-          format: "video",
         },
       ],
     });
@@ -282,11 +238,11 @@ describe("createForm runtime and projection", () => {
       },
     });
 
-    expect(form.get("name")).toBe("Alice");
+    expect(form.getFieldValue("name")).toBe("Alice");
 
-    form.set("name", "  Bob  ");
+    form.setFieldValue("name", "  Bob  ");
 
-    expect(form.get("name")).toBe("  Bob  ");
+    expect(form.getFieldValue("name")).toBe("  Bob  ");
     await expect(form.submit()).resolves.toEqual({
       name: "[  Bob  ]",
     });
@@ -319,7 +275,7 @@ describe("createForm runtime and projection", () => {
       { label: "User", value: "user" },
     ]);
 
-    expect(form.get("role")).toBe("ghost");
+    expect(form.getFieldValue("role")).toBe("ghost");
   });
 
   it("reads primitive values from array item selectors", () => {
@@ -349,7 +305,7 @@ describe("createForm runtime and projection", () => {
       },
     });
 
-    expect(form.get("materials[].name")).toEqual(["海报", "视频"]);
+    expect(form.getFieldValue("materials[].name")).toEqual(["海报", "视频"]);
   });
 
   it("reads nested array item selectors", () => {
@@ -393,7 +349,7 @@ describe("createForm runtime and projection", () => {
       },
     });
 
-    expect(form.get("contacts[].phones.0.number")).toEqual(["111", "333"]);
+    expect(form.getFieldValue("contacts[].phones.0.number")).toEqual(["111", "333"]);
   });
 
   it("reads $row first-level selectors inside row runtime", () => {
@@ -427,8 +383,8 @@ describe("createForm runtime and projection", () => {
 
     form.mount();
 
-    expect(form.get("contacts.0.summary")).toBe("Alice");
-    expect(form.get("contacts.1.summary")).toBe("Bob");
+    expect(form.getFieldValue("contacts.0.summary")).toBe("Alice");
+    expect(form.getFieldValue("contacts.1.summary")).toBe("Bob");
   });
 
   it("reads $row nested selectors inside row runtime", () => {
@@ -467,8 +423,8 @@ describe("createForm runtime and projection", () => {
 
     form.mount();
 
-    expect(form.get("contacts.0.summary")).toBe("Shanghai");
-    expect(form.get("contacts.1.summary")).toBe("Beijing");
+    expect(form.getFieldValue("contacts.0.summary")).toBe("Shanghai");
+    expect(form.getFieldValue("contacts.1.summary")).toBe("Beijing");
   });
 });
 
@@ -489,10 +445,10 @@ describe("set selector get/set parity", () => {
       initialValues: { materials: [{ name: "a" }, { name: "b" }] },
     });
 
-    form.set("materials.0.name", "A0");
+    form.setFieldValue("materials.0.name", "A0");
 
-    expect(form.get("materials.0.name")).toBe("A0");
-    expect(form.get("materials.1.name")).toBe("b");
+    expect(form.getFieldValue("materials.0.name")).toBe("A0");
+    expect(form.getFieldValue("materials.1.name")).toBe("b");
   });
 
   // ── nested (collection): set('coll[].child') broadcasts to every row, mirroring get ──
@@ -512,11 +468,11 @@ describe("set selector get/set parity", () => {
     });
 
     // read parity already exists; now the write must mirror it
-    expect(form.get("materials[].name")).toEqual(["a", "b", "c"]);
+    expect(form.getFieldValue("materials[].name")).toEqual(["a", "b", "c"]);
 
-    form.set("materials[].name", "Z");
+    form.setFieldValue("materials[].name", "Z");
 
-    expect(form.get("materials[].name")).toEqual(["Z", "Z", "Z"]);
+    expect(form.getFieldValue("materials[].name")).toEqual(["Z", "Z", "Z"]);
     await expect(form.submit()).resolves.toEqual({
       materials: [{ name: "Z" }, { name: "Z" }, { name: "Z" }],
     });
@@ -537,7 +493,7 @@ describe("set selector get/set parity", () => {
                 type: "string",
                 "x-reaction": {
                   value:
-                    "{{ $form.set($path.replace(/\\.trigger$/, '.profile.city'), 'WRITTEN') ?? 'done' }}",
+                    "{{ $form.setFieldValue($path.replace(/\\.trigger$/, '.profile.city'), 'WRITTEN') ?? 'done' }}",
                 },
               },
             },
@@ -552,7 +508,7 @@ describe("set selector get/set parity", () => {
 
     form.mount();
 
-    expect(form.get("contacts.0.profile.city")).toBe("WRITTEN");
+    expect(form.getFieldValue("contacts.0.profile.city")).toBe("WRITTEN");
   });
 
   // ── nested ($row collection): set('$row.arr[].child') broadcasts within the row ──
@@ -573,7 +529,7 @@ describe("set selector get/set parity", () => {
                 type: "string",
                 "x-reaction": {
                   value:
-                    "{{ $form.set($path.replace(/\\.trigger$/, '.phones[].number'), '***') ?? 'done' }}",
+                    "{{ $form.setFieldValue($path.replace(/\\.trigger$/, '.phones[].number'), '***') ?? 'done' }}",
                 },
               },
             },
@@ -588,7 +544,7 @@ describe("set selector get/set parity", () => {
 
     form.mount();
 
-    expect(form.get("contacts.0.phones[].number")).toEqual(["***", "***"]);
+    expect(form.getFieldValue("contacts.0.phones[].number")).toEqual(["***", "***"]);
   });
 
   // ── invalid: collection selector against a non-array field reports error, no write ──
@@ -606,9 +562,9 @@ describe("set selector get/set parity", () => {
       onError: (e) => errors.push(e.message),
     });
 
-    form.set("title[].name", "X");
+    form.setFieldValue("title[].name", "X");
 
-    expect(form.get("title")).toBe("keep");
+    expect(form.getFieldValue("title")).toBe("keep");
     expect(errors.some((m) => m.includes("is not an array field"))).toBe(true);
   });
 
@@ -627,8 +583,8 @@ describe("set selector get/set parity", () => {
       onError: (e) => errors.push(e.message),
     });
 
-    expect(() => form.set("profile", { city: "bj" })).not.toThrow();
-    expect(form.get("profile.city")).toBe("sh");
+    expect(() => form.setFieldValue("profile", { city: "bj" })).not.toThrow();
+    expect(form.getFieldValue("profile.city")).toBe("sh");
     expect(errors.some((m) => m.includes("Cannot set non-primitive selector"))).toBe(true);
   });
 
@@ -650,7 +606,7 @@ describe("set selector get/set parity", () => {
       onError: (e) => errors.push(e.message),
     });
 
-    expect(() => form.set("materials.5.name", "ghost")).not.toThrow();
+    expect(() => form.setFieldValue("materials.5.name", "ghost")).not.toThrow();
 
     // no ghost row created
     const materials = form.field("materials");
@@ -675,8 +631,8 @@ describe("set selector get/set parity", () => {
       initialValues: { materials: [] },
     });
 
-    expect(() => form.set("materials[].name", "Z")).not.toThrow();
-    expect(form.get("materials[].name")).toEqual([]);
+    expect(() => form.setFieldValue("materials[].name", "Z")).not.toThrow();
+    expect(form.getFieldValue("materials[].name")).toEqual([]);
   });
 });
 
@@ -772,7 +728,7 @@ describe("x-layout layout nodes", () => {
     const form = createForm({ schema, initialValues: { email: "a@b.com", phone: "123" } });
     expect(form.field("email")).toBeDefined();
     expect(form.field("contactGroup")?.kind).toBe("void");
-    form.set("email", "x@y.com");
+    form.setFieldValue("email", "x@y.com");
     await expect(form.submit()).resolves.toEqual({ email: "x@y.com", phone: "123" });
   });
 

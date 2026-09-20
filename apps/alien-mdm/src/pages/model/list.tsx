@@ -1,18 +1,20 @@
-import { Alert, Flex } from "antd";
+import { Alert, App, Flex } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRuntime } from "@alien-form/react";
 import { PageBreadcrumb } from "../../components";
-import type { ModelSummary } from "@app-types";
-import { isSuperAdmin } from "@runtime/user-info";
+import type { ListResponse, ModelRecord, ModelSummary } from "@app-types";
+import { canManageModels } from "@runtime/user-info";
 import { ModelListToolbar } from "./components/model-list-toolbar";
 import { ModelTable } from "./components/model-table";
 
 export default function ModelListPage() {
   const navigate = useNavigate();
   const runtime = useRuntime();
-  const canManageModels = isSuperAdmin();
+  const { message } = App.useApp();
+  const canManage = canManageModels();
   const [models, setModels] = useState<ModelSummary[]>([]);
+  const [groupLabels, setGroupLabels] = useState<ReadonlyMap<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
 
@@ -21,7 +23,24 @@ export default function ModelListPage() {
     setError(undefined);
     try {
       const listModels = runtime.getService("model.list") as () => Promise<ModelSummary[]>;
-      setModels(await listModels());
+      const listRecords = runtime.getService("records.list") as (request: {
+        model: string;
+        pagination: { current: number; pageSize: number };
+      }) => Promise<ListResponse>;
+      const [nextModels, tabs] = await Promise.all([
+        listModels(),
+        listRecords({ model: "_sys_model_tab", pagination: { current: 1, pageSize: 100 } }),
+      ]);
+      setModels(nextModels);
+      setGroupLabels(
+        new Map(
+          tabs.list.flatMap((tab: ModelRecord) =>
+            typeof tab.code === "string" && typeof tab.name === "string"
+              ? [[tab.code, tab.name] as const]
+              : [],
+          ),
+        ),
+      );
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
@@ -45,22 +64,37 @@ export default function ModelListPage() {
     (model: ModelSummary) => navigate(`/models/${model.name}/copy`),
     [navigate],
   );
+  const deleteModel = useCallback(
+    async (model: ModelSummary) => {
+      const remove = runtime.getService("model.delete") as (modelCode: string) => Promise<void>;
+      try {
+        await remove(model.name);
+        message.success("模型已删除");
+        await load();
+      } catch (reason) {
+        message.error(reason instanceof Error ? reason.message : String(reason));
+      }
+    },
+    [load, message, runtime],
+  );
   return (
     <Flex vertical gap={16}>
       <PageBreadcrumb items={[{ title: "模型管理" }]} />
       <ModelListToolbar
         loading={loading}
         onRefresh={() => void load()}
-        onAdd={canManageModels ? () => navigate("/models/add") : undefined}
+        onAdd={canManage ? () => navigate("/models/add") : undefined}
       />
       {error && <Alert type="error" title="模型列表加载失败" description={error} showIcon />}
       <ModelTable
         dataSource={models}
         loading={loading}
-        canManageModels={canManageModels}
+        canManageModels={canManage}
+        groupLabels={groupLabels}
         onView={viewModel}
         onEdit={editModel}
         onCopy={copyModel}
+        onDelete={(model) => void deleteModel(model)}
       />
     </Flex>
   );

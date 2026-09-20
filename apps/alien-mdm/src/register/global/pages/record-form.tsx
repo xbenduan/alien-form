@@ -76,7 +76,7 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
     const service = form.scope.$service as (code: string) => GetRecord;
     void Promise.resolve()
       .then(() => service("records.get")({ model: modelCode, id: recordId }))
-      .then((record) => form.setValues(record))
+      .then((record) => form.setFieldsValue(record))
       .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)))
       .finally(() => setLoading(false));
   }, [form, mode, modelCode, recordId]);

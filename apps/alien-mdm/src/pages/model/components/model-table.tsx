@@ -1,5 +1,5 @@
-import { CopyOutlined, EditOutlined } from "@ant-design/icons";
-import { Button, Space, Table, Tag, Typography } from "antd";
+import { CopyOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
+import { Button, Popconfirm, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useMemo } from "react";
 import type { ModelSummary } from "@app-types";
@@ -8,8 +8,10 @@ import styles from "./model-table.module.css";
 export interface ModelTableProps {
   canManageModels: boolean;
   dataSource: ModelSummary[];
+  groupLabels: ReadonlyMap<string, string>;
   loading: boolean;
   onCopy: (model: ModelSummary) => void;
+  onDelete: (model: ModelSummary) => void;
   onEdit: (model: ModelSummary) => void;
   onView: (model: ModelSummary) => void;
 }
@@ -26,8 +28,10 @@ function formatDateTime(value: string) {
 export function ModelTable({
   canManageModels,
   dataSource,
+  groupLabels,
   loading,
   onCopy,
+  onDelete,
   onEdit,
   onView,
 }: ModelTableProps) {
@@ -56,8 +60,11 @@ export function ModelTable({
         title: "分组",
         dataIndex: "group",
         width: 90,
-        render: (value?: string) =>
-          value === "system" ? <Tag color="blue">系统</Tag> : <Tag>其他</Tag>,
+        render: (value?: string) => (
+          <Tag color={value === "system" ? "blue" : undefined}>
+            {(value && groupLabels.get(value)) ?? value ?? "未分类"}
+          </Tag>
+        ),
       },
       { title: "单数标签", dataIndex: "singularLabel", width: 120, render: optionalText },
       { title: "复数标签", dataIndex: "pluralLabel", width: 120, render: optionalText },
@@ -99,13 +106,27 @@ export function ModelTable({
                   >
                     复制
                   </Button>
+                  {!record.system ? (
+                    <Popconfirm
+                      title={`确认删除模型“${record.title}”？`}
+                      description="模型数据表与全部记录将一并删除，且无法恢复。"
+                      okText="删除"
+                      okButtonProps={{ danger: true }}
+                      cancelText="取消"
+                      onConfirm={() => onDelete(record)}
+                    >
+                      <Button type="link" size="small" danger icon={<DeleteOutlined />}>
+                        删除
+                      </Button>
+                    </Popconfirm>
+                  ) : null}
                 </Space>
               ),
             } satisfies ColumnsType<ModelSummary>[number],
           ]
         : []),
     ],
-    [canManageModels, onCopy, onEdit, onView],
+    [canManageModels, groupLabels, onCopy, onDelete, onEdit, onView],
   );
 
   return (

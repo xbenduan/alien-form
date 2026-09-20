@@ -1,9 +1,11 @@
 import {
   parseModelSchema,
+  type ModelFieldSchema,
   type MigrationPlan,
   type ModelSchema,
   type ModelSummary,
 } from "@alien-form/protocol";
+import { quoteTable } from "../domain/sql.ts";
 
 interface ModelRow {
   name: string;
@@ -35,6 +37,8 @@ export class ModelStore {
         name: row.name,
         title: row.title,
         version: row.version,
+        system: model.system,
+        creatorId: model.creatorId,
         subtitle: model.subtitle,
         description: model.description,
         group: model.group,
@@ -137,5 +141,21 @@ export class ModelStore {
       throw new ModelVersionConflictError(`模型版本冲突：${schema.name}`);
     }
     return schema;
+  }
+
+  /** Drops a model's relation tables, physical table, and metadata atomically. */
+  async delete(schema: ModelSchema): Promise<void> {
+    const relationTables = schema.fields.flatMap((field: ModelFieldSchema) =>
+      field.storage === "physical" && field.relation?.kind === "many-to-many"
+        ? [field.relation.through ?? `${schema.name}_${field.key}`]
+        : [],
+    );
+    await this.db.batch([
+      ...relationTables.map((table) =>
+        this.db.prepare(`DROP TABLE IF EXISTS ${quoteTable(table)}`),
+      ),
+      this.db.prepare(`DROP TABLE IF EXISTS ${quoteTable(schema.name)}`),
+      this.db.prepare(`DELETE FROM "models" WHERE name = ?`).bind(schema.name),
+    ]);
   }
 }

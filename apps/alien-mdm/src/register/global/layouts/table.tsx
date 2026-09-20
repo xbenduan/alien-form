@@ -98,10 +98,11 @@ interface BatchActionContext {
 
 interface ActionButtonConfig<TContext = ActionContext> extends Omit<
   ButtonProps,
-  "children" | "onClick"
+  "children" | "disabled" | "onClick"
 > {
   openMode?: OpenMode;
   children?: ButtonProps["children"];
+  disabled?: boolean | ((record: Record<string, unknown>) => boolean);
   service?: (context: TContext) => unknown | Promise<unknown>;
   onClick?: ButtonProps["onClick"];
 }
@@ -127,9 +128,21 @@ const ACTION_LABELS = {
   batchDelete: "批量删除",
 } satisfies Record<keyof ActionButtons, string>;
 
-function buttonProps<TContext>(config: ActionButtonConfig<TContext>): ButtonProps {
-  const { children: _children, openMode: _openMode, service: _service, ...props } = config;
-  return props;
+function buttonProps<TContext>(
+  config: ActionButtonConfig<TContext>,
+  record?: Record<string, unknown>,
+): ButtonProps {
+  const {
+    children: _children,
+    disabled,
+    openMode: _openMode,
+    service: _service,
+    ...props
+  } = config;
+  return {
+    ...props,
+    disabled: typeof disabled === "function" ? disabled(record ?? {}) : disabled,
+  };
 }
 
 function findComponent(nodes: CompiledNode[], component: string): CompiledNode | undefined {
@@ -242,7 +255,6 @@ export function Table({
   const columnScope = useCallback(
     () => ({
       ...pageRuntime.runtime.createScope(pageRuntime.domain, pageRuntime.query, "list"),
-      $values: pageRuntime.form.values(),
       $form: pageRuntime.form,
     }),
     [pageRuntime],
@@ -411,7 +423,6 @@ export function Table({
       const formProps = formNode
         ? (evaluateCompiledValue(formNode.props, {
             ...pageRuntime.runtime.createScope(pageRuntime.domain, query, mode),
-            $values: pageRuntime.form.values(),
             $form: pageRuntime.form,
           }) as Partial<OverlayState>)
         : undefined;
@@ -473,7 +484,6 @@ export function Table({
             schemaProps={actionNode.props}
             scope={() => ({
               ...pageRuntime.runtime.createScope(pageRuntime.domain, pageRuntime.query, "list"),
-              $values: pageRuntime.form.values(),
               $form: pageRuntime.form,
               $row: record,
             })}
@@ -510,7 +520,7 @@ export function Table({
           const inlineActions = (["edit", "detail"] as const).flatMap((mode) => {
             const config = actionBtns?.[mode];
             if (!config) return [];
-            const props = buttonProps(config);
+            const props = buttonProps(config, record);
             return [
               <Button
                 {...props}

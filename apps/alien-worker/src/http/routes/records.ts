@@ -23,20 +23,20 @@ recordRoutes.post("/list", async (c) => {
 recordRoutes.post("/options", async (c) => {
   const value = await c.req.json();
   const body = parseInput(() => optionsRequestSchema.parse(value));
-  return ok(c, await c.get("container").recordService.options(body));
+  return ok(c, await c.get("container").recordService.options(body, c.get("session").userId));
 });
 
 /** POST /api/records/subtree → { list }。 */
 recordRoutes.post("/subtree", async (c) => {
   const value = await c.req.json();
   const body = parseInput(() => subtreeRequestSchema.parse(value));
-  return ok(c, await c.get("container").recordService.subtree(body));
+  return ok(c, await c.get("container").recordService.subtree(body, c.get("session").userId));
 });
 
 /** GET /api/records/:model/:id → ModelRecord。 */
 recordRoutes.get("/:model/:id", async (c) => {
   const { model, id } = c.req.param();
-  return ok(c, await c.get("container").recordService.get(model, id));
+  return ok(c, await c.get("container").recordService.get(model, id, c.get("session").userId));
 });
 
 /** POST /api/records/:model → 新建记录（幂等 upsert）。 */

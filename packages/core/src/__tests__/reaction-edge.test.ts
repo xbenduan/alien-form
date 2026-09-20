@@ -14,12 +14,17 @@ describe("reaction — inline function rules", () => {
       type: "object",
       properties: {
         a: { type: "number" },
-        b: { type: "number", "x-reaction": { value: ({ $values }) => ($values.a ?? 0) + 1 } },
+        b: {
+          type: "number",
+          "x-reaction": {
+            value: ({ $form }) => ($form.getFieldValue("a") ?? 0) + 1,
+          },
+        },
       },
     };
     const form = createForm({ schema, initialValues: { a: 41 } });
     form.mount();
-    expect(form.get("b")).toBe(42);
+    expect(form.getFieldValue("b")).toBe(42);
   });
 
   it("captures a throw from an inline function reaction", () => {
@@ -51,7 +56,7 @@ describe("reaction — literal rules", () => {
     };
     const form = createForm({ schema });
     form.mount();
-    expect(form.get("a")).toBe("literal-text");
+    expect(form.getFieldValue("a")).toBe("literal-text");
   });
 
   it("treats a plain object literal as a props payload", () => {
@@ -74,7 +79,7 @@ describe("set — $row without an enclosing row", () => {
     };
     const form = createForm({ schema, onError: (e) => errors.push(e) });
     // root-level set of a $row selector has no enclosing row
-    form.set("$row.name", "x");
+    form.setFieldValue("$row.name", "x");
     expect(errors.some((e) => e.message.includes("no enclosing row"))).toBe(true);
   });
 
@@ -84,7 +89,7 @@ describe("set — $row without an enclosing row", () => {
       schema: { type: "object", properties: { a: { type: "string" } } },
       onError: (e) => errors.push(e),
     });
-    form.set("", "x");
+    form.setFieldValue("", "x");
     expect(errors.some((e) => e.message.includes("Cannot set empty selector"))).toBe(true);
   });
 });
@@ -97,7 +102,7 @@ describe("data source ownership", () => {
     };
     const form = createForm({ schema, initialValues: { role: "ghost" } });
     primitive(form, "role").setDataSource([{ label: "Admin", value: "admin" }]);
-    expect(form.get("role")).toBe("ghost");
+    expect(form.getFieldValue("role")).toBe("ghost");
   });
 });
 

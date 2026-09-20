@@ -20,6 +20,7 @@ import type {
   FieldNode,
   FormInstance,
   FormConfig,
+  NamePath,
   RowNode,
   Signal,
   Computed,
@@ -39,6 +40,7 @@ export type {
   Computed,
   FormInstance,
   FormConfig,
+  NamePath,
   FieldNode,
   ArrayFieldNode,
   RowNode,
@@ -129,12 +131,21 @@ export function useFieldSnapshot<F extends FieldNode, T>(
 
 export function useCreateForm(config: FormConfig = {}, deps: DependencyList = []): FormInstance {
   const form = useMemo(() => createForm(config), deps);
-  const previous = useRef<FormInstance | undefined>(undefined);
+  const lifecycle = useRef<{ form?: FormInstance; generation: number }>({ generation: 0 });
   useEffect(() => {
-    if (previous.current && previous.current !== form) previous.current.destroy();
-    previous.current = form;
+    const previous = lifecycle.current.form;
+    if (previous && previous !== form) previous.destroy();
+    lifecycle.current.form = form;
+    const generation = ++lifecycle.current.generation;
     form.mount();
-    return () => form.unmount();
+    return () => {
+      form.unmount();
+      queueMicrotask(() => {
+        if (lifecycle.current.form === form && lifecycle.current.generation === generation) {
+          form.destroy();
+        }
+      });
+    };
   }, [form]);
   return form;
 }
@@ -156,12 +167,14 @@ export function useFormScope<T extends Record<string, unknown> = Record<string, 
   return useForm().scope as T;
 }
 
-export function useFieldAtoms(path: string): FieldNode | undefined {
+export function useFieldAtoms(path: NamePath): FieldNode | undefined {
   const form = useForm();
-  return useSignalValue(form.fields).get(path);
+  const pathKey = typeof path === "string" ? path : path.join(".");
+  const read = useCallback(() => form.field(pathKey), [form, pathKey]);
+  return useSignalSnapshot(read, Object.is);
 }
 
-export function useFieldValue(path: string): unknown {
+export function useFieldValue(path: NamePath): unknown {
   const field = useFieldAtoms(path);
   return useSignalValue(field?.kind === "primitive" ? field.value : undefinedSignal);
 }
@@ -296,7 +309,7 @@ export function SchemaComponent({
 function rowValues(form: FormInstance, field: FieldNode): Record<string, unknown> | undefined {
   if (!field.row) return undefined;
   return Object.fromEntries(
-    Array.from(field.row.children, ([key, child]) => [key, form.project(child.path)]),
+    Array.from(field.row.children, ([key, child]) => [key, form.getFieldValue(child.path)]),
   );
 }
 
@@ -339,10 +352,9 @@ function useNodeProps(node: CompiledNode, field: FieldNode, form: FormInstance) 
     );
   }, [field, node]);
   const scope = useCallback(() => {
-    const value = field.kind === "primitive" ? field.value() : form.project(field.path);
+    const value = field.kind === "primitive" ? field.value() : form.getFieldValue(field.path);
     return {
       ...form.scope,
-      $values: form.values(),
       $self: field,
       $form: form,
       $value: value,

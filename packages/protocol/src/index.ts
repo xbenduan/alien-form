@@ -11,6 +11,7 @@ export type {
   DataSourceItem as FormDataSourceItem,
   RuntimeAccessor,
   RuntimeNamespace,
+  NamePath,
   SchemaReactionKey,
   ExpressionScope,
   RuntimeExecutable,
@@ -36,7 +37,8 @@ export type {
   FormInstance,
 } from "./form-types.ts";
 
-export { fieldSchema, displaySchema, type FieldSchema } from "./field-schema.ts";
+export { fieldSchema, displaySchema } from "./field-schema.ts";
+export type { default as FieldSchema } from "./field-schema.ts";
 
 export {
   modelSchemaSchema,

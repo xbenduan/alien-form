@@ -1,0 +1,88 @@
+import { describe, expect, it, vi } from "vitest";
+import type { ModelSchema } from "@alien-form/protocol";
+import { ModelRegistry } from "../register/registry.ts";
+import type { ModelStore } from "../store/model-store.ts";
+import type { RecordStore } from "../store/record-store.ts";
+import type { RefExpander } from "../store/ref-expander.ts";
+import type { AuthorizationService } from "./authorization-service.ts";
+import { RecordService } from "./record-service.ts";
+
+const schema: ModelSchema = {
+  name: "article",
+  title: "文章",
+  version: 1,
+  fields: [
+    {
+      id: "article.id",
+      key: "id",
+      storage: "physical",
+      database: { type: "text" },
+      form: { type: "string" },
+    },
+    {
+      id: "article.title",
+      key: "title",
+      storage: "virtual",
+      form: { type: "string" },
+    },
+  ],
+  pages: [],
+};
+
+/** Creates a record service with focused authorization doubles. */
+function service(owner = "actor") {
+  const models = { get: vi.fn().mockResolvedValue(schema) } as unknown as ModelStore;
+  const records = {
+    list: vi.fn().mockResolvedValue({ list: [], total: 0 }),
+    get: vi.fn().mockResolvedValue({ id: "record", title: "内容" }),
+    owner: vi.fn().mockResolvedValue(owner),
+    allocateId: vi.fn().mockResolvedValue("record"),
+    create: vi.fn().mockImplementation(async (_schema, value) => value),
+  } as unknown as RecordStore;
+  const refs = {
+    expand: vi.fn(async (_schema, records) => records),
+    expandOne: vi.fn(async (_schema, record) => record),
+  } as unknown as RefExpander;
+  const authorization = {
+    profile: vi.fn().mockResolvedValue({ actorId: "actor" }),
+    assertCan: vi.fn().mockReturnValue("own"),
+    assertFields: vi.fn(),
+    projectSchema: vi.fn().mockReturnValue(schema),
+    project: vi.fn((_profile, _schema, record) => record),
+  } as unknown as AuthorizationService;
+  return {
+    records,
+    value: new RecordService(models, records, refs, new ModelRegistry(), authorization),
+  };
+}
+
+describe("RecordService authorization", () => {
+  it("pushes own-scope filtering into list queries", async () => {
+    const { records, value } = service();
+
+    await value.list({ model: "article" }, "actor");
+
+    expect(records.list).toHaveBeenCalledWith(
+      schema,
+      expect.objectContaining({ ownerId: "actor" }),
+    );
+  });
+
+  it("rejects direct access to records owned by another actor", async () => {
+    const { value } = service("other");
+
+    await expect(value.get("article", "record", "actor")).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("persists the authenticated actor as the record owner", async () => {
+    const { records, value } = service();
+
+    await value.create("article", { title: "内容" }, "actor");
+
+    expect(records.create).toHaveBeenCalledWith(
+      schema,
+      expect.objectContaining({ title: "内容" }),
+      "actor",
+    );
+  });
+});

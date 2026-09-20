@@ -1,6 +1,13 @@
 import type { ModelRecord, ModelSchema } from "@alien-form/protocol";
+import type { ModelStore } from "../store/model-store.ts";
+import type { RecordStore } from "../store/record-store.ts";
 
-export interface ModelValidationContext {
+interface ModelDataContext {
+  models: ModelStore;
+  records: RecordStore;
+}
+
+export interface ModelValidationContext extends ModelDataContext {
   model: ModelSchema;
   actorId: string;
   operation: "create" | "update";
@@ -15,7 +22,18 @@ export type ModelFieldValidator = (
 
 export type ModelRecordValidator = (context: ModelValidationContext) => void | Promise<void>;
 
-export interface ModelLifecycleContext {
+export interface ModelTransformContext {
+  actorId: string;
+  operation: "create" | "update";
+  previous?: Readonly<ModelRecord>;
+}
+
+export type ModelInputTransformer = (
+  values: Record<string, unknown>,
+  context: ModelTransformContext,
+) => Record<string, unknown> | Promise<Record<string, unknown>>;
+
+export interface ModelLifecycleContext extends ModelDataContext {
   model: ModelSchema;
   actorId: string;
   operation: "create" | "update" | "delete";
@@ -36,6 +54,7 @@ export interface ModelLifecycleHooks {
 
 export interface ModelRegistration {
   schema?: ModelSchema;
+  transform?: ModelInputTransformer;
   validators?: Record<string, ModelFieldValidator>;
   validate?: ModelRecordValidator;
   hooks?: ModelLifecycleHooks;

@@ -5,6 +5,7 @@ import type { LoginRequest, LoginResponse, ModelRecord } from "@alien-form/proto
 import type { ModelStore } from "../../store/model-store.ts";
 import type { RecordStore } from "../../store/record-store.ts";
 import type { SessionStore } from "../../store/session-store.ts";
+import type { AuthorizationService } from "../authorization-service.ts";
 
 export interface Session {
   token: string;
@@ -45,6 +46,7 @@ export class AuthService {
     private readonly models: ModelStore,
     private readonly records: RecordStore,
     private readonly sessions: SessionStore,
+    private readonly authorization: AuthorizationService,
   ) {}
 
   /** 按用户名查用户记录（供 provider 复用）。 */
@@ -69,7 +71,15 @@ export class AuthService {
       createdAt: Date.now(),
     };
     await this.sessions.create(session);
-    return { token: session.token, user: publicRecord(USER_MODEL, user), provider: provider.name };
+    const profile = await this.authorization.profile(session.userId);
+    return {
+      token: session.token,
+      user: {
+        ...publicRecord(USER_MODEL, user),
+        canCreateModel: profile.canCreateModel,
+      },
+      provider: provider.name,
+    };
   }
 
   async logout(token: string | undefined): Promise<void> {

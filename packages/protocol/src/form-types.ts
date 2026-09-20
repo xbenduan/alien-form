@@ -45,6 +45,7 @@ export interface DataSourceItem {
 
 export type RuntimeAccessor<T = any> = (code: string) => T;
 export type RuntimeNamespace<T = any> = Readonly<Record<string, T>>;
+export type NamePath = string | readonly (string | number)[];
 
 // ─── Schema Validate ──────────────────────────────────────────────────────────
 
@@ -64,7 +65,6 @@ export type SchemaReactionKey =
 
 export interface ExpressionScope {
   mode?: string;
-  $values: Record<string, any>;
   $self: FieldNode;
   $form: FormInstance;
   $value: any;
@@ -105,11 +105,9 @@ export interface RuntimeRuleContext {
   schema: IFieldSchema | IFormSchema;
   row?: RowNode;
   scope: Record<string, any>;
-  values: Record<string, any>;
   value?: any;
-  get(selector: string): any;
-  set(selector: string, value: any): void;
-  project(selector?: string): any;
+  getFieldValue(path: NamePath): any;
+  setFieldValue(path: NamePath, value: any): void;
   effect(runner: () => void | (() => void)): () => void;
 }
 
@@ -160,7 +158,7 @@ export interface IFormSchema {
 
 export interface BaseFieldNode {
   id: string;
-  path: string;
+  readonly path: string;
   schema: IFieldSchema;
   kind: FieldKind;
   parent?: FieldNode;
@@ -202,12 +200,12 @@ export interface PrimitiveFieldNode extends BaseFieldNode {
 
 export interface ObjectFieldNode extends BaseFieldNode {
   kind: "object";
-  children: Map<string, FieldNode>;
+  readonly children: ReadonlyMap<string, FieldNode>;
 }
 
 export interface ArrayFieldNode extends BaseFieldNode {
   kind: "array";
-  rows: Signal<RowNode[]>;
+  rows: Computed<RowNode[]>;
   push(initialValues?: any): void;
   remove(index: number): void;
   move(from: number, to: number): void;
@@ -218,15 +216,15 @@ export interface ArrayFieldNode extends BaseFieldNode {
 
 export interface VoidFieldNode extends BaseFieldNode {
   kind: "void";
-  children: Map<string, FieldNode>;
+  readonly children: ReadonlyMap<string, FieldNode>;
 }
 
 export interface RowNode {
   id: string;
-  index: number;
-  path: string;
+  readonly index: number;
+  readonly path: string;
   parent: ArrayFieldNode;
-  children: Map<string, FieldNode>;
+  readonly children: ReadonlyMap<string, FieldNode>;
 }
 
 export type FieldNode = PrimitiveFieldNode | ObjectFieldNode | ArrayFieldNode | VoidFieldNode;
@@ -265,26 +263,27 @@ export interface FormInstance {
   schema: IFormSchema;
   /** 运行时上下文：供表达式和 UI 组件读取场景、服务等环境信息。 */
   scope: Record<string, any>;
+  /** 当前运行时值的深冻结、非响应式快照，不执行 x-format.output。 */
+  readonly data: Readonly<Record<string, any>>;
   root: ObjectFieldNode;
-  fields: Signal<Map<string, FieldNode>>;
+  fields: Computed<Map<string, FieldNode>>;
   submitting: Signal<boolean>;
-  values: Computed<Record<string, any>>;
   errors: Computed<FieldError[]>;
   valid: Computed<boolean>;
 
-  field(path: string): FieldNode | undefined;
-  get(selector: string): any;
-  set(selector: string, value: any): void;
-  project(selector?: string): any;
-  setValues(values: Record<string, any>): void;
+  field(path: NamePath): FieldNode | undefined;
+  getFieldValue(path: NamePath): any;
+  setFieldValue(path: NamePath, value: any): void;
+  getFieldsValue(paths?: readonly NamePath[]): Record<string, any>;
+  setFieldsValue(values: Record<string, any>): void;
+  getOutput(): Readonly<Record<string, any>>;
   setInitialValues(values: Record<string, any>): void;
   setScope(values: Record<string, any>): void;
-  reset(): void;
+  resetFields(paths?: readonly NamePath[]): void;
   mount(): void;
   unmount(): void;
-  validate(names?: string[]): Promise<boolean>;
+  validate(names?: readonly NamePath[]): Promise<boolean>;
   validateFast(): Promise<boolean>;
-  getFieldsValue(names?: string[]): Record<string, any>;
   getFieldsValueFast(): Record<string, any>;
   submit<T = any>(onSubmit?: (values: Record<string, any>) => T | Promise<T>): Promise<T>;
   destroy(): void;

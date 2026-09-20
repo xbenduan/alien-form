@@ -12,6 +12,15 @@ import {
 } from ".";
 import type { ModelSchema } from "../protocol";
 
+/** Creates the minimal form API required by compiled expression tests. */
+function expressionForm(values: Record<string, unknown>) {
+  return {
+    getFieldValue(path: string | readonly (string | number)[]) {
+      return values[typeof path === "string" ? path : path.join(".")];
+    },
+  };
+}
+
 const model: ModelSchema = {
   name: "products",
   title: "商品",
@@ -38,7 +47,7 @@ const model: ModelSchema = {
           component: "table",
           props: {
             schema: { $ref: "form-schema" },
-            filter: "{{ $values.filter }}",
+            filter: '{{ $form.getFieldValue("filter") }}',
             rowActions: ["deactivate", "delete"],
             actionBtns: {
               edit: { children: "编辑" },
@@ -82,7 +91,11 @@ describe("page compiler", () => {
     const table = page.nodes[0].children[0];
     expect((table.props.schema as { properties: unknown }).properties).toBeDefined();
     expect(isCompiledValue(table.props.filter)).toBe(true);
-    expect((table.props.filter as any).expression({ $values: { filter: "ok" } })).toBe("ok");
+    expect(
+      (table.props.filter as any).expression({
+        $form: expressionForm({ filter: "ok" }),
+      }),
+    ).toBe("ok");
     const deleteOnClick = table.children.find((node) => node.key === "delete")?.props.onClick;
     const service = (context: unknown) => context;
     expect(isCompiledValue(deleteOnClick)).toBe(true);
@@ -99,17 +112,17 @@ describe("page compiler", () => {
       {
         filter: table.props.filter,
         nested: [table.children.find((node) => node.key === "delete")?.props.onClick],
-        raw: "{{ $values.filter }}",
+        raw: '{{ $form.getFieldValue("filter") }}',
       },
       {
-        $values: { filter: "active" },
+        $form: expressionForm({ filter: "active" }),
         $service: () => (context: unknown) => context,
       },
     );
 
     expect(resolved.filter).toBe("active");
     expect(typeof resolved.nested[0]).toBe("function");
-    expect(resolved.raw).toBe("{{ $values.filter }}");
+    expect(resolved.raw).toBe('{{ $form.getFieldValue("filter") }}');
   });
 
   it("does not confuse protocol objects with compiled values", () => {
@@ -191,7 +204,7 @@ describe("page compiler", () => {
         ...field,
         form: {
           ...field.form,
-          display: "{{ $values.enabled ? 'visible' : 'hidden' }}",
+          display: "{{ $form.getFieldValue('enabled') ? 'visible' : 'hidden' }}",
         },
       })),
     };
@@ -201,7 +214,7 @@ describe("page compiler", () => {
     expect(compiled.schema.properties?.["$group-0"]?.properties?.name).toMatchObject({
       display: "visible",
       "x-reaction": {
-        display: "{{ $values.enabled ? 'visible' : 'hidden' }}",
+        display: "{{ $form.getFieldValue('enabled') ? 'visible' : 'hidden' }}",
       },
     });
   });

@@ -1,6 +1,16 @@
 import { Card, Form, Input, InputNumber, Select } from "antd";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useRuntime } from "@alien-form/react";
+import type { ListResponse, ModelRecord } from "@app-types";
 import type { ModelAction, ModelDraft } from "../builder";
+
+/** Shape of records stored in the built-in model tab catalog. */
+interface ModelTabRecord extends ModelRecord {
+  code?: string;
+  name?: string;
+  aggregate?: boolean;
+  order?: number;
+}
 
 export function BasicInfo({
   draft,
@@ -11,7 +21,39 @@ export function BasicInfo({
   dispatch: (action: ModelAction) => void;
   lockName?: boolean;
 }) {
+  const runtime = useRuntime();
   const [form] = Form.useForm();
+  const [tabOptions, setTabOptions] = useState<Array<{ label: string; value: string }>>([]);
+
+  useEffect(() => {
+    let active = true;
+    const list = runtime.getService("records.list") as (request: {
+      model: string;
+      pagination: { current: number; pageSize: number };
+    }) => Promise<ListResponse>;
+    void list({ model: "_sys_model_tab", pagination: { current: 1, pageSize: 100 } })
+      .then((result) => {
+        if (!active) return;
+        const tabs = result.list as ModelTabRecord[];
+        setTabOptions(
+          tabs
+            .filter(
+              (tab) =>
+                tab.aggregate !== true &&
+                typeof tab.code === "string" &&
+                typeof tab.name === "string",
+            )
+            .sort((left, right) => (left.order ?? 0) - (right.order ?? 0))
+            .map((tab) => ({ label: tab.name!, value: tab.code! })),
+        );
+      })
+      .catch(() => {
+        if (active) setTabOptions([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [runtime]);
 
   useEffect(() => {
     form.setFieldsValue({
@@ -61,12 +103,7 @@ export function BasicInfo({
           <Input />
         </Form.Item>
         <Form.Item name="group" label="类型">
-          <Select
-            options={[
-              { label: "系统", value: "system" },
-              { label: "其他", value: "other" },
-            ]}
-          />
+          <Select options={tabOptions} />
         </Form.Item>
         <Form.Item name="singularLabel" label="单数标签">
           <Input />

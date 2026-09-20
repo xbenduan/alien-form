@@ -34,7 +34,7 @@ describe("public API surface (index.ts)", () => {
       schema: { type: "object", properties: { name: { type: "string" } } },
       initialValues: { name: "hi" },
     });
-    expect(form.get("name")).toBe("hi");
+    expect(form.getFieldValue("name")).toBe("hi");
     await expect(form.submit()).resolves.toEqual({ name: "hi" });
   });
 });

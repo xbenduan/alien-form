@@ -32,6 +32,7 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(Boolean(sourceModelCode));
   const [error, setError] = useState<string>();
+  const [readOnly, setReadOnly] = useState(false);
   const initialDraft = useMemo(() => createDefaultDraft(runtime), [runtime]);
   const [draft, dispatch] = useReducer(reduceModel, initialDraft);
 
@@ -40,6 +41,7 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
     const getModel = runtime.getService("model.get") as (modelCode: string) => Promise<ModelSchema>;
     void getModel(sourceModelCode)
       .then((model) => {
+        setReadOnly(Boolean(modelCode && model.system));
         const decoded = decodeModel(model);
         const next: ModelDraft = isCopy
           ? {
@@ -57,6 +59,7 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
   }, [isCopy, runtime, sourceModelCode]);
 
   const save = async () => {
+    if (readOnly) return;
     setError(undefined);
     setSaving(true);
     try {
@@ -118,6 +121,9 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
         <Steps current={step} items={STEP_TITLES.map((title) => ({ title }))} />
       </Card>
       {error && <Alert type="error" message={error} showIcon />}
+      {readOnly ? (
+        <Alert type="info" message="系统模型由系统维护，当前页面仅供查看。" showIcon />
+      ) : null}
       {loading ? (
         <Skeleton active />
       ) : step === 0 ? (
@@ -142,6 +148,7 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
               type="primary"
               icon={<SaveOutlined />}
               loading={saving}
+              disabled={readOnly}
               onClick={() => void save()}
             >
               {modelCode ? "保存模型" : isCopy ? "复制模型" : "创建模型"}

@@ -1,0 +1,306 @@
+import type { ModelRecord, ModelSchema } from "@alien-form/protocol";
+import { SYS_MODEL_TAB_MODEL } from "../domain/schemas/_sys_model_tab.ts";
+import { SYS_ROLE_MODEL, SYS_ROLE_SUPER_ADMIN_ID } from "../domain/schemas/_sys_role.ts";
+import { SYS_ADMIN_ID, SYS_USER_MODEL } from "../domain/schemas/_sys_user.ts";
+import { forbidden } from "../errors.ts";
+import type { ModelStore } from "../store/model-store.ts";
+import type { RecordStore } from "../store/record-store.ts";
+
+export type PermissionAction = "read" | "create" | "update" | "delete";
+export type PermissionScope = "all" | "own";
+
+interface PersistedPermission {
+  model: string;
+  actions: PermissionAction[];
+  fields: string[];
+  scope: PermissionScope;
+}
+
+export interface PermissionGrant {
+  actions: ReadonlySet<PermissionAction>;
+  fields: ReadonlySet<string>;
+  scope: PermissionScope;
+}
+
+export interface AccessProfile {
+  actorId: string;
+  roleId?: string;
+  permissions: Map<string, PermissionGrant>;
+  canCreateModel: boolean;
+  super: boolean;
+}
+
+const ACTIONS = new Set<PermissionAction>(["read", "create", "update", "delete"]);
+
+/** Reads a scalar relation value from persisted or expanded records. */
+function relationValue(value: unknown): string | undefined {
+  if (typeof value === "string" && value) return value;
+  if (value && typeof value === "object" && !Array.isArray(value) && "value" in value) {
+    const candidate = (value as { value?: unknown }).value;
+    return typeof candidate === "string" && candidate ? candidate : undefined;
+  }
+  return undefined;
+}
+
+/** Merges valid persisted permissions into the effective grant map. */
+function mergePermissions(output: Map<string, PermissionGrant>, value: unknown): void {
+  if (!Array.isArray(value)) return;
+  for (const item of value) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+    const candidate = item as Partial<PersistedPermission>;
+    if (
+      typeof candidate.model !== "string" ||
+      !Array.isArray(candidate.actions) ||
+      !Array.isArray(candidate.fields) ||
+      (candidate.scope !== "all" && candidate.scope !== "own")
+    ) {
+      continue;
+    }
+    const current = output.get(candidate.model);
+    const actions = new Set(current?.actions);
+    const fields = new Set(current?.fields);
+    for (const action of candidate.actions) {
+      if (ACTIONS.has(action)) actions.add(action);
+    }
+    for (const field of candidate.fields) {
+      if (typeof field === "string") fields.add(field);
+    }
+    output.set(candidate.model, {
+      actions,
+      fields,
+      scope: current?.scope === "all" || candidate.scope === "all" ? "all" : "own",
+    });
+  }
+}
+
+/** Resolves hierarchical model, action, field, and data-scope access. */
+export class AuthorizationService {
+  constructor(
+    private readonly models: ModelStore,
+    private readonly records: RecordStore,
+  ) {}
+
+  async profile(actorId: string): Promise<AccessProfile> {
+    if (actorId === SYS_ADMIN_ID) {
+      return {
+        actorId,
+        roleId: SYS_ROLE_SUPER_ADMIN_ID,
+        permissions: new Map(),
+        canCreateModel: true,
+        super: true,
+      };
+    }
+    const [userSchema, roleSchema] = await Promise.all([
+      this.models.get(SYS_USER_MODEL),
+      this.models.get(SYS_ROLE_MODEL),
+    ]);
+    const user = userSchema ? await this.records.get(userSchema, actorId) : undefined;
+    const roleId = relationValue(user?.roleId);
+    if (!roleSchema || !roleId) {
+      return {
+        actorId,
+        permissions: new Map(),
+        canCreateModel: false,
+        super: false,
+      };
+    }
+    if (roleId === SYS_ROLE_SUPER_ADMIN_ID) {
+      return { actorId, roleId, permissions: new Map(), canCreateModel: true, super: true };
+    }
+
+    const roles = await this.records.subtree(roleSchema, {
+      idField: "id",
+      parentField: "parentId",
+    });
+    const rolesById = new Map(roles.map((role) => [role.id, role]));
+    const children = new Map<string, ModelRecord[]>();
+    for (const role of roles) {
+      const parentId = relationValue(role.parentId);
+      if (!parentId) continue;
+      const siblings = children.get(parentId) ?? [];
+      siblings.push(role);
+      children.set(parentId, siblings);
+    }
+
+    const permissions = new Map<string, PermissionGrant>();
+    let canCreateModel = false;
+    const queue = [roleId];
+    const visited = new Set<string>();
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      if (visited.has(currentId)) continue;
+      visited.add(currentId);
+      const role = rolesById.get(currentId);
+      if (!role) continue;
+      canCreateModel ||= role.canCreateModel === true;
+      mergePermissions(permissions, role.permissions);
+      for (const child of children.get(currentId) ?? []) queue.push(child.id);
+    }
+    return { actorId, roleId, permissions, canCreateModel, super: false };
+  }
+
+  /** Returns the effective data scope for one record action. */
+  scope(
+    profile: AccessProfile,
+    model: Pick<ModelSchema, "name" | "creatorId">,
+    action: PermissionAction,
+  ): PermissionScope | undefined {
+    if (profile.super) return "all";
+    if (action === "read" && model.name === SYS_MODEL_TAB_MODEL) return "all";
+    if (profile.canCreateModel && model.creatorId === profile.actorId) return "all";
+    const grant = profile.permissions.get(model.name);
+    return grant?.actions.has(action) ? grant.scope : undefined;
+  }
+
+  /** Returns whether an actor may see a model at all. */
+  canRead(profile: AccessProfile, model: Pick<ModelSchema, "name" | "creatorId">): boolean {
+    return this.scope(profile, model, "read") !== undefined;
+  }
+
+  /** Throws when the actor cannot create a business model. */
+  assertCanCreateModel(profile: AccessProfile): void {
+    if (!profile.canCreateModel) throw forbidden("当前角色无权创建模型");
+  }
+
+  /** Throws when the actor cannot manage a model definition. */
+  assertCanManageModel(
+    profile: AccessProfile,
+    model: Pick<ModelSchema, "name" | "creatorId">,
+  ): void {
+    if (!profile.super && (!profile.canCreateModel || model.creatorId !== profile.actorId)) {
+      throw forbidden(`无权修改模型：${model.name}`);
+    }
+  }
+
+  /** Throws when the actor cannot perform an action on model records. */
+  assertCan(
+    profile: AccessProfile,
+    model: Pick<ModelSchema, "name" | "creatorId">,
+    action: PermissionAction,
+  ): PermissionScope {
+    const scope = this.scope(profile, model, action);
+    if (!scope) throw forbidden(`无权${action === "read" ? "查看" : "操作"}模型：${model.name}`);
+    return scope;
+  }
+
+  /** Throws when submitted fields exceed the action's field grant. */
+  assertFields(
+    profile: AccessProfile,
+    model: ModelSchema,
+    action: PermissionAction,
+    fields: Iterable<string>,
+  ): void {
+    if (profile.super || (profile.canCreateModel && model.creatorId === profile.actorId)) {
+      return;
+    }
+    const allowed = profile.permissions.get(model.name)?.fields ?? new Set<string>();
+    for (const field of fields) {
+      if (!["id", "createdAt", "updatedAt"].includes(field) && !allowed.has(field)) {
+        throw forbidden(`无权修改字段：${field}`);
+      }
+    }
+    this.assertCan(profile, model, action);
+  }
+
+  /** Removes fields not granted by the effective role permissions. */
+  project(profile: AccessProfile, model: ModelSchema, record: ModelRecord): ModelRecord {
+    if (
+      profile.super ||
+      model.name === SYS_MODEL_TAB_MODEL ||
+      (profile.canCreateModel && model.creatorId === profile.actorId)
+    ) {
+      return record;
+    }
+    const allowed = profile.permissions.get(model.name)?.fields;
+    if (!allowed) return { id: record.id };
+    const output: ModelRecord = { id: record.id };
+    for (const key of ["createdAt", "updatedAt", ...allowed]) {
+      if (key in record) output[key] = record[key];
+    }
+    return output;
+  }
+
+  /** Restricts a schema to granted fields and pages before rendering or query compilation. */
+  projectSchema(profile: AccessProfile, model: ModelSchema): ModelSchema {
+    if (
+      profile.super ||
+      model.name === SYS_MODEL_TAB_MODEL ||
+      (profile.canCreateModel && model.creatorId === profile.actorId)
+    ) {
+      return model;
+    }
+    const grant = profile.permissions.get(model.name);
+    const allowed = new Set(["id", "createdAt", "updatedAt", ...(grant?.fields ?? [])]);
+    const canCreate = grant?.actions.has("create") === true;
+    const canUpdate = grant?.actions.has("update") === true;
+    const canDelete = grant?.actions.has("delete") === true;
+    return {
+      ...model,
+      fields: model.fields.filter((field) => allowed.has(field.key)),
+      pages: model.pages
+        .filter((page) => {
+          if (page.router === "add") return canCreate;
+          if (page.router === "edit") return canUpdate;
+          return page.router === "list" || page.router === "detail";
+        })
+        .map((page) => ({
+          ...page,
+          groups: page.groups
+            ?.map((group) => ({
+              ...group,
+              keys: group.keys.filter((key) => allowed.has(key)),
+            }))
+            .filter((group) => group.keys.length > 0),
+          properties:
+            page.router !== "list"
+              ? page.properties
+              : Object.fromEntries(
+                  Object.entries(page.properties).map(([key, property]) => [
+                    key,
+                    key !== "table"
+                      ? property
+                      : {
+                          ...property,
+                          props: {
+                            ...property.props,
+                            rowActions: canDelete ? ["delete"] : [],
+                            actionBtns: {
+                              ...(canCreate
+                                ? {
+                                    add: (
+                                      property.props?.actionBtns as
+                                        | Record<string, unknown>
+                                        | undefined
+                                    )?.add,
+                                  }
+                                : {}),
+                              ...(canUpdate
+                                ? {
+                                    edit: (
+                                      property.props?.actionBtns as
+                                        | Record<string, unknown>
+                                        | undefined
+                                    )?.edit,
+                                  }
+                                : {}),
+                              detail: (
+                                property.props?.actionBtns as Record<string, unknown> | undefined
+                              )?.detail ?? {
+                                type: "link",
+                                children: "详情",
+                                openMode: "drawer",
+                              },
+                            },
+                          },
+                          properties: canDelete
+                            ? {
+                                delete: property.properties?.delete,
+                              }
+                            : {},
+                        },
+                  ]),
+                ),
+        })),
+    };
+  }
+}

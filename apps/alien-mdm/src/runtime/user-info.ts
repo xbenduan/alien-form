@@ -4,6 +4,7 @@ export type UserInfo = Record<string, unknown> & {
   id?: string;
   nickname?: string;
   super?: boolean;
+  canCreateModel?: boolean;
 };
 
 declare global {
@@ -38,6 +39,10 @@ export function userInfo(): UserInfo | undefined {
 
 export function isSuperAdmin(): boolean {
   return window._userInfo?.super === true;
+}
+
+export function canManageModels(): boolean {
+  return window._userInfo?.canCreateModel === true;
 }
 
 export function setUserInfo(user: UserInfo): void {

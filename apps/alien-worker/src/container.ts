@@ -5,6 +5,7 @@ import { RefExpander } from "./store/ref-expander.ts";
 import { ModelService } from "./services/model-service.ts";
 import { RecordService } from "./services/record-service.ts";
 import { AuthService } from "./services/auth/auth-service.ts";
+import { AuthorizationService } from "./services/authorization-service.ts";
 import { modelRegistry, type ModelRegistry } from "./register/index.ts";
 
 /**
@@ -18,6 +19,7 @@ export class Container {
   readonly recordStore: RecordStore;
   readonly sessionStore: SessionStore;
   readonly refExpander: RefExpander;
+  readonly authorizationService: AuthorizationService;
 
   readonly modelService: ModelService;
   readonly recordService: RecordService;
@@ -31,14 +33,26 @@ export class Container {
     this.recordStore = new RecordStore(db);
     this.sessionStore = new SessionStore(db);
     this.refExpander = new RefExpander(db, this.modelStore);
+    this.authorizationService = new AuthorizationService(this.modelStore, this.recordStore);
 
-    this.modelService = new ModelService(this.modelStore);
+    this.modelService = new ModelService(
+      this.modelStore,
+      this.recordStore,
+      this.authorizationService,
+      models,
+    );
     this.recordService = new RecordService(
       this.modelStore,
       this.recordStore,
       this.refExpander,
       models,
+      this.authorizationService,
     );
-    this.authService = new AuthService(this.modelStore, this.recordStore, this.sessionStore);
+    this.authService = new AuthService(
+      this.modelStore,
+      this.recordStore,
+      this.sessionStore,
+      this.authorizationService,
+    );
   }
 }

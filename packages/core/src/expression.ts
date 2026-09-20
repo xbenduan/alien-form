@@ -9,10 +9,7 @@ function unwrapExpression(raw: string): string {
   return trimmed.startsWith("{{") && trimmed.endsWith("}}") ? trimmed.slice(2, -2).trim() : trimmed;
 }
 
-/**
- * Compiles a schema expression once. Scope names remain explicit protocol
- * globals while JavaScript syntax, calls and arrow functions stay available.
- */
+/** Compiles a schema expression once and resolves scope properties lazily. */
 export function compileExpr<T = unknown>(raw: string): CompiledExpression<T> {
   const source = unwrapExpression(raw);
   const cached = expressionCache.get(source);
@@ -20,20 +17,9 @@ export function compileExpr<T = unknown>(raw: string): CompiledExpression<T> {
 
   const evaluate = new Function(
     "scope",
-    `const {
-      mode,
-      $values,
-      $self,
-      $form,
-      $value,
-      $row,
-      $path,
-      $service,
-      $utils,
-      $enums,
-      $query
-    } = scope;
-    return (${source});`,
+    `with (scope) {
+      return (${source});
+    }`,
   ) as CompiledExpression<T>;
 
   expressionCache.set(source, evaluate);

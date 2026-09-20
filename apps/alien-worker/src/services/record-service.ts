@@ -6,7 +6,7 @@ import type {
   OptionsRequest,
   SubtreeRequest,
 } from "@alien-form/protocol";
-import { AppError, badRequest, conflict, notFound } from "../errors.ts";
+import { AppError, badRequest, conflict, forbidden, notFound } from "../errors.ts";
 import { publicRecord } from "../domain/visibility.ts";
 import type {
   ModelLifecycleContext,
@@ -17,6 +17,7 @@ import type { ModelStore } from "../store/model-store.ts";
 import type { ListResult, OptionResult, RecordStore } from "../store/record-store.ts";
 import type { RefExpander } from "../store/ref-expander.ts";
 import { unwrapRefs } from "../store/ref-expander.ts";
+import type { AuthorizationService, AccessProfile } from "./authorization-service.ts";
 
 export type ListInput = ListRequest;
 export type OptionsInput = OptionsRequest;
@@ -84,6 +85,7 @@ export class RecordService {
     private readonly records: RecordStore,
     private readonly refs: RefExpander,
     private readonly registry: ModelRegistry,
+    private readonly authorization: AuthorizationService,
   ) {}
 
   private async requireModel(model: string): Promise<ModelSchema> {
@@ -106,7 +108,10 @@ export class RecordService {
   }
 
   async list(input: ListInput, authId: string): Promise<ListResult> {
-    const schema = await this.requireModel(input.model);
+    const source = await this.requireModel(input.model);
+    const profile = await this.authorization.profile(authId);
+    const scope = this.authorization.assertCan(profile, source, "read");
+    const schema = this.authorization.projectSchema(profile, source);
     const relation =
       input.parentId === undefined || input.parentId === null || input.parentId === ""
         ? undefined
@@ -121,38 +126,61 @@ export class RecordService {
       parentId: input.parentId,
       idField: relation?.relation?.valueField ?? "id",
       parentField: relation?.key,
+      ownerId: scope === "own" ? authId : undefined,
     });
     const expanded = await this.refs.expand(schema, result.list);
-    return { ...result, list: expanded.map((record) => publicRecord(input.model, record)) };
+    return {
+      ...result,
+      list: expanded.map((record) => this.visibleRecord(profile, schema, record)),
+    };
   }
 
-  async options(input: OptionsInput): Promise<OptionResult> {
-    const schema = await this.requireModel(input.model);
+  async options(input: OptionsInput, actorId: string): Promise<OptionResult> {
+    const source = await this.requireModel(input.model);
+    const profile = await this.authorization.profile(actorId);
+    const scope = this.authorization.assertCan(profile, source, "read");
+    const schema = this.authorization.projectSchema(profile, source);
+    const available = new Set(schema.fields.map((field) => field.key));
+    if (
+      !available.has(input.valueKey ?? "id") ||
+      !available.has(input.labelKey ?? input.valueKey ?? "id")
+    ) {
+      throw forbidden("无权读取关联选项字段");
+    }
     return this.records.options(schema, {
       valueKey: input.valueKey ?? "id",
       labelKey: input.labelKey ?? input.valueKey ?? "id",
       keyword: input.keyword,
       selectedValues: input.selectedValues,
       limit: input.limit,
+      ownerId: scope === "own" ? actorId : undefined,
     });
   }
 
-  async subtree(input: SubtreeInput): Promise<{ list: ModelRecord[] }> {
-    const schema = await this.requireModel(input.model);
+  async subtree(input: SubtreeInput, actorId: string): Promise<{ list: ModelRecord[] }> {
+    const source = await this.requireModel(input.model);
+    const profile = await this.authorization.profile(actorId);
+    const scope = this.authorization.assertCan(profile, source, "read");
+    const schema = this.authorization.projectSchema(profile, source);
     const list = await this.records.subtree(schema, {
       idField: input.idField ?? "id",
       parentField: input.parentField ?? "id",
       parentValue: input.parentValue,
+      ownerId: scope === "own" ? actorId : undefined,
     });
     const expanded = await this.refs.expand(schema, list);
-    return { list: expanded.map((record) => publicRecord(input.model, record)) };
+    return { list: expanded.map((record) => this.visibleRecord(profile, schema, record)) };
   }
 
-  async get(model: string, id: string): Promise<ModelRecord> {
-    const schema = await this.requireModel(model);
+  async get(model: string, id: string, actorId: string): Promise<ModelRecord> {
+    const source = await this.requireModel(model);
+    const profile = await this.authorization.profile(actorId);
+    const scope = this.authorization.assertCan(profile, source, "read");
+    const schema = this.authorization.projectSchema(profile, source);
     const record = await this.records.get(schema, id);
     if (!record) throw notFound(`记录不存在：${id}`);
-    return publicRecord(model, await this.refs.expandOne(schema, record));
+    await this.assertOwnership(scope, source, id, actorId);
+    return this.visibleRecord(profile, schema, await this.refs.expandOne(schema, record));
   }
 
   async create(
@@ -161,21 +189,26 @@ export class RecordService {
     actorId: string,
   ): Promise<ModelRecord> {
     const schema = await this.requireModel(model);
-    const clean = unwrapRefs(values) ?? {};
+    const profile = await this.authorization.profile(actorId);
+    this.authorization.assertCan(profile, schema, "create");
+    this.authorization.assertFields(profile, schema, "create", Object.keys(values));
+    const clean = await this.transform(model, unwrapRefs(values) ?? {}, actorId, "create");
     const id =
       typeof clean.id === "string" && clean.id ? clean.id : await this.records.allocateId();
     const candidate = normalizeRecord(schema, { ...clean, id });
     await this.validate(schema, candidate, actorId, "create");
     await this.runBefore(model, "beforeCreate", {
       model: schema,
+      models: this.models,
+      records: this.records,
       actorId,
       operation: "create",
       record: immutable(candidate),
     });
     try {
-      const record = await this.records.create(schema, candidate);
+      const record = await this.records.create(schema, candidate, actorId);
       await this.runAfter(model, "afterCreate", schema, actorId, record);
-      return publicRecord(model, await this.refs.expandOne(schema, record));
+      return this.visibleRecord(profile, schema, await this.refs.expandOne(schema, record));
     } catch (reason) {
       if (isUniqueViolation(reason)) throw conflict("唯一字段值已存在");
       throw reason;
@@ -189,23 +222,35 @@ export class RecordService {
     actorId: string,
   ): Promise<ModelRecord> {
     const schema = await this.requireModel(model);
+    const profile = await this.authorization.profile(actorId);
+    const scope = this.authorization.assertCan(profile, schema, "update");
+    this.authorization.assertFields(profile, schema, "update", Object.keys(values));
     const previous = await this.records.get(schema, id);
     if (!previous) throw notFound(`记录不存在：${id}`);
-    const clean = unwrapRefs(values) ?? {};
+    const ownerId = await this.assertOwnership(scope, schema, id, actorId);
+    const clean = await this.transform(
+      model,
+      unwrapRefs(values) ?? {},
+      actorId,
+      "update",
+      previous,
+    );
     const candidate = normalizeRecord(schema, { ...previous, ...clean, id });
     await this.validate(schema, candidate, actorId, "update", previous);
     await this.runBefore(model, "beforeUpdate", {
       model: schema,
+      models: this.models,
+      records: this.records,
       actorId,
       operation: "update",
       previous: immutable(previous),
       record: immutable(candidate),
     });
     try {
-      const record = await this.records.update(schema, id, candidate);
+      const record = await this.records.update(schema, id, candidate, ownerId);
       if (!record) throw notFound(`记录不存在：${id}`);
       await this.runAfter(model, "afterUpdate", schema, actorId, record, previous);
-      return publicRecord(model, await this.refs.expandOne(schema, record));
+      return this.visibleRecord(profile, schema, await this.refs.expandOne(schema, record));
     } catch (reason) {
       if (isUniqueViolation(reason)) throw conflict("唯一字段值已存在");
       throw reason;
@@ -214,10 +259,18 @@ export class RecordService {
 
   async remove(model: string, id: string, actorId: string): Promise<void> {
     const schema = await this.requireModel(model);
+    const scope = this.authorization.assertCan(
+      await this.authorization.profile(actorId),
+      schema,
+      "delete",
+    );
     const record = await this.records.get(schema, id);
     if (!record) return;
+    await this.assertOwnership(scope, schema, id, actorId);
     await this.runBefore(model, "beforeDelete", {
       model: schema,
+      models: this.models,
+      records: this.records,
       actorId,
       operation: "delete",
       record: immutable(record),
@@ -228,12 +281,22 @@ export class RecordService {
 
   async removeMany(model: string, ids: string[], actorId: string): Promise<void> {
     const schema = await this.requireModel(model);
+    const scope = this.authorization.assertCan(
+      await this.authorization.profile(actorId),
+      schema,
+      "delete",
+    );
     const records = (await Promise.all(ids.map((id) => this.records.get(schema, id)))).filter(
       (record): record is ModelRecord => record !== undefined,
+    );
+    await Promise.all(
+      records.map((record) => this.assertOwnership(scope, schema, record.id, actorId)),
     );
     for (const record of records) {
       await this.runBefore(model, "beforeDelete", {
         model: schema,
+        models: this.models,
+        records: this.records,
         actorId,
         operation: "delete",
         record: immutable(record),
@@ -259,6 +322,8 @@ export class RecordService {
     if (!registration) return;
     const context: ModelValidationContext = {
       model: schema,
+      models: this.models,
+      records: this.records,
       actorId,
       operation,
       record: immutable(record),
@@ -273,6 +338,47 @@ export class RecordService {
       if (reason instanceof AppError) throw reason;
       throw badRequest(reason instanceof Error ? reason.message : String(reason));
     }
+  }
+
+  private async transform(
+    model: string,
+    values: Record<string, unknown>,
+    actorId: string,
+    operation: "create" | "update",
+    previous?: ModelRecord,
+  ): Promise<Record<string, unknown>> {
+    try {
+      return (
+        (await this.registry.get(model)?.transform?.(values, {
+          actorId,
+          operation,
+          previous: previous ? immutable(previous) : undefined,
+        })) ?? values
+      );
+    } catch (reason) {
+      if (reason instanceof AppError) throw reason;
+      throw badRequest(reason instanceof Error ? reason.message : String(reason));
+    }
+  }
+
+  private visibleRecord(
+    profile: AccessProfile,
+    schema: ModelSchema,
+    record: ModelRecord,
+  ): ModelRecord {
+    return this.authorization.project(profile, schema, publicRecord(schema.name, record));
+  }
+
+  /** Enforces `scope: own` and returns the persisted owner for updates. */
+  private async assertOwnership(
+    scope: "all" | "own",
+    schema: ModelSchema,
+    id: string,
+    actorId: string,
+  ): Promise<string | undefined> {
+    const ownerId = await this.records.owner(schema, id);
+    if (scope === "own" && ownerId !== actorId) throw forbidden("无权访问其他用户创建的数据");
+    return ownerId;
   }
 
   private async runBefore(
@@ -299,6 +405,8 @@ export class RecordService {
     try {
       await this.registry.get(model)?.hooks?.[hook]?.({
         model: schema,
+        models: this.models,
+        records: this.records,
         actorId,
         operation: hook === "afterCreate" ? "create" : hook === "afterUpdate" ? "update" : "delete",
         record: immutable(record),

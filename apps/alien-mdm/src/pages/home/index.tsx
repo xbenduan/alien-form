@@ -13,19 +13,20 @@ import {
 import { Alert, Button, Empty, Input, Skeleton, Tabs, Tooltip, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
 import { UserMenu } from "../../components";
-import type { ModelSummary } from "@app-types";
+import type { ListResponse, ModelRecord, ModelSummary } from "@app-types";
 import { parseModelSummaries } from "@alien-form/protocol";
 import { transport } from "@runtime/transport";
-import { isSuperAdmin } from "@runtime/user-info";
+import { canManageModels } from "@runtime/user-info";
 import styles from "./index.module.css";
 
-type GroupFilter = "all" | "system" | "other";
+type GroupFilter = string;
 
-const GROUP_TABS = [
-  { key: "all", label: "全部" },
-  { key: "system", label: "系统" },
-  { key: "other", label: "其他" },
-];
+interface ModelTabRecord extends ModelRecord {
+  code?: string;
+  name?: string;
+  aggregate?: boolean;
+  order?: number;
+}
 
 const FAVORITE_MODELS_KEY = "alien-mdm:favorite-models:v1";
 const UPDATED_AT_FORMATTER = new Intl.DateTimeFormat("zh-CN", {
@@ -62,7 +63,7 @@ function formatUpdatedAt(value: string): string {
 }
 
 function ModelIcon({ model }: { model: ModelSummary }) {
-  const isSystem = model.group === "system";
+  const isSystem = model.system === true;
   return (
     <span className={`${styles.cardIcon} ${isSystem ? styles.systemIcon : styles.businessIcon}`}>
       {isSystem ? <SafetyCertificateOutlined /> : <DatabaseOutlined />}
@@ -121,14 +122,16 @@ function ModelCard({
   favorite,
   onToggleFavorite,
   onEdit,
+  groupLabel,
 }: {
   model: ModelSummary;
   onOpen: (model: ModelSummary) => void;
   favorite: boolean;
   onToggleFavorite: (model: ModelSummary) => void;
   onEdit?: (model: ModelSummary) => void;
+  groupLabel?: string;
 }) {
-  const isSystem = model.group === "system";
+  const isSystem = model.system === true;
   const description = model.description || model.subtitle || model.name;
 
   return (
@@ -142,7 +145,7 @@ function ModelCard({
           </Tooltip>
           <span className={styles.cardFooter}>
             <span className={`${styles.groupTag} ${isSystem ? styles.systemTag : ""}`}>
-              {isSystem ? "系统模型" : "业务模型"}
+              {groupLabel ?? model.group ?? "未分类"}
             </span>
             <span>{model.fieldCount} 个字段</span>
             <span className={styles.updatedAt}>
@@ -193,20 +196,57 @@ function FavoriteModelCard({
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const canManageModels = isSuperAdmin();
+  const canManage = canManageModels();
   const [models, setModels] = useState<ModelSummary[]>();
+  const [modelTabs, setModelTabs] = useState<ModelTabRecord[]>([]);
   const [error, setError] = useState<string>();
   const [keyword, setKeyword] = useState("");
   const [group, setGroup] = useState<GroupFilter>("all");
   const [favoriteModelNames, setFavoriteModelNames] = useState(readFavoriteModelNames);
 
   useEffect(() => {
-    void transport
-      .send<unknown>("/api/v1/models")
-      .then(parseModelSummaries)
-      .then(setModels)
+    void Promise.all([
+      transport.send<unknown>("/api/v1/models").then(parseModelSummaries),
+      transport.send<ListResponse>("/api/v1/records/list", {
+        method: "POST",
+        body: JSON.stringify({
+          model: "_sys_model_tab",
+          pagination: { current: 1, pageSize: 100 },
+        }),
+      }),
+    ])
+      .then(([nextModels, tabs]) => {
+        setModels(nextModels);
+        setModelTabs(
+          (tabs.list as ModelTabRecord[]).toSorted(
+            (left, right) => (left.order ?? 0) - (right.order ?? 0),
+          ),
+        );
+      })
       .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
   }, []);
+
+  const groupLabels = useMemo(
+    () =>
+      new Map(
+        modelTabs.flatMap((tab) =>
+          typeof tab.code === "string" && typeof tab.name === "string"
+            ? [[tab.code, tab.name] as const]
+            : [],
+        ),
+      ),
+    [modelTabs],
+  );
+
+  const groupTabs = useMemo(
+    () =>
+      modelTabs.flatMap((tab) =>
+        typeof tab.code === "string" && typeof tab.name === "string"
+          ? [{ key: tab.code, label: tab.name }]
+          : [],
+      ),
+    [modelTabs],
+  );
 
   const favoriteModels = useMemo(() => {
     if (!models?.length || !favoriteModelNames.length) return [];
@@ -222,13 +262,14 @@ export default function HomePage() {
   const filtered = useMemo(() => {
     const normalized = keyword.trim().toLowerCase();
     return (models ?? []).filter((model) => {
-      if (group !== "all" && (model.group ?? "other") !== group) return false;
+      const selected = modelTabs.find((tab) => tab.code === group);
+      if (selected?.aggregate !== true && (model.group ?? "other") !== group) return false;
       if (!normalized) return true;
       return [model.name, model.title, model.subtitle, model.description]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(normalized));
     });
-  }, [group, keyword, models]);
+  }, [group, keyword, modelTabs, models]);
 
   const openModel = useCallback(
     (model: ModelSummary) => {
@@ -272,7 +313,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className={styles.topbarActions}>
-            {canManageModels ? (
+            {canManage ? (
               <Tooltip title="新增模型">
                 <Button
                   type="text"
@@ -328,7 +369,7 @@ export default function HomePage() {
                       model={model}
                       onOpen={openModel}
                       onToggleFavorite={toggleFavorite}
-                      onEdit={canManageModels ? editModel : undefined}
+                      onEdit={canManage ? editModel : undefined}
                     />
                   ))}
                 </div>
@@ -341,7 +382,7 @@ export default function HomePage() {
                   className={styles.tabs}
                   size="large"
                   activeKey={group}
-                  items={GROUP_TABS}
+                  items={groupTabs}
                   onChange={(key) => setGroup(key as GroupFilter)}
                   tabBarExtraContent={
                     <div className={styles.search}>
@@ -372,7 +413,10 @@ export default function HomePage() {
                       favorite={favoriteModelNameSet.has(model.name)}
                       onOpen={openModel}
                       onToggleFavorite={toggleFavorite}
-                      onEdit={canManageModels ? editModel : undefined}
+                      onEdit={canManage ? editModel : undefined}
+                      groupLabel={
+                        model.group ? (groupLabels.get(model.group) ?? model.group) : "未分类"
+                      }
                     />
                   ))}
                 </div>

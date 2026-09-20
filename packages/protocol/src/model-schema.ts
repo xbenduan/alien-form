@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { fieldSchema, type FieldSchema } from "./field-schema.ts";
+import { fieldSchema } from "./field-schema.ts";
+import type FieldSchema from "./field-schema.ts";
 
 const identifierPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const modelNamePattern = /^[A-Za-z_][A-Za-z0-9_-]*$/;
@@ -107,6 +108,9 @@ export const modelSchemaSchema = z.object({
   name: z.string().regex(modelNamePattern, "模型 name 不合法"),
   title: z.string().min(1, "模型 title 必填"),
   version: z.number().int().nonnegative(),
+  system: z.boolean().optional(),
+  systemRevision: z.number().int().nonnegative().optional(),
+  creatorId: z.string().optional(),
   subtitle: z.string().optional(),
   description: z.string().optional(),
   group: z.string().optional(),
@@ -122,6 +126,9 @@ export interface ModelSchema {
   name: string;
   title: string;
   version: number;
+  system?: boolean;
+  systemRevision?: number;
+  creatorId?: string;
   subtitle?: string;
   description?: string;
   group?: string;
@@ -137,6 +144,8 @@ export interface ModelSummary {
   name: string;
   title: string;
   version: number;
+  system?: boolean;
+  creatorId?: string;
   subtitle?: string;
   description?: string;
   group?: string;
@@ -151,6 +160,8 @@ export const modelSummarySchema: z.ZodType<ModelSummary> = z.object({
   name: z.string().regex(modelNamePattern),
   title: z.string(),
   version: z.number().int().positive(),
+  system: z.boolean().optional(),
+  creatorId: z.string().optional(),
   subtitle: z.string().optional(),
   description: z.string().optional(),
   group: z.string().optional(),

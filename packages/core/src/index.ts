@@ -42,6 +42,7 @@ export type {
   RuntimeRuleContext,
   RuntimeAccessor,
   RuntimeNamespace,
+  NamePath,
   ExpressionScope,
 } from "./types";
 

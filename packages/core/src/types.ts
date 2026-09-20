@@ -10,6 +10,7 @@ export type {
   FieldError,
   RuntimeAccessor,
   RuntimeNamespace,
+  NamePath,
   SchemaReactionKey,
   ExpressionScope,
   RuntimeExecutable,

@@ -12,6 +12,7 @@ import { compileStorageManifest } from "../domain/storage-compiler.ts";
 import { quoteColumn, quoteTable } from "../domain/sql.ts";
 
 type SqlValue = string | number | null;
+const OWNER_KEY = "__ownerId";
 type RecordRow = Record<string, unknown> & {
   id: string;
   created_at: number;
@@ -29,6 +30,7 @@ export interface ListParams {
   parentId?: string | null;
   idField?: string;
   parentField?: string;
+  ownerId?: string;
 }
 
 export interface ListResult {
@@ -47,12 +49,14 @@ export interface OptionsParams {
   keyword?: string;
   selectedValues?: unknown[];
   limit?: number;
+  ownerId?: string;
 }
 
 export interface SubtreeParams {
   idField: string;
   parentField: string;
   parentValue?: string | null;
+  ownerId?: string;
 }
 
 function decodePhysical(field: ModelFieldSchema, value: unknown): unknown {
@@ -82,6 +86,7 @@ function encodePhysical(field: ModelFieldSchema, value: unknown): SqlValue {
 
 function rowToRecord(schema: ModelSchema, row: RecordRow): ModelRecord {
   const data = JSON.parse(row.data_content) as Record<string, unknown>;
+  delete data[OWNER_KEY];
   const record: ModelRecord = {
     ...data,
     id: String(row.id),
@@ -161,6 +166,11 @@ export class RecordStore {
     const fields = planByField(schema);
     const where: string[] = [];
     const args: SqlValue[] = [];
+
+    if (params.ownerId) {
+      where.push(`json_extract("data_content", '$.${OWNER_KEY}') = ?`);
+      args.push(params.ownerId);
+    }
 
     if (params.parentId !== undefined && params.parentId !== null && params.parentId !== "") {
       const idField = params.idField ?? "id";
@@ -242,17 +252,24 @@ export class RecordStore {
     const valueExpr = fieldExpression(valuePlan);
     const labelExpr = fieldExpression(labelPlan);
     const keyword = params.keyword?.trim();
-    const where = keyword ? `${labelExpr} LIKE ?` : "1 = 1";
-    const args: SqlValue[] = keyword ? [`%${keyword}%`] : [];
+    const where = [
+      keyword ? `${labelExpr} LIKE ?` : undefined,
+      params.ownerId ? `json_extract("data_content", '$.${OWNER_KEY}') = ?` : undefined,
+    ].filter((value): value is string => value !== undefined);
+    const args: SqlValue[] = [
+      ...(keyword ? [`%${keyword}%`] : []),
+      ...(params.ownerId ? [params.ownerId] : []),
+    ];
+    const whereSql = where.length > 0 ? where.join(" AND ") : "1 = 1";
     const table = quoteTable(schema.name);
     const limit = Math.min(Math.max(params.limit ?? 10, 1), 100);
 
     const [countResult, matchResult] = await this.db.batch([
-      this.db.prepare(`SELECT COUNT(*) AS c FROM ${table} WHERE ${where}`).bind(...args),
+      this.db.prepare(`SELECT COUNT(*) AS c FROM ${table} WHERE ${whereSql}`).bind(...args),
       this.db
         .prepare(
           `SELECT ${valueExpr} AS value, ${labelExpr} AS label FROM ${table}
-           WHERE ${where} ORDER BY ${labelExpr} COLLATE NOCASE ASC LIMIT ?`,
+           WHERE ${whereSql} ORDER BY ${labelExpr} COLLATE NOCASE ASC LIMIT ?`,
         )
         .bind(...args, limit),
     ]);
@@ -269,9 +286,10 @@ export class RecordStore {
       const result = await this.db
         .prepare(
           `SELECT ${valueExpr} AS value, ${labelExpr} AS label FROM ${table}
-           WHERE ${valueExpr} IN (${selected.map(() => "?").join(", ")})`,
+           WHERE ${valueExpr} IN (${selected.map(() => "?").join(", ")})
+           ${params.ownerId ? `AND json_extract("data_content", '$.${OWNER_KEY}') = ?` : ""}`,
         )
-        .bind(...selected)
+        .bind(...selected, ...(params.ownerId ? [params.ownerId] : []))
         .all<{ value: string | number; label: unknown }>();
       selectedRows = result.results;
     }
@@ -289,7 +307,15 @@ export class RecordStore {
   }
 
   async subtree(schema: ModelSchema, params: SubtreeParams): Promise<ModelRecord[]> {
-    const result = await this.db.prepare(`SELECT * FROM ${quoteTable(schema.name)}`).all();
+    const result = params.ownerId
+      ? await this.db
+          .prepare(
+            `SELECT * FROM ${quoteTable(schema.name)}
+             WHERE json_extract("data_content", '$.${OWNER_KEY}') = ?`,
+          )
+          .bind(params.ownerId)
+          .all()
+      : await this.db.prepare(`SELECT * FROM ${quoteTable(schema.name)}`).all();
     const records = result.results.map((row) => rowToRecord(schema, row as RecordRow));
     const childrenOf = new Map<string, ModelRecord[]>();
     for (const record of records) {
@@ -349,7 +375,11 @@ export class RecordStore {
     return (await this.attachManyRelations(schema, [rowToRecord(schema, row)]))[0];
   }
 
-  async create(schema: ModelSchema, values: Record<string, unknown>): Promise<ModelRecord> {
+  async create(
+    schema: ModelSchema,
+    values: Record<string, unknown>,
+    ownerId?: string,
+  ): Promise<ModelRecord> {
     const id = typeof values.id === "string" && values.id ? values.id : await this.allocateId();
     const timestamp = Date.now();
     const { columns, args, virtual, many } = splitRecord(schema, { ...values, id });
@@ -362,7 +392,13 @@ export class RecordStore {
              .join(", ")})
            VALUES (${Array.from({ length: columns.length + 4 }, () => "?").join(", ")})`,
         )
-        .bind(id, timestamp, timestamp, JSON.stringify(virtual), ...args),
+        .bind(
+          id,
+          timestamp,
+          timestamp,
+          JSON.stringify({ ...virtual, ...(ownerId ? { [OWNER_KEY]: ownerId } : {}) }),
+          ...args,
+        ),
       ...relationStatements(this.db, schema, id, many),
     ];
     await this.db.batch(statements);
@@ -375,6 +411,7 @@ export class RecordStore {
     schema: ModelSchema,
     id: string,
     values: Record<string, unknown>,
+    ownerId?: string,
   ): Promise<ModelRecord | undefined> {
     if (!(await this.get(schema, id))) return undefined;
     const { columns, args, virtual, many } = splitRecord(schema, { ...values, id });
@@ -386,7 +423,12 @@ export class RecordStore {
     const statements: D1PreparedStatement[] = [
       this.db
         .prepare(`UPDATE ${quoteTable(schema.name)} SET ${assignments.join(", ")} WHERE "id" = ?`)
-        .bind(Date.now(), JSON.stringify(virtual), ...args, id),
+        .bind(
+          Date.now(),
+          JSON.stringify({ ...virtual, ...(ownerId ? { [OWNER_KEY]: ownerId } : {}) }),
+          ...args,
+          id,
+        ),
       ...relationStatements(this.db, schema, id, many),
     ];
     await this.db.batch(statements);
@@ -419,6 +461,18 @@ export class RecordStore {
       );
     }
     await this.db.batch(statements);
+  }
+
+  /** Returns the internal creator identity used by `scope: own`. */
+  async owner(schema: ModelSchema, id: string): Promise<string | undefined> {
+    const row = await this.db
+      .prepare(
+        `SELECT json_extract("data_content", '$.${OWNER_KEY}') AS owner
+         FROM ${quoteTable(schema.name)} WHERE "id" = ?`,
+      )
+      .bind(id)
+      .first<{ owner?: string }>();
+    return typeof row?.owner === "string" ? row.owner : undefined;
   }
 }
 

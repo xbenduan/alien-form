@@ -11,19 +11,22 @@ function primitive(form: ReturnType<typeof createForm>, path: string): Primitive
 }
 
 describe("reactions", () => {
-  it("reacts to values through the closed $values namespace", () => {
+  it("reacts to values through explicit form field reads", () => {
     const schema: IFormSchema = {
       type: "object",
       properties: {
         a: { type: "number" },
-        b: { type: "number", "x-reaction": { value: "{{ $values.a * 2 }}" } },
+        b: {
+          type: "number",
+          "x-reaction": { value: '{{ $form.getFieldValue("a") * 2 }}' },
+        },
       },
     };
     const form = createForm({ schema, initialValues: { a: 3 } });
     form.mount();
-    expect(form.get("b")).toBe(6);
-    form.set("a", 10);
-    expect(form.get("b")).toBe(20);
+    expect(form.getFieldValue("b")).toBe(6);
+    form.setFieldValue("a", 10);
+    expect(form.getFieldValue("b")).toBe(20);
   });
 
   it("calls injected utilities", () => {
@@ -31,7 +34,10 @@ describe("reactions", () => {
       type: "object",
       properties: {
         a: { type: "number" },
-        b: { type: "number", "x-reaction": { value: "{{ $utils.double($values.a) }}" } },
+        b: {
+          type: "number",
+          "x-reaction": { value: '{{ $utils.double($form.getFieldValue("a")) }}' },
+        },
       },
     };
     const form = createForm({
@@ -40,7 +46,7 @@ describe("reactions", () => {
       scope: { $utils: namespace({ double: (value: number) => value * 2 }) },
     });
     form.mount();
-    expect(form.get("b")).toBe(8);
+    expect(form.getFieldValue("b")).toBe(8);
   });
 
   it("applies display, disabled and required targets", () => {
@@ -51,9 +57,9 @@ describe("reactions", () => {
         name: {
           type: "string",
           "x-reaction": {
-            display: "{{ $values.enabled ? 'visible' : 'none' }}",
-            disabled: "{{ !$values.enabled }}",
-            required: "{{ $values.enabled }}",
+            display: "{{ $form.getFieldValue('enabled') ? 'visible' : 'none' }}",
+            disabled: "{{ !$form.getFieldValue('enabled') }}",
+            required: "{{ $form.getFieldValue('enabled') }}",
           },
         },
       },
@@ -62,7 +68,7 @@ describe("reactions", () => {
     form.mount();
     expect(primitive(form, "name").display()).toBe("none");
     expect(primitive(form, "name").disabled()).toBe(true);
-    form.set("enabled", true);
+    form.setFieldValue("enabled", true);
     expect(primitive(form, "name").display()).toBe("visible");
     expect(primitive(form, "name").required()).toBe(true);
   });
@@ -124,7 +130,7 @@ describe("reactions", () => {
       scope: { $utils: namespace({ seed: () => [{ name: "first" }, { name: "second" }] }) },
     });
     form.mount();
-    expect(form.get("items[].name")).toEqual(["first", "second"]);
+    expect(form.getFieldValue("items[].name")).toEqual(["first", "second"]);
   });
 
   it("reports invalid targets and expression failures", () => {

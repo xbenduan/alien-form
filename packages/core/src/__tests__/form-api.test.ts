@@ -12,14 +12,77 @@ describe("form.effect — runner overload", () => {
     const seen: number[] = [];
     const form = createForm({ schema: flat(), initialValues: { a: 1 } });
     const dispose = form.effect((f) => {
-      seen.push(f.get("a"));
+      seen.push(f.getFieldValue("a"));
     });
     expect(seen).toContain(1);
-    form.set("a", 2);
+    form.setFieldValue("a", 2);
     expect(seen).toContain(2);
     dispose();
-    form.set("a", 3);
+    form.setFieldValue("a", 3);
     expect(seen).not.toContain(3);
+  });
+
+  it("tracks only fields read through getFieldValue", () => {
+    const seen: number[] = [];
+    const form = createForm({ schema: flat(), initialValues: { a: 1, b: "x" } });
+    form.effect((current) => {
+      seen.push(current.getFieldValue("a"));
+    });
+
+    form.setFieldValue("b", "y");
+    expect(seen).toEqual([1]);
+    form.setFieldValue("a", 2);
+    expect(seen).toEqual([1, 2]);
+  });
+
+  it("tracks fields created or replaced at a dynamic array path", () => {
+    const seen: unknown[] = [];
+    const form = createForm({
+      schema: {
+        type: "object",
+        properties: {
+          items: {
+            type: "array",
+            items: { type: "object", properties: { name: { type: "string" } } },
+          },
+        },
+      },
+    });
+    form.effect((current) => {
+      seen.push(current.getFieldValue(["items", 0, "name"]));
+    });
+
+    const items = form.field("items");
+    if (items?.kind !== "array") throw new Error("items must be an array field");
+    items.push({ name: "first" });
+    items.setRows([{ name: "second" }]);
+    form.setFieldValue(["items", 0, "name"], "third");
+
+    expect(seen).toEqual([undefined, "first", "second", "third"]);
+  });
+
+  it("does not invalidate static field reads when an unrelated array moves", () => {
+    const form = createForm({
+      schema: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          items: {
+            type: "array",
+            items: { type: "object", properties: { name: { type: "string" } } },
+          },
+        },
+      },
+      initialValues: { title: "stable", items: [{ name: "a" }, { name: "b" }] },
+    });
+    const seen: string[] = [];
+    form.effect((current) => seen.push(current.getFieldValue("title")));
+
+    const items = form.field("items");
+    if (items?.kind !== "array") throw new Error("items must be an array field");
+    items.move(0, 1);
+
+    expect(seen).toEqual(["stable"]);
   });
 
   it("registers a runner-returned cleanup that the framework owns", () => {
@@ -29,23 +92,40 @@ describe("form.effect — runner overload", () => {
     form.destroy();
     expect(cleanup).toHaveBeenCalled();
   });
+
+  it("continues destroying form effects when one cleanup throws", () => {
+    const errors: string[] = [];
+    const cleanup = vi.fn();
+    const form = createForm({
+      schema: flat(),
+      onError: (error) => errors.push(error.message),
+    });
+    form.effect(() => () => {
+      throw new Error("form cleanup failed");
+    });
+    form.effect(() => cleanup);
+
+    expect(() => form.destroy()).not.toThrow();
+    expect(cleanup).toHaveBeenCalledOnce();
+    expect(errors).toContain("form cleanup failed");
+  });
 });
 
 describe("form.effect — selector + listener overload", () => {
   it("fires the listener only when the selected value changes", () => {
     const listener = vi.fn();
     const form = createForm({ schema: flat(), initialValues: { a: 1 } });
-    form.effect((f) => f.get("a"), listener);
+    form.effect((f) => f.getFieldValue("a"), listener);
     // not called on initialization (no immediate)
     expect(listener).not.toHaveBeenCalled();
-    form.set("a", 2);
+    form.setFieldValue("a", 2);
     expect(listener).toHaveBeenCalledWith(2, 1);
   });
 
   it("respects the immediate option by firing once at init", () => {
     const listener = vi.fn();
     const form = createForm({ schema: flat(), initialValues: { a: 5 } });
-    form.effect((f) => f.get("a"), listener, { immediate: true });
+    form.effect((f) => f.getFieldValue("a"), listener, { immediate: true });
     expect(listener).toHaveBeenCalledWith(5, undefined);
   });
 
@@ -53,43 +133,85 @@ describe("form.effect — selector + listener overload", () => {
     const listener = vi.fn();
     const form = createForm({ schema: flat(), initialValues: { a: 1 } });
     // custom equals: treat all numbers as equal -> listener never fires on change
-    form.effect((f) => f.get("a"), listener, { equals: () => true });
-    form.set("a", 999);
+    form.effect((f) => f.getFieldValue("a"), listener, { equals: () => true });
+    form.setFieldValue("a", 999);
     expect(listener).not.toHaveBeenCalled();
   });
 
   it("disposes the selector effect and stops firing", () => {
     const listener = vi.fn();
     const form = createForm({ schema: flat(), initialValues: { a: 1 } });
-    const dispose = form.effect((f) => f.get("a"), listener);
+    const dispose = form.effect((f) => f.getFieldValue("a"), listener);
     dispose();
-    form.set("a", 2);
+    form.setFieldValue("a", 2);
     expect(listener).not.toHaveBeenCalled();
   });
 });
 
-describe("form.setValues", () => {
+describe("form runtime lifecycle", () => {
+  it("installs the root runtime once per mount", () => {
+    const start = vi.fn();
+    const cleanup = vi.fn();
+    const form = createForm({
+      schema: {
+        type: "object",
+        "x-effect": () => {
+          start();
+          return cleanup;
+        },
+      },
+    });
+
+    form.mount();
+    form.mount();
+    expect(start).toHaveBeenCalledOnce();
+    form.unmount();
+    expect(cleanup).toHaveBeenCalledOnce();
+    form.mount();
+    expect(start).toHaveBeenCalledTimes(2);
+    form.destroy();
+    expect(cleanup).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps separate instances when schema objects are reused across fields", () => {
+    const start = vi.fn();
+    const shared = { type: "string", "x-effect": start } as const;
+    const form = createForm({
+      schema: {
+        type: "object",
+        properties: { first: shared, second: shared },
+      },
+    });
+
+    form.mount();
+
+    expect(start).toHaveBeenCalledTimes(2);
+    expect(form.field("first")).not.toBe(form.field("second"));
+  });
+});
+
+describe("form.setFieldsValue", () => {
   it("bulk-sets primitive values by path", () => {
     const form = createForm({ schema: flat(), initialValues: { a: 1, b: "x" } });
-    form.setValues({ a: 10, b: "y" });
-    expect(form.get("a")).toBe(10);
-    expect(form.get("b")).toBe("y");
+    form.setFieldsValue({ a: 10, b: "y" });
+    expect(form.getFieldValue("a")).toBe(10);
+    expect(form.getFieldValue("b")).toBe("y");
   });
 
   it("ignores undefined entries and leaves existing values intact", () => {
     const form = createForm({ schema: flat(), initialValues: { a: 1, b: "keep" } });
-    form.setValues({ a: 2 });
-    expect(form.get("a")).toBe(2);
-    expect(form.get("b")).toBe("keep");
+    form.setFieldsValue({ a: 2 });
+    expect(form.getFieldValue("a")).toBe(2);
+    expect(form.getFieldValue("b")).toBe("keep");
   });
 
   it("is a no-op for a non-object argument", () => {
     const form = createForm({ schema: flat(), initialValues: { a: 1 } });
-    expect(() => form.setValues(null as any)).not.toThrow();
-    expect(form.get("a")).toBe(1);
+    expect(() => form.setFieldsValue(null as any)).not.toThrow();
+    expect(form.getFieldValue("a")).toBe(1);
   });
 
-  it("sets array rows through setValues", async () => {
+  it("sets array rows through setFieldsValue", async () => {
     const schema: IFormSchema = {
       type: "object",
       properties: {
@@ -97,22 +219,62 @@ describe("form.setValues", () => {
       },
     };
     const form = createForm({ schema, initialValues: { list: [{ v: "a" }] } });
-    form.setValues({ list: [{ v: "x" }, { v: "y" }] });
-    expect(form.get("list[].v")).toEqual(["x", "y"]);
+    form.setFieldsValue({ list: [{ v: "x" }, { v: "y" }] });
+    expect(form.getFieldValue("list[].v")).toEqual(["x", "y"]);
+    expect(form.getFieldValue(["list", 1, "v"])).toBe("y");
+  });
+
+  it("updates nested object leaves without replacing their field topology", () => {
+    const form = createForm({
+      schema: {
+        type: "object",
+        properties: {
+          profile: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              city: { type: "string" },
+            },
+          },
+        },
+      },
+      initialValues: { profile: { name: "A", city: "Shanghai" } },
+    });
+    const profile = form.field("profile");
+    const name = form.field("profile.name");
+
+    form.setFieldsValue({ profile: { name: "B" } });
+
+    expect(form.field("profile")).toBe(profile);
+    expect(form.field("profile.name")).toBe(name);
+    expect(form.data).toEqual({ profile: { name: "B", city: "Shanghai" } });
+  });
+
+  it("releases the global batch when a bulk write throws", () => {
+    const observed: string[] = [];
+    const form = createForm({ schema: flat(), initialValues: { a: 1 } });
+    const other = createForm({ schema: flat(), initialValues: { b: "before" } });
+    other.effect((current) => {
+      observed.push(current.getFieldValue("b"));
+    });
+
+    expect(() => form.setFieldsValue({ a: { invalid: true } })).toThrow(TypeError);
+    other.setFieldValue("b", "after");
+    expect(observed).toEqual(["before", "after"]);
   });
 });
 
-describe("form.reset", () => {
+describe("form.resetFields", () => {
   it("restores primitive fields to their schema defaults", () => {
     const schema: IFormSchema = {
       type: "object",
       properties: { a: { type: "number", default: 100 }, b: { type: "string", default: "def" } },
     };
     const form = createForm({ schema, initialValues: { a: 1, b: "x" } });
-    form.set("a", 2);
-    form.reset();
-    expect(form.get("a")).toBe(100);
-    expect(form.get("b")).toBe("def");
+    form.setFieldValue("a", 2);
+    form.resetFields();
+    expect(form.getFieldValue("a")).toBe(100);
+    expect(form.getFieldValue("b")).toBe("def");
   });
 
   it("recursively resets fields nested inside an object field", () => {
@@ -126,40 +288,75 @@ describe("form.reset", () => {
       },
     };
     const form = createForm({ schema, initialValues: { group: { inner: "changed" } } });
-    form.set("group.inner", "edited");
-    form.reset();
-    expect(form.get("group.inner")).toBe("def");
+    form.setFieldValue("group.inner", "edited");
+    form.resetFields();
+    expect(form.getFieldValue("group.inner")).toBe("def");
   });
 });
 
-describe("form.project", () => {
-  it("projects the whole form when no selector is given", () => {
+describe("form value access", () => {
+  it("reads fields through string and array paths", () => {
     const form = createForm({ schema: flat(), initialValues: { a: 1, b: "x" } });
-    expect(form.project()).toEqual({ a: 1, b: "x" });
+    expect(form.getFieldValue("a")).toBe(1);
+    expect(form.getFieldValue(["b"])).toBe("x");
   });
 
-  it("projects a single field by selector", () => {
-    const form = createForm({ schema: flat(), initialValues: { a: 7 } });
-    expect(form.project("a")).toBe(7);
-  });
-
-  it("returns undefined for an unknown selector", () => {
+  it("returns undefined for an unknown path", () => {
     const form = createForm({ schema: flat() });
-    expect(form.project("nope")).toBeUndefined();
+    expect(form.getFieldValue("nope")).toBeUndefined();
   });
 
-  it("keeps an explicit object field as {} even when all children are empty", () => {
+  it("exposes an immutable non-reactive raw data snapshot", () => {
+    const runs: number[] = [];
+    const form = createForm({ schema: flat(), initialValues: { a: 1, b: "x" } });
+    const first = form.data;
+    form.effect((current) => {
+      runs.push(current.data.a);
+    });
+
+    expect(first).toEqual({ a: 1, b: "x" });
+    expect(Object.isFrozen(first)).toBe(true);
+    expect(() => {
+      (first as Record<string, unknown>).a = 2;
+    }).toThrow();
+
+    form.setFieldValue("a", 2);
+    expect(first.a).toBe(1);
+    expect(form.data).toEqual({ a: 2, b: "x" });
+    expect(form.data).not.toBe(first);
+    expect(runs).toEqual([1]);
+  });
+
+  it("keeps raw data separate from output projection", () => {
     const schema: IFormSchema = {
       type: "object",
       properties: {
-        group: {
-          type: "object",
-          properties: { inner: { type: "string" } },
+        amount: {
+          type: "string",
+          "x-format": { output: ({ $value }) => Number($value) },
         },
+        internal: { type: "string", display: "none" },
+      },
+    };
+    const form = createForm({
+      schema,
+      initialValues: { amount: "12.5", internal: "keep" },
+    });
+
+    expect(form.data).toEqual({ amount: "12.5", internal: "keep" });
+    expect(form.getOutput()).toEqual({ amount: 12.5 });
+  });
+
+  it("keeps an explicit empty object in data and output", () => {
+    const schema: IFormSchema = {
+      type: "object",
+      properties: {
+        group: { type: "object", properties: { inner: { type: "string" } } },
       },
     };
     const form = createForm({ schema });
-    expect(form.project()).toEqual({ group: {} });
+    expect(form.data).toEqual({ group: {} });
+    expect(form.getOutput()).toEqual({ group: {} });
   });
 });
 
@@ -172,7 +369,7 @@ describe("form.setInitialValues + reset interaction", () => {
     const form = createForm({ schema, initialValues: { a: 1 } });
     form.setInitialValues({ a: 50 });
     // current value unchanged until a rebuild/reset that reads initial values
-    expect(form.get("a")).toBe(1);
+    expect(form.getFieldValue("a")).toBe(1);
   });
 });
 

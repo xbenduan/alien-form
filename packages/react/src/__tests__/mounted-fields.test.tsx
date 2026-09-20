@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import type { ReactNode } from "react";
 import { createForm } from "@alien-form/core";
 import { compileForm, Runtime } from "@alien-form/engine";
-import { FormRenderer, RuntimeProvider } from "../index";
+import { FormProvider, FormRenderer, RuntimeProvider, useFieldValue } from "../index";
 
 const Input = (props: { value?: string; onChange?: (v: string) => void }) => (
   <input value={props.value ?? ""} onChange={(e) => props.onChange?.(e.target.value)} />
@@ -40,6 +40,34 @@ function renderForm(form: ReturnType<typeof createForm>, runtime: Runtime, nodes
 }
 
 describe("mounted field registration (React wiring)", () => {
+  it("updates array-path hooks when a row field is created", () => {
+    const form = createForm({
+      schema: {
+        type: "object",
+        properties: {
+          items: {
+            type: "array",
+            items: { type: "object", properties: { name: { type: "string" } } },
+          },
+        },
+      },
+    });
+    const ValueProbe = () => (
+      <span data-testid="array-value">{String(useFieldValue(["items", 0, "name"]) ?? "")}</span>
+    );
+    const rendered = render(
+      <FormProvider form={form}>
+        <ValueProbe />
+      </FormProvider>,
+    );
+
+    expect(rendered.getByTestId("array-value").textContent).toBe("");
+    const items = form.field("items");
+    if (items?.kind !== "array") throw new Error("items must be an array field");
+    act(() => items.push({ name: "first" }));
+    expect(rendered.getByTestId("array-value").textContent).toBe("first");
+  });
+
   it("registers rendered fields so getFieldsValueFast returns their values", () => {
     const compiled = compileForm(fieldSchema, { "form-schema": { type: "object" } });
     const form = createForm({

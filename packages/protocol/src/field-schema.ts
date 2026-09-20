@@ -43,8 +43,11 @@ export const fieldSchema: z.ZodType = z.lazy(() =>
     })
     .passthrough(),
 );
-
-export interface FieldSchema extends Omit<IFieldSchema, "properties" | "items" | "display"> {
+/** Model field schema accepted by the protocol package. */
+export default interface FieldSchema extends Omit<
+  IFieldSchema,
+  "properties" | "items" | "display"
+> {
   display?: IFieldSchema["display"] | `{{${string}}}`;
   properties?: Record<string, FieldSchema>;
   items?: FieldSchema | FieldSchema[];

@@ -40,10 +40,8 @@ describe("expression scope", () => {
       "$service",
       "$utils",
       "$value",
-      "$values",
       "mode",
     ]);
-    expect(received?.$values).toEqual({ name: "Alien" });
     expect(received?.$path).toBe("name");
     expect(received?.mode).toBe("detail");
     expect((received as unknown as Record<string, unknown>).ignored).toBeUndefined();
@@ -83,12 +81,12 @@ describe("expression scope", () => {
         source: { type: "string" },
         target: {
           type: "string",
-          "x-reaction": { value: ({ $form }) => $form.get("source") },
+          "x-reaction": { value: ({ $form }) => $form.getFieldValue("source") },
         },
       },
     };
     const form = createForm({ schema, initialValues: { source: "value" } });
     form.mount();
-    expect(form.get("target")).toBe("value");
+    expect(form.getFieldValue("target")).toBe("value");
   });
 });

@@ -41,7 +41,7 @@ function buildListPage(modelCode: string, title: string): PageSchema {
           modelCode,
           schema: { $ref: "form-schema" },
           columns: "{{ $utils.schemaToColumns }}",
-          filter: "{{ $values.filter }}",
+          filter: '{{ $form.getFieldValue("filter") }}',
           loadData: '{{ $service("records.list") }}',
           rowActions: ["deactivate", "delete"],
           actionBtns: {
@@ -137,8 +137,8 @@ function buildTreeListPage(modelCode: string, title: string): PageSchema {
           modelCode,
           schema: { $ref: "form-schema" },
           columns: "{{ $utils.schemaToColumns }}",
-          filter: "{{ $values.filter }}",
-          parentId: "{{ $values.left }}",
+          filter: '{{ $form.getFieldValue("filter") }}',
+          parentId: '{{ $form.getFieldValue("left") }}',
           loadData: '{{ $service("records.list") }}',
           rowActions: ["delete"],
           actionBtns: {

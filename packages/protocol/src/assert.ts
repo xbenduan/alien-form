@@ -4,7 +4,7 @@ import {
   type ModelFieldSchema,
   type ModelSchema,
 } from "./model-schema.ts";
-import type { FieldSchema } from "./field-schema.ts";
+import type FieldSchema from "./field-schema.ts";
 
 const SYSTEM_FIELDS = new Set(["id", "createdAt", "updatedAt"]);
 

@@ -2,7 +2,7 @@ import { Spin } from "antd";
 import { Suspense, type PropsWithChildren, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { useAuth } from "../providers";
-import { isSuperAdmin } from "@runtime/user-info";
+import { canManageModels } from "@runtime/user-info";
 import { DynamicPage } from "./dynamic-routes";
 import { publicRoutes, staticRoutes } from "./static-routes";
 import styles from "./index.module.css";
@@ -17,8 +17,8 @@ function Protected({ children }: { children: ReactNode }) {
   );
 }
 
-function SuperAdmin({ children }: { children: ReactNode }) {
-  return isSuperAdmin() ? children : <Navigate to="/" replace />;
+function ModelManager({ children }: { children: ReactNode }) {
+  return canManageModels() ? children : <Navigate to="/" replace />;
 }
 
 function AppShell({ noPadding = false, children }: PropsWithChildren<{ noPadding?: boolean }>) {
@@ -74,9 +74,9 @@ export function AppRouter() {
                   path={path}
                   element={
                     superAdminOnly ? (
-                      <SuperAdmin>
+                      <ModelManager>
                         <Component />
-                      </SuperAdmin>
+                      </ModelManager>
                     ) : (
                       <Component />
                     )

@@ -15,6 +15,7 @@ export function Select(
     | "clear"
     | "first";
   const options = (Array.isArray(dataSource) ? dataSource : EMPTY_OPTIONS) as DataSourceItem[];
+  const multiple = controlProps.mode === "multiple";
   useEffect(() => {
     if (
       mode === "detail" ||
@@ -25,14 +26,19 @@ export function Select(
     ) {
       return;
     }
-    if (options.some((option) => Object.is(option.value, value))) return;
-    onChange?.(onOptionsChange === "first" ? options[0]?.value : undefined);
-  }, [isFilter, loading, mode, onChange, onOptionsChange, options, value]);
+    const values = multiple && Array.isArray(value) ? value : [value];
+    if (values.every((item) => options.some((option) => Object.is(option.value, item)))) return;
+    onChange?.(onOptionsChange === "first" ? options[0]?.value : multiple ? [] : undefined);
+  }, [isFilter, loading, mode, multiple, onChange, onOptionsChange, options, value]);
   if (mode === "detail") {
-    const option = (options as Array<{ label?: ReactNode; value: unknown }>).find((item) =>
-      Object.is(item.value, value),
+    const values = Array.isArray(value) ? value : [value];
+    const labels = values.map(
+      (entry) =>
+        (options as Array<{ label?: ReactNode; value: unknown }>).find((item) =>
+          Object.is(item.value, entry),
+        )?.label ?? entry,
     );
-    return <DetailValue value={option?.label ?? value} />;
+    return <DetailValue value={labels.join(", ")} />;
   }
 
   return (

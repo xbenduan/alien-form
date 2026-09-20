@@ -61,13 +61,16 @@ describe("useCreateForm", () => {
     const form = result.current;
     // 经历 mount -> unmount -> remount 后字段树仍在，未被销毁
     expect(form.field("name")).toBeDefined();
-    form.set("name", "alien");
-    expect(form.values()).toMatchObject({ name: "alien" });
+    form.setFieldValue("name", "alien");
+    expect(form.data).toMatchObject({ name: "alien" });
   });
 
-  it("组件卸载不抛错", () => {
-    const { unmount } = renderHook(() => useCreateForm(configFor(schemaA), [1]));
+  it("组件最终卸载时销毁实例", async () => {
+    const { result, unmount } = renderHook(() => useCreateForm(configFor(schemaA), [1]));
+    const destroySpy = vi.spyOn(result.current, "destroy");
     expect(() => unmount()).not.toThrow();
+    await Promise.resolve();
+    expect(destroySpy).toHaveBeenCalledOnce();
   });
 
   it("透传 config.definitions 到 core createForm，并仅通过显式 $ref 生效", async () => {

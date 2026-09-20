@@ -1,40 +1,98 @@
 import { parseModelSchema, type ModelSchema, type ModelSummary } from "@alien-form/protocol";
 import { compileMigrationPlan } from "../domain/storage-compiler.ts";
-import { badRequest, conflict, notFound } from "../errors.ts";
+import { SYS_MODEL_TAB_MODEL } from "../domain/schemas/_sys_model_tab.ts";
+import { badRequest, conflict, forbidden, notFound } from "../errors.ts";
+import type { ModelRegistry } from "../register/index.ts";
 import { ModelVersionConflictError, type ModelStore } from "../store/model-store.ts";
+import type { RecordStore } from "../store/record-store.ts";
+import type { AuthorizationService } from "./authorization-service.ts";
 
 export class ModelService {
-  constructor(private readonly models: ModelStore) {}
+  constructor(
+    private readonly models: ModelStore,
+    private readonly records: RecordStore,
+    private readonly authorization: AuthorizationService,
+    private readonly registry: ModelRegistry,
+  ) {}
 
-  list(): Promise<ModelSummary[]> {
-    return this.models.list();
+  async list(actorId: string): Promise<ModelSummary[]> {
+    const [models, profile] = await Promise.all([
+      this.models.list(),
+      this.authorization.profile(actorId),
+    ]);
+    return models
+      .map((model) => ({ ...model, system: this.isSystem(model.name) }))
+      .filter((model) => this.authorization.canRead(profile, model));
   }
 
-  async get(name: string): Promise<ModelSchema> {
+  async get(name: string, actorId: string): Promise<ModelSchema> {
     const model = await this.models.get(name);
     if (!model) throw notFound(`模型不存在：${name}`);
-    return model;
+    const profile = await this.authorization.profile(actorId);
+    this.authorization.assertCan(profile, model, "read");
+    return {
+      ...this.authorization.projectSchema(profile, model),
+      system: this.isSystem(name),
+    };
   }
 
-  async create(value: unknown): Promise<ModelSchema> {
-    const incoming = this.parse(value);
+  async create(value: unknown, actorId: string): Promise<ModelSchema> {
+    this.authorization.assertCanCreateModel(await this.authorization.profile(actorId));
+    const incoming = this.parse({
+      ...(value as object),
+      system: false,
+      systemRevision: undefined,
+      creatorId: actorId,
+    });
+    await this.assertGroup(incoming.group);
     if (incoming.version !== 0) throw conflict("新模型 version 必须为 0");
     if (await this.models.has(incoming.name)) throw conflict(`模型已存在：${incoming.name}`);
     return this.publish(undefined, incoming);
   }
 
-  async update(name: string, value: unknown): Promise<ModelSchema> {
-    const incoming = this.parse(value);
-    if (incoming.name !== name) throw conflict("模型 name 与请求路径不一致");
+  async update(name: string, value: unknown, actorId: string): Promise<ModelSchema> {
+    if (this.isSystem(name)) throw forbidden("系统模型禁止修改");
+    const submitted = this.parse(value);
     const current = await this.models.get(name);
     if (!current) throw notFound(`模型不存在：${name}`);
+    this.authorization.assertCanManageModel(await this.authorization.profile(actorId), current);
+    const incoming = this.parse({
+      ...submitted,
+      system: false,
+      systemRevision: undefined,
+      creatorId: current.creatorId,
+    });
+    if (incoming.name !== name) throw conflict("模型 name 与请求路径不一致");
+    await this.assertGroup(incoming.group);
     if (incoming.version !== current.version) {
       throw conflict(`模型版本冲突：当前 ${current.version}，提交 ${incoming.version}`);
     }
     return this.publish(current, incoming);
   }
 
-  async publish(current: ModelSchema | undefined, incoming: ModelSchema): Promise<ModelSchema> {
+  async remove(name: string, actorId: string): Promise<void> {
+    if (this.isSystem(name)) throw forbidden("系统模型禁止删除");
+    const current = await this.models.get(name);
+    if (!current) return;
+    this.authorization.assertCanManageModel(await this.authorization.profile(actorId), current);
+    await this.models.delete(current);
+  }
+
+  /** Installs or upgrades a code-owned system schema during bootstrap. */
+  async ensureSystemModel(value: ModelSchema): Promise<ModelSchema> {
+    const desired = this.parse({ ...value, system: true, creatorId: undefined });
+    const current = await this.models.get(desired.name);
+    if (!current) return this.publish(undefined, { ...desired, version: 0 });
+    if ((current.systemRevision ?? 0) >= (desired.systemRevision ?? 0)) {
+      return current;
+    }
+    return this.publish(current, this.parse({ ...desired, version: current.version }));
+  }
+
+  private async publish(
+    current: ModelSchema | undefined,
+    incoming: ModelSchema,
+  ): Promise<ModelSchema> {
     const schema = this.parse({
       ...incoming,
       version: (current?.version ?? 0) + 1,
@@ -62,5 +120,17 @@ export class ModelService {
     } catch (reason) {
       throw badRequest(reason instanceof Error ? reason.message : String(reason));
     }
+  }
+
+  private isSystem(name: string): boolean {
+    return this.registry.get(name)?.schema !== undefined;
+  }
+
+  private async assertGroup(group: string | undefined): Promise<void> {
+    if (!group) throw badRequest("模型必须选择一个 Tab");
+    const tabSchema = await this.models.get(SYS_MODEL_TAB_MODEL);
+    if (!tabSchema) throw badRequest("模型 Tab 尚未初始化");
+    const tab = await this.records.findByField(tabSchema, "code", group);
+    if (!tab || tab.aggregate === true) throw badRequest(`模型 Tab 不存在或不可用于归类：${group}`);
   }
 }

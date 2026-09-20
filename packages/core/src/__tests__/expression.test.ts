@@ -5,11 +5,17 @@ import type { ExpressionScope } from "../types";
 const emptyAccessor = () => undefined;
 const emptyNamespace = {};
 
+function form(values: Record<string, unknown> = {}): ExpressionScope["$form"] {
+  return {
+    getFieldValue: (path: string | readonly (string | number)[]) =>
+      values[typeof path === "string" ? path : path.join(".")],
+  } as ExpressionScope["$form"];
+}
+
 function scope(overrides: Partial<ExpressionScope> = {}): ExpressionScope {
   return {
-    $values: {},
     $self: {} as ExpressionScope["$self"],
-    $form: {} as ExpressionScope["$form"],
+    $form: form(),
     $value: undefined,
     $row: undefined,
     $path: "",
@@ -24,8 +30,8 @@ function scope(overrides: Partial<ExpressionScope> = {}): ExpressionScope {
 describe("compileExpr", () => {
   it("unwraps schema expression markers", () => {
     expect(
-      compileExpr("{{ $values.price * $values.quantity }}")(
-        scope({ $values: { price: 3, quantity: 4 } }),
+      compileExpr('{{ $form.getFieldValue("price") * $form.getFieldValue("quantity") }}')(
+        scope({ $form: form({ price: 3, quantity: 4 }) }),
       ),
     ).toBe(12);
   });
@@ -60,19 +66,35 @@ describe("compileExpr", () => {
 
   it("supports objects, arrays, optional chaining and templates", () => {
     expect(
-      compileExpr("{{ ({ label: `${$values.name ?? 'unknown'}!`, values: [1, 2] }) }}")(
-        scope({ $values: { name: "Alien" } }),
-      ),
+      compileExpr(
+        "{{ ({ label: `${$form.getFieldValue('name') ?? 'unknown'}!`, values: [1, 2] }) }}",
+      )(scope({ $form: form({ name: "Alien" }) })),
     ).toEqual({ label: "Alien!", values: [1, 2] });
   });
 
   it("caches compiled functions by normalized source", () => {
-    expect(compileExpr("{{ $values.id }}")).toBe(compileExpr("$values.id"));
+    expect(compileExpr('{{ $form.getFieldValue("id") }}')).toBe(
+      compileExpr('$form.getFieldValue("id")'),
+    );
   });
 
   it("does not expose arbitrary values as flat identifiers", () => {
-    expect(() => compileExpr("name")(scope({ $values: { name: "hidden" } }))).toThrow(
+    expect(() => compileExpr("name")(scope({ $form: form({ name: "hidden" }) }))).toThrow(
       ReferenceError,
     );
+  });
+
+  it("reads only scope properties referenced by the expression", () => {
+    const current = scope({ $form: form({ name: "Alien" }) });
+    const valueRead = vi.fn();
+    const rowRead = vi.fn();
+    Object.defineProperties(current, {
+      $value: { get: valueRead },
+      $row: { get: rowRead },
+    });
+
+    expect(compileExpr('{{ $form.getFieldValue("name") }}')(current)).toBe("Alien");
+    expect(valueRead).not.toHaveBeenCalled();
+    expect(rowRead).not.toHaveBeenCalled();
   });
 });

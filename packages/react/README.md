@@ -110,7 +110,7 @@ function MyForm() {
 
 1. **Schema 驱动自动渲染**：用 `<SchemaField>` 让库遍历 schema、逐字段渲染。你只需提供 `components` / `decorators` 映射。适合表单结构完全由 schema 描述的场景。
 
-2. **手写 React + Hooks**：不用 `<SchemaField>`，自己写 JSX，用 `useFieldValue` / `useFieldErrors` / `form.set(...)` 等 Hooks 精确控制每个字段的渲染。适合高度定制的 UI。
+2. **手写 React + Hooks**：不用 `<SchemaField>`，自己写 JSX，用 `useFieldValue` / `useFieldErrors` / `form.setFieldValue(...)` 等 Hooks 精确控制每个字段的渲染。适合高度定制的 UI。
 
 两者可以混用（都在同一个 `<FormProvider>` 下），共享同一个 `FormInstance`。
 
@@ -161,7 +161,7 @@ interface FormProviderProps {
 
 ```tsx
 const form = useForm();
-form.set("name", "new");
+form.setFieldValue("name", "new");
 ```
 
 ---
@@ -278,7 +278,7 @@ function NameField() {
   const required = useFieldRequired("name");
   return (
     <div>
-      <input value={value ?? ""} onChange={(e) => form.set("name", e.target.value)} />
+      <input value={value ?? ""} onChange={(e) => form.setFieldValue("name", e.target.value)} />
       {required && <span>*</span>}
       {errors.map((e, i) => (
         <em key={i}>{e.message}</em>

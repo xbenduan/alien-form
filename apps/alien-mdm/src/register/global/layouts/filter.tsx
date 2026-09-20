@@ -59,7 +59,6 @@ export function Filter({
   const expressionScope = useCallback(
     () => ({
       ...page.runtime.createScope(page.domain, page.query, "edit"),
-      $values: page.form.values(),
       $form: page.form,
     }),
     [page],
