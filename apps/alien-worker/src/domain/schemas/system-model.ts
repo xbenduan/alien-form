@@ -1,9 +1,5 @@
-import type {
-  FieldSchema,
-  ModelFieldDatabase,
-  ModelFieldSchema,
-  PageSchema,
-} from "@alien-form/protocol";
+import type { FieldSchema, ModelFieldDatabase, ModelFieldSchema } from "@alien-form/protocol";
+export { createRecordPages as recordPages } from "@alien-form/protocol";
 
 /** Creates a physical field owned by a built-in model. */
 export function physicalField(
@@ -73,107 +69,5 @@ export function systemFields(model: string): ModelFieldSchema[] {
       },
       { table: { title: "更新时间" } },
     ),
-  ];
-}
-
-/** Creates standard list/add/edit/detail pages for a built-in record model. */
-export function recordPages(model: string, title: string, groupKeys: string[]): PageSchema[] {
-  const formPages = (["add", "edit", "detail"] as const).map((mode) => ({
-    router: mode,
-    title: `${mode === "add" ? "新建" : mode === "edit" ? "编辑" : "详情"}${title}`,
-    groups: [
-      {
-        component: "ObjectField",
-        title: "基础信息",
-        keys: groupKeys,
-        props: { gridSpan: 12 },
-      },
-      ...(mode === "detail"
-        ? [
-            {
-              component: "ObjectField",
-              title: "系统信息",
-              keys: ["id", "createdAt", "updatedAt"],
-              props: { gridSpan: 12 },
-            },
-          ]
-        : []),
-    ],
-    properties: {
-      form: {
-        type: "void",
-        component: "record-form",
-        props: {
-          ...(mode === "add" ? { ok: "确认新增" } : mode === "edit" ? { ok: "确认修改" } : {}),
-          mode,
-          modelCode: model,
-          ...(mode === "add" ? {} : { recordId: "{{ $query.id }}" }),
-          schema: { $ref: "form-schema" },
-          ...(mode === "add"
-            ? { submit: '{{ $service("record.add") }}' }
-            : mode === "edit"
-              ? { submit: '{{ $service("record.edit") }}' }
-              : {}),
-        },
-      },
-    },
-  }));
-
-  return [
-    {
-      router: "list",
-      title,
-      layout: { component: "layout" },
-      properties: {
-        filter: {
-          type: "string",
-          component: "filter",
-          props: {
-            schema: { $ref: "form-schema" },
-            filterFields: "{{ $utils.schemaToFilterFields }}",
-          },
-        },
-        table: {
-          type: "void",
-          component: "table",
-          props: {
-            rowKey: "id",
-            modelCode: model,
-            schema: { $ref: "form-schema" },
-            columns: "{{ $utils.schemaToColumns }}",
-            filter: '{{ $form.getFieldValue("filter") }}',
-            loadData: '{{ $service("records.list") }}',
-            rowActions: ["delete"],
-            actionBtns: {
-              add: { type: "primary", children: "新增", openMode: "page" },
-              edit: { type: "link", children: "编辑", openMode: "page" },
-              detail: { type: "link", children: "详情", openMode: "drawer" },
-              batchDelete: {
-                children: "批量删除",
-                danger: true,
-                service: '{{ $service("records.batchDelete") }}',
-              },
-            },
-          },
-          properties: {
-            delete: {
-              type: "void",
-              component: "row-button",
-              props: {
-                danger: true,
-                icon: "delete",
-                children: "删除",
-                confirm: "确认删除这条记录？",
-                confirmDescription: "删除后无法恢复。",
-                successMessage: "记录已删除",
-                refreshAfterSuccess: true,
-                onClick: `{{ ($row) => $service("records.delete")({ model: "${model}", id: $row.id, record: $row }) }}`,
-              },
-            },
-          },
-        },
-      },
-    },
-    ...formPages,
   ];
 }

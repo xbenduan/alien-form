@@ -1,0 +1,404 @@
+{
+  "source": "packages/protocol/src/page-templates.ts",
+  "templates": [
+    {
+      "key": "list",
+      "label": "列表页",
+      "description": "筛选 + 表格 + 行内操作按钮",
+      "example": {
+        "router": "list",
+        "title": "示例模型",
+        "permission": "read",
+        "layout": {
+          "component": "layout",
+          "slots": {
+            "content": [
+              "filter",
+              "table"
+            ]
+          }
+        },
+        "properties": {
+          "filter": {
+            "type": "string",
+            "component": "filter",
+            "props": {
+              "schema": {
+                "$ref": "form-schema"
+              },
+              "filterFields": "{{ $utils.schemaToFilterFields }}"
+            }
+          },
+          "table": {
+            "type": "void",
+            "component": "table",
+            "props": {
+              "rowKey": "id",
+              "modelCode": "example_model",
+              "schema": {
+                "$ref": "form-schema"
+              },
+              "columns": "{{ $utils.schemaToColumns }}",
+              "filter": "{{ $form.getFieldValue(\"filter\") }}",
+              "loadData": "{{ $service(\"records.list\") }}"
+            },
+            "slots": {
+              "toolbar": [
+                "import",
+                "export",
+                "add"
+              ],
+              "batchActions": [
+                "batchDelete"
+              ],
+              "rowActions": [
+                "edit",
+                "detail",
+                "deactivate",
+                "delete"
+              ]
+            },
+            "properties": {
+              "add": {
+                "type": "void",
+                "component": "record-action",
+                "permission": "create",
+                "props": {
+                  "mode": "add",
+                  "openMode": "drawer",
+                  "children": "新增"
+                }
+              },
+              "edit": {
+                "type": "void",
+                "component": "record-action",
+                "permission": "update",
+                "props": {
+                  "mode": "edit",
+                  "openMode": "drawer",
+                  "children": "编辑"
+                }
+              },
+              "detail": {
+                "type": "void",
+                "component": "record-action",
+                "permission": "read",
+                "props": {
+                  "mode": "detail",
+                  "openMode": "drawer",
+                  "children": "详情"
+                }
+              },
+              "batchDelete": {
+                "type": "void",
+                "component": "batch-button",
+                "permission": "delete",
+                "props": {
+                  "children": "批量删除",
+                  "danger": true,
+                  "confirm": "确认删除选中的记录吗？",
+                  "successMessage": "记录已删除",
+                  "refreshAfterSuccess": true,
+                  "onClick": "{{ ($selection) => $service(\"records.batchDelete\")($selection) }}"
+                }
+              },
+              "deactivate": {
+                "type": "void",
+                "component": "row-button",
+                "permission": "update",
+                "props": {
+                  "danger": true,
+                  "children": "停用",
+                  "onClick": "{{ ($row) => $utils.message.info(\"功能未完善\") }}"
+                }
+              },
+              "delete": {
+                "type": "void",
+                "component": "row-button",
+                "permission": "delete",
+                "props": {
+                  "danger": true,
+                  "icon": "delete",
+                  "children": "删除",
+                  "confirm": "确认删除这条记录？",
+                  "confirmDescription": "删除后无法恢复。",
+                  "successMessage": "记录已删除",
+                  "refreshAfterSuccess": true,
+                  "onClick": "{{ ($row) => $service(\"records.delete\")({ model: \"example_model\", id: $row.id, record: $row }) }}"
+                }
+              },
+              "import": {
+                "type": "void",
+                "component": "Button",
+                "permission": "create",
+                "props": {
+                  "children": "导入",
+                  "onClick": "{{ () => $utils.message.info(\"功能未完善\") }}"
+                }
+              },
+              "export": {
+                "type": "void",
+                "component": "Button",
+                "permission": "read",
+                "props": {
+                  "children": "导出",
+                  "onClick": "{{ () => $utils.message.info(\"功能未完善\") }}"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "tree-list",
+      "label": "树形列表页",
+      "description": "左侧自关联树 + 右侧筛选与后代记录表格",
+      "example": {
+        "router": "list",
+        "title": "示例模型",
+        "permission": "read",
+        "layout": {
+          "component": "layout",
+          "slots": {
+            "left": "left",
+            "content": [
+              "filter",
+              "table"
+            ]
+          }
+        },
+        "properties": {
+          "left": {
+            "type": "string",
+            "component": "tree",
+            "props": {
+              "title": "示例模型",
+              "model": "example_model",
+              "valueField": "id",
+              "parentField": "parentId",
+              "labelField": "name",
+              "showRoot": false,
+              "loadData": "{{ $utils.tree($service(\"records.subtree\")) }}"
+            }
+          },
+          "filter": {
+            "type": "string",
+            "component": "filter",
+            "props": {
+              "schema": {
+                "$ref": "form-schema"
+              },
+              "filterFields": "{{ $utils.schemaToFilterFields }}"
+            }
+          },
+          "table": {
+            "type": "void",
+            "component": "table",
+            "props": {
+              "rowKey": "id",
+              "modelCode": "example_model",
+              "schema": {
+                "$ref": "form-schema"
+              },
+              "columns": "{{ $utils.schemaToColumns }}",
+              "filter": "{{ $form.getFieldValue(\"filter\") }}",
+              "loadData": "{{ $service(\"records.list\") }}",
+              "parentId": "{{ $form.getFieldValue(\"left\") }}"
+            },
+            "slots": {
+              "toolbar": [
+                "add"
+              ],
+              "batchActions": [
+                "batchDelete"
+              ],
+              "rowActions": [
+                "edit",
+                "detail",
+                "delete"
+              ]
+            },
+            "properties": {
+              "add": {
+                "type": "void",
+                "component": "record-action",
+                "permission": "create",
+                "props": {
+                  "mode": "add",
+                  "openMode": "drawer",
+                  "children": "新增"
+                }
+              },
+              "edit": {
+                "type": "void",
+                "component": "record-action",
+                "permission": "update",
+                "props": {
+                  "mode": "edit",
+                  "openMode": "drawer",
+                  "children": "编辑"
+                }
+              },
+              "detail": {
+                "type": "void",
+                "component": "record-action",
+                "permission": "read",
+                "props": {
+                  "mode": "detail",
+                  "openMode": "drawer",
+                  "children": "详情"
+                }
+              },
+              "batchDelete": {
+                "type": "void",
+                "component": "batch-button",
+                "permission": "delete",
+                "props": {
+                  "children": "批量删除",
+                  "danger": true,
+                  "confirm": "确认删除选中的记录吗？",
+                  "successMessage": "记录已删除",
+                  "refreshAfterSuccess": true,
+                  "onClick": "{{ ($selection) => $service(\"records.batchDelete\")($selection) }}"
+                }
+              },
+              "deactivate": {
+                "type": "void",
+                "component": "row-button",
+                "permission": "update",
+                "props": {
+                  "danger": true,
+                  "children": "停用",
+                  "onClick": "{{ ($row) => $utils.message.info(\"功能未完善\") }}"
+                }
+              },
+              "delete": {
+                "type": "void",
+                "component": "row-button",
+                "permission": "delete",
+                "props": {
+                  "danger": true,
+                  "icon": "delete",
+                  "children": "删除",
+                  "confirm": "确认删除这条记录？",
+                  "confirmDescription": "删除后无法恢复。",
+                  "successMessage": "记录已删除",
+                  "refreshAfterSuccess": true,
+                  "onClick": "{{ ($row) => $service(\"records.delete\")({ model: \"example_model\", id: $row.id, record: $row }) }}"
+                }
+              },
+              "import": {
+                "type": "void",
+                "component": "Button",
+                "permission": "create",
+                "props": {
+                  "children": "导入",
+                  "onClick": "{{ () => $utils.message.info(\"功能未完善\") }}"
+                }
+              },
+              "export": {
+                "type": "void",
+                "component": "Button",
+                "permission": "read",
+                "props": {
+                  "children": "导出",
+                  "onClick": "{{ () => $utils.message.info(\"功能未完善\") }}"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "add",
+      "label": "新建页",
+      "description": "record-form（新建模式）",
+      "example": {
+        "router": "add",
+        "title": "新建示例模型",
+        "permission": "create",
+        "properties": {
+          "form": {
+            "type": "void",
+            "component": "record-form",
+            "props": {
+              "ok": "确认新增",
+              "mode": "add",
+              "modelCode": "example_model",
+              "schema": {
+                "$ref": "form-schema"
+              },
+              "submit": "{{ $service(\"record.add\") }}"
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "edit",
+      "label": "编辑页",
+      "description": "record-form（编辑模式）",
+      "example": {
+        "router": "edit",
+        "title": "编辑示例模型",
+        "permission": "update",
+        "properties": {
+          "form": {
+            "type": "void",
+            "component": "record-form",
+            "props": {
+              "ok": "确认修改",
+              "mode": "edit",
+              "modelCode": "example_model",
+              "recordId": "{{ $query.id }}",
+              "schema": {
+                "$ref": "form-schema"
+              },
+              "submit": "{{ $service(\"record.edit\") }}"
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "detail",
+      "label": "详情页",
+      "description": "record-form（详情模式）",
+      "example": {
+        "router": "detail",
+        "title": "详情示例模型",
+        "permission": "read",
+        "groups": [
+          {
+            "component": "ObjectField",
+            "title": "系统信息",
+            "keys": [
+              "id",
+              "createdAt",
+              "updatedAt"
+            ],
+            "props": {
+              "gridSpan": 12
+            }
+          }
+        ],
+        "properties": {
+          "form": {
+            "type": "void",
+            "component": "record-form",
+            "props": {
+              "mode": "detail",
+              "modelCode": "example_model",
+              "recordId": "{{ $query.id }}",
+              "schema": {
+                "$ref": "form-schema"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

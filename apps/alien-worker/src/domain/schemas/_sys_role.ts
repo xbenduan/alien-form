@@ -143,7 +143,7 @@ export const sysRoleSchema: ModelSchema = {
   title: "角色管理",
   version: 0,
   system: true,
-  systemRevision: 8,
+  systemRevision: 9,
   subtitle: "System Roles",
   description: "树形角色及模型、操作、字段和数据范围权限。",
   group: "system",
@@ -161,7 +161,10 @@ export const sysRoleSchema: ModelSchema = {
     if (page.router !== "list") return page;
     return {
       ...page,
-      layout: { component: "layout", props: { left: "tree" } },
+      layout: {
+        component: "layout",
+        slots: { left: "tree", content: ["filter", "table"] },
+      },
       properties: {
         ...page.properties,
         tree: {
@@ -182,19 +185,16 @@ export const sysRoleSchema: ModelSchema = {
           props: {
             ...page.properties.table.props,
             parentId: '{{ $form.getFieldValue("tree") }}',
-            rowActions: ["delete"],
-            actionBtns: {
-              add: { type: "primary", children: "新增", openMode: "page" },
-              edit: {
-                type: "link",
-                children: "编辑",
-                openMode: "page",
-                disabled: `{{ ($row) => $row.id === "${SYS_ROLE_SUPER_ADMIN_ID}" }}`,
-              },
-              detail: { type: "link", children: "详情", openMode: "drawer" },
-            },
           },
           properties: {
+            ...page.properties.table.properties,
+            edit: {
+              ...page.properties.table.properties?.edit,
+              props: {
+                ...page.properties.table.properties?.edit?.props,
+                disabled: `{{ ($row) => $row.id === "${SYS_ROLE_SUPER_ADMIN_ID}" }}`,
+              },
+            },
             delete: {
               ...page.properties.table.properties?.delete,
               props: {

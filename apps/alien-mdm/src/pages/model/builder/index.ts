@@ -4,3 +4,4 @@ export * from "./commands";
 export * from "./store";
 export * from "./default-draft";
 export * from "./page-templates";
+export * from "./model-template";

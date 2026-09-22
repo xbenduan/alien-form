@@ -1,4 +1,10 @@
-import type { ModelRecord, ModelSchema } from "@alien-form/protocol";
+import type {
+  FieldSchema,
+  ModelRecord,
+  ModelSchema,
+  PermissionAction,
+  SchemaSlots,
+} from "@alien-form/protocol";
 import { SYS_MODEL_TAB_MODEL } from "../domain/schemas/_sys_model_tab.ts";
 import { SYS_ROLE_MODEL, SYS_ROLE_SUPER_ADMIN_ID } from "../domain/schemas/_sys_role.ts";
 import { SYS_ADMIN_ID, SYS_USER_MODEL } from "../domain/schemas/_sys_user.ts";
@@ -6,7 +12,7 @@ import { forbidden } from "../errors.ts";
 import type { ModelStore } from "../store/model-store.ts";
 import type { RecordStore } from "../store/record-store.ts";
 
-export type PermissionAction = "read" | "create" | "update" | "delete";
+export type { PermissionAction } from "@alien-form/protocol";
 export type PermissionScope = "all" | "own";
 
 interface PersistedPermission {
@@ -31,6 +37,41 @@ export interface AccessProfile {
 }
 
 const ACTIONS = new Set<PermissionAction>(["read", "create", "update", "delete"]);
+
+function projectSlots(
+  slots: SchemaSlots | undefined,
+  properties: Record<string, FieldSchema>,
+): SchemaSlots | undefined {
+  if (!slots) return undefined;
+  const projected = Object.fromEntries(
+    Object.entries(slots).flatMap(([name, references]) => {
+      const keys = (Array.isArray(references) ? references : [references]).filter(
+        (key) => properties[key],
+      );
+      if (keys.length === 0) return [];
+      return [[name, Array.isArray(references) ? keys : keys[0]!]];
+    }),
+  );
+  return Object.keys(projected).length > 0 ? projected : undefined;
+}
+
+function projectNode(
+  node: FieldSchema,
+  actions: ReadonlySet<PermissionAction>,
+): FieldSchema | undefined {
+  if (node.permission && !actions.has(node.permission)) return undefined;
+  const properties = Object.fromEntries(
+    Object.entries(node.properties ?? {}).flatMap(([key, child]) => {
+      const projected = projectNode(child, actions);
+      return projected ? [[key, projected]] : [];
+    }),
+  );
+  return {
+    ...node,
+    properties: node.properties ? properties : undefined,
+    slots: projectSlots(node.slots, properties),
+  };
+}
 
 /** Reads one scalar relation value from persisted or expanded records. */
 function scalarRelationValue(value: unknown): string | undefined {
@@ -245,76 +286,33 @@ export class AuthorizationService {
     }
     const grant = profile.permissions.get(model.name);
     const allowed = new Set(["id", "createdAt", "updatedAt", ...(grant?.fields ?? [])]);
-    const canCreate = grant?.actions.has("create") === true;
-    const canUpdate = grant?.actions.has("update") === true;
-    const canDelete = grant?.actions.has("delete") === true;
+    const actions = grant?.actions ?? new Set<PermissionAction>();
     return {
       ...model,
       fields: model.fields.filter((field) => allowed.has(field.key)),
       pages: model.pages
-        .filter((page) => {
-          if (page.router === "add") return canCreate;
-          if (page.router === "edit") return canUpdate;
-          return page.router === "list" || page.router === "detail";
-        })
-        .map((page) => ({
-          ...page,
-          groups: page.groups
-            ?.map((group) => ({
-              ...group,
-              keys: group.keys.filter((key) => allowed.has(key)),
-            }))
-            .filter((group) => group.keys.length > 0),
-          properties:
-            page.router !== "list"
-              ? page.properties
-              : Object.fromEntries(
-                  Object.entries(page.properties).map(([key, property]) => [
-                    key,
-                    key !== "table"
-                      ? property
-                      : {
-                          ...property,
-                          props: {
-                            ...property.props,
-                            rowActions: canDelete ? ["delete"] : [],
-                            actionBtns: {
-                              ...(canCreate
-                                ? {
-                                    add: (
-                                      property.props?.actionBtns as
-                                        | Record<string, unknown>
-                                        | undefined
-                                    )?.add,
-                                  }
-                                : {}),
-                              ...(canUpdate
-                                ? {
-                                    edit: (
-                                      property.props?.actionBtns as
-                                        | Record<string, unknown>
-                                        | undefined
-                                    )?.edit,
-                                  }
-                                : {}),
-                              detail: (
-                                property.props?.actionBtns as Record<string, unknown> | undefined
-                              )?.detail ?? {
-                                type: "link",
-                                children: "详情",
-                                openMode: "drawer",
-                              },
-                            },
-                          },
-                          properties: canDelete
-                            ? {
-                                delete: property.properties?.delete,
-                              }
-                            : {},
-                        },
-                  ]),
-                ),
-        })),
+        .filter((page) => actions.has(page.permission))
+        .map((page) => {
+          const properties = Object.fromEntries(
+            Object.entries(page.properties).flatMap(([key, node]) => {
+              const projected = projectNode(node, actions);
+              return projected ? [[key, projected]] : [];
+            }),
+          );
+          return {
+            ...page,
+            groups: page.groups
+              ?.map((group) => ({
+                ...group,
+                keys: group.keys.filter((key) => allowed.has(key)),
+              }))
+              .filter((group) => group.keys.length > 0),
+            properties,
+            layout: page.layout
+              ? { ...page.layout, slots: projectSlots(page.layout.slots, properties) }
+              : undefined,
+          };
+        }),
     };
   }
 }

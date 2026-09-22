@@ -7,19 +7,14 @@ export function Layout({
   children,
 }: {
   slots: Record<string, ReactNode>;
-  left?: string;
   children?: ReactNode;
 }) {
-  const rightSlots = Object.entries(slots)
-    .filter(([name]) => name !== "left")
-    .map(([name, content]) => <div key={name}>{content}</div>);
-
   return (
     <LayoutLoadingProvider>
       <div className={styles.layout}>
         {slots.left ? <aside className={styles.layoutLeft}>{slots.left}</aside> : null}
         <main className={styles.layoutMain}>
-          {rightSlots}
+          {slots.content}
           {children}
         </main>
       </div>

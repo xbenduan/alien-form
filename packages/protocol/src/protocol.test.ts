@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertModelSchema,
   assertStorageCompatible,
+  parsePageSchema,
   parseModelSchema,
   type ModelFieldSchema,
   type ModelSchema,
@@ -51,6 +52,7 @@ function model(): ModelSchema {
     pages: [
       {
         router: "add",
+        permission: "create",
         groups: [{ title: "基础信息", keys: ["name", "remark"] }],
         properties: {
           form: {
@@ -86,6 +88,7 @@ function parentField(): ModelFieldSchema {
         parentField: "parentId",
         valueField: "id",
         labelField: "name",
+        loadData: '{{ $utils.tree($service("records.subtree")) }}',
       },
     },
   };
@@ -152,5 +155,115 @@ describe("ModelSchema", () => {
     field.form.props = { ...field.form.props, model: "users" };
     value.fields.unshift(field);
     expect(() => assertModelSchema(value)).toThrow(/仅自关联字段/);
+  });
+
+  it("拒绝重复页面路由", () => {
+    const value = model();
+    value.pages.push({ ...value.pages[0], properties: { ...value.pages[0].properties } });
+    expect(() => assertModelSchema(value)).toThrow(/router 重复/);
+  });
+
+  it("校验组件、slot 与必填 props", () => {
+    expect(() =>
+      parsePageSchema({
+        router: "list",
+        permission: "read",
+        layout: { component: "layout", slots: { content: "missing" } },
+        properties: {},
+      }),
+    ).toThrow(/不存在的节点/);
+    expect(() =>
+      parsePageSchema({
+        router: "list",
+        permission: "read",
+        properties: { table: { type: "void", component: "table", props: {} } },
+      }),
+    ).toThrow(/modelCode 必填/);
+    expect(() =>
+      parsePageSchema({
+        router: "list",
+        permission: "read",
+        properties: { unknown: { type: "void", component: "Unknown" } },
+      }),
+    ).toThrow(/未声明的组件能力/);
+  });
+
+  it("校验表达式语法和能力引用", () => {
+    expect(() =>
+      parsePageSchema({
+        router: "list",
+        permission: "read",
+        properties: {
+          button: {
+            type: "void",
+            component: "Button",
+            props: { onClick: '{{ async () => $service("records.list")() }}' },
+          },
+        },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      parsePageSchema({
+        router: "list",
+        permission: "read",
+        properties: {
+          button: {
+            type: "void",
+            component: "Button",
+            props: { onClick: '{{ () => $service("missing")() }}' },
+          },
+        },
+      }),
+    ).toThrow(/服务能力不存在/);
+    expect(() =>
+      parsePageSchema({
+        router: "list",
+        permission: "read",
+        properties: {
+          button: {
+            type: "void",
+            component: "Button",
+            props: { onClick: "{{ () => ( }}" },
+          },
+        },
+      }),
+    ).toThrow(/语法不合法/);
+  });
+
+  it("仅在 rowActions slot 中开放页面 $row 上下文", () => {
+    const action = {
+      type: "void",
+      component: "row-button",
+      props: {
+        onClick: "{{ () => $utils.message.info($row.id) }}",
+      },
+    };
+    expect(() =>
+      parsePageSchema({
+        router: "list",
+        permission: "read",
+        properties: { action },
+      }),
+    ).toThrow(/\$row/);
+    expect(() =>
+      parsePageSchema({
+        router: "list",
+        permission: "read",
+        properties: {
+          table: {
+            type: "void",
+            component: "table",
+            props: {
+              modelCode: "orders",
+              schema: {},
+              columns: [],
+              loadData: '{{ $service("records.list") }}',
+            },
+            slots: { rowActions: ["action"] },
+            properties: { action },
+          },
+        },
+      }),
+    ).not.toThrow();
   });
 });

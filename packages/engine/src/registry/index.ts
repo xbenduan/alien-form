@@ -1,23 +1,39 @@
-import type { FieldSchema } from "@alien-form/protocol";
+import type { ComponentCapability } from "@alien-form/protocol";
 
-/** 组件使用场景：form-schema 只能用 form；page 的 properties 可用 page 与 antd。 */
-export type ComponentAdapter = "page" | "form" | "decorator" | "antd";
+export type ComponentMeta = NonNullable<ComponentCapability["meta"]>;
 
-export interface ComponentMeta {
-  type?: string;
-  kind?: "leaf" | "complex";
-  dataSource?: boolean;
-  children?: "properties" | "items";
-  /** 选择该组件新增字段时带出的示例 schema（编辑时不带出）。 */
-  sample?: Partial<FieldSchema>;
+export interface ComponentDefinition {
+  component: unknown;
+  injectContext?: boolean;
+  meta?: ComponentMeta;
 }
 
-export interface ComponentRegistration {
+export interface ComponentRegistration extends ComponentDefinition {
   code: string;
-  component: unknown;
-  meta?: ComponentMeta;
-  /** 使用场景与渲染注入契约：page/form 均注入 alien props；antd 为原子组件，纯 props 透传。 */
-  adapter?: ComponentAdapter;
+}
+
+export interface RuntimeDefinition<T> {
+  value: T;
+  description: string;
+}
+
+export function defineComponent(
+  component: unknown,
+  options: Omit<ComponentDefinition, "component"> = {},
+): ComponentDefinition {
+  return { component, ...options };
+}
+
+export function defineService<T>(value: T, options: { description: string }): RuntimeDefinition<T> {
+  return { value, ...options };
+}
+
+export function defineUtil<T>(value: T, options: { description: string }): RuntimeDefinition<T> {
+  return { value, ...options };
+}
+
+export function defineEnum<T>(value: T, options: { description: string }): RuntimeDefinition<T> {
+  return { value, ...options };
 }
 
 interface Entry<T> {

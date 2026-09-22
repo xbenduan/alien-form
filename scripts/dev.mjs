@@ -161,7 +161,16 @@ if (stale.length > 0) {
 console.log("==> 应用本地 D1 迁移");
 runSync(
   process.execPath,
-  [WRANGLER_ENTRY, "d1", "migrations", "apply", "alien-mdm", "--local", "--config", WRANGLER_CONFIG],
+  [
+    WRANGLER_ENTRY,
+    "d1",
+    "migrations",
+    "apply",
+    "alien-mdm",
+    "--local",
+    "--config",
+    WRANGLER_CONFIG,
+  ],
   { cwd: WORKER_DIR, env: wranglerEnv("migrate-local.log") },
 );
 

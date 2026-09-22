@@ -1,0 +1,29 @@
+{
+  "source": "Runtime.getCapabilities()",
+  "utilities": [
+    {
+      "code": "schemaToColumns",
+      "description": "表单字段转表格列"
+    },
+    {
+      "code": "schemaToFilterFields",
+      "description": "表单字段转筛选项"
+    },
+    {
+      "code": "relation",
+      "description": "关联选项适配器"
+    },
+    {
+      "code": "tree",
+      "description": "树形数据适配器"
+    },
+    {
+      "code": "message",
+      "description": "消息反馈"
+    },
+    {
+      "code": "openRoute",
+      "description": "打开记录路由"
+    }
+  ]
+}

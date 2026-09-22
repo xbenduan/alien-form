@@ -37,22 +37,23 @@ const model: ModelSchema = {
   pages: [
     {
       router: "list",
+      permission: "read",
       layout: {
         component: "layout",
-        props: { rightBottom: "table" },
+        slots: { content: "table" },
       },
       properties: {
         table: {
           type: "void",
           component: "table",
           props: {
+            modelCode: "products",
             schema: { $ref: "form-schema" },
+            columns: "{{ $utils.schemaToColumns }}",
             filter: '{{ $form.getFieldValue("filter") }}',
-            rowActions: ["deactivate", "delete"],
-            actionBtns: {
-              edit: { children: "编辑" },
-            },
+            loadData: '{{ $service("records.list") }}',
           },
+          slots: { rowActions: ["deactivate", "delete"] },
           properties: {
             deactivate: {
               type: "void",
@@ -177,7 +178,7 @@ describe("page compiler", () => {
   it("wraps page layouts without changing value paths", () => {
     const [page] = compileModel(model);
     expect(page.schema.properties?.$page.type).toBe("void");
-    expect(page.nodes[0].slots.rightBottom).toBe(page.nodes[0].children[0]);
+    expect(page.nodes[0].slots.content).toBe(page.nodes[0].children[0]);
   });
 
   it("matches an empty segment to list", () => {

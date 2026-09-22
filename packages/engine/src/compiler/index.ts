@@ -92,14 +92,10 @@ function compileNode(key: string, raw: FieldSchema, definitions: RuntimeDefiniti
     ]),
   );
   const slots: CompiledNode["slots"] = {};
-  for (const [prop, value] of Object.entries(schema.props ?? {})) {
-    if (typeof value === "string" && childMap.has(value)) slots[prop] = childMap.get(value)!;
-    if (
-      Array.isArray(value) &&
-      value.every((item) => typeof item === "string" && childMap.has(item))
-    ) {
-      slots[prop] = value.map((item) => childMap.get(item as string)!);
-    }
+  for (const [name, references] of Object.entries(schema.slots ?? {})) {
+    const keys = Array.isArray(references) ? references : [references];
+    const nodes = keys.map((key) => childMap.get(key)!);
+    slots[name] = Array.isArray(references) ? nodes : nodes[0]!;
   }
   const items =
     schema.items && !Array.isArray(schema.items)
@@ -192,6 +188,7 @@ export function compilePage(model: ModelSchema, page: PageSchema): CompiledPage 
     type: "void",
     component: page.layout.component,
     props: page.layout.props,
+    slots: page.layout.slots,
     properties,
   };
   return {

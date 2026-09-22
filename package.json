@@ -1,14 +1,18 @@
 {
   "name": "alien-form",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "pnpm --parallel --filter @alien-form/alien-mdm --filter @alien-form/alien-worker run dev",
     "dev:local": "node scripts/dev.mjs",
     "dev:web": "pnpm --filter @alien-form/alien-mdm run dev",
     "dev:worker": "pnpm --filter @alien-form/alien-worker run dev",
-    "build": "pnpm -r run build",
+    "build": "pnpm -r --filter '!@alien-form/alien-worker' run build && pnpm --filter @alien-form/alien-worker run build",
     "test": "pnpm -r run test",
     "test:core": "pnpm --filter @alien-form/core run test",
+    "generate:model-artifacts": "tsx scripts/generate-model-artifacts.ts",
+    "check:generated": "tsx scripts/generate-model-artifacts.ts --check",
+    "check": "pnpm check:generated && pnpm lint && pnpm format:check && pnpm test && pnpm build",
     "lint": "oxlint --deny-warnings",
     "format": "oxfmt . --write",
     "format:check": "oxfmt . --check"
@@ -16,7 +20,9 @@
   "devDependencies": {
     "oxfmt": "^0.51.0",
     "oxlint": "^1.66.0",
-    "typescript": "^5.4.0"
+    "tsx": "^4.23.15",
+    "typescript": "^5.4.0",
+    "zod-to-json-schema": "^3.25.2"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -1,0 +1,45 @@
+{
+  "source": "Runtime.getCapabilities()",
+  "enums": [
+    {
+      "code": "fieldTypes",
+      "description": "字段类型",
+      "value": [
+        {
+          "label": "文本",
+          "value": "string"
+        },
+        {
+          "label": "数字",
+          "value": "number"
+        },
+        {
+          "label": "布尔",
+          "value": "boolean"
+        },
+        {
+          "label": "对象",
+          "value": "object"
+        },
+        {
+          "label": "数组",
+          "value": "array"
+        }
+      ]
+    },
+    {
+      "code": "status",
+      "description": "启停状态",
+      "value": [
+        {
+          "label": "启用",
+          "value": "active"
+        },
+        {
+          "label": "停用",
+          "value": "inactive"
+        }
+      ]
+    }
+  ]
+}

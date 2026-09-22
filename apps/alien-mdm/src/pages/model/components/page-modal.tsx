@@ -1,6 +1,6 @@
 import { App, Input, Modal, Select, Space, Typography } from "antd";
 import { useEffect, useState } from "react";
-import type { PageSchema } from "@alien-form/engine";
+import { parsePageSchema } from "@alien-form/protocol";
 import {
   PAGE_TEMPLATES,
   createId,
@@ -47,27 +47,20 @@ export function PageModal({
   };
 
   const submit = () => {
-    let parsed: PageSchema;
+    let value: unknown;
     try {
-      parsed = JSON.parse(text) as PageSchema;
+      value = JSON.parse(text);
     } catch {
       message.error("页面 JSON 格式不合法");
       return;
     }
-    if (
-      !parsed ||
-      typeof parsed !== "object" ||
-      typeof parsed.router !== "string" ||
-      !parsed.router
-    ) {
-      message.error("页面必须包含字符串类型的 router 字段");
+    try {
+      const parsed = parsePageSchema(value);
+      onSubmit({ id: page?.id ?? createId(), page: parsed });
+    } catch (reason) {
+      message.error(reason instanceof Error ? reason.message : "页面协议不合法");
       return;
     }
-    if (!parsed.properties || typeof parsed.properties !== "object") {
-      message.error("页面必须包含 properties 对象");
-      return;
-    }
-    onSubmit({ id: page?.id ?? createId(), page: parsed });
   };
 
   return (

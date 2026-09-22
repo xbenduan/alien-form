@@ -178,4 +178,50 @@ describe("AuthorizationService", () => {
     expect(service.scope(profile, model("builder"), "delete")).toBe("all");
     expect(service.scope(profile, model("other"), "delete")).toBeUndefined();
   });
+
+  it("projects pages and slotted action nodes by explicit permission", async () => {
+    const { models, records } = stores({ id: "reader", roleId: ["reader-role"] }, [
+      {
+        id: "reader-role",
+        permissions: [{ model: "article", actions: ["read"], fields: ["title"], scope: "all" }],
+      },
+    ]);
+    const service = new AuthorizationService(models, records);
+    const profile = await service.profile("reader");
+    const schema: ModelSchema = {
+      ...model(),
+      pages: [
+        {
+          router: "list",
+          permission: "read",
+          properties: {
+            table: {
+              type: "void",
+              component: "table",
+              slots: { toolbar: ["add"], rowActions: ["detail", "edit", "delete"] },
+              properties: {
+                add: { type: "void", component: "record-action", permission: "create" },
+                detail: { type: "void", component: "record-action", permission: "read" },
+                edit: { type: "void", component: "record-action", permission: "update" },
+                delete: { type: "void", component: "row-button", permission: "delete" },
+              },
+            },
+          },
+        },
+        {
+          router: "edit",
+          permission: "update",
+          properties: {},
+        },
+      ],
+    };
+
+    const projected = service.projectSchema(profile, schema);
+
+    expect(projected.pages.map((page) => page.router)).toEqual(["list"]);
+    expect(projected.pages[0]?.properties.table.properties).toEqual({
+      detail: { type: "void", component: "record-action", permission: "read" },
+    });
+    expect(projected.pages[0]?.properties.table.slots).toEqual({ rowActions: ["detail"] });
+  });
 });

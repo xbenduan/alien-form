@@ -1,0 +1,478 @@
+{
+  "$ref": "#/definitions/ModelSchema",
+  "definitions": {
+    "ModelSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_-]*$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "system": {
+          "type": "boolean"
+        },
+        "systemRevision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "creatorId": {
+          "type": "string"
+        },
+        "subtitle": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "group": {
+          "type": "string"
+        },
+        "singularLabel": {
+          "type": "string"
+        },
+        "pluralLabel": {
+          "type": "string"
+        },
+        "defaultPageSize": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "key": {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+              },
+              "storage": {
+                "type": "string",
+                "enum": [
+                  "physical",
+                  "virtual"
+                ]
+              },
+              "database": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "text",
+                      "integer",
+                      "real",
+                      "boolean",
+                      "date",
+                      "json"
+                    ]
+                  },
+                  "valueType": {
+                    "type": "string",
+                    "enum": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "object",
+                      "array"
+                    ]
+                  },
+                  "column": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                  },
+                  "system": {
+                    "type": "boolean"
+                  },
+                  "nullable": {
+                    "type": "boolean"
+                  },
+                  "default": {
+                    "type": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "unique": {
+                    "type": "boolean"
+                  },
+                  "index": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              "relation": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "many-to-one",
+                      "many-to-many"
+                    ]
+                  },
+                  "target": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_-]*$"
+                  },
+                  "through": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                  },
+                  "valueField": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                  },
+                  "labelField": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "target"
+                ],
+                "additionalProperties": false
+              },
+              "form": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "default": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                        }
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": {
+                          "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                        }
+                      }
+                    ]
+                  },
+                  "properties": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form"
+                    }
+                  },
+                  "items": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form"
+                        }
+                      }
+                    ]
+                  },
+                  "$ref": {
+                    "type": "string"
+                  },
+                  "order": {
+                    "type": "number"
+                  },
+                  "required": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    ]
+                  },
+                  "display": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "visible",
+                          "hidden",
+                          "none"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "pattern": "^\\s*\\{\\{[\\s\\S]*\\}\\}\\s*$"
+                      }
+                    ]
+                  },
+                  "disabled": {
+                    "type": "boolean"
+                  },
+                  "x-layout": {
+                    "type": "string"
+                  },
+                  "decorator": {
+                    "type": "string"
+                  },
+                  "decoratorProps": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                    }
+                  },
+                  "component": {
+                    "type": "string"
+                  },
+                  "props": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                    }
+                  },
+                  "slots": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "permission": {
+                    "type": "string",
+                    "enum": [
+                      "read",
+                      "create",
+                      "update",
+                      "delete"
+                    ]
+                  },
+                  "x-reaction": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                    }
+                  },
+                  "x-effect": {
+                    "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                  },
+                  "x-format": {
+                    "type": "object",
+                    "properties": {
+                      "input": {
+                        "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                      },
+                      "output": {
+                        "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "x-validate": {
+                    "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                  },
+                  "dataSource": {
+                    "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                  }
+                },
+                "additionalProperties": true
+              },
+              "table": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "hidden": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "filter": {
+                "type": "object",
+                "properties": {
+                  "hidden": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "key",
+              "storage",
+              "form"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1
+        },
+        "definitions": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form"
+          }
+        },
+        "pages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "router": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+              },
+              "title": {
+                "type": "string"
+              },
+              "permission": {
+                "type": "string",
+                "enum": [
+                  "read",
+                  "create",
+                  "update",
+                  "delete"
+                ]
+              },
+              "layout": {
+                "type": "object",
+                "properties": {
+                  "component": {
+                    "type": "string"
+                  },
+                  "props": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "slots": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "component"
+                ],
+                "additionalProperties": false
+              },
+              "groups": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "component": {
+                      "type": "string"
+                    },
+                    "keys": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                      }
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "props": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": [
+                    "keys"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "properties": {
+                "type": "object",
+                "additionalProperties": {
+                  "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form"
+                }
+              }
+            },
+            "required": [
+              "router",
+              "permission",
+              "properties"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "name",
+        "title",
+        "version",
+        "fields",
+        "pages"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

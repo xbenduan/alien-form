@@ -120,7 +120,7 @@ export const sysUserSchema: ModelSchema = {
   title: "用户管理",
   version: 0,
   system: true,
-  systemRevision: 5,
+  systemRevision: 6,
   subtitle: "System Users",
   description: "系统登录账号、角色与基础资料管理。",
   group: "system",

@@ -1,0 +1,77 @@
+{
+  "source": "Runtime.getCapabilities()",
+  "services": [
+    {
+      "code": "auth.login",
+      "description": "登录"
+    },
+    {
+      "code": "auth.logout",
+      "description": "退出登录"
+    },
+    {
+      "code": "model.list",
+      "description": "查询模型列表"
+    },
+    {
+      "code": "model.get",
+      "description": "读取模型"
+    },
+    {
+      "code": "model.options",
+      "description": "查询模型选项"
+    },
+    {
+      "code": "model.fieldOptions",
+      "description": "查询模型字段选项"
+    },
+    {
+      "code": "model.create",
+      "description": "创建模型"
+    },
+    {
+      "code": "model.update",
+      "description": "更新模型"
+    },
+    {
+      "code": "model.delete",
+      "description": "删除模型"
+    },
+    {
+      "code": "records.list",
+      "description": "查询记录列表"
+    },
+    {
+      "code": "records.subtree",
+      "description": "查询树形记录"
+    },
+    {
+      "code": "records.get",
+      "description": "读取记录"
+    },
+    {
+      "code": "records.create",
+      "description": "创建记录"
+    },
+    {
+      "code": "records.update",
+      "description": "更新记录"
+    },
+    {
+      "code": "records.delete",
+      "description": "删除记录"
+    },
+    {
+      "code": "records.batchDelete",
+      "description": "批量删除记录"
+    },
+    {
+      "code": "record.add",
+      "description": "提交新增表单"
+    },
+    {
+      "code": "record.edit",
+      "description": "提交编辑表单"
+    }
+  ]
+}

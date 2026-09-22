@@ -40,7 +40,6 @@ import {
   Flex,
 } from "antd";
 import {
-  Children,
   useCallback,
   useEffect,
   useMemo,
@@ -83,66 +82,10 @@ interface OverlayState {
   ) => unknown | Promise<unknown>;
 }
 
-/** actionBtns 中每个按钮的可配置项（openMode 决定打开方式）。 */
-interface ActionContext {
-  id?: unknown;
-  model: string;
-  record?: Record<string, unknown>;
-}
-
-interface BatchActionContext {
+interface BatchContext {
   ids: string[];
   model: string;
   records: Record<string, unknown>[];
-}
-
-interface ActionButtonConfig<TContext = ActionContext> extends Omit<
-  ButtonProps,
-  "children" | "disabled" | "onClick"
-> {
-  openMode?: OpenMode;
-  children?: ButtonProps["children"];
-  disabled?: boolean | ((record: Record<string, unknown>) => boolean);
-  service?: (context: TContext) => unknown | Promise<unknown>;
-  onClick?: ButtonProps["onClick"];
-}
-
-interface ActionButtons {
-  add?: ActionButtonConfig;
-  edit?: ActionButtonConfig;
-  detail?: ActionButtonConfig;
-  batchDelete?: ActionButtonConfig<BatchActionContext>;
-}
-
-const ACTION_ICONS = {
-  add: <PlusOutlined />,
-  edit: <EditOutlined />,
-  detail: <EyeOutlined />,
-  batchDelete: <DeleteOutlined />,
-} satisfies Record<keyof ActionButtons, ReactNode>;
-
-const ACTION_LABELS = {
-  add: "新增",
-  edit: "编辑",
-  detail: "详情",
-  batchDelete: "批量删除",
-} satisfies Record<keyof ActionButtons, string>;
-
-function buttonProps<TContext>(
-  config: ActionButtonConfig<TContext>,
-  record?: Record<string, unknown>,
-): ButtonProps {
-  const {
-    children: _children,
-    disabled,
-    openMode: _openMode,
-    service: _service,
-    ...props
-  } = config;
-  return {
-    ...props,
-    disabled: typeof disabled === "function" ? disabled(record ?? {}) : disabled,
-  };
 }
 
 function findComponent(nodes: CompiledNode[], component: string): CompiledNode | undefined {
@@ -221,13 +164,11 @@ export function Table({
   filter,
   parentId,
   node,
-  children,
   rowKey = "id",
   modelCode,
   pageSize: configuredPageSize,
   pagination,
   scroll,
-  actionBtns,
 }: ComponentProps & {
   schema?: FieldSchema;
   columns?:
@@ -246,9 +187,7 @@ export function Table({
   pageSize?: number;
   pagination?: TableProps<Record<string, unknown>>["pagination"];
   scroll?: TableProps<Record<string, unknown>>["scroll"];
-  actionBtns?: ActionButtons;
 }) {
-  const { message } = App.useApp();
   const navigate = useNavigate();
   const pageRuntime = usePage();
   const { modelCode: routeModelCode } = useParams();
@@ -276,11 +215,16 @@ export function Table({
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
   const [overlay, setOverlay] = useState<OverlayState>();
   const loadDataRef = useRef(loadData);
-  const toolbarChildren = useMemo(() => Children.toArray(children), [children]);
-  const rowActionNodes = useMemo(() => {
-    const rowActions = node.slots.rowActions;
-    return rowActions ? (Array.isArray(rowActions) ? rowActions : [rowActions]) : [];
-  }, [node.slots.rowActions]);
+  const slotNodes = useCallback(
+    (name: string) => {
+      const slot = node.slots[name];
+      return slot ? (Array.isArray(slot) ? slot : [slot]) : [];
+    },
+    [node.slots],
+  );
+  const toolbarActionNodes = useMemo(() => slotNodes("toolbar"), [slotNodes]);
+  const batchActionNodes = useMemo(() => slotNodes("batchActions"), [slotNodes]);
+  const rowActionNodes = useMemo(() => slotNodes("rowActions"), [slotNodes]);
   const resolvedColumns = useMemo(
     () =>
       (typeof columns === "function"
@@ -402,9 +346,8 @@ export function Table({
     }
   }, [filter, page, pageSize, parentId, sorter, startLoading]);
   const openAction = useCallback(
-    (mode: RecordActionMode, recordId?: unknown) => {
+    (mode: RecordActionMode, openMode: OpenMode = "drawer", recordId?: unknown) => {
       if (!resolvedModelCode) return;
-      const openMode: OpenMode = actionBtns?.[mode]?.openMode ?? "drawer";
       if (openMode === "page") {
         navigate(recordRoute(resolvedModelCode, mode, recordId));
         return;
@@ -442,40 +385,20 @@ export function Table({
         submit: typeof formProps?.submit === "function" ? formProps.submit : undefined,
       });
     },
-    [actionBtns, navigate, pageRuntime, recordTitle, resolvedModelCode, schema],
+    [navigate, pageRuntime, recordTitle, resolvedModelCode, schema],
   );
-  const removeSelected = useCallback(
-    async (service?: ActionButtonConfig<BatchActionContext>["service"]) => {
-      if (!resolvedModelCode || !selectedRowKeys.length) return;
-      if (!service) {
-        message.error("批量删除按钮未配置 service");
-        return;
-      }
-      const ids = selectedRowKeys.map(String);
-      const selected = new Set(ids);
-      const stopLoading = startLoading();
-      try {
-        await service({
-          model: resolvedModelCode,
-          ids,
-          records: data.list.filter((record) => selected.has(String(record[rowKey]))),
-        });
-        message.success(`已删除 ${selectedRowKeys.length} 条记录`);
-        setSelectedRowKeys([]);
-        await refresh();
-      } catch (reason) {
-        message.error(reason instanceof Error ? reason.message : String(reason));
-      } finally {
-        stopLoading();
-      }
-    },
-    [data.list, message, refresh, resolvedModelCode, rowKey, selectedRowKeys, startLoading],
-  );
-  const renderRowActions = useCallback(
-    (record: Record<string, unknown>) => {
-      return rowActionNodes.flatMap((actionNode) => {
+  const renderActionNodes = useCallback(
+    (
+      actionNodes: CompiledNode[],
+      record?: Record<string, unknown>,
+      extraControlProps: Record<string, unknown> = {},
+    ) =>
+      actionNodes.flatMap((actionNode) => {
         const componentCode = actionNode.schema.component;
         if (!componentCode) return [];
+        const receivesTableContext = ["row-button", "record-action", "batch-button"].includes(
+          componentCode,
+        );
         return [
           <SchemaComponent
             key={actionNode.key}
@@ -487,26 +410,25 @@ export function Table({
               $form: pageRuntime.form,
               $row: record,
             })}
-            controlProps={{
-              row: record,
-              model: resolvedModelCode,
-              rowKey,
-              refresh,
-            }}
+            controlProps={
+              receivesTableContext
+                ? {
+                    row: record,
+                    model: resolvedModelCode,
+                    rowKey,
+                    refresh,
+                    openAction,
+                    ...extraControlProps,
+                  }
+                : undefined
+            }
           />,
         ];
-      });
-    },
-    [pageRuntime, refresh, resolvedModelCode, rowActionNodes, rowKey],
+      }),
+    [openAction, pageRuntime, refresh, resolvedModelCode, rowKey],
   );
   const tableColumns = useMemo<TableColumnsType<Record<string, unknown>>>(() => {
-    const hasBuiltinActions =
-      resolvedModelCode &&
-      actionBtns &&
-      (["edit", "detail"] as const).some((mode) => actionBtns[mode]);
-    if (!hasBuiltinActions && rowActionNodes.length === 0) {
-      return configuredColumns;
-    }
+    if (rowActionNodes.length === 0) return configuredColumns;
     return [
       ...configuredColumns,
       {
@@ -514,49 +436,23 @@ export function Table({
         title: "操作",
         fixed: "right",
         width: 170,
-        render: (_value, record) => {
-          const recordId = record[rowKey];
-          const hasRecordId = recordId !== undefined && recordId !== null && recordId !== "";
-          const inlineActions = (["edit", "detail"] as const).flatMap((mode) => {
-            const config = actionBtns?.[mode];
-            if (!config) return [];
-            const props = buttonProps(config, record);
-            return [
-              <Button
-                {...props}
-                key={mode}
-                type={props.type ?? "text"}
-                size={props.size ?? "small"}
-                danger={props.danger}
-                icon={props.icon ?? ACTION_ICONS[mode]}
-                disabled={props.disabled || !hasRecordId}
-                onClick={(event) => {
-                  props.onClick?.(event);
-                  openAction(mode, recordId);
-                }}
-              >
-                {config.children ?? ACTION_LABELS[mode]}
-              </Button>,
-            ];
-          });
-          return (
-            <Space size={0} wrap>
-              {inlineActions}
-              {renderRowActions(record)}
-            </Space>
-          );
-        },
+        render: (_value, record) => (
+          <Space size={0} wrap>
+            {renderActionNodes(rowActionNodes, record)}
+          </Space>
+        ),
       },
     ];
-  }, [
-    actionBtns,
-    configuredColumns,
-    openAction,
-    renderRowActions,
-    resolvedModelCode,
-    rowActionNodes.length,
-    rowKey,
-  ]);
+  }, [configuredColumns, renderActionNodes, rowActionNodes]);
+  const batchContext = useMemo<BatchContext>(() => {
+    const ids = selectedRowKeys.map(String);
+    const selected = new Set(ids);
+    return {
+      ids,
+      model: resolvedModelCode,
+      records: data.list.filter((record) => selected.has(String(record[rowKey]))),
+    };
+  }, [data.list, resolvedModelCode, rowKey, selectedRowKeys]);
 
   useEffect(() => {
     void refresh();
@@ -639,24 +535,10 @@ export function Table({
           <Space wrap>
             {selectedRowKeys.length > 0 ? (
               <>
-                {actionBtns?.batchDelete ? (
-                  <Popconfirm
-                    title={`确认删除选中的 ${selectedRowKeys.length} 条记录吗？`}
-                    okText="删除"
-                    cancelText="取消"
-                    okButtonProps={{ danger: true }}
-                    onConfirm={() => removeSelected(actionBtns.batchDelete?.service)}
-                  >
-                    <Button
-                      {...buttonProps(actionBtns.batchDelete)}
-                      danger={actionBtns.batchDelete.danger ?? true}
-                      icon={actionBtns.batchDelete.icon ?? ACTION_ICONS.batchDelete}
-                      onClick={actionBtns.batchDelete.onClick}
-                    >
-                      {actionBtns.batchDelete.children ?? ACTION_LABELS.batchDelete}
-                    </Button>
-                  </Popconfirm>
-                ) : null}
+                {renderActionNodes(batchActionNodes, undefined, {
+                  selection: batchContext,
+                  clearSelection: () => setSelectedRowKeys([]),
+                })}
                 <span>已选择 {selectedRowKeys.length} 条</span>
               </>
             ) : (
@@ -664,7 +546,7 @@ export function Table({
             )}
           </Space>
           <Space>
-            {toolbarChildren}
+            {renderActionNodes(toolbarActionNodes)}
             <Popover
               content={columnSettings}
               title={
@@ -690,19 +572,6 @@ export function Table({
               </Tooltip>
             </Popover>
             <Button icon={<ReloadOutlined />} aria-label="刷新" onClick={() => void refresh()} />
-            {resolvedModelCode && actionBtns?.add && (
-              <Button
-                {...buttonProps(actionBtns.add)}
-                type={actionBtns.add.type ?? "primary"}
-                icon={actionBtns.add.icon ?? ACTION_ICONS.add}
-                onClick={(event) => {
-                  actionBtns.add?.onClick?.(event);
-                  openAction("add");
-                }}
-              >
-                {actionBtns.add.children ?? ACTION_LABELS.add}
-              </Button>
-            )}
           </Space>
         </div>
         <AntTable
@@ -797,6 +666,136 @@ interface RowButtonContext {
   id?: unknown;
   model?: string;
   record: Record<string, unknown>;
+}
+
+interface RecordActionButtonProps extends Omit<ButtonProps, "disabled" | "onClick"> {
+  mode: RecordActionMode;
+  openMode?: OpenMode;
+  row?: Record<string, unknown>;
+  rowKey?: string;
+  model?: string;
+  openAction?: (mode: RecordActionMode, openMode: OpenMode, recordId?: unknown) => void;
+  disabled?: boolean | ((row: Record<string, unknown>) => boolean);
+  onClick?: (row: Record<string, unknown> | undefined, context: RowButtonContext) => unknown;
+}
+
+const RECORD_ACTION_ICONS = {
+  add: <PlusOutlined />,
+  edit: <EditOutlined />,
+  detail: <EyeOutlined />,
+} satisfies Record<RecordActionMode, ReactNode>;
+
+const RECORD_ACTION_LABELS = {
+  add: "新增",
+  edit: "编辑",
+  detail: "详情",
+} satisfies Record<RecordActionMode, string>;
+
+/** Opens a record form page, modal, or drawer as a normal slotted AST node. */
+export function RecordActionButton({
+  mode,
+  openMode = "drawer",
+  row,
+  rowKey = "id",
+  model,
+  openAction,
+  disabled,
+  onClick,
+  type = mode === "add" ? "primary" : "text",
+  size = mode === "add" ? "middle" : "small",
+  children,
+  ...props
+}: RecordActionButtonProps) {
+  const resolvedDisabled =
+    !openAction || (typeof disabled === "function" ? disabled(row ?? {}) : disabled);
+  const execute = async () => {
+    if (!openAction) return;
+    await onClick?.(row, { id: row?.[rowKey], model, record: row ?? {} });
+    openAction(mode, openMode, row?.[rowKey]);
+  };
+  return (
+    <Button
+      {...props}
+      type={type}
+      size={size}
+      icon={props.icon ?? RECORD_ACTION_ICONS[mode]}
+      disabled={resolvedDisabled}
+      onClick={() => void execute()}
+    >
+      {children ?? RECORD_ACTION_LABELS[mode]}
+    </Button>
+  );
+}
+
+interface BatchButtonProps extends Omit<ButtonProps, "onClick"> {
+  selection?: BatchContext;
+  clearSelection?: () => void;
+  refresh?: () => void | Promise<void>;
+  confirm?: ReactNode;
+  confirmDescription?: ReactNode;
+  successMessage?: string;
+  refreshAfterSuccess?: boolean;
+  onClick?: (selection: BatchContext) => unknown | Promise<unknown>;
+}
+
+/** Executes a batch operation with the table selection injected by its slot. */
+export function BatchButton({
+  selection,
+  clearSelection,
+  refresh,
+  confirm,
+  confirmDescription,
+  successMessage,
+  refreshAfterSuccess = false,
+  onClick,
+  children,
+  danger,
+  ...props
+}: BatchButtonProps) {
+  const { message } = App.useApp();
+  const [loading, setLoading] = useState(false);
+  const disabled = props.disabled || !selection?.ids.length || !onClick;
+  const execute = async () => {
+    if (!selection || !onClick) return;
+    setLoading(true);
+    try {
+      await onClick(selection);
+      if (successMessage) message.success(successMessage);
+      clearSelection?.();
+      if (refreshAfterSuccess) await refresh?.();
+    } catch (reason) {
+      message.error(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setLoading(false);
+    }
+  };
+  const button = (
+    <Button
+      {...props}
+      danger={danger}
+      loading={loading}
+      disabled={disabled}
+      icon={props.icon ?? <DeleteOutlined />}
+      onClick={confirm ? undefined : () => void execute()}
+    >
+      {children}
+    </Button>
+  );
+  return confirm ? (
+    <Popconfirm
+      title={confirm}
+      description={confirmDescription}
+      okText="确认"
+      cancelText="取消"
+      okButtonProps={{ danger }}
+      disabled={disabled}
+      onConfirm={execute}
+    >
+      {button}
+    </Popconfirm>
+  ) : (
+    button
+  );
 }
 
 interface RowButtonProps extends Omit<ButtonProps, "disabled" | "onClick"> {

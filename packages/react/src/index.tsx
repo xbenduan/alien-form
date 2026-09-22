@@ -280,7 +280,7 @@ export function RuntimeComponent({
   const registration = runtime.resolveComponent(code, domain);
   if (!registration) throw new Error(`Component "${code}" 未注册`);
   const Component = registration.component as ComponentType<Record<string, unknown>>;
-  const componentProps = registration.adapter === "antd" ? props : { ...props, ...context };
+  const componentProps = registration.injectContext ? { ...props, ...context } : props;
   return children === undefined
     ? createElement(Component, componentProps)
     : createElement(Component, componentProps, children);

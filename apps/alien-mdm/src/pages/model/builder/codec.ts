@@ -103,15 +103,15 @@ export function isContainer(runtime: Runtime, node: FieldNode, domain?: string):
   return Boolean(containerKind(runtime, node.form.component, domain));
 }
 
-/** form-schema 字段可选组件：只列 adapter==="form" 的组件（约束：form-schema 只能用 form）。 */
+/** 列出声明了字段编辑元数据的组件。 */
 export function componentOptions(
   runtime: Runtime,
   domain?: string,
 ): { label: string; value: string }[] {
   return runtime
-    .componentCodes(domain)
-    .filter((code) => runtime.resolveComponent(code, domain)?.adapter === "form")
-    .map((code) => ({ label: code, value: code }));
+    .getCapabilities(domain)
+    .components.filter(({ meta }) => meta?.kind !== undefined)
+    .map(({ code }) => ({ label: code, value: code }));
 }
 
 /** 依据组件推断字段类型。 */

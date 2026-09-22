@@ -1,7 +1,6 @@
 import { DownloadOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import { App, Button, Space } from "antd";
 import { useState } from "react";
-import { useRuntime } from "@alien-form/react";
 import styles from "./model-list-toolbar.module.css";
 
 export interface ModelListToolbarProps {
@@ -11,7 +10,6 @@ export interface ModelListToolbarProps {
 }
 
 export function ModelListToolbar({ loading, onAdd, onRefresh }: ModelListToolbarProps) {
-  const runtime = useRuntime();
   const { message } = App.useApp();
   const [downloading, setDownloading] = useState(false);
 
@@ -19,7 +17,7 @@ export function ModelListToolbar({ loading, onAdd, onRefresh }: ModelListToolbar
     setDownloading(true);
     try {
       const { downloadModelSkill } = await import("../skills/model-skill");
-      await downloadModelSkill(runtime);
+      await downloadModelSkill();
       message.success("Skills 下载成功");
     } catch (reason) {
       message.error(reason instanceof Error ? reason.message : "Skills 下载失败");

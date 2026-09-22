@@ -1,5 +1,5 @@
 import { Button, Card, Col, Divider, Flex, Row, Space, Table } from "antd";
-import type { Runtime } from "@alien-form/engine";
+import { defineComponent, type Runtime } from "@alien-form/engine";
 import { registerEnums } from "./enums";
 import { registerComponents } from "./components";
 import { registerLayouts } from "./layouts";
@@ -11,7 +11,7 @@ const antd = { Button, Card, Col, Divider, Flex, Row, Space, Table };
 
 export function registerGlobal(runtime: Runtime): void {
   for (const [code, component] of Object.entries(antd)) {
-    runtime.component({ code, component, adapter: "antd" });
+    runtime.component(code, defineComponent(component));
   }
   registerComponents(runtime);
   registerLayouts(runtime);

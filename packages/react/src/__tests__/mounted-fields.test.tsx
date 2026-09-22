@@ -2,7 +2,7 @@ import { render, act } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import type { ReactNode } from "react";
 import { createForm } from "@alien-form/core";
-import { compileForm, Runtime } from "@alien-form/engine";
+import { compileForm, defineComponent, defineUtil, Runtime } from "@alien-form/engine";
 import { FormProvider, FormRenderer, RuntimeProvider, useFieldValue } from "../index";
 
 const Input = (props: { value?: string; onChange?: (v: string) => void }) => (
@@ -21,13 +21,14 @@ const fieldSchema = {
 
 function createRuntime() {
   const runtime = new Runtime();
-  runtime.component({ code: "Input", component: Input, adapter: "form" });
-  runtime.component({ code: "Probe", component: Probe, adapter: "form" });
-  runtime.component({
-    code: "FormItem",
-    component: ({ children }: { children?: ReactNode }) => <>{children}</>,
-    adapter: "decorator",
-  });
+  runtime.component("Input", defineComponent(Input, { injectContext: true }));
+  runtime.component("Probe", defineComponent(Probe, { injectContext: true }));
+  runtime.component(
+    "FormItem",
+    defineComponent(({ children }: { children?: ReactNode }) => <>{children}</>, {
+      injectContext: true,
+    }),
+  );
   return runtime;
 }
 
@@ -122,7 +123,10 @@ describe("mounted field registration (React wiring)", () => {
       { "form-schema": { type: "object" } },
     );
     const runtime = createRuntime();
-    runtime.utils("load", () => []);
+    runtime.util(
+      "load",
+      defineUtil(() => [], { description: "加载" }),
+    );
     const form = createForm({
       schema: compiled.schema,
       scope: runtime.createScope(undefined, {}),

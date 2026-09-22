@@ -1,30 +1,40 @@
 import { createForm, type FormInstance } from "@alien-form/core";
+import type { ComponentCapability, EnumCapability, RuntimeCapability } from "@alien-form/protocol";
 import { compileModel, matchPage } from "../compiler";
 import type { ModelSchema, CompiledPage } from "../protocol";
-import { Registry, type ComponentRegistration } from "../registry";
+import {
+  Registry,
+  type ComponentDefinition,
+  type ComponentRegistration,
+  type RuntimeDefinition,
+} from "../registry";
 
 export type SchemaLoader = (modelCode: string) => Promise<ModelSchema>;
 export type RuntimeService = (...args: any[]) => unknown;
-type RegistrationKind = "component" | "service" | "enum" | "utils";
+type RegistrationKind = "component" | "service" | "enum" | "util";
 type OverrideKeys = Record<RegistrationKind, Set<string>>;
 const namespaceMember = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
 function createServiceAccessor(
-  registry: Registry<RuntimeService>,
+  registry: Registry<RuntimeDefinition<RuntimeService>>,
   domain: string | undefined,
 ): (code: string) => RuntimeService {
   return (code) => {
-    const value = registry.get(code, domain);
-    if (value === undefined) throw new Error(`$service("${code}") 未注册`);
-    return value;
+    const definition = registry.get(code, domain);
+    if (definition === undefined) throw new Error(`$service("${code}") 未注册`);
+    return definition.value;
   };
 }
 
 function createNamespace<T>(
-  registry: Registry<T>,
+  registry: Registry<RuntimeDefinition<T>>,
   domain: string | undefined,
 ): Readonly<Record<string, T>> {
-  return Object.freeze(Object.fromEntries(registry.values(domain)));
+  return Object.freeze(
+    Object.fromEntries(
+      registry.values(domain).map(([code, definition]) => [code, definition.value]),
+    ),
+  );
 }
 
 function assertNamespaceMember(kind: "utils" | "enum", key: string): void {
@@ -35,39 +45,40 @@ function assertNamespaceMember(kind: "utils" | "enum", key: string): void {
 
 export class Runtime {
   private readonly components = new Registry<ComponentRegistration>("component");
-  private readonly services = new Registry<RuntimeService>("service");
-  private readonly enums = new Registry<unknown>("enum");
-  private readonly utilities = new Registry<unknown>("utils");
+  private readonly services = new Registry<RuntimeDefinition<RuntimeService>>("service");
+  private readonly enums = new Registry<RuntimeDefinition<unknown>>("enum");
+  private readonly utilities = new Registry<RuntimeDefinition<unknown>>("util");
   private globalOverrideKeys?: OverrideKeys;
   private schemaLoader?: SchemaLoader;
 
-  component(registration: ComponentRegistration, domain?: string): void {
+  component(code: string, definition: ComponentDefinition, domain?: string): void {
+    const registration = { code, ...definition };
     this.components.set(
-      registration.code,
+      code,
       registration,
       domain,
-      this.canReplaceGlobal("component", registration.code, domain),
+      this.canReplaceGlobal("component", code, domain),
     );
   }
 
-  service(code: string, send: RuntimeService, domain?: string): void {
-    this.services.set(code, send, domain, this.canReplaceGlobal("service", code, domain));
+  service(code: string, definition: RuntimeDefinition<RuntimeService>, domain?: string): void {
+    this.services.set(code, definition, domain, this.canReplaceGlobal("service", code, domain));
   }
 
   getService(code: string, domain?: string): RuntimeService {
-    const service = this.services.get(code, domain);
-    if (!service) throw new Error(`service "${code}" 未注册`);
-    return service;
+    const definition = this.services.get(code, domain);
+    if (!definition) throw new Error(`service "${code}" 未注册`);
+    return definition.value;
   }
 
-  utils(key: string, value: unknown, domain?: string): void {
-    assertNamespaceMember("utils", key);
-    this.utilities.set(key, value, domain, this.canReplaceGlobal("utils", key, domain));
+  util(code: string, definition: RuntimeDefinition<unknown>, domain?: string): void {
+    assertNamespaceMember("utils", code);
+    this.utilities.set(code, definition, domain, this.canReplaceGlobal("util", code, domain));
   }
 
-  enum(key: string, value: unknown, domain?: string): void {
-    assertNamespaceMember("enum", key);
-    this.enums.set(key, value, domain, this.canReplaceGlobal("enum", key, domain));
+  enum(code: string, definition: RuntimeDefinition<unknown>, domain?: string): void {
+    assertNamespaceMember("enum", code);
+    this.enums.set(code, definition, domain, this.canReplaceGlobal("enum", code, domain));
   }
 
   withGlobalOverrides(register: (runtime: Runtime) => void): void {
@@ -77,7 +88,7 @@ export class Runtime {
         component: new Set(),
         service: new Set(),
         enum: new Set(),
-        utils: new Set(),
+        util: new Set(),
       };
     }
     try {
@@ -91,19 +102,28 @@ export class Runtime {
     return this.components.get(code, domain);
   }
 
-  /** 枚举已注册组件的 code（用于构建器字段类型下拉）。 */
-  componentCodes(domain?: string): string[] {
-    return this.components.values(domain).map(([code]) => code);
-  }
-
-  /** 枚举当前作用域内生效的工具。 */
-  utilityEntries(domain?: string): Array<[string, unknown]> {
-    return this.utilities.values(domain);
-  }
-
-  /** 枚举当前作用域内生效的枚举。 */
-  enumEntries(domain?: string): Array<[string, unknown]> {
-    return this.enums.values(domain);
+  getCapabilities(domain?: string): {
+    components: ComponentCapability[];
+    services: RuntimeCapability[];
+    utilities: RuntimeCapability[];
+    enums: EnumCapability[];
+  } {
+    return {
+      components: this.components
+        .values(domain)
+        .map(([code, definition]) => ({ code, meta: definition.meta })),
+      services: this.services
+        .values(domain)
+        .map(([code, definition]) => ({ code, description: definition.description })),
+      utilities: this.utilities
+        .values(domain)
+        .map(([code, definition]) => ({ code, description: definition.description })),
+      enums: this.enums.values(domain).map(([code, definition]) => ({
+        code,
+        description: definition.description,
+        value: definition.value,
+      })),
+    };
   }
 
   private canReplaceGlobal(kind: RegistrationKind, code: string, domain?: string): boolean {
