@@ -12,7 +12,7 @@ import {
 } from "@ant-design/icons";
 import { Alert, Button, Empty, Input, Skeleton, Tabs, Tooltip, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
-import { UserMenu } from "../../components";
+import { UserMenu } from "../../components/user-menu";
 import type { ListResponse, ModelRecord, ModelSummary } from "@app-types";
 import { parseModelSummaries } from "@alien-form/protocol";
 import { transport } from "@runtime/transport";

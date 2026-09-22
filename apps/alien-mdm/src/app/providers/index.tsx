@@ -91,6 +91,11 @@ export function AppProviders({ children }: PropsWithChildren) {
           Form: {
             itemMarginBottom: 16,
           },
+          Button: {
+            textTextColor: "#1677ff",
+            textTextHoverColor: "#4096ff",
+            textTextActiveColor: "#0958d9",
+          },
         },
       }}
     >

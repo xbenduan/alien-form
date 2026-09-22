@@ -329,8 +329,7 @@ function createBaseField(
 }
 
 function defaultComponentFor(kind: FieldKind): string {
-  if (kind === "array") return "ArrayCards";
-  if (kind === "object") return "ObjectField";
+  if (kind === "array" || kind === "object") return "Card";
   return "Input";
 }
 

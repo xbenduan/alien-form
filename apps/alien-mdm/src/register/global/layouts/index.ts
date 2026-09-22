@@ -63,7 +63,7 @@ export function registerLayouts(runtime: Runtime): void {
     defineComponent(Menu, {
       injectContext: true,
       meta: {
-        type: "void",
+        types: ["void"],
         kind: "leaf",
         sample: {
           type: "void",
@@ -108,7 +108,7 @@ export function registerLayouts(runtime: Runtime): void {
     defineComponent(TreeLayout, {
       injectContext: true,
       meta: {
-        type: "string",
+        types: ["string"],
         kind: "leaf",
         props: {
           model: { type: "string", required: true },

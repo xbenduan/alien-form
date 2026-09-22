@@ -1,6 +1,7 @@
 import { App, Form, Input, Modal, Select } from "antd";
 import { useEffect } from "react";
-import { createId, type GroupDraft, type ModelDraft } from "../builder";
+import { createId } from "../builder/codec";
+import type { GroupDraft, ModelDraft } from "../builder/types";
 
 interface GroupFormValues {
   title?: string;
@@ -61,7 +62,7 @@ export function GroupModal({
     }
     onSubmit({
       id: group?.id ?? createId(),
-      component: group?.component ?? "ObjectField",
+      component: group?.component ?? "Card",
       title: values.title?.trim() || undefined,
       keys: values.keys ?? [],
       props,

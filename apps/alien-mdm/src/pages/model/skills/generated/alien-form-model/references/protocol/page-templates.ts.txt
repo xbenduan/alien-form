@@ -17,7 +17,7 @@ export const SYSTEM_FIELD_KEYS = ["id", "createdAt", "updatedAt"] as const;
 
 /** Shared detail-page group for generated system fields. */
 export const SYSTEM_DETAIL_GROUP: FieldGroup = {
-  component: "ObjectField",
+  component: "Card",
   title: "系统信息",
   keys: [...SYSTEM_FIELD_KEYS],
   props: { gridSpan: 12 },
@@ -306,7 +306,7 @@ export function createRecordPages(
         ...page,
         groups: [
           {
-            component: "ObjectField",
+            component: "Card",
             title: "基础信息",
             keys: groupKeys,
             props: { gridSpan: 12 },

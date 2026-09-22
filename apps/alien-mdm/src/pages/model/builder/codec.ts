@@ -37,8 +37,8 @@ const COMPONENT_FOR_TYPE: Record<FieldType, string> = {
   string: "Input",
   number: "NumberInput",
   boolean: "Select",
-  object: "ObjectField",
-  array: "ArrayCards",
+  object: "Card",
+  array: "Card",
   void: "Input",
 };
 
@@ -88,40 +88,23 @@ export function synchronizeRelationForm(
   };
 }
 
-/** 组件是否为容器（object→properties / array→items）。 */
-export function containerKind(
-  runtime: Runtime,
-  component?: string,
-  domain?: string,
-): "properties" | "items" | undefined {
-  if (!component) return undefined;
-  const registration = runtime.resolveComponent(component, domain);
-  return registration?.meta?.children;
-}
-
-export function isContainer(runtime: Runtime, node: FieldNode, domain?: string): boolean {
-  return Boolean(containerKind(runtime, node.form.component, domain));
+/** 字段类型是容器结构的唯一真相源。 */
+export function isContainer(node: FieldNode): boolean {
+  return node.type === "object" || node.type === "array" || node.type === "void";
 }
 
 /** 列出声明了字段编辑元数据的组件。 */
 export function componentOptions(
   runtime: Runtime,
+  type: FieldType,
   domain?: string,
 ): { label: string; value: string }[] {
   return runtime
     .getCapabilities(domain)
-    .components.filter(({ meta }) => meta?.kind !== undefined)
+    .components.filter(
+      ({ meta }) => meta?.kind !== undefined && (meta.types?.includes(type) ?? false),
+    )
     .map(({ code }) => ({ label: code, value: code }));
-}
-
-/** 依据组件推断字段类型。 */
-export function typeForComponent(runtime: Runtime, component: string, domain?: string): FieldType {
-  const meta = runtime.resolveComponent(component, domain)?.meta;
-  if (meta?.children === "items") return "array";
-  if (meta?.children === "properties") return "object";
-  if (meta?.type === "number") return "number";
-  if (meta?.type === "boolean") return "boolean";
-  return "string";
 }
 
 /** 取组件注册的示例 schema（新增字段选组件时带出，编辑不带出）。 */
@@ -135,12 +118,11 @@ export function componentSample(
 
 /** 新建一个字段节点（默认 Input，落库字段）。 */
 export function createField(
-  runtime: Runtime,
-  options: { component?: string; source?: FieldNode["source"]; domain?: string } = {},
+  options: { component?: string; source?: FieldNode["source"]; type?: FieldType } = {},
 ): FieldNode {
   const component = options.component ?? "Input";
   const source = options.source ?? "physical";
-  const type = typeForComponent(runtime, component, options.domain);
+  const type = options.type ?? "string";
   const key = `field_${idCounter + 1}`;
   const node: FieldNode = {
     id: createId(),
@@ -426,7 +408,7 @@ export function encodeModel(draft: ModelDraft): ModelSchema {
     .map(
       (item) =>
         pruneUndefined({
-          component: item.component?.trim() || "ObjectField",
+          component: item.component?.trim() || "Card",
           title: item.title,
           description: item.description,
           keys: item.keys,

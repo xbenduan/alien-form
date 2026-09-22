@@ -182,7 +182,7 @@ form.setFieldValue("name", "new");
 
 - **primitive 字段** → 用 `components[component]` 渲染，外面套 `decorators[decorator]`（默认 `FormItem`）。
 - **object 字段**：写了 `component` 就用该组件包裹子字段；否则**直接展开渲染子字段**（不额外包一层）。
-- **array 字段** → 用 `components[component]`（默认组件名 `ArrayCards`）渲染，库会把每行子字段预渲染好交给它。
+- **array 字段** → 用 `components[component]`（默认组件名 `Card`）渲染，库会把每行子字段预渲染好交给它。
 - **void 字段（`x-layout`）** → 用 `components[x-layout 名]` 作为布局组件包裹子字段；组件没注册时**降级为直接渲染子字段**，不崩溃。
 - 顶层 `x-layout`：整个 `<SchemaField>` 外层套一个布局组件（同样支持降级）。
 

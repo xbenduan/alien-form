@@ -41,7 +41,7 @@ export interface SlotContract {
 export interface ComponentCapability {
   code: string;
   meta?: {
-    type?: string;
+    types?: string[];
     kind?: "leaf" | "complex";
     dataSource?: boolean;
     children?: "properties" | "items";

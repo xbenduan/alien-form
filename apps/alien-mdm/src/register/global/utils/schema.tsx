@@ -9,8 +9,7 @@ import {
 } from "@alien-form/engine";
 
 function defaultComponent(field: FieldSchema): string {
-  if (field.type === "array") return "ArrayCards";
-  if (field.type === "object") return "ObjectField";
+  if (field.type === "array" || field.type === "object") return "Card";
   return "Input";
 }
 

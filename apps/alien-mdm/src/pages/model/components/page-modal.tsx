@@ -1,13 +1,9 @@
 import { App, Input, Modal, Select, Space, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { parsePageSchema } from "@alien-form/protocol";
-import {
-  PAGE_TEMPLATES,
-  createId,
-  findPageTemplate,
-  type ModelDraft,
-  type PageDraft,
-} from "../builder";
+import { createId } from "../builder/codec";
+import { PAGE_TEMPLATES, findPageTemplate } from "../builder/page-templates";
+import type { ModelDraft, PageDraft } from "../builder/types";
 
 /**
  * 页面配置弹窗：新增/编辑一个页面（PageSchema）。

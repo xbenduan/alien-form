@@ -3,14 +3,9 @@ import { App, Button, Card, Col, Empty, Flex, Input, Row, Segmented } from "antd
 import { useEffect, useMemo, useState } from "react";
 import { FormRenderer, useRuntime } from "@alien-form/react";
 import { buildFormSchema, buildRuntimeDefinitions, compileForm } from "@alien-form/engine";
-import {
-  applyFormSchema,
-  createField,
-  encodeModel,
-  type FieldNode,
-  type ModelAction,
-  type ModelDraft,
-} from "../builder";
+import { applyFormSchema, createField, encodeModel } from "../builder/codec";
+import type { ModelAction } from "../builder/commands";
+import type { FieldNode, ModelDraft } from "../builder/types";
 import { FieldBarTree } from "./field-bar-tree";
 import { FormFieldModal } from "./form-field-modal";
 import { PlusOutlined } from "@ant-design/icons";
@@ -101,10 +96,10 @@ export function FormBuilder({
   };
 
   const addExtra = () => {
-    setEditor({ node: createField(runtime, { source: "virtual" }), isNew: true });
+    setEditor({ node: createField({ source: "virtual" }), isNew: true });
   };
   const addChild = (parentId: string) => {
-    setEditor({ node: createField(runtime, { source: "virtual" }), parentId, isNew: true });
+    setEditor({ node: createField({ source: "virtual" }), parentId, isNew: true });
   };
 
   return (
@@ -122,8 +117,6 @@ export function FormBuilder({
               <div className={styles.formBuilderCardContent}>
                 <FieldBarTree
                   fields={draft.fields}
-                  runtime={runtime}
-                  domain={draft.name}
                   onEdit={(node) => setEditor({ node, isNew: false })}
                   onRemove={(node) => dispatch({ type: "field.remove", id: node.id })}
                   onAddChild={addChild}

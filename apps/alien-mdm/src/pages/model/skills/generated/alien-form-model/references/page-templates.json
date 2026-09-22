@@ -372,7 +372,7 @@
         "permission": "read",
         "groups": [
           {
-            "component": "ObjectField",
+            "component": "Card",
             "title": "系统信息",
             "keys": [
               "id",

@@ -1,13 +1,10 @@
-import { Form, Input, Modal, Select, Tabs } from "antd";
+import { Button, Drawer, Flex, Form, Input, Select } from "antd";
 import { useEffect, useMemo, useRef } from "react";
 import type { FieldSchema, Runtime } from "@alien-form/engine";
-import {
-  componentOptions,
-  componentSample,
-  synchronizeRelationForm,
-  typeForComponent,
-  type FieldNode,
-} from "../builder";
+import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
+import { FieldsetCard } from "../../../components/fieldset-card";
+import { componentOptions, componentSample, synchronizeRelationForm } from "../builder/codec";
+import type { FieldNode, FieldType } from "../builder/types";
 
 /**
  * 表单字段编辑器的表单值：覆盖 core IFieldSchema 的全部字段。
@@ -86,7 +83,7 @@ function toValues(node: FieldNode): FormFieldValues {
 }
 
 /**
- * 「表单配置」字段弹窗：编辑 form-schema 表现，覆盖全部 IFieldSchema 字段。
+ * 「表单配置」字段抽屉：编辑 form-schema 表现，覆盖全部 IFieldSchema 字段。
  * physical 字段的 key/type 由数据库构建决定；required 由 nullable 派生。
  * virtual 字段可自由编辑。
  * 新增字段时选择组件会带出该组件的示例 schema；编辑已有字段不自动带出。
@@ -111,12 +108,13 @@ export function FormFieldModal({
   onSubmit: (node: FieldNode) => void;
 }) {
   const [form] = Form.useForm<FormFieldValues>();
-  const options = useMemo(() => componentOptions(runtime, domain), [runtime, domain]);
   const isDbField = node?.source === "physical";
   const isSystem = node?.storage?.system === true;
   const isRelation = Boolean(node?.storage?.relation);
   // 记录初始组件：仅当新增字段且用户"改变"组件时才带出示例，避免打开即覆盖。
   const initialComponent = useRef<string | undefined>(undefined);
+  const drawerTitle = useRef("编辑字段");
+  if (open) drawerTitle.current = isNew ? "新增字段" : "编辑字段";
 
   useEffect(() => {
     if (open && node) {
@@ -126,6 +124,11 @@ export function FormFieldModal({
   }, [open, node, form]);
 
   const component = Form.useWatch("component", form);
+  const selectedType = (Form.useWatch("type", form) ?? node?.type ?? "string") as FieldType;
+  const options = useMemo(
+    () => componentOptions(runtime, selectedType, domain),
+    [runtime, selectedType, domain],
+  );
   const supportsDataSource = Boolean(
     component && runtime.resolveComponent(component, domain)?.meta?.dataSource,
   );
@@ -155,11 +158,7 @@ export function FormFieldModal({
       | Record<string, unknown>
       | undefined;
 
-    const nextType = isDbField
-      ? node.type
-      : values.component
-        ? typeForComponent(runtime, values.component, domain)
-        : node.type;
+    const nextType = isDbField ? node.type : (values.type as FieldType);
 
     const nextForm: FieldSchema & Record<string, unknown> = {
       ...(node.form as FieldSchema),
@@ -197,176 +196,190 @@ export function FormFieldModal({
   };
 
   return (
-    <Modal
-      centered
+    <Drawer
       destroyOnHidden
       open={open}
-      title={isNew ? "新增字段" : "编辑字段"}
-      width={800}
-      okText="确认"
-      cancelText="取消"
-      onCancel={onCancel}
-      onOk={submit}
+      title={drawerTitle.current}
+      width="min(720px, 100vw)"
+      onClose={onCancel}
+      footer={
+        <Flex justify="flex-end" gap={8}>
+          <Button icon={<CloseOutlined />} onClick={onCancel}>
+            取消
+          </Button>
+          <Button
+            type="primary"
+            icon={<CheckOutlined />}
+            onClick={() => void submit().catch(() => undefined)}
+          >
+            确认
+          </Button>
+        </Flex>
+      }
     >
       <Form form={form} layout="vertical">
-        <Tabs
-          defaultActiveKey="basic"
-          styles={{
-            content: { height: "min(680px, calc(100vh - 250px))", overflowY: "auto" },
-          }}
-        >
-          <Tabs.TabPane tab="基础" key="basic">
-            <Form.Item
-              name="key"
-              label="字段 Key"
-              rules={[
-                { required: true, message: "请输入字段 Key" },
-                {
-                  pattern: /^[A-Za-z_][A-Za-z0-9_]*$/,
-                  message: "只能用字母数字下划线，字母或下划线开头",
-                },
-                {
-                  validator: (_rule, value) =>
-                    existingKeys.includes(String(value)) && value !== node?.key
-                      ? Promise.reject(new Error("字段 Key 已存在"))
-                      : Promise.resolve(),
-                },
+        <FieldsetCard title="基础">
+          <Form.Item
+            name="key"
+            label="字段 Key"
+            rules={[
+              { required: true, message: "请输入字段 Key" },
+              {
+                pattern: /^[A-Za-z_][A-Za-z0-9_]*$/,
+                message: "只能用字母数字下划线，字母或下划线开头",
+              },
+              {
+                validator: (_rule, value) =>
+                  existingKeys.includes(String(value)) && value !== node?.key
+                    ? Promise.reject(new Error("字段 Key 已存在"))
+                    : Promise.resolve(),
+              },
+            ]}
+            extra={isDbField ? "落库字段 Key 由数据库构建决定，不可修改" : undefined}
+          >
+            <Input disabled={isDbField} placeholder="例如 username" />
+          </Form.Item>
+          <Form.Item
+            name="type"
+            label="类型"
+            rules={[{ required: true, message: "请选择字段类型" }]}
+            extra={isDbField ? "落库字段类型由数据库构建决定" : undefined}
+          >
+            <Select
+              disabled={isDbField}
+              options={["string", "number", "boolean", "object", "array", "void"].map((v) => ({
+                label: v,
+                value: v,
+              }))}
+              onChange={(type: FieldType) => {
+                const current = form.getFieldValue("component");
+                const nextOptions = componentOptions(runtime, type, domain);
+                if (!nextOptions.some((option) => option.value === current)) {
+                  form.setFieldValue("component", nextOptions[0]?.value);
+                }
+              }}
+            />
+          </Form.Item>
+          <Form.Item name="title" label="表单标签">
+            <Input placeholder="请输入" />
+          </Form.Item>
+          <Form.Item
+            name="component"
+            label="组件"
+            rules={[
+              {
+                validator: (_rule, value) =>
+                  !value || options.some((option) => option.value === value)
+                    ? Promise.resolve()
+                    : Promise.reject(new Error(`组件不支持 ${selectedType} 类型`)),
+              },
+            ]}
+          >
+            <Select
+              options={options}
+              disabled={isSystem || isRelation}
+              showSearch
+              onChange={applySample}
+            />
+          </Form.Item>
+          <Form.Item name="description" label="描述">
+            <Input.TextArea placeholder="请输入" rows={2} />
+          </Form.Item>
+        </FieldsetCard>
+        <FieldsetCard title="属性">
+          <Form.Item name="defaultJson" label="默认值" rules={[jsonRule("default")]}>
+            <Input.TextArea rows={2} placeholder='"文本" 或 123 或 {"a":1}' />
+          </Form.Item>
+          <Form.Item name="display" label="表单显隐">
+            <Select
+              placeholder="请选择"
+              defaultValue="visible"
+              options={[
+                { label: "显示", value: "visible" },
+                { label: "隐藏(hidden)", value: "hidden" },
+                { label: "不进表单(none)", value: "none" },
               ]}
-              extra={isDbField ? "落库字段 Key 由数据库构建决定，不可修改" : undefined}
-            >
-              <Input disabled={isDbField} placeholder="例如 username" />
-            </Form.Item>
+            />
+          </Form.Item>
+          <Form.Item name="required" valuePropName="checked" hidden={isDbField}>
+            <Select
+              placeholder="请选择"
+              defaultValue={true}
+              options={[
+                { label: "必填", value: true },
+                { label: "非必填", value: false },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item label="禁用" name="disabled" valuePropName="checked">
+            <Select
+              placeholder="请选择"
+              defaultValue={true}
+              options={[
+                { label: "禁用", value: true },
+                { label: "启用", value: false },
+              ]}
+            />
+          </Form.Item>
+          {supportsDataSource ? (
             <Form.Item
-              name="type"
-              label="类型"
-              extra={isDbField ? "落库字段类型由数据库构建决定" : undefined}
+              name="dataSourceJson"
+              label="选项数据源(JSON)"
+              rules={[jsonRule("dataSource")]}
             >
-              <Select
-                disabled={isDbField}
-                options={["string", "number", "boolean", "object", "array", "void"].map((v) => ({
-                  label: v,
-                  value: v,
-                }))}
+              <Input.TextArea
+                disabled={isRelation}
+                rows={3}
+                placeholder='[{"label":"启用","value":"active"}]'
               />
             </Form.Item>
-            <Form.Item name="title" label="表单标签">
-              <Input placeholder="请输入" />
-            </Form.Item>
-            <Form.Item name="component" label="组件">
-              <Select
-                options={options}
-                disabled={isSystem || isRelation}
-                showSearch
-                onChange={applySample}
-              />
-            </Form.Item>
-            <Form.Item name="description" label="描述">
-              <Input.TextArea placeholder="请输入" rows={2} />
-            </Form.Item>
-          </Tabs.TabPane>
-          <Tabs.TabPane tab="属性" key="attributes">
-            <Form.Item name="defaultJson" label="默认值" rules={[jsonRule("default")]}>
-              <Input.TextArea rows={2} placeholder='"文本" 或 123 或 {"a":1}' />
-            </Form.Item>
-            <Form.Item name="display" label="表单显隐">
-              <Select
-                placeholder="请选择"
-                defaultValue="visible"
-                options={[
-                  { label: "显示", value: "visible" },
-                  { label: "隐藏(hidden)", value: "hidden" },
-                  { label: "不进表单(none)", value: "none" },
-                ]}
-              />
-            </Form.Item>
-            <Form.Item name="required" valuePropName="checked" hidden={isDbField}>
-              <Select
-                placeholder="请选择"
-                defaultValue={true}
-                options={[
-                  { label: "必填", value: true },
-                  { label: "非必填", value: false },
-                ]}
-              />
-            </Form.Item>
-            <Form.Item label="禁用" name="disabled" valuePropName="checked">
-              <Select
-                placeholder="请选择"
-                defaultValue={true}
-                options={[
-                  { label: "禁用", value: true },
-                  { label: "启用", value: false },
-                ]}
-              />
-            </Form.Item>
-            {supportsDataSource ? (
-              <Form.Item
-                name="dataSourceJson"
-                label="选项数据源(JSON)"
-                rules={[jsonRule("dataSource")]}
-              >
-                <Input.TextArea
-                  disabled={isRelation}
-                  rows={3}
-                  placeholder='[{"label":"启用","value":"active"}]'
-                />
-              </Form.Item>
-            ) : null}
-            <Form.Item name="propsJson" label="组件 props(JSON)" rules={[jsonRule("props")]}>
-              <Input.TextArea rows={3} placeholder='{"placeholder":"请输入"}' />
-            </Form.Item>
-            <Form.Item name="order" label="排序 order">
-              <Input type="number" />
-            </Form.Item>
-            {/* start：暂时不启用以下字段 */}
-            <Form.Item name="x-layout" label="x-layout（布局组件名）" hidden>
-              <Input placeholder="void 布局组件" />
-            </Form.Item>
-            <Form.Item name="decorator" label="decorator（装饰器组件名）" hidden>
-              <Input />
-            </Form.Item>
-            <Form.Item
-              name="decoratorPropsJson"
-              label="decoratorProps(JSON)"
-              rules={[jsonRule("decoratorProps")]}
-              hidden
-            >
-              <Input.TextArea rows={2} />
-            </Form.Item>
-            {/* end */}
-          </Tabs.TabPane>
-          <Tabs.TabPane tab="高级" key="advanced">
-            <Form.Item
-              name="reactionJson"
-              label="x-reaction 联动(JSON)"
-              rules={[jsonRule("x-reaction")]}
-            >
-              <Input.TextArea rows={3} />
-            </Form.Item>
-            <Form.Item
-              name="effectJson"
-              label="x-effect 副作用(JSON)"
-              rules={[jsonRule("x-effect")]}
-            >
-              <Input.TextArea rows={2} />
-            </Form.Item>
-            <Form.Item
-              name="formatJson"
-              label="x-format 格式化(JSON)"
-              rules={[jsonRule("x-format")]}
-            >
-              <Input.TextArea rows={2} placeholder='{"input":"...","output":"..."}' />
-            </Form.Item>
-            <Form.Item
-              name="validateJson"
-              label="x-validate 校验(JSON)"
-              rules={[jsonRule("x-validate")]}
-            >
-              <Input.TextArea rows={2} />
-            </Form.Item>
-          </Tabs.TabPane>
-        </Tabs>
+          ) : null}
+          <Form.Item name="propsJson" label="组件 props(JSON)" rules={[jsonRule("props")]}>
+            <Input.TextArea rows={3} placeholder='{"placeholder":"请输入"}' />
+          </Form.Item>
+          <Form.Item name="order" label="排序 order">
+            <Input type="number" />
+          </Form.Item>
+          {/* start：暂时不启用以下字段 */}
+          <Form.Item name="x-layout" label="x-layout（布局组件名）" hidden>
+            <Input placeholder="void 布局组件" />
+          </Form.Item>
+          <Form.Item name="decorator" label="decorator（装饰器组件名）" hidden>
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="decoratorPropsJson"
+            label="decoratorProps(JSON)"
+            rules={[jsonRule("decoratorProps")]}
+            hidden
+          >
+            <Input.TextArea rows={2} />
+          </Form.Item>
+          {/* end */}
+        </FieldsetCard>
+        <FieldsetCard title="高级">
+          <Form.Item
+            name="reactionJson"
+            label="x-reaction 联动(JSON)"
+            rules={[jsonRule("x-reaction")]}
+          >
+            <Input.TextArea rows={3} />
+          </Form.Item>
+          <Form.Item name="effectJson" label="x-effect 副作用(JSON)" rules={[jsonRule("x-effect")]}>
+            <Input.TextArea rows={2} />
+          </Form.Item>
+          <Form.Item name="formatJson" label="x-format 格式化(JSON)" rules={[jsonRule("x-format")]}>
+            <Input.TextArea rows={2} placeholder='{"input":"...","output":"..."}' />
+          </Form.Item>
+          <Form.Item
+            name="validateJson"
+            label="x-validate 校验(JSON)"
+            rules={[jsonRule("x-validate")]}
+          >
+            <Input.TextArea rows={2} />
+          </Form.Item>
+        </FieldsetCard>
       </Form>
-    </Modal>
+    </Drawer>
   );
 }

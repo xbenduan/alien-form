@@ -130,7 +130,7 @@ function projectGroupedProperties(
     const group = groups[groupIndex]!;
     output[`$group-${groupIndex}`] = {
       type: "void",
-      component: group.component ?? "ObjectField",
+      component: group.component ?? "Card",
       title: group.title,
       description: group.description,
       props: group.props,

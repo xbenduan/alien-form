@@ -9,9 +9,6 @@ export const COMPONENT_CAPABILITIES: readonly ComponentCapability[] = [
     code: "Button",
   },
   {
-    code: "Card",
-  },
-  {
     code: "Col",
   },
   {
@@ -35,7 +32,7 @@ export const COMPONENT_CAPABILITIES: readonly ComponentCapability[] = [
   {
     code: "Input",
     meta: {
-      type: "string",
+      types: ["string"],
       kind: "leaf",
       dataSource: false,
       sample: {
@@ -50,7 +47,7 @@ export const COMPONENT_CAPABILITIES: readonly ComponentCapability[] = [
   {
     code: "TextArea",
     meta: {
-      type: "string",
+      types: ["string"],
       kind: "leaf",
       dataSource: false,
       sample: {
@@ -66,7 +63,7 @@ export const COMPONENT_CAPABILITIES: readonly ComponentCapability[] = [
   {
     code: "NumberInput",
     meta: {
-      type: "number",
+      types: ["number"],
       kind: "leaf",
       dataSource: false,
       sample: {
@@ -81,7 +78,7 @@ export const COMPONENT_CAPABILITIES: readonly ComponentCapability[] = [
   {
     code: "DatePicker",
     meta: {
-      type: "string",
+      types: ["string"],
       kind: "leaf",
       dataSource: false,
       sample: {
@@ -93,7 +90,7 @@ export const COMPONENT_CAPABILITIES: readonly ComponentCapability[] = [
   {
     code: "Select",
     meta: {
-      type: "string",
+      types: ["string", "boolean", "array"],
       kind: "leaf",
       dataSource: true,
       sample: {
@@ -115,7 +112,7 @@ export const COMPONENT_CAPABILITIES: readonly ComponentCapability[] = [
   {
     code: "RemoteSelect",
     meta: {
-      type: "string",
+      types: ["string", "array"],
       kind: "leaf",
       dataSource: false,
       props: {
@@ -159,7 +156,7 @@ export const COMPONENT_CAPABILITIES: readonly ComponentCapability[] = [
   {
     code: "TreeSelect",
     meta: {
-      type: "string",
+      types: ["string"],
       kind: "leaf",
       dataSource: false,
       props: {
@@ -203,37 +200,17 @@ export const COMPONENT_CAPABILITIES: readonly ComponentCapability[] = [
     },
   },
   {
-    code: "ObjectField",
+    code: "Card",
     meta: {
-      type: "object",
+      types: ["object", "array", "void"],
       kind: "complex",
-      children: "properties",
       sample: {
         type: "object",
-        component: "ObjectField",
+        component: "Card",
         props: {
           gridSpan: 12,
         },
         properties: {},
-      },
-    },
-  },
-  {
-    code: "ArrayCards",
-    meta: {
-      type: "array",
-      kind: "complex",
-      children: "items",
-      sample: {
-        type: "array",
-        component: "ArrayCards",
-        props: {
-          gridSpan: 12,
-        },
-        items: {
-          type: "object",
-          properties: {},
-        },
       },
     },
   },
@@ -318,7 +295,7 @@ export const COMPONENT_CAPABILITIES: readonly ComponentCapability[] = [
   {
     code: "Menu",
     meta: {
-      type: "void",
+      types: ["void"],
       kind: "leaf",
       sample: {
         type: "void",
@@ -394,7 +371,7 @@ export const COMPONENT_CAPABILITIES: readonly ComponentCapability[] = [
   {
     code: "tree",
     meta: {
-      type: "string",
+      types: ["string"],
       kind: "leaf",
       props: {
         model: {

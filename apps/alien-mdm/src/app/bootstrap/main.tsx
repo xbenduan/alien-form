@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { RuntimeProvider } from "@alien-form/react";
-import { appRuntime } from "@runtime";
+import { appRuntime } from "@runtime/create-runtime";
 import { hydrateUserInfo } from "@runtime/user-info";
 import { AppProviders } from "../providers";
 import { AppRouter } from "../router";

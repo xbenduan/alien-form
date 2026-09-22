@@ -188,6 +188,27 @@ describe("ModelSchema", () => {
     ).toThrow(/未声明的组件能力/);
   });
 
+  it("拒绝组件与字段类型不匹配", () => {
+    expect(() =>
+      parsePageSchema({
+        router: "detail",
+        permission: "read",
+        properties: {
+          invalid: { type: "string", component: "Card" },
+        },
+      }),
+    ).toThrow(/Card 不支持 string 类型/);
+    expect(() =>
+      parsePageSchema({
+        router: "detail",
+        permission: "read",
+        properties: {
+          invalid: { type: "array", component: "Card" },
+        },
+      }),
+    ).toThrow(/仅支持包含 items 的复杂数组/);
+  });
+
   it("校验表达式语法和能力引用", () => {
     expect(() =>
       parsePageSchema({

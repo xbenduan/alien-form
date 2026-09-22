@@ -2,21 +2,21 @@ import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from "@ant
 import { Button, Card, Flex, Input, Popconfirm, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useMemo, useState } from "react";
-import type { Runtime } from "@alien-form/engine";
-import { createField, type FieldNode, type ModelAction, type ModelDraft } from "../builder";
+import type { ModelAction } from "../builder/commands";
+import { createField } from "../builder/codec";
+import type { FieldNode, ModelDraft } from "../builder/types";
 import { StorageFieldModal } from "./storage-field-modal";
 
 interface EditorState {
-  node?: FieldNode;
+  node: FieldNode;
+  isNew: boolean;
 }
 
 export function DatabaseBuilder({
   draft,
-  runtime,
   dispatch,
 }: {
   draft: ModelDraft;
-  runtime: Runtime;
   dispatch: (action: ModelAction) => void;
 }) {
   const [keyword, setKeyword] = useState("");
@@ -38,7 +38,7 @@ export function DatabaseBuilder({
 
   const existingKeys = useMemo(() => draft.fields.map((node) => node.key), [draft.fields]);
 
-  const addField = () => setEditor({ node: createField(runtime, { source: "physical" }) });
+  const addField = () => setEditor({ node: createField({ source: "physical" }), isNew: true });
 
   const columns: ColumnsType<FieldNode> = [
     {
@@ -102,7 +102,7 @@ export function DatabaseBuilder({
             size="small"
             icon={<EditOutlined />}
             aria-label="编辑字段"
-            onClick={() => setEditor({ node: row })}
+            onClick={() => setEditor({ node: row, isNew: false })}
           >
             编辑
           </Button>
@@ -160,6 +160,7 @@ export function DatabaseBuilder({
       <StorageFieldModal
         open={Boolean(editor)}
         node={editor?.node}
+        isNew={editor?.isNew}
         existingKeys={existingKeys}
         onCancel={() => setEditor(undefined)}
         onSubmit={(node) => {

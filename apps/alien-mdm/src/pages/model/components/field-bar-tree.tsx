@@ -10,14 +10,12 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Button, Tag, Tooltip } from "antd";
-import type { Runtime } from "@alien-form/engine";
-import { isContainer, type FieldNode } from "../builder";
+import { isContainer } from "../builder/codec";
+import type { FieldNode } from "../builder/types";
 import styles from "./field-bar-tree.module.css";
 
 interface FieldBarTreeProps {
   fields: FieldNode[];
-  runtime: Runtime;
-  domain?: string;
   parentId?: string;
   onEdit: (node: FieldNode) => void;
   onRemove: (node: FieldNode) => void;
@@ -27,21 +25,17 @@ interface FieldBarTreeProps {
 
 function FieldBar({
   node,
-  runtime,
-  domain,
   onEdit,
   onRemove,
   onAddChild,
   onMove,
 }: {
   node: FieldNode;
-  runtime: Runtime;
-  domain?: string;
 } & Pick<FieldBarTreeProps, "onEdit" | "onRemove" | "onAddChild" | "onMove">) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: node.id,
   });
-  const container = isContainer(runtime, node, domain);
+  const container = isContainer(node);
   // 已发布物理字段不可删除，virtual 字段可自由调整。
   const deletable = node.source === "virtual";
   const borderRadius = container ? "8px 8px 0 0" : "8px";
@@ -98,9 +92,6 @@ function FieldBar({
         <div className={styles.nested}>
           <FieldBarTree
             fields={node.children ?? []}
-            runtime={runtime}
-            domain={domain}
-            parentId={node.id}
             onEdit={onEdit}
             onRemove={onRemove}
             onAddChild={onAddChild}
@@ -114,8 +105,6 @@ function FieldBar({
 
 export function FieldBarTree({
   fields,
-  runtime,
-  domain,
   parentId,
   onEdit,
   onRemove,
@@ -151,8 +140,6 @@ export function FieldBarTree({
             <FieldBar
               key={node.id}
               node={node}
-              runtime={runtime}
-              domain={domain}
               onEdit={onEdit}
               onRemove={onRemove}
               onAddChild={onAddChild}

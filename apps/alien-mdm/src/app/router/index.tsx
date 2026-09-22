@@ -3,7 +3,7 @@ import { Suspense, type PropsWithChildren, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { useAuth } from "../providers";
 import { canManageModels } from "@runtime/user-info";
-import { PageBreadcrumb } from "../../components";
+import { PageBreadcrumb } from "../../components/page-breadcrumb";
 import { DynamicPage } from "./dynamic-routes";
 import { NavigationProvider, useNavigationItems } from "./navigation";
 import { publicRoutes, staticRoutes } from "./static-routes";

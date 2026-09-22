@@ -1,5 +1,5 @@
 import { Select as AntSelect } from "antd";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import type { DataSourceItem } from "@alien-form/core";
 import type { ComponentProps } from "@alien-form/react";
 import { DetailValue, buildProps } from "./shared";
@@ -18,13 +18,15 @@ export function Select(
   const onOptionsChange = (extraProps.onOptionsChange ?? "clear") as "preserve" | "clear" | "first";
   const options = (Array.isArray(dataSource) ? dataSource : EMPTY_OPTIONS) as DataSourceItem[];
   const multiple = extraProps.multiple === true;
+  const initialOptions = useRef(options);
   useEffect(() => {
     if (
       mode === "detail" ||
       isFilter ||
       loading ||
       value == null ||
-      onOptionsChange === "preserve"
+      onOptionsChange === "preserve" ||
+      (options.length === 0 && options === initialOptions.current)
     ) {
       return;
     }

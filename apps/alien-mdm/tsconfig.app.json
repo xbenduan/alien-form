@@ -15,7 +15,6 @@
     "moduleDetection": "force",
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@runtime": ["./src/runtime/index.ts"],
       "@runtime/*": ["./src/runtime/*"],
       "@utils/*": ["./src/utils/*"],
       "@app-types": ["./src/runtime/types.ts"]

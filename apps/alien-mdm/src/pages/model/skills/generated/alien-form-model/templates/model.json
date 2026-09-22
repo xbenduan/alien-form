@@ -290,7 +290,7 @@
       "permission": "read",
       "groups": [
         {
-          "component": "ObjectField",
+          "component": "Card",
           "keys": [
             "id",
             "createdAt",

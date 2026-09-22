@@ -1,21 +1,28 @@
-.arrayCards {
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  column-gap: var(--alien-grid-column-gap, 8px);
+  row-gap: var(--alien-grid-row-gap, 8px);
+}
+
+.arrayRows {
   display: grid;
   gap: 10px;
 }
 
-.arrayCard {
+.arrayRow {
   padding: 12px 12px 4px;
   border: 1px solid #d8dee8;
   border-radius: 8px;
   background: #fafbfc;
 }
 
-.arrayCardDragging {
+.arrayRowDragging {
   opacity: 0.6;
   box-shadow: 0 6px 18px rgba(23, 32, 51, 0.12);
 }
 
-.arrayCardHeader {
+.arrayRowHeader {
   display: flex;
   min-height: 28px;
   margin-bottom: 6px;
@@ -23,41 +30,34 @@
   justify-content: space-between;
 }
 
-.arrayCardIndexGroup {
+.arrayRowIndexGroup {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.arrayCardDragHandle {
+.arrayRowDragHandle {
   display: inline-flex;
   color: #86909c;
   cursor: grab;
 }
 
-.arrayCardDragHandle:active {
+.arrayRowDragHandle:active {
   cursor: grabbing;
 }
 
-.arrayCardIndex {
+.arrayRowIndex {
   color: #1677ff;
   font-weight: 600;
 }
 
-.arrayCardActions {
+.arrayRowActions {
   display: inline-flex;
   align-items: center;
   gap: 2px;
 }
 
-.arrayCardBody {
-  display: grid;
-  grid-template-columns: repeat(24, minmax(0, 1fr));
-  column-gap: var(--alien-grid-column-gap, 8px);
-  row-gap: var(--alien-grid-row-gap, 8px);
-}
-
-.arrayCardAdd {
+.addRow {
   margin-top: 8px;
   justify-self: start;
 }

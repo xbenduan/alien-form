@@ -4,15 +4,11 @@ import { useEffect, useMemo, useReducer, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRuntime } from "@alien-form/react";
 import type { ModelSchema } from "@alien-form/protocol";
-import {
-  createDefaultDraft,
-  createDefaultPages,
-  createId,
-  decodeModel,
-  encodeModel,
-  reduceModel,
-  type ModelDraft,
-} from "../builder";
+import { createId, decodeModel, encodeModel } from "../builder/codec";
+import { reduceModel } from "../builder/commands";
+import { createDefaultDraft } from "../builder/default-draft";
+import { createDefaultPages } from "../builder/page-templates";
+import type { ModelDraft } from "../builder/types";
 import { BasicInfo } from "./basic-info";
 import { DatabaseBuilder } from "./database-builder";
 import { FormBuilder } from "./form-builder";
@@ -122,7 +118,7 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
       ) : step === 0 ? (
         <BasicInfo draft={draft} dispatch={dispatch} lockName={Boolean(modelCode)} />
       ) : step === 1 ? (
-        <DatabaseBuilder draft={draft} runtime={runtime} dispatch={dispatch} />
+        <DatabaseBuilder draft={draft} dispatch={dispatch} />
       ) : step === 2 ? (
         <FormBuilder draft={draft} dispatch={dispatch} />
       ) : (

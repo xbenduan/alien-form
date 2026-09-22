@@ -1,9 +1,8 @@
 import { defineComponent, type Runtime } from "@alien-form/engine";
-import { ArrayCards } from "./array-cards";
+import { Card } from "./card";
 import { DatePicker } from "./date-picker";
 import { FormItem } from "./form-item";
 import { Input, NumberInput, TextArea } from "./input";
-import { ObjectField } from "./object-field";
 import { RemoteSelect } from "./remote-select";
 import { Select } from "./select";
 import { TreeSelect } from "./tree-select";
@@ -15,7 +14,7 @@ export function registerComponents(runtime: Runtime): void {
     defineComponent(Input, {
       injectContext: true,
       meta: {
-        type: "string",
+        types: ["string"],
         kind: "leaf",
         dataSource: false,
         sample: { type: "string", component: "Input", props: { placeholder: "请输入" } },
@@ -27,7 +26,7 @@ export function registerComponents(runtime: Runtime): void {
     defineComponent(TextArea, {
       injectContext: true,
       meta: {
-        type: "string",
+        types: ["string"],
         kind: "leaf",
         dataSource: false,
         sample: {
@@ -43,7 +42,7 @@ export function registerComponents(runtime: Runtime): void {
     defineComponent(NumberInput, {
       injectContext: true,
       meta: {
-        type: "number",
+        types: ["number"],
         kind: "leaf",
         dataSource: false,
         sample: { type: "number", component: "NumberInput", props: { min: 0 } },
@@ -55,7 +54,7 @@ export function registerComponents(runtime: Runtime): void {
     defineComponent(DatePicker, {
       injectContext: true,
       meta: {
-        type: "string",
+        types: ["string"],
         kind: "leaf",
         dataSource: false,
         sample: { type: "string", component: "DatePicker" },
@@ -67,7 +66,7 @@ export function registerComponents(runtime: Runtime): void {
     defineComponent(Select, {
       injectContext: true,
       meta: {
-        type: "string",
+        types: ["string", "boolean", "array"],
         kind: "leaf",
         dataSource: true,
         sample: {
@@ -86,7 +85,7 @@ export function registerComponents(runtime: Runtime): void {
     defineComponent(RemoteSelect, {
       injectContext: true,
       meta: {
-        type: "string",
+        types: ["string", "array"],
         kind: "leaf",
         dataSource: false,
         props: {
@@ -116,7 +115,7 @@ export function registerComponents(runtime: Runtime): void {
     defineComponent(TreeSelect, {
       injectContext: true,
       meta: {
-        type: "string",
+        types: ["string"],
         kind: "leaf",
         dataSource: false,
         props: {
@@ -142,35 +141,17 @@ export function registerComponents(runtime: Runtime): void {
     }),
   );
   runtime.component(
-    "ObjectField",
-    defineComponent(ObjectField, {
+    "Card",
+    defineComponent(Card, {
       injectContext: true,
       meta: {
-        type: "object",
+        types: ["object", "array", "void"],
         kind: "complex",
-        children: "properties",
         sample: {
           type: "object",
-          component: "ObjectField",
+          component: "Card",
           props: { gridSpan: 12 },
           properties: {},
-        },
-      },
-    }),
-  );
-  runtime.component(
-    "ArrayCards",
-    defineComponent(ArrayCards, {
-      injectContext: true,
-      meta: {
-        type: "array",
-        kind: "complex",
-        children: "items",
-        sample: {
-          type: "array",
-          component: "ArrayCards",
-          props: { gridSpan: 12 },
-          items: { type: "object", properties: {} },
         },
       },
     }),

@@ -173,6 +173,24 @@ function assertProps(schema: FieldSchema, capability: ComponentCapability, path:
   }
 }
 
+function assertComponentType(
+  schema: FieldSchema,
+  capability: ComponentCapability,
+  path: string,
+): void {
+  const types = capability.meta?.types;
+  if (schema.type && types && !types.includes(schema.type)) {
+    throw new Error(`${path}.component ${capability.code} 不支持 ${schema.type} 类型`);
+  }
+  if (
+    capability.meta?.kind === "complex" &&
+    schema.type === "array" &&
+    (!schema.items || Array.isArray(schema.items))
+  ) {
+    throw new Error(`${path}.component ${capability.code} 仅支持包含 items 的复杂数组`);
+  }
+}
+
 function assertSlots(
   schema: FieldSchema,
   capability: ComponentCapability,
@@ -208,6 +226,7 @@ function assertFieldNode(schema: FieldSchema, path: string, rowScope = false): v
   let capability: ComponentCapability | undefined;
   if (schema.component) {
     capability = assertComponent(schema.component, `${path}.component`);
+    assertComponentType(schema, capability, path);
     assertProps(schema, capability, path);
   }
   if (schema.decorator) {

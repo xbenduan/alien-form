@@ -186,13 +186,13 @@ describe("page compiler", () => {
   });
 
   it("projects form groups into void containers without changing field keys", () => {
-    const groups = [{ component: "ObjectField", title: "基础信息", keys: ["name"] }];
+    const groups = [{ component: "Card", title: "基础信息", keys: ["name"] }];
     const schema = buildFormSchema(model, groups);
     const compiled = compileForm(schema, buildRuntimeDefinitions(model, groups));
     expect(compiled.nodes).toHaveLength(1);
     expect(compiled.nodes[0]?.schema).toMatchObject({
       type: "void",
-      component: "ObjectField",
+      component: "Card",
       title: "基础信息",
     });
     expect(compiled.nodes[0]?.children.map((child) => child.key)).toEqual(["name"]);
@@ -209,7 +209,7 @@ describe("page compiler", () => {
         },
       })),
     };
-    const groups = [{ component: "ObjectField", title: "基础信息", keys: ["name"] }];
+    const groups = [{ component: "Card", title: "基础信息", keys: ["name"] }];
     const schema = buildFormSchema(dynamicModel, groups);
     const compiled = compileForm(schema, buildRuntimeDefinitions(dynamicModel, groups));
     expect(compiled.schema.properties?.["$group-0"]?.properties?.name).toMatchObject({

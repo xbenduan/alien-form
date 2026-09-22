@@ -617,7 +617,7 @@ describe("form.getFieldsValueFast / validateFast", () => {
       properties: {
         group: {
           type: "object",
-          component: "ObjectField",
+          component: "Card",
           properties: {
             inner: { type: "string" },
           },

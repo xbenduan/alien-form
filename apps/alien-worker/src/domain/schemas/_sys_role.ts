@@ -85,7 +85,7 @@ const fields: ModelFieldSchema[] = [
   virtualField(SYS_ROLE_MODEL, "permissions", {
     type: "array",
     title: "模型与字段权限",
-    component: "ArrayCards",
+    component: "Card",
     items: {
       type: "object",
       properties: {
@@ -143,7 +143,7 @@ export const sysRoleSchema: ModelSchema = {
   title: "角色管理",
   version: 0,
   system: true,
-  systemRevision: 9,
+  systemRevision: 10,
   subtitle: "System Roles",
   description: "树形角色及模型、操作、字段和数据范围权限。",
   group: "system",
