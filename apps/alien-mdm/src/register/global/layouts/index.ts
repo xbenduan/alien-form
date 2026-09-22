@@ -3,7 +3,7 @@ import { Filter } from "./filter";
 import { Layout } from "./layout";
 import { Menu } from "./menu";
 import { RowButton, Table } from "./table";
-import { Tree } from "./tree";
+import { TreeLayout } from "./tree";
 
 export function registerLayouts(runtime: Runtime): void {
   runtime.component({ code: "row-button", component: RowButton, adapter: "page" });
@@ -32,7 +32,7 @@ export function registerLayouts(runtime: Runtime): void {
   runtime.component({ code: "table", component: Table, adapter: "page" });
   runtime.component({
     code: "tree",
-    component: Tree,
+    component: TreeLayout,
     adapter: "page",
     meta: {
       type: "string",

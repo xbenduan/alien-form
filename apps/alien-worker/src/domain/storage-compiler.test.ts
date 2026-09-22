@@ -89,4 +89,62 @@ describe("Storage Compiler", () => {
     const { plan } = compileMigrationPlan(current, incoming);
     expect(plan.operations.map((operation) => operation.kind)).toEqual(["add-column", "add-index"]);
   });
+
+  it("将单值关联原子迁移到多对多关系表并保留旧列", () => {
+    const current = model([
+      {
+        id: "article.roles",
+        key: "roles",
+        storage: "physical",
+        database: { type: "text", nullable: false, index: true },
+        relation: {
+          kind: "many-to-one",
+          target: "role",
+          valueField: "id",
+          labelField: "name",
+        },
+        form: {
+          type: "string",
+          component: "RemoteSelect",
+          required: true,
+          props: { model: "role", valueField: "id", labelField: "name" },
+        },
+      },
+    ]);
+    const incoming = model(
+      [
+        {
+          id: "article.roles",
+          key: "roles",
+          storage: "physical",
+          database: { type: "json", valueType: "array", nullable: false, index: true },
+          relation: {
+            kind: "many-to-many",
+            target: "role",
+            through: "article_roles",
+            valueField: "id",
+            labelField: "name",
+          },
+          form: {
+            type: "array",
+            component: "RemoteSelect",
+            required: true,
+            props: { model: "role", valueField: "id", labelField: "name", multiple: true },
+          },
+        },
+      ],
+      2,
+    );
+
+    const { manifest, plan } = compileMigrationPlan(current, incoming);
+
+    expect(manifest.columns.some((column) => column.field === "roles")).toBe(false);
+    expect(plan.operations.map((operation) => operation.kind)).toEqual([
+      "add-relation-table",
+      "migrate-relation-values",
+    ]);
+    expect(plan.operations[1]?.sql).toContain(
+      'SELECT "id", "roles" FROM "article" WHERE "roles" IS NOT NULL',
+    );
+  });
 });

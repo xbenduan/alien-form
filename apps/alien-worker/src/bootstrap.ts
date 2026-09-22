@@ -147,11 +147,16 @@ async function ensureSysAdmin(container: Container): Promise<void> {
     (await container.recordStore.get(schema, SYS_ADMIN_ID)) ??
     (await container.recordStore.findByField(schema, "username", SYS_ADMIN_USERNAME));
   if (existing) {
-    if (existing.roleId !== SYS_ADMIN_ROLE_ID || existing.super !== true) {
+    if (
+      !Array.isArray(existing.roleId) ||
+      existing.roleId.length !== 1 ||
+      existing.roleId[0] !== SYS_ADMIN_ROLE_ID ||
+      existing.super !== true
+    ) {
       await container.recordService.update(
         schema.name,
         existing.id,
-        { roleId: SYS_ADMIN_ROLE_ID },
+        { roleId: [SYS_ADMIN_ROLE_ID] },
         SYS_ADMIN_ID,
       );
     }
@@ -163,7 +168,7 @@ async function ensureSysAdmin(container: Container): Promise<void> {
       id: SYS_ADMIN_ID,
       username: SYS_ADMIN_USERNAME,
       passwordHash: await hashPassword(SYS_ADMIN_DEFAULT_PASSWORD),
-      roleId: SYS_ADMIN_ROLE_ID,
+      roleId: [SYS_ADMIN_ROLE_ID],
       createBy: SYS_ADMIN_ID,
       super: true,
       remark: "系统内置管理员（首次启动自动创建）。",

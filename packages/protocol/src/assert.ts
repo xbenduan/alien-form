@@ -28,7 +28,7 @@ function formatValue(value: unknown): string {
   return value === undefined ? "未配置" : JSON.stringify(value);
 }
 
-function assertRelationForm(field: ModelFieldSchema): void {
+function assertRelationForm(field: ModelFieldSchema, modelName: string): void {
   const relation = field.relation;
   if (!relation) return;
   const path = `fields.${field.key}.form`;
@@ -36,8 +36,8 @@ function assertRelationForm(field: ModelFieldSchema): void {
   const expectedLabelField = relation.labelField ?? "name";
   const props = field.form.props;
 
-  if (field.form.component !== "RemoteSelect") {
-    throw new Error(`${path}.component 必须为 "RemoteSelect"`);
+  if (field.form.component !== "RemoteSelect" && field.form.component !== "TreeSelect") {
+    throw new Error(`${path}.component 必须为 "RemoteSelect" 或 "TreeSelect"`);
   }
   if (!props || typeof props !== "object" || Array.isArray(props)) {
     throw new Error(`${path}.props 必须包含关联配置`);
@@ -56,6 +56,16 @@ function assertRelationForm(field: ModelFieldSchema): void {
     throw new Error(
       `${path}.props.labelField 必须为 ${JSON.stringify(expectedLabelField)}，实际 ${formatValue(props.labelField)}`,
     );
+  }
+  if (field.form.component === "TreeSelect") {
+    if (relation.target !== modelName) {
+      throw new Error(`${path}.component 仅自关联字段可使用 "TreeSelect"`);
+    }
+    if (props.parentField !== field.key) {
+      throw new Error(
+        `${path}.props.parentField 必须为 ${JSON.stringify(field.key)}，实际 ${formatValue(props.parentField)}`,
+      );
+    }
   }
 }
 
@@ -123,7 +133,7 @@ export function assertModelSchema(value: unknown): asserts value is ModelSchema 
     ) {
       throw new Error(`字段 ${field.key} 的 form.required 与 database.nullable 不一致`);
     }
-    assertRelationForm(field);
+    assertRelationForm(field, schema.name);
   }
 
   for (const key of SYSTEM_FIELDS) {
@@ -164,6 +174,24 @@ export function valueType(field: ModelFieldSchema): DatabaseValueType {
   return fieldValueType(field);
 }
 
+/** Allows a scalar relation to move into a preserved many-to-many relation table. */
+function isManyToManyMigration(current: ModelFieldSchema, incoming: ModelFieldSchema): boolean {
+  const before = current.relation;
+  const after = incoming.relation;
+  return (
+    before?.kind === "many-to-one" &&
+    after?.kind === "many-to-many" &&
+    before.target === after.target &&
+    (before.valueField ?? "id") === (after.valueField ?? "id") &&
+    (before.labelField ?? "name") === (after.labelField ?? "name") &&
+    current.database?.type === "text" &&
+    incoming.database?.type === "json" &&
+    incoming.database.valueType === "array" &&
+    current.form.type === "string" &&
+    incoming.form.type === "array"
+  );
+}
+
 export function assertStorageCompatible(current: ModelSchema, incoming: ModelSchema): void {
   if (current.name !== incoming.name) throw new Error("模型 name 不允许修改");
   const incomingById = new Map(incoming.fields.map((field) => [field.id, field]));
@@ -174,13 +202,14 @@ export function assertStorageCompatible(current: ModelSchema, incoming: ModelSch
     if (!next) throw new Error(`物理字段不允许删除：${field.key}`);
     if (next.storage !== "physical") throw new Error(`物理字段不允许转为 virtual：${field.key}`);
     if (next.key !== field.key) throw new Error(`物理字段 key 不允许修改：${field.key}`);
+    const relationMigration = isManyToManyMigration(field, next);
     if (next.database?.column !== field.database?.column) {
       throw new Error(`物理字段 column 不允许修改：${field.key}`);
     }
-    if (next.database?.type !== field.database?.type) {
+    if (!relationMigration && next.database?.type !== field.database?.type) {
       throw new Error(`物理字段类型不允许修改：${field.key}`);
     }
-    if (next.database?.valueType !== field.database?.valueType) {
+    if (!relationMigration && next.database?.valueType !== field.database?.valueType) {
       throw new Error(`物理字段 valueType 不允许修改：${field.key}`);
     }
     if (next.database?.nullable !== field.database?.nullable) {
@@ -189,7 +218,7 @@ export function assertStorageCompatible(current: ModelSchema, incoming: ModelSch
     if (next.database?.default !== field.database?.default) {
       throw new Error(`物理字段 default 不允许修改：${field.key}`);
     }
-    if (JSON.stringify(next.relation) !== JSON.stringify(field.relation)) {
+    if (!relationMigration && JSON.stringify(next.relation) !== JSON.stringify(field.relation)) {
       throw new Error(`物理字段 relation 不允许修改：${field.key}`);
     }
     if (field.database?.index && !next.database?.index) {

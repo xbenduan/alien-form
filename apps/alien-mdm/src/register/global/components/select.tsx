@@ -7,15 +7,17 @@ import { DetailValue, buildProps } from "./shared";
 const EMPTY_OPTIONS: DataSourceItem[] = [];
 
 export function Select(
-  props: ComponentProps & { isFilter?: boolean; onOptionsChange?: "preserve" | "clear" | "first" },
+  props: ComponentProps & {
+    isFilter?: boolean;
+    multiple?: boolean;
+    onOptionsChange?: "preserve" | "clear" | "first";
+  },
 ) {
-  const { mode, controlProps, value, onChange, loading, isFilter, dataSource } = buildProps(props);
-  const onOptionsChange = (controlProps.onOptionsChange ?? "clear") as
-    | "preserve"
-    | "clear"
-    | "first";
+  const { mode, controlProps, value, onChange, loading, isFilter, dataSource, extraProps } =
+    buildProps(props, ["multiple", "onOptionsChange"]);
+  const onOptionsChange = (extraProps.onOptionsChange ?? "clear") as "preserve" | "clear" | "first";
   const options = (Array.isArray(dataSource) ? dataSource : EMPTY_OPTIONS) as DataSourceItem[];
-  const multiple = controlProps.mode === "multiple";
+  const multiple = extraProps.multiple === true;
   useEffect(() => {
     if (
       mode === "detail" ||
@@ -44,6 +46,7 @@ export function Select(
   return (
     <AntSelect
       {...controlProps}
+      mode={multiple ? "multiple" : undefined}
       placeholder={(controlProps.placeholder as string | undefined) || "请选择"}
       allowClear
       style={{ width: "100%", ...(controlProps.style as object) }}

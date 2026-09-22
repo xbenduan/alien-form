@@ -40,7 +40,8 @@ export type MigrationOperation =
   | { kind: "add-column"; sql: string }
   | { kind: "add-index"; sql: string }
   | { kind: "add-unique-index"; sql: string }
-  | { kind: "add-relation-table"; sql: string };
+  | { kind: "add-relation-table"; sql: string }
+  | { kind: "migrate-relation-values"; sql: string };
 
 export interface MigrationPlan {
   model: string;

@@ -4,6 +4,30 @@ import type { FieldSchema } from "@alien-form/engine";
 import type { FieldGridProps } from "@utils/field-grid";
 import styles from "./shared.module.css";
 
+/** 关联字段在详情与编辑回显时使用的结构化值。 */
+export interface ReferenceValue {
+  $ref: string;
+  value: unknown;
+  label?: ReactNode;
+}
+
+/** 判断值是否为后端返回的关联引用。 */
+export function isReferenceValue(value: unknown): value is ReferenceValue {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    typeof (value as Partial<ReferenceValue>).$ref === "string" &&
+    "value" in value
+  );
+}
+
+/** 将关联引用还原为表单控件消费的原始值。 */
+export function referenceValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(referenceValue);
+  return isReferenceValue(value) ? value.value : value;
+}
+
 /** object/array 复合字段共用的表现属性（标题、描述、表格态、schema、domain 与栅格）。 */
 export type ComplexFieldProps = ComponentProps &
   FieldGridProps & {

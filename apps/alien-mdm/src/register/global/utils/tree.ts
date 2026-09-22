@@ -1,16 +1,11 @@
 import type { SubtreeRequest, SubtreeResponse } from "@app-types";
+import type { TreeNode } from "../../../components/tree";
 
 type SubtreeService = (request: SubtreeRequest) => SubtreeResponse | Promise<SubtreeResponse>;
 
 interface ReferenceValue {
   $ref: string;
   value: unknown;
-}
-
-interface TreeNode {
-  key: string;
-  title: string;
-  children: TreeNode[];
 }
 
 export interface TreeOptions {
@@ -20,6 +15,7 @@ export interface TreeOptions {
   valueField?: string;
 }
 
+/** 读取普通字段值或关联引用中的实际值。 */
 function referenceValue(value: unknown): unknown {
   if (
     typeof value === "object" &&

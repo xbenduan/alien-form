@@ -3,7 +3,9 @@ import { Suspense, type PropsWithChildren, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { useAuth } from "../providers";
 import { canManageModels } from "@runtime/user-info";
+import { PageBreadcrumb } from "../../components";
 import { DynamicPage } from "./dynamic-routes";
+import { NavigationProvider, useNavigationItems } from "./navigation";
 import { publicRoutes, staticRoutes } from "./static-routes";
 import styles from "./index.module.css";
 
@@ -22,9 +24,13 @@ function ModelManager({ children }: { children: ReactNode }) {
 }
 
 function AppShell({ noPadding = false, children }: PropsWithChildren<{ noPadding?: boolean }>) {
+  const navigationItems = useNavigationItems();
   return (
     <div className={`${styles.shell}${noPadding ? ` ${styles.noPadding}` : ""}`}>
-      <div className={styles.content}>{children ?? <Outlet />}</div>
+      <div className={`${styles.content}${noPadding ? "" : ` ${styles.withBreadcrumb}`}`}>
+        {noPadding ? null : <PageBreadcrumb items={navigationItems} />}
+        {children ?? <Outlet />}
+      </div>
     </div>
   );
 }
@@ -42,53 +48,55 @@ function AppLoading() {
 export function AppRouter() {
   return (
     <BrowserRouter>
-      <Suspense fallback={<AppLoading />}>
-        <Routes>
-          {publicRoutes.map(({ path, component: Component }) => (
-            <Route key={path} path={path} element={<Component />} />
-          ))}
-          <Route
-            element={
-              <Protected>
-                <AppShell noPadding />
-              </Protected>
-            }
-          >
-            {staticRoutes
-              .filter(({ path }) => path === "/")
-              .map(({ path, component: Component }) => (
-                <Route key={path} path={path} element={<Component />} />
-              ))}
-          </Route>
-          <Route
-            element={
-              <Protected>
-                <AppShell />
-              </Protected>
-            }
-          >
-            {staticRoutes.map(({ path, component: Component, superAdminOnly }) =>
-              path === "/" ? null : (
-                <Route
-                  key={path}
-                  path={path}
-                  element={
-                    superAdminOnly ? (
-                      <ModelManager>
+      <NavigationProvider>
+        <Suspense fallback={<AppLoading />}>
+          <Routes>
+            {publicRoutes.map(({ path, component: Component }) => (
+              <Route key={path} path={path} element={<Component />} />
+            ))}
+            <Route
+              element={
+                <Protected>
+                  <AppShell noPadding />
+                </Protected>
+              }
+            >
+              {staticRoutes
+                .filter(({ path }) => path === "/")
+                .map(({ path, component: Component }) => (
+                  <Route key={path} path={path} element={<Component />} />
+                ))}
+            </Route>
+            <Route
+              element={
+                <Protected>
+                  <AppShell />
+                </Protected>
+              }
+            >
+              {staticRoutes.map(({ path, component: Component, superAdminOnly }) =>
+                path === "/" ? null : (
+                  <Route
+                    key={path}
+                    path={path}
+                    element={
+                      superAdminOnly ? (
+                        <ModelManager>
+                          <Component />
+                        </ModelManager>
+                      ) : (
                         <Component />
-                      </ModelManager>
-                    ) : (
-                      <Component />
-                    )
-                  }
-                />
-              ),
-            )}
-            <Route path="/records/:modelCode/*" element={<DynamicPage />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Suspense>
+                      )
+                    }
+                  />
+                ),
+              )}
+              <Route path="/records/:modelCode/*" element={<DynamicPage />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </NavigationProvider>
     </BrowserRouter>
   );
 }

@@ -58,6 +58,21 @@ function relationTableSql(relation: StorageRelation): string {
   );
 }
 
+function migrateRelationValuesSql(
+  model: string,
+  idColumn: string,
+  sourceColumn: string,
+  relation: StorageRelation,
+): string {
+  const id = quoteColumn(idColumn);
+  const source = quoteColumn(sourceColumn);
+  return (
+    `INSERT OR IGNORE INTO ${quoteTable(relation.table)} ("source_id", "target_value") ` +
+    `SELECT ${id}, ${source} FROM ${quoteTable(model)} ` +
+    `WHERE ${source} IS NOT NULL AND ${source} <> ''`
+  );
+}
+
 export function compileStorageManifest(schema: ModelSchema): StorageManifest {
   if (RESERVED_TABLES.has(schema.name)) throw new Error(`模型名为系统保留表：${schema.name}`);
 
@@ -171,6 +186,31 @@ export function compileMigrationPlan(
           kind: "add-relation-table" as const,
           sql: relationTableSql(relation),
         })),
+    );
+    operations.push(
+      ...manifest.relations.flatMap((relation) => {
+        if (oldRelations.has(relation.field)) return [];
+        const previous = current.fields.find(
+          (field) =>
+            field.key === relation.field &&
+            field.storage === "physical" &&
+            field.relation?.kind === "many-to-one",
+        );
+        if (!previous) return [];
+        const idField = current.fields.find((field) => field.key === "id");
+        if (!idField) return [];
+        return [
+          {
+            kind: "migrate-relation-values" as const,
+            sql: migrateRelationValuesSql(
+              current.name,
+              physicalColumn(idField),
+              physicalColumn(previous),
+              relation,
+            ),
+          },
+        ];
+      }),
     );
   }
 

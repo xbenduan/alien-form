@@ -8,7 +8,9 @@ import protocolIndexSource from "../../../../../../packages/protocol/src/index.t
 import modelSchemaSource from "../../../../../../packages/protocol/src/model-schema.ts?raw";
 import runtimeTypesSource from "../../../../../../packages/protocol/src/runtime-types.ts?raw";
 import pageTemplatesSource from "../builder/page-templates.ts?raw";
+import systemFieldsSource from "../builder/system-fields.ts?raw";
 import { createDefaultPages, PAGE_TEMPLATES } from "../builder/page-templates";
+import { SYSTEM_FIELD_FORM } from "../builder/system-fields";
 import modelScriptSource from "./skill-assets/model.mjs?raw";
 
 const SKILL_NAME = "alien-form-model";
@@ -53,7 +55,7 @@ function modelTemplate() {
           unique: true,
           index: true,
         },
-        form: { type: "string", title: "ID", display: "hidden" },
+        form: { type: "string", title: "ID", ...SYSTEM_FIELD_FORM },
         table: { title: "ID" },
       },
       {
@@ -70,6 +72,7 @@ function modelTemplate() {
           type: "string",
           title: "创建时间",
           component: "DatePicker",
+          ...SYSTEM_FIELD_FORM,
           props: { readOnly: true, showTime: true },
         },
         table: { title: "创建时间" },
@@ -88,6 +91,7 @@ function modelTemplate() {
           type: "string",
           title: "更新时间",
           component: "DatePicker",
+          ...SYSTEM_FIELD_FORM,
           props: { readOnly: true, showTime: true },
         },
         table: { title: "更新时间" },
@@ -224,9 +228,18 @@ Alien Form 是一个 Schema 驱动的模型管理和页面渲染系统。一份 
 4. 读取 \`references/page-templates.json\`，优先吸收模板结构；按模型名替换示例中的 \`example_model\`。
 5. 以 \`templates/model.json\` 为起点生成完整 JSON。每个字段的存储方式写入 \`fields[].storage\`，完整表单协议写入同一项的 \`fields[].form\`。
 6. \`physical\` 字段必须配置 \`database\`，\`virtual\` 字段禁止配置 \`database\`。不要提交 \`definitions["form-schema"]\`，它由前端运行时派生。
-7. 创建前检查模型名和字段名约束、重复字段、physical/virtual 约束、required 与 nullable 的一致性，以及所有关联字段的 RemoteSelect 协议。
+7. 创建前检查模型名和字段名约束、重复字段、physical/virtual 约束、required 与 nullable 的一致性，以及所有关联字段的 RemoteSelect / TreeSelect 协议。
 8. 新增模型时，将最终 JSON 写入工作文件，然后运行 \`node scripts/model.mjs create <模型文件路径>\`。
 9. 编辑模型时，先运行 \`node scripts/model.mjs get <模型名> > <工作文件路径>\` 获取当前完整模型；仅修改目标内容，再运行 \`node scripts/model.mjs update <模型名> <工作文件路径>\`。
+
+## 系统字段规范
+
+\`id\`、\`createdAt\`、\`updatedAt\` 必须保持模板中的系统字段配置：
+
+- \`display\` 固定为 \`{{ mode === 'detail' ? 'visible' : 'none' }}\`。
+- \`disabled\` 固定为 \`true\`。
+- 只在详情页的“系统信息”分组中展示，不得加入新增页或编辑页分组。
+- 不得通过新增或编辑表单提交这些字段。
 
 模型接口固定在当前服务地址的 \`/api/v1/models\` 下。常规服务与 Cloudflare 服务使用同一接口协议。完整服务地址和当前会话凭证只从 \`references/connection.json\` 读取，不要在回答、日志或生成的 Schema 中复述凭证。
 
@@ -241,7 +254,7 @@ Alien Form 是一个 Schema 驱动的模型管理和页面渲染系统。一份 
 
 ## 关联字段协议
 
-\`fields[].relation\` 是关联字段的唯一真相源。配置 relation 后，必须在同一字段的
+\`fields[].relation\` 是关联字段的唯一真相源。普通关联字段必须在同一字段的
 \`form\` 写入 \`RemoteSelect\`：
 
 \`\`\`json
@@ -268,7 +281,26 @@ Alien Form 是一个 Schema 驱动的模型管理和页面渲染系统。一份 
 
 ## 自关联树协议
 
-\`tree\` 是单模型自关联树组件。数据加载必须通过 \`records.subtree\`，由组件 props 描述模型与字段映射：
+层级模型的父级字段必须是指向当前模型的 \`many-to-one\` 关联，并使用表单组件 \`TreeSelect\`：
+
+\`\`\`json
+{
+  "type": "string",
+  "component": "TreeSelect",
+  "props": {
+    "model": "example_model",
+    "valueField": "id",
+    "parentField": "parentId",
+    "labelField": "name",
+    "loadData": "{{ $utils.tree($service(\\"records.subtree\\")) }}"
+  }
+}
+\`\`\`
+
+- \`TreeSelect\` 仅允许用于自关联字段，且 \`props.parentField\` 必须等于当前字段 key。
+- 编辑时可通过 \`disabledValues\` 禁用当前节点及其全部后代，避免形成循环。
+
+页面组件 \`tree\` 用于树驱动列表。数据加载同样必须通过 \`records.subtree\`，由组件 props 描述模型与字段映射：
 
 \`\`\`json
 {
@@ -340,6 +372,7 @@ export async function downloadModelSkill(runtime: Runtime): Promise<void> {
   add("references/runtime-enums.json", stringify(enumManifest(runtime)));
   add("references/page-templates.json", stringify(templateManifest()));
   add("references/page-templates.ts", pageTemplatesSource);
+  add("references/system-fields.ts", systemFieldsSource);
   add("references/protocol/index.ts", protocolIndexSource);
   add("references/protocol/assert.ts", assertSource);
   add("references/protocol/model-schema.ts", modelSchemaSource);

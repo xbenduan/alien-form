@@ -1,5 +1,6 @@
 import type { Runtime } from "@alien-form/engine";
 import { createId } from "./codec";
+import { SYSTEM_FIELD_FORM } from "./system-fields";
 import type { FieldNode, ModelDraft } from "./types";
 
 /** 内置系统字段（id / createdAt / updatedAt），新建模型时预置。 */
@@ -21,7 +22,7 @@ function systemFields(): FieldNode[] {
         index: true,
         filterable: true,
       },
-      form: { title: "ID", display: "hidden" },
+      form: { title: "ID", ...SYSTEM_FIELD_FORM },
     },
     {
       id: createId(),
@@ -38,6 +39,7 @@ function systemFields(): FieldNode[] {
       form: {
         title: "创建时间",
         component: "DatePicker",
+        ...SYSTEM_FIELD_FORM,
         props: { readOnly: true, showTime: true },
       },
     },
@@ -56,6 +58,7 @@ function systemFields(): FieldNode[] {
       form: {
         title: "更新时间",
         component: "DatePicker",
+        ...SYSTEM_FIELD_FORM,
         props: { readOnly: true, showTime: true },
       },
     },

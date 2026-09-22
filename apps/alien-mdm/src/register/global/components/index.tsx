@@ -6,6 +6,7 @@ import { Input, NumberInput, TextArea } from "./input";
 import { ObjectField } from "./object-field";
 import { RemoteSelect } from "./remote-select";
 import { Select } from "./select";
+import { TreeSelect } from "./tree-select";
 
 export function registerComponents(runtime: Runtime): void {
   runtime.component({ code: "FormItem", component: FormItem, adapter: "decorator" });
@@ -88,6 +89,27 @@ export function registerComponents(runtime: Runtime): void {
           valueField: "id",
           labelField: "name",
           pageSize: 10,
+        },
+      },
+    },
+  });
+  runtime.component({
+    code: "TreeSelect",
+    component: TreeSelect,
+    adapter: "form",
+    meta: {
+      type: "string",
+      kind: "leaf",
+      dataSource: false,
+      sample: {
+        type: "string",
+        component: "TreeSelect",
+        props: {
+          model: "example_model",
+          parentField: "parentId",
+          valueField: "id",
+          labelField: "name",
+          loadData: '{{ $utils.tree($service("records.subtree")) }}',
         },
       },
     },

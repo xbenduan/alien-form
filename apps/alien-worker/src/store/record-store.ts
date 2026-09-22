@@ -362,6 +362,17 @@ export class RecordStore {
     field: string,
     value: string | number,
   ): Promise<ModelRecord | undefined> {
+    const relation = compileStorageManifest(schema).relations.find((item) => item.field === field);
+    if (relation) {
+      const row = await this.db
+        .prepare(
+          `SELECT "source_id" FROM ${quoteTable(relation.table)}
+           WHERE "target_value" = ? LIMIT 1`,
+        )
+        .bind(String(value))
+        .first<{ source_id: string }>();
+      return row ? this.get(schema, row.source_id) : undefined;
+    }
     const plan = planByField(schema).get(field);
     if (!plan) return undefined;
     const row = await this.db

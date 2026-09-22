@@ -17,9 +17,18 @@ export function registerSysUser(registry: ModelRegistry): void {
       next.nickname = String(next.username ?? previous?.username ?? "");
       next.createBy = previous?.createBy ?? actorId;
       if (String(next.id ?? previous?.id ?? "") === SYS_ADMIN_ID) {
-        next.roleId = SYS_ROLE_SUPER_ADMIN_ID;
+        next.roleId = [SYS_ROLE_SUPER_ADMIN_ID];
         next.super = true;
       } else {
+        if (Array.isArray(next.roleId)) {
+          next.roleId = [
+            ...new Set(
+              next.roleId.filter(
+                (roleId): roleId is string => typeof roleId === "string" && !!roleId,
+              ),
+            ),
+          ];
+        }
         next.super = false;
       }
       return next;
@@ -35,19 +44,31 @@ export function registerSysUser(registry: ModelRegistry): void {
       },
     },
     async validate({ record, models, records }) {
+      const roleIds = record.roleId;
       if (
         record.username === SYS_ADMIN_USERNAME &&
-        (record.super !== true || record.roleId !== SYS_ROLE_SUPER_ADMIN_ID)
+        (record.super !== true ||
+          !Array.isArray(roleIds) ||
+          roleIds.length !== 1 ||
+          roleIds[0] !== SYS_ROLE_SUPER_ADMIN_ID)
       ) {
         throw new Error("系统管理员必须保持超级管理员角色");
       }
-      const roleSchema = await models.get(SYS_ROLE_MODEL);
       if (
-        !roleSchema ||
-        typeof record.roleId !== "string" ||
-        !(await records.get(roleSchema, record.roleId))
+        !Array.isArray(roleIds) ||
+        roleIds.length === 0 ||
+        roleIds.some((roleId) => typeof roleId !== "string" || roleId === "")
       ) {
-        throw new Error("用户必须关联有效角色");
+        throw new Error("用户必须关联至少一个有效角色");
+      }
+      if (record.id !== SYS_ADMIN_ID && roleIds.includes(SYS_ROLE_SUPER_ADMIN_ID)) {
+        throw forbidden("超级管理员角色仅可分配给系统管理员");
+      }
+      const roleSchema = await models.get(SYS_ROLE_MODEL);
+      if (!roleSchema) throw new Error("用户必须关联至少一个有效角色");
+      const roles = await Promise.all(roleIds.map((roleId) => records.get(roleSchema, roleId)));
+      if (roles.some((role) => !role)) {
+        throw new Error("用户关联了不存在的角色");
       }
     },
     hooks: {

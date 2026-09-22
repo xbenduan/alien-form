@@ -90,7 +90,7 @@ describe("AuthorizationService", () => {
         ],
       },
     ];
-    const { models, records } = stores({ id: "teacher", roleId: "faculty" }, roles);
+    const { models, records } = stores({ id: "teacher", roleId: ["faculty"] }, roles);
     const service = new AuthorizationService(models, records);
     const profile = await service.profile("teacher");
 
@@ -104,8 +104,36 @@ describe("AuthorizationService", () => {
     expect(service.scope(profile, model(), "update")).toBe("all");
   });
 
+  it("merges permissions from every directly assigned role", async () => {
+    const roles: ModelRecord[] = [
+      {
+        id: "student-role",
+        permissions: [{ model: "article", actions: ["read"], fields: ["title"], scope: "own" }],
+      },
+      {
+        id: "monitor-role",
+        permissions: [
+          { model: "article", actions: ["read", "update"], fields: ["secret"], scope: "all" },
+        ],
+      },
+    ];
+    const { models, records } = stores(
+      { id: "student", roleId: ["student-role", "monitor-role"] },
+      roles,
+    );
+
+    const profile = await new AuthorizationService(models, records).profile("student");
+
+    expect(profile.roleIds).toEqual(["student-role", "monitor-role"]);
+    expect(profile.permissions.get("article")).toEqual({
+      actions: new Set(["read", "update"]),
+      fields: new Set(["title", "secret"]),
+      scope: "all",
+    });
+  });
+
   it("grants full access only from the fixed root id", async () => {
-    const { models, records } = stores({ id: "root-user", roleId: SYS_ROLE_SUPER_ADMIN_ID }, []);
+    const { models, records } = stores({ id: "root-user", roleId: [SYS_ROLE_SUPER_ADMIN_ID] }, []);
     const profile = await new AuthorizationService(models, records).profile("root-user");
 
     expect(profile.super).toBe(true);
@@ -113,7 +141,7 @@ describe("AuthorizationService", () => {
   });
 
   it("projects records to explicitly granted fields", async () => {
-    const { models, records } = stores({ id: "student", roleId: "student-role" }, [
+    const { models, records } = stores({ id: "student", roleId: ["student-role"] }, [
       {
         id: "student-role",
         permissions: [
@@ -141,7 +169,7 @@ describe("AuthorizationService", () => {
   });
 
   it("lets model creators manage only models they own when capability is inherited", async () => {
-    const { models, records } = stores({ id: "builder", roleId: "builder-role" }, [
+    const { models, records } = stores({ id: "builder", roleId: ["builder-role"] }, [
       { id: "builder-role", canCreateModel: true },
     ]);
     const service = new AuthorizationService(models, records);

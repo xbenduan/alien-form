@@ -82,7 +82,7 @@ export const sysModelTabSchema: ModelSchema = {
   title: "模型 Tabs",
   version: 0,
   system: true,
-  systemRevision: 1,
+  systemRevision: 2,
   subtitle: "Model Navigation Tabs",
   description: "模型首页分类与模型归属配置。",
   group: "system",

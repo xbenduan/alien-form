@@ -3,6 +3,7 @@ import {
   assertModelSchema,
   assertStorageCompatible,
   parseModelSchema,
+  type ModelFieldSchema,
   type ModelSchema,
 } from "./index.ts";
 
@@ -63,6 +64,33 @@ function model(): ModelSchema {
   };
 }
 
+/** 创建用于验证树形自关联组件的父级字段。 */
+function parentField(): ModelFieldSchema {
+  return {
+    id: "orders.parentId",
+    key: "parentId",
+    storage: "physical",
+    database: { type: "text", nullable: true, index: true },
+    relation: {
+      kind: "many-to-one",
+      target: "orders",
+      valueField: "id",
+      labelField: "name",
+    },
+    form: {
+      type: "string",
+      title: "父级订单",
+      component: "TreeSelect",
+      props: {
+        model: "orders",
+        parentField: "parentId",
+        valueField: "id",
+        labelField: "name",
+      },
+    },
+  };
+}
+
 describe("ModelSchema", () => {
   it("解析 physical 与 virtual 字段", () => {
     const parsed = parseModelSchema(model());
@@ -109,5 +137,20 @@ describe("ModelSchema", () => {
     const incoming = model();
     incoming.fields = incoming.fields.filter((field) => field.storage === "physical");
     expect(() => assertStorageCompatible(current, incoming)).not.toThrow();
+  });
+
+  it("允许自关联父级字段使用 TreeSelect", () => {
+    const value = model();
+    value.fields.unshift(parentField());
+    expect(() => assertModelSchema(value)).not.toThrow();
+  });
+
+  it("拒绝非自关联字段使用 TreeSelect", () => {
+    const value = model();
+    const field = parentField();
+    field.relation = { ...field.relation!, target: "users" };
+    field.form.props = { ...field.form.props, model: "users" };
+    value.fields.unshift(field);
+    expect(() => assertModelSchema(value)).toThrow(/仅自关联字段/);
   });
 });

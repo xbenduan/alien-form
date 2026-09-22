@@ -1,105 +1,20 @@
 import { SearchOutlined } from "@ant-design/icons";
 import { Input, Spin } from "antd";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "@alien-form/react";
+import { Tree, type TreeNode } from "../../../components/tree";
+import type { TreeOptions } from "../utils/tree";
 import styles from "./tree.module.css";
 import { useLayoutLoading } from "./loading-context";
 
-interface TreeItem {
-  key: string;
-  title: string;
-  children?: TreeItem[];
-}
-
-interface TreeDataOptions {
-  model: string;
-  parentField: string;
-  labelField: string;
-  valueField?: string;
+interface TreeLayoutOptions extends TreeOptions {
   showRoot?: boolean;
 }
 
-function collectExpandableKeys(nodes: TreeItem[]): string[] {
-  return nodes.flatMap((node) =>
-    node.children?.length ? [node.key, ...collectExpandableKeys(node.children)] : [],
-  );
-}
+type TreeLoader = (options: TreeOptions) => Promise<TreeNode[]>;
 
-function filterTree(nodes: TreeItem[], keyword: string): TreeItem[] {
-  if (!keyword) return nodes;
-  return nodes.flatMap((node) => {
-    const children = filterTree(node.children ?? [], keyword);
-    if (!node.title.toLocaleLowerCase().includes(keyword) && children.length === 0) return [];
-    return [{ ...node, children }];
-  });
-}
-
-function TreeNode({
-  node,
-  depth,
-  expanded,
-  selectedKey,
-  onSelect,
-  onToggle,
-}: {
-  node: TreeItem;
-  depth: number;
-  expanded: Set<string>;
-  selectedKey?: string;
-  onSelect: (key: string) => void;
-  onToggle: (key: string) => void;
-}) {
-  const hasChildren = Boolean(node.children?.length);
-  const isExpanded = expanded.has(node.key);
-  const selected = selectedKey === node.key;
-  return (
-    <li>
-      <div
-        className={`${styles.treeNode}${selected ? ` ${styles.treeNodeSelected}` : ""}`}
-        style={{ paddingLeft: `${depth * 16 + 8}px` }}
-      >
-        {hasChildren ? (
-          <button
-            type="button"
-            className={styles.treeToggle}
-            aria-label={isExpanded ? "收起" : "展开"}
-            aria-expanded={isExpanded}
-            onClick={() => onToggle(node.key)}
-          >
-            <span className={isExpanded ? styles.treeChevronOpen : styles.treeChevron} />
-          </button>
-        ) : (
-          <span className={styles.treeTogglePlaceholder} />
-        )}
-        <button
-          type="button"
-          className={`${styles.treeItem}${selected ? ` ${styles.treeItemSelected}` : ""}`}
-          aria-pressed={selected}
-          onClick={() => onSelect(node.key)}
-        >
-          {node.title}
-        </button>
-      </div>
-      {hasChildren && isExpanded ? (
-        <ul className={styles.treeBranch}>
-          {node.children?.map((child) => (
-            <TreeNode
-              key={child.key}
-              node={child}
-              depth={depth + 1}
-              expanded={expanded}
-              selectedKey={selectedKey}
-              onSelect={onSelect}
-              onToggle={onToggle}
-            />
-          ))}
-        </ul>
-      ) : null}
-    </li>
-  );
-}
-
-export function Tree({
+/** 组合远程树数据、搜索框与共享 Tree 主体的页面适配器。 */
+export function TreeLayout({
   title,
   value,
   onChange,
@@ -110,16 +25,16 @@ export function Tree({
   valueField,
   showRoot = false,
 }: ComponentProps &
-  TreeDataOptions & {
+  TreeLayoutOptions & {
     title?: string;
-    loadData?: (options: TreeDataOptions) => Promise<TreeItem[]>;
+    loadData?: TreeLoader;
   }) {
-  const [nodes, setNodes] = useState<TreeItem[]>([]);
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [nodes, setNodes] = useState<TreeNode[]>([]);
   const [keyword, setKeyword] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
   const loaderRef = useRef(loadData);
   const { loading, startLoading } = useLayoutLoading();
-  const selectedKey = value == null ? undefined : String(value);
+  const deferredKeyword = useDeferredValue(keyword);
 
   useEffect(() => {
     loaderRef.current = loadData;
@@ -129,6 +44,7 @@ export function Tree({
     const loader = loaderRef.current;
     if (!loader) return;
     let active = true;
+    setLoadFailed(false);
     const stopLoading = startLoading();
     void loader({
       model,
@@ -137,9 +53,10 @@ export function Tree({
       valueField,
     })
       .then((nextNodes) => {
-        if (!active) return;
-        setNodes(nextNodes);
-        setExpanded(new Set(collectExpandableKeys(nextNodes)));
+        if (active) setNodes(nextNodes);
+      })
+      .catch(() => {
+        if (active) setLoadFailed(true);
       })
       .finally(() => {
         stopLoading();
@@ -147,41 +64,11 @@ export function Tree({
     return () => {
       active = false;
     };
-  }, []);
+  }, [labelField, model, parentField, startLoading, valueField]);
 
   const visibleNodes = useMemo(
     () => (showRoot || nodes.length !== 1 ? nodes : (nodes[0]?.children ?? [])),
     [nodes, showRoot],
-  );
-  const filteredNodes = useMemo(
-    () => filterTree(visibleNodes, keyword.trim().toLocaleLowerCase()),
-    [keyword, visibleNodes],
-  );
-  useEffect(() => {
-    if (!keyword.trim()) return;
-    setExpanded(new Set(collectExpandableKeys(filteredNodes)));
-  }, [filteredNodes, keyword]);
-  const tree = useMemo(
-    () =>
-      filteredNodes.map((node) => (
-        <TreeNode
-          key={node.key}
-          node={node}
-          depth={0}
-          expanded={expanded}
-          selectedKey={selectedKey}
-          onSelect={(key) => onChange?.(key === selectedKey ? undefined : key)}
-          onToggle={(key) =>
-            setExpanded((current) => {
-              const next = new Set(current);
-              if (next.has(key)) next.delete(key);
-              else next.add(key);
-              return next;
-            })
-          }
-        />
-      )),
-    [expanded, filteredNodes, onChange, selectedKey],
   );
 
   return (
@@ -197,11 +84,14 @@ export function Tree({
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
           />
-          {filteredNodes.length ? (
-            <ul className={styles.tree}>{tree}</ul>
-          ) : (
-            <p className={styles.treeEmpty}>{keyword ? "未找到匹配节点" : "暂无分组"}</p>
-          )}
+          <Tree
+            nodes={nodes.length === 0 && loadFailed ? [] : visibleNodes}
+            value={value}
+            searchValue={deferredKeyword}
+            emptyText={loadFailed ? "树数据加载失败" : "暂无分组"}
+            allowClearSelection
+            onChange={onChange}
+          />
         </div>
       </Spin>
     </section>

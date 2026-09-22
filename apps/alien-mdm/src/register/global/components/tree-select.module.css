@@ -1,0 +1,6 @@
+.popup {
+  max-height: 320px;
+  min-height: 48px;
+  overflow-y: auto;
+  padding: 4px;
+}

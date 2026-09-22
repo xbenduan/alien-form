@@ -46,13 +46,14 @@ const fields: ModelFieldSchema[] = [
     {
       type: "string",
       title: "父级角色",
-      component: "RemoteSelect",
+      component: "TreeSelect",
       props: {
         model: SYS_ROLE_MODEL,
+        parentField: "parentId",
         valueField: "id",
         labelField: "name",
-        pageSize: 100,
-        loadOptions: '{{ $utils.relation($service("records.list")) }}',
+        loadData: '{{ $utils.tree($service("records.subtree")) }}',
+        disabledValues: "{{ $query.id ? [$query.id] : [] }}",
       },
     },
     {
@@ -98,11 +99,11 @@ const fields: ModelFieldSchema[] = [
           },
         },
         actions: {
-          type: "string",
+          type: "array",
           title: "操作权限",
           component: "Select",
           required: true,
-          props: { mode: "multiple" },
+          props: { multiple: true },
           dataSource: [
             { label: "查看", value: "read" },
             { label: "新建", value: "create" },
@@ -111,10 +112,10 @@ const fields: ModelFieldSchema[] = [
           ],
         },
         fields: {
-          type: "string",
+          type: "array",
           title: "可查看字段",
           component: "Select",
-          props: { mode: "multiple", onOptionsChange: "clear" },
+          props: { multiple: true, onOptionsChange: "clear" },
           "x-reaction": {
             dataSource: '{{ $service("model.fieldOptions")($row.model) }}',
           },
@@ -142,7 +143,7 @@ export const sysRoleSchema: ModelSchema = {
   title: "角色管理",
   version: 0,
   system: true,
-  systemRevision: 4,
+  systemRevision: 8,
   subtitle: "System Roles",
   description: "树形角色及模型、操作、字段和数据范围权限。",
   group: "system",
@@ -156,58 +157,56 @@ export const sysRoleSchema: ModelSchema = {
     "parentId",
     "canCreateModel",
     "description",
-    "permissions",
-  ]).map((page) =>
-    page.router !== "list"
-      ? page
-      : {
-          ...page,
-          layout: { component: "layout", props: { left: "tree" } },
-          properties: {
-            ...page.properties,
-            tree: {
-              type: "string",
-              component: "tree",
-              props: {
-                title: "角色层级",
-                model: SYS_ROLE_MODEL,
-                valueField: "id",
-                parentField: "parentId",
-                labelField: "name",
-                showRoot: true,
-                loadData: '{{ $utils.tree($service("records.subtree")) }}',
+  ]).map((page) => {
+    if (page.router !== "list") return page;
+    return {
+      ...page,
+      layout: { component: "layout", props: { left: "tree" } },
+      properties: {
+        ...page.properties,
+        tree: {
+          type: "string",
+          component: "tree",
+          props: {
+            title: "角色层级",
+            model: SYS_ROLE_MODEL,
+            valueField: "id",
+            parentField: "parentId",
+            labelField: "name",
+            showRoot: true,
+            loadData: '{{ $utils.tree($service("records.subtree")) }}',
+          },
+        },
+        table: {
+          ...page.properties.table,
+          props: {
+            ...page.properties.table.props,
+            parentId: '{{ $form.getFieldValue("tree") }}',
+            rowActions: ["delete"],
+            actionBtns: {
+              add: { type: "primary", children: "新增", openMode: "page" },
+              edit: {
+                type: "link",
+                children: "编辑",
+                openMode: "page",
+                disabled: `{{ ($row) => $row.id === "${SYS_ROLE_SUPER_ADMIN_ID}" }}`,
               },
+              detail: { type: "link", children: "详情", openMode: "drawer" },
             },
-            table: {
-              ...page.properties.table,
+          },
+          properties: {
+            delete: {
+              ...page.properties.table.properties?.delete,
               props: {
-                ...page.properties.table.props,
-                parentId: '{{ $form.getFieldValue("tree") }}',
-                rowActions: ["delete"],
-                actionBtns: {
-                  add: { type: "primary", children: "新增", openMode: "page" },
-                  edit: {
-                    type: "link",
-                    children: "编辑",
-                    openMode: "page",
-                    disabled: `{{ ($row) => $row.id === "${SYS_ROLE_SUPER_ADMIN_ID}" }}`,
-                  },
-                  detail: { type: "link", children: "详情", openMode: "drawer" },
-                },
-              },
-              properties: {
-                delete: {
-                  ...page.properties.table.properties?.delete,
-                  props: {
-                    ...page.properties.table.properties?.delete?.props,
-                    disabled: `{{ $row.id === "${SYS_ROLE_SUPER_ADMIN_ID}" }}`,
-                    confirm: "确认删除该角色？",
-                    confirmDescription: "存在子角色或关联用户时无法删除。",
-                  },
-                },
+                ...page.properties.table.properties?.delete?.props,
+                disabled: `{{ $row.id === "${SYS_ROLE_SUPER_ADMIN_ID}" }}`,
+                confirm: "确认删除该角色？",
+                confirmDescription: "存在子角色或关联用户时无法删除。",
               },
             },
           },
         },
-  ),
+      },
+    };
+  }),
 };

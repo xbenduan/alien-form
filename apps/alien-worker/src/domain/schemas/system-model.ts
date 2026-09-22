@@ -35,12 +35,16 @@ export function virtualField(model: string, key: string, form: FieldSchema): Mod
 
 /** Creates the common ID and timestamp fields used by built-in models. */
 export function systemFields(model: string): ModelFieldSchema[] {
+  const detailOnly = {
+    display: "{{ mode === 'detail' ? 'visible' : 'none' }}" as const,
+    disabled: true,
+  };
   return [
     physicalField(
       model,
       "id",
       { type: "text", system: true, nullable: false, unique: true, index: true },
-      { type: "string", title: "ID", display: "hidden" },
+      { type: "string", title: "ID", ...detailOnly },
       { table: { title: "ID" } },
     ),
     physicalField(
@@ -51,6 +55,7 @@ export function systemFields(model: string): ModelFieldSchema[] {
         type: "string",
         title: "创建时间",
         component: "DatePicker",
+        ...detailOnly,
         props: { readOnly: true, showTime: true },
       },
       { table: { title: "创建时间" } },
@@ -63,6 +68,7 @@ export function systemFields(model: string): ModelFieldSchema[] {
         type: "string",
         title: "更新时间",
         component: "DatePicker",
+        ...detailOnly,
         props: { readOnly: true, showTime: true },
       },
       { table: { title: "更新时间" } },
@@ -82,6 +88,16 @@ export function recordPages(model: string, title: string, groupKeys: string[]): 
         keys: groupKeys,
         props: { gridSpan: 12 },
       },
+      ...(mode === "detail"
+        ? [
+            {
+              component: "ObjectField",
+              title: "系统信息",
+              keys: ["id", "createdAt", "updatedAt"],
+              props: { gridSpan: 12 },
+            },
+          ]
+        : []),
     ],
     properties: {
       form: {

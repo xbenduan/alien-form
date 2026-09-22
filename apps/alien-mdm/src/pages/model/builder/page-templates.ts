@@ -1,4 +1,5 @@
 import type { OpenMode, PageSchema } from "@alien-form/engine";
+import { SYSTEM_DETAIL_GROUP } from "./system-fields";
 
 /**
  * 页面模版：由代码写死，供「页面配置」步骤新增页面时选择套用。
@@ -180,6 +181,7 @@ function buildRecordPage(
   return (modelCode, title) => ({
     router: mode,
     title: `${prefix}${title}`,
+    groups: mode === "detail" ? [SYSTEM_DETAIL_GROUP] : undefined,
     properties: {
       form: {
         type: "void",

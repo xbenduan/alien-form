@@ -62,9 +62,9 @@ const fields: ModelFieldSchema[] = [
   physicalField(
     SYS_USER_MODEL,
     "roleId",
-    { type: "text", nullable: false, index: true },
+    { type: "json", valueType: "array", nullable: false, index: true },
     {
-      type: "string",
+      type: "array",
       title: "角色",
       component: "RemoteSelect",
       required: true,
@@ -73,17 +73,20 @@ const fields: ModelFieldSchema[] = [
         valueField: "id",
         labelField: "name",
         pageSize: 50,
+        multiple: true,
         loadOptions: '{{ $utils.relation($service("records.list")) }}',
       },
     },
     {
       relation: {
-        kind: "many-to-one",
+        kind: "many-to-many",
         target: SYS_ROLE_MODEL,
+        through: "_sys_user_roles",
         valueField: "id",
         labelField: "name",
       },
       table: { title: "角色" },
+      filter: { hidden: true },
     },
   ),
   // Legacy physical columns remain hidden so existing installations can migrate without rebuilding.
@@ -117,7 +120,7 @@ export const sysUserSchema: ModelSchema = {
   title: "用户管理",
   version: 0,
   system: true,
-  systemRevision: 3,
+  systemRevision: 5,
   subtitle: "System Users",
   description: "系统登录账号、角色与基础资料管理。",
   group: "system",

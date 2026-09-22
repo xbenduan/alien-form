@@ -1,15 +1,21 @@
-import type { ModelFieldSchema, DatabaseRelation, FieldSchema, Runtime } from "@alien-form/engine";
+import type {
+  DatabaseRelation,
+  FieldGroup,
+  FieldSchema,
+  ModelFieldSchema,
+  Runtime,
+} from "@alien-form/engine";
 import { parseModelSchema } from "@alien-form/protocol";
 import type {
   ModelSchema,
   FieldNode,
   FieldType,
   FormConfig,
-  GroupDraft,
   ModelDraft,
   StorageConfig,
 } from "./types";
 import { createDefaultPages } from "./page-templates";
+import { isSystemDetailGroup, SYSTEM_DETAIL_GROUP } from "./system-fields";
 
 let idCounter = 0;
 /** 生成命令寻址用的稳定 id。 */
@@ -298,7 +304,10 @@ export function decodeModel(model: ModelSchema): ModelDraft {
           id: createId(),
           page,
         }));
-  const groups = model.pages.find((page) => page.groups?.length)?.groups ?? [];
+  const groups =
+    model.pages
+      .find((page) => page.groups?.some((group) => !isSystemDetailGroup(group)))
+      ?.groups?.filter((group) => !isSystemDetailGroup(group)) ?? [];
   return {
     name: model.name,
     title: model.title,
@@ -412,7 +421,7 @@ export function encodeModel(draft: ModelDraft): ModelSchema {
     seen.add(node.key);
   }
 
-  const groups = draft.groups
+  const groups: FieldGroup[] = draft.groups
     .filter((item) => item.keys.length > 0)
     .map(
       (item) =>
@@ -422,22 +431,18 @@ export function encodeModel(draft: ModelDraft): ModelSchema {
           description: item.description,
           keys: item.keys,
           props: item.props,
-        }) as GroupDraft,
+        }) as FieldGroup,
     );
 
   const pages =
     draft.pages.length > 0
       ? draft.pages.map(({ page }) => ({
           ...page,
-          ...(["add", "edit", "detail"].includes(page.router) && groups.length > 0
-            ? { groups }
-            : { groups: undefined }),
+          groups: pageGroups(page.router, groups),
         }))
       : createDefaultPages(name, title).map((page) => ({
           ...page,
-          ...(["add", "edit", "detail"].includes(page.router) && groups.length > 0
-            ? { groups }
-            : {}),
+          groups: pageGroups(page.router, groups),
         }));
 
   return parseModelSchema({
@@ -454,4 +459,11 @@ export function encodeModel(draft: ModelDraft): ModelSchema {
     definitions: draft.definitions,
     pages,
   });
+}
+
+/** Applies editable groups to form pages and reserves system fields for details. */
+function pageGroups(router: string, groups: FieldGroup[]): FieldGroup[] | undefined {
+  if (!["add", "edit", "detail"].includes(router)) return undefined;
+  const result = router === "detail" ? [...groups, SYSTEM_DETAIL_GROUP] : groups;
+  return result.length > 0 ? result : undefined;
 }

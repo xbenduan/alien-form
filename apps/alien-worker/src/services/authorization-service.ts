@@ -24,7 +24,7 @@ export interface PermissionGrant {
 
 export interface AccessProfile {
   actorId: string;
-  roleId?: string;
+  roleIds: string[];
   permissions: Map<string, PermissionGrant>;
   canCreateModel: boolean;
   super: boolean;
@@ -32,14 +32,27 @@ export interface AccessProfile {
 
 const ACTIONS = new Set<PermissionAction>(["read", "create", "update", "delete"]);
 
-/** Reads a scalar relation value from persisted or expanded records. */
-function relationValue(value: unknown): string | undefined {
+/** Reads one scalar relation value from persisted or expanded records. */
+function scalarRelationValue(value: unknown): string | undefined {
   if (typeof value === "string" && value) return value;
   if (value && typeof value === "object" && !Array.isArray(value) && "value" in value) {
     const candidate = (value as { value?: unknown }).value;
     return typeof candidate === "string" && candidate ? candidate : undefined;
   }
   return undefined;
+}
+
+/** Reads unique relation values from scalar and multi-value records. */
+function relationValues(value: unknown): string[] {
+  const values = Array.isArray(value) ? value : [value];
+  return [
+    ...new Set(
+      values.flatMap((item) => {
+        const relation = scalarRelationValue(item);
+        return relation ? [relation] : [];
+      }),
+    ),
+  ];
 }
 
 /** Merges valid persisted permissions into the effective grant map. */
@@ -84,7 +97,7 @@ export class AuthorizationService {
     if (actorId === SYS_ADMIN_ID) {
       return {
         actorId,
-        roleId: SYS_ROLE_SUPER_ADMIN_ID,
+        roleIds: [SYS_ROLE_SUPER_ADMIN_ID],
         permissions: new Map(),
         canCreateModel: true,
         super: true,
@@ -95,17 +108,18 @@ export class AuthorizationService {
       this.models.get(SYS_ROLE_MODEL),
     ]);
     const user = userSchema ? await this.records.get(userSchema, actorId) : undefined;
-    const roleId = relationValue(user?.roleId);
-    if (!roleSchema || !roleId) {
+    const roleIds = relationValues(user?.roleId);
+    if (!roleSchema || roleIds.length === 0) {
       return {
         actorId,
+        roleIds: [],
         permissions: new Map(),
         canCreateModel: false,
         super: false,
       };
     }
-    if (roleId === SYS_ROLE_SUPER_ADMIN_ID) {
-      return { actorId, roleId, permissions: new Map(), canCreateModel: true, super: true };
+    if (roleIds.includes(SYS_ROLE_SUPER_ADMIN_ID)) {
+      return { actorId, roleIds, permissions: new Map(), canCreateModel: true, super: true };
     }
 
     const roles = await this.records.subtree(roleSchema, {
@@ -115,7 +129,7 @@ export class AuthorizationService {
     const rolesById = new Map(roles.map((role) => [role.id, role]));
     const children = new Map<string, ModelRecord[]>();
     for (const role of roles) {
-      const parentId = relationValue(role.parentId);
+      const parentId = scalarRelationValue(role.parentId);
       if (!parentId) continue;
       const siblings = children.get(parentId) ?? [];
       siblings.push(role);
@@ -124,7 +138,7 @@ export class AuthorizationService {
 
     const permissions = new Map<string, PermissionGrant>();
     let canCreateModel = false;
-    const queue = [roleId];
+    const queue = [...roleIds];
     const visited = new Set<string>();
     while (queue.length > 0) {
       const currentId = queue.shift()!;
@@ -136,7 +150,7 @@ export class AuthorizationService {
       mergePermissions(permissions, role.permissions);
       for (const child of children.get(currentId) ?? []) queue.push(child.id);
     }
-    return { actorId, roleId, permissions, canCreateModel, super: false };
+    return { actorId, roleIds, permissions, canCreateModel, super: false };
   }
 
   /** Returns the effective data scope for one record action. */

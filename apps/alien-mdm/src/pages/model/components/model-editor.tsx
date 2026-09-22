@@ -4,7 +4,6 @@ import { useEffect, useMemo, useReducer, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRuntime } from "@alien-form/react";
 import type { ModelSchema } from "@alien-form/protocol";
-import { PageBreadcrumb } from "../../../components";
 import {
   createDefaultDraft,
   createDefaultPages,
@@ -111,12 +110,6 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
 
   return (
     <Flex className={styles.actionsPage} vertical gap={16}>
-      <PageBreadcrumb
-        items={[
-          { title: "模型管理", to: "/models" },
-          { title: modelCode ? "编辑模型" : isCopy ? "复制模型" : "新增模型" },
-        ]}
-      />
       <Card className={styles.stepCard}>
         <Steps current={step} items={STEP_TITLES.map((title) => ({ title }))} />
       </Card>

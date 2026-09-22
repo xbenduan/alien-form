@@ -2,7 +2,6 @@ import { Alert, App, Flex } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRuntime } from "@alien-form/react";
-import { PageBreadcrumb } from "../../components";
 import type { ListResponse, ModelRecord, ModelSummary } from "@app-types";
 import { canManageModels } from "@runtime/user-info";
 import { ModelListToolbar } from "./components/model-list-toolbar";
@@ -79,7 +78,6 @@ export default function ModelListPage() {
   );
   return (
     <Flex vertical gap={16}>
-      <PageBreadcrumb items={[{ title: "模型管理" }]} />
       <ModelListToolbar
         loading={loading}
         onRefresh={() => void load()}

@@ -3,8 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { FormRenderer, PageProvider, useRuntime } from "@alien-form/react";
 import type { PageRuntime } from "@alien-form/engine";
-import { PageBreadcrumb } from "../../components";
-import { recordListRoute } from "@utils/record-route";
+import { usePageTitle } from "./navigation";
 import styles from "./dynamic-routes.module.css";
 
 export function DynamicPage() {
@@ -52,6 +51,12 @@ export function DynamicPage() {
     };
   }, [modelCode, query, route.segment, runtime]);
 
+  usePageTitle(
+    page && page.domain === modelCode && page.page.router === route.segment
+      ? page.page.title
+      : undefined,
+  );
+
   if (!modelCode) return <Result status="404" title="模型编码缺失" />;
   if (error) return <Alert type="error" message="动态页面加载失败" description={error} showIcon />;
   if (!page) return <Skeleton active />;
@@ -59,19 +64,6 @@ export function DynamicPage() {
   return (
     <PageProvider page={page}>
       <div className={`${styles.recordRoute}${isAction ? ` ${styles.actionRoute}` : ""}`}>
-        <PageBreadcrumb
-          items={
-            isAction
-              ? [
-                  {
-                    title: `${page.model.pluralLabel ?? page.model.title}列表`,
-                    to: recordListRoute(page.domain),
-                  },
-                  { title: page.page.title },
-                ]
-              : [{ title: page.page.title }]
-          }
-        />
         <FormRenderer form={page.form} nodes={page.page.nodes} domain={page.domain} />
       </div>
     </PageProvider>

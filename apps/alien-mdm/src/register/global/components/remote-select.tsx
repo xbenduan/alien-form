@@ -1,9 +1,9 @@
 import { Select as AntSelect } from "antd";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DataSourceItem } from "@alien-form/core";
 import type { ListRequest } from "@app-types";
 import type { ComponentProps } from "@alien-form/react";
-import { DetailValue, buildProps } from "./shared";
+import { DetailValue, buildProps, isReferenceValue, referenceValue } from "./shared";
 
 interface OptionRequest extends ListRequest {
   valueField: string;
@@ -12,37 +12,19 @@ interface OptionRequest extends ListRequest {
 
 type OptionLoader = (request: OptionRequest) => Promise<DataSourceItem[]>;
 
-interface ReferenceValue {
-  $ref: string;
-  value: unknown;
-  label?: ReactNode;
-}
-
-function isReferenceValue(value: unknown): value is ReferenceValue {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    !Array.isArray(value) &&
-    typeof (value as Partial<ReferenceValue>).$ref === "string" &&
-    "value" in value
-  );
-}
-
-function selectedValue(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(selectedValue);
-  return isReferenceValue(value) ? value.value : value;
-}
-
+/** 生成稳定的选项去重键。 */
 function optionKey(value: unknown): string {
   return `${typeof value}:${String(value)}`;
 }
 
+/** 合并远程选项与当前引用值，保留最后出现的同值选项。 */
 function mergeOptions(...groups: DataSourceItem[][]): DataSourceItem[] {
   const merged = new Map<string, DataSourceItem>();
   for (const option of groups.flat()) merged.set(optionKey(option.value), option);
   return [...merged.values()];
 }
 
+/** 将当前关联引用转换为 Select 选项，保证异步加载前可回显。 */
 function referenceOptions(value: unknown): DataSourceItem[] {
   const values = Array.isArray(value) ? value : [value];
   return values.flatMap((item) =>
@@ -84,7 +66,7 @@ export function RemoteSelect(
     multiple?: boolean;
   };
   const refs = useMemo(() => referenceOptions(value), [value]);
-  const normalizedValue = useMemo(() => selectedValue(value), [value]);
+  const normalizedValue = useMemo(() => referenceValue(value), [value]);
   const [options, setOptions] = useState<DataSourceItem[]>(refs);
   const [remoteLoading, setRemoteLoading] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);

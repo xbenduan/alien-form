@@ -16,7 +16,7 @@ function createContainer() {
     modelStore: { get: vi.fn().mockResolvedValue(sysUserSchema) },
     modelService: { ensureSystemModel },
     recordStore: {
-      get: vi.fn().mockResolvedValue({ id: "existing", roleId: "SYSROLE000001", super: true }),
+      get: vi.fn().mockResolvedValue({ id: "existing", roleId: ["SYSROLE000001"], super: true }),
       findByField: vi.fn(),
     },
     recordService: { create, update },
