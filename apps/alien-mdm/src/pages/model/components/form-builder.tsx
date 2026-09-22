@@ -42,8 +42,8 @@ export function FormBuilder({
   const preview = useMemo(() => {
     try {
       const model = encodeModel(draft);
-      const formSchema = buildFormSchema(model, draft.groups);
-      const compiled = compileForm(formSchema, buildRuntimeDefinitions(model, draft.groups));
+      const formSchema = buildFormSchema(model);
+      const compiled = compileForm(formSchema, buildRuntimeDefinitions(model));
       return {
         compiled,
         formSchema,

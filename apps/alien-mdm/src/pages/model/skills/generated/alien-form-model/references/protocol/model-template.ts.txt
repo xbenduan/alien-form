@@ -1,5 +1,5 @@
 import { parseModelSchema } from "./assert.ts";
-import { createDefaultPages } from "./page-templates.ts";
+import { createDefaultPages, SYSTEM_FIELD_KEYS } from "./page-templates.ts";
 import type FieldSchema from "./field-schema.ts";
 import type { ModelSchema } from "./model-schema.ts";
 
@@ -25,69 +25,75 @@ export function createModelTemplate(): ModelSchema {
       {
         id: `${name}.name`,
         key: "name",
-        storage: "physical",
-        database: { type: "text", nullable: false, index: true },
-        form: {
-          type: "string",
-          title: "名称",
-          component: "Input",
-          required: true,
-        },
-        table: { title: "名称" },
+        type: "string",
+        title: "名称",
+        required: true,
+        storage: { type: "text", index: true },
+        form: { component: "Input" },
       },
       {
         id: `${name}.id`,
         key: "id",
-        storage: "physical",
-        database: {
+        type: "string",
+        title: "ID",
+        required: true,
+        storage: {
           type: "text",
           system: true,
-          nullable: false,
           unique: true,
           index: true,
         },
-        form: { type: "string", title: "ID", ...SYSTEM_FIELD_FORM },
-        table: { title: "ID" },
+        form: { ...SYSTEM_FIELD_FORM },
       },
       {
         id: `${name}.createdAt`,
         key: "createdAt",
-        storage: "physical",
-        database: {
-          type: "integer",
-          valueType: "string",
-          system: true,
-          nullable: false,
-        },
+        type: "string",
+        title: "创建时间",
+        required: true,
+        storage: { type: "integer", system: true },
         form: {
-          type: "string",
-          title: "创建时间",
           component: "DatePicker",
           ...SYSTEM_FIELD_FORM,
           props: { readOnly: true, showTime: true },
         },
-        table: { title: "创建时间" },
       },
       {
         id: `${name}.updatedAt`,
         key: "updatedAt",
-        storage: "physical",
-        database: {
-          type: "integer",
-          valueType: "string",
-          system: true,
-          nullable: false,
-        },
+        type: "string",
+        title: "更新时间",
+        required: true,
+        storage: { type: "integer", system: true },
         form: {
-          type: "string",
-          title: "更新时间",
           component: "DatePicker",
           ...SYSTEM_FIELD_FORM,
           props: { readOnly: true, showTime: true },
         },
-        table: { title: "更新时间" },
       },
     ],
+    form: {
+      type: "object",
+      properties: {
+        base: {
+          type: "void",
+          title: "基础信息",
+          component: "Card",
+          props: { gridSpan: 12 },
+          properties: { name: { $ref: "#/fields/name" } },
+        },
+        system: {
+          type: "void",
+          title: "系统信息",
+          component: "Card",
+          display: "{{ mode === 'detail' ? 'visible' : 'none' }}",
+          props: { gridSpan: 12 },
+          properties: Object.fromEntries(
+            SYSTEM_FIELD_KEYS.map((key) => [key, { $ref: `#/fields/${key}` }]),
+          ),
+        },
+      },
+    },
     pages: createDefaultPages(name, title),
   });
 }

@@ -29,55 +29,70 @@ const model: ModelSchema = {
     {
       id: "products.name",
       key: "name",
-      storage: "physical",
-      database: { type: "text" },
-      form: { type: "string", title: "名称" },
+      type: "string",
+      title: "名称",
+      storage: { type: "text" },
+      form: {},
     },
   ],
+  form: {
+    type: "object",
+    properties: {
+      base: {
+        type: "void",
+        component: "Card",
+        title: "基础信息",
+        properties: { name: { $ref: "#/fields/name" } },
+      },
+    },
+  },
   pages: [
     {
       router: "list",
       permission: "read",
-      layout: {
-        component: "layout",
-        slots: { content: "table" },
-      },
-      properties: {
-        table: {
-          type: "void",
-          component: "table",
-          props: {
-            modelCode: "products",
-            schema: { $ref: "form-schema" },
-            columns: "{{ $utils.schemaToColumns }}",
-            filter: '{{ $form.getFieldValue("filter") }}',
-            loadData: '{{ $service("records.list") }}',
-          },
-          slots: { rowActions: ["deactivate", "delete"] },
-          properties: {
-            deactivate: {
-              type: "void",
-              component: "row-button",
-              props: { children: "停用" },
+      type: "void",
+      component: "layout",
+      slots: {
+        content: {
+          table: {
+            type: "void",
+            component: "table",
+            props: {
+              modelCode: "products",
+              schema: { $ref: "form-schema" },
+              columns: "{{ $utils.schemaToColumns }}",
+              filter: '{{ $form.getFieldValue("filter") }}',
+              loadData: '{{ $service("records.list") }}',
             },
-            delete: {
-              type: "void",
-              component: "row-button",
-              props: {
-                children: "删除",
-                onClick:
-                  '{{ ($row) => $service("records.delete")({ model: "products", id: $row.id }) }}',
+            slots: {
+              rowActions: {
+                deactivate: {
+                  type: "void",
+                  component: "row-button",
+                  props: { children: "停用" },
+                },
+                delete: {
+                  type: "void",
+                  component: "row-button",
+                  props: {
+                    children: "删除",
+                    onClick:
+                      '{{ ($row) => $service("records.delete")({ model: "products", id: $row.id }) }}',
+                  },
+                },
               },
             },
-            import: {
-              type: "void",
-              component: "Button",
-              props: { children: "导入" },
-            },
-            export: {
-              type: "void",
-              component: "Button",
-              props: { children: "导出" },
+            properties: {
+              import: {
+                type: "void",
+                component: "Button",
+                props: { children: "导入" },
+              },
+              export: {
+                type: "void",
+                component: "Button",
+                props: { children: "导出" },
+              },
             },
           },
         },
@@ -89,7 +104,7 @@ const model: ModelSchema = {
 describe("page compiler", () => {
   it("resolves static references and precompiles expressions", () => {
     const [page] = compileModel(model);
-    const table = page.nodes[0].children[0];
+    const table = page.root.children[0];
     expect((table.props.schema as { properties: unknown }).properties).toBeDefined();
     expect(isCompiledValue(table.props.filter)).toBe(true);
     expect(
@@ -108,7 +123,7 @@ describe("page compiler", () => {
 
   it("evaluates compiled values recursively without interpreting raw strings", () => {
     const [page] = compileModel(model);
-    const table = page.nodes[0].children[0];
+    const table = page.root.children[0];
     const resolved = evaluateCompiledValue(
       {
         filter: table.props.filter,
@@ -154,7 +169,7 @@ describe("page compiler", () => {
 
   it("extracts row actions and keeps remaining table properties as ordered children", () => {
     const [page] = compileModel(model);
-    const table = page.nodes[0].children[0];
+    const table = page.root.children[0];
     const rowActions = table.slots.rowActions;
 
     expect(Array.isArray(rowActions)).toBe(true);
@@ -163,10 +178,10 @@ describe("page compiler", () => {
       "delete",
     ]);
     expect(table.children.map((node) => node.key)).toEqual([
-      "deactivate",
-      "delete",
       "import",
       "export",
+      "deactivate",
+      "delete",
     ]);
     expect(
       table.children
@@ -175,10 +190,10 @@ describe("page compiler", () => {
     ).toEqual(["import", "export"]);
   });
 
-  it("wraps page layouts without changing value paths", () => {
+  it("compiles the page itself as the root node", () => {
     const [page] = compileModel(model);
-    expect(page.schema.properties?.$page.type).toBe("void");
-    expect(page.nodes[0].slots.content).toBe(page.nodes[0].children[0]);
+    expect(page.schema.properties?.table.type).toBe("void");
+    expect(page.root.slots.content).toBe(page.root.children[0]);
   });
 
   it("matches an empty segment to list", () => {
@@ -186,9 +201,8 @@ describe("page compiler", () => {
   });
 
   it("projects form groups into void containers without changing field keys", () => {
-    const groups = [{ component: "Card", title: "基础信息", keys: ["name"] }];
-    const schema = buildFormSchema(model, groups);
-    const compiled = compileForm(schema, buildRuntimeDefinitions(model, groups));
+    const schema = buildFormSchema(model);
+    const compiled = compileForm(schema, buildRuntimeDefinitions(model));
     expect(compiled.nodes).toHaveLength(1);
     expect(compiled.nodes[0]?.schema).toMatchObject({
       type: "void",
@@ -209,10 +223,9 @@ describe("page compiler", () => {
         },
       })),
     };
-    const groups = [{ component: "Card", title: "基础信息", keys: ["name"] }];
-    const schema = buildFormSchema(dynamicModel, groups);
-    const compiled = compileForm(schema, buildRuntimeDefinitions(dynamicModel, groups));
-    expect(compiled.schema.properties?.["$group-0"]?.properties?.name).toMatchObject({
+    const schema = buildFormSchema(dynamicModel);
+    const compiled = compileForm(schema, buildRuntimeDefinitions(dynamicModel));
+    expect(compiled.schema.properties?.base?.properties?.name).toMatchObject({
       display: "visible",
       "x-reaction": {
         display: "{{ $form.getFieldValue('enabled') ? 'visible' : 'hidden' }}",
@@ -221,8 +234,9 @@ describe("page compiler", () => {
   });
 
   it("derives form-schema from fields", () => {
-    expect(buildRuntimeDefinitions(model)["form-schema"].properties?.name).toEqual(
-      model.fields[0].form,
-    );
+    expect(buildRuntimeDefinitions(model)["fields/name"]).toMatchObject({
+      type: "string",
+      title: "名称",
+    });
   });
 });

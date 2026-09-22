@@ -15,17 +15,24 @@ const schema: ModelSchema = {
     {
       id: "article.id",
       key: "id",
-      storage: "physical",
-      database: { type: "text" },
-      form: { type: "string" },
+      type: "string",
+      storage: { type: "text" },
+      form: {},
     },
     {
       id: "article.title",
       key: "title",
-      storage: "virtual",
-      form: { type: "string" },
+      type: "string",
+      form: {},
     },
   ],
+  form: {
+    type: "object",
+    properties: {
+      id: { $ref: "#/fields/id" },
+      title: { $ref: "#/fields/title" },
+    },
+  },
   pages: [],
 };
 

@@ -77,7 +77,8 @@ describe("createForm runtime and projection", () => {
       type: "object",
       properties: {
         deliverySection: {
-          "x-layout": "Card",
+          type: "void",
+          component: "Card",
           properties: {
             landingPage: {
               type: "string",
@@ -711,13 +712,14 @@ describe("leaf value type guard", () => {
   });
 });
 
-describe("x-layout layout nodes", () => {
-  it("flattens x-layout children into parent values (no key prefix)", async () => {
+describe("void layout nodes", () => {
+  it("flattens void children into parent values (no key prefix)", async () => {
     const schema: IFormSchema = {
       type: "object",
       properties: {
         contactGroup: {
-          "x-layout": "Card",
+          type: "void",
+          component: "Card",
           properties: {
             email: { type: "string" },
             phone: { type: "string" },
@@ -732,11 +734,15 @@ describe("x-layout layout nodes", () => {
     await expect(form.submit()).resolves.toEqual({ email: "x@y.com", phone: "123" });
   });
 
-  it("uses the x-layout value as the default component name", () => {
+  it("uses the explicit component name", () => {
     const schema: IFormSchema = {
       type: "object",
       properties: {
-        section: { "x-layout": "Card", properties: { a: { type: "string" } } },
+        section: {
+          type: "void",
+          component: "Card",
+          properties: { a: { type: "string" } },
+        },
       },
     };
     const form = createForm({ schema });

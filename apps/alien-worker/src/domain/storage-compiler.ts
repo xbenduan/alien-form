@@ -17,7 +17,7 @@ const RESERVED_TABLES = new Set(["models", "sessions", "_sequences"]);
 function physicalColumn(field: ModelFieldSchema): string {
   if (field.key === "createdAt") return "created_at";
   if (field.key === "updatedAt") return "updated_at";
-  return field.database?.column ?? field.key;
+  return field.storage?.column ?? field.key;
 }
 
 function sqliteType(type: DatabaseColumnType): string {
@@ -81,7 +81,7 @@ export function compileStorageManifest(schema: ModelSchema): StorageManifest {
   const relations: StorageRelation[] = [];
 
   for (const field of schema.fields) {
-    if (field.storage === "physical" && field.relation?.kind === "many-to-many") {
+    if (field.storage && field.relation?.kind === "many-to-many") {
       relations.push({
         field: field.key,
         table: field.relation.through ?? `${schema.name}_${field.key}`,
@@ -89,18 +89,18 @@ export function compileStorageManifest(schema: ModelSchema): StorageManifest {
       });
       continue;
     }
-    if (field.storage !== "physical" || !field.database) continue;
+    if (!field.storage) continue;
     const column: StorageColumn = {
       fieldId: field.id,
       field: field.key,
       column: physicalColumn(field),
-      type: field.database.type,
-      valueType: field.database.valueType,
-      nullable: field.key === "id" ? false : (field.database.nullable ?? true),
-      default: field.database.default,
-      unique: field.key === "id" || (field.database.unique ?? false),
-      index: field.database.index ?? false,
-      system: field.database.system ?? false,
+      type: field.storage.type,
+      valueType: field.type === "void" ? undefined : field.type,
+      nullable: field.key === "id" ? false : !field.required,
+      default: field.storage.default,
+      unique: field.key === "id" || (field.storage.unique ?? false),
+      index: field.storage.index ?? false,
+      system: field.storage.system ?? false,
     };
     columns.push(column);
     if (field.key !== "id" && (column.index || column.unique)) {
@@ -193,7 +193,7 @@ export function compileMigrationPlan(
         const previous = current.fields.find(
           (field) =>
             field.key === relation.field &&
-            field.storage === "physical" &&
+            field.storage !== undefined &&
             field.relation?.kind === "many-to-one",
         );
         if (!previous) return [];

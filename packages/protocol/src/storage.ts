@@ -1,11 +1,11 @@
-import type { DatabaseColumnType, DatabaseRelation, DatabaseValueType } from "./model-schema.ts";
+import type { DatabaseColumnType, DatabaseRelation, FieldValueType } from "./model-schema.ts";
 
 export interface StorageColumn {
   fieldId: string;
   field: string;
   column: string;
   type: DatabaseColumnType;
-  valueType?: DatabaseValueType;
+  valueType?: FieldValueType;
   nullable: boolean;
   default?: string | number | boolean | null;
   unique: boolean;

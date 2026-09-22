@@ -146,7 +146,7 @@ export class ModelStore {
   /** Drops a model's relation tables, physical table, and metadata atomically. */
   async delete(schema: ModelSchema): Promise<void> {
     const relationTables = schema.fields.flatMap((field: ModelFieldSchema) =>
-      field.storage === "physical" && field.relation?.kind === "many-to-many"
+      field.storage && field.relation?.kind === "many-to-many"
         ? [field.relation.through ?? `${schema.name}_${field.key}`]
         : [],
     );

@@ -1,10 +1,4 @@
-import type {
-  FieldSchema,
-  ModelRecord,
-  ModelSchema,
-  PermissionAction,
-  SchemaSlots,
-} from "@alien-form/protocol";
+import type { FieldSchema, ModelRecord, ModelSchema, PermissionAction } from "@alien-form/protocol";
 import { SYS_MODEL_TAB_MODEL } from "../domain/schemas/_sys_model_tab.ts";
 import { SYS_ROLE_MODEL, SYS_ROLE_SUPER_ADMIN_ID } from "../domain/schemas/_sys_role.ts";
 import { SYS_ADMIN_ID, SYS_USER_MODEL } from "../domain/schemas/_sys_user.ts";
@@ -39,17 +33,20 @@ export interface AccessProfile {
 const ACTIONS = new Set<PermissionAction>(["read", "create", "update", "delete"]);
 
 function projectSlots(
-  slots: SchemaSlots | undefined,
-  properties: Record<string, FieldSchema>,
-): SchemaSlots | undefined {
+  slots: FieldSchema["slots"],
+  actions: ReadonlySet<PermissionAction>,
+  allowed?: ReadonlySet<string>,
+): FieldSchema["slots"] {
   if (!slots) return undefined;
   const projected = Object.fromEntries(
-    Object.entries(slots).flatMap(([name, references]) => {
-      const keys = (Array.isArray(references) ? references : [references]).filter(
-        (key) => properties[key],
+    Object.entries(slots).flatMap(([name, nodes]) => {
+      const children = Object.fromEntries(
+        Object.entries(nodes).flatMap(([key, child]) => {
+          const projectedChild = projectNode(child, actions, allowed);
+          return projectedChild ? [[key, projectedChild]] : [];
+        }),
       );
-      if (keys.length === 0) return [];
-      return [[name, Array.isArray(references) ? keys : keys[0]!]];
+      return Object.keys(children).length > 0 ? [[name, children]] : [];
     }),
   );
   return Object.keys(projected).length > 0 ? projected : undefined;
@@ -58,18 +55,22 @@ function projectSlots(
 function projectNode(
   node: FieldSchema,
   actions: ReadonlySet<PermissionAction>,
+  allowed?: ReadonlySet<string>,
 ): FieldSchema | undefined {
   if (node.permission && !actions.has(node.permission)) return undefined;
+  if (allowed && node.$ref?.startsWith("#/fields/") && !allowed.has(node.$ref.slice(9))) {
+    return undefined;
+  }
   const properties = Object.fromEntries(
     Object.entries(node.properties ?? {}).flatMap(([key, child]) => {
-      const projected = projectNode(child, actions);
+      const projected = projectNode(child, actions, allowed);
       return projected ? [[key, projected]] : [];
     }),
   );
   return {
     ...node,
     properties: node.properties ? properties : undefined,
-    slots: projectSlots(node.slots, properties),
+    slots: projectSlots(node.slots, actions, allowed),
   };
 }
 
@@ -290,28 +291,12 @@ export class AuthorizationService {
     return {
       ...model,
       fields: model.fields.filter((field) => allowed.has(field.key)),
+      form: projectNode(model.form, actions, allowed) ?? { type: "object", properties: {} },
       pages: model.pages
         .filter((page) => actions.has(page.permission))
-        .map((page) => {
-          const properties = Object.fromEntries(
-            Object.entries(page.properties).flatMap(([key, node]) => {
-              const projected = projectNode(node, actions);
-              return projected ? [[key, projected]] : [];
-            }),
-          );
-          return {
-            ...page,
-            groups: page.groups
-              ?.map((group) => ({
-                ...group,
-                keys: group.keys.filter((key) => allowed.has(key)),
-              }))
-              .filter((group) => group.keys.length > 0),
-            properties,
-            layout: page.layout
-              ? { ...page.layout, slots: projectSlots(page.layout.slots, properties) }
-              : undefined,
-          };
+        .flatMap((page) => {
+          const projected = projectNode(page, actions, allowed);
+          return projected ? [projected as typeof page] : [];
         }),
     };
   }

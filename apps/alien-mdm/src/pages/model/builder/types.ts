@@ -2,26 +2,21 @@ import type {
   ModelSchema,
   DatabaseColumnType,
   DatabaseRelation,
-  DatabaseValueType,
-  FieldGroup,
+  FieldValueType,
   FieldSchema,
   PageSchema,
 } from "@alien-form/engine";
 
 /** 表单类型（含不落库的 void 纯展示元素）。 */
-export type FieldType = DatabaseValueType | "void";
+export type FieldType = FieldValueType | "void";
 
 export type FieldSource = "physical" | "virtual";
 
 /** 物理表存储配置（仅 physical 顶层字段拥有；只由「数据库构建」编辑）。 */
 export interface StorageConfig {
-  /** 字段标题（fields[].title）。 */
-  title?: string;
   type: DatabaseColumnType;
-  valueType?: DatabaseValueType;
   column?: string;
   system?: boolean;
-  nullable?: boolean;
   default?: string | number | boolean | null;
   unique?: boolean;
   index?: boolean;
@@ -34,7 +29,7 @@ export interface StorageConfig {
  * 表单表现配置（form-schema 片段；只由「表单配置」编辑）。
  * 覆盖 core IFieldSchema 的全部字段，但 properties/items 由 FieldNode.children 承载，故排除。
  */
-export type FormConfig = Omit<FieldSchema, "properties" | "items">;
+export type FormConfig = Omit<FieldSchema, "type" | "title" | "required" | "properties" | "items">;
 
 /** 构建器统一字段树节点。 */
 export interface FieldNode {
@@ -42,6 +37,8 @@ export interface FieldNode {
   id: string;
   key: string;
   type: FieldType;
+  title?: string;
+  required?: boolean;
   source: FieldSource;
   persisted?: boolean;
   storage?: StorageConfig;
@@ -50,8 +47,13 @@ export interface FieldNode {
   children?: FieldNode[];
 }
 
-export interface GroupDraft extends FieldGroup {
+export interface GroupDraft {
   id: string;
+  component?: string;
+  keys: string[];
+  title?: string;
+  description?: string;
+  props?: Record<string, unknown>;
 }
 
 /** 页面配置草稿：一个 page（PageSchema）附带稳定 id。 */

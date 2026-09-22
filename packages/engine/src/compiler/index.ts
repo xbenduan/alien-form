@@ -2,8 +2,8 @@ import { compileExpr, type IFieldSchema, type IFormSchema } from "@alien-form/co
 import type {
   CompiledNode,
   CompiledPage,
-  FieldGroup,
   FieldSchema,
+  ModelFieldSchema,
   ModelSchema,
   PageSchema,
 } from "../protocol";
@@ -24,7 +24,9 @@ function resolveRef(
   stack: string[] = [],
 ): FieldSchema {
   if (!schema.$ref) return schema;
-  const code = schema.$ref.replace(/^#\/definitions\//, "");
+  const code = schema.$ref.startsWith("#/definitions/")
+    ? schema.$ref.slice("#/definitions/".length)
+    : schema.$ref.replace(/^#\//, "");
   if (stack.includes(code)) {
     throw new Error(`Circular schema reference: ${[...stack, code].join(" -> ")}`);
   }
@@ -50,11 +52,21 @@ function resolveField(raw: FieldSchema, definitions: RuntimeDefinitions): FieldS
         ]),
       )
     : undefined;
+  const slots = schema.slots
+    ? Object.fromEntries(
+        Object.entries(schema.slots).map(([name, nodes]) => [
+          name,
+          Object.fromEntries(
+            Object.entries(nodes).map(([key, child]) => [key, resolveField(child, definitions)]),
+          ),
+        ]),
+      )
+    : undefined;
   const items =
     schema.items && !Array.isArray(schema.items)
       ? resolveField(schema.items, definitions)
       : schema.items;
-  return { ...schema, properties, items };
+  return { ...schema, properties, slots, items };
 }
 
 function compileValue(value: unknown, definitions: RuntimeDefinitions): unknown {
@@ -81,7 +93,11 @@ function warmExpressions(value: unknown): void {
 function compileNode(key: string, raw: FieldSchema, definitions: RuntimeDefinitions): CompiledNode {
   const schema = resolveField(raw, definitions);
   warmExpressions(schema);
-  const children = Object.entries(schema.properties ?? {}).map(([childKey, child]) =>
+  const childEntries = [
+    ...Object.entries(schema.properties ?? {}),
+    ...Object.values(schema.slots ?? {}).flatMap((nodes) => Object.entries(nodes)),
+  ];
+  const children = childEntries.map(([childKey, child]) =>
     compileNode(childKey, child, definitions),
   );
   const childMap = new Map(children.map((child) => [child.key, child]));
@@ -92,10 +108,9 @@ function compileNode(key: string, raw: FieldSchema, definitions: RuntimeDefiniti
     ]),
   );
   const slots: CompiledNode["slots"] = {};
-  for (const [name, references] of Object.entries(schema.slots ?? {})) {
-    const keys = Array.isArray(references) ? references : [references];
-    const nodes = keys.map((key) => childMap.get(key)!);
-    slots[name] = Array.isArray(references) ? nodes : nodes[0]!;
+  for (const [name, slotNodes] of Object.entries(schema.slots ?? {})) {
+    const nodes = Object.keys(slotNodes).map((childKey) => childMap.get(childKey)!);
+    slots[name] = nodes.length === 1 ? nodes[0]! : nodes;
   }
   const items =
     schema.items && !Array.isArray(schema.items)
@@ -104,101 +119,81 @@ function compileNode(key: string, raw: FieldSchema, definitions: RuntimeDefiniti
   return { key, schema, props, slots, children, items };
 }
 
-function projectGroupedProperties(
-  properties: Record<string, FieldSchema>,
-  groups: FieldGroup[] = [],
-): Record<string, FieldSchema> {
-  if (groups.length === 0) return properties;
-
-  const keyToGroup = new Map<string, number>();
-  groups.forEach((group, index) => {
-    group.keys.forEach((key) => {
-      if (properties[key] && !keyToGroup.has(key)) keyToGroup.set(key, index);
-    });
-  });
-
-  const emitted = new Set<number>();
-  const output: Record<string, FieldSchema> = {};
-  for (const [key, field] of Object.entries(properties)) {
-    const groupIndex = keyToGroup.get(key);
-    if (groupIndex === undefined) {
-      output[key] = field;
-      continue;
-    }
-    if (emitted.has(groupIndex)) continue;
-    emitted.add(groupIndex);
-    const group = groups[groupIndex]!;
-    output[`$group-${groupIndex}`] = {
-      type: "void",
-      component: group.component ?? "Card",
-      title: group.title,
-      description: group.description,
-      props: group.props,
-      properties: Object.fromEntries(
-        group.keys.flatMap((memberKey) => {
-          const member = properties[memberKey];
-          return member ? [[memberKey, member]] : [];
+function relationForm(field: ModelFieldSchema): FieldSchema {
+  const form = { ...field.form, props: { ...field.form.props } };
+  if (!field.relation) return form;
+  const component = form.component === "TreeSelect" ? "TreeSelect" : "RemoteSelect";
+  const props = {
+    ...form.props,
+    model: field.relation.target,
+    valueField: field.relation.valueField ?? "id",
+    labelField: field.relation.labelField ?? "name",
+    ...(component === "TreeSelect"
+      ? {
+          parentField: field.key,
+          loadData: '{{ $utils.tree($service("records.subtree")) }}',
+        }
+      : {
+          loadOptions: '{{ $utils.relation($service("records.list")) }}',
+          pageSize: form.props?.pageSize ?? 10,
+          ...(field.relation.kind === "many-to-many" ? { multiple: true } : {}),
         }),
-      ),
-    };
-  }
-  return output;
+  };
+  return { ...form, component, props };
 }
 
-export function buildFormSchema(model: ModelSchema, groups: FieldGroup[] = []): FieldSchema {
-  const properties = Object.fromEntries(model.fields.map((field) => [field.key, field.form]));
+function fieldDefinition(field: ModelFieldSchema): FieldSchema {
   return {
-    type: "object",
-    properties: projectGroupedProperties(properties, groups),
+    ...relationForm(field),
+    type: field.type,
+    title: field.title,
+    required: field.required || undefined,
   };
 }
 
-export function buildRuntimeDefinitions(
-  model: ModelSchema,
-  groups: FieldGroup[] = [],
-): RuntimeDefinitions {
+export function buildFormSchema(model: ModelSchema): FieldSchema {
+  return resolveField(model.form, buildRuntimeDefinitions(model));
+}
+
+export function buildRuntimeDefinitions(model: ModelSchema): RuntimeDefinitions {
+  const fieldDefinitions = Object.fromEntries(
+    model.fields.map((field) => [`fields/${field.key}`, fieldDefinition(field)]),
+  );
   return {
     ...model.definitions,
-    "form-schema": buildFormSchema(model, groups),
+    ...fieldDefinitions,
+    "form-schema": model.form,
   };
 }
 
 export function compilePage(model: ModelSchema, page: PageSchema): CompiledPage {
-  const definitions = buildRuntimeDefinitions(model, page.groups);
-  const properties = Object.fromEntries(
-    Object.entries(page.properties).map(([key, schema]) => [
-      key,
-      resolveField(schema, definitions),
-    ]),
-  );
-  const pageNodes = Object.entries(properties).map(([key, schema]) =>
-    compileNode(key, schema, definitions),
-  );
-
-  if (!page.layout) {
-    return {
-      router: page.router,
-      title: page.title ?? model.title,
-      schema: { type: "object", properties: properties as Record<string, IFieldSchema> },
-      nodes: pageNodes,
-    };
-  }
-
-  const wrapper: FieldSchema = {
-    type: "void",
-    component: page.layout.component,
-    props: page.layout.props,
-    slots: page.layout.slots,
-    properties,
-  };
+  const definitions = buildRuntimeDefinitions(model);
+  const root = resolveField(page, definitions);
+  const materialized = materializeNode(root);
   return {
     router: page.router,
     title: page.title ?? model.title,
     schema: {
       type: "object",
-      properties: { $page: wrapper as IFieldSchema },
+      component: root.component,
+      props: root.props,
+      properties: materialized.properties as Record<string, IFieldSchema>,
     },
-    nodes: [compileNode("$page", wrapper, definitions)],
+    root: compileNode("$root", root, definitions),
+  };
+}
+
+function materializeNode(schema: FieldSchema): FieldSchema {
+  const children = [
+    ...Object.entries(schema.properties ?? {}),
+    ...Object.values(schema.slots ?? {}).flatMap((nodes) => Object.entries(nodes)),
+  ];
+  return {
+    ...schema,
+    properties:
+      children.length > 0
+        ? Object.fromEntries(children.map(([key, child]) => [key, materializeNode(child)]))
+        : undefined,
   };
 }
 

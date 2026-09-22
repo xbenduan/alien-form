@@ -29,10 +29,10 @@ function isEmpty(value: unknown): boolean {
 
 function assertFieldValue(field: ModelFieldSchema, value: unknown): void {
   if (isEmpty(value)) {
-    if (field.form.required === true) throw new AppError(`${field.key} 必填`, 400);
+    if (field.required === true) throw new AppError(`${field.key} 必填`, 400);
     return;
   }
-  const type = field.form.type;
+  const type = field.type;
   if (type === "string" && typeof value !== "string") {
     throw new AppError(`${field.key} 必须为字符串`, 400);
   }
@@ -61,8 +61,8 @@ function normalizeRecord(schema: ModelSchema, values: Record<string, unknown>): 
       continue;
     }
     let value = values[field.key];
-    if (value === undefined && field.database?.default !== undefined) {
-      value = field.database.default;
+    if (value === undefined && field.storage?.default !== undefined) {
+      value = field.storage.default;
     }
     if (value === undefined && field.form.default !== undefined) value = field.form.default;
     assertFieldValue(field, value);

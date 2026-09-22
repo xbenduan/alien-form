@@ -32,7 +32,7 @@ export function GroupModal({
 
   // 顶层字段可选项；已被其它分组占用的字段禁用。
   const fieldOptions = draft.fields.map((node) => ({
-    label: `${node.key}（${node.form.title ?? ""}）`,
+    label: `${node.key}（${node.title ?? ""}）`,
     value: node.key,
   }));
   const takenElsewhere = new Set(

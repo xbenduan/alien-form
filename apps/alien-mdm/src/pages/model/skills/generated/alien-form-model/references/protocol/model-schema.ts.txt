@@ -15,8 +15,8 @@ export const databaseColumnTypeSchema = z.enum([
 ]);
 export type DatabaseColumnType = z.infer<typeof databaseColumnTypeSchema>;
 
-export const databaseValueTypeSchema = z.enum(["string", "number", "boolean", "object", "array"]);
-export type DatabaseValueType = z.infer<typeof databaseValueTypeSchema>;
+export const fieldValueTypeSchema = z.enum(["string", "number", "boolean", "object", "array"]);
+export type FieldValueType = z.infer<typeof fieldValueTypeSchema>;
 
 export const databaseRelationKindSchema = z.enum(["many-to-one", "many-to-many"]);
 export type DatabaseRelationKind = z.infer<typeof databaseRelationKindSchema>;
@@ -33,23 +33,23 @@ export const databaseRelationSchema = z.object({
 });
 export type DatabaseRelation = z.infer<typeof databaseRelationSchema>;
 
-export const modelFieldDatabaseSchema = z.object({
+export const modelFieldStorageSchema = z.object({
   type: databaseColumnTypeSchema,
-  valueType: databaseValueTypeSchema.optional(),
   column: z.string().regex(identifierPattern, "database.column 不合法").optional(),
   system: z.boolean().optional(),
-  nullable: z.boolean().optional(),
   default: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
   unique: z.boolean().optional(),
   index: z.boolean().optional(),
 });
-export type ModelFieldDatabase = z.infer<typeof modelFieldDatabaseSchema>;
+export type ModelFieldStorage = z.infer<typeof modelFieldStorageSchema>;
 
 export const modelFieldSchema = z.object({
   id: z.string().min(1, "字段 id 必填"),
   key: z.string().regex(identifierPattern, "字段 key 不合法"),
-  storage: z.enum(["physical", "virtual"]),
-  database: modelFieldDatabaseSchema.optional(),
+  type: fieldValueTypeSchema.or(z.literal("void")),
+  title: z.string().optional(),
+  required: z.boolean().optional(),
+  storage: modelFieldStorageSchema.optional(),
   relation: databaseRelationSchema.optional(),
   form: fieldSchema,
   table: z
@@ -68,8 +68,10 @@ export const modelFieldSchema = z.object({
 export interface ModelFieldSchema {
   id: string;
   key: string;
-  storage: "physical" | "virtual";
-  database?: ModelFieldDatabase;
+  type: FieldValueType | "void";
+  title?: string;
+  required?: boolean;
+  storage?: ModelFieldStorage;
   relation?: DatabaseRelation;
   form: FieldSchema;
   table?: {
@@ -81,30 +83,20 @@ export interface ModelFieldSchema {
   };
 }
 
-export const fieldGroupSchema = z.object({
-  component: z.string().optional(),
-  keys: z.array(z.string().regex(identifierPattern, "group key 不合法")),
-  title: z.string().optional(),
-  description: z.string().optional(),
-  props: z.record(z.unknown()).optional(),
-});
-export type FieldGroup = z.infer<typeof fieldGroupSchema>;
-
-export const pageSchema = z.object({
-  router: z.string().regex(/^[A-Za-z][A-Za-z0-9_-]*$/, "页面 router 必须是单个合法路径段"),
-  title: z.string().optional(),
-  permission: z.enum(["read", "create", "update", "delete"]),
-  layout: z
-    .object({
-      component: z.string(),
-      props: z.record(z.unknown()).optional(),
-      slots: z.record(z.union([z.string(), z.array(z.string())])).optional(),
-    })
-    .optional(),
-  groups: z.array(fieldGroupSchema).optional(),
-  properties: z.record(fieldSchema),
-});
-export type PageSchema = z.infer<typeof pageSchema>;
+export const pageSchema = fieldSchema.and(
+  z.object({
+    router: z.string().regex(/^[A-Za-z][A-Za-z0-9_-]*$/, "页面 router 必须是单个合法路径段"),
+    title: z.string().optional(),
+    permission: z.enum(["read", "create", "update", "delete"]),
+    type: z.literal("void"),
+  }),
+);
+export interface PageSchema extends FieldSchema {
+  router: string;
+  title?: string;
+  permission: "read" | "create" | "update" | "delete";
+  type: "void";
+}
 
 export const modelSchemaSchema = z.object({
   name: z.string().regex(modelNamePattern, "模型 name 不合法"),
@@ -120,6 +112,7 @@ export const modelSchemaSchema = z.object({
   pluralLabel: z.string().optional(),
   defaultPageSize: z.number().int().positive().optional(),
   fields: z.array(modelFieldSchema).min(1, "fields 不能为空"),
+  form: fieldSchema,
   definitions: z.record(fieldSchema).optional(),
   pages: z.array(pageSchema),
 });
@@ -138,6 +131,7 @@ export interface ModelSchema {
   pluralLabel?: string;
   defaultPageSize?: number;
   fields: ModelFieldSchema[];
+  form: FieldSchema;
   definitions?: Record<string, FieldSchema>;
   pages: PageSchema[];
 }

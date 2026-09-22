@@ -27,7 +27,7 @@ type CompileContext = {
 
 /** Returns the runtime capability represented by a schema node. */
 function schemaKind(schema: IFieldSchema): FieldKind {
-  if (schema.type === "void" || schema["x-layout"]) return "void";
+  if (schema.type === "void") return "void";
   if (schema.type === "array" && schema.items && !Array.isArray(schema.items)) return "array";
   if (schema.type === "object") return "object";
   return "primitive";

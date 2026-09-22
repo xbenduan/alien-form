@@ -2,7 +2,7 @@ import { parse, type Node } from "acorn";
 import {
   modelSchemaSchema,
   pageSchema,
-  type DatabaseValueType,
+  type FieldValueType,
   type ModelFieldSchema,
   type ModelSchema,
   type PageSchema,
@@ -191,35 +191,27 @@ function assertComponentType(
   }
 }
 
-function assertSlots(
-  schema: FieldSchema,
-  capability: ComponentCapability,
-  path: string,
-): Map<string, boolean> {
+function assertSlots(schema: FieldSchema, capability: ComponentCapability, path: string): void {
   const contracts = capability.meta?.slots ?? {};
-  const properties = schema.properties ?? {};
   const used = new Set<string>();
-  const rowScope = new Map<string, boolean>();
   for (const [name, contract] of Object.entries(contracts)) {
     if (contract.required && schema.slots?.[name] === undefined) {
       throw new Error(`${path}.slots.${name} 必填`);
     }
   }
-  for (const [name, reference] of Object.entries(schema.slots ?? {})) {
+  for (const [name, nodes] of Object.entries(schema.slots ?? {})) {
     const contract = contracts[name];
     if (!contract) throw new Error(`${path}.slots.${name} 不是组件 ${capability.code} 的有效 slot`);
-    if (Array.isArray(reference) && !contract.multiple) {
-      throw new Error(`${path}.slots.${name} 只允许引用一个节点`);
+    const entries = Object.entries(nodes);
+    if (entries.length > 1 && !contract.multiple) {
+      throw new Error(`${path}.slots.${name} 只允许一个节点`);
     }
-    const keys = Array.isArray(reference) ? reference : [reference];
-    for (const key of keys) {
-      if (!properties[key]) throw new Error(`${path}.slots.${name} 引用了不存在的节点：${key}`);
+    for (const [key, child] of entries) {
       if (used.has(key)) throw new Error(`${path}.slots 中重复引用节点：${key}`);
       used.add(key);
-      rowScope.set(key, contract.scope?.includes("$row") ?? false);
+      assertFieldNode(child, `${path}.slots.${name}.${key}`, contract.scope?.includes("$row"));
     }
   }
-  return rowScope;
 }
 
 function assertFieldNode(schema: FieldSchema, path: string, rowScope = false): void {
@@ -232,16 +224,15 @@ function assertFieldNode(schema: FieldSchema, path: string, rowScope = false): v
   if (schema.decorator) {
     assertComponent(schema.decorator, `${path}.decorator`);
   }
-  if (schema["x-layout"]) {
-    assertComponent(schema["x-layout"], `${path}.x-layout`);
+  if (capability) {
+    assertSlots(schema, capability, path);
+  } else if (schema.slots) {
+    throw new Error(`${path}.slots 需要声明 component`);
   }
-  const slotScopes = capability
-    ? assertSlots(schema, capability, path)
-    : new Map<string, boolean>();
-  const { properties: _properties, items: _items, ...ownSchema } = schema;
+  const { properties: _properties, items: _items, slots: _slots, ...ownSchema } = schema;
   assertExpressions(ownSchema, path, rowScope);
   for (const [key, child] of Object.entries(schema.properties ?? {})) {
-    assertFieldNode(child, `${path}.properties.${key}`, rowScope || !!slotScopes.get(key));
+    assertFieldNode(child, `${path}.properties.${key}`, rowScope);
   }
   if (schema.items && !Array.isArray(schema.items)) {
     assertFieldNode(schema.items, `${path}.items`, true);
@@ -249,98 +240,75 @@ function assertFieldNode(schema: FieldSchema, path: string, rowScope = false): v
 }
 
 function assertPageSemantics(page: PageSchema, path: string): void {
-  if (page.layout) {
-    const layoutSchema: FieldSchema = {
-      component: page.layout.component,
-      props: page.layout.props,
-      slots: page.layout.slots,
-      properties: page.properties,
-    };
-    assertFieldNode(layoutSchema, `${path}.layout`);
-    return;
-  }
-  for (const [key, node] of Object.entries(page.properties)) {
-    assertFieldNode(node, `${path}.properties.${key}`);
-  }
+  assertFieldNode(page, path);
 }
 
-function fieldValueType(field: ModelFieldSchema): DatabaseValueType {
-  const database = field.database;
-  if (!database) {
-    if (field.form.type === "number") return "number";
-    if (field.form.type === "boolean") return "boolean";
-    if (field.form.type === "object") return "object";
-    if (field.form.type === "array") return "array";
-    return "string";
-  }
-  if (database.valueType) return database.valueType;
-  if (database.type === "integer" || database.type === "real") return "number";
-  if (database.type === "boolean") return "boolean";
-  if (database.type === "json") return "object";
-  return "string";
-}
-
-function formatValue(value: unknown): string {
-  return value === undefined ? "未配置" : JSON.stringify(value);
+function fieldValueType(field: ModelFieldSchema): FieldValueType {
+  return field.type === "void" ? "string" : field.type;
 }
 
 function assertRelationForm(field: ModelFieldSchema, modelName: string): void {
   const relation = field.relation;
   if (!relation) return;
   const path = `fields.${field.key}.form`;
-  const expectedValueField = relation.valueField ?? "id";
-  const expectedLabelField = relation.labelField ?? "name";
-  const props = field.form.props;
 
-  if (field.form.component !== "RemoteSelect" && field.form.component !== "TreeSelect") {
+  if (
+    field.form.component &&
+    field.form.component !== "RemoteSelect" &&
+    field.form.component !== "TreeSelect"
+  ) {
     throw new Error(`${path}.component 必须为 "RemoteSelect" 或 "TreeSelect"`);
   }
-  if (!props || typeof props !== "object" || Array.isArray(props)) {
-    throw new Error(`${path}.props 必须包含关联配置`);
-  }
-  if (props.model !== relation.target) {
-    throw new Error(
-      `${path}.props.model 必须为 ${JSON.stringify(relation.target)}，实际 ${formatValue(props.model)}`,
-    );
-  }
-  if (props.valueField !== expectedValueField) {
-    throw new Error(
-      `${path}.props.valueField 必须为 ${JSON.stringify(expectedValueField)}，实际 ${formatValue(props.valueField)}`,
-    );
-  }
-  if (props.labelField !== expectedLabelField) {
-    throw new Error(
-      `${path}.props.labelField 必须为 ${JSON.stringify(expectedLabelField)}，实际 ${formatValue(props.labelField)}`,
-    );
+  const derivedProps = [
+    "model",
+    "valueField",
+    "labelField",
+    "loadOptions",
+    "loadData",
+    "multiple",
+    "parentField",
+  ];
+  for (const key of derivedProps) {
+    if (field.form.props?.[key] !== undefined) {
+      throw new Error(`${path}.props.${key} 由 relation 派生，不允许重复声明`);
+    }
   }
   if (field.form.component === "TreeSelect") {
     if (relation.target !== modelName) {
       throw new Error(`${path}.component 仅自关联字段可使用 "TreeSelect"`);
     }
-    if (props.parentField !== field.key) {
-      throw new Error(
-        `${path}.props.parentField 必须为 ${JSON.stringify(field.key)}，实际 ${formatValue(props.parentField)}`,
-      );
-    }
   }
 }
 
-function assertPageGroups(schema: ModelSchema): void {
-  const fieldKeys = new Set(schema.fields.map((field) => field.key));
-  for (const page of schema.pages) {
-    const assigned = new Set<string>();
-    for (const group of page.groups ?? []) {
-      for (const key of group.keys) {
-        if (!fieldKeys.has(key)) {
-          throw new Error(`页面 ${page.router} 的 groups 引用了不存在的字段：${key}`);
+function runtimeFieldSchema(field: ModelFieldSchema): FieldSchema {
+  const component =
+    field.relation && field.form.component !== "TreeSelect" ? "RemoteSelect" : field.form.component;
+  const relationProps = field.relation
+    ? component === "TreeSelect"
+      ? {
+          model: field.relation.target,
+          valueField: field.relation.valueField ?? "id",
+          labelField: field.relation.labelField ?? "name",
+          parentField: field.key,
+          loadData: '{{ $utils.tree($service("records.subtree")) }}',
         }
-        if (assigned.has(key)) {
-          throw new Error(`页面 ${page.router} 的 groups 字段重复：${key}`);
+      : {
+          model: field.relation.target,
+          valueField: field.relation.valueField ?? "id",
+          labelField: field.relation.labelField ?? "name",
+          loadOptions: '{{ $utils.relation($service("records.list")) }}',
+          pageSize: 10,
+          ...(field.relation.kind === "many-to-many" ? { multiple: true } : {}),
         }
-        assigned.add(key);
-      }
-    }
-  }
+    : {};
+  return {
+    ...field.form,
+    type: field.type,
+    title: field.title,
+    required: field.required || undefined,
+    component,
+    props: { ...field.form.props, ...relationProps },
+  };
 }
 
 function assertPages(schema: ModelSchema): void {
@@ -353,9 +321,6 @@ function assertPages(schema: ModelSchema): void {
 }
 
 function assertDefinitions(schema: ModelSchema): void {
-  if (schema.definitions?.["form-schema"]) {
-    throw new Error('definitions 不允许声明 "form-schema"，该定义由前端运行时派生');
-  }
   for (const [key, definition] of Object.entries(schema.definitions ?? {})) {
     assertFieldNode(definition, `definitions.${key}`);
   }
@@ -378,42 +343,29 @@ export function assertModelSchema(value: unknown): asserts value is ModelSchema 
     ids.add(field.id);
     keys.add(field.key);
 
-    if (field.storage === "physical" && !field.database) {
-      throw new Error(`physical 字段 ${field.key} 必须配置 database`);
-    }
-    if (field.storage === "virtual" && field.database) {
-      throw new Error(`virtual 字段 ${field.key} 不允许配置 database`);
-    }
     if (
-      field.database &&
-      field.database.type !== "json" &&
-      (field.database.valueType === "object" || field.database.valueType === "array")
+      field.storage &&
+      field.storage.type !== "json" &&
+      (field.type === "object" || field.type === "array")
     ) {
-      throw new Error(`字段 ${field.key} 只有 json 物理类型可使用 object/array valueType`);
+      throw new Error(`字段 ${field.key} 只有 json 物理类型可使用 object/array`);
     }
-    if (field.storage === "physical" && field.form.type !== fieldValueType(field)) {
-      throw new Error(`字段 ${field.key} 的 form.type 与 database 类型不一致`);
-    }
-    if (
-      field.storage === "physical" &&
-      field.database?.system !== true &&
-      Boolean(field.form.required) !== (field.database?.nullable === false)
-    ) {
-      throw new Error(`字段 ${field.key} 的 form.required 与 database.nullable 不一致`);
+    if (field.form.type || field.form.title || field.form.required !== undefined) {
+      throw new Error(`字段 ${field.key} 的 type/title/required 只能声明在字段根部`);
     }
     assertRelationForm(field, schema.name);
-    assertFieldNode(field.form, `fields.${field.key}.form`);
+    assertFieldNode(runtimeFieldSchema(field), `fields.${field.key}.form`);
   }
 
   for (const key of SYSTEM_FIELDS) {
     const field = schema.fields.find((item) => item.key === key);
-    if (!field || field.storage !== "physical" || field.database?.system !== true) {
-      throw new Error(`系统字段 ${key} 必须声明为 physical 且 database.system=true`);
+    if (!field?.storage || field.storage.system !== true) {
+      throw new Error(`系统字段 ${key} 必须声明 storage.system=true`);
     }
   }
 
   assertDefinitions(schema);
-  assertPageGroups(schema);
+  assertFieldNode(schema.form, "form");
   assertPages(schema);
 }
 
@@ -445,14 +397,24 @@ export function isModelSchema(value: unknown): value is ModelSchema {
 }
 
 export function modelFormProperties(schema: ModelSchema): Record<string, FieldSchema> {
-  return Object.fromEntries(schema.fields.map((field) => [field.key, field.form]));
+  return Object.fromEntries(
+    schema.fields.map((field) => [
+      field.key,
+      {
+        ...field.form,
+        type: field.type,
+        title: field.title,
+        required: field.required || undefined,
+      },
+    ]),
+  );
 }
 
 export function physicalFields(schema: ModelSchema): ModelFieldSchema[] {
-  return schema.fields.filter((field) => field.storage === "physical");
+  return schema.fields.filter((field) => field.storage !== undefined);
 }
 
-export function valueType(field: ModelFieldSchema): DatabaseValueType {
+export function valueType(field: ModelFieldSchema): FieldValueType {
   return fieldValueType(field);
 }
 
@@ -466,11 +428,10 @@ function isManyToManyMigration(current: ModelFieldSchema, incoming: ModelFieldSc
     before.target === after.target &&
     (before.valueField ?? "id") === (after.valueField ?? "id") &&
     (before.labelField ?? "name") === (after.labelField ?? "name") &&
-    current.database?.type === "text" &&
-    incoming.database?.type === "json" &&
-    incoming.database.valueType === "array" &&
-    current.form.type === "string" &&
-    incoming.form.type === "array"
+    current.storage?.type === "text" &&
+    incoming.storage?.type === "json" &&
+    current.type === "string" &&
+    incoming.type === "array"
   );
 }
 
@@ -479,34 +440,34 @@ export function assertStorageCompatible(current: ModelSchema, incoming: ModelSch
   const incomingById = new Map(incoming.fields.map((field) => [field.id, field]));
 
   for (const field of current.fields) {
-    if (field.storage !== "physical") continue;
+    if (!field.storage) continue;
     const next = incomingById.get(field.id);
     if (!next) throw new Error(`物理字段不允许删除：${field.key}`);
-    if (next.storage !== "physical") throw new Error(`物理字段不允许转为 virtual：${field.key}`);
+    if (!next.storage) throw new Error(`物理字段不允许转为 virtual：${field.key}`);
     if (next.key !== field.key) throw new Error(`物理字段 key 不允许修改：${field.key}`);
     const relationMigration = isManyToManyMigration(field, next);
-    if (next.database?.column !== field.database?.column) {
+    if (next.storage.column !== field.storage.column) {
       throw new Error(`物理字段 column 不允许修改：${field.key}`);
     }
-    if (!relationMigration && next.database?.type !== field.database?.type) {
+    if (!relationMigration && next.storage.type !== field.storage.type) {
       throw new Error(`物理字段类型不允许修改：${field.key}`);
     }
-    if (!relationMigration && next.database?.valueType !== field.database?.valueType) {
-      throw new Error(`物理字段 valueType 不允许修改：${field.key}`);
+    if (!relationMigration && next.type !== field.type) {
+      throw new Error(`物理字段 type 不允许修改：${field.key}`);
     }
-    if (next.database?.nullable !== field.database?.nullable) {
-      throw new Error(`物理字段 nullable 不允许修改：${field.key}`);
+    if (next.required !== field.required) {
+      throw new Error(`物理字段 required 不允许修改：${field.key}`);
     }
-    if (next.database?.default !== field.database?.default) {
+    if (next.storage.default !== field.storage.default) {
       throw new Error(`物理字段 default 不允许修改：${field.key}`);
     }
     if (!relationMigration && JSON.stringify(next.relation) !== JSON.stringify(field.relation)) {
       throw new Error(`物理字段 relation 不允许修改：${field.key}`);
     }
-    if (field.database?.index && !next.database?.index) {
+    if (field.storage.index && !next.storage.index) {
       throw new Error(`物理字段索引不允许移除：${field.key}`);
     }
-    if (field.database?.unique && !next.database?.unique) {
+    if (field.storage.unique && !next.storage.unique) {
       throw new Error(`物理字段唯一索引不允许移除：${field.key}`);
     }
   }

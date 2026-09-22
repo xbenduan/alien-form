@@ -497,16 +497,22 @@ export function FieldNodes({
 export function FormRenderer({
   form,
   nodes,
+  root,
   domain,
 }: {
   form: FormInstance;
-  nodes: CompiledNode[];
+  nodes?: CompiledNode[];
+  root?: CompiledNode;
   domain?: string;
 }) {
   return (
     <FormProvider form={form}>
       <div data-alien-form>
-        <FieldNodes nodes={nodes} fields={form.root.children} form={form} domain={domain} />
+        {root ? (
+          <RenderField node={root} field={form.root} form={form} domain={domain} />
+        ) : (
+          <FieldNodes nodes={nodes ?? []} fields={form.root.children} form={form} domain={domain} />
+        )}
       </div>
     </FormProvider>
   );

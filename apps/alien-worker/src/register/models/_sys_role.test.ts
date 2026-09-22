@@ -11,6 +11,7 @@ const roleSchema: ModelSchema = {
   title: "角色",
   version: 1,
   fields: [],
+  form: { type: "object" },
   pages: [],
 };
 
@@ -39,7 +40,8 @@ function context(
               name,
               title: "文章",
               version: 1,
-              fields: [{ id: "article.title", key: "title", storage: "virtual", form: {} }],
+              fields: [{ id: "article.title", key: "title", type: "string", form: {} }],
+              form: { type: "object" },
               pages: [],
             }
           : undefined,

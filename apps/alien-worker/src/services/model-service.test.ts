@@ -17,31 +17,44 @@ function schema(name = "article"): ModelSchema {
       {
         id: `${name}.id`,
         key: "id",
-        storage: "physical",
-        database: {
+        type: "string",
+        title: "ID",
+        required: true,
+        storage: {
           type: "text",
           system: true,
-          nullable: false,
           unique: true,
           index: true,
         },
-        form: { type: "string", title: "ID", display: "hidden" },
+        form: { display: "hidden" },
       },
       {
         id: `${name}.createdAt`,
         key: "createdAt",
-        storage: "physical",
-        database: { type: "integer", valueType: "string", system: true, nullable: false },
-        form: { type: "string", title: "创建时间" },
+        type: "string",
+        title: "创建时间",
+        required: true,
+        storage: { type: "integer", system: true },
+        form: {},
       },
       {
         id: `${name}.updatedAt`,
         key: "updatedAt",
-        storage: "physical",
-        database: { type: "integer", valueType: "string", system: true, nullable: false },
-        form: { type: "string", title: "更新时间" },
+        type: "string",
+        title: "更新时间",
+        required: true,
+        storage: { type: "integer", system: true },
+        form: {},
       },
     ],
+    form: {
+      type: "object",
+      properties: {
+        id: { $ref: "#/fields/id" },
+        createdAt: { $ref: "#/fields/createdAt" },
+        updatedAt: { $ref: "#/fields/updatedAt" },
+      },
+    },
     pages: [],
   };
 }
@@ -109,9 +122,7 @@ describe("ModelService", () => {
       system: true,
       systemRevision: 2,
       fields: schema("_sys_test").fields.map((field) =>
-        field.key === "updatedAt"
-          ? { ...field, database: { ...field.database!, nullable: true } }
-          : field,
+        field.key === "updatedAt" ? { ...field, required: false } : field,
       ),
     };
     const current = {

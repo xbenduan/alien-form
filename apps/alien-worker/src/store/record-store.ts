@@ -61,14 +61,14 @@ export interface SubtreeParams {
 
 function decodePhysical(field: ModelFieldSchema, value: unknown): unknown {
   if (value === null || value === undefined) return undefined;
-  if (field.database?.type === "boolean") return value === 1 || value === true;
-  if (field.database?.type === "json" && typeof value === "string") return JSON.parse(value);
+  if (field.storage?.type === "boolean") return value === 1 || value === true;
+  if (field.storage?.type === "json" && typeof value === "string") return JSON.parse(value);
   return value;
 }
 
 function encodePhysical(field: ModelFieldSchema, value: unknown): SqlValue {
   if (value === undefined || value === null || value === "") return null;
-  const type = field.database?.type;
+  const type = field.storage?.type;
   if (type === "boolean") return value ? 1 : 0;
   if (type === "integer" || type === "real") {
     const number = typeof value === "number" ? value : Number(value);
@@ -95,7 +95,7 @@ function rowToRecord(schema: ModelSchema, row: RecordRow): ModelRecord {
   };
   for (const field of schema.fields) {
     if (
-      field.storage !== "physical" ||
+      !field.storage ||
       field.relation?.kind === "many-to-many" ||
       field.key === "id" ||
       field.key === "createdAt" ||
@@ -518,9 +518,9 @@ function splitRecord(
   for (const field of schema.fields) {
     if (field.key === "id" || field.key === "createdAt" || field.key === "updatedAt") continue;
     const value = values[field.key];
-    if (field.storage === "physical" && field.relation?.kind === "many-to-many") {
+    if (field.storage && field.relation?.kind === "many-to-many") {
       many.set(field.key, relationValues(value));
-    } else if (field.storage === "physical") {
+    } else if (field.storage) {
       columns.push(columnName(field));
       args.push(encodePhysical(field, value));
     } else if (value !== undefined) {

@@ -183,8 +183,8 @@ form.setFieldValue("name", "new");
 - **primitive 字段** → 用 `components[component]` 渲染，外面套 `decorators[decorator]`（默认 `FormItem`）。
 - **object 字段**：写了 `component` 就用该组件包裹子字段；否则**直接展开渲染子字段**（不额外包一层）。
 - **array 字段** → 用 `components[component]`（默认组件名 `Card`）渲染，库会把每行子字段预渲染好交给它。
-- **void 字段（`x-layout`）** → 用 `components[x-layout 名]` 作为布局组件包裹子字段；组件没注册时**降级为直接渲染子字段**，不崩溃。
-- 顶层 `x-layout`：整个 `<SchemaField>` 外层套一个布局组件（同样支持降级）。
+- **void 字段** → 用 `components[component]` 作为布局组件包裹子字段；未声明组件时直接渲染子字段。
+- 顶层根节点与普通 void 节点使用相同规则，不再存在独立布局协议。
 
 `display` 的处理：`"none"` → 不渲染（返回 `null`）；`"hidden"` → 渲染一个 `display:none` 的占位，字段值仍保留。
 
@@ -252,7 +252,7 @@ export type DecoratorMap = Record<string, React.ComponentType<any>>;
 }
 ```
 
-**Void/Layout 组件**（`x-layout`）收到：`title`、`description`、展开的 `componentProps`，`children` 为子字段。
+**Void/Layout 组件**收到：`title`、`description`、展开的 `componentProps`，`children` 为子字段。
 
 ---
 

@@ -22,7 +22,7 @@ export function registerModelServices(runtime: Runtime): void {
       async (modelCode: string | undefined) => {
         if (!modelCode) return [];
         return (await get(modelCode)).fields.map((field) => ({
-          label: field.form.title ?? field.table?.title ?? field.key,
+          label: field.title ?? field.table?.title ?? field.key,
           value: field.key,
         }));
       },

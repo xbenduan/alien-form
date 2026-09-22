@@ -38,10 +38,18 @@ function orderedFields(
   properties: Record<string, FieldSchema>,
   fields?: ModelFieldSchema[],
 ): { key: string; field: FieldSchema; column: ModelFieldSchema }[] {
+  const schemas = new Map<string, FieldSchema>();
+  const collect = (nodes: Record<string, FieldSchema>) => {
+    for (const [key, node] of Object.entries(nodes)) {
+      if (node.type === "void") collect(node.properties ?? {});
+      else schemas.set(key, node);
+    }
+  };
+  collect(properties);
   const source = fields ?? [];
   return source
-    .filter((column) => properties[column.key])
-    .map((column) => ({ key: column.key, field: properties[column.key], column }));
+    .filter((column) => schemas.has(column.key))
+    .map((column) => ({ key: column.key, field: schemas.get(column.key)!, column }));
 }
 
 /**
@@ -61,8 +69,8 @@ export function schemaToColumns<T extends object = Record<string, unknown>>(
     return {
       key,
       dataIndex: key,
-      title: field.title ?? column.table?.title ?? key,
-      sorter: column.storage === "physical" && column.database?.type !== "json",
+      title: field.title ?? column.title ?? key,
+      sorter: Boolean(column.storage) && column.storage?.type !== "json",
       hidden: column.table?.hidden === true,
       ellipsis: field.type !== "object" && field.type !== "array",
       render(value: unknown, record: T) {
@@ -111,7 +119,7 @@ export function schemaToFilterFields(
       return {
         name,
         title: field.title ?? name,
-        type: column.database?.type ?? "text",
+        type: column.storage?.type ?? "text",
         render(value: unknown, onChange: (value: unknown) => void): ReactNode {
           return (
             <SchemaComponent

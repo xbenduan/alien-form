@@ -1,6 +1,12 @@
 import type { ModelFieldSchema, ModelSchema } from "@alien-form/protocol";
 import { SYS_ROLE_MODEL, SYS_ROLE_SUPER_ADMIN_ID } from "./_sys_role.ts";
-import { physicalField, recordPages, systemFields, virtualField } from "./system-model.ts";
+import {
+  modelForm,
+  physicalField,
+  recordPages,
+  systemFields,
+  virtualField,
+} from "./system-model.ts";
 
 export const SYS_USER_MODEL = "_sys_user";
 export const SYS_ADMIN_ID = "MDM0000000000";
@@ -11,106 +17,92 @@ const [idField, createdAtField, updatedAtField] = systemFields(SYS_USER_MODEL);
 
 const fields: ModelFieldSchema[] = [
   idField,
-  physicalField(
-    SYS_USER_MODEL,
-    "username",
-    { type: "text", nullable: false, unique: true, index: true },
-    {
-      type: "string",
-      title: "账号",
-      component: "Input",
-      required: true,
-      props: { placeholder: "请输入登录账号" },
-    },
-    { table: { title: "账号" } },
-  ),
+  physicalField(SYS_USER_MODEL, "username", {
+    type: "string",
+    title: "账号",
+    required: true,
+    storage: { type: "text", unique: true, index: true },
+    form: { component: "Input", props: { placeholder: "请输入登录账号" } },
+  }),
   virtualField(SYS_USER_MODEL, "password", {
     type: "string",
     title: "密码",
-    component: "Input",
-    props: { type: "password", placeholder: "留空表示不修改密码" },
+    form: {
+      component: "Input",
+      props: { type: "password", placeholder: "留空表示不修改密码" },
+    },
   }),
-  physicalField(
-    SYS_USER_MODEL,
-    "passwordHash",
-    { type: "text" },
-    { type: "string", title: "密码摘要", display: "none" },
-    { table: { title: "密码摘要", hidden: true }, filter: { hidden: true } },
-  ),
+  physicalField(SYS_USER_MODEL, "passwordHash", {
+    type: "string",
+    title: "密码摘要",
+    storage: { type: "text" },
+    form: { display: "none" },
+    table: { hidden: true },
+    filter: { hidden: true },
+  }),
   virtualField(SYS_USER_MODEL, "gender", {
     type: "string",
     title: "性别",
-    component: "Select",
-    dataSource: [
-      { label: "男", value: "male" },
-      { label: "女", value: "female" },
-      { label: "其他", value: "other" },
-    ],
+    form: {
+      component: "Select",
+      dataSource: [
+        { label: "男", value: "male" },
+        { label: "女", value: "female" },
+        { label: "其他", value: "other" },
+      ],
+    },
   }),
   virtualField(SYS_USER_MODEL, "city", {
     type: "string",
     title: "城市",
-    component: "Input",
-    props: { placeholder: "请输入城市" },
+    form: { component: "Input", props: { placeholder: "请输入城市" } },
   }),
   virtualField(SYS_USER_MODEL, "remark", {
     type: "string",
     title: "备注",
-    component: "TextArea",
-    props: { rows: 3 },
+    form: { component: "TextArea", props: { rows: 3 } },
   }),
-  physicalField(
-    SYS_USER_MODEL,
-    "roleId",
-    { type: "json", valueType: "array", nullable: false, index: true },
-    {
-      type: "array",
-      title: "角色",
-      component: "RemoteSelect",
-      required: true,
-      props: {
-        model: SYS_ROLE_MODEL,
-        valueField: "id",
-        labelField: "name",
-        pageSize: 50,
-        multiple: true,
-        loadOptions: '{{ $utils.relation($service("records.list")) }}',
-      },
+  physicalField(SYS_USER_MODEL, "roleId", {
+    type: "array",
+    title: "角色",
+    required: true,
+    storage: { type: "json", index: true },
+    relation: {
+      kind: "many-to-many",
+      target: SYS_ROLE_MODEL,
+      through: "_sys_user_roles",
+      valueField: "id",
+      labelField: "name",
     },
-    {
-      relation: {
-        kind: "many-to-many",
-        target: SYS_ROLE_MODEL,
-        through: "_sys_user_roles",
-        valueField: "id",
-        labelField: "name",
-      },
-      table: { title: "角色" },
-      filter: { hidden: true },
-    },
-  ),
+    form: { component: "RemoteSelect" },
+    filter: { hidden: true },
+  }),
   // Legacy physical columns remain hidden so existing installations can migrate without rebuilding.
-  physicalField(
-    SYS_USER_MODEL,
-    "nickname",
-    { type: "text", nullable: false, index: true },
-    { type: "string", title: "昵称", display: "none", required: true },
-    { table: { title: "昵称", hidden: true }, filter: { hidden: true } },
-  ),
-  physicalField(
-    SYS_USER_MODEL,
-    "createBy",
-    { type: "text", default: SYS_ADMIN_ID, index: true },
-    { type: "string", title: "创建者", display: "none", default: SYS_ADMIN_ID },
-    { table: { title: "创建者", hidden: true }, filter: { hidden: true } },
-  ),
-  physicalField(
-    SYS_USER_MODEL,
-    "super",
-    { type: "boolean", valueType: "boolean", default: false, index: true },
-    { type: "boolean", title: "超级管理员", display: "none", default: false },
-    { table: { title: "超级管理员", hidden: true }, filter: { hidden: true } },
-  ),
+  physicalField(SYS_USER_MODEL, "nickname", {
+    type: "string",
+    title: "昵称",
+    required: true,
+    storage: { type: "text", index: true },
+    form: { display: "none" },
+    table: { hidden: true },
+    filter: { hidden: true },
+  }),
+  physicalField(SYS_USER_MODEL, "createBy", {
+    type: "string",
+    title: "创建者",
+    storage: { type: "text", default: SYS_ADMIN_ID, index: true },
+    form: { display: "none", default: SYS_ADMIN_ID },
+    table: { hidden: true },
+    filter: { hidden: true },
+  }),
+  physicalField(SYS_USER_MODEL, "super", {
+    type: "boolean",
+    title: "超级管理员",
+    storage: { type: "boolean", default: false, index: true },
+    form: { display: "none", default: false },
+    table: { hidden: true },
+    filter: { hidden: true },
+  }),
   createdAtField,
   updatedAtField,
 ];
@@ -120,7 +112,7 @@ export const sysUserSchema: ModelSchema = {
   title: "用户管理",
   version: 0,
   system: true,
-  systemRevision: 6,
+  systemRevision: 7,
   subtitle: "System Users",
   description: "系统登录账号、角色与基础资料管理。",
   group: "system",
@@ -128,6 +120,7 @@ export const sysUserSchema: ModelSchema = {
   pluralLabel: "用户",
   defaultPageSize: 20,
   fields,
+  form: modelForm(fields, ["username", "password", "gender", "city", "remark", "roleId"]),
   pages: recordPages(SYS_USER_MODEL, "用户", [
     "username",
     "password",
@@ -135,30 +128,40 @@ export const sysUserSchema: ModelSchema = {
     "city",
     "remark",
     "roleId",
-  ]).map((page) =>
-    page.router !== "list"
-      ? page
-      : {
-          ...page,
-          properties: {
-            ...page.properties,
-            table: {
-              ...page.properties.table,
-              props: page.properties.table.props,
-              properties: {
-                ...page.properties.table.properties,
-                delete: {
-                  ...page.properties.table.properties?.delete,
-                  props: {
-                    ...page.properties.table.properties?.delete?.props,
-                    disabled: `{{ $row.id === "${SYS_ADMIN_ID}" }}`,
-                  },
+  ]).map((page) => (page.router !== "list" ? page : disableAdminDelete(page))),
+};
+
+function disableAdminDelete(page: ModelSchema["pages"][number]): ModelSchema["pages"][number] {
+  const content = page.slots?.content;
+  const table = content?.table;
+  const rowActions = table?.slots?.rowActions;
+  const deleteAction = rowActions?.delete;
+  if (!content || !table || !rowActions || !deleteAction) return page;
+  return {
+    ...page,
+    slots: {
+      ...page.slots,
+      content: {
+        ...content,
+        table: {
+          ...table,
+          slots: {
+            ...table.slots,
+            rowActions: {
+              ...rowActions,
+              delete: {
+                ...deleteAction,
+                props: {
+                  ...deleteAction.props,
+                  disabled: `{{ $row.id === "${SYS_ADMIN_ID}" }}`,
                 },
               },
             },
           },
         },
-  ),
-};
+      },
+    },
+  };
+}
 
 export const SYS_ADMIN_ROLE_ID = SYS_ROLE_SUPER_ADMIN_ID;

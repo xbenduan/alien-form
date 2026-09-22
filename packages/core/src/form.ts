@@ -236,7 +236,7 @@ function createBaseField(
     validateStatus: signal<ValidateStatus>(""),
     title: signal(schema.title || undefined),
     description: signal(schema.description || ""),
-    component: signal(schema.component || schema["x-layout"] || defaultComponentFor(kind)),
+    component: signal(schema.component || defaultComponentFor(kind)),
     componentProps: signal<Record<string, any>>(schema.props || {}),
     decorator: signal(schema.decorator || "FormItem"),
     decoratorProps: signal<Record<string, any>>(schema.decoratorProps || {}),

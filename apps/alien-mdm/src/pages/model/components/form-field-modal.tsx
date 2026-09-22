@@ -22,7 +22,6 @@ interface FormFieldValues {
   required?: boolean;
   disabled?: boolean;
   order?: number;
-  "x-layout"?: string;
   defaultJson?: string;
   propsJson?: string;
   decoratorPropsJson?: string;
@@ -62,15 +61,14 @@ function toValues(node: FieldNode): FormFieldValues {
   return {
     key: node.key,
     type: node.type,
-    title: form.title,
+    title: node.title,
     component: form.component,
     decorator: form.decorator as string | undefined,
     description: form.description,
     display: (form.display as string | undefined) ?? "visible",
-    required: node.form.required === true,
+    required: node.required,
     disabled: form.disabled as boolean | undefined,
     order: form.order as number | undefined,
-    "x-layout": form["x-layout"] as string | undefined,
     defaultJson: toJson(form.default),
     propsJson: toJson(form.props),
     decoratorPropsJson: toJson(form.decoratorProps),
@@ -162,16 +160,13 @@ export function FormFieldModal({
 
     const nextForm: FieldSchema & Record<string, unknown> = {
       ...(node.form as FieldSchema),
-      title: values.title,
       component: values.component,
       decorator: values.decorator || undefined,
       description: values.description || undefined,
       display:
         values.display && values.display !== "visible" ? (values.display as never) : undefined,
-      required: isDbField ? node.form.required : values.required,
       disabled: values.disabled || undefined,
       order: values.order,
-      "x-layout": values["x-layout"] || undefined,
       default: parseJson(values.defaultJson, "default"),
       props: parsedProps && Object.keys(parsedProps).length ? parsedProps : undefined,
       decoratorProps:
@@ -189,6 +184,8 @@ export function FormFieldModal({
       ...node,
       key: isDbField ? node.key : values.key.trim(),
       type: nextType,
+      title: values.title,
+      required: values.required || undefined,
       form: synchronizeRelationForm(nextForm, nextType, node.storage?.relation),
       children: nextType === "object" || nextType === "array" ? (node.children ?? []) : undefined,
     };
@@ -341,9 +338,6 @@ export function FormFieldModal({
             <Input type="number" />
           </Form.Item>
           {/* start：暂时不启用以下字段 */}
-          <Form.Item name="x-layout" label="x-layout（布局组件名）" hidden>
-            <Input placeholder="void 布局组件" />
-          </Form.Item>
           <Form.Item name="decorator" label="decorator（装饰器组件名）" hidden>
             <Input />
           </Form.Item>

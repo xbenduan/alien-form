@@ -58,14 +58,31 @@
                 "type": "string",
                 "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
               },
-              "storage": {
-                "type": "string",
-                "enum": [
-                  "physical",
-                  "virtual"
+              "type": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "string",
+                      "number",
+                      "boolean",
+                      "object",
+                      "array"
+                    ]
+                  },
+                  {
+                    "type": "string",
+                    "const": "void"
+                  }
                 ]
               },
-              "database": {
+              "title": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean"
+              },
+              "storage": {
                 "type": "object",
                 "properties": {
                   "type": {
@@ -79,24 +96,11 @@
                       "json"
                     ]
                   },
-                  "valueType": {
-                    "type": "string",
-                    "enum": [
-                      "string",
-                      "number",
-                      "boolean",
-                      "object",
-                      "array"
-                    ]
-                  },
                   "column": {
                     "type": "string",
                     "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
                   },
                   "system": {
-                    "type": "boolean"
-                  },
-                  "nullable": {
                     "type": "boolean"
                   },
                   "default": {
@@ -249,9 +253,6 @@
                   "disabled": {
                     "type": "boolean"
                   },
-                  "x-layout": {
-                    "type": "string"
-                  },
                   "decorator": {
                     "type": "string"
                   },
@@ -273,17 +274,10 @@
                   "slots": {
                     "type": "object",
                     "additionalProperties": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        }
-                      ]
+                      "type": "object",
+                      "additionalProperties": {
+                        "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form"
+                      }
                     }
                   },
                   "permission": {
@@ -350,12 +344,15 @@
             "required": [
               "id",
               "key",
-              "storage",
+              "type",
               "form"
             ],
             "additionalProperties": false
           },
           "minItems": 1
+        },
+        "form": {
+          "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form"
         },
         "definitions": {
           "type": "object",
@@ -366,101 +363,41 @@
         "pages": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "router": {
-                "type": "string",
-                "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+            "allOf": [
+              {
+                "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form"
               },
-              "title": {
-                "type": "string"
-              },
-              "permission": {
-                "type": "string",
-                "enum": [
-                  "read",
-                  "create",
-                  "update",
-                  "delete"
-                ]
-              },
-              "layout": {
+              {
                 "type": "object",
                 "properties": {
-                  "component": {
+                  "router": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+                  },
+                  "title": {
                     "type": "string"
                   },
-                  "props": {
-                    "type": "object",
-                    "additionalProperties": {}
+                  "permission": {
+                    "type": "string",
+                    "enum": [
+                      "read",
+                      "create",
+                      "update",
+                      "delete"
+                    ]
                   },
-                  "slots": {
-                    "type": "object",
-                    "additionalProperties": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        }
-                      ]
-                    }
+                  "type": {
+                    "type": "string",
+                    "const": "void"
                   }
                 },
                 "required": [
-                  "component"
-                ],
-                "additionalProperties": false
-              },
-              "groups": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "component": {
-                      "type": "string"
-                    },
-                    "keys": {
-                      "type": "array",
-                      "items": {
-                        "type": "string",
-                        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
-                      }
-                    },
-                    "title": {
-                      "type": "string"
-                    },
-                    "description": {
-                      "type": "string"
-                    },
-                    "props": {
-                      "type": "object",
-                      "additionalProperties": {}
-                    }
-                  },
-                  "required": [
-                    "keys"
-                  ],
-                  "additionalProperties": false
-                }
-              },
-              "properties": {
-                "type": "object",
-                "additionalProperties": {
-                  "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form"
-                }
+                  "router",
+                  "permission",
+                  "type"
+                ]
               }
-            },
-            "required": [
-              "router",
-              "permission",
-              "properties"
-            ],
-            "additionalProperties": false
+            ]
           }
         }
       },
@@ -469,6 +406,7 @@
         "title",
         "version",
         "fields",
+        "form",
         "pages"
       ],
       "additionalProperties": false

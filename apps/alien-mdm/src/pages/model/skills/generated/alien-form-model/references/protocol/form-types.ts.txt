@@ -47,7 +47,7 @@ export type RuntimeAccessor<T = any> = (code: string) => T;
 export type RuntimeNamespace<T = any> = Readonly<Record<string, T>>;
 export type NamePath = string | readonly (string | number)[];
 export type PermissionAction = "read" | "create" | "update" | "delete";
-export type SchemaSlots = Record<string, string | string[]>;
+export type SchemaSlots = Record<string, Record<string, IFieldSchema>>;
 
 // ─── Schema Validate ──────────────────────────────────────────────────────────
 
@@ -127,9 +127,6 @@ export interface IFieldSchema {
   required?: boolean | string[];
   display?: FieldDisplayTypes;
   disabled?: boolean;
-  // 布局节点(void 语义):不占数据路径、不产生值,其子字段扁平上浮到父级。
-  // 值为默认渲染的布局组件名,可被 component 覆盖。
-  "x-layout"?: string;
   decorator?: string;
   decoratorProps?: Record<string, any>;
   component?: string;
@@ -150,8 +147,8 @@ export interface IFormSchema {
   title?: string;
   description?: string;
   required?: boolean | string[];
-  // 顶层布局:整个 schema 的字段被指定布局组件包裹,用单个 schema 声明一整个页面。
-  "x-layout"?: string;
+  component?: string;
+  props?: Record<string, any>;
   properties?: Record<string, IFieldSchema>;
   definitions?: Record<string, IFieldSchema>;
   "x-reaction"?: SchemaReactions;

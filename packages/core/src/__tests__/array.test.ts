@@ -256,14 +256,16 @@ describe("array — setRows", () => {
               type: "object",
               properties: {
                 section: {
-                  "x-layout": "Flex",
+                  type: "void",
+                  component: "Flex",
                   properties: { name: { type: "string" } },
                 },
                 group: {
                   type: "object",
                   properties: {
                     nestedSection: {
-                      "x-layout": "Flex",
+                      type: "void",
+                      component: "Flex",
                       properties: { code: { type: "string" } },
                     },
                   },

@@ -6,23 +6,36 @@ function systemField(key: "id" | "createdAt" | "updatedAt"): ModelFieldSchema {
   return {
     id: `article.${key}`,
     key,
-    storage: "physical",
-    database: {
+    type: "string",
+    title: key,
+    required: true,
+    storage: {
       type: key === "id" ? "text" : "date",
       system: true,
-      nullable: false,
       ...(key === "id" ? { unique: true, index: true } : {}),
     },
-    form: { type: "string", title: key },
+    form: {},
   };
 }
 
 function model(fields: ModelFieldSchema[], version = 1): ModelSchema {
+  const allFields = [
+    systemField("id"),
+    ...fields,
+    systemField("createdAt"),
+    systemField("updatedAt"),
+  ];
   return {
     name: "article",
     title: "文章",
     version,
-    fields: [systemField("id"), ...fields, systemField("createdAt"), systemField("updatedAt")],
+    fields: allFields,
+    form: {
+      type: "object",
+      properties: Object.fromEntries(
+        allFields.map((field) => [field.key, { $ref: `#/fields/${field.key}` }]),
+      ),
+    },
     pages: [],
   };
 }
@@ -39,25 +52,17 @@ describe("Storage Compiler", () => {
       {
         id: "article.tags",
         key: "tags",
-        storage: "physical",
-        database: { type: "json", valueType: "array" },
+        type: "array",
+        storage: { type: "json" },
         relation,
-        form: {
-          type: "array",
-          component: "RemoteSelect",
-          props: { model: "tag", valueField: "id", labelField: "name" },
-        },
+        form: { component: "RemoteSelect" },
       },
       {
         id: "article.related",
         key: "related",
-        storage: "virtual",
+        type: "array",
         relation,
-        form: {
-          type: "array",
-          component: "RemoteSelect",
-          props: { model: "tag", valueField: "id", labelField: "name" },
-        },
+        form: { component: "RemoteSelect" },
       },
     ]);
 
@@ -73,14 +78,11 @@ describe("Storage Compiler", () => {
         {
           id: "article.status",
           key: "status",
-          storage: "physical",
-          database: {
-            type: "text",
-            nullable: false,
-            default: "draft",
-            index: true,
-          },
-          form: { type: "string", title: "状态", required: true },
+          type: "string",
+          title: "状态",
+          required: true,
+          storage: { type: "text", default: "draft", index: true },
+          form: {},
         },
       ],
       2,
@@ -91,24 +93,20 @@ describe("Storage Compiler", () => {
   });
 
   it("将单值关联原子迁移到多对多关系表并保留旧列", () => {
+    const relation = {
+      target: "role",
+      valueField: "id",
+      labelField: "name",
+    };
     const current = model([
       {
         id: "article.roles",
         key: "roles",
-        storage: "physical",
-        database: { type: "text", nullable: false, index: true },
-        relation: {
-          kind: "many-to-one",
-          target: "role",
-          valueField: "id",
-          labelField: "name",
-        },
-        form: {
-          type: "string",
-          component: "RemoteSelect",
-          required: true,
-          props: { model: "role", valueField: "id", labelField: "name" },
-        },
+        type: "string",
+        required: true,
+        storage: { type: "text", index: true },
+        relation: { kind: "many-to-one", ...relation },
+        form: { component: "RemoteSelect" },
       },
     ]);
     const incoming = model(
@@ -116,21 +114,11 @@ describe("Storage Compiler", () => {
         {
           id: "article.roles",
           key: "roles",
-          storage: "physical",
-          database: { type: "json", valueType: "array", nullable: false, index: true },
-          relation: {
-            kind: "many-to-many",
-            target: "role",
-            through: "article_roles",
-            valueField: "id",
-            labelField: "name",
-          },
-          form: {
-            type: "array",
-            component: "RemoteSelect",
-            required: true,
-            props: { model: "role", valueField: "id", labelField: "name", multiple: true },
-          },
+          type: "array",
+          required: true,
+          storage: { type: "json", index: true },
+          relation: { kind: "many-to-many", through: "article_roles", ...relation },
+          form: { component: "RemoteSelect" },
         },
       ],
       2,

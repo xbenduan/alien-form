@@ -64,7 +64,7 @@ export function DynamicPage() {
   return (
     <PageProvider page={page}>
       <div className={`${styles.recordRoute}${isAction ? ` ${styles.actionRoute}` : ""}`}>
-        <FormRenderer form={page.form} nodes={page.page.nodes} domain={page.domain} />
+        <FormRenderer form={page.form} root={page.page.root} domain={page.domain} />
       </div>
     </PageProvider>
   );

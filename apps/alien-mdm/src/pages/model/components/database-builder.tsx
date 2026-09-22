@@ -28,7 +28,7 @@ export function DatabaseBuilder({
     const query = keyword.trim().toLowerCase();
     if (!query) return dbFields;
     return dbFields.filter((node) =>
-      [node.key, node.storage?.title].some((value) =>
+      [node.key, node.title].some((value) =>
         String(value ?? "")
           .toLowerCase()
           .includes(query),
@@ -53,7 +53,7 @@ export function DatabaseBuilder({
         </Space>
       ),
     },
-    { title: "名称", width: 140, render: (_v, row) => row.storage?.title || "—" },
+    { title: "名称", width: 140, render: (_v, row) => row.title || "—" },
     {
       title: "存储",
       width: 90,
@@ -74,7 +74,7 @@ export function DatabaseBuilder({
       title: "约束",
       render: (_v, row) => {
         const tags: string[] = [];
-        if (row.storage?.nullable === false) tags.push("必填");
+        if (row.required) tags.push("必填");
         if (row.storage?.unique) tags.push("唯一");
         if (row.storage?.index) tags.push("索引");
         if (row.storage?.filterable) tags.push("可筛选");

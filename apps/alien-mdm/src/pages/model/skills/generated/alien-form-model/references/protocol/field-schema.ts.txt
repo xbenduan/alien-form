@@ -28,12 +28,11 @@ export const fieldSchema: z.ZodType = z.lazy(() =>
       required: z.union([z.boolean(), z.array(z.string())]).optional(),
       display: displaySchema.optional(),
       disabled: z.boolean().optional(),
-      "x-layout": z.string().optional(),
       decorator: z.string().optional(),
       decoratorProps: z.record(jsonValue).optional(),
       component: z.string().optional(),
       props: z.record(jsonValue).optional(),
-      slots: z.record(z.union([z.string(), z.array(z.string())])).optional(),
+      slots: z.record(z.record(fieldSchema)).optional(),
       permission: z.enum(["read", "create", "update", "delete"]).optional(),
       "x-reaction": z.record(jsonValue).optional(),
       "x-effect": jsonValue.optional(),
@@ -53,5 +52,5 @@ export default interface FieldSchema extends Omit<
   display?: IFieldSchema["display"] | `{{${string}}}`;
   properties?: Record<string, FieldSchema>;
   items?: FieldSchema | FieldSchema[];
-  slots?: Record<string, string | string[]>;
+  slots?: Record<string, Record<string, FieldSchema>>;
 }

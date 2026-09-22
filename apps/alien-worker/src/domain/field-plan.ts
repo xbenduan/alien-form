@@ -22,14 +22,14 @@ export interface RefField {
 export function columnName(field: ModelFieldSchema): string {
   if (field.key === "createdAt") return "created_at";
   if (field.key === "updatedAt") return "updated_at";
-  return field.database?.column ?? field.key;
+  return field.storage?.column ?? field.key;
 }
 
 function inferredType(field: ModelFieldSchema): DatabaseColumnType {
-  if (field.database) return field.database.type;
-  if (field.form.type === "number") return "real";
-  if (field.form.type === "boolean") return "boolean";
-  if (field.form.type === "object" || field.form.type === "array") return "json";
+  if (field.storage) return field.storage.type;
+  if (field.type === "number") return "real";
+  if (field.type === "boolean") return "boolean";
+  if (field.type === "object" || field.type === "array") return "json";
   return "text";
 }
 
@@ -42,8 +42,8 @@ export function planFields(schema: ModelSchema): FieldPlan[] {
       return {
         field: field.key,
         type,
-        storage: field.storage,
-        column: field.storage === "physical" ? columnName(field) : undefined,
+        storage: field.storage ? "physical" : "virtual",
+        column: field.storage ? columnName(field) : undefined,
         json,
         filterable: field.filter?.hidden !== true && !json,
         sortable: !json,
@@ -74,7 +74,7 @@ export function refFields(schema: ModelSchema): RefField[] {
         model: relation.target,
         valueKey: relation.valueField ?? "id",
         labelKey: relation.labelField ?? "name",
-        multi: relation.kind === "many-to-many" || field.form.type === "array",
+        multi: relation.kind === "many-to-many" || field.type === "array",
       },
     ];
   });

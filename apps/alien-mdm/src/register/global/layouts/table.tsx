@@ -356,7 +356,7 @@ export function Table({
         (page) => page.router.replace(/^\/+|\/+$/g, "") === mode,
       );
       const formNode = actionPage
-        ? findComponent(compilePage(pageRuntime.model, actionPage).nodes, "record-form")
+        ? findComponent([compilePage(pageRuntime.model, actionPage).root], "record-form")
         : undefined;
       const resolvedRecordId = recordId === undefined ? undefined : String(recordId);
       const query = {
@@ -379,7 +379,7 @@ export function Table({
         schema:
           formProps?.schema && typeof formProps.schema === "object"
             ? formProps.schema
-            : (schema ?? buildFormSchema(pageRuntime.model, actionPage?.groups)),
+            : (schema ?? buildFormSchema(pageRuntime.model)),
         title: actionPage?.title ?? `${titlePrefix}${recordTitle}`,
         ok: formProps?.ok,
         submit: typeof formProps?.submit === "function" ? formProps.submit : undefined,

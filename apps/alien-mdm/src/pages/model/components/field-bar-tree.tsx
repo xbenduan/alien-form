@@ -52,7 +52,7 @@ function FieldBar({
         </span>
         <span className={styles.barKey}>{node.key}</span>
         <Tag className={styles.barComponent}>{node.form.component ?? node.type}</Tag>
-        <span className={styles.barTitle}>{node.form.title ?? "—"}</span>
+        <span className={styles.barTitle}>{node.title ?? "—"}</span>
         {node.source === "physical" ? <Tag color="blue">物理</Tag> : <Tag>虚拟</Tag>}
         <span className={styles.barActions}>
           {container ? (

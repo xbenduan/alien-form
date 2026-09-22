@@ -20,7 +20,7 @@ const VALUE_TYPES: Exclude<FieldType, "void">[] = [
 ];
 
 /** 物理存储类型 → 应用值类型（table/表单类型）。 */
-function valueTypeFor(type: DatabaseColumnType, current?: StorageConfig["valueType"]): FieldType {
+function valueTypeFor(type: DatabaseColumnType, current?: FieldType): FieldType {
   if (type === "integer" || type === "real") return "number";
   if (type === "boolean") return "boolean";
   if (type === "json") return current === "array" ? "array" : "object";
@@ -73,13 +73,13 @@ function toValues(node: FieldNode): StorageFormValues {
   const currentType = node.type === "void" ? "string" : node.type;
   return {
     key: node.key,
-    title: storage?.title,
+    title: node.title,
     storageMode: node.source,
     columnType: storage?.type ?? "text",
     valueType: isVirtual ? currentType : undefined,
-    jsonValueType: storage?.valueType === "array" ? "array" : "object",
+    jsonValueType: node.type === "array" ? "array" : "object",
     column: storage?.column,
-    required: storage?.nullable === false,
+    required: node.required,
     unique: storage?.unique,
     index: storage?.index,
     filterable: storage?.filterable !== false,
@@ -186,25 +186,11 @@ export function StorageFieldModal({
       : virtual
         ? COLUMN_FOR_VALUE[valueType === "void" ? "string" : valueType]
         : values.columnType;
-    const isJson = storageType === "json";
-    const jsonValueType =
-      valueType === "array" || valueType === "object"
-        ? (valueType as "object" | "array")
-        : undefined;
     const storage: StorageConfig = {
       ...node.storage,
-      title: values.title?.trim() || undefined,
       type: storageType,
-      valueType: isMany
-        ? "array"
-        : virtual
-          ? jsonValueType
-          : isJson
-            ? (values.jsonValueType ?? "object")
-            : undefined,
       column: virtual ? undefined : values.column?.trim() || undefined,
       system: node.storage?.system,
-      nullable: virtual ? undefined : values.required ? false : undefined,
       unique: virtual ? undefined : values.unique || undefined,
       index: virtual ? undefined : values.index || undefined,
       filterable: values.filterable || undefined,
@@ -221,6 +207,8 @@ export function StorageFieldModal({
       ...node,
       key: values.key.trim(),
       type: valueType,
+      title: values.title?.trim() || undefined,
+      required: values.required || undefined,
       source: values.storageMode,
       storage,
       form: synchronizedForm,

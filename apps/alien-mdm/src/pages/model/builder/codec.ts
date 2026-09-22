@@ -1,10 +1,4 @@
-import type {
-  DatabaseRelation,
-  FieldGroup,
-  FieldSchema,
-  ModelFieldSchema,
-  Runtime,
-} from "@alien-form/engine";
+import type { DatabaseRelation, FieldSchema, ModelFieldSchema, Runtime } from "@alien-form/engine";
 import { parseModelSchema } from "@alien-form/protocol";
 import type {
   ModelSchema,
@@ -15,7 +9,7 @@ import type {
   StorageConfig,
 } from "./types";
 import { createDefaultPages } from "./page-templates";
-import { isSystemDetailGroup, SYSTEM_DETAIL_GROUP } from "./system-fields";
+import { SYSTEM_FIELD_KEYS } from "./system-fields";
 
 let idCounter = 0;
 /** 生成命令寻址用的稳定 id。 */
@@ -42,7 +36,7 @@ const COMPONENT_FOR_TYPE: Record<FieldType, string> = {
   void: "Input",
 };
 
-/** relation 是关联表单表现的唯一真相源，组件与远程加载 props 不允许独立漂移。 */
+/** relation 是关联数据源的唯一真相源，持久化表单不重复保存可推导参数。 */
 export function synchronizeRelationForm(
   form: FormConfig,
   type: FieldType,
@@ -74,17 +68,9 @@ export function synchronizeRelationForm(
   delete props.multiple;
   return {
     ...form,
-    component: "RemoteSelect",
+    component: form.component === "TreeSelect" ? "TreeSelect" : "RemoteSelect",
     dataSource: undefined,
-    props: {
-      ...props,
-      model: relation.target,
-      loadOptions: '{{ $utils.relation($service("records.list")) }}',
-      valueField: relation.valueField ?? "id",
-      labelField: relation.labelField ?? "name",
-      pageSize: 10,
-      ...(relation.kind === "many-to-many" ? { multiple: true } : {}),
-    },
+    props: Object.keys(props).length > 0 ? props : undefined,
   };
 }
 
@@ -128,15 +114,14 @@ export function createField(
     id: createId(),
     key,
     type,
+    title: "新字段",
     source,
     // 表单表现默认值（form-schema ⊇ fields：落库字段必须有对应表现描述，组件按类型推断）。
-    form: { title: "新字段", component },
+    form: { component },
   };
   if (source === "physical") {
     node.storage = {
-      title: "新字段",
       type: COLUMN_FOR_TYPE[type],
-      ...(type === "object" || type === "array" ? { valueType: type } : {}),
     };
   }
   if (type === "object" || type === "array") node.children = [];
@@ -153,6 +138,9 @@ function decodeFormConfig(schema: FieldSchema | undefined): FormConfig {
   const rest: Record<string, unknown> = { ...schema };
   delete rest.properties;
   delete rest.items;
+  delete rest.type;
+  delete rest.title;
+  delete rest.required;
   return rest as FormConfig;
 }
 
@@ -174,6 +162,8 @@ function decodeVirtualNode(key: string, schema: FieldSchema): FieldNode {
     id: createId(),
     key,
     type,
+    title: schema.title,
+    required: schema.required === true || undefined,
     source: "virtual",
     form: decodeFormConfig(schema),
   };
@@ -192,11 +182,19 @@ export function applyFormSchema(
 ): FieldNode[] {
   const byKey = new Map(current.map((node) => [node.key, node]));
   const result: FieldNode[] = [];
-  for (const [key, schema] of Object.entries(properties)) {
+  const entries = Object.entries(properties).flatMap(([key, schema]) =>
+    schema.type === "void" && schema.component === "Card"
+      ? Object.entries(schema.properties ?? {})
+      : [[key, schema] as const],
+  );
+  for (const [key, schema] of entries) {
     const existing = byKey.get(key);
     if (existing) {
       result.push({
         ...existing,
+        type: (schema.type ?? existing.type) as FieldType,
+        title: schema.title,
+        required: schema.required === true || undefined,
         form: synchronizeRelationForm(
           decodeFormConfig(schema),
           existing.type,
@@ -219,18 +217,15 @@ export function applyFormSchema(
 }
 
 function storageFromField(field: ModelFieldSchema): StorageConfig {
-  const database = field.database;
-  if (!database) throw new Error(`physical 字段缺少 database：${field.key}`);
+  const storage = field.storage;
+  if (!storage) throw new Error(`physical 字段缺少 storage：${field.key}`);
   return {
-    title: field.table?.title,
-    type: database.type,
-    valueType: database.valueType,
-    column: database.column,
-    system: database.system,
-    nullable: database.nullable,
-    default: database.default ?? undefined,
-    unique: database.unique,
-    index: database.index,
+    type: storage.type,
+    column: storage.column,
+    system: storage.system,
+    default: storage.default ?? undefined,
+    unique: storage.unique,
+    index: storage.index,
     visible: field.table?.hidden ? false : undefined,
     filterable: field.filter?.hidden ? false : undefined,
     relation: field.relation,
@@ -242,16 +237,14 @@ function storageFromField(field: ModelFieldSchema): StorageConfig {
  * 仅当存在可承载的元信息时才重建 storage，避免纯表单字段被强加空存储配置。
  */
 function storageFromVirtualField(field: ModelFieldSchema): StorageConfig | undefined {
-  const title = field.table?.title;
+  const title = field.title;
   const hidden = field.table?.hidden === true;
   const filterHidden = field.filter?.hidden === true;
   const relation = field.relation;
   if (!title && !hidden && !filterHidden && !relation) return undefined;
-  const type = (field.form.type ?? "string") as FieldType;
+  const type = field.type;
   return {
-    title,
     type: COLUMN_FOR_TYPE[type],
-    valueType: type === "object" || type === "array" ? type : undefined,
     visible: hidden ? false : undefined,
     filterable: filterHidden ? false : undefined,
     relation,
@@ -259,7 +252,7 @@ function storageFromVirtualField(field: ModelFieldSchema): StorageConfig | undef
 }
 
 function fieldType(field: ModelFieldSchema): FieldType {
-  return (field.form.type ?? "string") as FieldType;
+  return field.type;
 }
 
 export function decodeModel(model: ModelSchema): ModelDraft {
@@ -269,10 +262,11 @@ export function decodeModel(model: ModelSchema): ModelDraft {
       id: field.id,
       key: field.key,
       type,
-      source: field.storage,
+      title: field.title,
+      required: field.required,
+      source: field.storage ? "physical" : "virtual",
       persisted: true,
-      storage:
-        field.storage === "physical" ? storageFromField(field) : storageFromVirtualField(field),
+      storage: field.storage ? storageFromField(field) : storageFromVirtualField(field),
       form: decodeFormConfig(field.form),
     };
     node.form = synchronizeRelationForm(node.form, type, field.relation);
@@ -286,10 +280,23 @@ export function decodeModel(model: ModelSchema): ModelDraft {
           id: createId(),
           page,
         }));
-  const groups =
-    model.pages
-      .find((page) => page.groups?.some((group) => !isSystemDetailGroup(group)))
-      ?.groups?.filter((group) => !isSystemDetailGroup(group)) ?? [];
+  const groups = Object.entries(model.form.properties ?? {}).flatMap(([key, node]) =>
+    node.type === "void" &&
+    node.component === "Card" &&
+    node.display === undefined &&
+    node.properties
+      ? [
+          {
+            id: key,
+            component: node.component,
+            title: node.title,
+            description: node.description,
+            props: node.props,
+            keys: Object.keys(node.properties),
+          },
+        ]
+      : [],
+  );
   return {
     name: model.name,
     title: model.title,
@@ -302,10 +309,7 @@ export function decodeModel(model: ModelSchema): ModelDraft {
     defaultPageSize: model.defaultPageSize ?? 20,
     definitions: model.definitions,
     fields,
-    groups: groups.map((group) => ({
-      ...group,
-      id: createId(),
-    })),
+    groups,
     pages,
   };
 }
@@ -321,8 +325,7 @@ function pruneUndefined<T extends Record<string, unknown>>(value: T): T {
 function encodeFormSchema(node: FieldNode): FieldSchema {
   // 落库字段的 required 由存储 nullable 派生（form-schema 不定义存储语义）；
   // 表单新增字段(extra)的 required 由 form 自身决定。
-  const required =
-    node.source === "physical" ? node.storage?.nullable === false : node.form.required === true;
+  const required = node.required === true;
   // 保留 form 上的全部 IFieldSchema 表现字段，再以 type/required 覆盖，properties/items 单独生成。
   const form = synchronizeRelationForm(node.form, node.type, node.storage?.relation);
   const base: Record<string, unknown> = { ...form };
@@ -331,6 +334,7 @@ function encodeFormSchema(node: FieldNode): FieldSchema {
   const schema: FieldSchema = pruneUndefined({
     ...base,
     type: node.type,
+    title: node.title,
     required: required || undefined,
   }) as FieldSchema;
   if (node.type === "object") {
@@ -351,19 +355,19 @@ function encodeFormSchema(node: FieldNode): FieldSchema {
 
 function encodeModelField(node: FieldNode): ModelFieldSchema {
   const storage = node.storage ?? { type: COLUMN_FOR_TYPE[node.type] };
-  const form = encodeFormSchema(node);
+  const { type: _type, title: _title, required: _required, ...form } = encodeFormSchema(node);
   return pruneUndefined({
     id: node.id,
     key: node.key,
-    storage: node.source,
-    database:
+    type: node.type,
+    title: node.title,
+    required: node.required || undefined,
+    storage:
       node.source === "physical"
         ? pruneUndefined({
             type: storage.type,
-            valueType: storage.valueType,
             column: storage.column,
             system: storage.system || undefined,
-            nullable: storage.nullable,
             default: storage.default,
             unique: storage.unique || undefined,
             index: storage.index || undefined,
@@ -371,13 +375,7 @@ function encodeModelField(node: FieldNode): ModelFieldSchema {
         : undefined,
     relation: storage.relation,
     form,
-    table:
-      storage.title || storage.visible === false
-        ? pruneUndefined({
-            title: storage.title,
-            hidden: storage.visible === false ? true : undefined,
-          })
-        : undefined,
+    table: storage.visible === false ? { hidden: true } : undefined,
     filter:
       storage.filterable === false
         ? {
@@ -403,29 +401,8 @@ export function encodeModel(draft: ModelDraft): ModelSchema {
     seen.add(node.key);
   }
 
-  const groups: FieldGroup[] = draft.groups
-    .filter((item) => item.keys.length > 0)
-    .map(
-      (item) =>
-        pruneUndefined({
-          component: item.component?.trim() || "Card",
-          title: item.title,
-          description: item.description,
-          keys: item.keys,
-          props: item.props,
-        }) as FieldGroup,
-    );
-
   const pages =
-    draft.pages.length > 0
-      ? draft.pages.map(({ page }) => ({
-          ...page,
-          groups: pageGroups(page.router, groups),
-        }))
-      : createDefaultPages(name, title).map((page) => ({
-          ...page,
-          groups: pageGroups(page.router, groups),
-        }));
+    draft.pages.length > 0 ? draft.pages.map(({ page }) => page) : createDefaultPages(name, title);
 
   return parseModelSchema({
     name,
@@ -438,14 +415,58 @@ export function encodeModel(draft: ModelDraft): ModelSchema {
     pluralLabel: draft.pluralLabel?.trim() || title,
     defaultPageSize: draft.defaultPageSize,
     fields: draft.fields.map(encodeModelField),
+    form: encodeModelForm(draft),
     definitions: draft.definitions,
     pages,
   });
 }
 
-/** Applies editable groups to form pages and reserves system fields for details. */
-function pageGroups(router: string, groups: FieldGroup[]): FieldGroup[] | undefined {
-  if (!["add", "edit", "detail"].includes(router)) return undefined;
-  const result = router === "detail" ? [...groups, SYSTEM_DETAIL_GROUP] : groups;
-  return result.length > 0 ? result : undefined;
+/** Persists editor groups as real Card nodes containing field references. */
+function encodeModelForm(draft: ModelDraft): FieldSchema {
+  const fieldsByKey = new Map(draft.fields.map((field) => [field.key, field]));
+  const keyToGroup = new Map<string, number>();
+  draft.groups.forEach((group, index) => {
+    for (const key of group.keys) {
+      if (fieldsByKey.has(key) && !keyToGroup.has(key)) keyToGroup.set(key, index);
+    }
+  });
+
+  const emitted = new Set<number>();
+  const properties: Record<string, FieldSchema> = {};
+  for (const field of draft.fields) {
+    if (SYSTEM_FIELD_KEYS.includes(field.key as (typeof SYSTEM_FIELD_KEYS)[number])) continue;
+    const groupIndex = keyToGroup.get(field.key);
+    if (groupIndex === undefined) {
+      properties[field.key] = { $ref: `#/fields/${field.key}` };
+      continue;
+    }
+    if (emitted.has(groupIndex)) continue;
+    emitted.add(groupIndex);
+    const group = draft.groups[groupIndex]!;
+    properties[group.id] = pruneUndefined({
+      type: "void",
+      component: group.component?.trim() || "Card",
+      title: group.title,
+      description: group.description,
+      props: group.props,
+      properties: Object.fromEntries(
+        group.keys.flatMap((key) =>
+          fieldsByKey.has(key) ? [[key, { $ref: `#/fields/${key}` }]] : [],
+        ),
+      ),
+    }) as FieldSchema;
+  }
+  properties.system = {
+    type: "void",
+    component: "Card",
+    title: "系统信息",
+    display: "{{ mode === 'detail' ? 'visible' : 'none' }}",
+    props: { gridSpan: 12 },
+    properties: Object.fromEntries(
+      SYSTEM_FIELD_KEYS.flatMap((key) =>
+        fieldsByKey.has(key) ? [[key, { $ref: `#/fields/${key}` }]] : [],
+      ),
+    ),
+  };
+  return { type: "object", properties };
 }

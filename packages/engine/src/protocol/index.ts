@@ -9,12 +9,11 @@ export type {
   ModelSchema,
   ModelSummary,
   FieldSchema,
-  FieldGroup,
   PageSchema,
   ModelFieldSchema,
   DatabaseRelation,
   DatabaseColumnType,
-  DatabaseValueType,
+  FieldValueType,
   DatabaseRelationKind,
   OpenMode,
 } from "@alien-form/protocol";
@@ -58,5 +57,5 @@ export interface CompiledPage {
   router: string;
   title: string;
   schema: IFormSchema;
-  nodes: CompiledNode[];
+  root: CompiledNode;
 }

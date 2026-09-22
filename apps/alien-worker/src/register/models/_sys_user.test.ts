@@ -37,9 +37,11 @@ describe("_sys_user registration", () => {
   it("declares the user role as a required many-to-many field", () => {
     expect(() => parseModelSchema(sysUserSchema)).not.toThrow();
     expect(sysUserSchema.fields.find((field) => field.key === "roleId")).toMatchObject({
-      database: { type: "json", valueType: "array", nullable: false },
+      type: "array",
+      required: true,
+      storage: { type: "json" },
       relation: { kind: "many-to-many", through: "_sys_user_roles" },
-      form: { type: "array", required: true, props: { multiple: true } },
+      form: { component: "RemoteSelect" },
     });
   });
 

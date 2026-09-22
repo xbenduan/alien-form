@@ -16,16 +16,25 @@ function model(creatorId = "owner"): ModelSchema {
       {
         id: "article.title",
         key: "title",
-        storage: "virtual",
-        form: { type: "string", title: "标题" },
+        type: "string",
+        title: "标题",
+        form: {},
       },
       {
         id: "article.secret",
         key: "secret",
-        storage: "virtual",
-        form: { type: "string", title: "秘密" },
+        type: "string",
+        title: "秘密",
+        form: {},
       },
     ],
+    form: {
+      type: "object",
+      properties: {
+        title: { $ref: "#/fields/title" },
+        secret: { $ref: "#/fields/secret" },
+      },
+    },
     pages: [],
   };
 }
@@ -33,8 +42,28 @@ function model(creatorId = "owner"): ModelSchema {
 /** Creates stores backed by one user and an in-memory role tree. */
 function stores(user: ModelRecord, roles: ModelRecord[]) {
   const schemas = new Map<string, ModelSchema>([
-    ["_sys_user", { name: "_sys_user", title: "用户", version: 1, fields: [], pages: [] }],
-    ["_sys_role", { name: "_sys_role", title: "角色", version: 1, fields: [], pages: [] }],
+    [
+      "_sys_user",
+      {
+        name: "_sys_user",
+        title: "用户",
+        version: 1,
+        fields: [],
+        form: { type: "object" },
+        pages: [],
+      },
+    ],
+    [
+      "_sys_role",
+      {
+        name: "_sys_role",
+        title: "角色",
+        version: 1,
+        fields: [],
+        form: { type: "object" },
+        pages: [],
+      },
+    ],
   ]);
   const models = {
     get: vi.fn(async (name: string) => schemas.get(name)),
@@ -194,16 +223,23 @@ describe("AuthorizationService", () => {
         {
           router: "list",
           permission: "read",
-          properties: {
-            table: {
-              type: "void",
-              component: "table",
-              slots: { toolbar: ["add"], rowActions: ["detail", "edit", "delete"] },
-              properties: {
-                add: { type: "void", component: "record-action", permission: "create" },
-                detail: { type: "void", component: "record-action", permission: "read" },
-                edit: { type: "void", component: "record-action", permission: "update" },
-                delete: { type: "void", component: "row-button", permission: "delete" },
+          type: "void",
+          component: "layout",
+          slots: {
+            content: {
+              table: {
+                type: "void",
+                component: "table",
+                slots: {
+                  toolbar: {
+                    add: { type: "void", component: "record-action", permission: "create" },
+                  },
+                  rowActions: {
+                    detail: { type: "void", component: "record-action", permission: "read" },
+                    edit: { type: "void", component: "record-action", permission: "update" },
+                    delete: { type: "void", component: "row-button", permission: "delete" },
+                  },
+                },
               },
             },
           },
@@ -211,6 +247,7 @@ describe("AuthorizationService", () => {
         {
           router: "edit",
           permission: "update",
+          type: "void",
           properties: {},
         },
       ],
@@ -219,9 +256,10 @@ describe("AuthorizationService", () => {
     const projected = service.projectSchema(profile, schema);
 
     expect(projected.pages.map((page) => page.router)).toEqual(["list"]);
-    expect(projected.pages[0]?.properties.table.properties).toEqual({
-      detail: { type: "void", component: "record-action", permission: "read" },
+    expect(projected.pages[0]?.slots?.content?.table?.slots).toEqual({
+      rowActions: {
+        detail: { type: "void", component: "record-action", permission: "read" },
+      },
     });
-    expect(projected.pages[0]?.properties.table.slots).toEqual({ rowActions: ["detail"] });
   });
 });

@@ -88,16 +88,16 @@ export function PageConfig({
       title: "布局",
       width: 140,
       render: (_v, row) =>
-        row.page.layout?.component ? (
-          <Typography.Text code>{row.page.layout.component}</Typography.Text>
-        ) : (
-          "—"
-        ),
+        row.page.component ? <Typography.Text code>{row.page.component}</Typography.Text> : "—",
     },
     {
       title: "属性数",
       width: 90,
-      render: (_v, row) => Object.keys(row.page.properties ?? {}).length,
+      render: (_v, row) =>
+        Object.values(row.page.slots ?? {}).reduce(
+          (count, nodes) => count + Object.keys(nodes).length,
+          Object.keys(row.page.properties ?? {}).length,
+        ),
     },
     {
       title: "操作",
