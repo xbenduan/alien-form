@@ -2,6 +2,7 @@ import { SearchOutlined } from "@ant-design/icons";
 import { Input, Spin } from "antd";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "@alien-form/react";
+import { AppCard } from "../../../components/app-card";
 import { Tree, type TreeNode } from "../../../components/tree";
 import type { TreeOptions } from "../utils/tree";
 import styles from "./tree.module.css";
@@ -72,7 +73,7 @@ export function TreeLayout({
   );
 
   return (
-    <section className={styles.treeCard}>
+    <AppCard className={styles.treeCard}>
       {title ? <header className={styles.treeHeader}>{title}</header> : null}
       <Spin spinning={loading}>
         <div className={styles.treeContent} aria-busy={loading}>
@@ -94,6 +95,6 @@ export function TreeLayout({
           />
         </div>
       </Spin>
-    </section>
+    </AppCard>
   );
 }

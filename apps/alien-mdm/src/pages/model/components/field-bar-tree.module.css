@@ -15,7 +15,7 @@
   padding: 8px 12px;
   border: 1px solid #e5e6eb;
   border-radius: 8px;
-  background: #fff;
+  background: var(--app-surface-strong, rgba(255, 255, 255, 0.88));
 }
 
 .fieldBar.dragging {
@@ -61,5 +61,5 @@
   border: 1px dashed #c9cdd4;
   border-top: none;
   border-radius: 0 0 8px 8px;
-  background: #fafbfc;
+  background: var(--app-surface-muted, rgba(248, 250, 255, 0.78));
 }

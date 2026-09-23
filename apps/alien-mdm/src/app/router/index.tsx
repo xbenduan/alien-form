@@ -1,9 +1,20 @@
-import { Spin } from "antd";
-import { Suspense, type PropsWithChildren, type ReactNode } from "react";
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import { AppstoreAddOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { Button, Spin, Tooltip, Typography } from "antd";
+import { Suspense, type ReactNode } from "react";
+import {
+  BrowserRouter,
+  Link,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { useAuth } from "../providers";
 import { canManageModels } from "@runtime/user-info";
 import { PageBreadcrumb } from "../../components/page-breadcrumb";
+import { UserMenu } from "../../components/user-menu";
 import { DynamicPage } from "./dynamic-routes";
 import { NavigationProvider, useNavigationItems } from "./navigation";
 import { publicRoutes, staticRoutes } from "./static-routes";
@@ -23,25 +34,76 @@ function ModelManager({ children }: { children: ReactNode }) {
   return canManageModels() ? children : <Navigate to="/" replace />;
 }
 
-function AppShell({ noPadding = false, children }: PropsWithChildren<{ noPadding?: boolean }>) {
-  const navigationItems = useNavigationItems();
+function AppTopbar() {
+  const navigate = useNavigate();
+  const canManage = canManageModels();
+
   return (
-    <div className={`${styles.shell}${noPadding ? ` ${styles.noPadding}` : ""}`}>
-      <div className={`${styles.content}${noPadding ? "" : ` ${styles.withBreadcrumb}`}`}>
-        {noPadding ? null : <PageBreadcrumb items={navigationItems} />}
-        {children ?? <Outlet />}
+    <header className={styles.topbar}>
+      <div className={styles.topbarPrimary}>
+        <Link className={styles.brand} to="/" aria-label="返回首页">
+          <span className={styles.brandMark}>
+            <img src="/favicon.svg" alt="" aria-hidden="true" />
+          </span>
+          <span>
+            <Typography.Text className={styles.kicker}>CONTENT OPERATIONS</Typography.Text>
+            <Typography.Title level={3} className={styles.brandTitle}>
+              ALIEN MDM
+            </Typography.Title>
+          </span>
+        </Link>
+        <div className={styles.topbarActions}>
+          {canManage ? (
+            <Tooltip title="新增模型">
+              <Button
+                type="text"
+                shape="circle"
+                icon={<AppstoreAddOutlined />}
+                aria-label="新增模型"
+                onClick={() => navigate("/models/add")}
+              />
+            </Tooltip>
+          ) : null}
+          <Tooltip title="模型管理">
+            <Button
+              type="text"
+              shape="circle"
+              icon={<UnorderedListOutlined />}
+              aria-label="模型管理"
+              onClick={() => navigate("/models")}
+            />
+          </Tooltip>
+          <span className={styles.actionDivider} />
+          <UserMenu />
+        </div>
       </div>
+    </header>
+  );
+}
+
+function AppShell() {
+  const location = useLocation();
+  const navigationItems = useNavigationItems();
+  const isHome = location.pathname === "/";
+
+  return (
+    <div className={styles.shell}>
+      <AppTopbar />
+      <main className={styles.page}>
+        <div className={`${styles.content}${isHome ? "" : ` ${styles.withBreadcrumb}`}`}>
+          {isHome ? null : <PageBreadcrumb items={navigationItems} />}
+          <Outlet />
+        </div>
+      </main>
     </div>
   );
 }
 
 function AppLoading() {
   return (
-    <AppShell noPadding>
-      <div className={styles.loading}>
-        <Spin size="large" />
-      </div>
-    </AppShell>
+    <div className={styles.loading}>
+      <Spin size="large" />
+    </div>
   );
 }
 
@@ -57,40 +119,25 @@ export function AppRouter() {
             <Route
               element={
                 <Protected>
-                  <AppShell noPadding />
-                </Protected>
-              }
-            >
-              {staticRoutes
-                .filter(({ path }) => path === "/")
-                .map(({ path, component: Component }) => (
-                  <Route key={path} path={path} element={<Component />} />
-                ))}
-            </Route>
-            <Route
-              element={
-                <Protected>
                   <AppShell />
                 </Protected>
               }
             >
-              {staticRoutes.map(({ path, component: Component, superAdminOnly }) =>
-                path === "/" ? null : (
-                  <Route
-                    key={path}
-                    path={path}
-                    element={
-                      superAdminOnly ? (
-                        <ModelManager>
-                          <Component />
-                        </ModelManager>
-                      ) : (
+              {staticRoutes.map(({ path, component: Component, superAdminOnly }) => (
+                <Route
+                  key={path}
+                  path={path}
+                  element={
+                    superAdminOnly ? (
+                      <ModelManager>
                         <Component />
-                      )
-                    }
-                  />
-                ),
-              )}
+                      </ModelManager>
+                    ) : (
+                      <Component />
+                    )
+                  }
+                />
+              ))}
               <Route path="/records/:modelCode/*" element={<DynamicPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

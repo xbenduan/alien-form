@@ -1,6 +1,6 @@
 .layout {
   display: flex;
-  height: calc(100dvh - 70px);
+  height: var(--app-layout-height, calc(100dvh - 70px));
   min-width: 0;
   min-height: 520px;
   overflow: hidden;

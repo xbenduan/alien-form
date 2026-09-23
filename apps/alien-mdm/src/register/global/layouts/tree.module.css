@@ -2,14 +2,16 @@
   overflow: hidden;
   height: 100%;
   min-height: 520px;
-  border: 1px solid #e5e6eb;
-  border-radius: 8px;
-  background: #fff;
+}
+
+.treeCard :global(.ant-card-body) {
+  height: 100%;
+  padding: 0;
 }
 
 .treeHeader {
   border-bottom: 1px solid #e8edf3;
-  background: #f8faff;
+  background: var(--app-surface-muted, rgba(248, 250, 255, 0.78));
   padding: 12px 16px;
   color: #172033;
   font-size: 14px;

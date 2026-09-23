@@ -1,6 +1,6 @@
 import { parseAlienSchema, type AlienSchema, type ModelSummary } from "@alien-form/protocol";
 import { compileMigrationPlan } from "../domain/storage-compiler.ts";
-import { SYS_MODEL_TAB_MODEL } from "../domain/schemas/_sys_model_tab.ts";
+import { SYS_MODEL_CATEGORY_MODEL } from "../domain/schemas/_sys_model_category.ts";
 import { badRequest, conflict, forbidden, notFound } from "../errors.ts";
 import type { ModelRegistry } from "../register/index.ts";
 import { ModelVersionConflictError, type ModelStore } from "../store/model-store.ts";
@@ -128,9 +128,11 @@ export class ModelService {
 
   private async assertGroup(group: string | undefined): Promise<void> {
     if (!group) throw badRequest("模型必须选择一个分类");
-    const tabSchema = await this.models.get(SYS_MODEL_TAB_MODEL);
-    if (!tabSchema) throw badRequest("模型分类 尚未初始化");
-    const tab = await this.records.findByField(tabSchema, "code", group);
-    if (!tab || tab.aggregate === true) throw badRequest(`模型分类 不存在或不可用于归类：${group}`);
+    const categorySchema = await this.models.get(SYS_MODEL_CATEGORY_MODEL);
+    if (!categorySchema) throw badRequest("分类标签尚未初始化");
+    const category = await this.records.findByField(categorySchema, "code", group);
+    if (!category || category.aggregate === true) {
+      throw badRequest(`分类标签不存在或不可用于归类：${group}`);
+    }
   }
 }

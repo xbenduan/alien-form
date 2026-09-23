@@ -26,16 +26,16 @@ export default function ModelListPage() {
         model: string;
         pagination: { current: number; pageSize: number };
       }) => Promise<ListResponse>;
-      const [nextModels, tabs] = await Promise.all([
+      const [nextModels, categories] = await Promise.all([
         listModels(),
-        listRecords({ model: "_sys_model_tab", pagination: { current: 1, pageSize: 100 } }),
+        listRecords({ model: "_sys_model_category", pagination: { current: 1, pageSize: 100 } }),
       ]);
       setModels(nextModels);
       setGroupLabels(
         new Map(
-          tabs.list.flatMap((tab: ModelRecord) =>
-            typeof tab.code === "string" && typeof tab.name === "string"
-              ? [[tab.code, tab.name] as const]
+          categories.list.flatMap((category: ModelRecord) =>
+            typeof category.code === "string" && typeof category.name === "string"
+              ? [[category.code, category.name] as const]
               : [],
           ),
         ),

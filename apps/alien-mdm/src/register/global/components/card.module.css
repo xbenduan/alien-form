@@ -14,7 +14,7 @@
   padding: 12px 12px 4px;
   border: 1px solid #d8dee8;
   border-radius: 8px;
-  background: #fafbfc;
+  background: var(--app-surface-muted, rgba(248, 250, 255, 0.78));
 }
 
 .arrayRowDragging {

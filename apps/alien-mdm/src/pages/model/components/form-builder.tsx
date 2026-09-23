@@ -1,8 +1,9 @@
 import { useCreateForm } from "@alien-form/react";
-import { App, Button, Card, Col, Empty, Flex, Input, Row, Segmented } from "antd";
+import { App, Button, Col, Empty, Flex, Input, Row, Segmented } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { FormRenderer, useRuntime } from "@alien-form/react";
 import { buildFormSchema, buildRuntimeDefinitions, compileForm } from "@alien-form/engine";
+import { AppCard } from "../../../components/app-card";
 import { applyFormSchema, createField, encodeModel } from "../builder/codec";
 import type { ModelAction } from "../builder/commands";
 import type { FieldNode, ModelDraft } from "../builder/types";
@@ -107,7 +108,7 @@ export function FormBuilder({
       <Flex vertical gap={16}>
         <Row gutter={16}>
           <Col span={12}>
-            <Card classNames={{ body: styles.formBuilderCardBody }}>
+            <AppCard classNames={{ body: styles.formBuilderCardBody }}>
               <Flex justify="space-between" align="center">
                 <div className={styles.sectionTitle}>字段列表</div>
                 <Button type="link" icon={<PlusOutlined />} onClick={() => addExtra()}>
@@ -125,10 +126,10 @@ export function FormBuilder({
                   }
                 />
               </div>
-            </Card>
+            </AppCard>
           </Col>
           <Col span={12}>
-            <Card classNames={{ body: styles.formBuilderCardBody }}>
+            <AppCard classNames={{ body: styles.formBuilderCardBody }}>
               <Flex justify="space-between" align="center">
                 <div className={styles.sectionTitle}>
                   <Segmented<RightTab>
@@ -167,7 +168,7 @@ export function FormBuilder({
                   />
                 )}
               </div>
-            </Card>
+            </AppCard>
           </Col>
         </Row>
       </Flex>

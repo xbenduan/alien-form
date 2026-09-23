@@ -64,7 +64,7 @@ function dependencies() {
   const publish = vi.fn(async (value: AlienSchema) => value);
   const remove = vi.fn();
   const models = {
-    get: vi.fn(async (name: string) => (name === "_sys_model_tab" ? schema(name) : undefined)),
+    get: vi.fn(async (name: string) => (name === "_sys_model_category" ? schema(name) : undefined)),
     has: vi.fn().mockResolvedValue(false),
     list: vi.fn().mockResolvedValue([]),
     publish,
@@ -83,7 +83,9 @@ function dependencies() {
     canRead: vi.fn().mockReturnValue(true),
   } as unknown as AuthorizationService;
   const records = {
-    findByField: vi.fn().mockResolvedValue({ id: "tab-other", code: "other", aggregate: false }),
+    findByField: vi
+      .fn()
+      .mockResolvedValue({ id: "category-other", code: "other", aggregate: false }),
   } as unknown as RecordStore;
   return { authorization, models, publish, records, remove };
 }

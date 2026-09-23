@@ -4,7 +4,7 @@ import type {
   AlienSchema,
   PermissionAction,
 } from "@alien-form/protocol";
-import { SYS_MODEL_TAB_MODEL } from "../domain/schemas/_sys_model_tab.ts";
+import { SYS_MODEL_CATEGORY_MODEL } from "../domain/schemas/_sys_model_category.ts";
 import { SYS_ROLE_MODEL, SYS_ROLE_SUPER_ADMIN_ID } from "../domain/schemas/_sys_role.ts";
 import { SYS_ADMIN_ID, SYS_USER_MODEL } from "../domain/schemas/_sys_user.ts";
 import { forbidden } from "../errors.ts";
@@ -207,7 +207,7 @@ export class AuthorizationService {
     action: PermissionAction,
   ): PermissionScope | undefined {
     if (profile.super) return "all";
-    if (action === "read" && model.name === SYS_MODEL_TAB_MODEL) return "all";
+    if (action === "read" && model.name === SYS_MODEL_CATEGORY_MODEL) return "all";
     if (profile.canCreateModel && model.creatorId === profile.actorId) return "all";
     const grant = profile.permissions.get(model.name);
     return grant?.actions.has(action) ? grant.scope : undefined;
@@ -267,7 +267,7 @@ export class AuthorizationService {
   project(profile: AccessProfile, model: AlienSchema, record: ModelRecord): ModelRecord {
     if (
       profile.super ||
-      model.name === SYS_MODEL_TAB_MODEL ||
+      model.name === SYS_MODEL_CATEGORY_MODEL ||
       (profile.canCreateModel && model.creatorId === profile.actorId)
     ) {
       return record;
@@ -285,7 +285,7 @@ export class AuthorizationService {
   projectSchema(profile: AccessProfile, model: AlienSchema): AlienSchema {
     if (
       profile.super ||
-      model.name === SYS_MODEL_TAB_MODEL ||
+      model.name === SYS_MODEL_CATEGORY_MODEL ||
       (profile.canCreateModel && model.creatorId === profile.actorId)
     ) {
       return model;

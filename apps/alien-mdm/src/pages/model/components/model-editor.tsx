@@ -1,9 +1,10 @@
 import { SaveOutlined } from "@ant-design/icons";
-import { App, Alert, Button, Card, Flex, Skeleton, Space, Steps } from "antd";
+import { App, Alert, Button, Flex, Skeleton, Space, Steps } from "antd";
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRuntime } from "@alien-form/react";
 import type { AlienSchema } from "@alien-form/protocol";
+import { AppCard } from "../../../components/app-card";
 import { createId, decodeModel, encodeModel } from "../builder/codec";
 import { reduceModel } from "../builder/commands";
 import { createDefaultDraft } from "../builder/default-draft";
@@ -106,9 +107,9 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
 
   return (
     <Flex className={styles.actionsPage} vertical gap={16}>
-      <Card className={styles.stepCard}>
+      <AppCard className={styles.stepCard}>
         <Steps current={step} items={STEP_TITLES.map((title) => ({ title }))} />
-      </Card>
+      </AppCard>
       {error && <Alert type="error" message={error} showIcon />}
       {readOnly ? (
         <Alert type="info" message="系统模型由系统维护，当前页面仅供查看。" showIcon />

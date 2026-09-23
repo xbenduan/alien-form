@@ -1,12 +1,13 @@
-import { Card, Form, Input, InputNumber, Select } from "antd";
+import { Form, Input, InputNumber, Select } from "antd";
 import { useEffect, useState } from "react";
 import { useRuntime } from "@alien-form/react";
 import type { ListResponse, ModelRecord } from "@app-types";
+import { AppCard } from "../../../components/app-card";
 import type { ModelAction } from "../builder/commands";
 import type { ModelDraft } from "../builder/types";
 
-/** Shape of records stored in the built-in model tab catalog. */
-interface ModelTabRecord extends ModelRecord {
+/** Shape of records stored in the built-in model category catalog. */
+interface ModelCategoryRecord extends ModelRecord {
   code?: string;
   name?: string;
   aggregate?: boolean;
@@ -24,7 +25,9 @@ export function BasicInfo({
 }) {
   const runtime = useRuntime();
   const [form] = Form.useForm();
-  const [tabOptions, setTabOptions] = useState<Array<{ label: string; value: string }>>([]);
+  const [categoryOptions, setCategoryOptions] = useState<Array<{ label: string; value: string }>>(
+    [],
+  );
 
   useEffect(() => {
     let active = true;
@@ -32,24 +35,24 @@ export function BasicInfo({
       model: string;
       pagination: { current: number; pageSize: number };
     }) => Promise<ListResponse>;
-    void list({ model: "_sys_model_tab", pagination: { current: 1, pageSize: 100 } })
+    void list({ model: "_sys_model_category", pagination: { current: 1, pageSize: 100 } })
       .then((result) => {
         if (!active) return;
-        const tabs = result.list as ModelTabRecord[];
-        setTabOptions(
-          tabs
+        const categories = result.list as ModelCategoryRecord[];
+        setCategoryOptions(
+          categories
             .filter(
-              (tab) =>
-                tab.aggregate !== true &&
-                typeof tab.code === "string" &&
-                typeof tab.name === "string",
+              (category) =>
+                category.aggregate !== true &&
+                typeof category.code === "string" &&
+                typeof category.name === "string",
             )
             .sort((left, right) => (left.order ?? 0) - (right.order ?? 0))
-            .map((tab) => ({ label: tab.name!, value: tab.code! })),
+            .map((category) => ({ label: category.name!, value: category.code! })),
         );
       })
       .catch(() => {
-        if (active) setTabOptions([]);
+        if (active) setCategoryOptions([]);
       });
     return () => {
       active = false;
@@ -83,7 +86,7 @@ export function BasicInfo({
   };
 
   return (
-    <Card>
+    <AppCard>
       <Form
         form={form}
         layout="vertical"
@@ -103,8 +106,8 @@ export function BasicInfo({
         <Form.Item name="subtitle" label="副标题">
           <Input />
         </Form.Item>
-        <Form.Item name="group" label="类型">
-          <Select options={tabOptions} />
+        <Form.Item name="group" label="分类标签">
+          <Select options={categoryOptions} />
         </Form.Item>
         <Form.Item name="singularLabel" label="单数标签">
           <Input />
@@ -119,6 +122,6 @@ export function BasicInfo({
           <Input.TextArea rows={3} />
         </Form.Item>
       </Form>
-    </Card>
+    </AppCard>
   );
 }

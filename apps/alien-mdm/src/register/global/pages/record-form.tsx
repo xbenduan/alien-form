@@ -12,6 +12,7 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import { FormRenderer, useRuntime } from "@alien-form/react";
 import { compileForm, type AlienFieldSchema } from "@alien-form/engine";
+import { AppCard } from "../../../components/app-card";
 import { recordListRoute } from "@utils/record-route";
 import styles from "./record-form.module.css";
 
@@ -119,24 +120,33 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
   );
 
   if (loading) {
+    if (embedded) {
+      return (
+        <div className={`${styles.overlayBody} ${styles.actionLoading}`}>
+          <Spin />
+        </div>
+      );
+    }
     return (
-      <div className={`${styles.actionBody} ${styles.actionLoading}`}>
+      <AppCard className={styles.actionBody} classNames={{ body: styles.actionLoading }}>
         <Spin />
-      </div>
+      </AppCard>
     );
   }
 
-  const body = (
-    <div className={embedded ? styles.overlayBody : styles.actionBody}>
+  const content = (
+    <>
       {error && <Alert type="error" message={error} showIcon style={{ marginBottom: 16 }} />}
       <FormRenderer form={form} nodes={compiled.nodes} domain={modelCode} />
-    </div>
+    </>
   );
 
-  if (embedded) return body;
+  if (embedded) return <div className={styles.overlayBody}>{content}</div>;
   return (
     <>
-      {body}
+      <AppCard className={styles.actionBody} classNames={{ body: styles.actionContent }}>
+        {content}
+      </AppCard>
       <div className={styles.actionFooterRoot}>
         <div className={styles.actionFooter}>{footer}</div>
       </div>

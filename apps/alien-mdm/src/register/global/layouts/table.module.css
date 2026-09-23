@@ -1,13 +1,10 @@
 .tableCard {
   overflow: visible;
-  border: 1px solid rgba(22, 119, 255, 0.12);
-  border-radius: 12px;
-  background: #fff;
 }
 
 .tableCard :global(.ant-table-sticky-holder) {
   z-index: 10 !important;
-  background: #fff;
+  background: var(--app-surface-strong, rgba(255, 255, 255, 0.88));
 }
 
 .tableCard :global(.ant-table-sticky-holder .ant-table-thead > tr > th) {
@@ -27,7 +24,7 @@
 .tableCard :global(.ant-table-sticky-holder .ant-table-cell-fix-left-last),
 .tableCard :global(.ant-table-sticky-holder .ant-table-cell-fix-start) {
   z-index: 20 !important;
-  background: #f8faff;
+  background: var(--app-table-fixed-header, #f6f8fc);
 }
 
 .tableToolbar {

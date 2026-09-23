@@ -15,11 +15,11 @@
 }
 
 .node:hover {
-  background: #f5f7fa;
+  background: rgba(245, 247, 250, 0.72);
 }
 
 .nodeSelected {
-  background: #eaf3ff;
+  background: rgba(234, 243, 255, 0.78);
 }
 
 .toggle,

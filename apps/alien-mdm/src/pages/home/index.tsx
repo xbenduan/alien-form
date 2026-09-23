@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  AppstoreAddOutlined,
   ClockCircleOutlined,
   DatabaseOutlined,
   EditOutlined,
@@ -8,11 +7,9 @@ import {
   SearchOutlined,
   StarFilled,
   StarOutlined,
-  UnorderedListOutlined,
 } from "@ant-design/icons";
 import { Alert, Button, Empty, Input, Skeleton, Tabs, Tooltip, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
-import { UserMenu } from "../../components/user-menu";
 import type { ListResponse, ModelRecord, ModelSummary } from "@app-types";
 import { parseModelSummaries } from "@alien-form/protocol";
 import { transport } from "@runtime/transport";
@@ -21,7 +18,7 @@ import styles from "./index.module.css";
 
 type GroupFilter = string;
 
-interface ModelTabRecord extends ModelRecord {
+interface ModelCategoryRecord extends ModelRecord {
   code?: string;
   name?: string;
   aggregate?: boolean;
@@ -198,7 +195,7 @@ export default function HomePage() {
   const navigate = useNavigate();
   const canManage = canManageModels();
   const [models, setModels] = useState<ModelSummary[]>();
-  const [modelTabs, setModelTabs] = useState<ModelTabRecord[]>([]);
+  const [modelCategories, setModelCategories] = useState<ModelCategoryRecord[]>([]);
   const [error, setError] = useState<string>();
   const [keyword, setKeyword] = useState("");
   const [group, setGroup] = useState<GroupFilter>("all");
@@ -210,15 +207,15 @@ export default function HomePage() {
       transport.send<ListResponse>("/api/v1/records/list", {
         method: "POST",
         body: JSON.stringify({
-          model: "_sys_model_tab",
+          model: "_sys_model_category",
           pagination: { current: 1, pageSize: 100 },
         }),
       }),
     ])
-      .then(([nextModels, tabs]) => {
+      .then(([nextModels, categories]) => {
         setModels(nextModels);
-        setModelTabs(
-          (tabs.list as ModelTabRecord[]).toSorted(
+        setModelCategories(
+          (categories.list as ModelCategoryRecord[]).toSorted(
             (left, right) => (left.order ?? 0) - (right.order ?? 0),
           ),
         );
@@ -229,23 +226,23 @@ export default function HomePage() {
   const groupLabels = useMemo(
     () =>
       new Map(
-        modelTabs.flatMap((tab) =>
-          typeof tab.code === "string" && typeof tab.name === "string"
-            ? [[tab.code, tab.name] as const]
+        modelCategories.flatMap((category) =>
+          typeof category.code === "string" && typeof category.name === "string"
+            ? [[category.code, category.name] as const]
             : [],
         ),
       ),
-    [modelTabs],
+    [modelCategories],
   );
 
   const groupTabs = useMemo(
     () =>
-      modelTabs.flatMap((tab) =>
-        typeof tab.code === "string" && typeof tab.name === "string"
-          ? [{ key: tab.code, label: tab.name }]
+      modelCategories.flatMap((category) =>
+        typeof category.code === "string" && typeof category.name === "string"
+          ? [{ key: category.code, label: category.name }]
           : [],
       ),
-    [modelTabs],
+    [modelCategories],
   );
 
   const favoriteModels = useMemo(() => {
@@ -262,14 +259,14 @@ export default function HomePage() {
   const filtered = useMemo(() => {
     const normalized = keyword.trim().toLowerCase();
     return (models ?? []).filter((model) => {
-      const selected = modelTabs.find((tab) => tab.code === group);
+      const selected = modelCategories.find((category) => category.code === group);
       if (selected?.aggregate !== true && (model.group ?? "other") !== group) return false;
       if (!normalized) return true;
       return [model.name, model.title, model.subtitle, model.description]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(normalized));
     });
-  }, [group, keyword, modelTabs, models]);
+  }, [group, keyword, modelCategories, models]);
 
   const openModel = useCallback(
     (model: ModelSummary) => {
@@ -294,137 +291,91 @@ export default function HomePage() {
   );
 
   return (
-    <main className={styles.home}>
-      <header className={styles.topbar}>
-        <div className={styles.topbarPrimary}>
-          <div className={styles.brand}>
-            <span className={styles.brandMark}>
-              <img src="/favicon.svg" alt="" aria-hidden="true" />
-            </span>
-            <div>
-              <Typography.Text className={styles.kicker}>CONTENT OPERATIONS</Typography.Text>
-              <Typography.Title
-                level={3}
-                className={styles.brandTitle}
-                style={{ marginTop: 0, marginBottom: 0 }}
-              >
-                ALIEN MDM
-              </Typography.Title>
+    <div className={styles.home}>
+      {error ? (
+        <Alert type="error" title="模型列表加载失败" description={error} showIcon />
+      ) : !models ? (
+        <section className={styles.grid} aria-label="正在加载模型">
+          {Array.from({ length: 4 }, (_, index) => (
+            <div className={styles.skeletonCard} key={index}>
+              <Skeleton active avatar paragraph={{ rows: 2 }} title={{ width: "45%" }} />
             </div>
-          </div>
-          <div className={styles.topbarActions}>
-            {canManage ? (
-              <Tooltip title="新增模型">
-                <Button
-                  type="text"
-                  shape="circle"
-                  icon={<AppstoreAddOutlined />}
-                  aria-label="新增模型"
-                  onClick={() => navigate("/models/add")}
-                />
-              </Tooltip>
-            ) : null}
-            <Tooltip title="模型管理">
-              <Button
-                type="text"
-                shape="circle"
-                icon={<UnorderedListOutlined />}
-                aria-label="模型管理"
-                onClick={() => navigate("/models")}
-              />
-            </Tooltip>
-            <span className={styles.actionDivider} />
-            <UserMenu />
-          </div>
-        </div>
-      </header>
-
-      <div className={styles.mainContent}>
-        {error ? (
-          <Alert type="error" title="模型列表加载失败" description={error} showIcon />
-        ) : !models ? (
-          <section className={styles.grid} aria-label="正在加载模型">
-            {Array.from({ length: 4 }, (_, index) => (
-              <div className={styles.skeletonCard} key={index}>
-                <Skeleton active avatar paragraph={{ rows: 2 }} title={{ width: "45%" }} />
+          ))}
+        </section>
+      ) : (
+        <>
+          {favoriteModels.length > 0 ? (
+            <section className={styles.favoriteSection} aria-labelledby="favorite-models-title">
+              <div className={styles.sectionHeader}>
+                <div>
+                  <Typography.Title level={2} id="favorite-models-title">
+                    收藏模型
+                  </Typography.Title>
+                  <Typography.Text>固定常用的数据入口</Typography.Text>
+                </div>
               </div>
-            ))}
-          </section>
-        ) : (
-          <>
-            {favoriteModels.length > 0 ? (
-              <section className={styles.favoriteSection} aria-labelledby="favorite-models-title">
-                <div className={styles.sectionHeader}>
-                  <div>
-                    <Typography.Title level={2} id="favorite-models-title">
-                      收藏模型
-                    </Typography.Title>
-                    <Typography.Text>固定常用的数据入口</Typography.Text>
-                  </div>
-                </div>
-                <div className={styles.favoriteGrid}>
-                  {favoriteModels.map((model) => (
-                    <FavoriteModelCard
-                      key={model.name}
-                      model={model}
-                      onOpen={openModel}
-                      onToggleFavorite={toggleFavorite}
-                      onEdit={canManage ? editModel : undefined}
-                    />
-                  ))}
-                </div>
-              </section>
-            ) : null}
-
-            <section className={styles.allModels} aria-label="全部模型">
-              <div className={styles.toolbar}>
-                <Tabs
-                  className={styles.tabs}
-                  size="large"
-                  activeKey={group}
-                  items={groupTabs}
-                  onChange={(key) => setGroup(key as GroupFilter)}
-                  tabBarExtraContent={
-                    <div className={styles.search}>
-                      <span className={styles.count}>{filtered.length} 个模型</span>
-                      <Input
-                        size="large"
-                        allowClear
-                        prefix={<SearchOutlined />}
-                        placeholder="搜索模型名称、标题或描述"
-                        value={keyword}
-                        onChange={(event) => setKeyword(event.target.value)}
-                      />
-                    </div>
-                  }
-                />
+              <div className={styles.favoriteGrid}>
+                {favoriteModels.map((model) => (
+                  <FavoriteModelCard
+                    key={model.name}
+                    model={model}
+                    onOpen={openModel}
+                    onToggleFavorite={toggleFavorite}
+                    onEdit={canManage ? editModel : undefined}
+                  />
+                ))}
               </div>
-
-              {filtered.length === 0 ? (
-                <div className={styles.empty}>
-                  <Empty description={keyword ? "没有匹配的模型" : "还没有可用模型"} />
-                </div>
-              ) : (
-                <div className={styles.grid}>
-                  {filtered.map((model) => (
-                    <ModelCard
-                      key={model.name}
-                      model={model}
-                      favorite={favoriteModelNameSet.has(model.name)}
-                      onOpen={openModel}
-                      onToggleFavorite={toggleFavorite}
-                      onEdit={canManage ? editModel : undefined}
-                      groupLabel={
-                        model.group ? (groupLabels.get(model.group) ?? model.group) : "未分类"
-                      }
-                    />
-                  ))}
-                </div>
-              )}
             </section>
-          </>
-        )}
-      </div>
-    </main>
+          ) : null}
+
+          <section className={styles.allModels} aria-label="全部模型">
+            <div className={styles.toolbar}>
+              <Tabs
+                className={styles.tabs}
+                size="large"
+                activeKey={group}
+                items={groupTabs}
+                onChange={(key) => setGroup(key as GroupFilter)}
+                tabBarExtraContent={
+                  <div className={styles.search}>
+                    <span className={styles.count}>{filtered.length} 个模型</span>
+                    <Input
+                      size="large"
+                      allowClear
+                      prefix={<SearchOutlined />}
+                      placeholder="搜索模型名称、标题或描述"
+                      value={keyword}
+                      onChange={(event) => setKeyword(event.target.value)}
+                    />
+                  </div>
+                }
+              />
+            </div>
+
+            {filtered.length === 0 ? (
+              <div className={styles.empty}>
+                <Empty description={keyword ? "没有匹配的模型" : "还没有可用模型"} />
+              </div>
+            ) : (
+              <div className={styles.grid}>
+                {filtered.map((model) => (
+                  <ModelCard
+                    key={model.name}
+                    model={model}
+                    favorite={favoriteModelNameSet.has(model.name)}
+                    onOpen={openModel}
+                    onToggleFavorite={toggleFavorite}
+                    onEdit={canManage ? editModel : undefined}
+                    groupLabel={
+                      model.group ? (groupLabels.get(model.group) ?? model.group) : "未分类"
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+    </div>
   );
 }

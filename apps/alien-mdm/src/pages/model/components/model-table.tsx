@@ -3,6 +3,7 @@ import { Button, Popconfirm, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useMemo } from "react";
 import type { ModelSummary } from "@app-types";
+import { AppCard } from "../../../components/app-card";
 import styles from "./model-table.module.css";
 
 export interface ModelTableProps {
@@ -130,7 +131,7 @@ export function ModelTable({
   );
 
   return (
-    <div className={styles.tableCard}>
+    <AppCard className={styles.tableCard} styles={{ body: { padding: 0 } }}>
       <Table<ModelSummary>
         rowKey="name"
         columns={columns}
@@ -144,6 +145,6 @@ export function ModelTable({
           showTotal: (total) => `共 ${total} 个模型`,
         }}
       />
-    </div>
+    </AppCard>
   );
 }

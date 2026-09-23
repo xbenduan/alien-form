@@ -1,7 +1,8 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
-import { App, Button, Card, Flex, Popconfirm, Space, Table, Tag, Typography } from "antd";
+import { App, Button, Flex, Popconfirm, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useState } from "react";
+import { AppCard } from "../../../components/app-card";
 import type { ModelAction } from "../builder/commands";
 import type { GroupDraft, ModelDraft, PageDraft } from "../builder/types";
 import { GroupModal } from "./group-modal";
@@ -131,7 +132,7 @@ export function PageConfig({
 
   return (
     <Flex vertical gap={16}>
-      <Card styles={{ body: { display: "flex", flexDirection: "column", gap: 8 } }}>
+      <AppCard styles={{ body: { display: "flex", flexDirection: "column", gap: 8 } }}>
         <Flex justify="space-between" align="center">
           <div className={styles.sectionTitle}>字段分组</div>
           <Button type="link" icon={<PlusOutlined />} onClick={() => setGroupEditor({})}>
@@ -146,8 +147,8 @@ export function PageConfig({
           pagination={false}
           locale={{ emptyText: "暂无分组，未分组字段按顺序平铺" }}
         />
-      </Card>
-      <Card styles={{ body: { display: "flex", flexDirection: "column", gap: 8 } }}>
+      </AppCard>
+      <AppCard styles={{ body: { display: "flex", flexDirection: "column", gap: 8 } }}>
         <Flex justify="space-between" align="center">
           <div className={styles.sectionTitle}>页面配置</div>
           <Button type="link" icon={<PlusOutlined />} onClick={() => setPageEditor({})}>
@@ -162,7 +163,7 @@ export function PageConfig({
           pagination={false}
           locale={{ emptyText: "暂无页面，保存时将按默认模版生成 list/add/edit/detail" }}
         />
-      </Card>
+      </AppCard>
       <GroupModal
         open={Boolean(groupEditor)}
         group={groupEditor?.group}

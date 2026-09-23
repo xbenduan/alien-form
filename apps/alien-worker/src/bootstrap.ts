@@ -14,23 +14,100 @@ import {
   SYS_ROLE_USER_ID,
 } from "./domain/schemas/_sys_role.ts";
 import {
-  SYS_MODEL_TAB_ALL_ID,
-  SYS_MODEL_TAB_MODEL,
-  SYS_MODEL_TAB_OTHER_ID,
-  SYS_MODEL_TAB_SYSTEM_ID,
-} from "./domain/schemas/_sys_model_tab.ts";
+  SYS_MODEL_CATEGORY_ALL_ID,
+  SYS_MODEL_CATEGORY_MODEL,
+  SYS_MODEL_CATEGORY_OTHER_ID,
+  SYS_MODEL_CATEGORY_SYSTEM_ID,
+} from "./domain/schemas/_sys_model_category.ts";
 import { hashPassword } from "./services/auth/password.ts";
 import type { Container } from "./container.ts";
 
 /** Creates missing built-in models without overwriting user-published configuration. */
 export async function ensureBootstrapped(container: Container): Promise<void> {
+  if (container.db) await migrateLegacyModelCategory(container.db);
   for (const [, registration] of container.models.entries()) {
     if (!registration.schema) continue;
     await container.modelService.ensureSystemModel(registration.schema);
   }
   await ensureRoles(container);
-  await ensureModelTabs(container);
+  await ensureModelCategories(container);
   await ensureSysAdmin(container);
+}
+
+/** Finishes the dynamic-table part of the model category rename once per database. */
+async function migrateLegacyModelCategory(db: D1Database): Promise<void> {
+  const migration = "migration:model-category";
+  if (await db.prepare(`SELECT 1 FROM "_sequences" WHERE "name" = ?`).bind(migration).first()) {
+    return;
+  }
+
+  const [legacyTable, categoryTable, roleTable] = await Promise.all([
+    db
+      .prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '_sys_model_tab'`)
+      .first(),
+    db
+      .prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '_sys_model_category'`)
+      .first(),
+    db.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '_sys_role'`).first(),
+  ]);
+  if (legacyTable && categoryTable) {
+    throw new Error("模型分类迁移失败：新旧物理表同时存在");
+  }
+
+  const statements: D1PreparedStatement[] = [];
+  if (legacyTable) {
+    statements.push(db.prepare(`ALTER TABLE "_sys_model_tab" RENAME TO "_sys_model_category"`));
+  }
+  if (legacyTable || categoryTable) {
+    statements.push(
+      db.prepare(
+        `UPDATE "_sys_model_category"
+         SET "id" = CASE "id"
+           WHEN 'SYSTAB000001' THEN 'SYSCATEGORY000001'
+           WHEN 'SYSTAB000002' THEN 'SYSCATEGORY000002'
+           WHEN 'SYSTAB000003' THEN 'SYSCATEGORY000003'
+           ELSE "id"
+         END`,
+      ),
+      db.prepare(`DROP INDEX IF EXISTS "uidx__sys_model_tab_code"`),
+      db.prepare(`DROP INDEX IF EXISTS "idx__sys_model_tab_code"`),
+      db.prepare(`DROP INDEX IF EXISTS "idx__sys_model_tab_name"`),
+      db.prepare(`DROP INDEX IF EXISTS "idx__sys_model_tab_order"`),
+      db.prepare(
+        `CREATE UNIQUE INDEX IF NOT EXISTS "uidx__sys_model_category_code"
+         ON "_sys_model_category" ("code")`,
+      ),
+      db.prepare(
+        `CREATE INDEX IF NOT EXISTS "idx__sys_model_category_code"
+         ON "_sys_model_category" ("code")`,
+      ),
+      db.prepare(
+        `CREATE INDEX IF NOT EXISTS "idx__sys_model_category_name"
+         ON "_sys_model_category" ("name")`,
+      ),
+      db.prepare(
+        `CREATE INDEX IF NOT EXISTS "idx__sys_model_category_order"
+         ON "_sys_model_category" ("order")`,
+      ),
+    );
+  }
+  if (roleTable) {
+    statements.push(
+      db.prepare(
+        `UPDATE "_sys_role"
+         SET "data_content" = replace(
+           "data_content",
+           '"model":"_sys_model_tab"',
+           '"model":"_sys_model_category"'
+         )
+         WHERE "data_content" LIKE '%"model":"_sys_model_tab"%'`,
+      ),
+    );
+  }
+  statements.push(
+    db.prepare(`INSERT INTO "_sequences" ("name", "next") VALUES (?, 1)`).bind(migration),
+  );
+  await db.batch(statements);
 }
 
 /** Creates a record with a stable ID only when it does not already exist. */
@@ -114,23 +191,23 @@ async function ensureRoles(container: Container): Promise<void> {
   });
 }
 
-/** Seeds navigation tabs used by the model home page and editor. */
-async function ensureModelTabs(container: Container): Promise<void> {
-  await ensureRecord(container, SYS_MODEL_TAB_MODEL, SYS_MODEL_TAB_ALL_ID, {
+/** Seeds categories used by the model home page and editor. */
+async function ensureModelCategories(container: Container): Promise<void> {
+  await ensureRecord(container, SYS_MODEL_CATEGORY_MODEL, SYS_MODEL_CATEGORY_ALL_ID, {
     code: "all",
     name: "全部",
     order: 0,
     aggregate: true,
     description: "聚合展示全部可访问模型。",
   });
-  await ensureRecord(container, SYS_MODEL_TAB_MODEL, SYS_MODEL_TAB_SYSTEM_ID, {
+  await ensureRecord(container, SYS_MODEL_CATEGORY_MODEL, SYS_MODEL_CATEGORY_SYSTEM_ID, {
     code: "system",
     name: "系统",
     order: 10,
     aggregate: false,
     description: "系统内置模型。",
   });
-  await ensureRecord(container, SYS_MODEL_TAB_MODEL, SYS_MODEL_TAB_OTHER_ID, {
+  await ensureRecord(container, SYS_MODEL_CATEGORY_MODEL, SYS_MODEL_CATEGORY_OTHER_ID, {
     code: "other",
     name: "其他",
     order: 20,
