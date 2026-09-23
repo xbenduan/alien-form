@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { ModelFieldSchema, ModelSchema } from "@alien-form/protocol";
+import type { AlienSchema } from "@alien-form/protocol";
 import { compileMigrationPlan, compileStorageManifest } from "./storage-compiler.ts";
 
-function systemField(key: "id" | "createdAt" | "updatedAt"): ModelFieldSchema {
+function systemField(key: "id" | "createdAt" | "updatedAt"): AlienSchema["fields"][number] {
   return {
     id: `article.${key}`,
     key,
@@ -18,7 +18,7 @@ function systemField(key: "id" | "createdAt" | "updatedAt"): ModelFieldSchema {
   };
 }
 
-function model(fields: ModelFieldSchema[], version = 1): ModelSchema {
+function model(fields: AlienSchema["fields"], version = 1): AlienSchema {
   const allFields = [
     systemField("id"),
     ...fields,

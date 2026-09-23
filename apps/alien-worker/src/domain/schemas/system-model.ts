@@ -1,14 +1,14 @@
-import type { FieldSchema, ModelFieldSchema } from "@alien-form/protocol";
+import type { AlienFieldSchema, AlienSchema } from "@alien-form/protocol";
 export { createRecordPages as recordPages } from "@alien-form/protocol";
 
 /** Creates a physical field owned by a built-in model. */
 export function physicalField(
   model: string,
   key: string,
-  definition: Omit<ModelFieldSchema, "id" | "key"> & {
-    storage: NonNullable<ModelFieldSchema["storage"]>;
+  definition: Omit<AlienSchema["fields"][number], "id" | "key"> & {
+    storage: NonNullable<AlienSchema["fields"][number]["storage"]>;
   },
-): ModelFieldSchema {
+): AlienSchema["fields"][number] {
   return {
     id: `${model}.${key}`,
     key,
@@ -20,8 +20,8 @@ export function physicalField(
 export function virtualField(
   model: string,
   key: string,
-  definition: Omit<ModelFieldSchema, "id" | "key" | "storage">,
-): ModelFieldSchema {
+  definition: Omit<AlienSchema["fields"][number], "id" | "key" | "storage">,
+): AlienSchema["fields"][number] {
   return {
     id: `${model}.${key}`,
     key,
@@ -31,13 +31,13 @@ export function virtualField(
 
 /** Builds the persisted form AST from field references and real Card nodes. */
 export function modelForm(
-  fields: ModelFieldSchema[],
+  fields: AlienSchema["fields"],
   groupKeys: string[],
-  extraGroups: Record<string, FieldSchema> = {},
-): FieldSchema {
+  extraGroups: Record<string, AlienFieldSchema> = {},
+): AlienFieldSchema {
   const fieldKeys = new Set(fields.map((field) => field.key));
   const grouped = new Set(groupKeys);
-  const properties: Record<string, FieldSchema> = {
+  const properties: Record<string, AlienFieldSchema> = {
     base: {
       type: "void",
       component: "Card",
@@ -72,7 +72,7 @@ export function modelForm(
 }
 
 /** Creates the common ID and timestamp fields used by built-in models. */
-export function systemFields(model: string): ModelFieldSchema[] {
+export function systemFields(model: string): AlienSchema["fields"] {
   const detailOnly = {
     display: "{{ mode === 'detail' ? 'visible' : 'none' }}" as const,
     disabled: true,

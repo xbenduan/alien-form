@@ -39,8 +39,8 @@ export type {
   FormInstance,
 } from "./form-types.ts";
 
-export { fieldSchema, displaySchema } from "./field-schema.ts";
-export type { default as FieldSchema } from "./field-schema.ts";
+export { alienFieldSchema, alienPageSchema, alienSchema } from "./alien-schema.ts";
+export type { AlienFieldSchema, AlienSchema, AlienValue } from "./alien-schema.ts";
 
 export {
   COMPONENT_CAPABILITIES,
@@ -57,30 +57,6 @@ export {
 } from "./capabilities.ts";
 
 export {
-  modelSchemaSchema,
-  modelSummarySchema,
-  parseModelSummaries,
-  modelFieldSchema,
-  modelFieldStorageSchema,
-  pageSchema,
-  databaseRelationSchema,
-  databaseColumnTypeSchema,
-  fieldValueTypeSchema,
-  databaseRelationKindSchema,
-  openModeSchema,
-  type ModelSchema,
-  type ModelSummary,
-  type ModelFieldSchema,
-  type ModelFieldStorage,
-  type PageSchema,
-  type DatabaseRelation,
-  type DatabaseColumnType,
-  type FieldValueType,
-  type DatabaseRelationKind,
-  type OpenMode,
-} from "./model-schema.ts";
-
-export {
   PAGE_TEMPLATES,
   SYSTEM_FIELD_KEYS,
   createDefaultPages,
@@ -93,10 +69,10 @@ export {
 export { SYSTEM_FIELD_FORM, createModelTemplate } from "./model-template.ts";
 
 export {
-  assertModelSchema,
-  parsePageSchema,
-  parseModelSchema,
-  isModelSchema,
+  assertAlienSchema,
+  parseAlienPage,
+  parseAlienSchema,
+  isAlienSchema,
   assertStorageCompatible,
   modelFormProperties,
   physicalFields,
@@ -125,6 +101,8 @@ export { isApiEnvelope, type ApiEnvelope, type ApiStatus } from "./envelope.ts";
 
 export {
   paginationSchema,
+  modelSummarySchema,
+  parseModelSummaries,
   sorterSchema,
   listRequestSchema,
   optionsRequestSchema,
@@ -133,6 +111,7 @@ export {
   batchDeleteRequestSchema,
   loginRequestSchema,
   type ListRequest,
+  type ModelSummary,
   type ListResponse,
   type OptionsRequest,
   type OptionsResponse,

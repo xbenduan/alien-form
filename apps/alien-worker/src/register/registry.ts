@@ -1,4 +1,4 @@
-import type { ModelRecord, ModelSchema } from "@alien-form/protocol";
+import type { ModelRecord, AlienSchema } from "@alien-form/protocol";
 import type { ModelStore } from "../store/model-store.ts";
 import type { RecordStore } from "../store/record-store.ts";
 
@@ -8,7 +8,7 @@ interface ModelDataContext {
 }
 
 export interface ModelValidationContext extends ModelDataContext {
-  model: ModelSchema;
+  model: AlienSchema;
   actorId: string;
   operation: "create" | "update";
   record: Readonly<ModelRecord>;
@@ -34,7 +34,7 @@ export type ModelInputTransformer = (
 ) => Record<string, unknown> | Promise<Record<string, unknown>>;
 
 export interface ModelLifecycleContext extends ModelDataContext {
-  model: ModelSchema;
+  model: AlienSchema;
   actorId: string;
   operation: "create" | "update" | "delete";
   record: Readonly<ModelRecord>;
@@ -53,7 +53,7 @@ export interface ModelLifecycleHooks {
 }
 
 export interface ModelRegistration {
-  schema?: ModelSchema;
+  schema?: AlienSchema;
   transform?: ModelInputTransformer;
   validators?: Record<string, ModelFieldValidator>;
   validate?: ModelRecordValidator;
@@ -68,7 +68,7 @@ export class ModelRegistry {
     if (this.frozen) throw new Error("ModelRegistry 已冻结");
     if (this.registrations.has(name)) throw new Error(`模型重复注册：${name}`);
     if (registration.schema?.name !== undefined && registration.schema.name !== name) {
-      throw new Error(`注册名与 ModelSchema.name 不一致：${name}`);
+      throw new Error(`注册名与 AlienSchema.name 不一致：${name}`);
     }
     this.registrations.set(name, registration);
   }

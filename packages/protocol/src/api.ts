@@ -3,6 +3,42 @@ import type { ModelRecord } from "./runtime-types.ts";
 
 const modelName = z.string().regex(/^[A-Za-z_][A-Za-z0-9_-]*$/, "模型名不合法");
 
+export interface ModelSummary {
+  name: string;
+  title: string;
+  version: number;
+  system?: boolean;
+  creatorId?: string;
+  subtitle?: string;
+  description?: string;
+  group?: string;
+  singularLabel?: string;
+  pluralLabel?: string;
+  defaultPageSize?: number;
+  fieldCount: number;
+  updatedAt: string;
+}
+
+export const modelSummarySchema: z.ZodType<ModelSummary> = z.object({
+  name: modelName,
+  title: z.string(),
+  version: z.number().int().positive(),
+  system: z.boolean().optional(),
+  creatorId: z.string().optional(),
+  subtitle: z.string().optional(),
+  description: z.string().optional(),
+  group: z.string().optional(),
+  singularLabel: z.string().optional(),
+  pluralLabel: z.string().optional(),
+  defaultPageSize: z.number().int().positive().optional(),
+  fieldCount: z.number().int().nonnegative(),
+  updatedAt: z.string(),
+});
+
+export function parseModelSummaries(value: unknown): ModelSummary[] {
+  return z.array(modelSummarySchema).parse(value);
+}
+
 export const paginationSchema = z.object({
   current: z.number().int().positive(),
   pageSize: z.number().int().min(1).max(200),

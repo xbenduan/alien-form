@@ -1,9 +1,9 @@
-import type { DatabaseColumnType, ModelFieldSchema, ModelSchema } from "@alien-form/protocol";
+import type { AlienSchema } from "@alien-form/protocol";
 import { quoteColumn } from "./sql.ts";
 
 export interface FieldPlan {
   field: string;
-  type: DatabaseColumnType;
+  type: NonNullable<AlienSchema["fields"][number]["storage"]>["type"];
   storage: "physical" | "virtual";
   column?: string;
   json: boolean;
@@ -19,13 +19,15 @@ export interface RefField {
   multi: boolean;
 }
 
-export function columnName(field: ModelFieldSchema): string {
+export function columnName(field: AlienSchema["fields"][number]): string {
   if (field.key === "createdAt") return "created_at";
   if (field.key === "updatedAt") return "updated_at";
   return field.storage?.column ?? field.key;
 }
 
-function inferredType(field: ModelFieldSchema): DatabaseColumnType {
+function inferredType(
+  field: AlienSchema["fields"][number],
+): NonNullable<AlienSchema["fields"][number]["storage"]>["type"] {
   if (field.storage) return field.storage.type;
   if (field.type === "number") return "real";
   if (field.type === "boolean") return "boolean";
@@ -33,7 +35,7 @@ function inferredType(field: ModelFieldSchema): DatabaseColumnType {
   return "text";
 }
 
-export function planFields(schema: ModelSchema): FieldPlan[] {
+export function planFields(schema: AlienSchema): FieldPlan[] {
   return schema.fields
     .filter((field) => field.relation?.kind !== "many-to-many")
     .map((field) => {
@@ -51,7 +53,7 @@ export function planFields(schema: ModelSchema): FieldPlan[] {
     });
 }
 
-export function planByField(schema: ModelSchema): Map<string, FieldPlan> {
+export function planByField(schema: AlienSchema): Map<string, FieldPlan> {
   return new Map(planFields(schema).map((plan) => [plan.field, plan]));
 }
 
@@ -60,11 +62,14 @@ export function fieldExpression(plan: FieldPlan): string {
   return `json_extract("data_content", '$.${plan.field}')`;
 }
 
-export function modelField(schema: ModelSchema, key: string): ModelFieldSchema | undefined {
+export function modelField(
+  schema: AlienSchema,
+  key: string,
+): AlienSchema["fields"][number] | undefined {
   return schema.fields.find((field) => field.key === key);
 }
 
-export function refFields(schema: ModelSchema): RefField[] {
+export function refFields(schema: AlienSchema): RefField[] {
   return schema.fields.flatMap((field) => {
     const relation = field.relation;
     if (!relation) return [];

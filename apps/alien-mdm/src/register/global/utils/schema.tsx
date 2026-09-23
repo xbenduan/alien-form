@@ -1,14 +1,9 @@
 import type { ReactNode } from "react";
 import type { TableColumnsType } from "antd";
 import { SchemaComponent, type ValueSource } from "@alien-form/react";
-import {
-  compileRuntimeValue,
-  type DatabaseColumnType,
-  type ModelFieldSchema,
-  type FieldSchema,
-} from "@alien-form/engine";
+import { compileRuntimeValue, type AlienSchema, type AlienFieldSchema } from "@alien-form/engine";
 
-function defaultComponent(field: FieldSchema): string {
+function defaultComponent(field: AlienFieldSchema): string {
   if (field.type === "array" || field.type === "object") return "Card";
   return "Input";
 }
@@ -16,11 +11,11 @@ function defaultComponent(field: FieldSchema): string {
 export interface FilterField {
   name: string;
   title: string;
-  type: DatabaseColumnType;
+  type: NonNullable<AlienSchema["fields"][number]["storage"]>["type"];
   render(value: unknown, onChange: (value: unknown) => void): ReactNode;
 }
 
-function isComplex(field: FieldSchema): boolean {
+function isComplex(field: AlienFieldSchema): boolean {
   return field.type === "object" || field.type === "array";
 }
 
@@ -35,11 +30,11 @@ function readScope(scope: ValueSource<Record<string, unknown>>): Record<string, 
  * component/props 始终从 form-schema 按 key 取。
  */
 function orderedFields(
-  properties: Record<string, FieldSchema>,
-  fields?: ModelFieldSchema[],
-): { key: string; field: FieldSchema; column: ModelFieldSchema }[] {
-  const schemas = new Map<string, FieldSchema>();
-  const collect = (nodes: Record<string, FieldSchema>) => {
+  properties: Record<string, AlienFieldSchema>,
+  fields?: AlienSchema["fields"],
+): { key: string; field: AlienFieldSchema; column: AlienSchema["fields"][number] }[] {
+  const schemas = new Map<string, AlienFieldSchema>();
+  const collect = (nodes: Record<string, AlienFieldSchema>) => {
     for (const [key, node] of Object.entries(nodes)) {
       if (node.type === "void") collect(node.properties ?? {});
       else schemas.set(key, node);
@@ -56,10 +51,10 @@ function orderedFields(
  * 列集合与可见性由 fields 决定：遍历 fields（visible），渲染组件从 form-schema 按 key 取。
  */
 export function schemaToColumns<T extends object = Record<string, unknown>>(
-  schema?: FieldSchema,
+  schema?: AlienFieldSchema,
   scope: ValueSource<Record<string, unknown>> = EMPTY_SCOPE,
   domain?: string,
-  fields?: ModelFieldSchema[],
+  fields?: AlienSchema["fields"],
 ): TableColumnsType<T> {
   return orderedFields(schema?.properties ?? {}, fields).map(({ key, field, column }) => {
     const schemaProps = compileRuntimeValue({
@@ -104,10 +99,10 @@ export function schemaToColumns<T extends object = Record<string, unknown>>(
  * 筛选器集合由 fields 决定：遍历 fields（filterable 且非 object/array），组件从 form-schema 按 key 取。
  */
 export function schemaToFilterFields(
-  schema?: FieldSchema,
+  schema?: AlienFieldSchema,
   scope: ValueSource<Record<string, unknown>> = EMPTY_SCOPE,
   domain?: string,
-  fields?: ModelFieldSchema[],
+  fields?: AlienSchema["fields"],
 ): FilterField[] {
   return orderedFields(schema?.properties ?? {}, fields)
     .filter(({ field, column }) => column.filter?.hidden !== true && !isComplex(field))

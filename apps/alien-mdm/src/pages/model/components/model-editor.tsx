@@ -3,7 +3,7 @@ import { App, Alert, Button, Card, Flex, Skeleton, Space, Steps } from "antd";
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRuntime } from "@alien-form/react";
-import type { ModelSchema } from "@alien-form/protocol";
+import type { AlienSchema } from "@alien-form/protocol";
 import { createId, decodeModel, encodeModel } from "../builder/codec";
 import { reduceModel } from "../builder/commands";
 import { createDefaultDraft } from "../builder/default-draft";
@@ -33,7 +33,7 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
 
   useEffect(() => {
     if (!sourceModelCode) return;
-    const getModel = runtime.getService("model.get") as (modelCode: string) => Promise<ModelSchema>;
+    const getModel = runtime.getService("model.get") as (modelCode: string) => Promise<AlienSchema>;
     void getModel(sourceModelCode)
       .then((model) => {
         setReadOnly(Boolean(modelCode && model.system));
@@ -62,13 +62,13 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
       if (modelCode) {
         const update = runtime.getService("model.update") as (
           modelCode: string,
-          model: ModelSchema,
-        ) => Promise<ModelSchema>;
+          model: AlienSchema,
+        ) => Promise<AlienSchema>;
         await update(modelCode, model);
       } else {
         const create = runtime.getService("model.create") as (
-          model: ModelSchema,
-        ) => Promise<ModelSchema>;
+          model: AlienSchema,
+        ) => Promise<AlienSchema>;
         await create(model);
       }
       message.success(modelCode ? "模型保存成功" : isCopy ? "模型复制成功" : "模型创建成功");

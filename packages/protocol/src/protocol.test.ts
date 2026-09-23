@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
-  assertModelSchema,
+  assertAlienSchema,
   assertStorageCompatible,
-  parseModelSchema,
-  parsePageSchema,
-  type ModelFieldSchema,
-  type ModelSchema,
+  parseAlienSchema,
+  parseAlienPage,
+  type AlienSchema,
 } from "./index.ts";
 
-function model(): ModelSchema {
-  const fields: ModelFieldSchema[] = [
+function model(): AlienSchema {
+  const fields: AlienSchema["fields"] = [
     {
       id: "orders.name",
       key: "name",
@@ -89,7 +88,7 @@ function model(): ModelSchema {
   };
 }
 
-function parentField(): ModelFieldSchema {
+function parentField(): AlienSchema["fields"][number] {
   return {
     id: "orders.parentId",
     key: "parentId",
@@ -106,9 +105,9 @@ function parentField(): ModelFieldSchema {
   };
 }
 
-describe("ModelSchema", () => {
+describe("AlienSchema", () => {
   it("解析 physical 与 virtual 字段", () => {
-    const parsed = parseModelSchema(model());
+    const parsed = parseAlienSchema(model());
     expect(parsed.name).toBe("orders");
     expect(parsed.fields[0].storage?.type).toBe("text");
     expect(parsed.fields[1].storage).toBeUndefined();
@@ -117,7 +116,7 @@ describe("ModelSchema", () => {
   it("拒绝字段表现层重复声明根属性", () => {
     const value = model();
     value.fields[0].form = { ...value.fields[0].form, type: "string" };
-    expect(() => assertModelSchema(value)).toThrow(/只能声明在字段根部/);
+    expect(() => assertAlienSchema(value)).toThrow(/只能声明在字段根部/);
   });
 
   it("拒绝关联表单重复声明可推导参数", () => {
@@ -126,13 +125,13 @@ describe("ModelSchema", () => {
       ...parentField(),
       form: { component: "TreeSelect", props: { model: "orders" } },
     });
-    expect(() => assertModelSchema(value)).toThrow(/由 relation 派生/);
+    expect(() => assertAlienSchema(value)).toThrow(/由 relation 派生/);
   });
 
   it("拒绝非 JSON 物理列存储复杂值", () => {
     const value = model();
     value.fields[0] = { ...value.fields[0], type: "array" };
-    expect(() => assertModelSchema(value)).toThrow(/只有 json/);
+    expect(() => assertAlienSchema(value)).toThrow(/只有 json/);
   });
 
   it("拒绝修改已发布物理字段", () => {
@@ -152,25 +151,25 @@ describe("ModelSchema", () => {
   it("只允许自关联字段使用 TreeSelect", () => {
     const valid = model();
     valid.fields.unshift(parentField());
-    expect(() => assertModelSchema(valid)).not.toThrow();
+    expect(() => assertAlienSchema(valid)).not.toThrow();
 
     const invalid = model();
     invalid.fields.unshift({
       ...parentField(),
       relation: { ...parentField().relation!, target: "users" },
     });
-    expect(() => assertModelSchema(invalid)).toThrow(/仅自关联字段/);
+    expect(() => assertAlienSchema(invalid)).toThrow(/仅自关联字段/);
   });
 
   it("拒绝重复页面路由", () => {
     const value = model();
     value.pages.push({ ...value.pages[0] });
-    expect(() => assertModelSchema(value)).toThrow(/router 重复/);
+    expect(() => assertAlienSchema(value)).toThrow(/router 重复/);
   });
 
   it("校验根组件、slot 与必填 props", () => {
     expect(() =>
-      parsePageSchema({
+      parseAlienPage({
         router: "list",
         permission: "read",
         type: "void",
@@ -179,7 +178,7 @@ describe("ModelSchema", () => {
       }),
     ).not.toThrow();
     expect(() =>
-      parsePageSchema({
+      parseAlienPage({
         router: "list",
         permission: "read",
         type: "void",
@@ -187,7 +186,7 @@ describe("ModelSchema", () => {
       }),
     ).toThrow(/modelCode 必填/);
     expect(() =>
-      parsePageSchema({
+      parseAlienPage({
         router: "list",
         permission: "read",
         type: "void",
@@ -198,7 +197,7 @@ describe("ModelSchema", () => {
 
   it("拒绝组件与字段类型不匹配", () => {
     expect(() =>
-      parsePageSchema({
+      parseAlienPage({
         router: "detail",
         permission: "read",
         type: "void",
@@ -217,12 +216,12 @@ describe("ModelSchema", () => {
       },
     });
     expect(() =>
-      parsePageSchema(page('{{ async () => $service("records.list")() }}')),
+      parseAlienPage(page('{{ async () => $service("records.list")() }}')),
     ).not.toThrow();
-    expect(() => parsePageSchema(page('{{ () => $service("missing")() }}'))).toThrow(
+    expect(() => parseAlienPage(page('{{ () => $service("missing")() }}'))).toThrow(
       /服务能力不存在/,
     );
-    expect(() => parsePageSchema(page("{{ () => ( }}"))).toThrow(/语法不合法/);
+    expect(() => parseAlienPage(page("{{ () => ( }}"))).toThrow(/语法不合法/);
   });
 
   it("仅在 rowActions slot 中开放页面 $row 上下文", () => {
@@ -232,7 +231,7 @@ describe("ModelSchema", () => {
       props: { onClick: "{{ () => $utils.message.info($row.id) }}" },
     };
     expect(() =>
-      parsePageSchema({
+      parseAlienPage({
         router: "list",
         permission: "read",
         type: "void",
@@ -240,7 +239,7 @@ describe("ModelSchema", () => {
       }),
     ).toThrow(/\$row/);
     expect(() =>
-      parsePageSchema({
+      parseAlienPage({
         router: "list",
         permission: "read",
         type: "void",

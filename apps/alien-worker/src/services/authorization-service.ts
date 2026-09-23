@@ -1,4 +1,9 @@
-import type { FieldSchema, ModelRecord, ModelSchema, PermissionAction } from "@alien-form/protocol";
+import type {
+  AlienFieldSchema,
+  ModelRecord,
+  AlienSchema,
+  PermissionAction,
+} from "@alien-form/protocol";
 import { SYS_MODEL_TAB_MODEL } from "../domain/schemas/_sys_model_tab.ts";
 import { SYS_ROLE_MODEL, SYS_ROLE_SUPER_ADMIN_ID } from "../domain/schemas/_sys_role.ts";
 import { SYS_ADMIN_ID, SYS_USER_MODEL } from "../domain/schemas/_sys_user.ts";
@@ -33,10 +38,10 @@ export interface AccessProfile {
 const ACTIONS = new Set<PermissionAction>(["read", "create", "update", "delete"]);
 
 function projectSlots(
-  slots: FieldSchema["slots"],
+  slots: AlienFieldSchema["slots"],
   actions: ReadonlySet<PermissionAction>,
   allowed?: ReadonlySet<string>,
-): FieldSchema["slots"] {
+): AlienFieldSchema["slots"] {
   if (!slots) return undefined;
   const projected = Object.fromEntries(
     Object.entries(slots).flatMap(([name, nodes]) => {
@@ -53,10 +58,10 @@ function projectSlots(
 }
 
 function projectNode(
-  node: FieldSchema,
+  node: AlienFieldSchema,
   actions: ReadonlySet<PermissionAction>,
   allowed?: ReadonlySet<string>,
-): FieldSchema | undefined {
+): AlienFieldSchema | undefined {
   if (node.permission && !actions.has(node.permission)) return undefined;
   if (allowed && node.$ref?.startsWith("#/fields/") && !allowed.has(node.$ref.slice(9))) {
     return undefined;
@@ -198,7 +203,7 @@ export class AuthorizationService {
   /** Returns the effective data scope for one record action. */
   scope(
     profile: AccessProfile,
-    model: Pick<ModelSchema, "name" | "creatorId">,
+    model: Pick<AlienSchema, "name" | "creatorId">,
     action: PermissionAction,
   ): PermissionScope | undefined {
     if (profile.super) return "all";
@@ -209,7 +214,7 @@ export class AuthorizationService {
   }
 
   /** Returns whether an actor may see a model at all. */
-  canRead(profile: AccessProfile, model: Pick<ModelSchema, "name" | "creatorId">): boolean {
+  canRead(profile: AccessProfile, model: Pick<AlienSchema, "name" | "creatorId">): boolean {
     return this.scope(profile, model, "read") !== undefined;
   }
 
@@ -221,7 +226,7 @@ export class AuthorizationService {
   /** Throws when the actor cannot manage a model definition. */
   assertCanManageModel(
     profile: AccessProfile,
-    model: Pick<ModelSchema, "name" | "creatorId">,
+    model: Pick<AlienSchema, "name" | "creatorId">,
   ): void {
     if (!profile.super && (!profile.canCreateModel || model.creatorId !== profile.actorId)) {
       throw forbidden(`无权修改模型：${model.name}`);
@@ -231,7 +236,7 @@ export class AuthorizationService {
   /** Throws when the actor cannot perform an action on model records. */
   assertCan(
     profile: AccessProfile,
-    model: Pick<ModelSchema, "name" | "creatorId">,
+    model: Pick<AlienSchema, "name" | "creatorId">,
     action: PermissionAction,
   ): PermissionScope {
     const scope = this.scope(profile, model, action);
@@ -242,7 +247,7 @@ export class AuthorizationService {
   /** Throws when submitted fields exceed the action's field grant. */
   assertFields(
     profile: AccessProfile,
-    model: ModelSchema,
+    model: AlienSchema,
     action: PermissionAction,
     fields: Iterable<string>,
   ): void {
@@ -259,7 +264,7 @@ export class AuthorizationService {
   }
 
   /** Removes fields not granted by the effective role permissions. */
-  project(profile: AccessProfile, model: ModelSchema, record: ModelRecord): ModelRecord {
+  project(profile: AccessProfile, model: AlienSchema, record: ModelRecord): ModelRecord {
     if (
       profile.super ||
       model.name === SYS_MODEL_TAB_MODEL ||
@@ -277,7 +282,7 @@ export class AuthorizationService {
   }
 
   /** Restricts a schema to granted fields and pages before rendering or query compilation. */
-  projectSchema(profile: AccessProfile, model: ModelSchema): ModelSchema {
+  projectSchema(profile: AccessProfile, model: AlienSchema): AlienSchema {
     if (
       profile.super ||
       model.name === SYS_MODEL_TAB_MODEL ||

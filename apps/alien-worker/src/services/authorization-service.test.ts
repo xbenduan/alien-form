@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ModelRecord, ModelSchema } from "@alien-form/protocol";
+import type { ModelRecord, AlienSchema } from "@alien-form/protocol";
 import { SYS_ROLE_SUPER_ADMIN_ID } from "../domain/schemas/_sys_role.ts";
 import type { ModelStore } from "../store/model-store.ts";
 import type { RecordStore } from "../store/record-store.ts";
 import { AuthorizationService } from "./authorization-service.ts";
 
 /** Creates a minimum business model for permission tests. */
-function model(creatorId = "owner"): ModelSchema {
+function model(creatorId = "owner"): AlienSchema {
   return {
     name: "article",
     title: "文章",
@@ -41,7 +41,7 @@ function model(creatorId = "owner"): ModelSchema {
 
 /** Creates stores backed by one user and an in-memory role tree. */
 function stores(user: ModelRecord, roles: ModelRecord[]) {
-  const schemas = new Map<string, ModelSchema>([
+  const schemas = new Map<string, AlienSchema>([
     [
       "_sys_user",
       {
@@ -69,7 +69,7 @@ function stores(user: ModelRecord, roles: ModelRecord[]) {
     get: vi.fn(async (name: string) => schemas.get(name)),
   } as unknown as ModelStore;
   const records = {
-    get: vi.fn(async (schema: ModelSchema, id: string) =>
+    get: vi.fn(async (schema: AlienSchema, id: string) =>
       schema.name === "_sys_user" && id === user.id ? user : undefined,
     ),
     subtree: vi.fn(async () => roles),
@@ -217,7 +217,7 @@ describe("AuthorizationService", () => {
     ]);
     const service = new AuthorizationService(models, records);
     const profile = await service.profile("reader");
-    const schema: ModelSchema = {
+    const schema: AlienSchema = {
       ...model(),
       pages: [
         {

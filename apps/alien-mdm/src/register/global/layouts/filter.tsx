@@ -1,7 +1,7 @@
 import { Button, Card, Space } from "antd";
 import { useCallback, useMemo, useState } from "react";
 import { usePage, type ComponentProps, type ValueSource } from "@alien-form/react";
-import type { ModelFieldSchema, FieldSchema } from "@alien-form/engine";
+import type { AlienFieldSchema, AlienSchema } from "@alien-form/engine";
 import type { FilterField } from "../utils/schema";
 import styles from "./filter.module.css";
 
@@ -45,12 +45,12 @@ export function Filter({
   schema,
   filterFields: buildFilterFields,
 }: ComponentProps & {
-  schema?: FieldSchema;
+  schema?: AlienFieldSchema;
   filterFields?: (
-    schema?: FieldSchema,
+    schema?: AlienFieldSchema,
     scope?: ValueSource<Record<string, unknown>>,
     domain?: string,
-    fields?: ModelFieldSchema[],
+    fields?: AlienSchema["fields"],
   ) => FilterField[];
 }) {
   const page = usePage();

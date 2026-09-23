@@ -1,8 +1,9 @@
 import { Drawer, Modal } from "antd";
 import type { ReactNode } from "react";
 import type { ComponentProps } from "@alien-form/react";
-import type { OpenMode } from "@alien-form/engine";
 import styles from "./overlay.module.css";
+
+type OpenMode = "page" | "modal" | "drawer";
 
 export function Overlay({
   open = true,

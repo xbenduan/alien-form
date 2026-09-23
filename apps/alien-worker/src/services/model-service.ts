@@ -1,4 +1,4 @@
-import { parseModelSchema, type ModelSchema, type ModelSummary } from "@alien-form/protocol";
+import { parseAlienSchema, type AlienSchema, type ModelSummary } from "@alien-form/protocol";
 import { compileMigrationPlan } from "../domain/storage-compiler.ts";
 import { SYS_MODEL_TAB_MODEL } from "../domain/schemas/_sys_model_tab.ts";
 import { badRequest, conflict, forbidden, notFound } from "../errors.ts";
@@ -25,7 +25,7 @@ export class ModelService {
       .filter((model) => this.authorization.canRead(profile, model));
   }
 
-  async get(name: string, actorId: string): Promise<ModelSchema> {
+  async get(name: string, actorId: string): Promise<AlienSchema> {
     const model = await this.models.get(name);
     if (!model) throw notFound(`模型不存在：${name}`);
     const profile = await this.authorization.profile(actorId);
@@ -36,7 +36,7 @@ export class ModelService {
     };
   }
 
-  async create(value: unknown, actorId: string): Promise<ModelSchema> {
+  async create(value: unknown, actorId: string): Promise<AlienSchema> {
     this.authorization.assertCanCreateModel(await this.authorization.profile(actorId));
     const incoming = this.parse({
       ...(value as object),
@@ -50,7 +50,7 @@ export class ModelService {
     return this.publish(undefined, incoming);
   }
 
-  async update(name: string, value: unknown, actorId: string): Promise<ModelSchema> {
+  async update(name: string, value: unknown, actorId: string): Promise<AlienSchema> {
     if (this.isSystem(name)) throw forbidden("系统模型禁止修改");
     const submitted = this.parse(value);
     const current = await this.models.get(name);
@@ -79,7 +79,7 @@ export class ModelService {
   }
 
   /** Installs or upgrades a code-owned system schema during bootstrap. */
-  async ensureSystemModel(value: ModelSchema): Promise<ModelSchema> {
+  async ensureSystemModel(value: AlienSchema): Promise<AlienSchema> {
     const desired = this.parse({ ...value, system: true, creatorId: undefined });
     const current = await this.models.get(desired.name);
     if (!current) return this.publish(undefined, { ...desired, version: 0 });
@@ -90,9 +90,9 @@ export class ModelService {
   }
 
   private async publish(
-    current: ModelSchema | undefined,
-    incoming: ModelSchema,
-  ): Promise<ModelSchema> {
+    current: AlienSchema | undefined,
+    incoming: AlienSchema,
+  ): Promise<AlienSchema> {
     const schema = this.parse({
       ...incoming,
       version: (current?.version ?? 0) + 1,
@@ -114,9 +114,9 @@ export class ModelService {
     }
   }
 
-  private parse(value: unknown): ModelSchema {
+  private parse(value: unknown): AlienSchema {
     try {
-      return parseModelSchema(value);
+      return parseAlienSchema(value);
     } catch (reason) {
       throw badRequest(reason instanceof Error ? reason.message : String(reason));
     }
@@ -127,10 +127,10 @@ export class ModelService {
   }
 
   private async assertGroup(group: string | undefined): Promise<void> {
-    if (!group) throw badRequest("模型必须选择一个 Tab");
+    if (!group) throw badRequest("模型必须选择一个分类");
     const tabSchema = await this.models.get(SYS_MODEL_TAB_MODEL);
-    if (!tabSchema) throw badRequest("模型 Tab 尚未初始化");
+    if (!tabSchema) throw badRequest("模型分类 尚未初始化");
     const tab = await this.records.findByField(tabSchema, "code", group);
-    if (!tab || tab.aggregate === true) throw badRequest(`模型 Tab 不存在或不可用于归类：${group}`);
+    if (!tab || tab.aggregate === true) throw badRequest(`模型分类 不存在或不可用于归类：${group}`);
   }
 }

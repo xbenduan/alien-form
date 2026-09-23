@@ -1,7 +1,7 @@
 import { createForm, type FormInstance } from "@alien-form/core";
 import type { ComponentCapability, EnumCapability, RuntimeCapability } from "@alien-form/protocol";
 import { compileModel, matchPage } from "../compiler";
-import type { ModelSchema, CompiledPage } from "../protocol";
+import type { AlienSchema, CompiledPage } from "../protocol";
 import {
   Registry,
   type ComponentDefinition,
@@ -9,7 +9,7 @@ import {
   type RuntimeDefinition,
 } from "../registry";
 
-export type SchemaLoader = (modelCode: string) => Promise<ModelSchema>;
+export type SchemaLoader = (modelCode: string) => Promise<AlienSchema>;
 export type RuntimeService = (...args: any[]) => unknown;
 type RegistrationKind = "component" | "service" | "enum" | "util";
 type OverrideKeys = Record<RegistrationKind, Set<string>>;
@@ -154,7 +154,7 @@ export class Runtime {
     this.schemaLoader = loader;
   }
 
-  async loadModel(modelCode: string): Promise<ModelSchema> {
+  async loadModel(modelCode: string): Promise<AlienSchema> {
     if (!this.schemaLoader) throw new Error("Schema loader is not configured");
     return this.schemaLoader(modelCode);
   }
@@ -176,7 +176,7 @@ export class PageRuntime {
 
   constructor(
     readonly runtime: Runtime,
-    readonly model: ModelSchema,
+    readonly model: AlienSchema,
     readonly page: CompiledPage,
     readonly query: Record<string, string>,
   ) {

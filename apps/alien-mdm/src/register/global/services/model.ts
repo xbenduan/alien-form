@@ -1,11 +1,11 @@
 import { defineService, type Runtime } from "@alien-form/engine";
-import { parseModelSchema, parseModelSummaries, type ModelSchema } from "@alien-form/protocol";
+import { parseAlienSchema, parseModelSummaries, type AlienSchema } from "@alien-form/protocol";
 import { transport } from "@runtime/transport";
 
 export function registerModelServices(runtime: Runtime): void {
   const list = async () => parseModelSummaries(await transport.send<unknown>("/api/v1/models"));
   const get = async (modelCode: string) =>
-    parseModelSchema(await transport.send<unknown>(`/api/v1/models/${modelCode}`));
+    parseAlienSchema(await transport.send<unknown>(`/api/v1/models/${modelCode}`));
 
   runtime.service("model.list", defineService(list, { description: "查询模型列表" }));
   runtime.service("model.get", defineService(get, { description: "读取模型" }));
@@ -32,8 +32,8 @@ export function registerModelServices(runtime: Runtime): void {
   runtime.service(
     "model.create",
     defineService(
-      async (schema: ModelSchema) =>
-        parseModelSchema(
+      async (schema: AlienSchema) =>
+        parseAlienSchema(
           await transport.send<unknown>("/api/v1/models", {
             method: "POST",
             body: JSON.stringify(schema),
@@ -45,8 +45,8 @@ export function registerModelServices(runtime: Runtime): void {
   runtime.service(
     "model.update",
     defineService(
-      async (modelCode: string, schema: ModelSchema) =>
-        parseModelSchema(
+      async (modelCode: string, schema: AlienSchema) =>
+        parseAlienSchema(
           await transport.send<unknown>(`/api/v1/models/${modelCode}`, {
             method: "PUT",
             body: JSON.stringify(schema),

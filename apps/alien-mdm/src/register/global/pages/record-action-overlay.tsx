@@ -1,9 +1,11 @@
 import { SaveOutlined } from "@ant-design/icons";
 import { Button, Space } from "antd";
 import { useRef, useState, type ReactNode } from "react";
-import type { FieldSchema, OpenMode } from "@alien-form/engine";
+import type { AlienFieldSchema } from "@alien-form/engine";
 import { Overlay } from "../ui/overlay";
 import { RecordForm, type RecordActionMode, type RecordFormHandle } from "./record-form";
+
+type OpenMode = "page" | "modal" | "drawer";
 
 export function RecordActionOverlay({
   openMode,
@@ -21,7 +23,7 @@ export function RecordActionOverlay({
   mode: RecordActionMode;
   modelCode: string;
   recordId?: string;
-  schema: FieldSchema;
+  schema: AlienFieldSchema;
   title: string;
   ok?: ReactNode;
   submit?: (

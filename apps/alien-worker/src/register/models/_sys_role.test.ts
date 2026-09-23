@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ModelRecord, ModelSchema } from "@alien-form/protocol";
+import type { ModelRecord, AlienSchema } from "@alien-form/protocol";
 import { SYS_ROLE_MODEL, SYS_ROLE_SUPER_ADMIN_ID } from "../../domain/schemas/_sys_role.ts";
 import type { ModelStore } from "../../store/model-store.ts";
 import type { RecordStore } from "../../store/record-store.ts";
 import { ModelRegistry, type ModelValidationContext } from "../registry.ts";
 import { registerSysRole } from "./_sys_role.ts";
 
-const roleSchema: ModelSchema = {
+const roleSchema: AlienSchema = {
   name: SYS_ROLE_MODEL,
   title: "角色",
   version: 1,

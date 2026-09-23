@@ -57,15 +57,16 @@ import {
   compilePage,
   evaluateCompiledValue,
   type CompiledNode,
-  type ModelFieldSchema,
-  type FieldSchema,
-  type OpenMode,
+  type AlienSchema,
+  type AlienFieldSchema,
 } from "@alien-form/engine";
 import type { ListResponse } from "@alien-form/protocol";
 import { recordRoute } from "@utils/record-route";
 import { RecordActionOverlay } from "../pages/record-action-overlay";
 import type { RecordActionMode } from "../pages/record-form";
 import { useLayoutLoading } from "./loading-context";
+
+type OpenMode = "page" | "modal" | "drawer";
 import styles from "./table.module.css";
 
 interface OverlayState {
@@ -73,7 +74,7 @@ interface OverlayState {
   openMode: Exclude<OpenMode, "page">;
   modelCode: string;
   recordId?: string;
-  schema: FieldSchema;
+  schema: AlienFieldSchema;
   title: string;
   ok?: ReactNode;
   submit?: (
@@ -170,14 +171,14 @@ export function Table({
   pagination,
   scroll,
 }: ComponentProps & {
-  schema?: FieldSchema;
+  schema?: AlienFieldSchema;
   columns?:
     | TableColumnsType<Record<string, unknown>>
     | ((
-        schema?: FieldSchema,
+        schema?: AlienFieldSchema,
         scope?: ValueSource<Record<string, unknown>>,
         domain?: string,
-        fields?: ModelFieldSchema[],
+        fields?: AlienSchema["fields"],
       ) => TableColumnsType<Record<string, unknown>>);
   loadData?: (params: Record<string, unknown>) => Promise<ListResponse>;
   filter?: string;

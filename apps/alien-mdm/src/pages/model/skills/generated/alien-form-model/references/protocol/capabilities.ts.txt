@@ -1,4 +1,4 @@
-import type FieldSchema from "./field-schema.ts";
+import type { AlienFieldSchema } from "./alien-schema.ts";
 import {
   COMPONENT_CAPABILITIES,
   ENUM_CAPABILITIES,
@@ -45,7 +45,7 @@ export interface ComponentCapability {
     kind?: "leaf" | "complex";
     dataSource?: boolean;
     children?: "properties" | "items";
-    sample?: Partial<FieldSchema>;
+    sample?: Partial<AlienFieldSchema>;
     props?: Record<string, PropertyContract>;
     slots?: Record<string, SlotContract>;
     scope?: ExpressionScopeName[];

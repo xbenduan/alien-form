@@ -1,20 +1,13 @@
-import type {
-  ModelSchema,
-  DatabaseColumnType,
-  DatabaseRelation,
-  FieldValueType,
-  FieldSchema,
-  PageSchema,
-} from "@alien-form/engine";
+import type { AlienSchema, AlienFieldSchema } from "@alien-form/engine";
 
 /** 表单类型（含不落库的 void 纯展示元素）。 */
-export type FieldType = FieldValueType | "void";
+export type FieldType = Exclude<AlienSchema["fields"][number]["type"], "void"> | "void";
 
 export type FieldSource = "physical" | "virtual";
 
 /** 物理表存储配置（仅 physical 顶层字段拥有；只由「数据库构建」编辑）。 */
 export interface StorageConfig {
-  type: DatabaseColumnType;
+  type: NonNullable<AlienSchema["fields"][number]["storage"]>["type"];
   column?: string;
   system?: boolean;
   default?: string | number | boolean | null;
@@ -22,14 +15,17 @@ export interface StorageConfig {
   index?: boolean;
   visible?: boolean;
   filterable?: boolean;
-  relation?: DatabaseRelation;
+  relation?: NonNullable<AlienSchema["fields"][number]["relation"]>;
 }
 
 /**
  * 表单表现配置（form-schema 片段；只由「表单配置」编辑）。
  * 覆盖 core IFieldSchema 的全部字段，但 properties/items 由 FieldNode.children 承载，故排除。
  */
-export type FormConfig = Omit<FieldSchema, "type" | "title" | "required" | "properties" | "items">;
+export type FormConfig = Omit<
+  AlienFieldSchema,
+  "type" | "title" | "required" | "properties" | "items"
+>;
 
 /** 构建器统一字段树节点。 */
 export interface FieldNode {
@@ -56,10 +52,10 @@ export interface GroupDraft {
   props?: Record<string, unknown>;
 }
 
-/** 页面配置草稿：一个 page（PageSchema）附带稳定 id。 */
+/** 页面配置草稿：一个 page（AlienSchema["pages"][number]）附带稳定 id。 */
 export interface PageDraft {
   id: string;
-  page: PageSchema;
+  page: AlienSchema["pages"][number];
 }
 
 export interface ModelDraft {
@@ -72,12 +68,12 @@ export interface ModelDraft {
   singularLabel?: string;
   pluralLabel?: string;
   defaultPageSize: number;
-  definitions?: ModelSchema["definitions"];
+  definitions?: AlienSchema["definitions"];
   /** 统一字段树：顶层含落库字段与新增展示元素，嵌套 children 为 object/array 子字段。 */
   fields: FieldNode[];
   groups: GroupDraft[];
-  /** 页面装配：直接编辑 PageSchema JSON，可从代码写死的模版新增。 */
+  /** 页面装配：直接编辑 AlienSchema["pages"][number] JSON，可从代码写死的模版新增。 */
   pages: PageDraft[];
 }
 
-export type { ModelSchema };
+export type { AlienSchema };

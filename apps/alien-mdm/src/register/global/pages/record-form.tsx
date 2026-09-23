@@ -11,7 +11,7 @@ import {
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FormRenderer, useRuntime } from "@alien-form/react";
-import { compileForm, type FieldSchema } from "@alien-form/engine";
+import { compileForm, type AlienFieldSchema } from "@alien-form/engine";
 import { recordListRoute } from "@utils/record-route";
 import styles from "./record-form.module.css";
 
@@ -21,7 +21,7 @@ interface RecordFormProps {
   mode: RecordActionMode;
   modelCode: string;
   recordId?: string;
-  schema: FieldSchema;
+  schema: AlienFieldSchema;
   ok?: ReactNode;
   submit?: (
     values: Record<string, unknown>,

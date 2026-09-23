@@ -1,12 +1,12 @@
 import { App, Input, Modal, Select, Space, Typography } from "antd";
 import { useEffect, useState } from "react";
-import { parsePageSchema } from "@alien-form/protocol";
+import { parseAlienPage } from "@alien-form/protocol";
 import { createId } from "../builder/codec";
 import { PAGE_TEMPLATES, findPageTemplate } from "../builder/page-templates";
 import type { ModelDraft, PageDraft } from "../builder/types";
 
 /**
- * 页面配置弹窗：新增/编辑一个页面（PageSchema）。
+ * 页面配置弹窗：新增/编辑一个页面（AlienSchema["pages"][number]）。
  * 新增与编辑都直接编辑 JSON；可选择模版，选择后覆盖编辑器原始内容。
  */
 export function PageModal({
@@ -51,7 +51,7 @@ export function PageModal({
       return;
     }
     try {
-      const parsed = parsePageSchema(value);
+      const parsed = parseAlienPage(value);
       onSubmit({ id: page?.id ?? createId(), page: parsed });
     } catch (reason) {
       message.error(reason instanceof Error ? reason.message : "页面协议不合法");
@@ -88,7 +88,7 @@ export function PageModal({
         <Input.TextArea
           value={text}
           onChange={(event) => setText(event.target.value)}
-          placeholder="在此编辑页面 JSON（PageSchema），或先选择上方模版"
+          placeholder="在此编辑页面 JSON（AlienSchema pages item），或先选择上方模版"
           autoSize={{ minRows: 14, maxRows: 28 }}
           spellCheck={false}
           style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}

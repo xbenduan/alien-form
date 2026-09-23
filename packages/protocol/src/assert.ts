@@ -1,13 +1,11 @@
 import { parse, type Node } from "acorn";
 import {
-  modelSchemaSchema,
-  pageSchema,
-  type FieldValueType,
-  type ModelFieldSchema,
-  type ModelSchema,
-  type PageSchema,
-} from "./model-schema.ts";
-import type FieldSchema from "./field-schema.ts";
+  alienSchema,
+  alienPageSchema,
+  type AlienFieldSchema,
+  type AlienSchema,
+  type AlienValue,
+} from "./alien-schema.ts";
 import {
   COMPONENT_CAPABILITIES,
   ENUM_CAPABILITIES,
@@ -158,7 +156,11 @@ function assertComponent(code: string, path: string): ComponentCapability {
   return capability;
 }
 
-function assertProps(schema: FieldSchema, capability: ComponentCapability, path: string): void {
+function assertProps(
+  schema: AlienFieldSchema,
+  capability: ComponentCapability,
+  path: string,
+): void {
   const props = schema.props ?? {};
   for (const [name, contract] of Object.entries(capability.meta?.props ?? {})) {
     const value = props[name];
@@ -174,7 +176,7 @@ function assertProps(schema: FieldSchema, capability: ComponentCapability, path:
 }
 
 function assertComponentType(
-  schema: FieldSchema,
+  schema: AlienFieldSchema,
   capability: ComponentCapability,
   path: string,
 ): void {
@@ -191,7 +193,11 @@ function assertComponentType(
   }
 }
 
-function assertSlots(schema: FieldSchema, capability: ComponentCapability, path: string): void {
+function assertSlots(
+  schema: AlienFieldSchema,
+  capability: ComponentCapability,
+  path: string,
+): void {
   const contracts = capability.meta?.slots ?? {};
   const used = new Set<string>();
   for (const [name, contract] of Object.entries(contracts)) {
@@ -214,7 +220,7 @@ function assertSlots(schema: FieldSchema, capability: ComponentCapability, path:
   }
 }
 
-function assertFieldNode(schema: FieldSchema, path: string, rowScope = false): void {
+function assertFieldNode(schema: AlienFieldSchema, path: string, rowScope = false): void {
   let capability: ComponentCapability | undefined;
   if (schema.component) {
     capability = assertComponent(schema.component, `${path}.component`);
@@ -239,15 +245,17 @@ function assertFieldNode(schema: FieldSchema, path: string, rowScope = false): v
   }
 }
 
-function assertPageSemantics(page: PageSchema, path: string): void {
+function assertPageSemantics(page: AlienSchema["pages"][number], path: string): void {
   assertFieldNode(page, path);
 }
 
-function fieldValueType(field: ModelFieldSchema): FieldValueType {
+function fieldValueType(
+  field: AlienSchema["fields"][number],
+): Exclude<AlienSchema["fields"][number]["type"], "void"> {
   return field.type === "void" ? "string" : field.type;
 }
 
-function assertRelationForm(field: ModelFieldSchema, modelName: string): void {
+function assertRelationForm(field: AlienSchema["fields"][number], modelName: string): void {
   const relation = field.relation;
   if (!relation) return;
   const path = `fields.${field.key}.form`;
@@ -280,10 +288,10 @@ function assertRelationForm(field: ModelFieldSchema, modelName: string): void {
   }
 }
 
-function runtimeFieldSchema(field: ModelFieldSchema): FieldSchema {
+function runtimeAlienFieldSchema(field: AlienSchema["fields"][number]): AlienFieldSchema {
   const component =
     field.relation && field.form.component !== "TreeSelect" ? "RemoteSelect" : field.form.component;
-  const relationProps = field.relation
+  const relationProps: Record<string, AlienValue> = field.relation
     ? component === "TreeSelect"
       ? {
           model: field.relation.target,
@@ -311,7 +319,7 @@ function runtimeFieldSchema(field: ModelFieldSchema): FieldSchema {
   };
 }
 
-function assertPages(schema: ModelSchema): void {
+function assertPages(schema: AlienSchema): void {
   const routes = new Set<string>();
   schema.pages.forEach((page, index) => {
     if (routes.has(page.router)) throw new Error(`页面 router 重复：${page.router}`);
@@ -320,20 +328,20 @@ function assertPages(schema: ModelSchema): void {
   });
 }
 
-function assertDefinitions(schema: ModelSchema): void {
+function assertDefinitions(schema: AlienSchema): void {
   for (const [key, definition] of Object.entries(schema.definitions ?? {})) {
     assertFieldNode(definition, `definitions.${key}`);
   }
 }
 
-export function assertModelSchema(value: unknown): asserts value is ModelSchema {
-  const parsed = modelSchemaSchema.safeParse(value);
+export function assertAlienSchema(value: unknown): asserts value is AlienSchema {
+  const parsed = alienSchema.safeParse(value);
   if (!parsed.success) {
     const first = parsed.error.issues[0];
     const path = first?.path.join(".");
     throw new Error(`模型定义不合法${path ? `（${path}）` : ""}：${first?.message ?? "unknown"}`);
   }
-  const schema = parsed.data as ModelSchema;
+  const schema = parsed.data as AlienSchema;
   const ids = new Set<string>();
   const keys = new Set<string>();
 
@@ -354,7 +362,7 @@ export function assertModelSchema(value: unknown): asserts value is ModelSchema 
       throw new Error(`字段 ${field.key} 的 type/title/required 只能声明在字段根部`);
     }
     assertRelationForm(field, schema.name);
-    assertFieldNode(runtimeFieldSchema(field), `fields.${field.key}.form`);
+    assertFieldNode(runtimeAlienFieldSchema(field), `fields.${field.key}.form`);
   }
 
   for (const key of SYSTEM_FIELDS) {
@@ -369,34 +377,34 @@ export function assertModelSchema(value: unknown): asserts value is ModelSchema 
   assertPages(schema);
 }
 
-export function parsePageSchema(value: unknown): PageSchema {
-  const result = pageSchema.safeParse(value);
+export function parseAlienPage(value: unknown): AlienSchema["pages"][number] {
+  const result = alienPageSchema.safeParse(value);
   if (!result.success) {
     const first = result.error.issues[0];
     const path = first?.path.join(".");
     throw new Error(`页面定义不合法${path ? `（${path}）` : ""}：${first?.message ?? "unknown"}`);
   }
-  const page = result.data as PageSchema;
+  const page = result.data;
   assertPageSemantics(page, "page");
   return page;
 }
 
-export function parseModelSchema(value: unknown): ModelSchema {
-  const parsed = modelSchemaSchema.parse(value) as ModelSchema;
-  assertModelSchema(parsed);
+export function parseAlienSchema(value: unknown): AlienSchema {
+  const parsed = alienSchema.parse(value) as AlienSchema;
+  assertAlienSchema(parsed);
   return parsed;
 }
 
-export function isModelSchema(value: unknown): value is ModelSchema {
+export function isAlienSchema(value: unknown): value is AlienSchema {
   try {
-    assertModelSchema(value);
+    assertAlienSchema(value);
     return true;
   } catch {
     return false;
   }
 }
 
-export function modelFormProperties(schema: ModelSchema): Record<string, FieldSchema> {
+export function modelFormProperties(schema: AlienSchema): Record<string, AlienFieldSchema> {
   return Object.fromEntries(
     schema.fields.map((field) => [
       field.key,
@@ -410,16 +418,21 @@ export function modelFormProperties(schema: ModelSchema): Record<string, FieldSc
   );
 }
 
-export function physicalFields(schema: ModelSchema): ModelFieldSchema[] {
+export function physicalFields(schema: AlienSchema): AlienSchema["fields"] {
   return schema.fields.filter((field) => field.storage !== undefined);
 }
 
-export function valueType(field: ModelFieldSchema): FieldValueType {
+export function valueType(
+  field: AlienSchema["fields"][number],
+): Exclude<AlienSchema["fields"][number]["type"], "void"> {
   return fieldValueType(field);
 }
 
 /** Allows a scalar relation to move into a preserved many-to-many relation table. */
-function isManyToManyMigration(current: ModelFieldSchema, incoming: ModelFieldSchema): boolean {
+function isManyToManyMigration(
+  current: AlienSchema["fields"][number],
+  incoming: AlienSchema["fields"][number],
+): boolean {
   const before = current.relation;
   const after = incoming.relation;
   return (
@@ -435,7 +448,7 @@ function isManyToManyMigration(current: ModelFieldSchema, incoming: ModelFieldSc
   );
 }
 
-export function assertStorageCompatible(current: ModelSchema, incoming: ModelSchema): void {
+export function assertStorageCompatible(current: AlienSchema, incoming: AlienSchema): void {
   if (current.name !== incoming.name) throw new Error("模型 name 不允许修改");
   const incomingById = new Map(incoming.fields.map((field) => [field.id, field]));
 

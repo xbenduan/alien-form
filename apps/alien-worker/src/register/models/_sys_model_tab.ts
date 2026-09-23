@@ -22,32 +22,32 @@ export function registerSysModelTab(registry: ModelRegistry): void {
     validators: {
       code(value, { record, previous }) {
         if (typeof value !== "string" || !/^[A-Za-z_][A-Za-z0-9_-]*$/.test(value)) {
-          throw new Error("Tab 标识不合法");
+          throw new Error("分类标识不合法");
         }
         if (previous && REQUIRED_TAB_IDS.has(record.id) && value !== previous.code) {
-          throw forbidden("系统预置 Tab 标识不可修改");
+          throw forbidden("系统预置分类标识不可修改");
         }
       },
       name(value) {
         if (typeof value !== "string" || value.trim() === "") {
-          throw new Error("Tab 名称不能为空");
+          throw new Error("分类名称不能为空");
         }
       },
     },
     validate({ record }) {
       if (record.id === SYS_MODEL_TAB_ALL_ID && record.aggregate !== true) {
-        throw forbidden("“全部”必须保持为聚合 Tab");
+        throw forbidden("“全部”必须保持为聚合分类");
       }
       if (
         (record.id === SYS_MODEL_TAB_SYSTEM_ID || record.id === SYS_MODEL_TAB_OTHER_ID) &&
         record.aggregate === true
       ) {
-        throw forbidden("“系统”和“其他”不能设为聚合 Tab");
+        throw forbidden("“系统”和“其他”不能设为聚合分类");
       }
     },
     hooks: {
       beforeDelete({ record }) {
-        if (REQUIRED_TAB_IDS.has(record.id)) throw forbidden("系统预置 Tab 不可删除");
+        if (REQUIRED_TAB_IDS.has(record.id)) throw forbidden("系统预置分类不可删除");
       },
     },
   });

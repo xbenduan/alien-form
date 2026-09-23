@@ -1,4 +1,4 @@
-import type { ModelFieldSchema, ModelSchema } from "@alien-form/protocol";
+import type { AlienSchema } from "@alien-form/protocol";
 import { SYS_ROLE_MODEL, SYS_ROLE_SUPER_ADMIN_ID } from "./_sys_role.ts";
 import {
   modelForm,
@@ -15,7 +15,7 @@ export const SYS_ADMIN_DEFAULT_PASSWORD = "alien123456";
 
 const [idField, createdAtField, updatedAtField] = systemFields(SYS_USER_MODEL);
 
-const fields: ModelFieldSchema[] = [
+const fields: AlienSchema["fields"] = [
   idField,
   physicalField(SYS_USER_MODEL, "username", {
     type: "string",
@@ -107,7 +107,7 @@ const fields: ModelFieldSchema[] = [
   updatedAtField,
 ];
 
-export const sysUserSchema: ModelSchema = {
+export const sysUserSchema: AlienSchema = {
   name: SYS_USER_MODEL,
   title: "用户管理",
   version: 0,
@@ -131,7 +131,7 @@ export const sysUserSchema: ModelSchema = {
   ]).map((page) => (page.router !== "list" ? page : disableAdminDelete(page))),
 };
 
-function disableAdminDelete(page: ModelSchema["pages"][number]): ModelSchema["pages"][number] {
+function disableAdminDelete(page: AlienSchema["pages"][number]): AlienSchema["pages"][number] {
   const content = page.slots?.content;
   const table = content?.table;
   const rowActions = table?.slots?.rowActions;

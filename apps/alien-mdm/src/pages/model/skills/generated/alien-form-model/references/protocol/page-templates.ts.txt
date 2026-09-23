@@ -1,11 +1,12 @@
-import type FieldSchema from "./field-schema.ts";
-import type { OpenMode, PageSchema } from "./model-schema.ts";
+import type { AlienFieldSchema, AlienSchema } from "./alien-schema.ts";
+
+type OpenMode = "page" | "modal" | "drawer";
 
 export interface PageTemplate {
   key: string;
   label: string;
   description?: string;
-  build: (modelCode: string, title: string) => PageSchema;
+  build: (modelCode: string, title: string) => AlienSchema["pages"][number];
 }
 
 export interface RecordPageOptions {
@@ -20,7 +21,7 @@ const DEFAULT_OPEN_MODE: OpenMode = "drawer";
 function recordActions(
   modelCode: string,
   openModes: Record<"add" | "edit" | "detail", OpenMode>,
-): Record<string, FieldSchema> {
+): Record<string, AlienFieldSchema> {
   const modelLiteral = JSON.stringify(modelCode);
   return {
     edit: {
@@ -67,7 +68,7 @@ function buildListPage(
   modelCode: string,
   title: string,
   openModes: Record<"add" | "edit" | "detail", OpenMode>,
-): PageSchema {
+): AlienSchema["pages"][number] {
   return {
     router: "list",
     title,
@@ -145,7 +146,7 @@ function buildListPage(
   };
 }
 
-function buildTreeListPage(modelCode: string, title: string): PageSchema {
+function buildTreeListPage(modelCode: string, title: string): AlienSchema["pages"][number] {
   const page = buildListPage(modelCode, title, {
     add: DEFAULT_OPEN_MODE,
     edit: DEFAULT_OPEN_MODE,
@@ -194,7 +195,7 @@ function buildTreeListPage(modelCode: string, title: string): PageSchema {
 
 function buildRecordPage(
   mode: "add" | "edit" | "detail",
-): (modelCode: string, title: string) => PageSchema {
+): (modelCode: string, title: string) => AlienSchema["pages"][number] {
   const prefix = mode === "add" ? "新建" : mode === "edit" ? "编辑" : "详情";
   return (modelCode, title) => ({
     router: mode,
@@ -260,7 +261,7 @@ export function findPageTemplate(key: string): PageTemplate | undefined {
   return PAGE_TEMPLATES.find((template) => template.key === key);
 }
 
-export function createDefaultPages(modelCode: string, title: string): PageSchema[] {
+export function createDefaultPages(modelCode: string, title: string): AlienSchema["pages"] {
   return PAGE_TEMPLATES.filter((template) => DEFAULT_PAGE_TEMPLATE_KEYS.has(template.key)).map(
     (template) => template.build(modelCode, title),
   );
@@ -272,7 +273,7 @@ export function createRecordPages(
   title: string,
   _groupKeys: string[],
   options: RecordPageOptions = {},
-): PageSchema[] {
+): AlienSchema["pages"] {
   const openModes = {
     add: options.actionOpenModes?.add ?? "page",
     edit: options.actionOpenModes?.edit ?? "page",

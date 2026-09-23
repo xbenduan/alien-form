@@ -1,10 +1,4 @@
-import type {
-  ModelFieldSchema,
-  ModelRecord,
-  ModelSchema,
-  Pagination,
-  Sorter,
-} from "@alien-form/protocol";
+import type { ModelRecord, AlienSchema, Pagination, Sorter } from "@alien-form/protocol";
 import { columnName, fieldExpression, planByField, type FieldPlan } from "../domain/field-plan.ts";
 import { formatRecordId } from "../domain/record-id.ts";
 import { compileRecordFilter } from "../domain/record-filter.ts";
@@ -59,14 +53,14 @@ export interface SubtreeParams {
   ownerId?: string;
 }
 
-function decodePhysical(field: ModelFieldSchema, value: unknown): unknown {
+function decodePhysical(field: AlienSchema["fields"][number], value: unknown): unknown {
   if (value === null || value === undefined) return undefined;
   if (field.storage?.type === "boolean") return value === 1 || value === true;
   if (field.storage?.type === "json" && typeof value === "string") return JSON.parse(value);
   return value;
 }
 
-function encodePhysical(field: ModelFieldSchema, value: unknown): SqlValue {
+function encodePhysical(field: AlienSchema["fields"][number], value: unknown): SqlValue {
   if (value === undefined || value === null || value === "") return null;
   const type = field.storage?.type;
   if (type === "boolean") return value ? 1 : 0;
@@ -84,7 +78,7 @@ function encodePhysical(field: ModelFieldSchema, value: unknown): SqlValue {
   return String(value);
 }
 
-function rowToRecord(schema: ModelSchema, row: RecordRow): ModelRecord {
+function rowToRecord(schema: AlienSchema, row: RecordRow): ModelRecord {
   const data = JSON.parse(row.data_content) as Record<string, unknown>;
   delete data[OWNER_KEY];
   const record: ModelRecord = {
@@ -135,7 +129,7 @@ export class RecordStore {
   }
 
   private async attachManyRelations(
-    schema: ModelSchema,
+    schema: AlienSchema,
     records: ModelRecord[],
   ): Promise<ModelRecord[]> {
     if (records.length === 0) return records;
@@ -161,7 +155,7 @@ export class RecordStore {
     return records;
   }
 
-  async list(schema: ModelSchema, params: ListParams): Promise<ListResult> {
+  async list(schema: AlienSchema, params: ListParams): Promise<ListResult> {
     const table = quoteTable(schema.name);
     const fields = planByField(schema);
     const where: string[] = [];
@@ -244,7 +238,7 @@ export class RecordStore {
     return { list: records, total: countRow?.c ?? 0 };
   }
 
-  async options(schema: ModelSchema, params: OptionsParams): Promise<OptionResult> {
+  async options(schema: AlienSchema, params: OptionsParams): Promise<OptionResult> {
     const fields = planByField(schema);
     const valuePlan = fields.get(params.valueKey);
     const labelPlan = fields.get(params.labelKey);
@@ -306,7 +300,7 @@ export class RecordStore {
     return { options: [...options.values()], total: countRow?.c ?? 0 };
   }
 
-  async subtree(schema: ModelSchema, params: SubtreeParams): Promise<ModelRecord[]> {
+  async subtree(schema: AlienSchema, params: SubtreeParams): Promise<ModelRecord[]> {
     const result = params.ownerId
       ? await this.db
           .prepare(
@@ -348,7 +342,7 @@ export class RecordStore {
     return this.attachManyRelations(schema, output);
   }
 
-  async get(schema: ModelSchema, id: string): Promise<ModelRecord | undefined> {
+  async get(schema: AlienSchema, id: string): Promise<ModelRecord | undefined> {
     const row = await this.db
       .prepare(`SELECT * FROM ${quoteTable(schema.name)} WHERE "id" = ?`)
       .bind(id)
@@ -358,7 +352,7 @@ export class RecordStore {
   }
 
   async findByField(
-    schema: ModelSchema,
+    schema: AlienSchema,
     field: string,
     value: string | number,
   ): Promise<ModelRecord | undefined> {
@@ -387,7 +381,7 @@ export class RecordStore {
   }
 
   async create(
-    schema: ModelSchema,
+    schema: AlienSchema,
     values: Record<string, unknown>,
     ownerId?: string,
   ): Promise<ModelRecord> {
@@ -419,7 +413,7 @@ export class RecordStore {
   }
 
   async update(
-    schema: ModelSchema,
+    schema: AlienSchema,
     id: string,
     values: Record<string, unknown>,
     ownerId?: string,
@@ -446,7 +440,7 @@ export class RecordStore {
     return this.get(schema, id);
   }
 
-  async delete(schema: ModelSchema, id: string): Promise<void> {
+  async delete(schema: AlienSchema, id: string): Promise<void> {
     const statements = compileStorageManifest(schema).relations.map((relation) =>
       this.db.prepare(`DELETE FROM ${quoteTable(relation.table)} WHERE "source_id" = ?`).bind(id),
     );
@@ -456,7 +450,7 @@ export class RecordStore {
     await this.db.batch(statements);
   }
 
-  async deleteMany(schema: ModelSchema, ids: string[]): Promise<void> {
+  async deleteMany(schema: AlienSchema, ids: string[]): Promise<void> {
     if (ids.length === 0) return;
     const statements: D1PreparedStatement[] = [];
     for (const id of ids) {
@@ -475,7 +469,7 @@ export class RecordStore {
   }
 
   /** Returns the internal creator identity used by `scope: own`. */
-  async owner(schema: ModelSchema, id: string): Promise<string | undefined> {
+  async owner(schema: AlienSchema, id: string): Promise<string | undefined> {
     const row = await this.db
       .prepare(
         `SELECT json_extract("data_content", '$.${OWNER_KEY}') AS owner
@@ -497,7 +491,7 @@ function encodeQueryValue(plan: FieldPlan, value: string | number): string | num
 }
 
 function splitRecord(
-  schema: ModelSchema,
+  schema: AlienSchema,
   values: Record<string, unknown>,
 ): {
   columns: string[];
@@ -532,7 +526,7 @@ function splitRecord(
 
 function relationStatements(
   db: D1Database,
-  schema: ModelSchema,
+  schema: AlienSchema,
   id: string,
   values: Map<string, string[]>,
 ): D1PreparedStatement[] {

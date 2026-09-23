@@ -1,8 +1,7 @@
 import {
-  parseModelSchema,
-  type ModelFieldSchema,
+  parseAlienSchema,
   type MigrationPlan,
-  type ModelSchema,
+  type AlienSchema,
   type ModelSummary,
 } from "@alien-form/protocol";
 import { quoteTable } from "../domain/sql.ts";
@@ -17,8 +16,8 @@ interface ModelRow {
 
 export class ModelVersionConflictError extends Error {}
 
-function parseRow(row: Pick<ModelRow, "schema">): ModelSchema {
-  return parseModelSchema(JSON.parse(row.schema));
+function parseRow(row: Pick<ModelRow, "schema">): AlienSchema {
+  return parseAlienSchema(JSON.parse(row.schema));
 }
 
 export class ModelStore {
@@ -51,7 +50,7 @@ export class ModelStore {
     });
   }
 
-  async get(name: string): Promise<ModelSchema | undefined> {
+  async get(name: string): Promise<AlienSchema | undefined> {
     const row = await this.db
       .prepare(`SELECT schema FROM "models" WHERE name = ?`)
       .bind(name)
@@ -66,11 +65,11 @@ export class ModelStore {
   }
 
   async publish(
-    schema: ModelSchema,
+    schema: AlienSchema,
     tableName: string,
     plan: MigrationPlan,
     expectedVersion: number,
-  ): Promise<ModelSchema> {
+  ): Promise<AlienSchema> {
     const now = Date.now();
     const statements = plan.operations.map((operation) => this.db.prepare(operation.sql));
 
@@ -144,8 +143,8 @@ export class ModelStore {
   }
 
   /** Drops a model's relation tables, physical table, and metadata atomically. */
-  async delete(schema: ModelSchema): Promise<void> {
-    const relationTables = schema.fields.flatMap((field: ModelFieldSchema) =>
+  async delete(schema: AlienSchema): Promise<void> {
+    const relationTables = schema.fields.flatMap((field: AlienSchema["fields"][number]) =>
       field.storage && field.relation?.kind === "many-to-many"
         ? [field.relation.through ?? `${schema.name}_${field.key}`]
         : [],

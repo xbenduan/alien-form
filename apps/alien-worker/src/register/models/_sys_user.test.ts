@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { parseModelSchema, type ModelRecord, type ModelSchema } from "@alien-form/protocol";
+import { parseAlienSchema, type ModelRecord, type AlienSchema } from "@alien-form/protocol";
 import { SYS_ROLE_MODEL, SYS_ROLE_SUPER_ADMIN_ID } from "../../domain/schemas/_sys_role.ts";
 import { SYS_ADMIN_ID, SYS_USER_MODEL, sysUserSchema } from "../../domain/schemas/_sys_user.ts";
 import type { ModelStore } from "../../store/model-store.ts";
@@ -16,14 +16,14 @@ function registration() {
 
 /** Creates a user validation context backed by a set of existing role IDs. */
 function context(record: ModelRecord, roleIds: string[]): ModelValidationContext {
-  const roleSchema = { name: SYS_ROLE_MODEL, fields: [] } as unknown as ModelSchema;
+  const roleSchema = { name: SYS_ROLE_MODEL, fields: [] } as unknown as AlienSchema;
   return {
-    model: { name: SYS_USER_MODEL } as ModelSchema,
+    model: { name: SYS_USER_MODEL } as AlienSchema,
     models: {
       get: vi.fn(async (name: string) => (name === SYS_ROLE_MODEL ? roleSchema : undefined)),
     } as unknown as ModelStore,
     records: {
-      get: vi.fn(async (_schema: ModelSchema, id: string) =>
+      get: vi.fn(async (_schema: AlienSchema, id: string) =>
         roleIds.includes(id) ? { id } : undefined,
       ),
     } as unknown as RecordStore,
@@ -35,7 +35,7 @@ function context(record: ModelRecord, roleIds: string[]): ModelValidationContext
 
 describe("_sys_user registration", () => {
   it("declares the user role as a required many-to-many field", () => {
-    expect(() => parseModelSchema(sysUserSchema)).not.toThrow();
+    expect(() => parseAlienSchema(sysUserSchema)).not.toThrow();
     expect(sysUserSchema.fields.find((field) => field.key === "roleId")).toMatchObject({
       type: "array",
       required: true,

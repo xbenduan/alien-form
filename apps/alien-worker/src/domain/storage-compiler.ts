@@ -1,10 +1,8 @@
 import {
   assertStorageCompatible,
-  type DatabaseColumnType,
   type MigrationOperation,
   type MigrationPlan,
-  type ModelFieldSchema,
-  type ModelSchema,
+  type AlienSchema,
   type StorageColumn,
   type StorageIndex,
   type StorageManifest,
@@ -14,13 +12,13 @@ import { quoteColumn, quoteTable, sqlString } from "./sql.ts";
 
 const RESERVED_TABLES = new Set(["models", "sessions", "_sequences"]);
 
-function physicalColumn(field: ModelFieldSchema): string {
+function physicalColumn(field: AlienSchema["fields"][number]): string {
   if (field.key === "createdAt") return "created_at";
   if (field.key === "updatedAt") return "updated_at";
   return field.storage?.column ?? field.key;
 }
 
-function sqliteType(type: DatabaseColumnType): string {
+function sqliteType(type: NonNullable<AlienSchema["fields"][number]["storage"]>["type"]): string {
   if (type === "integer" || type === "boolean" || type === "date") return "INTEGER";
   if (type === "real") return "REAL";
   return "TEXT";
@@ -73,7 +71,7 @@ function migrateRelationValuesSql(
   );
 }
 
-export function compileStorageManifest(schema: ModelSchema): StorageManifest {
+export function compileStorageManifest(schema: AlienSchema): StorageManifest {
   if (RESERVED_TABLES.has(schema.name)) throw new Error(`模型名为系统保留表：${schema.name}`);
 
   const columns: StorageColumn[] = [];
@@ -144,8 +142,8 @@ function createIndexOperation(index: StorageIndex): MigrationOperation {
 }
 
 export function compileMigrationPlan(
-  current: ModelSchema | undefined,
-  incoming: ModelSchema,
+  current: AlienSchema | undefined,
+  incoming: AlienSchema,
 ): { manifest: StorageManifest; plan: MigrationPlan } {
   if (current) assertStorageCompatible(current, incoming);
   const manifest = compileStorageManifest(incoming);

@@ -5,21 +5,10 @@ import type { CompiledExpression, IFormSchema } from "@alien-form/core";
  * 本文件只保留前端编译产物类型（CompiledNode 等）与本地 JSON 值别名。
  */
 
-export type {
-  ModelSchema,
-  ModelSummary,
-  FieldSchema,
-  PageSchema,
-  ModelFieldSchema,
-  DatabaseRelation,
-  DatabaseColumnType,
-  FieldValueType,
-  DatabaseRelationKind,
-  OpenMode,
-} from "@alien-form/protocol";
+export type { AlienSchema, AlienValue, ModelSummary, AlienFieldSchema } from "@alien-form/protocol";
 
 export type ModelMeta = Pick<
-  import("@alien-form/protocol").ModelSchema,
+  import("@alien-form/protocol").AlienSchema,
   | "name"
   | "title"
   | "version"
@@ -45,7 +34,7 @@ export interface CompiledValue {
 
 export interface CompiledNode {
   key: string;
-  schema: import("@alien-form/protocol").FieldSchema;
+  schema: import("@alien-form/protocol").AlienFieldSchema;
   props: Record<string, unknown>;
   slots: Record<string, CompiledNode | CompiledNode[]>;
   children: CompiledNode[];

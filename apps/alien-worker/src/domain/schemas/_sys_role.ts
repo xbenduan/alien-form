@@ -1,4 +1,4 @@
-import type { ModelFieldSchema, ModelSchema } from "@alien-form/protocol";
+import type { AlienSchema } from "@alien-form/protocol";
 import {
   modelForm,
   physicalField,
@@ -17,7 +17,7 @@ export const SYS_ROLE_USER = "user";
 
 const [idField, createdAtField, updatedAtField] = systemFields(SYS_ROLE_MODEL);
 
-const fields: ModelFieldSchema[] = [
+const fields: AlienSchema["fields"] = [
   idField,
   physicalField(SYS_ROLE_MODEL, "code", {
     type: "string",
@@ -123,7 +123,7 @@ const fields: ModelFieldSchema[] = [
   updatedAtField,
 ];
 
-export const sysRoleSchema: ModelSchema = {
+export const sysRoleSchema: AlienSchema = {
   name: SYS_ROLE_MODEL,
   title: "角色管理",
   version: 0,

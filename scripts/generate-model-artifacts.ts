@@ -67,7 +67,7 @@ function apiMarkdown(): string {
 - 编辑：\`PUT /api/v1/models/{name}\`
 - 请求头：\`Accept: application/json\`、\`Content-Type: application/json\`
 - 认证信息：读取 \`references/connection.json\`
-- 新增与编辑请求体：完整 \`ModelSchema\`
+- 新增与编辑请求体：完整 \`AlienSchema\`
 - 协议或存储错误：HTTP 400，应根据响应中的精确路径修正模型
 - 未认证：HTTP 401，应停止并要求重新下载 Skill
 - 模型不存在：HTTP 404
@@ -125,7 +125,7 @@ async function expectedFiles(
   capabilities: Capabilities,
   protocol: typeof import("../packages/protocol/src/index.ts"),
 ): Promise<Map<string, string>> {
-  const { PAGE_TEMPLATES, createModelTemplate, modelSchemaSchema } = protocol;
+  const { PAGE_TEMPLATES, createModelTemplate, alienSchema } = protocol;
   const model = createModelTemplate();
   const files = new Map<string, string>();
   files.set("SKILL.md", skillMarkdown());
@@ -165,8 +165,8 @@ async function expectedFiles(
   files.set(
     "references/model-schema.json",
     json(
-      zodToJsonSchema(modelSchemaSchema, {
-        name: "ModelSchema",
+      zodToJsonSchema(alienSchema, {
+        name: "AlienSchema",
         target: "jsonSchema7",
       }),
     ),
@@ -182,8 +182,8 @@ async function expectedFiles(
     await source("packages/protocol/src/generated-capabilities.ts"),
   );
   files.set(
-    "references/protocol/model-schema.ts.txt",
-    await source("packages/protocol/src/model-schema.ts"),
+    "references/protocol/alien-schema.ts.txt",
+    await source("packages/protocol/src/alien-schema.ts"),
   );
   files.set(
     "references/protocol/page-templates.ts.txt",
@@ -192,10 +192,6 @@ async function expectedFiles(
   files.set(
     "references/protocol/model-template.ts.txt",
     await source("packages/protocol/src/model-template.ts"),
-  );
-  files.set(
-    "references/protocol/field-schema.ts.txt",
-    await source("packages/protocol/src/field-schema.ts"),
   );
   files.set(
     "references/protocol/form-types.ts.txt",

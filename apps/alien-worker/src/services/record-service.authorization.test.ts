@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ModelSchema } from "@alien-form/protocol";
+import type { AlienSchema } from "@alien-form/protocol";
 import { ModelRegistry } from "../register/registry.ts";
 import type { ModelStore } from "../store/model-store.ts";
 import type { RecordStore } from "../store/record-store.ts";
@@ -7,7 +7,7 @@ import type { RefExpander } from "../store/ref-expander.ts";
 import type { AuthorizationService } from "./authorization-service.ts";
 import { RecordService } from "./record-service.ts";
 
-const schema: ModelSchema = {
+const schema: AlienSchema = {
   name: "article",
   title: "文章",
   version: 1,

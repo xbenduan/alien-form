@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ModelSchema } from "@alien-form/protocol";
+import type { AlienSchema } from "@alien-form/protocol";
 import { ModelRegistry } from "../register/registry.ts";
 import type { ModelStore } from "../store/model-store.ts";
 import type { RecordStore } from "../store/record-store.ts";
@@ -7,7 +7,7 @@ import type { AuthorizationService } from "./authorization-service.ts";
 import { ModelService } from "./model-service.ts";
 
 /** Creates a minimal valid model schema for service tests. */
-function schema(name = "article"): ModelSchema {
+function schema(name = "article"): AlienSchema {
   return {
     name,
     title: "文章",
@@ -61,7 +61,7 @@ function schema(name = "article"): ModelSchema {
 
 /** Creates model service dependencies with permissive authorization. */
 function dependencies() {
-  const publish = vi.fn(async (value: ModelSchema) => value);
+  const publish = vi.fn(async (value: AlienSchema) => value);
   const remove = vi.fn();
   const models = {
     get: vi.fn(async (name: string) => (name === "_sys_model_tab" ? schema(name) : undefined)),
@@ -131,7 +131,7 @@ describe("ModelService", () => {
       systemRevision: 1,
       fields: desired.fields.filter((field) => field.key !== "updatedAt"),
     };
-    const publish = vi.fn(async (value: ModelSchema) => value);
+    const publish = vi.fn(async (value: AlienSchema) => value);
     const models = {
       get: vi.fn().mockResolvedValue(current),
       publish,

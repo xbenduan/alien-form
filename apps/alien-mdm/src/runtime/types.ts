@@ -5,7 +5,7 @@ export type {
   LoginRequest,
   LoginResponse,
   ModelRecord,
-  ModelSchema,
+  AlienSchema,
   ModelSummary,
   OptionsRequest,
   OptionsResponse,

@@ -1,7 +1,6 @@
 import type {
-  ModelFieldSchema,
   ModelRecord,
-  ModelSchema,
+  AlienSchema,
   ListRequest,
   OptionsRequest,
   SubtreeRequest,
@@ -27,7 +26,7 @@ function isEmpty(value: unknown): boolean {
   return value === undefined || value === null || value === "";
 }
 
-function assertFieldValue(field: ModelFieldSchema, value: unknown): void {
+function assertFieldValue(field: AlienSchema["fields"][number], value: unknown): void {
   if (isEmpty(value)) {
     if (field.required === true) throw new AppError(`${field.key} 必填`, 400);
     return;
@@ -50,7 +49,7 @@ function assertFieldValue(field: ModelFieldSchema, value: unknown): void {
   }
 }
 
-function normalizeRecord(schema: ModelSchema, values: Record<string, unknown>): ModelRecord {
+function normalizeRecord(schema: AlienSchema, values: Record<string, unknown>): ModelRecord {
   const fields = new Map(schema.fields.map((field) => [field.key, field]));
   for (const key of Object.keys(values)) {
     if (!fields.has(key)) throw new AppError(`未知字段：${key}`, 400);
@@ -88,13 +87,13 @@ export class RecordService {
     private readonly authorization: AuthorizationService,
   ) {}
 
-  private async requireModel(model: string): Promise<ModelSchema> {
+  private async requireModel(model: string): Promise<AlienSchema> {
     const schema = await this.models.get(model);
     if (!schema) throw notFound(`未知模型：${model}`);
     return schema;
   }
 
-  private selfRelation(schema: ModelSchema): ModelFieldSchema {
+  private selfRelation(schema: AlienSchema): AlienSchema["fields"][number] {
     const relations = schema.fields.filter(
       (field) => field.relation?.kind === "many-to-one" && field.relation.target === schema.name,
     );
@@ -312,7 +311,7 @@ export class RecordService {
   }
 
   private async validate(
-    schema: ModelSchema,
+    schema: AlienSchema,
     record: ModelRecord,
     actorId: string,
     operation: "create" | "update",
@@ -363,7 +362,7 @@ export class RecordService {
 
   private visibleRecord(
     profile: AccessProfile,
-    schema: ModelSchema,
+    schema: AlienSchema,
     record: ModelRecord,
   ): ModelRecord {
     return this.authorization.project(profile, schema, publicRecord(schema.name, record));
@@ -372,7 +371,7 @@ export class RecordService {
   /** Enforces `scope: own` and returns the persisted owner for updates. */
   private async assertOwnership(
     scope: "all" | "own",
-    schema: ModelSchema,
+    schema: AlienSchema,
     id: string,
     actorId: string,
   ): Promise<string | undefined> {
@@ -397,7 +396,7 @@ export class RecordService {
   private async runAfter(
     model: string,
     hook: "afterCreate" | "afterUpdate" | "afterDelete",
-    schema: ModelSchema,
+    schema: AlienSchema,
     actorId: string,
     record: ModelRecord,
     previous?: ModelRecord,

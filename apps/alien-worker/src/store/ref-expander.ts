@@ -1,4 +1,4 @@
-import { isPluginMarker, type ModelRecord, type ModelSchema } from "@alien-form/protocol";
+import { isPluginMarker, type ModelRecord, type AlienSchema } from "@alien-form/protocol";
 import { fieldExpression, planByField, refFields, type RefField } from "../domain/field-plan.ts";
 import { quoteTable } from "../domain/sql.ts";
 import type { ModelStore } from "./model-store.ts";
@@ -50,7 +50,7 @@ export class RefExpander {
   ) {}
 
   private async queryLabelMap(
-    target: ModelSchema,
+    target: AlienSchema,
     valueKey: string,
     labelKey: string,
     values: unknown[],
@@ -76,7 +76,7 @@ export class RefExpander {
     );
   }
 
-  async expand(schema: ModelSchema, records: ModelRecord[]): Promise<ModelRecord[]> {
+  async expand(schema: AlienSchema, records: ModelRecord[]): Promise<ModelRecord[]> {
     if (records.length === 0) return records;
     for (const ref of refFields(schema)) {
       const target = await this.models.get(ref.model);
@@ -106,7 +106,7 @@ export class RefExpander {
     return records;
   }
 
-  async expandOne(schema: ModelSchema, record: ModelRecord): Promise<ModelRecord> {
+  async expandOne(schema: AlienSchema, record: ModelRecord): Promise<ModelRecord> {
     return (await this.expand(schema, [record]))[0];
   }
 }

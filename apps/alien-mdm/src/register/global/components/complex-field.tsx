@@ -3,7 +3,7 @@ import { ProfileOutlined } from "@ant-design/icons";
 import { Button, Empty, Modal, Tooltip } from "antd";
 import { useMemo, useState } from "react";
 import { FormRenderer, useRuntime } from "@alien-form/react";
-import { compileForm, type FieldSchema } from "@alien-form/engine";
+import { compileForm, type AlienFieldSchema } from "@alien-form/engine";
 import styles from "./complex-field.module.css";
 
 function isEmptyValue(value: unknown): boolean {
@@ -30,7 +30,7 @@ function DetailFieldForm({
   value,
   domain,
 }: {
-  schema: FieldSchema;
+  schema: AlienFieldSchema;
   value: unknown;
   domain?: string;
 }) {
@@ -61,7 +61,7 @@ export function TableComplexCell({
   domain,
 }: {
   value: unknown;
-  schema?: FieldSchema;
+  schema?: AlienFieldSchema;
   title?: string;
   domain?: string;
 }) {

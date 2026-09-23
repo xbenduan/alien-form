@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { ComponentProps } from "@alien-form/react";
-import type { FieldSchema } from "@alien-form/engine";
+import type { AlienFieldSchema } from "@alien-form/engine";
 import type { FieldGridProps } from "@utils/field-grid";
 import styles from "./shared.module.css";
 
@@ -34,7 +34,7 @@ export type ComplexFieldProps = ComponentProps &
     title?: string;
     description?: string;
     isTable?: boolean;
-    schema?: FieldSchema;
+    schema?: AlienFieldSchema;
     domain?: string;
   };
 
@@ -68,7 +68,7 @@ export interface BuiltProps {
   gutter?: unknown;
   domain?: string;
   isTable: boolean;
-  schema?: FieldSchema;
+  schema?: AlienFieldSchema;
   renderRow?: ComponentProps["renderRow"];
   value: unknown;
   onChange?: (value: unknown) => void;
@@ -128,7 +128,7 @@ export function buildProps(props: ComponentProps, extraRuntimeProps: string[] = 
     gutter: props.gutter,
     domain: props.domain as string | undefined,
     isTable: props.isTable === true,
-    schema: props.schema as FieldSchema | undefined,
+    schema: props.schema as AlienFieldSchema | undefined,
     renderRow: props.renderRow,
     value: props.value,
     onChange: props.onChange,

@@ -1,11 +1,11 @@
-import type { DatabaseColumnType, DatabaseRelation, FieldValueType } from "./model-schema.ts";
+import type { AlienSchema } from "./alien-schema.ts";
 
 export interface StorageColumn {
   fieldId: string;
   field: string;
   column: string;
-  type: DatabaseColumnType;
-  valueType?: FieldValueType;
+  type: NonNullable<AlienSchema["fields"][number]["storage"]>["type"];
+  valueType?: Exclude<AlienSchema["fields"][number]["type"], "void">;
   nullable: boolean;
   default?: string | number | boolean | null;
   unique: boolean;
@@ -23,7 +23,7 @@ export interface StorageIndex {
 export interface StorageRelation {
   field: string;
   table: string;
-  relation: DatabaseRelation;
+  relation: NonNullable<AlienSchema["fields"][number]["relation"]>;
 }
 
 export interface StorageManifest {

@@ -1,4 +1,4 @@
-import type { ModelFieldSchema, ModelSchema } from "@alien-form/protocol";
+import type { AlienSchema } from "@alien-form/protocol";
 import {
   modelForm,
   physicalField,
@@ -14,21 +14,21 @@ export const SYS_MODEL_TAB_OTHER_ID = "SYSTAB000003";
 
 const [idField, createdAtField, updatedAtField] = systemFields(SYS_MODEL_TAB_MODEL);
 
-const fields: ModelFieldSchema[] = [
+const fields: AlienSchema["fields"] = [
   idField,
   physicalField(SYS_MODEL_TAB_MODEL, "code", {
     type: "string",
     title: "标识",
     required: true,
     storage: { type: "text", unique: true, index: true },
-    form: { component: "Input", props: { placeholder: "请输入 Tab 标识" } },
+    form: { component: "Input", props: { placeholder: "请输入标识" } },
   }),
   physicalField(SYS_MODEL_TAB_MODEL, "name", {
     type: "string",
     title: "名称",
     required: true,
     storage: { type: "text", index: true },
-    form: { component: "Input", props: { placeholder: "请输入 Tab 名称" } },
+    form: { component: "Input", props: { placeholder: "请输入名称" } },
   }),
   physicalField(SYS_MODEL_TAB_MODEL, "order", {
     type: "number",
@@ -39,7 +39,7 @@ const fields: ModelFieldSchema[] = [
   }),
   physicalField(SYS_MODEL_TAB_MODEL, "aggregate", {
     type: "boolean",
-    title: "聚合 Tab",
+    title: "聚合分类",
     required: true,
     storage: { type: "boolean", default: false },
     form: {
@@ -60,9 +60,9 @@ const fields: ModelFieldSchema[] = [
   updatedAtField,
 ];
 
-export const sysModelTabSchema: ModelSchema = {
+export const sysModelTabSchema: AlienSchema = {
   name: SYS_MODEL_TAB_MODEL,
-  title: "模型 Tabs",
+  title: "模型分类",
   version: 0,
   system: true,
   systemRevision: 4,
@@ -74,7 +74,7 @@ export const sysModelTabSchema: ModelSchema = {
   defaultPageSize: 20,
   fields,
   form: modelForm(fields, ["code", "name", "order", "aggregate", "description"]),
-  pages: recordPages(SYS_MODEL_TAB_MODEL, "模型 Tab", [
+  pages: recordPages(SYS_MODEL_TAB_MODEL, "模型分类", [
     "code",
     "name",
     "order",

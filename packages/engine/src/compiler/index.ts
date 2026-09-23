@@ -1,12 +1,5 @@
 import { compileExpr, type IFieldSchema, type IFormSchema } from "@alien-form/core";
-import type {
-  CompiledNode,
-  CompiledPage,
-  FieldSchema,
-  ModelFieldSchema,
-  ModelSchema,
-  PageSchema,
-} from "../protocol";
+import type { CompiledNode, CompiledPage, AlienFieldSchema, AlienSchema } from "../protocol";
 import { createCompiledValue, isRuntimeExpression } from "./value";
 
 export {
@@ -16,13 +9,13 @@ export {
   isCompiledValue,
 } from "./value";
 
-type RuntimeDefinitions = Record<string, FieldSchema>;
+type RuntimeDefinitions = Record<string, AlienFieldSchema>;
 
 function resolveRef(
-  schema: FieldSchema,
+  schema: AlienFieldSchema,
   definitions: RuntimeDefinitions,
   stack: string[] = [],
-): FieldSchema {
+): AlienFieldSchema {
   if (!schema.$ref) return schema;
   const code = schema.$ref.startsWith("#/definitions/")
     ? schema.$ref.slice("#/definitions/".length)
@@ -35,9 +28,9 @@ function resolveRef(
   return resolveRef({ ...target, ...schema, $ref: undefined }, definitions, [...stack, code]);
 }
 
-function resolveField(raw: FieldSchema, definitions: RuntimeDefinitions): FieldSchema {
+function resolveField(raw: AlienFieldSchema, definitions: RuntimeDefinitions): AlienFieldSchema {
   const referenced = resolveRef(raw, definitions);
-  const schema: FieldSchema = isRuntimeExpression(referenced.display)
+  const schema: AlienFieldSchema = isRuntimeExpression(referenced.display)
     ? {
         ...referenced,
         display: "visible",
@@ -90,7 +83,11 @@ function warmExpressions(value: unknown): void {
   for (const child of Object.values(value)) warmExpressions(child);
 }
 
-function compileNode(key: string, raw: FieldSchema, definitions: RuntimeDefinitions): CompiledNode {
+function compileNode(
+  key: string,
+  raw: AlienFieldSchema,
+  definitions: RuntimeDefinitions,
+): CompiledNode {
   const schema = resolveField(raw, definitions);
   warmExpressions(schema);
   const childEntries = [
@@ -119,7 +116,7 @@ function compileNode(key: string, raw: FieldSchema, definitions: RuntimeDefiniti
   return { key, schema, props, slots, children, items };
 }
 
-function relationForm(field: ModelFieldSchema): FieldSchema {
+function relationForm(field: AlienSchema["fields"][number]): AlienFieldSchema {
   const form = { ...field.form, props: { ...field.form.props } };
   if (!field.relation) return form;
   const component = form.component === "TreeSelect" ? "TreeSelect" : "RemoteSelect";
@@ -142,7 +139,7 @@ function relationForm(field: ModelFieldSchema): FieldSchema {
   return { ...form, component, props };
 }
 
-function fieldDefinition(field: ModelFieldSchema): FieldSchema {
+function fieldDefinition(field: AlienSchema["fields"][number]): AlienFieldSchema {
   return {
     ...relationForm(field),
     type: field.type,
@@ -151,11 +148,11 @@ function fieldDefinition(field: ModelFieldSchema): FieldSchema {
   };
 }
 
-export function buildFormSchema(model: ModelSchema): FieldSchema {
+export function buildFormSchema(model: AlienSchema): AlienFieldSchema {
   return resolveField(model.form, buildRuntimeDefinitions(model));
 }
 
-export function buildRuntimeDefinitions(model: ModelSchema): RuntimeDefinitions {
+export function buildRuntimeDefinitions(model: AlienSchema): RuntimeDefinitions {
   const fieldDefinitions = Object.fromEntries(
     model.fields.map((field) => [`fields/${field.key}`, fieldDefinition(field)]),
   );
@@ -166,7 +163,7 @@ export function buildRuntimeDefinitions(model: ModelSchema): RuntimeDefinitions 
   };
 }
 
-export function compilePage(model: ModelSchema, page: PageSchema): CompiledPage {
+export function compilePage(model: AlienSchema, page: AlienSchema["pages"][number]): CompiledPage {
   const definitions = buildRuntimeDefinitions(model);
   const root = resolveField(page, definitions);
   const materialized = materializeNode(root);
@@ -183,7 +180,7 @@ export function compilePage(model: ModelSchema, page: PageSchema): CompiledPage 
   };
 }
 
-function materializeNode(schema: FieldSchema): FieldSchema {
+function materializeNode(schema: AlienFieldSchema): AlienFieldSchema {
   const children = [
     ...Object.entries(schema.properties ?? {}),
     ...Object.values(schema.slots ?? {}).flatMap((nodes) => Object.entries(nodes)),
@@ -198,7 +195,7 @@ function materializeNode(schema: FieldSchema): FieldSchema {
 }
 
 export function compileForm(
-  schema: Pick<FieldSchema, "properties">,
+  schema: Pick<AlienFieldSchema, "properties">,
   definitions: RuntimeDefinitions = {},
 ): { schema: IFormSchema; nodes: CompiledNode[] } {
   const properties = Object.fromEntries(
@@ -213,7 +210,7 @@ export function compileForm(
   };
 }
 
-export function compileModel(model: ModelSchema): CompiledPage[] {
+export function compileModel(model: AlienSchema): CompiledPage[] {
   return model.pages.map((page) => compilePage(model, page));
 }
 

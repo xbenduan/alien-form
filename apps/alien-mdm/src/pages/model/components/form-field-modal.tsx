@@ -1,6 +1,6 @@
 import { Button, Drawer, Flex, Form, Input, Select } from "antd";
 import { useEffect, useMemo, useRef } from "react";
-import type { FieldSchema, Runtime } from "@alien-form/engine";
+import type { AlienFieldSchema, AlienValue, Runtime } from "@alien-form/engine";
 import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
 import { FieldsetCard } from "../../../components/fieldset-card";
 import { componentOptions, componentSample, synchronizeRelationForm } from "../builder/codec";
@@ -36,10 +36,10 @@ function toJson(value: unknown): string | undefined {
   return value === undefined ? undefined : JSON.stringify(value, null, 2);
 }
 
-function parseJson(text: string | undefined, label: string): unknown {
+function parseJson(text: string | undefined, label: string): AlienValue | undefined {
   if (!text?.trim()) return undefined;
   try {
-    return JSON.parse(text);
+    return JSON.parse(text) as AlienValue;
   } catch {
     throw new Error(`${label} JSON 格式不合法`);
   }
@@ -57,7 +57,7 @@ const jsonRule = (label: string) => ({
 });
 
 function toValues(node: FieldNode): FormFieldValues {
-  const form = node.form as FieldSchema & Record<string, unknown>;
+  const form = node.form as AlienFieldSchema & Record<string, unknown>;
   return {
     key: node.key,
     type: node.type,
@@ -135,7 +135,7 @@ export function FormFieldModal({
   const applySample = (nextComponent: string) => {
     if (!isNew || nextComponent === initialComponent.current) return;
     const sample = componentSample(runtime, nextComponent, domain) as
-      | (Partial<FieldSchema> & Record<string, unknown>)
+      | (Partial<AlienFieldSchema> & Record<string, unknown>)
       | undefined;
     if (!sample) return;
     form.setFieldsValue({
@@ -151,15 +151,17 @@ export function FormFieldModal({
   const submit = async () => {
     const values = await form.validateFields();
     if (!node) return;
-    const parsedProps = parseJson(values.propsJson, "props") as Record<string, unknown> | undefined;
+    const parsedProps = parseJson(values.propsJson, "props") as
+      | Record<string, AlienValue>
+      | undefined;
     const parsedDecoratorProps = parseJson(values.decoratorPropsJson, "decoratorProps") as
-      | Record<string, unknown>
+      | Record<string, AlienValue>
       | undefined;
 
     const nextType = isDbField ? node.type : (values.type as FieldType);
 
-    const nextForm: FieldSchema & Record<string, unknown> = {
-      ...(node.form as FieldSchema),
+    const nextForm: AlienFieldSchema & Record<string, unknown> = {
+      ...(node.form as AlienFieldSchema),
       component: values.component,
       decorator: values.decorator || undefined,
       description: values.description || undefined,

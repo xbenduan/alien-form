@@ -1,6 +1,6 @@
 import { Alert, Button, Checkbox, Drawer, Flex, Form, Input, Select, Switch } from "antd";
 import { useEffect, useRef, useState } from "react";
-import type { DatabaseColumnType, DatabaseRelation } from "@alien-form/engine";
+import type { AlienSchema } from "@alien-form/engine";
 import { useRuntime } from "@alien-form/react";
 import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
 import type { ModelSummary } from "@app-types";
@@ -8,7 +8,14 @@ import { FieldsetCard } from "../../../components/fieldset-card";
 import { synchronizeRelationForm } from "../builder/codec";
 import type { FieldNode, FieldSource, FieldType, StorageConfig } from "../builder/types";
 
-const COLUMN_TYPES: DatabaseColumnType[] = ["text", "integer", "real", "boolean", "date", "json"];
+const COLUMN_TYPES: NonNullable<AlienSchema["fields"][number]["storage"]>["type"][] = [
+  "text",
+  "integer",
+  "real",
+  "boolean",
+  "date",
+  "json",
+];
 
 /** 虚拟字段可选的值类型（对应表单渲染类型，存入 data_content）。 */
 const VALUE_TYPES: Exclude<FieldType, "void">[] = [
@@ -20,7 +27,10 @@ const VALUE_TYPES: Exclude<FieldType, "void">[] = [
 ];
 
 /** 物理存储类型 → 应用值类型（table/表单类型）。 */
-function valueTypeFor(type: DatabaseColumnType, current?: FieldType): FieldType {
+function valueTypeFor(
+  type: NonNullable<AlienSchema["fields"][number]["storage"]>["type"],
+  current?: FieldType,
+): FieldType {
   if (type === "integer" || type === "real") return "number";
   if (type === "boolean") return "boolean";
   if (type === "json") return current === "array" ? "array" : "object";
@@ -28,7 +38,10 @@ function valueTypeFor(type: DatabaseColumnType, current?: FieldType): FieldType 
 }
 
 /** 值类型 → 物理存储类型（虚拟字段用于保持 StorageConfig 自洽，后端不落库）。 */
-const COLUMN_FOR_VALUE: Record<Exclude<FieldType, "void">, DatabaseColumnType> = {
+const COLUMN_FOR_VALUE: Record<
+  Exclude<FieldType, "void">,
+  NonNullable<AlienSchema["fields"][number]["storage"]>["type"]
+> = {
   string: "text",
   number: "real",
   boolean: "boolean",
@@ -50,7 +63,7 @@ interface StorageFormValues {
   key: string;
   title?: string;
   storageMode: FieldSource;
-  columnType: DatabaseColumnType;
+  columnType: NonNullable<AlienSchema["fields"][number]["storage"]>["type"];
   valueType?: Exclude<FieldType, "void">;
   jsonValueType?: "object" | "array";
   column?: string;
@@ -60,7 +73,7 @@ interface StorageFormValues {
   filterable?: boolean;
   visible?: boolean;
   relationEnabled?: boolean;
-  relationKind?: DatabaseRelation["kind"];
+  relationKind?: NonNullable<AlienSchema["fields"][number]["relation"]>["kind"];
   relationTarget?: string;
   relationThrough?: string;
   relationValueField?: string;
@@ -161,18 +174,19 @@ export function StorageFieldModal({
     const values = await form.validateFields();
     if (!node) return;
     const virtual = values.storageMode === "virtual";
-    const relation: DatabaseRelation | undefined = values.relationEnabled
-      ? {
-          kind: values.relationKind ?? "many-to-one",
-          target: values.relationTarget!.trim(),
-          through:
-            values.relationKind === "many-to-many"
-              ? values.relationThrough?.trim() || undefined
-              : undefined,
-          valueField: values.relationValueField?.trim() || undefined,
-          labelField: values.relationLabelField?.trim() || undefined,
-        }
-      : undefined;
+    const relation: NonNullable<AlienSchema["fields"][number]["relation"]> | undefined =
+      values.relationEnabled
+        ? {
+            kind: values.relationKind ?? "many-to-one",
+            target: values.relationTarget!.trim(),
+            through:
+              values.relationKind === "many-to-many"
+                ? values.relationThrough?.trim() || undefined
+                : undefined,
+            valueField: values.relationValueField?.trim() || undefined,
+            labelField: values.relationLabelField?.trim() || undefined,
+          }
+        : undefined;
     const isMany = relation?.kind === "many-to-many";
     // 值类型：多对多恒为数组；虚拟按所选值类型；物理由列类型派生。
     const valueType: FieldType = isMany
@@ -181,7 +195,7 @@ export function StorageFieldModal({
         ? (values.valueType ?? "string")
         : valueTypeFor(values.columnType, values.jsonValueType);
     // 物理列类型：虚拟字段仅用于保持 StorageConfig 自洽（encode 时会丢弃 database）。
-    const storageType: DatabaseColumnType = isMany
+    const storageType: NonNullable<AlienSchema["fields"][number]["storage"]>["type"] = isMany
       ? "json"
       : virtual
         ? COLUMN_FOR_VALUE[valueType === "void" ? "string" : valueType]

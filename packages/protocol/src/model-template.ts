@@ -1,19 +1,18 @@
-import { parseModelSchema } from "./assert.ts";
+import { parseAlienSchema } from "./assert.ts";
 import { createDefaultPages, SYSTEM_FIELD_KEYS } from "./page-templates.ts";
-import type FieldSchema from "./field-schema.ts";
-import type { ModelSchema } from "./model-schema.ts";
+import type { AlienFieldSchema, AlienSchema } from "./alien-schema.ts";
 
 /** Shared form behavior for generated system fields. */
-export const SYSTEM_FIELD_FORM: Pick<FieldSchema, "disabled" | "display"> = {
+export const SYSTEM_FIELD_FORM: Pick<AlienFieldSchema, "disabled" | "display"> = {
   display: "{{ mode === 'detail' ? 'visible' : 'none' }}",
   disabled: true,
 };
 
 /** Canonical starter model used by the editor and generated model Skill. */
-export function createModelTemplate(): ModelSchema {
+export function createModelTemplate(): AlienSchema {
   const name = "example_model";
   const title = "示例模型";
-  return parseModelSchema({
+  return parseAlienSchema({
     name,
     title,
     version: 0,

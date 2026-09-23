@@ -1,7 +1,7 @@
 {
-  "$ref": "#/definitions/ModelSchema",
+  "$ref": "#/definitions/AlienSchema",
   "definitions": {
-    "ModelSchema": {
+    "AlienSchema": {
       "type": "object",
       "properties": {
         "name": {
@@ -185,13 +185,13 @@
                       {
                         "type": "array",
                         "items": {
-                          "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                          "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form/properties/default"
                         }
                       },
                       {
                         "type": "object",
                         "additionalProperties": {
-                          "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                          "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form/properties/default"
                         }
                       }
                     ]
@@ -199,18 +199,18 @@
                   "properties": {
                     "type": "object",
                     "additionalProperties": {
-                      "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form"
+                      "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form"
                     }
                   },
                   "items": {
                     "anyOf": [
                       {
-                        "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form"
+                        "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form"
                       },
                       {
                         "type": "array",
                         "items": {
-                          "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form"
+                          "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form"
                         }
                       }
                     ]
@@ -259,7 +259,7 @@
                   "decoratorProps": {
                     "type": "object",
                     "additionalProperties": {
-                      "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                      "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form/properties/default"
                     }
                   },
                   "component": {
@@ -268,7 +268,7 @@
                   "props": {
                     "type": "object",
                     "additionalProperties": {
-                      "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                      "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form/properties/default"
                     }
                   },
                   "slots": {
@@ -276,7 +276,7 @@
                     "additionalProperties": {
                       "type": "object",
                       "additionalProperties": {
-                        "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form"
+                        "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form"
                       }
                     }
                   },
@@ -292,29 +292,29 @@
                   "x-reaction": {
                     "type": "object",
                     "additionalProperties": {
-                      "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                      "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form/properties/default"
                     }
                   },
                   "x-effect": {
-                    "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                    "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form/properties/default"
                   },
                   "x-format": {
                     "type": "object",
                     "properties": {
                       "input": {
-                        "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                        "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form/properties/default"
                       },
                       "output": {
-                        "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                        "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form/properties/default"
                       }
                     },
                     "additionalProperties": false
                   },
                   "x-validate": {
-                    "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                    "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form/properties/default"
                   },
                   "dataSource": {
-                    "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form/properties/default"
+                    "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form/properties/default"
                   }
                 },
                 "additionalProperties": true
@@ -352,12 +352,12 @@
           "minItems": 1
         },
         "form": {
-          "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form"
+          "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form"
         },
         "definitions": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form"
+            "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form"
           }
         },
         "pages": {
@@ -365,7 +365,7 @@
           "items": {
             "allOf": [
               {
-                "$ref": "#/definitions/ModelSchema/properties/fields/items/properties/form"
+                "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form"
               },
               {
                 "type": "object",
@@ -378,13 +378,7 @@
                     "type": "string"
                   },
                   "permission": {
-                    "type": "string",
-                    "enum": [
-                      "read",
-                      "create",
-                      "update",
-                      "delete"
-                    ]
+                    "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form/properties/permission"
                   },
                   "type": {
                     "type": "string",

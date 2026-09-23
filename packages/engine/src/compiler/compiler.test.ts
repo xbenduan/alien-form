@@ -10,7 +10,7 @@ import {
   isCompiledValue,
   matchPage,
 } from ".";
-import type { ModelSchema } from "../protocol";
+import type { AlienSchema } from "../protocol";
 
 /** Creates the minimal form API required by compiled expression tests. */
 function expressionForm(values: Record<string, unknown>) {
@@ -21,7 +21,7 @@ function expressionForm(values: Record<string, unknown>) {
   };
 }
 
-const model: ModelSchema = {
+const model: AlienSchema = {
   name: "products",
   title: "商品",
   version: 1,
@@ -213,7 +213,7 @@ describe("page compiler", () => {
   });
 
   it("compiles expression display into a reactive display rule", () => {
-    const dynamicModel: ModelSchema = {
+    const dynamicModel: AlienSchema = {
       ...model,
       fields: model.fields.map((field) => ({
         ...field,

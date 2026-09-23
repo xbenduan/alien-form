@@ -1,7 +1,7 @@
-import type { DatabaseRelation, FieldSchema, ModelFieldSchema, Runtime } from "@alien-form/engine";
-import { parseModelSchema } from "@alien-form/protocol";
+import type { AlienFieldSchema, Runtime } from "@alien-form/engine";
+import { parseAlienSchema } from "@alien-form/protocol";
 import type {
-  ModelSchema,
+  AlienSchema,
   FieldNode,
   FieldType,
   FormConfig,
@@ -40,7 +40,7 @@ const COMPONENT_FOR_TYPE: Record<FieldType, string> = {
 export function synchronizeRelationForm(
   form: FormConfig,
   type: FieldType,
-  relation?: DatabaseRelation,
+  relation?: NonNullable<AlienSchema["fields"][number]["relation"]>,
 ): FormConfig {
   if (!relation) {
     if (form.component !== "RemoteSelect") return form;
@@ -98,7 +98,7 @@ export function componentSample(
   runtime: Runtime,
   component: string,
   domain?: string,
-): Partial<FieldSchema> | undefined {
+): Partial<AlienFieldSchema> | undefined {
   return runtime.resolveComponent(component, domain)?.meta?.sample;
 }
 
@@ -129,10 +129,10 @@ export function createField(
 }
 
 // --------------------------------------------------------------------------
-// decode: ModelSchema -> ModelDraft
+// decode: AlienSchema -> ModelDraft
 // --------------------------------------------------------------------------
 
-function decodeFormConfig(schema: FieldSchema | undefined): FormConfig {
+function decodeFormConfig(schema: AlienFieldSchema | undefined): FormConfig {
   if (!schema) return {};
   // 保留全部 IFieldSchema 表现字段；properties/items 由 FieldNode.children 承载，剔除。
   const rest: Record<string, unknown> = { ...schema };
@@ -144,7 +144,7 @@ function decodeFormConfig(schema: FieldSchema | undefined): FormConfig {
   return rest as FormConfig;
 }
 
-function decodeChildren(schema: FieldSchema | undefined): FieldNode[] {
+function decodeChildren(schema: AlienFieldSchema | undefined): FieldNode[] {
   const properties =
     schema?.type === "array"
       ? schema.items && !Array.isArray(schema.items)
@@ -156,7 +156,7 @@ function decodeChildren(schema: FieldSchema | undefined): FieldNode[] {
 }
 
 /** 解码 virtual 字段或嵌套字段。 */
-function decodeVirtualNode(key: string, schema: FieldSchema): FieldNode {
+function decodeVirtualNode(key: string, schema: AlienFieldSchema): FieldNode {
   const type = (schema.type ?? "string") as FieldType;
   const node: FieldNode = {
     id: createId(),
@@ -178,7 +178,7 @@ function decodeVirtualNode(key: string, schema: FieldSchema): FieldNode {
  */
 export function applyFormSchema(
   current: FieldNode[],
-  properties: Record<string, FieldSchema>,
+  properties: Record<string, AlienFieldSchema>,
 ): FieldNode[] {
   const byKey = new Map(current.map((node) => [node.key, node]));
   const result: FieldNode[] = [];
@@ -216,7 +216,7 @@ export function applyFormSchema(
   return result;
 }
 
-function storageFromField(field: ModelFieldSchema): StorageConfig {
+function storageFromField(field: AlienSchema["fields"][number]): StorageConfig {
   const storage = field.storage;
   if (!storage) throw new Error(`physical 字段缺少 storage：${field.key}`);
   return {
@@ -236,7 +236,7 @@ function storageFromField(field: ModelFieldSchema): StorageConfig {
  * virtual 字段的存储元信息（title / 列表可见 / 可筛选 / 关联）。
  * 仅当存在可承载的元信息时才重建 storage，避免纯表单字段被强加空存储配置。
  */
-function storageFromVirtualField(field: ModelFieldSchema): StorageConfig | undefined {
+function storageFromVirtualField(field: AlienSchema["fields"][number]): StorageConfig | undefined {
   const title = field.title;
   const hidden = field.table?.hidden === true;
   const filterHidden = field.filter?.hidden === true;
@@ -251,11 +251,11 @@ function storageFromVirtualField(field: ModelFieldSchema): StorageConfig | undef
   };
 }
 
-function fieldType(field: ModelFieldSchema): FieldType {
+function fieldType(field: AlienSchema["fields"][number]): FieldType {
   return field.type;
 }
 
-export function decodeModel(model: ModelSchema): ModelDraft {
+export function decodeModel(model: AlienSchema): ModelDraft {
   const fields: FieldNode[] = model.fields.map((field) => {
     const type = fieldType(field);
     const node: FieldNode = {
@@ -315,14 +315,14 @@ export function decodeModel(model: ModelSchema): ModelDraft {
 }
 
 // --------------------------------------------------------------------------
-// encode: ModelDraft -> ModelSchema
+// encode: ModelDraft -> AlienSchema
 // --------------------------------------------------------------------------
 
 function pruneUndefined<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined)) as T;
 }
 
-function encodeFormSchema(node: FieldNode): FieldSchema {
+function encodeFormSchema(node: FieldNode): AlienFieldSchema {
   // 落库字段的 required 由存储 nullable 派生（form-schema 不定义存储语义）；
   // 表单新增字段(extra)的 required 由 form 自身决定。
   const required = node.required === true;
@@ -331,12 +331,12 @@ function encodeFormSchema(node: FieldNode): FieldSchema {
   const base: Record<string, unknown> = { ...form };
   delete base.properties;
   delete base.items;
-  const schema: FieldSchema = pruneUndefined({
+  const schema: AlienFieldSchema = pruneUndefined({
     ...base,
     type: node.type,
     title: node.title,
     required: required || undefined,
-  }) as FieldSchema;
+  }) as AlienFieldSchema;
   if (node.type === "object") {
     schema.properties = Object.fromEntries(
       (node.children ?? []).map((child) => [child.key, encodeFormSchema(child)]),
@@ -353,7 +353,7 @@ function encodeFormSchema(node: FieldNode): FieldSchema {
   return schema;
 }
 
-function encodeModelField(node: FieldNode): ModelFieldSchema {
+function encodeModelField(node: FieldNode): AlienSchema["fields"][number] {
   const storage = node.storage ?? { type: COLUMN_FOR_TYPE[node.type] };
   const { type: _type, title: _title, required: _required, ...form } = encodeFormSchema(node);
   return pruneUndefined({
@@ -382,10 +382,10 @@ function encodeModelField(node: FieldNode): ModelFieldSchema {
             hidden: true,
           }
         : undefined,
-  }) as ModelFieldSchema;
+  }) as AlienSchema["fields"][number];
 }
 
-export function encodeModel(draft: ModelDraft): ModelSchema {
+export function encodeModel(draft: ModelDraft): AlienSchema {
   const name = draft.name.trim();
   if (!/^[A-Za-z_][A-Za-z0-9_-]*$/.test(name)) {
     throw new Error("模型名只能使用字母、数字、下划线和中划线，且必须以字母或下划线开头");
@@ -404,7 +404,7 @@ export function encodeModel(draft: ModelDraft): ModelSchema {
   const pages =
     draft.pages.length > 0 ? draft.pages.map(({ page }) => page) : createDefaultPages(name, title);
 
-  return parseModelSchema({
+  return parseAlienSchema({
     name,
     title,
     version: draft.version,
@@ -422,7 +422,7 @@ export function encodeModel(draft: ModelDraft): ModelSchema {
 }
 
 /** Persists editor groups as real Card nodes containing field references. */
-function encodeModelForm(draft: ModelDraft): FieldSchema {
+function encodeModelForm(draft: ModelDraft): AlienFieldSchema {
   const fieldsByKey = new Map(draft.fields.map((field) => [field.key, field]));
   const keyToGroup = new Map<string, number>();
   draft.groups.forEach((group, index) => {
@@ -432,7 +432,7 @@ function encodeModelForm(draft: ModelDraft): FieldSchema {
   });
 
   const emitted = new Set<number>();
-  const properties: Record<string, FieldSchema> = {};
+  const properties: Record<string, AlienFieldSchema> = {};
   for (const field of draft.fields) {
     if (SYSTEM_FIELD_KEYS.includes(field.key as (typeof SYSTEM_FIELD_KEYS)[number])) continue;
     const groupIndex = keyToGroup.get(field.key);
@@ -454,7 +454,7 @@ function encodeModelForm(draft: ModelDraft): FieldSchema {
           fieldsByKey.has(key) ? [[key, { $ref: `#/fields/${key}` }]] : [],
         ),
       ),
-    }) as FieldSchema;
+    }) as AlienFieldSchema;
   }
   properties.system = {
     type: "void",
