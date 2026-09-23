@@ -1,5 +1,5 @@
 import type { Container } from "../../../container.ts";
-import { ensureRecord } from "../../global/initialization.ts";
+import { ensureRecord } from "../../bootstrap.ts";
 
 /** Finishes the dynamic-table part of the model category rename once per database. */
 export async function prepare(container: Container): Promise<void> {

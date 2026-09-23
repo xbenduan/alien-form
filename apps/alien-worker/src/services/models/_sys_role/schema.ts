@@ -1,11 +1,10 @@
-import type { AlienSchema } from "@alien-form/protocol";
+import { createRecordPages, type AlienSchema } from "@alien-form/protocol";
 import {
   modelForm,
   physicalField,
-  recordPages,
   systemFields,
   virtualField,
-} from "../../global/system-model.ts";
+} from "../../../utils/system-model.ts";
 
 /** Builds the role protocol from constants owned by the model entry. */
 export default function createSchema(constants: {
@@ -135,7 +134,7 @@ export default function createSchema(constants: {
     defaultPageSize: 20,
     fields,
     form: modelForm(fields, ["code", "name", "parentId", "canCreateModel", "description"]),
-    pages: recordPages(modelCode, "角色", [
+    pages: createRecordPages(modelCode, "角色", [
       "code",
       "name",
       "parentId",

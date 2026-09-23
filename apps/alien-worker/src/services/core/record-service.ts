@@ -11,16 +11,15 @@ import type { ListResult, OptionResult, RecordStore } from "../../store/record-s
 import type { RefExpander } from "../../store/ref-expander.ts";
 import { unwrapRefs } from "../../store/ref-expander.ts";
 import type { ModelModules } from "../model-modules.ts";
-import type { AccessProfile, AuthorizationService } from "./authorization.ts";
+import type { AccessControl, AccessProfile } from "./access-control.ts";
 import {
   prepareModelInput,
   presentModelRecord,
   runAfterCommit,
   runBeforePersist,
   validateModelRecord,
-} from "./middleware.ts";
-import { normalizeRecord } from "./validation.ts";
-import { publicRecord } from "./visibility.ts";
+} from "./model-middleware.ts";
+import { normalizeRecord } from "./record-validation.ts";
 
 export type ListInput = ListRequest;
 export type OptionsInput = OptionsRequest;
@@ -36,7 +35,7 @@ export class RecordService {
     private readonly records: RecordStore,
     private readonly refs: RefExpander,
     private readonly modules: ModelModules,
-    private readonly authorization: AuthorizationService,
+    private readonly access: AccessControl,
   ) {}
 
   private async requireModel(model: string): Promise<AlienSchema> {
@@ -60,9 +59,9 @@ export class RecordService {
 
   async list(input: ListInput, authId: string): Promise<ListResult> {
     const source = await this.requireModel(input.model);
-    const profile = await this.authorization.profile(authId);
-    const scope = this.authorization.assertCan(profile, source, "read");
-    const schema = this.authorization.projectSchema(profile, source);
+    const profile = await this.access.profile(authId);
+    const scope = this.access.assertCan(profile, source, "read");
+    const schema = this.access.projectSchema(profile, source);
     const relation =
       input.parentId === undefined || input.parentId === null || input.parentId === ""
         ? undefined
@@ -98,9 +97,9 @@ export class RecordService {
 
   async options(input: OptionsInput, actorId: string): Promise<OptionResult> {
     const source = await this.requireModel(input.model);
-    const profile = await this.authorization.profile(actorId);
-    const scope = this.authorization.assertCan(profile, source, "read");
-    const schema = this.authorization.projectSchema(profile, source);
+    const profile = await this.access.profile(actorId);
+    const scope = this.access.assertCan(profile, source, "read");
+    const schema = this.access.projectSchema(profile, source);
     const available = new Set(schema.fields.map((field) => field.key));
     if (
       !available.has(input.valueKey ?? "id") ||
@@ -120,9 +119,9 @@ export class RecordService {
 
   async subtree(input: SubtreeInput, actorId: string): Promise<{ list: ModelRecord[] }> {
     const source = await this.requireModel(input.model);
-    const profile = await this.authorization.profile(actorId);
-    const scope = this.authorization.assertCan(profile, source, "read");
-    const schema = this.authorization.projectSchema(profile, source);
+    const profile = await this.access.profile(actorId);
+    const scope = this.access.assertCan(profile, source, "read");
+    const schema = this.access.projectSchema(profile, source);
     const list = await this.records.subtree(schema, {
       idField: input.idField ?? "id",
       parentField: input.parentField ?? "id",
@@ -147,9 +146,9 @@ export class RecordService {
 
   async get(model: string, id: string, actorId: string): Promise<ModelRecord> {
     const source = await this.requireModel(model);
-    const profile = await this.authorization.profile(actorId);
-    const scope = this.authorization.assertCan(profile, source, "read");
-    const schema = this.authorization.projectSchema(profile, source);
+    const profile = await this.access.profile(actorId);
+    const scope = this.access.assertCan(profile, source, "read");
+    const schema = this.access.projectSchema(profile, source);
     const record = await this.records.get(schema, id);
     if (!record) throw notFound(`记录不存在：${id}`);
     await this.assertOwnership(scope, source, id, actorId);
@@ -168,9 +167,9 @@ export class RecordService {
     actorId: string,
   ): Promise<ModelRecord> {
     const schema = await this.requireModel(model);
-    const profile = await this.authorization.profile(actorId);
-    this.authorization.assertCan(profile, schema, "create");
-    this.authorization.assertFields(profile, schema, "create", Object.keys(values));
+    const profile = await this.access.profile(actorId);
+    this.access.assertCan(profile, schema, "create");
+    this.access.assertFields(profile, schema, "create", Object.keys(values));
     const clean = await prepareModelInput(
       this.modules,
       model,
@@ -230,9 +229,9 @@ export class RecordService {
     actorId: string,
   ): Promise<ModelRecord> {
     const schema = await this.requireModel(model);
-    const profile = await this.authorization.profile(actorId);
-    const scope = this.authorization.assertCan(profile, schema, "update");
-    this.authorization.assertFields(profile, schema, "update", Object.keys(values));
+    const profile = await this.access.profile(actorId);
+    const scope = this.access.assertCan(profile, schema, "update");
+    this.access.assertFields(profile, schema, "update", Object.keys(values));
     const previous = await this.records.get(schema, id);
     if (!previous) throw notFound(`记录不存在：${id}`);
     const ownerId = await this.assertOwnership(scope, schema, id, actorId);
@@ -293,11 +292,7 @@ export class RecordService {
 
   async remove(model: string, id: string, actorId: string): Promise<void> {
     const schema = await this.requireModel(model);
-    const scope = this.authorization.assertCan(
-      await this.authorization.profile(actorId),
-      schema,
-      "delete",
-    );
+    const scope = this.access.assertCan(await this.access.profile(actorId), schema, "delete");
     const record = await this.records.get(schema, id);
     if (!record) return;
     await this.assertOwnership(scope, schema, id, actorId);
@@ -324,11 +319,7 @@ export class RecordService {
 
   async removeMany(model: string, ids: string[], actorId: string): Promise<void> {
     const schema = await this.requireModel(model);
-    const scope = this.authorization.assertCan(
-      await this.authorization.profile(actorId),
-      schema,
-      "delete",
-    );
+    const scope = this.access.assertCan(await this.access.profile(actorId), schema, "delete");
     const records = (await Promise.all(ids.map((id) => this.records.get(schema, id)))).filter(
       (record): record is ModelRecord => record !== undefined,
     );
@@ -368,7 +359,7 @@ export class RecordService {
     schema: AlienSchema,
     record: ModelRecord,
   ): ModelRecord {
-    return this.authorization.project(profile, schema, publicRecord(schema.name, record));
+    return this.access.project(profile, schema, record);
   }
 
   /** Enforces `scope: own` and returns the persisted owner for updates. */

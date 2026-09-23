@@ -4,8 +4,8 @@ import type { LoginRequest, LoginResponse, ModelRecord } from "@alien-form/proto
 import type { ModelStore } from "../../store/model-store.ts";
 import type { RecordStore } from "../../store/record-store.ts";
 import type { SessionStore } from "../../store/session-store.ts";
-import type { AuthorizationService } from "../global/authorization.ts";
-import { publicRecord } from "../global/visibility.ts";
+import type { AccessProfileProvider } from "../core/access-control.ts";
+import { publicRecord } from "../core/record-visibility.ts";
 import userModule from "../models/_sys_user/index.ts";
 
 export interface Session {
@@ -47,7 +47,7 @@ export class AuthService {
     private readonly models: ModelStore,
     private readonly records: RecordStore,
     private readonly sessions: SessionStore,
-    private readonly authorization: AuthorizationService,
+    private readonly profiles: AccessProfileProvider,
   ) {}
 
   /** 按用户名查用户记录（供 provider 复用）。 */
@@ -72,11 +72,11 @@ export class AuthService {
       createdAt: Date.now(),
     };
     await this.sessions.create(session);
-    const profile = await this.authorization.profile(session.userId);
+    const profile = await this.profiles.profile(session.userId);
     return {
       token: session.token,
       user: {
-        ...publicRecord(userModule.schema.name, user),
+        ...publicRecord(userModule.schema, user),
         canCreateModel: profile.canCreateModel,
       },
       provider: provider.name,

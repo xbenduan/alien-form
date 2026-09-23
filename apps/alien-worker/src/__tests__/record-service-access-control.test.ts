@@ -3,8 +3,8 @@ import type { AlienSchema } from "@alien-form/protocol";
 import type { ModelStore } from "../store/model-store.ts";
 import type { RecordStore } from "../store/record-store.ts";
 import type { RefExpander } from "../store/ref-expander.ts";
-import type { AuthorizationService } from "../services/global/authorization.ts";
-import { RecordService } from "../services/global/record.ts";
+import type { AccessControl } from "../services/core/access-control.ts";
+import { RecordService } from "../services/core/record-service.ts";
 import { ModelModules } from "../services/model-modules.ts";
 
 const schema: AlienSchema = {
@@ -36,7 +36,7 @@ const schema: AlienSchema = {
   pages: [],
 };
 
-/** Creates a record service with focused authorization doubles. */
+/** Creates a record service with focused access-control doubles. */
 function service(owner = "actor") {
   const models = { get: vi.fn().mockResolvedValue(schema) } as unknown as ModelStore;
   const records = {
@@ -50,20 +50,20 @@ function service(owner = "actor") {
     expand: vi.fn(async (_schema, records) => records),
     expandOne: vi.fn(async (_schema, record) => record),
   } as unknown as RefExpander;
-  const authorization = {
+  const access = {
     profile: vi.fn().mockResolvedValue({ actorId: "actor" }),
     assertCan: vi.fn().mockReturnValue("own"),
     assertFields: vi.fn(),
     projectSchema: vi.fn().mockReturnValue(schema),
     project: vi.fn((_profile, _schema, record) => record),
-  } as unknown as AuthorizationService;
+  } as unknown as AccessControl;
   return {
     records,
-    value: new RecordService(models, records, refs, ModelModules.from([]), authorization),
+    value: new RecordService(models, records, refs, ModelModules.from([]), access),
   };
 }
 
-describe("RecordService authorization", () => {
+describe("RecordService access control", () => {
   it("pushes own-scope filtering into list queries", async () => {
     const { records, value } = service();
 

@@ -1,9 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AlienSchema } from "@alien-form/protocol";
 import type { ModelStore } from "../store/model-store.ts";
-import type { RecordStore } from "../store/record-store.ts";
-import type { AuthorizationService } from "../services/global/authorization.ts";
-import { ModelService } from "../services/global/model.ts";
+import type { AccessControl } from "../services/core/access-control.ts";
+import { ModelService, type ModelGroupPolicy } from "../services/core/model-service.ts";
 import { ModelModules } from "../services/model-modules.ts";
 
 /** Creates a minimal valid model schema for service tests. */
@@ -59,18 +58,18 @@ function schema(name = "article"): AlienSchema {
   };
 }
 
-/** Creates model service dependencies with permissive authorization. */
+/** Creates model service dependencies with permissive access control. */
 function dependencies() {
   const publish = vi.fn(async (value: AlienSchema) => value);
   const remove = vi.fn();
   const models = {
-    get: vi.fn(async (name: string) => (name === "_sys_model_category" ? schema(name) : undefined)),
+    get: vi.fn(),
     has: vi.fn().mockResolvedValue(false),
     list: vi.fn().mockResolvedValue([]),
     publish,
     delete: remove,
   } as unknown as ModelStore;
-  const authorization = {
+  const access = {
     profile: vi.fn().mockResolvedValue({
       actorId: "admin",
       permissions: new Map(),
@@ -81,20 +80,18 @@ function dependencies() {
     assertCan: vi.fn(),
     assertCanManageModel: vi.fn(),
     canRead: vi.fn().mockReturnValue(true),
-  } as unknown as AuthorizationService;
-  const records = {
-    findByField: vi
-      .fn()
-      .mockResolvedValue({ id: "category-other", code: "other", aggregate: false }),
-  } as unknown as RecordStore;
-  return { authorization, models, publish, records, remove };
+  } as unknown as AccessControl;
+  const groups = {
+    assertValid: vi.fn(),
+  } satisfies ModelGroupPolicy;
+  return { access, groups, models, publish, remove };
 }
 
 describe("ModelService", () => {
   it("rejects updates and deletes for code-defined system models", async () => {
-    const { authorization, models, records, remove } = dependencies();
+    const { access, groups, models, remove } = dependencies();
     const modules = ModelModules.from([{ schema: schema("_sys_test") }]);
-    const service = new ModelService(models, records, authorization, modules);
+    const service = new ModelService(models, access, modules, groups);
 
     await expect(service.update("_sys_test", schema("_sys_test"), "admin")).rejects.toMatchObject({
       status: 403,
@@ -104,11 +101,12 @@ describe("ModelService", () => {
   });
 
   it("records the authenticated creator instead of trusting submitted metadata", async () => {
-    const { authorization, models, publish, records } = dependencies();
-    const service = new ModelService(models, records, authorization, ModelModules.from([]));
+    const { access, groups, models, publish } = dependencies();
+    const service = new ModelService(models, access, ModelModules.from([]), groups);
 
     await service.create({ ...schema(), creatorId: "spoofed", system: true }, "admin");
 
+    expect(groups.assertValid).toHaveBeenCalledWith("other");
     expect(publish).toHaveBeenCalledWith(
       expect.objectContaining({ creatorId: "admin", system: false, version: 1 }),
       "article",
@@ -138,12 +136,9 @@ describe("ModelService", () => {
       publish,
     } as unknown as ModelStore;
     const modules = ModelModules.from([{ schema: desired }]);
-    const service = new ModelService(
-      models,
-      {} as RecordStore,
-      {} as AuthorizationService,
-      modules,
-    );
+    const service = new ModelService(models, {} as AccessControl, modules, {
+      assertValid: vi.fn(),
+    });
 
     await service.ensureSystemModel(desired);
 

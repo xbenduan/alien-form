@@ -82,6 +82,9 @@
               "required": {
                 "type": "boolean"
               },
+              "private": {
+                "type": "boolean"
+              },
               "storage": {
                 "type": "object",
                 "properties": {

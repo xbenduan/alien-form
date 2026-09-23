@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { ModelRecord, AlienSchema } from "@alien-form/protocol";
 import type { ModelStore } from "../store/model-store.ts";
 import type { RecordStore } from "../store/record-store.ts";
-import { AuthorizationService } from "../services/global/authorization.ts";
+import { RoleAccessProfileProvider } from "../services/auth/access-profile-provider.ts";
+import { AccessControl, type AccessControlOptions } from "../services/core/access-control.ts";
 import roleModule from "../services/models/_sys_role/index.ts";
 
 /** Creates a minimum business model for permission tests. */
@@ -77,7 +78,15 @@ function stores(user: ModelRecord, roles: ModelRecord[]) {
   return { models, records };
 }
 
-describe("AuthorizationService", () => {
+function accessControl(
+  models: ModelStore,
+  records: RecordStore,
+  options?: AccessControlOptions,
+): AccessControl {
+  return new AccessControl(new RoleAccessProfileProvider(models, records), options);
+}
+
+describe("AccessControl", () => {
   it("aggregates arbitrary descendant roles upward without role-code semantics", async () => {
     const roles: ModelRecord[] = [
       {
@@ -120,7 +129,7 @@ describe("AuthorizationService", () => {
       },
     ];
     const { models, records } = stores({ id: "teacher", roleId: ["faculty"] }, roles);
-    const service = new AuthorizationService(models, records);
+    const service = accessControl(models, records);
     const profile = await service.profile("teacher");
 
     expect(profile.canCreateModel).toBe(true);
@@ -151,7 +160,7 @@ describe("AuthorizationService", () => {
       roles,
     );
 
-    const profile = await new AuthorizationService(models, records).profile("student");
+    const profile = await accessControl(models, records).profile("student");
 
     expect(profile.roleIds).toEqual(["student-role", "monitor-role"]);
     expect(profile.permissions.get("article")).toEqual({
@@ -166,7 +175,7 @@ describe("AuthorizationService", () => {
       { id: "root-user", roleId: [roleModule.constants.superAdminId] },
       [],
     );
-    const profile = await new AuthorizationService(models, records).profile("root-user");
+    const profile = await accessControl(models, records).profile("root-user");
 
     expect(profile.super).toBe(true);
     expect(profile.canCreateModel).toBe(true);
@@ -186,7 +195,7 @@ describe("AuthorizationService", () => {
         ],
       },
     ]);
-    const service = new AuthorizationService(models, records);
+    const service = accessControl(models, records);
     const profile = await service.profile("student");
 
     expect(service.canRead(profile, model())).toBe(true);
@@ -204,11 +213,28 @@ describe("AuthorizationService", () => {
     const { models, records } = stores({ id: "builder", roleId: ["builder-role"] }, [
       { id: "builder-role", canCreateModel: true },
     ]);
-    const service = new AuthorizationService(models, records);
+    const service = accessControl(models, records);
     const profile = await service.profile("builder");
 
     expect(service.scope(profile, model("builder"), "delete")).toBe("all");
     expect(service.scope(profile, model("other"), "delete")).toBeUndefined();
+  });
+
+  it("grants read-only access to models declared public by the composition root", () => {
+    const { models, records } = stores({ id: "guest", roleId: [] }, []);
+    const service = accessControl(models, records, {
+      publicModelNames: new Set(["article"]),
+    });
+    const profile = {
+      actorId: "guest",
+      roleIds: [],
+      permissions: new Map(),
+      canCreateModel: false,
+      super: false,
+    };
+
+    expect(service.scope(profile, model(), "read")).toBe("all");
+    expect(service.scope(profile, model(), "update")).toBeUndefined();
   });
 
   it("projects pages and slotted action nodes by explicit permission", async () => {
@@ -218,7 +244,7 @@ describe("AuthorizationService", () => {
         permissions: [{ model: "article", actions: ["read"], fields: ["title"], scope: "all" }],
       },
     ]);
-    const service = new AuthorizationService(models, records);
+    const service = accessControl(models, records);
     const profile = await service.profile("reader");
     const schema: AlienSchema = {
       ...model(),
@@ -264,5 +290,46 @@ describe("AuthorizationService", () => {
         detail: { type: "void", component: "record-action", permission: "read" },
       },
     });
+  });
+
+  it("never exposes protocol-private fields, including to super administrators", () => {
+    const { models, records } = stores({ id: "root", roleId: [] }, []);
+    const service = accessControl(models, records);
+    const schema = model();
+    schema.fields.push({
+      id: "article.internal",
+      key: "internal",
+      type: "string",
+      private: true,
+      form: {},
+    });
+    schema.form.properties!.internal = { $ref: "#/fields/internal" };
+
+    const projected = service.projectSchema(
+      {
+        actorId: "root",
+        roleIds: [],
+        permissions: new Map(),
+        canCreateModel: true,
+        super: true,
+      },
+      schema,
+    );
+
+    expect(projected.fields.map((field) => field.key)).not.toContain("internal");
+    expect(projected.form.properties).not.toHaveProperty("internal");
+    expect(
+      service.project(
+        {
+          actorId: "root",
+          roleIds: [],
+          permissions: new Map(),
+          canCreateModel: true,
+          super: true,
+        },
+        schema,
+        { id: "1", title: "公开", internal: "内部" },
+      ),
+    ).toEqual({ id: "1", title: "公开" });
   });
 });

@@ -4,7 +4,7 @@ import type { ModelStore } from "../../store/model-store.ts";
 import type { RecordStore } from "../../store/record-store.ts";
 import type { ModelModules } from "../model-modules.ts";
 import type { ModelReadOperation, ModelWriteOperation } from "../types.ts";
-import { immutable } from "./validation.ts";
+import { immutable } from "./record-validation.ts";
 
 function asInputError(reason: unknown): AppError {
   return reason instanceof AppError

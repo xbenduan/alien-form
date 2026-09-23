@@ -2,11 +2,14 @@ import { ModelStore } from "./store/model-store.ts";
 import { RecordStore } from "./store/record-store.ts";
 import { SessionStore } from "./store/session-store.ts";
 import { RefExpander } from "./store/ref-expander.ts";
-import { ModelService } from "./services/global/model.ts";
-import { RecordService } from "./services/global/record.ts";
+import { RoleAccessProfileProvider } from "./services/auth/access-profile-provider.ts";
 import { AuthService } from "./services/auth/auth-service.ts";
-import { AuthorizationService } from "./services/global/authorization.ts";
+import { AccessControl } from "./services/core/access-control.ts";
+import { ModelService } from "./services/core/model-service.ts";
+import { RecordService } from "./services/core/record-service.ts";
+import { SystemModelGroupPolicy } from "./services/model-group-policy.ts";
 import { modelModules, type ModelModules } from "./services/model-modules.ts";
+import categoryModule from "./services/models/_sys_model_category/index.ts";
 
 /**
  * 依赖容器：一次装配 store + service 并互相注入。
@@ -19,7 +22,8 @@ export class Container {
   readonly recordStore: RecordStore;
   readonly sessionStore: SessionStore;
   readonly refExpander: RefExpander;
-  readonly authorizationService: AuthorizationService;
+  readonly accessProfileProvider: RoleAccessProfileProvider;
+  readonly accessControl: AccessControl;
 
   readonly modelService: ModelService;
   readonly recordService: RecordService;
@@ -33,26 +37,29 @@ export class Container {
     this.recordStore = new RecordStore(db);
     this.sessionStore = new SessionStore(db);
     this.refExpander = new RefExpander(db, this.modelStore);
-    this.authorizationService = new AuthorizationService(this.modelStore, this.recordStore);
+    this.accessProfileProvider = new RoleAccessProfileProvider(this.modelStore, this.recordStore);
+    this.accessControl = new AccessControl(this.accessProfileProvider, {
+      publicModelNames: new Set([categoryModule.schema.name]),
+    });
 
     this.modelService = new ModelService(
       this.modelStore,
-      this.recordStore,
-      this.authorizationService,
+      this.accessControl,
       modules,
+      new SystemModelGroupPolicy(this.modelStore, this.recordStore),
     );
     this.recordService = new RecordService(
       this.modelStore,
       this.recordStore,
       this.refExpander,
       modules,
-      this.authorizationService,
+      this.accessControl,
     );
     this.authService = new AuthService(
       this.modelStore,
       this.recordStore,
       this.sessionStore,
-      this.authorizationService,
+      this.accessProfileProvider,
     );
   }
 }

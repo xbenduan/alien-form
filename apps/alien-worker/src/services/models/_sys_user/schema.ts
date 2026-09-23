@@ -1,11 +1,10 @@
-import type { AlienSchema } from "@alien-form/protocol";
+import { createRecordPages, type AlienSchema } from "@alien-form/protocol";
 import {
   modelForm,
   physicalField,
-  recordPages,
   systemFields,
   virtualField,
-} from "../../global/system-model.ts";
+} from "../../../utils/system-model.ts";
 
 /** Builds the user protocol from constants owned by model entries. */
 export default function createSchema(
@@ -35,6 +34,7 @@ export default function createSchema(
     physicalField(modelCode, "passwordHash", {
       type: "string",
       title: "密码摘要",
+      private: true,
       storage: { type: "text" },
       form: { display: "none" },
       table: { hidden: true },
@@ -121,7 +121,7 @@ export default function createSchema(
     defaultPageSize: 20,
     fields,
     form: modelForm(fields, ["username", "password", "gender", "city", "remark", "roleId"]),
-    pages: recordPages(modelCode, "用户", [
+    pages: createRecordPages(modelCode, "用户", [
       "username",
       "password",
       "gender",

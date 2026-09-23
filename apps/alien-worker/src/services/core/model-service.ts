@@ -2,49 +2,50 @@ import { parseAlienSchema, type AlienSchema, type ModelSummary } from "@alien-fo
 import { compileMigrationPlan } from "../../storage/compiler.ts";
 import { badRequest, conflict, forbidden, notFound } from "../../errors.ts";
 import { ModelVersionConflictError, type ModelStore } from "../../store/model-store.ts";
-import type { RecordStore } from "../../store/record-store.ts";
 import type { ModelModules } from "../model-modules.ts";
-import categoryModule from "../models/_sys_model_category/index.ts";
-import type { AuthorizationService } from "./authorization.ts";
+import type { AccessControl } from "./access-control.ts";
+
+/** 模型分类约束端口，由组合根注入具体分类模型实现。 */
+export interface ModelGroupPolicy {
+  /** 校验分类存在且可用于归类。 */
+  assertValid(group: string | undefined): Promise<void>;
+}
 
 export class ModelService {
   constructor(
     private readonly models: ModelStore,
-    private readonly records: RecordStore,
-    private readonly authorization: AuthorizationService,
+    private readonly access: AccessControl,
     private readonly modules: ModelModules,
+    private readonly groups: ModelGroupPolicy,
   ) {}
 
   async list(actorId: string): Promise<ModelSummary[]> {
-    const [models, profile] = await Promise.all([
-      this.models.list(),
-      this.authorization.profile(actorId),
-    ]);
+    const [models, profile] = await Promise.all([this.models.list(), this.access.profile(actorId)]);
     return models
       .map((model) => ({ ...model, system: this.isSystem(model.name) }))
-      .filter((model) => this.authorization.canRead(profile, model));
+      .filter((model) => this.access.canRead(profile, model));
   }
 
   async get(name: string, actorId: string): Promise<AlienSchema> {
     const model = await this.models.get(name);
     if (!model) throw notFound(`模型不存在：${name}`);
-    const profile = await this.authorization.profile(actorId);
-    this.authorization.assertCan(profile, model, "read");
+    const profile = await this.access.profile(actorId);
+    this.access.assertCan(profile, model, "read");
     return {
-      ...this.authorization.projectSchema(profile, model),
+      ...this.access.projectSchema(profile, model),
       system: this.isSystem(name),
     };
   }
 
   async create(value: unknown, actorId: string): Promise<AlienSchema> {
-    this.authorization.assertCanCreateModel(await this.authorization.profile(actorId));
+    this.access.assertCanCreateModel(await this.access.profile(actorId));
     const incoming = this.parse({
       ...(value as object),
       system: false,
       systemRevision: undefined,
       creatorId: actorId,
     });
-    await this.assertGroup(incoming.group);
+    await this.groups.assertValid(incoming.group);
     if (incoming.version !== 0) throw conflict("新模型 version 必须为 0");
     if (await this.models.has(incoming.name)) throw conflict(`模型已存在：${incoming.name}`);
     return this.publish(undefined, incoming);
@@ -55,7 +56,7 @@ export class ModelService {
     const submitted = this.parse(value);
     const current = await this.models.get(name);
     if (!current) throw notFound(`模型不存在：${name}`);
-    this.authorization.assertCanManageModel(await this.authorization.profile(actorId), current);
+    this.access.assertCanManageModel(await this.access.profile(actorId), current);
     const incoming = this.parse({
       ...submitted,
       system: false,
@@ -63,7 +64,7 @@ export class ModelService {
       creatorId: current.creatorId,
     });
     if (incoming.name !== name) throw conflict("模型 name 与请求路径不一致");
-    await this.assertGroup(incoming.group);
+    await this.groups.assertValid(incoming.group);
     if (incoming.version !== current.version) {
       throw conflict(`模型版本冲突：当前 ${current.version}，提交 ${incoming.version}`);
     }
@@ -74,7 +75,7 @@ export class ModelService {
     if (this.isSystem(name)) throw forbidden("系统模型禁止删除");
     const current = await this.models.get(name);
     if (!current) return;
-    this.authorization.assertCanManageModel(await this.authorization.profile(actorId), current);
+    this.access.assertCanManageModel(await this.access.profile(actorId), current);
     await this.models.delete(current);
   }
 
@@ -124,15 +125,5 @@ export class ModelService {
 
   private isSystem(name: string): boolean {
     return this.modules.has(name);
-  }
-
-  private async assertGroup(group: string | undefined): Promise<void> {
-    if (!group) throw badRequest("模型必须选择一个分类");
-    const categorySchema = await this.models.get(categoryModule.schema.name);
-    if (!categorySchema) throw badRequest("分类标签尚未初始化");
-    const category = await this.records.findByField(categorySchema, "code", group);
-    if (!category || category.aggregate === true) {
-      throw badRequest(`分类标签不存在或不可用于归类：${group}`);
-    }
   }
 }

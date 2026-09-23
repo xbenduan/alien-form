@@ -75,6 +75,8 @@ export interface AlienSchema {
     type: "string" | "number" | "boolean" | "object" | "array" | "void";
     title?: string;
     required?: boolean;
+    /** 仅供服务端内部使用，不得出现在公开 Schema 或记录响应中。 */
+    private?: boolean;
     storage?: {
       type: "text" | "integer" | "real" | "boolean" | "date" | "json";
       column?: string;
@@ -166,6 +168,7 @@ const alienModelFieldSchema: z.ZodType<AlienSchema["fields"][number]> = z.object
   type: fieldValueTypeSchema.or(z.literal("void")),
   title: z.string().optional(),
   required: z.boolean().optional(),
+  private: z.boolean().optional(),
   storage: storageSchema.optional(),
   relation: relationSchema.optional(),
   form: alienFieldSchema,

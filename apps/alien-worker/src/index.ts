@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { Container } from "./container.ts";
-import { ensureModelModules } from "./services/global/bootstrap.ts";
+import { ensureModelModules } from "./services/bootstrap.ts";
 import { AppError } from "./errors.ts";
 import { ok, fail } from "./http/envelope.ts";
 import { requireSession } from "./http/middleware/session.ts";

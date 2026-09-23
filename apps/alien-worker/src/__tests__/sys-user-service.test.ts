@@ -34,6 +34,9 @@ function context(record: ModelRecord, roleIds: string[]): ModelValidationContext
 describe("_sys_user service", () => {
   it("declares the user role as a required many-to-many field", () => {
     expect(() => parseAlienSchema(userModule.schema)).not.toThrow();
+    expect(userModule.schema.fields.find((field) => field.key === "passwordHash")).toMatchObject({
+      private: true,
+    });
     expect(userModule.schema.fields.find((field) => field.key === "roleId")).toMatchObject({
       type: "array",
       required: true,

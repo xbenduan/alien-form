@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AlienSchema, ModelRecord } from "@alien-form/protocol";
-import type { AuthorizationService } from "../services/global/authorization.ts";
-import { RecordService } from "../services/global/record.ts";
+import type { AccessControl } from "../services/core/access-control.ts";
+import { RecordService } from "../services/core/record-service.ts";
 import { ModelModules } from "../services/model-modules.ts";
 import type { ModelStore } from "../store/model-store.ts";
 import type { RecordStore } from "../store/record-store.ts";
@@ -50,7 +50,7 @@ function dependencies(modules: ModelModules, events: string[]) {
   const refs = {
     expandOne: vi.fn(async (_schema, record) => record),
   } as unknown as RefExpander;
-  const authorization = {
+  const access = {
     profile: vi.fn().mockResolvedValue({ actorId: "actor" }),
     assertCan: vi.fn(() => events.push("authorizeAction")),
     assertFields: vi.fn(() => events.push("authorizeFields")),
@@ -58,8 +58,8 @@ function dependencies(modules: ModelModules, events: string[]) {
       const { secret: _secret, ...visible } = record;
       return visible;
     }),
-  } as unknown as AuthorizationService;
-  return new RecordService(models, records, refs, modules, authorization);
+  } as unknown as AccessControl;
+  return new RecordService(models, records, refs, modules, access);
 }
 
 describe("model middleware pipeline", () => {

@@ -1,5 +1,5 @@
 import type { Container } from "../../../container.ts";
-import { ensureRecord } from "../../global/initialization.ts";
+import { ensureRecord } from "../../bootstrap.ts";
 
 /** Creates or minimally migrates one editable default role. */
 async function ensureDefaultRole(

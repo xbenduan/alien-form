@@ -1,11 +1,10 @@
-import type { AlienSchema } from "@alien-form/protocol";
+import { createRecordPages, type AlienSchema } from "@alien-form/protocol";
 import {
   modelForm,
   physicalField,
-  recordPages,
   systemFields,
   virtualField,
-} from "../../global/system-model.ts";
+} from "../../../utils/system-model.ts";
 
 /** Builds the category protocol from constants owned by the model entry. */
 export default function createSchema(modelCode: string): AlienSchema {
@@ -71,7 +70,7 @@ export default function createSchema(modelCode: string): AlienSchema {
     defaultPageSize: 20,
     fields,
     form: modelForm(fields, ["code", "name", "order", "aggregate", "description"]),
-    pages: recordPages(modelCode, "分类标签", [
+    pages: createRecordPages(modelCode, "分类标签", [
       "code",
       "name",
       "order",

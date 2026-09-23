@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.ts";
-import { ensureModelModules } from "../services/global/bootstrap.ts";
+import { ensureModelModules } from "../services/bootstrap.ts";
 import { ModelModules } from "../services/model-modules.ts";
 import roleModule from "../services/models/_sys_role/index.ts";
 import userModule from "../services/models/_sys_user/index.ts";

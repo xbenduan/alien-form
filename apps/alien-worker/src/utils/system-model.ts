@@ -1,5 +1,4 @@
 import type { AlienFieldSchema, AlienSchema } from "@alien-form/protocol";
-export { createRecordPages as recordPages } from "@alien-form/protocol";
 
 /** Creates a physical field owned by a built-in model. */
 export function physicalField(
