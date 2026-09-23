@@ -36,7 +36,6 @@ function ModelManager({ children }: { children: ReactNode }) {
 
 function AppTopbar() {
   const navigate = useNavigate();
-  const canManage = canManageModels();
 
   return (
     <header className={styles.topbar}>
@@ -53,21 +52,11 @@ function AppTopbar() {
           </span>
         </Link>
         <div className={styles.topbarActions}>
-          {canManage ? (
-            <Tooltip title="新增模型">
-              <Button
-                type="text"
-                shape="circle"
-                icon={<AppstoreAddOutlined />}
-                aria-label="新增模型"
-                onClick={() => navigate("/models/add")}
-              />
-            </Tooltip>
-          ) : null}
           <Tooltip title="模型管理">
             <Button
               type="text"
               shape="circle"
+              style={{ color: "rgba(0,0,0,0.88)" }}
               icon={<UnorderedListOutlined />}
               aria-label="模型管理"
               onClick={() => navigate("/models")}
