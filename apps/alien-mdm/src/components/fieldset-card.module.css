@@ -10,11 +10,17 @@
   background: var(--app-surface, rgba(255, 255, 255, 0.72));
 }
 
-.title {
+.fieldsetCard > .title {
+  display: table;
+  width: auto;
+  max-width: 100%;
+  margin: 0;
   padding: 0 6px;
+  border: 0;
   color: #344054;
   font-size: 14px;
   font-weight: 500;
+  line-height: 20px;
 }
 
 .description {

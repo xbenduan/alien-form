@@ -31,7 +31,7 @@ export function fieldGridStyle({ gridSpan, columns, gutter }: FieldGridProps): G
 
   return {
     "--alien-grid-default-span": span,
-    "--alien-grid-column-gap": gapValue(columnGap, 8),
+    "--alien-grid-column-gap": gapValue(columnGap, 24),
     "--alien-grid-row-gap": gapValue(rowGap, 8),
   };
 }

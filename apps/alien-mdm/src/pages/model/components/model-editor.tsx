@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useRuntime } from "@alien-form/react";
 import type { AlienSchema } from "@alien-form/protocol";
 import { AppCard } from "../../../components/app-card";
+import { PageActionBar } from "../../../components/page-action-bar";
 import { createId, decodeModel, encodeModel } from "../builder/codec";
 import { reduceModel } from "../builder/commands";
 import { createDefaultDraft } from "../builder/default-draft";
@@ -125,7 +126,7 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
       ) : (
         <PageConfig draft={draft} dispatch={dispatch} />
       )}
-      <div className={styles.footer}>
+      <PageActionBar>
         <Space>
           <Button onClick={() => navigate("/models")}>取消</Button>
           {step > 0 && <Button onClick={() => setStep((current) => current - 1)}>上一步</Button>}
@@ -145,7 +146,7 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
             </Button>
           )}
         </Space>
-      </div>
+      </PageActionBar>
     </Flex>
   );
 }

@@ -13,6 +13,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { FormRenderer, useRuntime } from "@alien-form/react";
 import { compileForm, type AlienFieldSchema } from "@alien-form/engine";
 import { AppCard } from "../../../components/app-card";
+import { PageActionBar } from "../../../components/page-action-bar";
 import { recordListRoute } from "@utils/record-route";
 import styles from "./record-form.module.css";
 
@@ -147,9 +148,7 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
       <AppCard className={styles.actionBody} classNames={{ body: styles.actionContent }}>
         {content}
       </AppCard>
-      <div className={styles.actionFooterRoot}>
-        <div className={styles.actionFooter}>{footer}</div>
-      </div>
+      <PageActionBar>{footer}</PageActionBar>
     </>
   );
 });
