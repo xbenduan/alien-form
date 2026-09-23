@@ -4,12 +4,12 @@ import type {
   AlienSchema,
   PermissionAction,
 } from "@alien-form/protocol";
-import { SYS_MODEL_CATEGORY_MODEL } from "../domain/schemas/_sys_model_category.ts";
-import { SYS_ROLE_MODEL, SYS_ROLE_SUPER_ADMIN_ID } from "../domain/schemas/_sys_role.ts";
-import { SYS_ADMIN_ID, SYS_USER_MODEL } from "../domain/schemas/_sys_user.ts";
-import { forbidden } from "../errors.ts";
-import type { ModelStore } from "../store/model-store.ts";
-import type { RecordStore } from "../store/record-store.ts";
+import { forbidden } from "../../errors.ts";
+import type { ModelStore } from "../../store/model-store.ts";
+import type { RecordStore } from "../../store/record-store.ts";
+import categoryModule from "../models/_sys_model_category/index.ts";
+import roleModule from "../models/_sys_role/index.ts";
+import userModule from "../models/_sys_user/index.ts";
 
 export type { PermissionAction } from "@alien-form/protocol";
 export type PermissionScope = "all" | "own";
@@ -141,18 +141,18 @@ export class AuthorizationService {
   ) {}
 
   async profile(actorId: string): Promise<AccessProfile> {
-    if (actorId === SYS_ADMIN_ID) {
+    if (actorId === userModule.constants.adminId) {
       return {
         actorId,
-        roleIds: [SYS_ROLE_SUPER_ADMIN_ID],
+        roleIds: [roleModule.constants.superAdminId],
         permissions: new Map(),
         canCreateModel: true,
         super: true,
       };
     }
     const [userSchema, roleSchema] = await Promise.all([
-      this.models.get(SYS_USER_MODEL),
-      this.models.get(SYS_ROLE_MODEL),
+      this.models.get(userModule.schema.name),
+      this.models.get(roleModule.schema.name),
     ]);
     const user = userSchema ? await this.records.get(userSchema, actorId) : undefined;
     const roleIds = relationValues(user?.roleId);
@@ -165,7 +165,7 @@ export class AuthorizationService {
         super: false,
       };
     }
-    if (roleIds.includes(SYS_ROLE_SUPER_ADMIN_ID)) {
+    if (roleIds.includes(roleModule.constants.superAdminId)) {
       return { actorId, roleIds, permissions: new Map(), canCreateModel: true, super: true };
     }
 
@@ -207,7 +207,7 @@ export class AuthorizationService {
     action: PermissionAction,
   ): PermissionScope | undefined {
     if (profile.super) return "all";
-    if (action === "read" && model.name === SYS_MODEL_CATEGORY_MODEL) return "all";
+    if (action === "read" && model.name === categoryModule.schema.name) return "all";
     if (profile.canCreateModel && model.creatorId === profile.actorId) return "all";
     const grant = profile.permissions.get(model.name);
     return grant?.actions.has(action) ? grant.scope : undefined;
@@ -267,7 +267,7 @@ export class AuthorizationService {
   project(profile: AccessProfile, model: AlienSchema, record: ModelRecord): ModelRecord {
     if (
       profile.super ||
-      model.name === SYS_MODEL_CATEGORY_MODEL ||
+      model.name === categoryModule.schema.name ||
       (profile.canCreateModel && model.creatorId === profile.actorId)
     ) {
       return record;
@@ -285,7 +285,7 @@ export class AuthorizationService {
   projectSchema(profile: AccessProfile, model: AlienSchema): AlienSchema {
     if (
       profile.super ||
-      model.name === SYS_MODEL_CATEGORY_MODEL ||
+      model.name === categoryModule.schema.name ||
       (profile.canCreateModel && model.creatorId === profile.actorId)
     ) {
       return model;

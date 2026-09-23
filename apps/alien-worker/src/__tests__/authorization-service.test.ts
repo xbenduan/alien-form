@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ModelRecord, AlienSchema } from "@alien-form/protocol";
-import { SYS_ROLE_SUPER_ADMIN_ID } from "../domain/schemas/_sys_role.ts";
 import type { ModelStore } from "../store/model-store.ts";
 import type { RecordStore } from "../store/record-store.ts";
-import { AuthorizationService } from "./authorization-service.ts";
+import { AuthorizationService } from "../services/global/authorization.ts";
+import roleModule from "../services/models/_sys_role/index.ts";
 
 /** Creates a minimum business model for permission tests. */
 function model(creatorId = "owner"): AlienSchema {
@@ -82,7 +82,7 @@ describe("AuthorizationService", () => {
     const roles: ModelRecord[] = [
       {
         id: "faculty",
-        parentId: SYS_ROLE_SUPER_ADMIN_ID,
+        parentId: roleModule.constants.superAdminId,
         canCreateModel: false,
         permissions: [
           {
@@ -162,7 +162,10 @@ describe("AuthorizationService", () => {
   });
 
   it("grants full access only from the fixed root id", async () => {
-    const { models, records } = stores({ id: "root-user", roleId: [SYS_ROLE_SUPER_ADMIN_ID] }, []);
+    const { models, records } = stores(
+      { id: "root-user", roleId: [roleModule.constants.superAdminId] },
+      [],
+    );
     const profile = await new AuthorizationService(models, records).profile("root-user");
 
     expect(profile.super).toBe(true);

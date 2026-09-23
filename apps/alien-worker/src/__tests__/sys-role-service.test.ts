@@ -1,26 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ModelRecord, AlienSchema } from "@alien-form/protocol";
-import { SYS_ROLE_MODEL, SYS_ROLE_SUPER_ADMIN_ID } from "../../domain/schemas/_sys_role.ts";
-import type { ModelStore } from "../../store/model-store.ts";
-import type { RecordStore } from "../../store/record-store.ts";
-import { ModelRegistry, type ModelValidationContext } from "../registry.ts";
-import { registerSysRole } from "./_sys_role.ts";
+import type { ModelStore } from "../store/model-store.ts";
+import type { RecordStore } from "../store/record-store.ts";
+import type { ModelValidationContext } from "../services/types.ts";
+import roleModule from "../services/models/_sys_role/index.ts";
 
 const roleSchema: AlienSchema = {
-  name: SYS_ROLE_MODEL,
+  name: roleModule.schema.name,
   title: "角色",
   version: 1,
   fields: [],
   form: { type: "object" },
   pages: [],
 };
-
-/** Returns the registered role rules for focused invariant tests. */
-function registration() {
-  const registry = new ModelRegistry();
-  registerSysRole(registry);
-  return registry.get(SYS_ROLE_MODEL)!;
-}
 
 /** Creates a role validation context with controllable store results. */
 function context(
@@ -53,13 +45,18 @@ function context(
     } as unknown as RecordStore,
     actorId: "operator",
     operation: options.operation ?? "create",
-    record,
+    record: {
+      code: "role",
+      name: "角色",
+      canCreateModel: false,
+      ...record,
+    },
   };
 }
 
-describe("_sys_role registration", () => {
+describe("_sys_role service", () => {
   it("requires a valid parent for every non-root role", async () => {
-    const validate = registration().validate!;
+    const validate = roleModule.middleware.validate;
 
     await expect(
       validate(context({ id: "student", code: "student", name: "学生" })),
@@ -75,7 +72,7 @@ describe("_sys_role registration", () => {
   });
 
   it("rejects cycles and updates to the fixed root", async () => {
-    const validate = registration().validate!;
+    const validate = roleModule.middleware.validate;
 
     await expect(
       validate(
@@ -91,14 +88,16 @@ describe("_sys_role registration", () => {
     ).rejects.toThrow("后代节点");
     await expect(
       validate(
-        context({ id: SYS_ROLE_SUPER_ADMIN_ID, code: "super_admin" }, { operation: "update" }),
+        context(
+          { id: roleModule.constants.superAdminId, code: "super_admin" },
+          { operation: "update" },
+        ),
       ),
     ).rejects.toMatchObject({ status: 403 });
   });
 
   it("rejects deleting a role with children or assigned users", async () => {
-    const beforeDelete = registration().hooks?.beforeDelete;
-    if (!beforeDelete) throw new Error("beforeDelete hook 未注册");
+    const beforePersist = roleModule.middleware.beforePersist;
     const models = {
       get: vi.fn(async () => ({ name: "_sys_user", fields: [] })),
     } as unknown as ModelStore;
@@ -107,7 +106,7 @@ describe("_sys_role registration", () => {
     } as unknown as RecordStore;
 
     await expect(
-      beforeDelete({
+      beforePersist({
         model: roleSchema,
         models,
         records,
@@ -121,7 +120,7 @@ describe("_sys_role registration", () => {
       .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce({ id: "user" });
     await expect(
-      beforeDelete({
+      beforePersist({
         model: roleSchema,
         models,
         records,

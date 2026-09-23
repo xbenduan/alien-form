@@ -1,18 +1,18 @@
 import { parseAlienSchema, type AlienSchema, type ModelSummary } from "@alien-form/protocol";
-import { compileMigrationPlan } from "../domain/storage-compiler.ts";
-import { SYS_MODEL_CATEGORY_MODEL } from "../domain/schemas/_sys_model_category.ts";
-import { badRequest, conflict, forbidden, notFound } from "../errors.ts";
-import type { ModelRegistry } from "../register/index.ts";
-import { ModelVersionConflictError, type ModelStore } from "../store/model-store.ts";
-import type { RecordStore } from "../store/record-store.ts";
-import type { AuthorizationService } from "./authorization-service.ts";
+import { compileMigrationPlan } from "../../storage/compiler.ts";
+import { badRequest, conflict, forbidden, notFound } from "../../errors.ts";
+import { ModelVersionConflictError, type ModelStore } from "../../store/model-store.ts";
+import type { RecordStore } from "../../store/record-store.ts";
+import type { ModelModules } from "../model-modules.ts";
+import categoryModule from "../models/_sys_model_category/index.ts";
+import type { AuthorizationService } from "./authorization.ts";
 
 export class ModelService {
   constructor(
     private readonly models: ModelStore,
     private readonly records: RecordStore,
     private readonly authorization: AuthorizationService,
-    private readonly registry: ModelRegistry,
+    private readonly modules: ModelModules,
   ) {}
 
   async list(actorId: string): Promise<ModelSummary[]> {
@@ -123,12 +123,12 @@ export class ModelService {
   }
 
   private isSystem(name: string): boolean {
-    return this.registry.get(name)?.schema !== undefined;
+    return this.modules.has(name);
   }
 
   private async assertGroup(group: string | undefined): Promise<void> {
     if (!group) throw badRequest("模型必须选择一个分类");
-    const categorySchema = await this.models.get(SYS_MODEL_CATEGORY_MODEL);
+    const categorySchema = await this.models.get(categoryModule.schema.name);
     if (!categorySchema) throw badRequest("分类标签尚未初始化");
     const category = await this.records.findByField(categorySchema, "code", group);
     if (!category || category.aggregate === true) {

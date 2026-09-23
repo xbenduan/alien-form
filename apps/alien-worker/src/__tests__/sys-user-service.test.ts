@@ -1,42 +1,40 @@
 import { describe, expect, it, vi } from "vitest";
 import { parseAlienSchema, type ModelRecord, type AlienSchema } from "@alien-form/protocol";
-import { SYS_ROLE_MODEL, SYS_ROLE_SUPER_ADMIN_ID } from "../../domain/schemas/_sys_role.ts";
-import { SYS_ADMIN_ID, SYS_USER_MODEL, sysUserSchema } from "../../domain/schemas/_sys_user.ts";
-import type { ModelStore } from "../../store/model-store.ts";
-import type { RecordStore } from "../../store/record-store.ts";
-import { ModelRegistry, type ModelValidationContext } from "../registry.ts";
-import { registerSysUser } from "./_sys_user.ts";
-
-/** Returns the registered user rules for focused invariant tests. */
-function registration() {
-  const registry = new ModelRegistry();
-  registerSysUser(registry);
-  return registry.get(SYS_USER_MODEL)!;
-}
+import type { ModelStore } from "../store/model-store.ts";
+import type { RecordStore } from "../store/record-store.ts";
+import type { ModelValidationContext } from "../services/types.ts";
+import roleModule from "../services/models/_sys_role/index.ts";
+import userModule from "../services/models/_sys_user/index.ts";
 
 /** Creates a user validation context backed by a set of existing role IDs. */
 function context(record: ModelRecord, roleIds: string[]): ModelValidationContext {
-  const roleSchema = { name: SYS_ROLE_MODEL, fields: [] } as unknown as AlienSchema;
+  const roleSchema = { name: roleModule.schema.name, fields: [] } as unknown as AlienSchema;
   return {
-    model: { name: SYS_USER_MODEL } as AlienSchema,
+    model: { name: userModule.schema.name } as AlienSchema,
     models: {
-      get: vi.fn(async (name: string) => (name === SYS_ROLE_MODEL ? roleSchema : undefined)),
+      get: vi.fn(async (name: string) =>
+        name === roleModule.schema.name ? roleSchema : undefined,
+      ),
     } as unknown as ModelStore,
     records: {
       get: vi.fn(async (_schema: AlienSchema, id: string) =>
         roleIds.includes(id) ? { id } : undefined,
       ),
     } as unknown as RecordStore,
-    actorId: SYS_ADMIN_ID,
+    actorId: userModule.constants.adminId,
     operation: "create",
-    record,
+    record: {
+      username: "student",
+      roleId: [],
+      ...record,
+    },
   };
 }
 
-describe("_sys_user registration", () => {
+describe("_sys_user service", () => {
   it("declares the user role as a required many-to-many field", () => {
-    expect(() => parseAlienSchema(sysUserSchema)).not.toThrow();
-    expect(sysUserSchema.fields.find((field) => field.key === "roleId")).toMatchObject({
+    expect(() => parseAlienSchema(userModule.schema)).not.toThrow();
+    expect(userModule.schema.fields.find((field) => field.key === "roleId")).toMatchObject({
       type: "array",
       required: true,
       storage: { type: "json" },
@@ -46,24 +44,24 @@ describe("_sys_user registration", () => {
   });
 
   it("normalizes duplicate role IDs and forces the root role for the system administrator", async () => {
-    const transform = registration().transform!;
+    const prepare = userModule.middleware.prepare;
 
     await expect(
-      transform(
+      prepare(
         { id: "user", username: "student", roleId: ["student", "student", "monitor"] },
-        { actorId: SYS_ADMIN_ID, operation: "update" },
+        { actorId: userModule.constants.adminId, operation: "update" },
       ),
     ).resolves.toMatchObject({ roleId: ["student", "monitor"], super: false });
     await expect(
-      transform(
-        { id: SYS_ADMIN_ID, username: "_sys_admin", roleId: ["student"] },
-        { actorId: SYS_ADMIN_ID, operation: "update" },
+      prepare(
+        { id: userModule.constants.adminId, username: "_sys_admin", roleId: ["student"] },
+        { actorId: userModule.constants.adminId, operation: "update" },
       ),
-    ).resolves.toMatchObject({ roleId: [SYS_ROLE_SUPER_ADMIN_ID], super: true });
+    ).resolves.toMatchObject({ roleId: [roleModule.constants.superAdminId], super: true });
   });
 
   it("requires at least one existing role", async () => {
-    const validate = registration().validate!;
+    const validate = userModule.middleware.validate;
 
     await expect(validate(context({ id: "user", roleId: [] }, []))).rejects.toThrow(
       "至少一个有效角色",
@@ -74,12 +72,12 @@ describe("_sys_user registration", () => {
   });
 
   it("reserves the root role for the system administrator", async () => {
-    const validate = registration().validate!;
+    const validate = userModule.middleware.validate;
 
     await expect(
       validate(
-        context({ id: "user", username: "operator", roleId: [SYS_ROLE_SUPER_ADMIN_ID] }, [
-          SYS_ROLE_SUPER_ADMIN_ID,
+        context({ id: "user", username: "operator", roleId: [roleModule.constants.superAdminId] }, [
+          roleModule.constants.superAdminId,
         ]),
       ),
     ).rejects.toMatchObject({ status: 403 });

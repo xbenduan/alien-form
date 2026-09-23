@@ -1,11 +1,12 @@
 import { AppError, unauthorized } from "../../errors.ts";
-import { USER_MODEL, publicRecord } from "../../domain/visibility.ts";
 import { randomHex, verifyPassword } from "./password.ts";
 import type { LoginRequest, LoginResponse, ModelRecord } from "@alien-form/protocol";
 import type { ModelStore } from "../../store/model-store.ts";
 import type { RecordStore } from "../../store/record-store.ts";
 import type { SessionStore } from "../../store/session-store.ts";
-import type { AuthorizationService } from "../authorization-service.ts";
+import type { AuthorizationService } from "../global/authorization.ts";
+import { publicRecord } from "../global/visibility.ts";
+import userModule from "../models/_sys_user/index.ts";
 
 export interface Session {
   token: string;
@@ -51,8 +52,8 @@ export class AuthService {
 
   /** 按用户名查用户记录（供 provider 复用）。 */
   async findUserByUsername(username: string): Promise<ModelRecord | undefined> {
-    const schema = await this.models.get(USER_MODEL);
-    if (!schema) throw new AppError("用户模型未注册", 500);
+    const schema = await this.models.get(userModule.schema.name);
+    if (!schema) throw new AppError("用户模型尚未初始化", 500);
     return this.records.findByField(schema, "username", username);
   }
 
@@ -75,7 +76,7 @@ export class AuthService {
     return {
       token: session.token,
       user: {
-        ...publicRecord(USER_MODEL, user),
+        ...publicRecord(userModule.schema.name, user),
         canCreateModel: profile.canCreateModel,
       },
       provider: provider.name,

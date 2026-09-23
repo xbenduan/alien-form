@@ -1,19 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
-import { ensureBootstrapped } from "./bootstrap.ts";
-import type { Container } from "./container.ts";
-import { sysUserSchema } from "./domain/schemas/_sys_user.ts";
-import { ModelRegistry } from "./register/registry.ts";
+import type { Container } from "../container.ts";
+import { ensureModelModules } from "../services/global/bootstrap.ts";
+import { ModelModules } from "../services/model-modules.ts";
+import roleModule from "../services/models/_sys_role/index.ts";
+import userModule from "../services/models/_sys_user/index.ts";
 
-/** Creates the minimum container surface needed by bootstrap tests. */
-function createContainer() {
-  const models = new ModelRegistry();
-  models.model(sysUserSchema.name, { schema: sysUserSchema });
-  const ensureSystemModel = vi.fn().mockResolvedValue(sysUserSchema);
+/** Creates the minimum container surface needed by service initialization tests. */
+function createContainer(modules = ModelModules.from([userModule])) {
+  const ensureSystemModel = vi.fn().mockResolvedValue(userModule.schema);
   const create = vi.fn();
   const update = vi.fn();
   const container = {
-    models,
-    modelStore: { get: vi.fn().mockResolvedValue(sysUserSchema) },
+    modules,
+    modelStore: { get: vi.fn().mockResolvedValue(userModule.schema) },
     modelService: { ensureSystemModel },
     recordStore: {
       get: vi.fn().mockResolvedValue({ id: "existing", roleId: ["SYSROLE000001"], super: true }),
@@ -24,19 +23,19 @@ function createContainer() {
   return { container, create, ensureSystemModel, update };
 }
 
-describe("ensureBootstrapped", () => {
-  it("synchronizes every registered system schema", async () => {
+describe("service initialization", () => {
+  it("synchronizes every convention-loaded system schema", async () => {
     const { container, ensureSystemModel } = createContainer();
 
-    await ensureBootstrapped(container);
+    await ensureModelModules(container);
 
-    expect(ensureSystemModel).toHaveBeenCalledWith(sysUserSchema);
+    expect(ensureSystemModel).toHaveBeenCalledWith(userModule.schema);
   });
 
   it("migrates missing role hierarchy fields without recreating seed records", async () => {
     const { container, create, update } = createContainer();
 
-    await ensureBootstrapped(container);
+    await roleModule.database.initialize(container);
 
     expect(create).not.toHaveBeenCalled();
     expect(update).toHaveBeenCalledTimes(2);

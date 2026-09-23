@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AlienSchema } from "@alien-form/protocol";
-import { ModelRegistry } from "../register/registry.ts";
 import type { ModelStore } from "../store/model-store.ts";
 import type { RecordStore } from "../store/record-store.ts";
-import type { AuthorizationService } from "./authorization-service.ts";
-import { ModelService } from "./model-service.ts";
+import type { AuthorizationService } from "../services/global/authorization.ts";
+import { ModelService } from "../services/global/model.ts";
+import { ModelModules } from "../services/model-modules.ts";
 
 /** Creates a minimal valid model schema for service tests. */
 function schema(name = "article"): AlienSchema {
@@ -91,11 +91,10 @@ function dependencies() {
 }
 
 describe("ModelService", () => {
-  it("rejects updates and deletes for registered system models", async () => {
+  it("rejects updates and deletes for code-defined system models", async () => {
     const { authorization, models, records, remove } = dependencies();
-    const registry = new ModelRegistry();
-    registry.model("_sys_test", { schema: schema("_sys_test") });
-    const service = new ModelService(models, records, authorization, registry);
+    const modules = ModelModules.from([{ schema: schema("_sys_test") }]);
+    const service = new ModelService(models, records, authorization, modules);
 
     await expect(service.update("_sys_test", schema("_sys_test"), "admin")).rejects.toMatchObject({
       status: 403,
@@ -106,7 +105,7 @@ describe("ModelService", () => {
 
   it("records the authenticated creator instead of trusting submitted metadata", async () => {
     const { authorization, models, publish, records } = dependencies();
-    const service = new ModelService(models, records, authorization, new ModelRegistry());
+    const service = new ModelService(models, records, authorization, ModelModules.from([]));
 
     await service.create({ ...schema(), creatorId: "spoofed", system: true }, "admin");
 
@@ -138,13 +137,12 @@ describe("ModelService", () => {
       get: vi.fn().mockResolvedValue(current),
       publish,
     } as unknown as ModelStore;
-    const registry = new ModelRegistry();
-    registry.model("_sys_test", { schema: desired });
+    const modules = ModelModules.from([{ schema: desired }]);
     const service = new ModelService(
       models,
       {} as RecordStore,
       {} as AuthorizationService,
-      registry,
+      modules,
     );
 
     await service.ensureSystemModel(desired);

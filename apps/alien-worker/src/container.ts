@@ -2,11 +2,11 @@ import { ModelStore } from "./store/model-store.ts";
 import { RecordStore } from "./store/record-store.ts";
 import { SessionStore } from "./store/session-store.ts";
 import { RefExpander } from "./store/ref-expander.ts";
-import { ModelService } from "./services/model-service.ts";
-import { RecordService } from "./services/record-service.ts";
+import { ModelService } from "./services/global/model.ts";
+import { RecordService } from "./services/global/record.ts";
 import { AuthService } from "./services/auth/auth-service.ts";
-import { AuthorizationService } from "./services/authorization-service.ts";
-import { modelRegistry, type ModelRegistry } from "./register/index.ts";
+import { AuthorizationService } from "./services/global/authorization.ts";
+import { modelModules, type ModelModules } from "./services/model-modules.ts";
 
 /**
  * 依赖容器：一次装配 store + service 并互相注入。
@@ -27,7 +27,7 @@ export class Container {
 
   constructor(
     readonly db: D1Database,
-    readonly models: ModelRegistry = modelRegistry,
+    readonly modules: ModelModules = modelModules,
   ) {
     this.modelStore = new ModelStore(db);
     this.recordStore = new RecordStore(db);
@@ -39,13 +39,13 @@ export class Container {
       this.modelStore,
       this.recordStore,
       this.authorizationService,
-      models,
+      modules,
     );
     this.recordService = new RecordService(
       this.modelStore,
       this.recordStore,
       this.refExpander,
-      models,
+      modules,
       this.authorizationService,
     );
     this.authService = new AuthService(

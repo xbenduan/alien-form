@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { Container } from "./container.ts";
-import { ensureBootstrapped } from "./bootstrap.ts";
+import { ensureModelModules } from "./services/global/bootstrap.ts";
 import { AppError } from "./errors.ts";
 import { ok, fail } from "./http/envelope.ts";
 import { requireSession } from "./http/middleware/session.ts";
@@ -16,7 +16,7 @@ const app = new Hono<AppEnv>();
 app.use("/api/v1/*", async (c, next) => {
   const container = new Container(c.env.DB);
   c.set("container", container);
-  await ensureBootstrapped(container);
+  await ensureModelModules(container);
   await next();
 });
 

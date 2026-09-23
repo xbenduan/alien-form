@@ -4,7 +4,7 @@ import {
   type AlienSchema,
   type ModelSummary,
 } from "@alien-form/protocol";
-import { quoteTable } from "../domain/sql.ts";
+import { quoteTable } from "../storage/sql.ts";
 
 interface ModelRow {
   name: string;

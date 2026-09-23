@@ -1,6 +1,6 @@
 import { isPluginMarker, type ModelRecord, type AlienSchema } from "@alien-form/protocol";
-import { fieldExpression, planByField, refFields, type RefField } from "../domain/field-plan.ts";
-import { quoteTable } from "../domain/sql.ts";
+import { fieldExpression, planByField, refFields, type RefField } from "../storage/field-plan.ts";
+import { quoteTable } from "../storage/sql.ts";
 import type { ModelStore } from "./model-store.ts";
 
 export interface RefValue {
