@@ -1,11 +1,11 @@
 import { defineService, type Runtime } from "@alien-form/engine";
 import { parseAlienSchema, parseModelSummaries, type AlienSchema } from "@alien-form/protocol";
-import { transport } from "@runtime/transport";
+import { sdkClient } from "@runtime/sdk-client";
 
 export function registerModelServices(runtime: Runtime): void {
-  const list = async () => parseModelSummaries(await transport.send<unknown>("/api/v1/models"));
+  const list = async () => parseModelSummaries(await sdkClient.models.list());
   const get = async (modelCode: string) =>
-    parseAlienSchema(await transport.send<unknown>(`/api/v1/models/${modelCode}`));
+    parseAlienSchema(await sdkClient.models.get(modelCode));
 
   runtime.service("model.list", defineService(list, { description: "查询模型列表" }));
   runtime.service("model.get", defineService(get, { description: "读取模型" }));
@@ -33,12 +33,7 @@ export function registerModelServices(runtime: Runtime): void {
     "model.create",
     defineService(
       async (schema: AlienSchema) =>
-        parseAlienSchema(
-          await transport.send<unknown>("/api/v1/models", {
-            method: "POST",
-            body: JSON.stringify(schema),
-          }),
-        ),
+        parseAlienSchema(await sdkClient.models.create(schema)),
       { description: "创建模型" },
     ),
   );
@@ -46,12 +41,7 @@ export function registerModelServices(runtime: Runtime): void {
     "model.update",
     defineService(
       async (modelCode: string, schema: AlienSchema) =>
-        parseAlienSchema(
-          await transport.send<unknown>(`/api/v1/models/${modelCode}`, {
-            method: "PUT",
-            body: JSON.stringify(schema),
-          }),
-        ),
+        parseAlienSchema(await sdkClient.models.update(modelCode, schema)),
       { description: "更新模型" },
     ),
   );
@@ -59,9 +49,7 @@ export function registerModelServices(runtime: Runtime): void {
     "model.delete",
     defineService(
       async (modelCode: string) =>
-        transport.send<void>(`/api/v1/models/${encodeURIComponent(modelCode)}`, {
-          method: "DELETE",
-        }),
+        sdkClient.models.delete(modelCode),
       { description: "删除模型" },
     ),
   );

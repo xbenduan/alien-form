@@ -2,7 +2,7 @@ import { Runtime, type AlienSchema } from "@alien-form/engine";
 import { parseAlienSchema } from "@alien-form/protocol";
 import { registerAll } from "../register";
 import { coalesceRequest } from "./request-coalescer";
-import { transport } from "./transport";
+import { sdkClient } from "./sdk-client";
 
 export function createAppRuntime(): Runtime {
   const runtime = new Runtime();
@@ -10,7 +10,7 @@ export function createAppRuntime(): Runtime {
   registerAll(runtime);
   runtime.useSchemaLoader((modelCode) =>
     coalesceRequest(pendingModels, modelCode, async () =>
-      parseAlienSchema(await transport.send<unknown>(`/api/v1/models/${modelCode}`)),
+      parseAlienSchema(await sdkClient.models.get(modelCode)),
     ),
   );
   return runtime;

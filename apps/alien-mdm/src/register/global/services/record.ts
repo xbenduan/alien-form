@@ -9,7 +9,7 @@ import type {
   SubtreeResponse,
 } from "@app-types";
 import { coalesceRequest } from "@runtime/request-coalescer";
-import { transport } from "@runtime/transport";
+import { sdkClient } from "@runtime/sdk-client";
 
 export function registerRecordServices(runtime: Runtime): void {
   const pendingRecordLists = new Map<string, Promise<ListResponse>>();
@@ -22,10 +22,18 @@ export function registerRecordServices(runtime: Runtime): void {
       (request: ListRequest) => {
         const body = JSON.stringify(request);
         return coalesceRequest(pendingRecordLists, body, () =>
-          transport.send<ListResponse>("/api/v1/records/list", {
-            method: "POST",
-            body,
-          }),
+          sdkClient
+            .collection(request.model)
+            .getList(request.pagination?.current ?? 1, request.pagination?.pageSize ?? 30, {
+              filter: request.filter,
+              searchFields: request.searchFields,
+              keyword: request.keyword,
+              parentId: request.parentId,
+              sort: request.sorter
+                ? `${request.sorter.order === "descend" ? "-" : ""}${request.sorter.field}`
+                : undefined,
+            })
+            .then(({ list, total }) => ({ list, total })),
         );
       },
       { description: "查询记录列表" },
@@ -37,9 +45,10 @@ export function registerRecordServices(runtime: Runtime): void {
       (request: SubtreeRequest) => {
         const body = JSON.stringify(request);
         return coalesceRequest(pendingSubtrees, body, () =>
-          transport.send<SubtreeResponse>("/api/v1/records/subtree", {
-            method: "POST",
-            body,
+          sdkClient.collection(request.model).getSubtree({
+            idField: request.idField,
+            parentField: request.parentField,
+            parentValue: request.parentValue,
           }),
         );
       },
@@ -51,7 +60,9 @@ export function registerRecordServices(runtime: Runtime): void {
     defineService(
       ({ model, id }: { model: string; id: string }) => {
         const path = `/api/v1/records/${encodeURIComponent(model)}/${encodeURIComponent(id)}`;
-        return coalesceRequest(pendingRecordGets, path, () => transport.send<ModelRecord>(path));
+        return coalesceRequest(pendingRecordGets, path, () =>
+          sdkClient.collection<ModelRecord>(model).getOne(id),
+        );
       },
       { description: "读取记录" },
     ),
@@ -60,10 +71,7 @@ export function registerRecordServices(runtime: Runtime): void {
     "records.create",
     defineService(
       (modelCode: string, values: RecordValues) =>
-        transport.send<ModelRecord>(`/api/v1/records/${encodeURIComponent(modelCode)}`, {
-          method: "POST",
-          body: JSON.stringify(values),
-        }),
+        sdkClient.collection<ModelRecord>(modelCode).create(values),
       { description: "创建记录" },
     ),
   );
@@ -71,13 +79,7 @@ export function registerRecordServices(runtime: Runtime): void {
     "records.update",
     defineService(
       (modelCode: string, id: string, values: RecordValues) =>
-        transport.send<ModelRecord>(
-          `/api/v1/records/${encodeURIComponent(modelCode)}/${encodeURIComponent(id)}`,
-          {
-            method: "PUT",
-            body: JSON.stringify(values),
-          },
-        ),
+        sdkClient.collection<ModelRecord>(modelCode).update(id, values),
       { description: "更新记录" },
     ),
   );
@@ -85,10 +87,7 @@ export function registerRecordServices(runtime: Runtime): void {
     "records.delete",
     defineService(
       ({ model, id }: { model: string; id: unknown }) =>
-        transport.send<void>(
-          `/api/v1/records/${encodeURIComponent(model)}/${encodeURIComponent(String(id))}`,
-          { method: "DELETE" },
-        ),
+        sdkClient.collection(model).delete(String(id)),
       { description: "删除记录" },
     ),
   );
@@ -96,10 +95,7 @@ export function registerRecordServices(runtime: Runtime): void {
     "records.batchDelete",
     defineService(
       ({ model, ids }: BatchDeleteRequest & { model: string }) =>
-        transport.send<void>(`/api/v1/records/${encodeURIComponent(model)}/batch-delete`, {
-          method: "POST",
-          body: JSON.stringify({ ids }),
-        }),
+        sdkClient.collection(model).deleteMany(ids),
       { description: "批量删除记录" },
     ),
   );
@@ -107,10 +103,7 @@ export function registerRecordServices(runtime: Runtime): void {
     "record.add",
     defineService(
       (values: RecordValues, context: { modelCode: string }) =>
-        transport.send<ModelRecord>(`/api/v1/records/${encodeURIComponent(context.modelCode)}`, {
-          method: "POST",
-          body: JSON.stringify(values),
-        }),
+        sdkClient.collection<ModelRecord>(context.modelCode).create(values),
       { description: "提交新增表单" },
     ),
   );
@@ -118,13 +111,9 @@ export function registerRecordServices(runtime: Runtime): void {
     "record.edit",
     defineService(
       (values: RecordValues, context: { modelCode: string; recordId?: string }) =>
-        transport.send<ModelRecord>(
-          `/api/v1/records/${encodeURIComponent(context.modelCode)}/${encodeURIComponent(context.recordId ?? "")}`,
-          {
-            method: "PUT",
-            body: JSON.stringify(values),
-          },
-        ),
+        sdkClient
+          .collection<ModelRecord>(context.modelCode)
+          .update(context.recordId ?? "", values),
       { description: "提交编辑表单" },
     ),
   );

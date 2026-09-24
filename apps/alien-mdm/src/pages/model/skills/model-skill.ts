@@ -1,4 +1,4 @@
-import { transport } from "@runtime/transport";
+import { sdkClient } from "@runtime/sdk-client";
 
 const SKILL_NAME = "alien-form-model";
 const BASE_URL_TOKEN = "__ALIEN_FORM_BASE_URL__";
@@ -13,7 +13,7 @@ function stringify(value: unknown): string {
 }
 
 function connection() {
-  const token = transport.token;
+  const token = sdkClient.auth.token;
   const cookie = document.cookie || null;
   return {
     baseUrl: window.location.origin,

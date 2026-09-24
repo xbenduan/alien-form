@@ -38,6 +38,9 @@ importers:
       '@alien-form/react':
         specifier: workspace:*
         version: link:../../packages/react
+      '@alien-form/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
       '@ant-design/icons':
         specifier: ^6.2.5
         version: 6.2.5(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -216,6 +219,18 @@ importers:
       react-dom:
         specifier: ^19.2.8
         version: 19.2.8(react@19.2.8)
+      tsup:
+        specifier: ^8.0.0
+        version: 8.0.0(postcss@8.5.26)(typescript@5.4.2)
+      typescript:
+        specifier: ^5.4.0
+        version: 5.4.2
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@24.12.3)(happy-dom@15.0.0)(lightningcss@1.33.0)
+
+  packages/sdk:
+    devDependencies:
       tsup:
         specifier: ^8.0.0
         version: 8.0.0(postcss@8.5.26)(typescript@5.4.2)

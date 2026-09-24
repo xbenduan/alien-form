@@ -10,9 +10,8 @@ import {
 } from "@ant-design/icons";
 import { Alert, Button, Empty, Input, Skeleton, Tabs, Tooltip, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
-import type { ListResponse, ModelRecord, ModelSummary } from "@app-types";
-import { parseModelSummaries } from "@alien-form/protocol";
-import { transport } from "@runtime/transport";
+import type { ModelRecord, ModelSummary } from "@app-types";
+import { sdkClient } from "@runtime/sdk-client";
 import { canManageModels } from "@runtime/user-info";
 
 type GroupFilter = string;
@@ -239,14 +238,8 @@ export default function HomePage() {
 
   useEffect(() => {
     void Promise.all([
-      transport.send<unknown>("/api/v1/models").then(parseModelSummaries),
-      transport.send<ListResponse>("/api/v1/records/list", {
-        method: "POST",
-        body: JSON.stringify({
-          model: "_sys_model_category",
-          pagination: { current: 1, pageSize: 100 },
-        }),
-      }),
+      sdkClient.models.list(),
+      sdkClient.collection<ModelCategoryRecord>("_sys_model_category").getList(1, 100),
     ])
       .then(([nextModels, categories]) => {
         setModels(nextModels);
