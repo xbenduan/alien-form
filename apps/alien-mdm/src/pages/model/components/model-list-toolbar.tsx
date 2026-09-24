@@ -1,15 +1,22 @@
 import { DownloadOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
-import { App, Button, Space } from "antd";
+import { App, Button, Flex, Input, Space } from "antd";
 import { useState } from "react";
-import styles from "./model-list-toolbar.module.css";
 
 export interface ModelListToolbarProps {
+  keyword: string;
   loading: boolean;
+  onKeywordChange: (keyword: string) => void;
   onAdd?: () => void;
   onRefresh: () => void;
 }
 
-export function ModelListToolbar({ loading, onAdd, onRefresh }: ModelListToolbarProps) {
+export function ModelListToolbar({
+  keyword,
+  loading,
+  onKeywordChange,
+  onAdd,
+  onRefresh,
+}: ModelListToolbarProps) {
   const { message } = App.useApp();
   const [downloading, setDownloading] = useState(false);
 
@@ -27,8 +34,15 @@ export function ModelListToolbar({ loading, onAdd, onRefresh }: ModelListToolbar
   };
 
   return (
-    <div className={styles.listToolbar}>
-      <Space>
+    <Flex justify="space-between" align="center" className="mb-4 flex-wrap gap-3">
+      <Input.Search
+        allowClear
+        value={keyword}
+        placeholder="搜索模型名称、标题或描述"
+        onChange={(event) => onKeywordChange(event.target.value)}
+        className="w-full max-w-[320px]"
+      />
+      <Space wrap>
         <Button
           icon={<ReloadOutlined />}
           loading={loading}
@@ -46,6 +60,6 @@ export function ModelListToolbar({ loading, onAdd, onRefresh }: ModelListToolbar
           </Button>
         ) : null}
       </Space>
-    </div>
+    </Flex>
   );
 }

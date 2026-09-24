@@ -26,6 +26,7 @@ import {
   App,
   Button,
   Checkbox,
+  Card,
   InputNumber,
   Popconfirm,
   Popover,
@@ -60,7 +61,6 @@ import {
   type AlienFieldSchema,
 } from "@alien-form/engine";
 import type { ListResponse } from "@alien-form/protocol";
-import { AppCard } from "../../../components/app-card";
 import { recordRoute } from "@utils/record-route";
 import { RecordActionOverlay } from "../pages/record-action-overlay";
 import type { RecordActionMode } from "../pages/record-form";
@@ -531,7 +531,7 @@ export function Table({
 
   return (
     <>
-      <AppCard className={styles.tableCard} styles={{ body: { padding: 0 } }}>
+      <Card className={styles.tableCard} styles={{ body: { padding: 0 } }}>
         <div className={styles.tableToolbar}>
           <Space wrap>
             {selectedRowKeys.length > 0 ? (
@@ -618,7 +618,7 @@ export function Table({
             setPage(sorterChanged ? 1 : (pagination.current ?? 1));
           }}
         />
-      </AppCard>
+      </Card>
       {overlay && (
         <RecordActionOverlay
           openMode={overlay.openMode}

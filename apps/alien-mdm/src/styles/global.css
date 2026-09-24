@@ -1,3 +1,6 @@
+@import "tailwindcss/theme.css";
+@import "tailwindcss/utilities.css";
+
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
@@ -42,4 +45,11 @@ body {
 #root {
   min-height: 100vh;
   min-height: 100dvh;
+}
+
+.ant-card {
+  border: 1px solid rgba(22, 119, 255, 0.12);
+  background: var(--app-surface, rgba(255, 255, 255, 0.72));
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 14px rgba(23, 32, 51, 0.05);
 }

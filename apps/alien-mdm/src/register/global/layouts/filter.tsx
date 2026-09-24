@@ -1,8 +1,7 @@
-import { Button, Space } from "antd";
+import { Button, Card, Space } from "antd";
 import { useCallback, useMemo, useState } from "react";
 import { usePage, type ComponentProps, type ValueSource } from "@alien-form/react";
 import type { AlienFieldSchema, AlienSchema } from "@alien-form/engine";
-import { AppCard } from "../../../components/app-card";
 import type { FilterField } from "../utils/schema";
 import styles from "./filter.module.css";
 
@@ -82,7 +81,7 @@ export function Filter({
   };
 
   return (
-    <AppCard styles={{ body: { padding: 16 } }}>
+    <Card styles={{ body: { padding: 16 } }}>
       <div className={styles.filter}>
         <div className={styles.filterFields}>
           {fields.map((field, index) => (
@@ -110,6 +109,6 @@ export function Filter({
           </Space>
         </div>
       </div>
-    </AppCard>
+    </Card>
   );
 }

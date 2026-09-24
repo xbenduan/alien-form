@@ -1,16 +1,14 @@
 import { useCreateForm } from "@alien-form/react";
-import { App, Button, Col, Empty, Flex, Input, Row, Segmented } from "antd";
+import { App, Button, Card, Col, Empty, Flex, Input, Row, Segmented } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { FormRenderer, useRuntime } from "@alien-form/react";
 import { buildFormSchema, buildRuntimeDefinitions, compileForm } from "@alien-form/engine";
-import { AppCard } from "../../../components/app-card";
 import { applyFormSchema, createField, encodeModel } from "../builder/codec";
 import type { ModelAction } from "../builder/commands";
 import type { FieldNode, ModelDraft } from "../builder/types";
 import { FieldBarTree } from "./field-bar-tree";
 import { FormFieldModal } from "./form-field-modal";
 import { PlusOutlined } from "@ant-design/icons";
-import styles from "./form-builder.module.css";
 
 interface EditorState {
   node: FieldNode;
@@ -108,14 +106,14 @@ export function FormBuilder({
       <Flex vertical gap={16}>
         <Row gutter={16}>
           <Col span={12}>
-            <AppCard classNames={{ body: styles.formBuilderCardBody }}>
+            <Card classNames={{ body: "flex flex-col gap-4" }}>
               <Flex justify="space-between" align="center">
-                <div className={styles.sectionTitle}>字段列表</div>
-                <Button type="link" icon={<PlusOutlined />} onClick={() => addExtra()}>
+                <div className="text-base font-medium">字段列表</div>
+                <Button type="text" icon={<PlusOutlined />} onClick={() => addExtra()}>
                   新增字段
                 </Button>
               </Flex>
-              <div className={styles.formBuilderCardContent}>
+              <div className="h-[calc(100vh-260px)] overflow-auto">
                 <FieldBarTree
                   fields={draft.fields}
                   onEdit={(node) => setEditor({ node, isNew: false })}
@@ -126,12 +124,12 @@ export function FormBuilder({
                   }
                 />
               </div>
-            </AppCard>
+            </Card>
           </Col>
           <Col span={12}>
-            <AppCard classNames={{ body: styles.formBuilderCardBody }}>
+            <Card classNames={{ body: "flex flex-col gap-4" }}>
               <Flex justify="space-between" align="center">
-                <div className={styles.sectionTitle}>
+                <div className="text-base font-medium">
                   <Segmented<RightTab>
                     value={rightTab}
                     onChange={setRightTab}
@@ -142,12 +140,12 @@ export function FormBuilder({
                   />
                 </div>
                 {rightTab !== "preview" && (
-                  <Button type="link" onClick={applySource}>
+                  <Button type="text" onClick={applySource}>
                     应用
                   </Button>
                 )}
               </Flex>
-              <div className={styles.formBuilderCardContent}>
+              <div className="h-[calc(100vh-260px)] overflow-auto">
                 {rightTab === "preview" ? (
                   <>
                     {preview.error ? (
@@ -163,13 +161,12 @@ export function FormBuilder({
                     value={sourceDraft}
                     onChange={(event) => setSourceDraft(event.target.value)}
                     spellCheck={false}
-                    className={styles.sourceJson}
-                    style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+                    className="h-full font-mono"
                     autoSize={{ minRows: 10, maxRows: 20 }}
                   />
                 )}
               </div>
-            </AppCard>
+            </Card>
           </Col>
         </Row>
       </Flex>

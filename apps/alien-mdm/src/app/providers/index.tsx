@@ -78,7 +78,7 @@ export function AppProviders({ children }: PropsWithChildren) {
         },
         components: {
           Card: {
-            borderRadiusLG: 12,
+            borderRadiusLG: 8,
             bodyPadding: 16,
             bodyPaddingSM: 10,
           },

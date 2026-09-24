@@ -1,19 +1,22 @@
 import { CopyOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
-import { Button, Popconfirm, Space, Table, Tag, Typography } from "antd";
+import { Button, Card, Popconfirm, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useMemo } from "react";
 import type { ModelSummary } from "@app-types";
-import { AppCard } from "../../../components/app-card";
-import styles from "./model-table.module.css";
+import { ModelListToolbar } from "./model-list-toolbar";
 
 export interface ModelTableProps {
   canManageModels: boolean;
   dataSource: ModelSummary[];
   groupLabels: ReadonlyMap<string, string>;
+  keyword: string;
   loading: boolean;
+  onAdd?: () => void;
   onCopy: (model: ModelSummary) => void;
   onDelete: (model: ModelSummary) => void;
   onEdit: (model: ModelSummary) => void;
+  onKeywordChange: (keyword: string) => void;
+  onRefresh: () => void;
   onView: (model: ModelSummary) => void;
 }
 
@@ -31,10 +34,14 @@ export function ModelTable({
   canManageModels,
   dataSource,
   groupLabels,
+  keyword,
   loading,
+  onAdd,
   onCopy,
   onDelete,
   onEdit,
+  onKeywordChange,
+  onRefresh,
   onView,
 }: ModelTableProps) {
   const columns = useMemo<ColumnsType<ModelSummary>>(
@@ -45,7 +52,7 @@ export function ModelTable({
         fixed: "left",
         width: 150,
         render: (title: string, record) => (
-          <Button type="link" className={styles.titleLink} onClick={() => onView(record)}>
+          <Button type="link" onClick={() => onView(record)}>
             {title}
           </Button>
         ),
@@ -132,7 +139,14 @@ export function ModelTable({
   );
 
   return (
-    <AppCard className={styles.tableCard} styles={{ body: { padding: 0 } }}>
+    <Card>
+      <ModelListToolbar
+        keyword={keyword}
+        loading={loading}
+        onKeywordChange={onKeywordChange}
+        onRefresh={onRefresh}
+        onAdd={onAdd}
+      />
       <Table<ModelSummary>
         rowKey="name"
         columns={columns}
@@ -146,6 +160,6 @@ export function ModelTable({
           showTotal: (total) => `共 ${total} 个模型`,
         }}
       />
-    </AppCard>
+    </Card>
   );
 }

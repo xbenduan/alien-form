@@ -1,7 +1,3 @@
-.actionsPage {
-  padding-bottom: 76px;
-}
-
 .stepCard :global(.ant-card-body) {
   padding: 20px;
 }

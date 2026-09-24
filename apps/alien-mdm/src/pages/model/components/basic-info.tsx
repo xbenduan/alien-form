@@ -1,8 +1,7 @@
-import { Form, Input, InputNumber, Select } from "antd";
+import { Card, Form, Input, InputNumber, Select } from "antd";
 import { useEffect, useState } from "react";
 import { useRuntime } from "@alien-form/react";
 import type { ListResponse, ModelRecord } from "@app-types";
-import { AppCard } from "../../../components/app-card";
 import type { ModelAction } from "../builder/commands";
 import type { ModelDraft } from "../builder/types";
 
@@ -86,7 +85,7 @@ export function BasicInfo({
   };
 
   return (
-    <AppCard>
+    <Card>
       <Form
         form={form}
         layout="vertical"
@@ -122,6 +121,6 @@ export function BasicInfo({
           <Input.TextArea rows={3} />
         </Form.Item>
       </Form>
-    </AppCard>
+    </Card>
   );
 }

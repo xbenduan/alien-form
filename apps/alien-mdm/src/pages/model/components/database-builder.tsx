@@ -1,8 +1,7 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Flex, Input, Popconfirm, Space, Table, Tag, Typography } from "antd";
+import { Button, Card, Flex, Input, Popconfirm, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useMemo, useState } from "react";
-import { AppCard } from "../../../components/app-card";
 import type { ModelAction } from "../builder/commands";
 import { createField } from "../builder/codec";
 import type { FieldNode, ModelDraft } from "../builder/types";
@@ -132,7 +131,7 @@ export function DatabaseBuilder({
   ];
 
   return (
-    <AppCard
+    <Card
       variant="outlined"
       styles={{ body: { display: "flex", flexDirection: "column", gap: "16px" } }}
     >
@@ -172,6 +171,6 @@ export function DatabaseBuilder({
           setEditor(undefined);
         }}
       />
-    </AppCard>
+    </Card>
   );
 }

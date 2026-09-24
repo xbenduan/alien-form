@@ -1,10 +1,9 @@
 import { Alert, App, Flex } from "antd";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRuntime } from "@alien-form/react";
 import type { ListResponse, ModelRecord, ModelSummary } from "@app-types";
 import { canManageModels } from "@runtime/user-info";
-import { ModelListToolbar } from "./components/model-list-toolbar";
 import { ModelTable } from "./components/model-table";
 
 export default function ModelListPage() {
@@ -16,6 +15,7 @@ export default function ModelListPage() {
   const [groupLabels, setGroupLabels] = useState<ReadonlyMap<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
+  const [keyword, setKeyword] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -76,17 +76,34 @@ export default function ModelListPage() {
     },
     [load, message, runtime],
   );
+  const filteredModels = useMemo(() => {
+    const normalizedKeyword = keyword.trim().toLocaleLowerCase();
+    if (!normalizedKeyword) return models;
+    return models.filter((model) =>
+      [
+        model.name,
+        model.title,
+        model.subtitle,
+        model.description,
+        model.group,
+        model.singularLabel,
+        model.pluralLabel,
+      ]
+        .filter(Boolean)
+        .some((value) => value!.toLocaleLowerCase().includes(normalizedKeyword)),
+    );
+  }, [keyword, models]);
+
   return (
     <Flex vertical gap={16}>
-      <ModelListToolbar
-        loading={loading}
-        onRefresh={() => void load()}
-        onAdd={canManage ? () => navigate("/models/add") : undefined}
-      />
       {error && <Alert type="error" title="模型列表加载失败" description={error} showIcon />}
       <ModelTable
-        dataSource={models}
+        dataSource={filteredModels}
         loading={loading}
+        keyword={keyword}
+        onKeywordChange={setKeyword}
+        onRefresh={() => void load()}
+        onAdd={canManage ? () => navigate("/models/add") : undefined}
         canManageModels={canManage}
         groupLabels={groupLabels}
         onView={viewModel}

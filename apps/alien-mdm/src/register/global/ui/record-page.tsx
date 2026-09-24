@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import type { ComponentProps } from "@alien-form/react";
-import styles from "./record-page.module.css";
 
 export function RecordPage({ children }: Partial<ComponentProps> & { title?: ReactNode }) {
-  return <div className={styles.recordPage}>{children}</div>;
+  return <div className="flex min-w-0 flex-col gap-4">{children}</div>;
 }

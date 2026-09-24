@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
-import { Menu as AntMenu, type MenuProps } from "antd";
+import { Card, Menu as AntMenu, type MenuProps } from "antd";
 import type { ComponentProps } from "@alien-form/react";
-import { AppCard } from "../../../components/app-card";
 import styles from "./menu.module.css";
 
 export interface MenuItem {
@@ -56,7 +55,7 @@ export function Menu(props: AlienMenuProps) {
   const selectedKey = value == null ? undefined : String(value);
 
   return (
-    <AppCard
+    <Card
       className={styles.menu}
       role="navigation"
       aria-label={typeof title === "string" ? title : "菜单"}
@@ -72,6 +71,6 @@ export function Menu(props: AlienMenuProps) {
           onChange?.(key === selectedKey ? undefined : key);
         }}
       />
-    </AppCard>
+    </Card>
   );
 }

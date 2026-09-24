@@ -1,6 +1,6 @@
 import { useCreateForm } from "@alien-form/react";
 import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
-import { App, Button, Space, Spin } from "antd";
+import { App, Button, Card, Space, Spin } from "antd";
 import {
   forwardRef,
   useEffect,
@@ -12,7 +12,6 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import { FormRenderer, useRuntime } from "@alien-form/react";
 import { compileForm, type AlienFieldSchema } from "@alien-form/engine";
-import { AppCard } from "../../../components/app-card";
 import { PageActionBar } from "../../../components/page-action-bar";
 import { recordListRoute } from "@utils/record-route";
 import styles from "./record-form.module.css";
@@ -144,9 +143,9 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
       );
     }
     return (
-      <AppCard className={styles.actionBody} classNames={{ body: styles.actionLoading }}>
+      <Card className={styles.actionBody} classNames={{ body: styles.actionLoading }}>
         <Spin />
-      </AppCard>
+      </Card>
     );
   }
 
@@ -159,9 +158,9 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
   if (embedded) return <div className={styles.overlayBody}>{content}</div>;
   return (
     <>
-      <AppCard className={styles.actionBody} classNames={{ body: styles.actionContent }}>
+      <Card className={styles.actionBody} classNames={{ body: styles.actionContent }}>
         {content}
-      </AppCard>
+      </Card>
       <PageActionBar>{footer}</PageActionBar>
     </>
   );

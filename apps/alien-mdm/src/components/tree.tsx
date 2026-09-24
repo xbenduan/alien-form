@@ -1,6 +1,5 @@
 import { CaretRightOutlined } from "@ant-design/icons";
 import { useEffect, useMemo, useState } from "react";
-import styles from "./tree.module.css";
 
 export interface TreeNode {
   key: string;
@@ -82,24 +81,26 @@ function TreeItem({
       aria-selected={selected}
     >
       <div
-        className={`${styles.node}${selected ? ` ${styles.nodeSelected}` : ""}`}
+        className={`flex min-w-0 items-center rounded hover:bg-[rgba(245,247,250,0.72)]${selected ? " bg-[rgba(234,243,255,0.78)]" : ""}`}
         style={{ paddingLeft: `${depth * 16 + 6}px` }}
       >
         {hasChildren ? (
           <button
             type="button"
-            className={styles.toggle}
+            className="inline-flex h-8 w-6 flex-[0_0_24px] items-center justify-center border-0 bg-transparent text-[10px] text-[#86909c] cursor-pointer hover:text-[#1677ff] focus-visible:outline-2 focus-visible:outline-[rgba(22,119,255,0.32)] focus-visible:-outline-offset-2"
             aria-label={isExpanded ? "收起" : "展开"}
             onClick={() => onToggle(node.key)}
           >
-            <CaretRightOutlined className={isExpanded ? styles.toggleOpen : undefined} />
+            <CaretRightOutlined
+              className={`transition-transform duration-[160ms]${isExpanded ? " rotate-90" : ""}`}
+            />
           </button>
         ) : (
-          <span className={styles.togglePlaceholder} />
+          <span className="inline-flex h-8 w-6 flex-[0_0_24px]" />
         )}
         <button
           type="button"
-          className={styles.item}
+          className={`min-h-8 w-full min-w-0 overflow-hidden border-0 bg-transparent p-[0_8px_0_2px] text-left text-[#1d2129] text-ellipsis whitespace-nowrap cursor-pointer focus-visible:outline-2 focus-visible:outline-[rgba(22,119,255,0.32)] focus-visible:-outline-offset-2 disabled:cursor-not-allowed disabled:text-[#c9cdd4]${selected ? " font-medium text-[#1677ff]" : ""}`}
           disabled={disabled}
           onClick={() => onChange?.(selected && allowClearSelection ? undefined : node.key)}
         >
@@ -107,7 +108,7 @@ function TreeItem({
         </button>
       </div>
       {hasChildren && isExpanded ? (
-        <ul className={styles.branch} role="group">
+        <ul className="m-0 list-none p-0 text-[13px] text-[#172033]" role="group">
           {node.children.map((child) => (
             <TreeItem
               key={child.key}
@@ -170,11 +171,15 @@ export function Tree({
   };
 
   if (visibleNodes.length === 0) {
-    return <p className={styles.empty}>{keyword ? "未找到匹配节点" : emptyText}</p>;
+    return (
+      <p className="m-[24px_8px] text-center text-[13px] text-[#86909c]">
+        {keyword ? "未找到匹配节点" : emptyText}
+      </p>
+    );
   }
 
   return (
-    <ul className={styles.tree} role="tree">
+    <ul className="m-0 list-none p-0 text-[13px] text-[#172033]" role="tree">
       {visibleNodes.map((node) => (
         <TreeItem
           key={node.key}

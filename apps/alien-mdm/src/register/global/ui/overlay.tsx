@@ -1,7 +1,6 @@
 import { Drawer, Modal } from "antd";
 import type { ReactNode } from "react";
 import type { ComponentProps } from "@alien-form/react";
-import styles from "./overlay.module.css";
 
 type OpenMode = "page" | "modal" | "drawer";
 
@@ -42,7 +41,7 @@ export function Overlay({
       open={open}
       title={title}
       width={width}
-      footer={footer ? <div className={styles.overlayFooter}>{footer}</div> : undefined}
+      footer={footer ? <div className="flex justify-end">{footer}</div> : undefined}
       onClose={onClose}
     >
       {children}

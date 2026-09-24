@@ -4,7 +4,6 @@ import { Button, Empty, Modal, Tooltip } from "antd";
 import { useMemo, useState } from "react";
 import { FormRenderer, useRuntime } from "@alien-form/react";
 import { compileForm, type AlienFieldSchema } from "@alien-form/engine";
-import styles from "./complex-field.module.css";
 
 function isEmptyValue(value: unknown): boolean {
   return (
@@ -69,8 +68,10 @@ export function TableComplexCell({
   const detailLabel = `查看${title ?? ""}详情`;
 
   return (
-    <div className={styles.tableComplex}>
-      <span className={styles.tableComplexSummary}>{complexValueSummary(value)}</span>
+    <div className="flex min-w-0 items-center gap-1.5">
+      <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+        {complexValueSummary(value)}
+      </span>
       <Tooltip title={detailLabel}>
         <Button
           type="link"

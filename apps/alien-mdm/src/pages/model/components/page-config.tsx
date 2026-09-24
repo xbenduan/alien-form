@@ -1,13 +1,11 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
-import { App, Button, Flex, Popconfirm, Space, Table, Tag, Typography } from "antd";
+import { App, Button, Card, Flex, Popconfirm, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useState } from "react";
-import { AppCard } from "../../../components/app-card";
 import type { ModelAction } from "../builder/commands";
 import type { GroupDraft, ModelDraft, PageDraft } from "../builder/types";
 import { GroupModal } from "./group-modal";
 import { PageModal } from "./page-modal";
-import styles from "./page-config.module.css";
 
 /**
  * 页面配置步骤：上方「字段分组」表格，下方「页面配置」表格。
@@ -132,9 +130,9 @@ export function PageConfig({
 
   return (
     <Flex vertical gap={16}>
-      <AppCard styles={{ body: { display: "flex", flexDirection: "column", gap: 8 } }}>
+      <Card styles={{ body: { display: "flex", flexDirection: "column", gap: 8 } }}>
         <Flex justify="space-between" align="center">
-          <div className={styles.sectionTitle}>字段分组</div>
+          <div className="text-base font-medium">字段分组</div>
           <Button type="link" icon={<PlusOutlined />} onClick={() => setGroupEditor({})}>
             新增分组
           </Button>
@@ -147,10 +145,10 @@ export function PageConfig({
           pagination={false}
           locale={{ emptyText: "暂无分组，未分组字段按顺序平铺" }}
         />
-      </AppCard>
-      <AppCard styles={{ body: { display: "flex", flexDirection: "column", gap: 8 } }}>
+      </Card>
+      <Card styles={{ body: { display: "flex", flexDirection: "column", gap: 8 } }}>
         <Flex justify="space-between" align="center">
-          <div className={styles.sectionTitle}>页面配置</div>
+          <div className="text-base font-medium">页面配置</div>
           <Button type="link" icon={<PlusOutlined />} onClick={() => setPageEditor({})}>
             新增页面
           </Button>
@@ -163,7 +161,7 @@ export function PageConfig({
           pagination={false}
           locale={{ emptyText: "暂无页面，保存时将按默认模版生成 list/add/edit/detail" }}
         />
-      </AppCard>
+      </Card>
       <GroupModal
         open={Boolean(groupEditor)}
         group={groupEditor?.group}
