@@ -1,8 +1,20 @@
-import type { ModelRecord, AlienSchema, Pagination, Sorter } from "@alien-form/protocol";
-import { columnName, fieldExpression, planByField, type FieldPlan } from "../storage/field-plan.ts";
+import type { ModelRecord, AlienSchema } from "@alien-form/protocol";
+import type {
+  CompiledFieldPlan,
+  CompiledModel,
+  RecordListParams,
+  RecordListResult,
+  RecordOptionResult,
+  RecordOptionsParams,
+  RecordReader,
+  RecordSubtreeParams,
+  RecordMutation,
+  TransactionPlan,
+  UnitOfWork,
+} from "../services/core/contracts.ts";
+import { columnName, fieldExpression } from "../storage/field-plan.ts";
 import { formatRecordId } from "../storage/record-id.ts";
 import { compileRecordFilter } from "../storage/record-filter.ts";
-import { compileStorageManifest } from "../storage/compiler.ts";
 import { quoteColumn, quoteTable } from "../storage/sql.ts";
 
 type SqlValue = string | number | null;
@@ -13,45 +25,6 @@ type RecordRow = Record<string, unknown> & {
   updated_at: number;
   data_content: string;
 };
-
-export interface ListParams {
-  filter?: string;
-  authId: string;
-  pagination?: Pagination;
-  sorter?: Sorter;
-  keyword?: string;
-  searchFields?: string[];
-  parentId?: string | null;
-  idField?: string;
-  parentField?: string;
-  ownerId?: string;
-}
-
-export interface ListResult {
-  list: ModelRecord[];
-  total: number;
-}
-
-export interface OptionResult {
-  options: Array<{ value: string | number; label: string }>;
-  total: number;
-}
-
-export interface OptionsParams {
-  valueKey: string;
-  labelKey: string;
-  keyword?: string;
-  selectedValues?: unknown[];
-  limit?: number;
-  ownerId?: string;
-}
-
-export interface SubtreeParams {
-  idField: string;
-  parentField: string;
-  parentValue?: string | null;
-  ownerId?: string;
-}
 
 function decodePhysical(field: AlienSchema["fields"][number], value: unknown): unknown {
   if (value === null || value === undefined) return undefined;
@@ -113,7 +86,7 @@ function relationValues(value: unknown): string[] {
   ];
 }
 
-export class RecordStore {
+export class RecordStore implements RecordReader, UnitOfWork {
   constructor(private readonly db: D1Database) {}
 
   async allocateId(): Promise<string> {
@@ -129,13 +102,13 @@ export class RecordStore {
   }
 
   private async attachManyRelations(
-    schema: AlienSchema,
+    model: CompiledModel,
     records: ModelRecord[],
   ): Promise<ModelRecord[]> {
     if (records.length === 0) return records;
     const ids = records.map((record) => String(record.id));
     const byId = new Map(records.map((record) => [String(record.id), record]));
-    const relations = compileStorageManifest(schema).relations;
+    const relations = model.storage.relations;
 
     for (const relation of relations) {
       const { results } = await this.db
@@ -155,9 +128,10 @@ export class RecordStore {
     return records;
   }
 
-  async list(schema: AlienSchema, params: ListParams): Promise<ListResult> {
+  async list(model: CompiledModel, params: RecordListParams): Promise<RecordListResult> {
+    const schema = model.schema;
     const table = quoteTable(schema.name);
-    const fields = planByField(schema);
+    const fields = model.query.fields;
     const where: string[] = [];
     const args: SqlValue[] = [];
 
@@ -170,7 +144,7 @@ export class RecordStore {
       const idField = params.idField ?? "id";
       const parentField = params.parentField;
       if (!parentField) throw new Error("parentId 查询缺少模型自关联字段");
-      const descendants = await this.subtree(schema, {
+      const descendants = await this.subtree(model, {
         idField,
         parentField,
         parentValue: params.parentId,
@@ -202,7 +176,7 @@ export class RecordStore {
     if (keyword && params.searchFields?.length) {
       const searchable = [...new Set(params.searchFields)]
         .map((key) => fields.get(key))
-        .filter((plan): plan is FieldPlan => plan !== undefined && !plan.json);
+        .filter((plan): plan is CompiledFieldPlan => plan !== undefined && !plan.json);
       if (searchable.length > 0) {
         where.push(
           `(${searchable
@@ -234,12 +208,13 @@ export class RecordStore {
     ]);
     const countRow = countResult.results[0] as { c?: number } | undefined;
     const records = dataResult.results.map((row) => rowToRecord(schema, row as RecordRow));
-    await this.attachManyRelations(schema, records);
+    await this.attachManyRelations(model, records);
     return { list: records, total: countRow?.c ?? 0 };
   }
 
-  async options(schema: AlienSchema, params: OptionsParams): Promise<OptionResult> {
-    const fields = planByField(schema);
+  async options(model: CompiledModel, params: RecordOptionsParams): Promise<RecordOptionResult> {
+    const schema = model.schema;
+    const fields = model.query.fields;
     const valuePlan = fields.get(params.valueKey);
     const labelPlan = fields.get(params.labelKey);
     if (!valuePlan || !labelPlan) throw new Error("选项字段不存在或不支持查询");
@@ -300,7 +275,8 @@ export class RecordStore {
     return { options: [...options.values()], total: countRow?.c ?? 0 };
   }
 
-  async subtree(schema: AlienSchema, params: SubtreeParams): Promise<ModelRecord[]> {
+  async subtree(model: CompiledModel, params: RecordSubtreeParams): Promise<ModelRecord[]> {
+    const schema = model.schema;
     const result = params.ownerId
       ? await this.db
           .prepare(
@@ -323,7 +299,7 @@ export class RecordStore {
       params.parentValue === undefined || params.parentValue === null
         ? ""
         : String(params.parentValue);
-    if (root === "") return this.attachManyRelations(schema, records);
+    if (root === "") return this.attachManyRelations(model, records);
 
     const output: ModelRecord[] = [];
     const queue = [root];
@@ -339,24 +315,26 @@ export class RecordStore {
         if (id !== undefined && id !== null) queue.push(String(id));
       }
     }
-    return this.attachManyRelations(schema, output);
+    return this.attachManyRelations(model, output);
   }
 
-  async get(schema: AlienSchema, id: string): Promise<ModelRecord | undefined> {
+  async get(model: CompiledModel, id: string): Promise<ModelRecord | undefined> {
+    const schema = model.schema;
     const row = await this.db
       .prepare(`SELECT * FROM ${quoteTable(schema.name)} WHERE "id" = ?`)
       .bind(id)
       .first<RecordRow>();
     if (!row) return undefined;
-    return (await this.attachManyRelations(schema, [rowToRecord(schema, row)]))[0];
+    return (await this.attachManyRelations(model, [rowToRecord(schema, row)]))[0];
   }
 
   async findByField(
-    schema: AlienSchema,
+    model: CompiledModel,
     field: string,
     value: string | number,
   ): Promise<ModelRecord | undefined> {
-    const relation = compileStorageManifest(schema).relations.find((item) => item.field === field);
+    const schema = model.schema;
+    const relation = model.storage.relations.find((item) => item.field === field);
     if (relation) {
       const row = await this.db
         .prepare(
@@ -365,9 +343,9 @@ export class RecordStore {
         )
         .bind(String(value))
         .first<{ source_id: string }>();
-      return row ? this.get(schema, row.source_id) : undefined;
+      return row ? this.get(model, row.source_id) : undefined;
     }
-    const plan = planByField(schema).get(field);
+    const plan = model.query.fields.get(field);
     if (!plan) return undefined;
     const row = await this.db
       .prepare(
@@ -377,103 +355,38 @@ export class RecordStore {
       .bind(encodeQueryValue(plan, value))
       .first<RecordRow>();
     if (!row) return undefined;
-    return (await this.attachManyRelations(schema, [rowToRecord(schema, row)]))[0];
+    return (await this.attachManyRelations(model, [rowToRecord(schema, row)]))[0];
   }
 
-  async create(
-    schema: AlienSchema,
-    values: Record<string, unknown>,
-    ownerId?: string,
-  ): Promise<ModelRecord> {
-    const id = typeof values.id === "string" && values.id ? values.id : await this.allocateId();
-    const timestamp = Date.now();
-    const { columns, args, virtual, many } = splitRecord(schema, { ...values, id });
-    const statements: D1PreparedStatement[] = [
-      this.db
-        .prepare(
-          `INSERT INTO ${quoteTable(schema.name)}
-           (${["id", "created_at", "updated_at", "data_content", ...columns]
-             .map(quoteColumn)
-             .join(", ")})
-           VALUES (${Array.from({ length: columns.length + 4 }, () => "?").join(", ")})`,
-        )
-        .bind(
-          id,
-          timestamp,
-          timestamp,
-          JSON.stringify({ ...virtual, ...(ownerId ? { [OWNER_KEY]: ownerId } : {}) }),
-          ...args,
-        ),
-      ...relationStatements(this.db, schema, id, many),
+  /** Commits all record mutations and Outbox events in one D1 transaction. */
+  async commit(plan: TransactionPlan): Promise<void> {
+    const statements = [
+      ...plan.mutations.flatMap((mutation) => mutationStatements(this.db, mutation)),
+      ...plan.events.map((event) =>
+        this.db
+          .prepare(
+            `INSERT INTO "_outbox"
+             ("id", "model", "topic", "payload", "occurred_at")
+             VALUES (?, ?, ?, ?, ?)`,
+          )
+          .bind(
+            event.id,
+            event.model,
+            event.topic,
+            JSON.stringify(event.payload),
+            event.occurredAt,
+          ),
+      ),
     ];
-    await this.db.batch(statements);
-    const record = await this.get(schema, id);
-    if (!record) throw new Error(`记录创建后无法读取：${id}`);
-    return record;
-  }
-
-  async update(
-    schema: AlienSchema,
-    id: string,
-    values: Record<string, unknown>,
-    ownerId?: string,
-  ): Promise<ModelRecord | undefined> {
-    if (!(await this.get(schema, id))) return undefined;
-    const { columns, args, virtual, many } = splitRecord(schema, { ...values, id });
-    const assignments = [
-      `"updated_at" = ?`,
-      `"data_content" = ?`,
-      ...columns.map((column) => `${quoteColumn(column)} = ?`),
-    ];
-    const statements: D1PreparedStatement[] = [
-      this.db
-        .prepare(`UPDATE ${quoteTable(schema.name)} SET ${assignments.join(", ")} WHERE "id" = ?`)
-        .bind(
-          Date.now(),
-          JSON.stringify({ ...virtual, ...(ownerId ? { [OWNER_KEY]: ownerId } : {}) }),
-          ...args,
-          id,
-        ),
-      ...relationStatements(this.db, schema, id, many),
-    ];
-    await this.db.batch(statements);
-    return this.get(schema, id);
-  }
-
-  async delete(schema: AlienSchema, id: string): Promise<void> {
-    const statements = compileStorageManifest(schema).relations.map((relation) =>
-      this.db.prepare(`DELETE FROM ${quoteTable(relation.table)} WHERE "source_id" = ?`).bind(id),
-    );
-    statements.push(
-      this.db.prepare(`DELETE FROM ${quoteTable(schema.name)} WHERE "id" = ?`).bind(id),
-    );
-    await this.db.batch(statements);
-  }
-
-  async deleteMany(schema: AlienSchema, ids: string[]): Promise<void> {
-    if (ids.length === 0) return;
-    const statements: D1PreparedStatement[] = [];
-    for (const id of ids) {
-      for (const relation of compileStorageManifest(schema).relations) {
-        statements.push(
-          this.db
-            .prepare(`DELETE FROM ${quoteTable(relation.table)} WHERE "source_id" = ?`)
-            .bind(id),
-        );
-      }
-      statements.push(
-        this.db.prepare(`DELETE FROM ${quoteTable(schema.name)} WHERE "id" = ?`).bind(id),
-      );
-    }
-    await this.db.batch(statements);
+    if (statements.length > 0) await this.db.batch(statements);
   }
 
   /** Returns the internal creator identity used by `scope: own`. */
-  async owner(schema: AlienSchema, id: string): Promise<string | undefined> {
+  async owner(model: CompiledModel, id: string): Promise<string | undefined> {
     const row = await this.db
       .prepare(
         `SELECT json_extract("data_content", '$.${OWNER_KEY}') AS owner
-         FROM ${quoteTable(schema.name)} WHERE "id" = ?`,
+         FROM ${quoteTable(model.schema.name)} WHERE "id" = ?`,
       )
       .bind(id)
       .first<{ owner?: string }>();
@@ -481,7 +394,7 @@ export class RecordStore {
   }
 }
 
-function encodeQueryValue(plan: FieldPlan, value: string | number): string | number {
+function encodeQueryValue(plan: CompiledFieldPlan, value: string | number): string | number {
   if (plan.type === "boolean") return value ? 1 : 0;
   if (plan.type === "integer" || plan.type === "real" || plan.type === "date") {
     const number = typeof value === "number" ? value : Number(value);
@@ -491,7 +404,7 @@ function encodeQueryValue(plan: FieldPlan, value: string | number): string | num
 }
 
 function splitRecord(
-  schema: AlienSchema,
+  model: CompiledModel,
   values: Record<string, unknown>,
 ): {
   columns: string[];
@@ -499,6 +412,7 @@ function splitRecord(
   virtual: Record<string, unknown>;
   many: Map<string, string[]>;
 } {
+  const schema = model.schema;
   const known = new Set(schema.fields.map((field) => field.key));
   for (const key of Object.keys(values)) {
     if (!known.has(key)) throw new Error(`未知字段：${key}`);
@@ -526,12 +440,12 @@ function splitRecord(
 
 function relationStatements(
   db: D1Database,
-  schema: AlienSchema,
+  model: CompiledModel,
   id: string,
   values: Map<string, string[]>,
 ): D1PreparedStatement[] {
   const statements: D1PreparedStatement[] = [];
-  for (const relation of compileStorageManifest(schema).relations) {
+  for (const relation of model.storage.relations) {
     statements.push(
       db.prepare(`DELETE FROM ${quoteTable(relation.table)} WHERE "source_id" = ?`).bind(id),
     );
@@ -547,4 +461,50 @@ function relationStatements(
     }
   }
   return statements;
+}
+
+function mutationStatements(db: D1Database, mutation: RecordMutation): D1PreparedStatement[] {
+  const { model } = mutation;
+  const schema = model.schema;
+  if (mutation.operation === "delete") {
+    return [
+      ...model.storage.relations.map((relation) =>
+        db
+          .prepare(`DELETE FROM ${quoteTable(relation.table)} WHERE "source_id" = ?`)
+          .bind(mutation.id),
+      ),
+      db.prepare(`DELETE FROM ${quoteTable(schema.name)} WHERE "id" = ?`).bind(mutation.id),
+    ];
+  }
+
+  const id = mutation.operation === "create" ? mutation.record.id : mutation.id;
+  const { columns, args, virtual, many } = splitRecord(model, mutation.record);
+  const owner = mutation.ownerId ? { [OWNER_KEY]: mutation.ownerId } : {};
+  if (mutation.operation === "create") {
+    const timestamp = Date.now();
+    return [
+      db
+        .prepare(
+          `INSERT INTO ${quoteTable(schema.name)}
+           (${["id", "created_at", "updated_at", "data_content", ...columns]
+             .map(quoteColumn)
+             .join(", ")})
+           VALUES (${Array.from({ length: columns.length + 4 }, () => "?").join(", ")})`,
+        )
+        .bind(id, timestamp, timestamp, JSON.stringify({ ...virtual, ...owner }), ...args),
+      ...relationStatements(db, model, id, many),
+    ];
+  }
+
+  const assignments = [
+    `"updated_at" = ?`,
+    `"data_content" = ?`,
+    ...columns.map((column) => `${quoteColumn(column)} = ?`),
+  ];
+  return [
+    db
+      .prepare(`UPDATE ${quoteTable(schema.name)} SET ${assignments.join(", ")} WHERE "id" = ?`)
+      .bind(Date.now(), JSON.stringify({ ...virtual, ...owner }), ...args, id),
+    ...relationStatements(db, model, id, many),
+  ];
 }

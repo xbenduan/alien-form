@@ -1,9 +1,6 @@
-import {
-  parseAlienSchema,
-  type MigrationPlan,
-  type AlienSchema,
-  type ModelSummary,
-} from "@alien-form/protocol";
+import { parseAlienSchema, type AlienSchema, type ModelSummary } from "@alien-form/protocol";
+import { ModelVersionConflictError, type ModelRepository } from "../services/core/contracts.ts";
+import { compileMigrationPlan } from "../storage/compiler.ts";
 import { quoteTable } from "../storage/sql.ts";
 
 interface ModelRow {
@@ -14,13 +11,11 @@ interface ModelRow {
   updated_at: number;
 }
 
-export class ModelVersionConflictError extends Error {}
-
 function parseRow(row: Pick<ModelRow, "schema">): AlienSchema {
   return parseAlienSchema(JSON.parse(row.schema));
 }
 
-export class ModelStore {
+export class ModelStore implements ModelRepository {
   constructor(private readonly db: D1Database) {}
 
   async list(): Promise<ModelSummary[]> {
@@ -65,11 +60,11 @@ export class ModelStore {
   }
 
   async publish(
+    current: AlienSchema | undefined,
     schema: AlienSchema,
-    tableName: string,
-    plan: MigrationPlan,
     expectedVersion: number,
   ): Promise<AlienSchema> {
+    const { manifest, plan } = compileMigrationPlan(current, schema);
     const now = Date.now();
     const statements = plan.operations.map((operation) => this.db.prepare(operation.sql));
 
@@ -84,7 +79,7 @@ export class ModelStore {
           .bind(
             schema.name,
             schema.title,
-            tableName,
+            manifest.table,
             schema.version,
             JSON.stringify(schema),
             now,

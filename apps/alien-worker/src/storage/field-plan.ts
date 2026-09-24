@@ -1,15 +1,8 @@
 import type { AlienSchema } from "@alien-form/protocol";
+import type { CompiledFieldPlan } from "../services/core/contracts.ts";
 import { quoteColumn } from "./sql.ts";
 
-export interface FieldPlan {
-  field: string;
-  type: NonNullable<AlienSchema["fields"][number]["storage"]>["type"];
-  storage: "physical" | "virtual";
-  column?: string;
-  json: boolean;
-  filterable: boolean;
-  sortable: boolean;
-}
+export type FieldPlan = CompiledFieldPlan;
 
 export interface RefField {
   field: string;

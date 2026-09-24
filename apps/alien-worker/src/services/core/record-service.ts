@@ -1,21 +1,33 @@
 import type {
-  ModelRecord,
   AlienSchema,
+  AlienValue,
   ListRequest,
+  ModelRecord,
   OptionsRequest,
+  PermissionAction,
   SubtreeRequest,
 } from "@alien-form/protocol";
+import { isPluginMarker } from "@alien-form/protocol";
 import { AppError, conflict, forbidden, notFound } from "../../errors.ts";
-import type { ModelStore } from "../../store/model-store.ts";
-import type { ListResult, OptionResult, RecordStore } from "../../store/record-store.ts";
-import type { RefExpander } from "../../store/ref-expander.ts";
-import { unwrapRefs } from "../../store/ref-expander.ts";
-import type { ModelModules } from "../model-modules.ts";
-import type { AccessControl, AccessProfile } from "./access-control.ts";
+import type { AccessControl, AccessProfile, PermissionScope } from "./access-control.ts";
+import type {
+  CompiledModel,
+  CompiledModelProvider,
+  DomainEvent,
+  EventCollector,
+  ModelCommandMutation,
+  ModelWriteOperation,
+  RecordExpander,
+  RecordListResult,
+  RecordMutation,
+  RecordOptionResult,
+  RecordReader,
+  TransactionPlan,
+  UnitOfWork,
+} from "./contracts.ts";
 import {
   prepareModelInput,
   presentModelRecord,
-  runAfterCommit,
   runBeforePersist,
   validateModelRecord,
 } from "./model-middleware.ts";
@@ -25,24 +37,71 @@ export type ListInput = ListRequest;
 export type OptionsInput = OptionsRequest;
 export type SubtreeInput = SubtreeRequest;
 
-function isUniqueViolation(reason: unknown): boolean {
-  return reason instanceof Error && reason.message.includes("UNIQUE constraint failed");
+export interface CommandExecutionResult {
+  output: AlienValue;
+  records: ModelRecord[];
+}
+
+interface StagedMutation {
+  mutation: RecordMutation;
+  previous?: ModelRecord;
+}
+
+function unwrapRefValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(unwrapRefValue);
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    !isPluginMarker(value) &&
+    "$ref" in value &&
+    "value" in value
+  ) {
+    return (value as { value: unknown }).value;
+  }
+  return value;
+}
+
+function unwrapRefs(values: Readonly<Record<string, unknown>>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(values).map(([key, value]) => [key, unwrapRefValue(value)]),
+  );
+}
+
+class TransactionEvents implements EventCollector {
+  readonly values: DomainEvent[] = [];
+
+  constructor(private readonly model: string) {}
+
+  emit(topic: string, payload: AlienValue): void {
+    if (!/^[A-Za-z][A-Za-z0-9_.-]*$/.test(topic)) {
+      throw new AppError(`事件 topic 不合法：${topic}`, 400);
+    }
+    this.values.push({
+      id: crypto.randomUUID(),
+      model: this.model,
+      topic,
+      payload,
+      occurredAt: Date.now(),
+    });
+  }
+}
+
+function actionFor(operation: ModelWriteOperation): PermissionAction {
+  return operation === "delete" ? "delete" : operation;
+}
+
+function lifecycleTopic(operation: ModelWriteOperation): string {
+  return `record.${operation === "delete" ? "deleted" : `${operation}d`}`;
 }
 
 export class RecordService {
   constructor(
-    private readonly models: ModelStore,
-    private readonly records: RecordStore,
-    private readonly refs: RefExpander,
-    private readonly modules: ModelModules,
+    private readonly models: CompiledModelProvider,
+    private readonly records: RecordReader,
+    private readonly transactions: UnitOfWork,
+    private readonly refs: RecordExpander,
     private readonly access: AccessControl,
   ) {}
-
-  private async requireModel(model: string): Promise<AlienSchema> {
-    const schema = await this.models.get(model);
-    if (!schema) throw notFound(`未知模型：${model}`);
-    return schema;
-  }
 
   private selfRelation(schema: AlienSchema): AlienSchema["fields"][number] {
     const relations = schema.fields.filter(
@@ -57,18 +116,33 @@ export class RecordService {
     return relations[0];
   }
 
-  async list(input: ListInput, authId: string): Promise<ListResult> {
-    const source = await this.requireModel(input.model);
-    const profile = await this.access.profile(authId);
-    const scope = this.access.assertCan(profile, source, "read");
-    const schema = this.access.projectSchema(profile, source);
+  private projectedModel(model: CompiledModel, schema: AlienSchema): CompiledModel {
+    const fields = new Set(schema.fields.map((field) => field.key));
+    return {
+      ...model,
+      schema,
+      query: {
+        fields: new Map([...model.query.fields].filter(([key]) => fields.has(key))),
+      },
+      validation: {
+        fields: new Map([...model.validation.fields].filter(([key]) => fields.has(key))),
+      },
+    };
+  }
+
+  async list(input: ListInput, actorId: string): Promise<RecordListResult> {
+    const model = await this.models.require(input.model);
+    const profile = await this.access.profile(actorId);
+    const scope = this.access.assertCan(profile, model.schema, "read");
+    const schema = this.access.projectSchema(profile, model.schema);
+    const runtimeModel = this.projectedModel(model, schema);
     const relation =
       input.parentId === undefined || input.parentId === null || input.parentId === ""
         ? undefined
         : this.selfRelation(schema);
-    const result = await this.records.list(schema, {
+    const result = await this.records.list(runtimeModel, {
       filter: input.filter,
-      authId,
+      authId: actorId,
       pagination: input.pagination,
       sorter: input.sorter,
       keyword: input.keyword,
@@ -76,7 +150,7 @@ export class RecordService {
       parentId: input.parentId,
       idField: relation?.relation?.valueField ?? "id",
       parentField: relation?.key,
-      ownerId: scope === "own" ? authId : undefined,
+      ownerId: scope === "own" ? actorId : undefined,
     });
     const expanded = await this.refs.expand(schema, result.list);
     return {
@@ -84,22 +158,22 @@ export class RecordService {
       list: await Promise.all(
         expanded.map((record) =>
           presentModelRecord(
-            this.modules,
-            schema,
-            authId,
+            runtimeModel,
+            actorId,
             "list",
-            this.visibleRecord(profile, schema, record),
+            this.access.project(profile, schema, record, runtimeModel.policy.privateFields),
           ),
         ),
       ),
     };
   }
 
-  async options(input: OptionsInput, actorId: string): Promise<OptionResult> {
-    const source = await this.requireModel(input.model);
+  async options(input: OptionsInput, actorId: string): Promise<RecordOptionResult> {
+    const model = await this.models.require(input.model);
     const profile = await this.access.profile(actorId);
-    const scope = this.access.assertCan(profile, source, "read");
-    const schema = this.access.projectSchema(profile, source);
+    const scope = this.access.assertCan(profile, model.schema, "read");
+    const schema = this.access.projectSchema(profile, model.schema);
+    const runtimeModel = this.projectedModel(model, schema);
     const available = new Set(schema.fields.map((field) => field.key));
     if (
       !available.has(input.valueKey ?? "id") ||
@@ -107,7 +181,7 @@ export class RecordService {
     ) {
       throw forbidden("无权读取关联选项字段");
     }
-    return this.records.options(schema, {
+    return this.records.options(runtimeModel, {
       valueKey: input.valueKey ?? "id",
       labelKey: input.labelKey ?? input.valueKey ?? "id",
       keyword: input.keyword,
@@ -118,11 +192,12 @@ export class RecordService {
   }
 
   async subtree(input: SubtreeInput, actorId: string): Promise<{ list: ModelRecord[] }> {
-    const source = await this.requireModel(input.model);
+    const model = await this.models.require(input.model);
     const profile = await this.access.profile(actorId);
-    const scope = this.access.assertCan(profile, source, "read");
-    const schema = this.access.projectSchema(profile, source);
-    const list = await this.records.subtree(schema, {
+    const scope = this.access.assertCan(profile, model.schema, "read");
+    const schema = this.access.projectSchema(profile, model.schema);
+    const runtimeModel = this.projectedModel(model, schema);
+    const list = await this.records.subtree(runtimeModel, {
       idField: input.idField ?? "id",
       parentField: input.parentField ?? "id",
       parentValue: input.parentValue,
@@ -133,243 +208,265 @@ export class RecordService {
       list: await Promise.all(
         expanded.map((record) =>
           presentModelRecord(
-            this.modules,
-            schema,
+            runtimeModel,
             actorId,
             "subtree",
-            this.visibleRecord(profile, schema, record),
+            this.access.project(profile, schema, record, runtimeModel.policy.privateFields),
           ),
         ),
       ),
     };
   }
 
-  async get(model: string, id: string, actorId: string): Promise<ModelRecord> {
-    const source = await this.requireModel(model);
+  async get(modelCode: string, id: string, actorId: string): Promise<ModelRecord> {
+    const model = await this.models.require(modelCode);
     const profile = await this.access.profile(actorId);
-    const scope = this.access.assertCan(profile, source, "read");
-    const schema = this.access.projectSchema(profile, source);
-    const record = await this.records.get(schema, id);
+    const scope = this.access.assertCan(profile, model.schema, "read");
+    const record = await this.records.get(model, id);
     if (!record) throw notFound(`记录不存在：${id}`);
-    await this.assertOwnership(scope, source, id, actorId);
+    await this.assertOwnership(scope, model, id, actorId);
+    const expanded = await this.refs.expandOne(model.schema, record);
     return presentModelRecord(
-      this.modules,
-      schema,
+      model,
       actorId,
       "get",
-      this.visibleRecord(profile, schema, await this.refs.expandOne(schema, record)),
+      this.access.project(profile, model.schema, expanded, model.policy.privateFields),
     );
   }
 
   async create(
-    model: string,
+    modelCode: string,
     values: Record<string, unknown>,
     actorId: string,
   ): Promise<ModelRecord> {
-    const schema = await this.requireModel(model);
+    const model = await this.models.require(modelCode);
     const profile = await this.access.profile(actorId);
-    this.access.assertCan(profile, schema, "create");
-    this.access.assertFields(profile, schema, "create", Object.keys(values));
-    const clean = await prepareModelInput(
-      this.modules,
+    const events = new TransactionEvents(modelCode);
+    const staged = await this.stageMutation(
       model,
-      unwrapRefs(values) ?? {},
+      { operation: "create", values },
       actorId,
-      "create",
+      profile,
+      events,
     );
-    const id =
-      typeof clean.id === "string" && clean.id ? clean.id : await this.records.allocateId();
-    const candidate = normalizeRecord(schema, { ...clean, id });
-    await validateModelRecord(
-      this.modules,
-      this.models,
-      this.records,
-      schema,
-      candidate,
-      actorId,
-      "create",
-    );
-    await runBeforePersist(
-      this.modules,
-      this.models,
-      this.records,
-      schema,
-      actorId,
-      "create",
-      candidate,
-    );
-    try {
-      const record = await this.records.create(schema, candidate, actorId);
-      await runAfterCommit(
-        this.modules,
-        this.models,
-        this.records,
-        schema,
-        actorId,
-        "create",
-        record,
-      );
-      return presentModelRecord(
-        this.modules,
-        schema,
-        actorId,
-        "create",
-        this.visibleRecord(profile, schema, await this.refs.expandOne(schema, record)),
-      );
-    } catch (reason) {
-      if (isUniqueViolation(reason)) throw conflict("唯一字段值已存在");
-      throw reason;
-    }
+    await this.commit({ mutations: [staged.mutation], events: events.values });
+    if (staged.mutation.operation === "delete") throw new Error("创建阶段生成了删除操作");
+    return this.readCommitted(model, staged.mutation, profile, actorId, "create");
   }
 
   async update(
-    model: string,
+    modelCode: string,
     id: string,
     values: Record<string, unknown>,
     actorId: string,
   ): Promise<ModelRecord> {
-    const schema = await this.requireModel(model);
+    const model = await this.models.require(modelCode);
     const profile = await this.access.profile(actorId);
-    const scope = this.access.assertCan(profile, schema, "update");
-    this.access.assertFields(profile, schema, "update", Object.keys(values));
-    const previous = await this.records.get(schema, id);
-    if (!previous) throw notFound(`记录不存在：${id}`);
-    const ownerId = await this.assertOwnership(scope, schema, id, actorId);
-    const clean = await prepareModelInput(
-      this.modules,
+    const events = new TransactionEvents(modelCode);
+    const staged = await this.stageMutation(
       model,
-      unwrapRefs(values) ?? {},
+      { operation: "update", id, values },
       actorId,
-      "update",
+      profile,
+      events,
+    );
+    await this.commit({ mutations: [staged.mutation], events: events.values });
+    if (staged.mutation.operation === "delete") throw new Error("更新阶段生成了删除操作");
+    return this.readCommitted(model, staged.mutation, profile, actorId, "update");
+  }
+
+  async remove(modelCode: string, id: string, actorId: string): Promise<void> {
+    const model = await this.models.require(modelCode);
+    const profile = await this.access.profile(actorId);
+    const existing = await this.records.get(model, id);
+    if (!existing) return;
+    const events = new TransactionEvents(modelCode);
+    const staged = await this.stageMutation(
+      model,
+      { operation: "delete", id },
+      actorId,
+      profile,
+      events,
+    );
+    await this.commit({ mutations: [staged.mutation], events: events.values });
+  }
+
+  async removeMany(modelCode: string, ids: string[], actorId: string): Promise<void> {
+    const model = await this.models.require(modelCode);
+    const profile = await this.access.profile(actorId);
+    const events = new TransactionEvents(modelCode);
+    const staged: StagedMutation[] = [];
+    for (const id of ids) {
+      if (!(await this.records.get(model, id))) continue;
+      staged.push(
+        await this.stageMutation(model, { operation: "delete", id }, actorId, profile, events),
+      );
+    }
+    await this.commit({
+      mutations: staged.map(({ mutation }) => mutation),
+      events: events.values,
+    });
+  }
+
+  async executeCommand(
+    modelCode: string,
+    commandCode: string,
+    input: unknown,
+    actorId: string,
+  ): Promise<CommandExecutionResult> {
+    const model = await this.models.require(modelCode);
+    const command = model.commands[commandCode];
+    if (!command) throw notFound(`模型命令不存在：${modelCode}.${commandCode}`);
+    const profile = await this.access.profile(actorId);
+    this.access.assertCan(profile, model.schema, command.permission);
+    const result = await command.execute(input, {
+      actorId,
+      model: model.schema,
+      models: this.models,
+      records: this.records,
+      now: Date.now(),
+    });
+    const allowed = new Set(["id", ...command.writeFields]);
+    const events = new TransactionEvents(modelCode);
+    for (const event of result.events ?? []) events.emit(event.topic, event.payload);
+
+    const staged: StagedMutation[] = [];
+    for (const mutation of result.mutations) {
+      if (mutation.operation !== "delete") {
+        for (const field of Object.keys(mutation.values)) {
+          if (!allowed.has(field)) {
+            throw new AppError(`命令 ${modelCode}.${commandCode} 未声明写入字段：${field}`, 500);
+          }
+        }
+      }
+      staged.push(await this.stageMutation(model, mutation, actorId, profile, events));
+    }
+
+    await this.commit({
+      mutations: staged.map(({ mutation }) => mutation),
+      events: events.values,
+    });
+    const records: ModelRecord[] = [];
+    for (const { mutation } of staged) {
+      if (mutation.operation === "delete") continue;
+      records.push(await this.readCommitted(model, mutation, profile, actorId, "command"));
+    }
+    return { output: result.output ?? null, records };
+  }
+
+  private async stageMutation(
+    model: CompiledModel,
+    input: ModelCommandMutation,
+    actorId: string,
+    profile: AccessProfile,
+    events: TransactionEvents,
+  ): Promise<StagedMutation> {
+    const action = actionFor(input.operation);
+    const scope = this.access.assertCan(profile, model.schema, action);
+    if (input.operation === "delete") {
+      const previous = await this.records.get(model, input.id);
+      if (!previous) throw notFound(`记录不存在：${input.id}`);
+      await this.assertOwnership(scope, model, input.id, actorId);
+      await runBeforePersist(this.models, this.records, model, actorId, "delete", previous, events);
+      events.emit(lifecycleTopic("delete"), { id: input.id, actorId });
+      return { mutation: { operation: "delete", model, id: input.id }, previous };
+    }
+
+    this.access.assertFields(profile, model.schema, action, Object.keys(input.values));
+    const previous =
+      input.operation === "update" ? await this.records.get(model, input.id) : undefined;
+    if (input.operation === "update" && !previous) {
+      throw notFound(`记录不存在：${input.id}`);
+    }
+    const ownerId =
+      input.operation === "update"
+        ? await this.assertOwnership(scope, model, input.id, actorId)
+        : actorId;
+    const prepared = await prepareModelInput(
+      model,
+      unwrapRefs(input.values),
+      actorId,
+      input.operation,
       previous,
     );
-    const candidate = normalizeRecord(schema, { ...previous, ...clean, id });
+    const id =
+      input.operation === "update"
+        ? input.id
+        : typeof prepared.id === "string" && prepared.id
+          ? prepared.id
+          : await this.records.allocateId();
+    const candidate = normalizeRecord(model, { ...previous, ...prepared, id });
     await validateModelRecord(
-      this.modules,
       this.models,
       this.records,
-      schema,
+      model,
       candidate,
       actorId,
-      "update",
+      input.operation,
       previous,
     );
     await runBeforePersist(
-      this.modules,
       this.models,
       this.records,
-      schema,
+      model,
       actorId,
-      "update",
+      input.operation,
       candidate,
+      events,
       previous,
     );
+    events.emit(lifecycleTopic(input.operation), { id, actorId });
+    return {
+      mutation:
+        input.operation === "create"
+          ? { operation: "create", model, record: candidate, ownerId: actorId }
+          : {
+              operation: "update",
+              model,
+              id,
+              record: candidate,
+              ownerId,
+            },
+      previous,
+    };
+  }
+
+  private async commit(plan: TransactionPlan): Promise<void> {
     try {
-      const record = await this.records.update(schema, id, candidate, ownerId);
-      if (!record) throw notFound(`记录不存在：${id}`);
-      await runAfterCommit(
-        this.modules,
-        this.models,
-        this.records,
-        schema,
-        actorId,
-        "update",
-        record,
-        previous,
-      );
-      return presentModelRecord(
-        this.modules,
-        schema,
-        actorId,
-        "update",
-        this.visibleRecord(profile, schema, await this.refs.expandOne(schema, record)),
-      );
+      await this.transactions.commit(plan);
     } catch (reason) {
-      if (isUniqueViolation(reason)) throw conflict("唯一字段值已存在");
+      if (reason instanceof Error && reason.message.includes("UNIQUE constraint failed")) {
+        throw conflict("唯一字段值已存在");
+      }
       throw reason;
     }
   }
 
-  async remove(model: string, id: string, actorId: string): Promise<void> {
-    const schema = await this.requireModel(model);
-    const scope = this.access.assertCan(await this.access.profile(actorId), schema, "delete");
-    const record = await this.records.get(schema, id);
-    if (!record) return;
-    await this.assertOwnership(scope, schema, id, actorId);
-    await runBeforePersist(
-      this.modules,
-      this.models,
-      this.records,
-      schema,
-      actorId,
-      "delete",
-      record,
-    );
-    await this.records.delete(schema, id);
-    await runAfterCommit(
-      this.modules,
-      this.models,
-      this.records,
-      schema,
-      actorId,
-      "delete",
-      record,
-    );
-  }
-
-  async removeMany(model: string, ids: string[], actorId: string): Promise<void> {
-    const schema = await this.requireModel(model);
-    const scope = this.access.assertCan(await this.access.profile(actorId), schema, "delete");
-    const records = (await Promise.all(ids.map((id) => this.records.get(schema, id)))).filter(
-      (record): record is ModelRecord => record !== undefined,
-    );
-    await Promise.all(
-      records.map((record) => this.assertOwnership(scope, schema, record.id, actorId)),
-    );
-    for (const record of records) {
-      await runBeforePersist(
-        this.modules,
-        this.models,
-        this.records,
-        schema,
-        actorId,
-        "delete",
-        record,
-      );
-    }
-    await this.records.deleteMany(
-      schema,
-      records.map((record) => record.id),
-    );
-    for (const record of records) {
-      await runAfterCommit(
-        this.modules,
-        this.models,
-        this.records,
-        schema,
-        actorId,
-        "delete",
-        record,
-      );
-    }
-  }
-
-  private visibleRecord(
+  private async readCommitted(
+    model: CompiledModel,
+    mutation: Exclude<RecordMutation, { operation: "delete" }>,
     profile: AccessProfile,
-    schema: AlienSchema,
-    record: ModelRecord,
-  ): ModelRecord {
-    return this.access.project(profile, schema, record);
+    actorId: string,
+    operation: "create" | "update" | "command",
+  ): Promise<ModelRecord> {
+    const record = await this.records.get(model, mutation.record.id);
+    if (!record) throw new Error(`记录提交后无法读取：${mutation.record.id}`);
+    const expanded = await this.refs.expandOne(model.schema, record);
+    return presentModelRecord(
+      model,
+      actorId,
+      operation,
+      this.access.project(profile, model.schema, expanded, model.policy.privateFields),
+    );
   }
 
-  /** Enforces `scope: own` and returns the persisted owner for updates. */
   private async assertOwnership(
-    scope: "all" | "own",
-    schema: AlienSchema,
+    scope: PermissionScope,
+    model: CompiledModel,
     id: string,
     actorId: string,
   ): Promise<string | undefined> {
-    const ownerId = await this.records.owner(schema, id);
+    const ownerId = await this.records.owner(model, id);
     if (scope === "own" && ownerId !== actorId) throw forbidden("无权访问其他用户创建的数据");
     return ownerId;
   }

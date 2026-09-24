@@ -33,6 +33,18 @@ recordRoutes.post("/subtree", async (c) => {
   return ok(c, await c.get("container").recordService.subtree(body, c.get("session").userId));
 });
 
+/** POST /api/records/:model/actions/:command → 执行模型专属业务命令。 */
+recordRoutes.post("/:model/actions/:command", async (c) => {
+  const { model, command } = c.req.param();
+  const input = await c.req.json();
+  return ok(
+    c,
+    await c
+      .get("container")
+      .recordService.executeCommand(model, command, input, c.get("session").userId),
+  );
+});
+
 /** GET /api/records/:model/:id → ModelRecord。 */
 recordRoutes.get("/:model/:id", async (c) => {
   const { model, id } = c.req.param();

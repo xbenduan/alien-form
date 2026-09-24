@@ -1,11 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AlienSchema } from "@alien-form/protocol";
-import type { ModelStore } from "../store/model-store.ts";
-import type { RecordStore } from "../store/record-store.ts";
-import type { RefExpander } from "../store/ref-expander.ts";
 import type { AccessControl } from "../services/core/access-control.ts";
+import type {
+  CompiledModelProvider,
+  RecordExpander,
+  RecordReader,
+  UnitOfWork,
+} from "../services/core/contracts.ts";
 import { RecordService } from "../services/core/record-service.ts";
-import { ModelModules } from "../services/model-modules.ts";
+import { runtimeModel } from "./runtime-model.ts";
 
 const schema: AlienSchema = {
   name: "article",
@@ -38,18 +41,28 @@ const schema: AlienSchema = {
 
 /** Creates a record service with focused access-control doubles. */
 function service(owner = "actor") {
-  const models = { get: vi.fn().mockResolvedValue(schema) } as unknown as ModelStore;
+  const model = runtimeModel(schema);
+  let stored = { id: "record", title: "内容" };
+  const models = {
+    get: vi.fn().mockResolvedValue(model),
+    require: vi.fn().mockResolvedValue(model),
+  } as unknown as CompiledModelProvider;
   const records = {
     list: vi.fn().mockResolvedValue({ list: [], total: 0 }),
-    get: vi.fn().mockResolvedValue({ id: "record", title: "内容" }),
+    get: vi.fn().mockImplementation(async () => stored),
     owner: vi.fn().mockResolvedValue(owner),
     allocateId: vi.fn().mockResolvedValue("record"),
-    create: vi.fn().mockImplementation(async (_schema, value) => value),
-  } as unknown as RecordStore;
+  } as unknown as RecordReader;
+  const transactions = {
+    commit: vi.fn(async (plan) => {
+      const mutation = plan.mutations[0];
+      if (mutation?.operation !== "delete") stored = mutation.record;
+    }),
+  } as UnitOfWork;
   const refs = {
     expand: vi.fn(async (_schema, records) => records),
     expandOne: vi.fn(async (_schema, record) => record),
-  } as unknown as RefExpander;
+  } as unknown as RecordExpander;
   const access = {
     profile: vi.fn().mockResolvedValue({ actorId: "actor" }),
     assertCan: vi.fn().mockReturnValue("own"),
@@ -58,21 +71,20 @@ function service(owner = "actor") {
     project: vi.fn((_profile, _schema, record) => record),
   } as unknown as AccessControl;
   return {
+    model,
     records,
-    value: new RecordService(models, records, refs, ModelModules.from([]), access),
+    transactions,
+    value: new RecordService(models, records, transactions, refs, access),
   };
 }
 
 describe("RecordService access control", () => {
   it("pushes own-scope filtering into list queries", async () => {
-    const { records, value } = service();
+    const { model, records, value } = service();
 
     await value.list({ model: "article" }, "actor");
 
-    expect(records.list).toHaveBeenCalledWith(
-      schema,
-      expect.objectContaining({ ownerId: "actor" }),
-    );
+    expect(records.list).toHaveBeenCalledWith(model, expect.objectContaining({ ownerId: "actor" }));
   });
 
   it("rejects direct access to records owned by another actor", async () => {
@@ -82,14 +94,21 @@ describe("RecordService access control", () => {
   });
 
   it("persists the authenticated actor as the record owner", async () => {
-    const { records, value } = service();
+    const { transactions, value } = service();
 
     await value.create("article", { title: "内容" }, "actor");
 
-    expect(records.create).toHaveBeenCalledWith(
-      schema,
-      expect.objectContaining({ title: "内容" }),
-      "actor",
+    expect(transactions.commit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mutations: [
+          expect.objectContaining({
+            operation: "create",
+            model: expect.objectContaining({ key: "article@1" }),
+            record: expect.objectContaining({ title: "内容" }),
+            ownerId: "actor",
+          }),
+        ],
+      }),
     );
   });
 });

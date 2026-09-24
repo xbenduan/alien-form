@@ -1,9 +1,9 @@
-import type { Container } from "../../../container.ts";
 import { hashPassword } from "../../auth/password.ts";
+import type { ModelDatabaseContext } from "../../define-model.ts";
 
 /** Creates the initial super administrator account. */
 export async function initialize(
-  container: Container,
+  context: ModelDatabaseContext,
   constants: {
     readonly code: string;
     readonly adminId: string;
@@ -12,11 +12,11 @@ export async function initialize(
   },
   superAdminRoleId: string,
 ): Promise<void> {
-  const schema = await container.modelStore.get(constants.code);
-  if (!schema) throw new Error("内置用户模型未发布");
+  const model = await context.models.get(constants.code);
+  if (!model) throw new Error("内置用户模型未发布");
   const existing =
-    (await container.recordStore.get(schema, constants.adminId)) ??
-    (await container.recordStore.findByField(schema, "username", constants.adminUsername));
+    (await context.records.get(model, constants.adminId)) ??
+    (await context.records.findByField(model, "username", constants.adminUsername));
   if (existing) {
     if (
       !Array.isArray(existing.roleId) ||
@@ -24,8 +24,8 @@ export async function initialize(
       existing.roleId[0] !== superAdminRoleId ||
       existing.super !== true
     ) {
-      await container.recordService.update(
-        schema.name,
+      await context.update(
+        model.schema.name,
         existing.id,
         { roleId: [superAdminRoleId] },
         constants.adminId,
@@ -33,8 +33,8 @@ export async function initialize(
     }
     return;
   }
-  await container.recordService.create(
-    schema.name,
+  await context.create(
+    model.schema.name,
     {
       id: constants.adminId,
       username: constants.adminUsername,

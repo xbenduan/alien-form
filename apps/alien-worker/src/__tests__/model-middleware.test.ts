@@ -1,11 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AlienSchema, ModelRecord } from "@alien-form/protocol";
 import type { AccessControl } from "../services/core/access-control.ts";
+import type {
+  CompiledModelProvider,
+  RecordExpander,
+  RecordReader,
+  UnitOfWork,
+} from "../services/core/contracts.ts";
 import { RecordService } from "../services/core/record-service.ts";
-import { ModelModules } from "../services/model-modules.ts";
-import type { ModelStore } from "../store/model-store.ts";
-import type { RecordStore } from "../store/record-store.ts";
-import type { RefExpander } from "../store/ref-expander.ts";
+import type { ModelModule } from "../services/define-model.ts";
+import { runtimeModel } from "./runtime-model.ts";
 
 const schema: AlienSchema = {
   name: "article",
@@ -38,62 +42,69 @@ const schema: AlienSchema = {
   pages: [],
 };
 
-function dependencies(modules: ModelModules, events: string[]) {
-  const models = { get: vi.fn().mockResolvedValue(schema) } as unknown as ModelStore;
+function dependencies(module: ModelModule, events: string[]) {
+  const model = runtimeModel(schema, { lifecycle: module.middleware });
+  let stored: ModelRecord | undefined;
+  const models = {
+    get: vi.fn().mockResolvedValue(model),
+    require: vi.fn().mockResolvedValue(model),
+  } as unknown as CompiledModelProvider;
   const records = {
     allocateId: vi.fn().mockResolvedValue("record"),
-    create: vi.fn(async (_schema, value: ModelRecord) => {
+    get: vi.fn(async () => stored),
+  } as unknown as RecordReader;
+  const transactions = {
+    commit: vi.fn(async (plan) => {
       events.push("persist");
-      return value;
+      const mutation = plan.mutations[0];
+      if (mutation?.operation !== "delete") stored = mutation.record;
     }),
-  } as unknown as RecordStore;
+  } as UnitOfWork;
   const refs = {
     expandOne: vi.fn(async (_schema, record) => record),
-  } as unknown as RefExpander;
+  } as unknown as RecordExpander;
   const access = {
     profile: vi.fn().mockResolvedValue({ actorId: "actor" }),
-    assertCan: vi.fn(() => events.push("authorizeAction")),
+    assertCan: vi.fn(() => {
+      events.push("authorizeAction");
+      return "all";
+    }),
     assertFields: vi.fn(() => events.push("authorizeFields")),
     project: vi.fn((_profile, _schema, record: ModelRecord) => {
       const { secret: _secret, ...visible } = record;
       return visible;
     }),
   } as unknown as AccessControl;
-  return new RecordService(models, records, refs, modules, access);
+  return new RecordService(models, records, transactions, refs, access);
 }
 
 describe("model middleware pipeline", () => {
   it("runs the fixed create phases in order", async () => {
     const events: string[] = [];
-    const modules = ModelModules.from([
-      {
-        schema,
-        middleware: {
-          prepare(values) {
-            events.push("prepare");
-            expect(Object.isFrozen(values)).toBe(true);
-            return { ...values, title: String(values.title).trim() };
-          },
-          validate({ record }) {
-            events.push("validate");
-            expect(Object.isFrozen(record)).toBe(true);
-          },
-          beforePersist({ record }) {
-            events.push("beforePersist");
-            expect(Object.isFrozen(record)).toBe(true);
-          },
-          afterCommit() {
-            events.push("afterCommit");
-          },
-          present(record) {
-            events.push("present");
-            return { ...record, presented: true };
-          },
+    const module: ModelModule = {
+      schema,
+      middleware: {
+        prepare(values) {
+          events.push("prepare");
+          expect(Object.isFrozen(values)).toBe(true);
+          return { ...values, title: String(values.title).trim() };
+        },
+        validate({ record }) {
+          events.push("validate");
+          expect(Object.isFrozen(record)).toBe(true);
+        },
+        beforePersist({ record }) {
+          events.push("beforePersist");
+          expect(Object.isFrozen(record)).toBe(true);
+        },
+        present(record) {
+          events.push("present");
+          return { ...record, presented: true };
         },
       },
-    ]);
+    };
 
-    const result = await dependencies(modules, events).create(
+    const result = await dependencies(module, events).create(
       "article",
       { title: "  标题  ", secret: "hidden" },
       "actor",
@@ -106,7 +117,6 @@ describe("model middleware pipeline", () => {
       "validate",
       "beforePersist",
       "persist",
-      "afterCommit",
       "present",
     ]);
     expect(result).toEqual({ id: "record", title: "标题", presented: true });
@@ -114,19 +124,17 @@ describe("model middleware pipeline", () => {
 
   it("passes only the authorized representation to present", async () => {
     let presented: Readonly<ModelRecord> | undefined;
-    const modules = ModelModules.from([
-      {
-        schema,
-        middleware: {
-          present(record) {
-            presented = record;
-            return { ...record };
-          },
+    const module: ModelModule = {
+      schema,
+      middleware: {
+        present(record) {
+          presented = record;
+          return { ...record };
         },
       },
-    ]);
+    };
 
-    await dependencies(modules, []).create("article", { title: "标题", secret: "hidden" }, "actor");
+    await dependencies(module, []).create("article", { title: "标题", secret: "hidden" }, "actor");
 
     expect(presented).toEqual({ id: "record", title: "标题" });
   });

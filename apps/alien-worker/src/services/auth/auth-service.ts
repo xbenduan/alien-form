@@ -1,10 +1,9 @@
 import { AppError, unauthorized } from "../../errors.ts";
 import { randomHex, verifyPassword } from "./password.ts";
 import type { LoginRequest, LoginResponse, ModelRecord } from "@alien-form/protocol";
-import type { ModelStore } from "../../store/model-store.ts";
-import type { RecordStore } from "../../store/record-store.ts";
 import type { SessionStore } from "../../store/session-store.ts";
 import type { AccessProfileProvider } from "../core/access-control.ts";
+import type { CompiledModelProvider, RecordReader } from "../core/contracts.ts";
 import { publicRecord } from "../core/record-visibility.ts";
 import userModule from "../models/_sys_user/index.ts";
 
@@ -44,17 +43,17 @@ const PROVIDERS: Record<string, AuthProvider> = {
 /** 认证服务：登录 / 登出 / 会话查询，编排 provider 与各 store。 */
 export class AuthService {
   constructor(
-    private readonly models: ModelStore,
-    private readonly records: RecordStore,
+    private readonly models: CompiledModelProvider,
+    private readonly records: RecordReader,
     private readonly sessions: SessionStore,
     private readonly profiles: AccessProfileProvider,
   ) {}
 
   /** 按用户名查用户记录（供 provider 复用）。 */
   async findUserByUsername(username: string): Promise<ModelRecord | undefined> {
-    const schema = await this.models.get(userModule.schema.name);
-    if (!schema) throw new AppError("用户模型尚未初始化", 500);
-    return this.records.findByField(schema, "username", username);
+    const model = await this.models.get(userModule.schema.name);
+    if (!model) throw new AppError("用户模型尚未初始化", 500);
+    return this.records.findByField(model, "username", username);
   }
 
   async login(body: LoginRequest): Promise<LoginResponse> {

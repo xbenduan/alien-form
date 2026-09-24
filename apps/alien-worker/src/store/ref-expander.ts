@@ -1,23 +1,12 @@
-import { isPluginMarker, type ModelRecord, type AlienSchema } from "@alien-form/protocol";
-import { fieldExpression, planByField, refFields, type RefField } from "../storage/field-plan.ts";
+import type { ModelRecord, AlienSchema } from "@alien-form/protocol";
+import type { CompiledModelProvider, RecordExpander } from "../services/core/contracts.ts";
+import { fieldExpression, refFields, type RefField } from "../storage/field-plan.ts";
 import { quoteTable } from "../storage/sql.ts";
-import type { ModelStore } from "./model-store.ts";
 
-export interface RefValue {
+interface RefValue {
   $ref: string;
   value: unknown;
   label: string;
-}
-
-function isRefValue(value: unknown): value is RefValue {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    !Array.isArray(value) &&
-    !isPluginMarker(value) &&
-    "$ref" in value &&
-    "value" in value
-  );
 }
 
 function nonEmpty(value: unknown): boolean {
@@ -28,43 +17,27 @@ function toRef(ref: RefField, raw: unknown, labels: Map<string, string>): RefVal
   return { $ref: ref.model, value: raw, label: labels.get(String(raw)) ?? String(raw) };
 }
 
-export function unwrapRefValue(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(unwrapRefValue);
-  if (isRefValue(value)) return value.value;
-  return value;
-}
-
-export function unwrapRefs(
-  values: Record<string, unknown> | undefined,
-): Record<string, unknown> | undefined {
-  if (!values) return values;
-  return Object.fromEntries(
-    Object.entries(values).map(([key, value]) => [key, unwrapRefValue(value)]),
-  );
-}
-
-export class RefExpander {
+export class RefExpander implements RecordExpander {
   constructor(
     private readonly db: D1Database,
-    private readonly models: ModelStore,
+    private readonly models: CompiledModelProvider,
   ) {}
 
   private async queryLabelMap(
-    target: AlienSchema,
+    target: Awaited<ReturnType<CompiledModelProvider["require"]>>,
     valueKey: string,
     labelKey: string,
     values: unknown[],
   ): Promise<Map<string, string>> {
-    const fields = planByField(target);
-    const valuePlan = fields.get(valueKey);
-    const labelPlan = fields.get(labelKey);
+    const valuePlan = target.query.fields.get(valueKey);
+    const labelPlan = target.query.fields.get(labelKey);
     if (!valuePlan || !labelPlan || values.length === 0) return new Map();
     const valueExpr = fieldExpression(valuePlan);
     const labelExpr = fieldExpression(labelPlan);
     const { results } = await this.db
       .prepare(
         `SELECT ${valueExpr} AS v, ${labelExpr} AS l
-         FROM ${quoteTable(target.name)}
+         FROM ${quoteTable(target.schema.name)}
          WHERE ${valueExpr} IN (${values.map(() => "?").join(", ")})`,
       )
       .bind(...(values as Array<string | number>))

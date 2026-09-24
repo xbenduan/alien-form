@@ -166,8 +166,13 @@ export class AccessControl {
   }
 
   /** 按协议私有性和字段权限裁剪记录。 */
-  project(profile: AccessProfile, model: AlienSchema, record: ModelRecord): ModelRecord {
-    const visible = publicRecord(model, record);
+  project(
+    profile: AccessProfile,
+    model: AlienSchema,
+    record: ModelRecord,
+    privateFields?: ReadonlySet<string>,
+  ): ModelRecord {
+    const visible = publicRecord(model, record, privateFields);
     if (
       profile.super ||
       this.options.publicModelNames?.has(model.name) ||

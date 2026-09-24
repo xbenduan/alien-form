@@ -1,9 +1,11 @@
 import { parseAlienSchema, type AlienSchema, type ModelSummary } from "@alien-form/protocol";
-import { compileMigrationPlan } from "../../storage/compiler.ts";
 import { badRequest, conflict, forbidden, notFound } from "../../errors.ts";
-import { ModelVersionConflictError, type ModelStore } from "../../store/model-store.ts";
-import type { ModelModules } from "../model-modules.ts";
 import type { AccessControl } from "./access-control.ts";
+import {
+  ModelVersionConflictError,
+  type CompiledModelProvider,
+  type ModelRepository,
+} from "./contracts.ts";
 
 /** 模型分类约束端口，由组合根注入具体分类模型实现。 */
 export interface ModelGroupPolicy {
@@ -13,9 +15,9 @@ export interface ModelGroupPolicy {
 
 export class ModelService {
   constructor(
-    private readonly models: ModelStore,
+    private readonly models: ModelRepository,
     private readonly access: AccessControl,
-    private readonly modules: ModelModules,
+    private readonly compiledModels: CompiledModelProvider,
     private readonly groups: ModelGroupPolicy,
   ) {}
 
@@ -77,6 +79,7 @@ export class ModelService {
     if (!current) return;
     this.access.assertCanManageModel(await this.access.profile(actorId), current);
     await this.models.delete(current);
+    this.compiledModels.invalidate(name);
   }
 
   /** Installs or upgrades a code-owned system schema during bootstrap. */
@@ -98,20 +101,15 @@ export class ModelService {
       ...incoming,
       version: (current?.version ?? 0) + 1,
     });
-    let compiled: ReturnType<typeof compileMigrationPlan>;
     try {
-      compiled = compileMigrationPlan(current, schema);
-    } catch (reason) {
-      throw badRequest(reason instanceof Error ? reason.message : String(reason));
-    }
-    const { manifest, plan } = compiled;
-    try {
-      return await this.models.publish(schema, manifest.table, plan, current?.version ?? 0);
+      const published = await this.models.publish(current, schema, current?.version ?? 0);
+      this.compiledModels.invalidate(schema.name);
+      return published;
     } catch (reason) {
       if (reason instanceof ModelVersionConflictError) {
         throw conflict(`模型版本冲突：当前模型已被其他请求更新，请重新获取 ${schema.name}`);
       }
-      throw reason;
+      throw badRequest(reason instanceof Error ? reason.message : String(reason));
     }
   }
 
@@ -124,6 +122,6 @@ export class ModelService {
   }
 
   private isSystem(name: string): boolean {
-    return this.modules.has(name);
+    return this.compiledModels.isCodeModel(name);
   }
 }

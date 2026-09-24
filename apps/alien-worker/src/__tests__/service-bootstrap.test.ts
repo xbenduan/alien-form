@@ -4,15 +4,17 @@ import { ensureModelModules } from "../services/bootstrap.ts";
 import { ModelModules } from "../services/model-modules.ts";
 import roleModule from "../services/models/_sys_role/index.ts";
 import userModule from "../services/models/_sys_user/index.ts";
+import { runtimeModel } from "./runtime-model.ts";
 
 /** Creates the minimum container surface needed by service initialization tests. */
 function createContainer(modules = ModelModules.from([userModule])) {
   const ensureSystemModel = vi.fn().mockResolvedValue(userModule.schema);
   const create = vi.fn();
   const update = vi.fn();
+  const compiled = runtimeModel(userModule.schema);
   const container = {
     modules,
-    modelStore: { get: vi.fn().mockResolvedValue(userModule.schema) },
+    compiledModels: { get: vi.fn().mockResolvedValue(compiled) },
     modelService: { ensureSystemModel },
     recordStore: {
       get: vi.fn().mockResolvedValue({ id: "existing", roleId: ["SYSROLE000001"], super: true }),
@@ -20,7 +22,13 @@ function createContainer(modules = ModelModules.from([userModule])) {
     },
     recordService: { create, update },
   } as unknown as Container;
-  return { container, create, ensureSystemModel, update };
+  const databaseContext = {
+    models: container.compiledModels,
+    records: container.recordStore,
+    create,
+    update,
+  };
+  return { container, create, databaseContext, ensureSystemModel, update };
 }
 
 describe("service initialization", () => {
@@ -33,9 +41,9 @@ describe("service initialization", () => {
   });
 
   it("migrates missing role hierarchy fields without recreating seed records", async () => {
-    const { container, create, update } = createContainer();
+    const { create, databaseContext, update } = createContainer();
 
-    await roleModule.database.initialize(container);
+    await roleModule.database.initialize(databaseContext);
 
     expect(create).not.toHaveBeenCalled();
     expect(update).toHaveBeenCalledTimes(2);

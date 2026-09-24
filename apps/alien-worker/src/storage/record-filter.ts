@@ -16,7 +16,7 @@ type FilterOperator = "=" | "!=" | ">" | ">=" | "<" | "<=" | "~" | "!~";
 
 export interface RecordFilterContext {
   authId: string;
-  fields: Map<string, FieldPlan>;
+  fields: ReadonlyMap<string, FieldPlan>;
 }
 
 export interface CompiledRecordFilter {

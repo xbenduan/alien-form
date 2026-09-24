@@ -1,26 +1,27 @@
 import { describe, expect, it, vi } from "vitest";
 import { parseAlienSchema, type ModelRecord, type AlienSchema } from "@alien-form/protocol";
-import type { ModelStore } from "../store/model-store.ts";
-import type { RecordStore } from "../store/record-store.ts";
-import type { ModelValidationContext } from "../services/types.ts";
+import type {
+  CompiledModelProvider,
+  ModelValidationContext,
+  RecordReader,
+} from "../services/core/contracts.ts";
 import roleModule from "../services/models/_sys_role/index.ts";
 import userModule from "../services/models/_sys_user/index.ts";
+import { runtimeModel } from "./runtime-model.ts";
 
 /** Creates a user validation context backed by a set of existing role IDs. */
 function context(record: ModelRecord, roleIds: string[]): ModelValidationContext {
   const roleSchema = { name: roleModule.schema.name, fields: [] } as unknown as AlienSchema;
   return {
-    model: { name: userModule.schema.name } as AlienSchema,
+    model: runtimeModel(userModule.schema),
     models: {
       get: vi.fn(async (name: string) =>
-        name === roleModule.schema.name ? roleSchema : undefined,
+        name === roleModule.schema.name ? runtimeModel(roleSchema) : undefined,
       ),
-    } as unknown as ModelStore,
+    } as unknown as CompiledModelProvider,
     records: {
-      get: vi.fn(async (_schema: AlienSchema, id: string) =>
-        roleIds.includes(id) ? { id } : undefined,
-      ),
-    } as unknown as RecordStore,
+      get: vi.fn(async (_model, id: string) => (roleIds.includes(id) ? { id } : undefined)),
+    } as unknown as RecordReader,
     actorId: userModule.constants.adminId,
     operation: "create",
     record: {

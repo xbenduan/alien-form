@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ModelRecord, AlienSchema } from "@alien-form/protocol";
-import type { ModelStore } from "../store/model-store.ts";
-import type { RecordStore } from "../store/record-store.ts";
 import { RoleAccessProfileProvider } from "../services/auth/access-profile-provider.ts";
 import { AccessControl, type AccessControlOptions } from "../services/core/access-control.ts";
+import type { CompiledModelProvider, RecordReader } from "../services/core/contracts.ts";
 import roleModule from "../services/models/_sys_role/index.ts";
+import { runtimeModel } from "./runtime-model.ts";
 
 /** Creates a minimum business model for permission tests. */
 function model(creatorId = "owner"): AlienSchema {
@@ -42,7 +42,7 @@ function model(creatorId = "owner"): AlienSchema {
 
 /** Creates stores backed by one user and an in-memory role tree. */
 function stores(user: ModelRecord, roles: ModelRecord[]) {
-  const schemas = new Map<string, AlienSchema>([
+  const schemas = new Map([
     [
       "_sys_user",
       {
@@ -66,21 +66,22 @@ function stores(user: ModelRecord, roles: ModelRecord[]) {
       },
     ],
   ]);
+  const compiled = new Map([...schemas].map(([name, schema]) => [name, runtimeModel(schema)]));
   const models = {
-    get: vi.fn(async (name: string) => schemas.get(name)),
-  } as unknown as ModelStore;
+    get: vi.fn(async (name: string) => compiled.get(name)),
+  } as unknown as CompiledModelProvider;
   const records = {
-    get: vi.fn(async (schema: AlienSchema, id: string) =>
-      schema.name === "_sys_user" && id === user.id ? user : undefined,
+    get: vi.fn(async (model, id: string) =>
+      model.schema.name === "_sys_user" && id === user.id ? user : undefined,
     ),
     subtree: vi.fn(async () => roles),
-  } as unknown as RecordStore;
+  } as unknown as RecordReader;
   return { models, records };
 }
 
 function accessControl(
-  models: ModelStore,
-  records: RecordStore,
+  models: CompiledModelProvider,
+  records: RecordReader,
   options?: AccessControlOptions,
 ): AccessControl {
   return new AccessControl(new RoleAccessProfileProvider(models, records), options);

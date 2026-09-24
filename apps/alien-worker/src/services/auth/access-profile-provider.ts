@@ -1,12 +1,11 @@
 import type { ModelRecord, PermissionAction } from "@alien-form/protocol";
-import type { ModelStore } from "../../store/model-store.ts";
-import type { RecordStore } from "../../store/record-store.ts";
 import type {
   AccessProfile,
   AccessProfileProvider,
   PermissionGrant,
   PermissionScope,
 } from "../core/access-control.ts";
+import type { CompiledModelProvider, RecordReader } from "../core/contracts.ts";
 import roleModule from "../models/_sys_role/index.ts";
 import userModule from "../models/_sys_user/index.ts";
 
@@ -73,8 +72,8 @@ function mergePermissions(output: Map<string, PermissionGrant>, value: unknown):
 /** 从系统用户与角色模型解析不可变的操作者权限档案。 */
 export class RoleAccessProfileProvider implements AccessProfileProvider {
   constructor(
-    private readonly models: ModelStore,
-    private readonly records: RecordStore,
+    private readonly models: CompiledModelProvider,
+    private readonly records: RecordReader,
   ) {}
 
   async profile(actorId: string): Promise<AccessProfile> {
@@ -87,13 +86,13 @@ export class RoleAccessProfileProvider implements AccessProfileProvider {
         super: true,
       };
     }
-    const [userSchema, roleSchema] = await Promise.all([
+    const [userModel, roleModel] = await Promise.all([
       this.models.get(userModule.schema.name),
       this.models.get(roleModule.schema.name),
     ]);
-    const user = userSchema ? await this.records.get(userSchema, actorId) : undefined;
+    const user = userModel ? await this.records.get(userModel, actorId) : undefined;
     const roleIds = relationValues(user?.roleId);
-    if (!roleSchema || roleIds.length === 0) {
+    if (!roleModel || roleIds.length === 0) {
       return {
         actorId,
         roleIds: [],
@@ -106,7 +105,7 @@ export class RoleAccessProfileProvider implements AccessProfileProvider {
       return { actorId, roleIds, permissions: new Map(), canCreateModel: true, super: true };
     }
 
-    const roles = await this.records.subtree(roleSchema, {
+    const roles = await this.records.subtree(roleModel, {
       idField: "id",
       parentField: "parentId",
     });

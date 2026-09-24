@@ -1,19 +1,19 @@
-import type { Container } from "../../../container.ts";
+import type { ModelDatabaseContext } from "../../define-model.ts";
 import { ensureRecord } from "../../bootstrap.ts";
 
 /** Creates or minimally migrates one editable default role. */
 async function ensureDefaultRole(
-  container: Container,
+  context: ModelDatabaseContext,
   modelCode: string,
   actorId: string,
   id: string,
   values: Record<string, unknown>,
 ): Promise<void> {
-  const schema = await container.modelStore.get(modelCode);
-  if (!schema) throw new Error(`内置模型未发布：${modelCode}`);
-  const existing = await container.recordStore.get(schema, id);
+  const model = await context.models.get(modelCode);
+  if (!model) throw new Error(`内置模型未发布：${modelCode}`);
+  const existing = await context.records.get(model, id);
   if (!existing) {
-    await container.recordService.create(modelCode, { id, ...values }, actorId);
+    await context.create(modelCode, { id, ...values }, actorId);
     return;
   }
   const patch: Record<string, unknown> = {};
@@ -40,13 +40,13 @@ async function ensureDefaultRole(
     }
   }
   if (Object.keys(patch).length > 0) {
-    await container.recordService.update(modelCode, id, patch, actorId);
+    await context.update(modelCode, id, patch, actorId);
   }
 }
 
 /** Seeds the fixed root and two editable starter branches. */
 export async function initialize(
-  container: Container,
+  context: ModelDatabaseContext,
   constants: {
     readonly code: string;
     readonly superAdminId: string;
@@ -56,13 +56,10 @@ export async function initialize(
     readonly adminCode: string;
     readonly userCode: string;
   },
-  userModelCode: string,
+  actorId: string,
 ): Promise<void> {
-  const userModule = await container.modules.get(userModelCode);
-  const actorId = userModule?.constants?.adminId;
-  if (typeof actorId !== "string") throw new Error(`模型 ${userModelCode} 缺少 adminId 常量`);
   await ensureRecord(
-    container,
+    context,
     constants.code,
     constants.superAdminId,
     {
@@ -74,7 +71,7 @@ export async function initialize(
     },
     actorId,
   );
-  await ensureDefaultRole(container, constants.code, actorId, constants.adminId, {
+  await ensureDefaultRole(context, constants.code, actorId, constants.adminId, {
     code: constants.adminCode,
     name: "管理员",
     parentId: constants.superAdminId,
@@ -82,7 +79,7 @@ export async function initialize(
     description: "默认管理分支，可新建并管理自己创建的模型。",
     permissions: [],
   });
-  await ensureDefaultRole(container, constants.code, actorId, constants.userId, {
+  await ensureDefaultRole(context, constants.code, actorId, constants.userId, {
     code: constants.userCode,
     name: "用户",
     parentId: constants.superAdminId,

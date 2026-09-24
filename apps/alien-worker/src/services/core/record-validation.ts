@@ -1,5 +1,6 @@
 import type { AlienSchema, ModelRecord } from "@alien-form/protocol";
 import { AppError } from "../../errors.ts";
+import type { CompiledModel } from "./contracts.ts";
 
 function isEmpty(value: unknown): boolean {
   return value === undefined || value === null || value === "";
@@ -28,13 +29,16 @@ function assertFieldValue(field: AlienSchema["fields"][number], value: unknown):
   }
 }
 
-export function normalizeRecord(schema: AlienSchema, values: Record<string, unknown>): ModelRecord {
-  const fields = new Map(schema.fields.map((field) => [field.key, field]));
+export function normalizeRecord(
+  model: CompiledModel,
+  values: Record<string, unknown>,
+): ModelRecord {
+  const fields = model.validation.fields;
   for (const key of Object.keys(values)) {
     if (!fields.has(key)) throw new AppError(`未知字段：${key}`, 400);
   }
   const record: ModelRecord = { id: String(values.id ?? "") };
-  for (const field of schema.fields) {
+  for (const field of fields.values()) {
     if (field.key === "id" || field.key === "createdAt" || field.key === "updatedAt") continue;
     let value = values[field.key];
     if (value === undefined && field.storage?.default !== undefined) {

@@ -1,9 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AlienSchema } from "@alien-form/protocol";
-import type { ModelStore } from "../store/model-store.ts";
 import type { AccessControl } from "../services/core/access-control.ts";
+import type { CompiledModelProvider, ModelRepository } from "../services/core/contracts.ts";
 import { ModelService, type ModelGroupPolicy } from "../services/core/model-service.ts";
-import { ModelModules } from "../services/model-modules.ts";
 
 /** Creates a minimal valid model schema for service tests. */
 function schema(name = "article"): AlienSchema {
@@ -60,7 +59,7 @@ function schema(name = "article"): AlienSchema {
 
 /** Creates model service dependencies with permissive access control. */
 function dependencies() {
-  const publish = vi.fn(async (value: AlienSchema) => value);
+  const publish = vi.fn(async (_current: AlienSchema | undefined, value: AlienSchema) => value);
   const remove = vi.fn();
   const models = {
     get: vi.fn(),
@@ -68,7 +67,7 @@ function dependencies() {
     list: vi.fn().mockResolvedValue([]),
     publish,
     delete: remove,
-  } as unknown as ModelStore;
+  } as unknown as ModelRepository;
   const access = {
     profile: vi.fn().mockResolvedValue({
       actorId: "admin",
@@ -87,11 +86,19 @@ function dependencies() {
   return { access, groups, models, publish, remove };
 }
 
+function compiledModels(systemModels: string[] = []): CompiledModelProvider {
+  return {
+    get: vi.fn(),
+    require: vi.fn(),
+    invalidate: vi.fn(),
+    isCodeModel: vi.fn((name: string) => systemModels.includes(name)),
+  };
+}
+
 describe("ModelService", () => {
   it("rejects updates and deletes for code-defined system models", async () => {
     const { access, groups, models, remove } = dependencies();
-    const modules = ModelModules.from([{ schema: schema("_sys_test") }]);
-    const service = new ModelService(models, access, modules, groups);
+    const service = new ModelService(models, access, compiledModels(["_sys_test"]), groups);
 
     await expect(service.update("_sys_test", schema("_sys_test"), "admin")).rejects.toMatchObject({
       status: 403,
@@ -102,20 +109,19 @@ describe("ModelService", () => {
 
   it("records the authenticated creator instead of trusting submitted metadata", async () => {
     const { access, groups, models, publish } = dependencies();
-    const service = new ModelService(models, access, ModelModules.from([]), groups);
+    const service = new ModelService(models, access, compiledModels(), groups);
 
     await service.create({ ...schema(), creatorId: "spoofed", system: true }, "admin");
 
     expect(groups.assertValid).toHaveBeenCalledWith("other");
     expect(publish).toHaveBeenCalledWith(
+      undefined,
       expect.objectContaining({ creatorId: "admin", system: false, version: 1 }),
-      "article",
-      expect.any(Object),
       0,
     );
   });
 
-  it("runs storage migrations when a system schema revision adds physical fields", async () => {
+  it("publishes a newer system schema revision with optimistic locking", async () => {
     const desired = {
       ...schema("_sys_test"),
       system: true,
@@ -130,28 +136,20 @@ describe("ModelService", () => {
       systemRevision: 1,
       fields: desired.fields.filter((field) => field.key !== "updatedAt"),
     };
-    const publish = vi.fn(async (value: AlienSchema) => value);
+    const publish = vi.fn(async (_current: AlienSchema | undefined, value: AlienSchema) => value);
     const models = {
       get: vi.fn().mockResolvedValue(current),
       publish,
-    } as unknown as ModelStore;
-    const modules = ModelModules.from([{ schema: desired }]);
-    const service = new ModelService(models, {} as AccessControl, modules, {
+    } as unknown as ModelRepository;
+    const service = new ModelService(models, {} as AccessControl, compiledModels(["_sys_test"]), {
       assertValid: vi.fn(),
     });
 
     await service.ensureSystemModel(desired);
 
     expect(publish).toHaveBeenCalledWith(
+      current,
       expect.objectContaining({ name: "_sys_test", version: 2 }),
-      "_sys_test",
-      expect.objectContaining({
-        operations: [
-          expect.objectContaining({
-            kind: "add-column",
-          }),
-        ],
-      }),
       1,
     );
   });

@@ -1,6 +1,6 @@
 import { forbidden } from "../../../errors.ts";
 import { defineModel } from "../../define-model.ts";
-import { initialize, prepare } from "./database.ts";
+import { initialize } from "./database.ts";
 import createSchema from "./schema.ts";
 import userModule from "../_sys_user/index.ts";
 
@@ -21,8 +21,7 @@ export default defineModel(() => {
     schema: createSchema(constants.code),
     constants,
     database: {
-      prepare,
-      initialize: (container) => initialize(container, constants, userModule.constants.adminId),
+      initialize: (context) => initialize(context, constants, userModule.constants.adminId),
     },
     middleware: {
       validate({ record, previous }) {

@@ -1,9 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ModelRecord, AlienSchema } from "@alien-form/protocol";
-import type { ModelStore } from "../store/model-store.ts";
-import type { RecordStore } from "../store/record-store.ts";
-import type { ModelValidationContext } from "../services/types.ts";
+import type {
+  CompiledModelProvider,
+  ModelValidationContext,
+  RecordReader,
+} from "../services/core/contracts.ts";
 import roleModule from "../services/models/_sys_role/index.ts";
+import { runtimeModel } from "./runtime-model.ts";
 
 const roleSchema: AlienSchema = {
   name: roleModule.schema.name,
@@ -23,26 +26,27 @@ function context(
     descendants?: ModelRecord[];
   } = {},
 ): ModelValidationContext {
+  const model = runtimeModel(roleSchema);
   return {
-    model: roleSchema,
+    model,
     models: {
       get: vi.fn(async (name: string) =>
         name === "article"
-          ? {
+          ? runtimeModel({
               name,
               title: "文章",
               version: 1,
               fields: [{ id: "article.title", key: "title", type: "string", form: {} }],
               form: { type: "object" },
               pages: [],
-            }
+            })
           : undefined,
       ),
-    } as unknown as ModelStore,
+    } as unknown as CompiledModelProvider,
     records: {
       get: vi.fn(async () => options.parent),
       subtree: vi.fn(async () => options.descendants ?? []),
-    } as unknown as RecordStore,
+    } as unknown as RecordReader,
     actorId: "operator",
     operation: options.operation ?? "create",
     record: {
@@ -99,20 +103,21 @@ describe("_sys_role service", () => {
   it("rejects deleting a role with children or assigned users", async () => {
     const beforePersist = roleModule.middleware.beforePersist;
     const models = {
-      get: vi.fn(async () => ({ name: "_sys_user", fields: [] })),
-    } as unknown as ModelStore;
+      get: vi.fn(async () => runtimeModel(roleSchema)),
+    } as unknown as CompiledModelProvider;
     const records = {
       findByField: vi.fn().mockResolvedValueOnce({ id: "child" }),
-    } as unknown as RecordStore;
+    } as unknown as RecordReader;
 
     await expect(
       beforePersist({
-        model: roleSchema,
+        model: runtimeModel(roleSchema),
         models,
         records,
         actorId: "operator",
         operation: "delete",
         record: { id: "parent" },
+        events: { emit: vi.fn() },
       }),
     ).rejects.toMatchObject({ status: 403 });
 
@@ -121,12 +126,13 @@ describe("_sys_role service", () => {
       .mockResolvedValueOnce({ id: "user" });
     await expect(
       beforePersist({
-        model: roleSchema,
+        model: runtimeModel(roleSchema),
         models,
         records,
         actorId: "operator",
         operation: "delete",
         record: { id: "role" },
+        events: { emit: vi.fn() },
       }),
     ).rejects.toMatchObject({ status: 403 });
   });

@@ -18,6 +18,7 @@ app.use("/api/v1/*", async (c, next) => {
   c.set("container", container);
   await ensureModelModules(container);
   await next();
+  c.executionCtx.waitUntil(container.outboxDispatcher.dispatchPending());
 });
 
 // 允许跨域（同源部署时可选，独立域名调试时需要）。

@@ -36,15 +36,18 @@ Core 不允许：
 
 ## 职责分层
 
-| 目录或文件                       | 职责                                               |
-| -------------------------------- | -------------------------------------------------- |
-| `services/core/`                 | 所有模型必经的执行内核、权限决策和端口             |
-| `services/auth/`                 | 登录、会话，以及用户和角色到权限档案的解析         |
-| `services/models/{modelCode}/`   | 单个代码模型的协议、数据库初始化和受控生命周期扩展 |
-| `services/bootstrap.ts`          | 按约定装配、发布并初始化代码模型                   |
-| `services/model-group-policy.ts` | 用系统分类模型实现 Core 的模型分组端口             |
-| `utils/system-model.ts`          | 构造系统模型协议的纯工具                           |
-| `container.ts`                   | 组合根，负责把具体实现注入 Core 端口               |
+| 目录或文件                       | 职责                                                   |
+| -------------------------------- | ------------------------------------------------------ |
+| `services/core/`                 | 所有模型必经的执行内核、权限决策和端口                 |
+| `services/compiled-models.ts`    | 按 `model@version` 缓存不可变运行计划并装配模型扩展    |
+| `services/auth/`                 | 登录、会话，以及用户和角色到权限档案的解析             |
+| `services/events/`               | 提交后 Outbox 事件派发与失败记账                       |
+| `services/models/{modelCode}/`   | 单个代码模型的协议、初始化、生命周期、Command 和消费者 |
+| `services/bootstrap.ts`          | 按约定发布模型，并通过受控数据库上下文执行幂等初始化   |
+| `services/model-group-policy.ts` | 用系统分类模型实现 Core 的模型分组端口                 |
+| `store/`                         | D1 端口适配器，包括 Repository、UnitOfWork 和 Outbox   |
+| `utils/system-model.ts`          | 构造系统模型协议的纯工具                               |
+| `container.ts`                   | 组合根，负责把具体实现注入 Core 端口                   |
 
 权限职责进一步拆分为：
 
@@ -65,7 +68,8 @@ core/AccessControl
 
 ```text
 解析 → 鉴权 → prepare → 归一化 → validate → beforePersist
-    → 事务持久化 → Outbox → 提交 → afterCommit → present
+    → TransactionPlan（记录变更 + 领域事件）
+    → D1 batch 原子提交（业务表 + Outbox）→ present
 ```
 
 模型只能通过固定生命周期扩展行为：
@@ -73,10 +77,51 @@ core/AccessControl
 - `prepare`
 - `validate`
 - `beforePersist`
-- `afterCommit`
 - `present`
 
-每个模型每个阶段最多一个处理函数。模型扩展不得自行提交事务、跳过权限检查或直接执行外部副作用。
+每个模型每个阶段最多一个处理函数。`beforePersist` 只能通过 `EventCollector`
+追加事件，不能自行提交事务或直接执行外部副作用。
+
+模型专属业务使用声明式 `commands`。Command 必须声明操作权限和允许写入的字段，
+返回 mutation 与 event，由同一条记录执行管道再次完成字段鉴权、生命周期和协议校验。
+HTTP 入口统一为 `POST /api/v1/records/:model/actions/:command`。
+
+## 编译与缓存
+
+协议发布后，`CompiledModels` 按 `model@version` 编译并缓存以下不可变计划：
+
+- 存储表、字段、索引与关系计划。
+- 查询字段表达式及过滤、排序能力。
+- 公私字段策略。
+- 校验字段映射。
+- 代码模型声明的生命周期、Command 和事件消费者。
+
+读写服务、鉴权身份解析、引用展开和模型策略只接收 `CompiledModelProvider`，
+不会在请求路径中重复解释协议。模型发布后必须使该模型的缓存失效。
+
+## 事务与事件
+
+D1 不提供跨任意异步逻辑的交互式事务。本系统先完成读取、鉴权、生命周期与校验，
+再生成完整 `TransactionPlan`，由 `RecordStore.commit()` 将所有业务 SQL 和 Outbox
+写入合并为一次 `D1Database.batch()`。任一语句失败时，整批操作回滚。
+
+提交后，Worker 使用 `executionCtx.waitUntil()` 调用 `OutboxDispatcher`。消费者成功后
+写入 `processed_at`；失败则增加 `attempts` 并保存 `last_error`，供后续请求重试。
+因此外部副作用不阻塞事务，也不会在业务提交前执行。
+
+## 端口边界
+
+Core 只能依赖 `services/core/contracts.ts` 中定义的端口：
+
+- `ModelRepository`：模型元数据发布与版本控制。
+- `CompiledModelProvider`：运行时模型解析与缓存。
+- `RecordReader`：受控数据读取。
+- `UnitOfWork`：原子提交 `TransactionPlan`。
+- `RecordExpander`：关联展示值展开。
+- `OutboxRepository`：提交后事件读取与状态更新。
+
+模型 `database.initialize` 仅获得 `ModelDatabaseContext`，不能访问 Container、D1
+或具体 Store。历史结构变更只存在于 D1 migration，不在启动阶段保留兼容分支。
 
 ## 协议级可见性
 

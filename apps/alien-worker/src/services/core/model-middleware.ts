@@ -1,9 +1,13 @@
-import type { AlienSchema, ModelRecord } from "@alien-form/protocol";
+import type { ModelRecord } from "@alien-form/protocol";
 import { AppError, badRequest } from "../../errors.ts";
-import type { ModelStore } from "../../store/model-store.ts";
-import type { RecordStore } from "../../store/record-store.ts";
-import type { ModelModules } from "../model-modules.ts";
-import type { ModelReadOperation, ModelWriteOperation } from "../types.ts";
+import type {
+  CompiledModel,
+  CompiledModelProvider,
+  EventCollector,
+  ModelReadOperation,
+  ModelWriteOperation,
+  RecordReader,
+} from "./contracts.ts";
 import { immutable } from "./record-validation.ts";
 
 function asInputError(reason: unknown): AppError {
@@ -13,14 +17,13 @@ function asInputError(reason: unknown): AppError {
 }
 
 export async function prepareModelInput(
-  modules: ModelModules,
-  modelCode: string,
+  model: CompiledModel,
   values: Record<string, unknown>,
   actorId: string,
   operation: "create" | "update",
   previous?: ModelRecord,
 ): Promise<Record<string, unknown>> {
-  const prepare = (await modules.get(modelCode))?.middleware?.prepare;
+  const prepare = model.lifecycle?.prepare;
   if (!prepare) return values;
   try {
     return await prepare(Object.freeze({ ...values }), {
@@ -34,20 +37,19 @@ export async function prepareModelInput(
 }
 
 export async function validateModelRecord(
-  modules: ModelModules,
-  models: ModelStore,
-  records: RecordStore,
-  schema: AlienSchema,
+  models: CompiledModelProvider,
+  records: RecordReader,
+  model: CompiledModel,
   record: ModelRecord,
   actorId: string,
   operation: "create" | "update",
   previous?: ModelRecord,
 ): Promise<void> {
-  const validate = (await modules.get(schema.name))?.middleware?.validate;
+  const validate = model.lifecycle?.validate;
   if (!validate) return;
   try {
     await validate({
-      model: schema,
+      model,
       models,
       records,
       actorId,
@@ -61,16 +63,16 @@ export async function validateModelRecord(
 }
 
 export async function runBeforePersist(
-  modules: ModelModules,
-  models: ModelStore,
-  records: RecordStore,
-  model: AlienSchema,
+  models: CompiledModelProvider,
+  records: RecordReader,
+  model: CompiledModel,
   actorId: string,
   operation: ModelWriteOperation,
   record: ModelRecord,
+  events: EventCollector,
   previous?: ModelRecord,
 ): Promise<void> {
-  const beforePersist = (await modules.get(model.name))?.middleware?.beforePersist;
+  const beforePersist = model.lifecycle?.beforePersist;
   if (!beforePersist) return;
   try {
     await beforePersist({
@@ -81,58 +83,24 @@ export async function runBeforePersist(
       operation,
       record: immutable(record),
       previous: previous ? immutable(previous) : undefined,
+      events,
     });
   } catch (reason) {
     throw asInputError(reason);
   }
 }
 
-export async function runAfterCommit(
-  modules: ModelModules,
-  models: ModelStore,
-  records: RecordStore,
-  model: AlienSchema,
-  actorId: string,
-  operation: ModelWriteOperation,
-  record: ModelRecord,
-  previous?: ModelRecord,
-): Promise<void> {
-  const afterCommit = (await modules.get(model.name))?.middleware?.afterCommit;
-  if (!afterCommit) return;
-  try {
-    await afterCommit({
-      model,
-      models,
-      records,
-      actorId,
-      operation,
-      record: immutable(record),
-      previous: previous ? immutable(previous) : undefined,
-    });
-  } catch (reason) {
-    console.error(
-      JSON.stringify({
-        message: "model afterCommit middleware failed",
-        model: model.name,
-        operation,
-        error: reason instanceof Error ? reason.message : String(reason),
-      }),
-    );
-  }
-}
-
 export async function presentModelRecord(
-  modules: ModelModules,
-  model: AlienSchema,
+  model: CompiledModel,
   actorId: string,
   operation: ModelReadOperation,
   record: ModelRecord,
 ): Promise<ModelRecord> {
-  const present = (await modules.get(model.name))?.middleware?.present;
+  const present = model.lifecycle?.present;
   if (!present) return record;
   const output = await present(immutable(record), { model, actorId, operation });
   if (output.id !== record.id) {
-    throw new Error(`模型 ${model.name} 的 present 中间件不能修改记录 ID`);
+    throw new Error(`模型 ${model.schema.name} 的 present 中间件不能修改记录 ID`);
   }
   return output;
 }

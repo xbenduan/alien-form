@@ -1,6 +1,6 @@
 import { forbidden } from "../../../errors.ts";
 import { defineModel } from "../../define-model.ts";
-import type { ModelValidationContext } from "../../types.ts";
+import type { ModelValidationContext } from "../../core/contracts.ts";
 import { initialize } from "./database.ts";
 import createSchema from "./schema.ts";
 
@@ -43,7 +43,7 @@ export default defineModel(() => {
     ) {
       throw new Error(`模型 ${permission.model} 的字段权限不合法`);
     }
-    const fields = new Set(model.fields.map((field) => field.key));
+    const fields = new Set(model.schema.fields.map((field) => field.key));
     const invalidField = permission.fields.find((field) => !fields.has(String(field)));
     if (invalidField !== undefined) {
       throw new Error(`模型 ${permission.model} 不存在字段：${String(invalidField)}`);
@@ -90,7 +90,7 @@ export default defineModel(() => {
     schema: createSchema(constants),
     constants,
     database: {
-      initialize: (container) => initialize(container, constants, userModelCode),
+      initialize: (context) => initialize(context, constants, bootstrapActorId),
     },
     middleware: {
       async validate(context) {
