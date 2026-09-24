@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createForm } from "../form";
+import { createForm, FormValidationError } from "../form";
 import type { IFormSchema } from "../types";
 
 /**
@@ -7,7 +7,7 @@ import type { IFormSchema } from "../types";
  *
  * 场景来自动态模型:id 是 required + display:hidden(由后端自动生成),
  * 时间戳常用 display:none 或 disabled(只读)。这些字段用户无从填写,
- * 若纳入必填校验会导致 form.validate() 恒为 false、submit 抛 "Validation failed"。
+ * 若纳入必填校验会导致 form.validate() 恒为 false，并由提交流程返回字段错误。
  */
 describe("validate — 豁免 hidden / none / disabled 的必填字段", () => {
   const schemaWith = (
@@ -94,5 +94,24 @@ describe("validate — 豁免 hidden / none / disabled 的必填字段", () => {
 
     await expect(form.validate()).resolves.toBe(true);
     expect(form.errors()).toEqual([]);
+  });
+
+  it("提交校验失败时返回字段错误而不是通用 Validation failed", async () => {
+    const form = createForm({
+      schema: {
+        type: "object",
+        properties: {
+          name: { type: "string", required: true },
+        },
+      },
+    });
+
+    await expect(form.submit()).rejects.toMatchObject({
+      name: "FormValidationError",
+      messages: ["name 必填"],
+    });
+    await expect(form.submit()).rejects.not.toThrow("Validation failed");
+    expect(form.errors()[0]?.message).toBe("name 必填");
+    expect(new FormValidationError(["错误"]).message).toBe("表单校验失败");
   });
 });

@@ -8,6 +8,10 @@
   display: none;
 }
 
+.formItem:focus {
+  outline-offset: 4px;
+}
+
 .formItemLabel {
   display: inline-flex;
   margin-bottom: 8px;

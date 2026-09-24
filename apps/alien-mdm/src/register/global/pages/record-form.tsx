@@ -1,6 +1,6 @@
 import { useCreateForm } from "@alien-form/react";
 import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
-import { Alert, App, Button, Space, Spin } from "antd";
+import { App, Button, Space, Spin } from "antd";
 import {
   forwardRef,
   useEffect,
@@ -53,7 +53,6 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
   const { message } = App.useApp();
   const [loading, setLoading] = useState(mode !== "add");
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string>();
   const compiled = useMemo(
     () => compileForm({ properties: schema.properties ?? {} }, { "form-schema": schema }),
     [schema],
@@ -79,9 +78,9 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
     void Promise.resolve()
       .then(() => service("records.get")({ model: modelCode, id: recordId }))
       .then((record) => form.setFieldsValue(record))
-      .catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)))
+      .catch((reason) => message.error(reason instanceof Error ? reason.message : String(reason)))
       .finally(() => setLoading(false));
-  }, [form, mode, modelCode, recordId]);
+  }, [form, message, mode, modelCode, recordId]);
 
   const close = () => {
     if (onCancel) onCancel();
@@ -89,7 +88,6 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
   };
 
   const save = async () => {
-    setError(undefined);
     setSaving(true);
     try {
       const values = await form.submit<Record<string, unknown>>();
@@ -99,11 +97,28 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
       if (onSaved) await onSaved();
       else navigate(recordListRoute(modelCode));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      if (reason instanceof Error && reason.name === "FormValidationError") {
+        focusFirstInvalidField(form);
+      } else {
+        message.error(reason instanceof Error ? reason.message : String(reason));
+      }
     } finally {
       setSaving(false);
     }
   };
+
+  function focusFirstInvalidField(currentForm: typeof form): void {
+    const field = Array.from(currentForm.fields().values()).find(
+      (item) => item.errors().length > 0,
+    );
+    if (!field) return;
+    const target = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-alien-form-field]"),
+    ).find((element) => element.dataset.alienFormField === field.path);
+    if (!target) return;
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.focus({ preventScroll: true });
+  }
 
   useImperativeHandle(ref, () => ({ submit: save }));
 
@@ -137,7 +152,6 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
 
   const content = (
     <>
-      {error && <Alert type="error" message={error} showIcon style={{ marginBottom: 16 }} />}
       <FormRenderer form={form} nodes={compiled.nodes} domain={modelCode} />
     </>
   );

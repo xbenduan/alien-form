@@ -9,6 +9,7 @@ export function FormItem({
   description,
   mode,
   gridSpan,
+  fieldPath,
   children,
 }: {
   title?: string;
@@ -17,12 +18,15 @@ export function FormItem({
   description?: string;
   mode?: string;
   gridSpan?: unknown;
+  fieldPath?: string;
   children?: ReactNode;
 }) {
   return (
     <div
       className={`${styles.formItem}${mode === "detail" ? ` ${styles.detailFormItem}` : ""}`}
       style={fieldGridItemStyle(gridSpan)}
+      data-alien-form-field={fieldPath}
+      tabIndex={fieldPath ? -1 : undefined}
     >
       {title ? (
         <label className={`${styles.formItemLabel}${required ? ` ${styles.required}` : ""}`}>

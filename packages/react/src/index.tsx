@@ -461,6 +461,7 @@ function RenderField({
       domain={domain}
       props={{
         ...snapshot.decoratorProps,
+        fieldPath: field.path,
         title: snapshot.title,
         required: snapshot.required && context.mode !== "detail",
         errors: snapshot.errors,

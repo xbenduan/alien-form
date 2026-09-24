@@ -57,6 +57,16 @@ interface FieldContext {
   form: FormInstance;
 }
 
+export class FormValidationError extends Error {
+  readonly messages: readonly string[];
+
+  constructor(messages: readonly string[]) {
+    super("表单校验失败");
+    this.name = "FormValidationError";
+    this.messages = messages;
+  }
+}
+
 type BuildOptions = {
   parent?: FieldNode;
   row?: RowNode;
@@ -1307,9 +1317,7 @@ export function createForm(config: FormConfig = {}): FormInstance {
       try {
         const isValid = await form.validate();
         if (!isValid) {
-          const error: any = new Error("Validation failed");
-          error.messages = form.errors().map((e: FieldError) => e.message);
-          throw error;
+          throw new FormValidationError(form.errors().map((e: FieldError) => e.message));
         }
         const output = form.getOutput();
         return onSubmit ? await onSubmit(output) : (output as T);

@@ -3,7 +3,7 @@
  * Value-capability runtime architecture
  */
 
-export { createForm } from "./form";
+export { createForm, FormValidationError } from "./form";
 
 // Re-export alien-signals primitives so downstream packages
 // (like @alien-form/react) don't need to depend on alien-signals directly.
