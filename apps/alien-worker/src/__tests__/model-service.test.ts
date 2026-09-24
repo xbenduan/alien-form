@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AlienSchema } from "@alien-form/protocol";
-import type { AccessControl } from "../services/core/access-control.ts";
-import type { CompiledModelProvider, ModelRepository } from "../services/core/contracts.ts";
-import { ModelService, type ModelGroupPolicy } from "../services/core/model-service.ts";
+import type { AccessControl } from "@alien-form/alienbase";
+import type { CompiledModelProvider, ModelRepository } from "@alien-form/alienbase";
+import { ModelService, type ModelGroupPolicy } from "@alien-form/alienbase";
 
 /** Creates a minimal valid model schema for service tests. */
 function schema(name = "article"): AlienSchema {

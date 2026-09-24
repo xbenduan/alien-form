@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AlienSchema } from "@alien-form/protocol";
-import { compileMigrationPlan, compileStorageManifest } from "../storage/compiler.ts";
+import { compileMigrationPlan, compileStorageManifest } from "../adapters/d1/compiler/compiler.ts";
 
 function systemField(key: "id" | "createdAt" | "updatedAt"): AlienSchema["fields"][number] {
   return {

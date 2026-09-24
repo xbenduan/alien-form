@@ -1,74 +1,72 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Container } from "../container.ts";
-import { createModelModulesBootstrap, ensureModelModules } from "../services/bootstrap.ts";
-import { ModelModules } from "../services/model-modules.ts";
-import roleModule from "../services/models/_sys_role/index.ts";
-import userModule from "../services/models/_sys_user/index.ts";
+import type { ModelDatabaseContext } from "@alien-form/alienbase";
+import { createCoreInitializer, type WorkerCore } from "../bootstrap/core.ts";
+import roleModule from "../models/_sys_role/index.ts";
+import userModule from "../models/_sys_user/index.ts";
 import { runtimeModel } from "./runtime-model.ts";
 
-/** Creates the minimum container surface needed by service initialization tests. */
-function createContainer(modules = ModelModules.from([userModule])) {
-  const ensureSystemModel = vi.fn().mockResolvedValue(userModule.schema);
+function createRuntime(): WorkerCore {
+  return { initialize: vi.fn().mockResolvedValue(undefined) } as unknown as WorkerCore;
+}
+
+function createDatabaseContext(): {
+  context: ModelDatabaseContext;
+  create: ReturnType<typeof vi.fn>;
+  update: ReturnType<typeof vi.fn>;
+} {
   const create = vi.fn();
   const update = vi.fn();
   const compiled = runtimeModel(userModule.schema);
-  const container = {
-    modules,
-    compiledModels: { get: vi.fn().mockResolvedValue(compiled) },
-    modelService: { ensureSystemModel },
-    recordStore: {
-      get: vi.fn().mockResolvedValue({ id: "existing", roleId: ["SYSROLE000001"], super: true }),
-      findByField: vi.fn(),
-    },
-    recordService: { create, update },
-  } as unknown as Container;
-  const databaseContext = {
-    models: container.compiledModels,
-    records: container.recordStore,
+  return {
     create,
     update,
+    context: {
+      models: { get: vi.fn().mockResolvedValue(compiled) },
+      records: {
+        get: vi.fn().mockResolvedValue({
+          id: "existing",
+          roleId: ["SYSROLE000001"],
+          super: true,
+        }),
+        findByField: vi.fn(),
+      },
+      create,
+      update,
+    },
   };
-  return { container, create, databaseContext, ensureSystemModel, update };
 }
 
-describe("service initialization", () => {
-  it("synchronizes every convention-loaded system schema", async () => {
-    const { container, ensureSystemModel } = createContainer();
+describe("core initialization", () => {
+  it("initializes only once for concurrent requests", async () => {
+    const first = createRuntime();
+    const second = createRuntime();
+    const initialize = createCoreInitializer();
 
-    await ensureModelModules(container);
+    await Promise.all([initialize(first), initialize(second)]);
+    await initialize(second);
 
-    expect(ensureSystemModel).toHaveBeenCalledWith(userModule.schema);
+    expect(first.initialize).toHaveBeenCalledTimes(1);
+    expect(second.initialize).not.toHaveBeenCalled();
   });
 
-  it("initializes model modules only once for concurrent requests", async () => {
-    const first = createContainer();
-    const second = createContainer();
-    const bootstrap = createModelModulesBootstrap();
+  it("retries initialization after a failure", async () => {
+    const first = {
+      initialize: vi.fn().mockRejectedValueOnce(new Error("bootstrap failed")),
+    } as unknown as WorkerCore;
+    const second = createRuntime();
+    const initialize = createCoreInitializer();
 
-    await Promise.all([bootstrap(first.container), bootstrap(second.container)]);
-    await bootstrap(second.container);
+    await expect(initialize(first)).rejects.toThrow("bootstrap failed");
+    await initialize(second);
 
-    expect(first.ensureSystemModel).toHaveBeenCalledTimes(1);
-    expect(second.ensureSystemModel).not.toHaveBeenCalled();
-  });
-
-  it("retries model initialization after a failure", async () => {
-    const first = createContainer();
-    const second = createContainer();
-    const bootstrap = createModelModulesBootstrap();
-    first.ensureSystemModel.mockRejectedValueOnce(new Error("bootstrap failed"));
-
-    await expect(bootstrap(first.container)).rejects.toThrow("bootstrap failed");
-    await bootstrap(second.container);
-
-    expect(first.ensureSystemModel).toHaveBeenCalledTimes(1);
-    expect(second.ensureSystemModel).toHaveBeenCalledTimes(1);
+    expect(first.initialize).toHaveBeenCalledTimes(1);
+    expect(second.initialize).toHaveBeenCalledTimes(1);
   });
 
   it("migrates missing role hierarchy fields without recreating seed records", async () => {
-    const { create, databaseContext, update } = createContainer();
+    const { context, create, update } = createDatabaseContext();
 
-    await roleModule.database.initialize(databaseContext);
+    await roleModule.database.initialize(context);
 
     expect(create).not.toHaveBeenCalled();
     expect(update).toHaveBeenCalledTimes(2);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AlienSchema } from "@alien-form/protocol";
-import { ModelModules } from "../services/model-modules.ts";
+import { ModelModules } from "../application/model-modules.ts";
 
 function schema(name: string): AlienSchema {
   return {

@@ -4,8 +4,8 @@ import type {
   ModelCommand,
   ModelEventHandler,
   ModelMiddleware,
-} from "../services/core/contracts.ts";
-import { compileModel } from "../storage/model-compiler.ts";
+} from "@alien-form/alienbase";
+import { compileModel } from "../adapters/d1/compiler/model-compiler.ts";
 
 export function runtimeModel(
   schema: AlienSchema,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AlienSchema } from "@alien-form/protocol";
-import { publicRecord } from "../services/core/record-visibility.ts";
+import { publicRecord } from "@alien-form/alienbase";
 
 describe("record visibility", () => {
   it("removes every field marked private without model-specific rules", () => {

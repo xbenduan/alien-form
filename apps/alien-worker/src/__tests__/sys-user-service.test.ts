@@ -4,9 +4,9 @@ import type {
   CompiledModelProvider,
   ModelValidationContext,
   RecordReader,
-} from "../services/core/contracts.ts";
-import roleModule from "../services/models/_sys_role/index.ts";
-import userModule from "../services/models/_sys_user/index.ts";
+} from "@alien-form/alienbase";
+import roleModule from "../models/_sys_role/index.ts";
+import userModule from "../models/_sys_user/index.ts";
 import { runtimeModel } from "./runtime-model.ts";
 
 /** Creates a user validation context backed by a set of existing role IDs. */

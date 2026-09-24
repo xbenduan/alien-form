@@ -7,18 +7,25 @@
 依赖方向固定为：
 
 ```text
-HTTP / Container / Auth / Models
-              ↓
-             Core
-              ↓
-       Store / Storage Ports
+Hono HTTP Adapter
+        ↓
+Worker Bootstrap 组合根
+        ↓
+AlienBase Runtime Ports
+        ↑
+D1 Repository / Compiler Adapters
 ```
 
 ## Core 边界
 
-`apps/alien-worker/src/services/core` 是所有模型共用且不可绕过的执行内核。该目录的修改属于高风险变更，必须重点审查执行顺序、权限边界、事务一致性和跨模型回归。
+`packages/alienbase` 是数据库与平台无关的框架包，导出 `defineCore`、`defineModel`、
+统一运行时服务和端口契约。它不提供 D1、SQLite 或 PostgreSQL 适配器。
 
-Core 仅包含：
+`apps/alien-worker/src/bootstrap/core.ts` 是当前项目唯一的组合根，负责将 D1 Repository、
+模型编译器、认证与事件派发器注入 AlienBase Runtime。运行时内核的修改属于高风险变更，
+必须重点审查执行顺序、权限边界、事务一致性和跨模型回归。
+
+AlienBase Core 仅包含：
 
 - 模型定义发布与版本控制。
 - 记录读写的统一执行管道。
@@ -26,9 +33,9 @@ Core 仅包含：
 - 协议级记录校验与可见性。
 - Core 所需的端口契约。
 
-Core 不允许：
+AlienBase Core 不允许：
 
-- 导入 `services/models/*` 中的具体模型。
+- 导入 `apps/alien-worker/src/models/*` 中的具体模型。
 - 硬编码模型名、字段名或系统记录 ID。
 - 承担登录、会话或角色解析等认证域实现。
 - 承担启动编排、种子数据或模型构造工具。
@@ -36,22 +43,23 @@ Core 不允许：
 
 ## 职责分层
 
-| 目录或文件                       | 职责                                                   |
-| -------------------------------- | ------------------------------------------------------ |
-| `services/core/`                 | 所有模型必经的执行内核、权限决策和端口                 |
-| `services/compiled-models.ts`    | 按 `model@version` 缓存不可变运行计划并装配模型扩展    |
-| `services/auth/`                 | 登录、会话，以及用户和角色到权限档案的解析             |
-| `services/events/`               | 提交后 Outbox 事件派发与失败记账                       |
-| `services/models/{modelCode}/`   | 单个代码模型的协议、初始化、生命周期、Command 和消费者 |
-| `services/bootstrap.ts`          | 按约定发布模型，并通过受控数据库上下文执行幂等初始化   |
-| `services/model-group-policy.ts` | 用系统分类模型实现 Core 的模型分组端口                 |
-| `store/`                         | D1 端口适配器，包括 Repository、UnitOfWork 和 Outbox   |
-| `utils/system-model.ts`          | 构造系统模型协议的纯工具                               |
-| `container.ts`                   | 组合根，负责把具体实现注入 Core 端口                   |
+| 目录或文件                                        | 职责                                               |
+| ------------------------------------------------- | -------------------------------------------------- |
+| `packages/alienbase/src/runtime/`                 | 所有模型必经的执行内核、权限决策和端口             |
+| `packages/alienbase/src/define-core.ts`           | 保留完整类型推导的项目级 Core 工厂                 |
+| `packages/alienbase/src/define-model.ts`          | 数据库无关的模型模块与初始化上下文                 |
+| `apps/alien-worker/src/bootstrap/core.ts`         | Worker 唯一组合根与 isolate 初始化协调器           |
+| `apps/alien-worker/src/application/`              | 认证、编译模型注册、模型策略与 Outbox 派发         |
+| `apps/alien-worker/src/models/`                   | 代码模型的协议、初始化、生命周期、Command 和消费者 |
+| `apps/alien-worker/src/adapters/d1/compiler/`     | D1 存储计划、查询表达式与协议编译                  |
+| `apps/alien-worker/src/adapters/d1/repositories/` | AlienBase 端口与会话端口的 D1 实现                 |
+| `apps/alien-worker/src/http/`                     | Hono 应用、路由、中间件、输入输出适配              |
+| `apps/alien-worker/src/index.ts`                  | Cloudflare Worker 最小入口                         |
 
-Worker 为每个请求创建独立 `Container`，不跨请求共享请求态对象。模型发布与种子数据初始化
-由模块作用域的 bootstrap 协调器在每个 isolate 内只成功执行一次：首批并发请求共享同一个
-Promise，失败时清除缓存并允许后续请求重试。多 isolate 间仍依赖初始化操作自身的数据库幂等性。
+Worker 为每个请求通过 `createCore({ db })` 创建独立运行时，不跨请求共享请求态对象。
+模型发布与种子数据初始化由 `initializeCore` 在每个 isolate 内只成功执行一次：首批并发
+请求共享同一个 Promise，失败时清除缓存并允许后续请求重试。多 isolate 间仍依赖初始化
+操作自身的数据库幂等性。
 
 权限职责进一步拆分为：
 
@@ -59,7 +67,7 @@ Promise，失败时清除缓存并允许后续请求重试。多 isolate 间仍�
 auth/RoleAccessProfileProvider
   用户与角色模型 → AccessProfile
                      ↓
-core/AccessControl
+alienbase/AccessControl
   操作授权、数据范围、字段与 Schema 裁剪
 ```
 
@@ -106,7 +114,7 @@ HTTP 入口统一为 `POST /api/v1/records/:model/actions/:command`。
 ## 事务与事件
 
 D1 不提供跨任意异步逻辑的交互式事务。本系统先完成读取、鉴权、生命周期与校验，
-再生成完整 `TransactionPlan`，由 `RecordStore.commit()` 将所有业务 SQL 和 Outbox
+再生成完整 `TransactionPlan`，由 `D1RecordRepository.commit()` 将所有业务 SQL 和 Outbox
 写入合并为一次 `D1Database.batch()`。任一语句失败时，整批操作回滚。
 
 提交后，Worker 使用 `executionCtx.waitUntil()` 调用 `OutboxDispatcher`。消费者成功后
@@ -115,7 +123,7 @@ D1 不提供跨任意异步逻辑的交互式事务。本系统先完成读取�
 
 ## 端口边界
 
-Core 只能依赖 `services/core/contracts.ts` 中定义的端口：
+AlienBase Runtime 只能依赖 `packages/alienbase/src/runtime/contracts.ts` 中定义的端口：
 
 - `ModelRepository`：模型元数据发布与版本控制。
 - `CompiledModelProvider`：运行时模型解析与缓存。
@@ -124,7 +132,7 @@ Core 只能依赖 `services/core/contracts.ts` 中定义的端口：
 - `RecordExpander`：关联展示值展开。
 - `OutboxRepository`：提交后事件读取与状态更新。
 
-模型 `database.initialize` 仅获得 `ModelDatabaseContext`，不能访问 Container、D1
+模型 `database.initialize` 仅获得 `ModelDatabaseContext`，不能访问 Worker Core、D1
 或具体 Store。历史结构变更只存在于 D1 migration，不在启动阶段保留兼容分支。
 
 ## 协议级可见性
@@ -133,9 +141,12 @@ Core 只能依赖 `services/core/contracts.ts` 中定义的端口：
 
 ## Review 要求
 
-修改 `services/core` 时至少确认：
+修改 `packages/alienbase/src/runtime` 时至少确认：
 
 1. 是否仍是所有模型共用且必须执行的逻辑。
 2. 是否引入了具体模型、认证实现或基础设施细节。
 3. 是否改变固定执行顺序、权限边界或事务语义。
 4. 是否补充了对应的 Core 单元测试和跨模型回归测试。
+
+修改 `apps/alien-worker/src/bootstrap/core.ts` 时还必须确认 AlienBase 端口均由 Worker 侧实现，
+并且没有把 D1 binding、SQL 或 Cloudflare 请求上下文泄漏进 `packages/alienbase`。

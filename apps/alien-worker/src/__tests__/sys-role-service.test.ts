@@ -4,8 +4,8 @@ import type {
   CompiledModelProvider,
   ModelValidationContext,
   RecordReader,
-} from "../services/core/contracts.ts";
-import roleModule from "../services/models/_sys_role/index.ts";
+} from "@alien-form/alienbase";
+import roleModule from "../models/_sys_role/index.ts";
 import { runtimeModel } from "./runtime-model.ts";
 
 const roleSchema: AlienSchema = {

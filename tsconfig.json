@@ -15,6 +15,7 @@
   "files": [],
   "references": [
     { "path": "./packages/protocol" },
+    { "path": "./packages/alienbase" },
     { "path": "./packages/core" },
     { "path": "./packages/react" }
   ]

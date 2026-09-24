@@ -1,4 +1,4 @@
-import { badRequest } from "../errors.ts";
+import { badRequest } from "@alien-form/alienbase";
 
 export function parseInput<T>(parse: () => T): T {
   try {

@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AlienSchema, ModelRecord } from "@alien-form/protocol";
-import type { AccessControl } from "../services/core/access-control.ts";
+import type { AccessControl } from "@alien-form/alienbase";
 import type {
   CompiledModelProvider,
   RecordExpander,
   RecordReader,
   UnitOfWork,
-} from "../services/core/contracts.ts";
-import { RecordService } from "../services/core/record-service.ts";
-import type { ModelModule } from "../services/define-model.ts";
+} from "@alien-form/alienbase";
+import { RecordService } from "@alien-form/alienbase";
+import type { ModelModule } from "@alien-form/alienbase";
 import { runtimeModel } from "./runtime-model.ts";
 
 const schema: AlienSchema = {

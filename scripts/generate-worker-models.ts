@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 import { format } from "oxfmt";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const modelsRoot = resolve(root, "apps/alien-worker/src/services/models");
-const output = resolve(root, "apps/alien-worker/src/services/model-manifest.generated.ts");
+const modelsRoot = resolve(root, "apps/alien-worker/src/models");
+const output = resolve(root, "apps/alien-worker/src/application/model-manifest.generated.ts");
 const check = process.argv.includes("--check");
 
 async function modelCodes(): Promise<string[]> {
@@ -13,7 +13,7 @@ async function modelCodes(): Promise<string[]> {
   const rootFiles = entries.filter((entry) => entry.isFile() && entry.name.endsWith(".ts"));
   if (rootFiles.length > 0) {
     throw new Error(
-      `services/models 仅允许 {modelCode}/index.ts：${rootFiles.map(({ name }) => name).join(", ")}`,
+      `models 仅允许 {modelCode}/index.ts：${rootFiles.map(({ name }) => name).join(", ")}`,
     );
   }
   const codes = entries
@@ -32,11 +32,11 @@ async function modelCodes(): Promise<string[]> {
 async function main(): Promise<void> {
   const codes = await modelCodes();
   const source = `/**
- * Generated from services/models/{modelCode}/index.ts files.
+ * Generated from models/{modelCode}/index.ts files.
  * Run \`pnpm generate:worker-models\` after adding or removing a model module.
  */
 export const MODEL_MODULE_LOADERS = {
-${codes.map((code) => `  ${JSON.stringify(code)}: () => import("./models/${code}/index.ts"),`).join("\n")}
+${codes.map((code) => `  ${JSON.stringify(code)}: () => import("../models/${code}/index.ts"),`).join("\n")}
 } as const;
 `;
   const result = await format(output, source);

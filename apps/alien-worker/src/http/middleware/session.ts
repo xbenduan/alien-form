@@ -1,6 +1,6 @@
 import { createMiddleware } from "hono/factory";
 import { fail } from "../envelope.ts";
-import type { AppEnv } from "../../env.ts";
+import type { AppEnv } from "../env.ts";
 
 function bearerToken(header: string | undefined): string | undefined {
   if (!header) return undefined;
@@ -14,7 +14,7 @@ export { bearerToken };
 export const requireSession = createMiddleware<AppEnv>(async (c, next) => {
   const token = bearerToken(c.req.header("authorization"));
   if (!token) return fail(c, "未登录或会话已失效", 401);
-  const session = await c.get("container").authService.resolveSession(token);
+  const session = await c.get("core").auth.resolveSession(token);
   if (!session) return fail(c, "未登录或会话已失效", 401);
   c.set("session", session);
   await next();

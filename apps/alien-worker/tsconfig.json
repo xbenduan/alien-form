@@ -10,7 +10,11 @@
     "noEmit": true,
     "lib": ["ES2022"],
     "types": ["@cloudflare/workers-types"],
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "@alien-form/alienbase": ["../../packages/alienbase/src/index.ts"],
+      "@alien-form/protocol": ["../../packages/protocol/src/index.ts"]
+    }
   },
   "include": ["src/**/*.ts"]
 }

@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import type { ApiEnvelope } from "@alien-form/protocol";
-import type { AppEnv } from "../env.ts";
+import type { AppEnv } from "./env.ts";
 
 type StatusCode = 200 | 201 | 400 | 401 | 403 | 404 | 405 | 409 | 500;
 

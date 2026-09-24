@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ModelRecord, AlienSchema } from "@alien-form/protocol";
-import { RoleAccessProfileProvider } from "../services/auth/access-profile-provider.ts";
-import { AccessControl, type AccessControlOptions } from "../services/core/access-control.ts";
-import type { CompiledModelProvider, RecordReader } from "../services/core/contracts.ts";
-import roleModule from "../services/models/_sys_role/index.ts";
+import { RoleAccessProfileProvider } from "../application/auth/access-profile-provider.ts";
+import { AccessControl, type AccessControlOptions } from "@alien-form/alienbase";
+import type { CompiledModelProvider, RecordReader } from "@alien-form/alienbase";
+import roleModule from "../models/_sys_role/index.ts";
 import { runtimeModel } from "./runtime-model.ts";
 
 /** Creates a minimum business model for permission tests. */

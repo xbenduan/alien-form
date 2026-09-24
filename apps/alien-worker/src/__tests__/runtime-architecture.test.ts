@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AlienSchema, ModelRecord } from "@alien-form/protocol";
-import type { AccessControl } from "../services/core/access-control.ts";
+import type { AccessControl } from "@alien-form/alienbase";
 import type {
   CompiledModelProvider,
   ModelRepository,
@@ -9,12 +9,13 @@ import type {
   RecordReader,
   TransactionPlan,
   UnitOfWork,
-} from "../services/core/contracts.ts";
-import { RecordService } from "../services/core/record-service.ts";
-import { CompiledModels } from "../services/compiled-models.ts";
-import { OutboxDispatcher } from "../services/events/outbox-dispatcher.ts";
-import { ModelModules } from "../services/model-modules.ts";
-import { RecordStore } from "../store/record-store.ts";
+} from "@alien-form/alienbase";
+import { RecordService } from "@alien-form/alienbase";
+import { CompiledModels } from "../application/compiled-models.ts";
+import { OutboxDispatcher } from "../application/events/outbox-dispatcher.ts";
+import { ModelModules } from "../application/model-modules.ts";
+import { compileModel } from "../adapters/d1/compiler/model-compiler.ts";
+import { D1RecordRepository } from "../adapters/d1/repositories/record-repository.ts";
 import { runtimeModel } from "./runtime-model.ts";
 
 const schema: AlienSchema = {
@@ -47,7 +48,7 @@ describe("compiled model registry", () => {
     const repository = {
       get: vi.fn(async () => current),
     } as unknown as ModelRepository;
-    const models = new CompiledModels(repository, ModelModules.from([{ schema }]));
+    const models = new CompiledModels(repository, ModelModules.from([{ schema }]), compileModel);
 
     const first = await models.require(schema.name);
     const cached = await models.require(schema.name);
@@ -81,7 +82,7 @@ describe("D1 unit of work", () => {
       batch: vi.fn().mockResolvedValue([]),
     } as unknown as D1Database;
     const model = runtimeModel(schema);
-    const store = new RecordStore(db);
+    const store = new D1RecordRepository(db);
 
     await store.commit({
       mutations: [
