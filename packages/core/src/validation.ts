@@ -1,16 +1,8 @@
 /**
  * @alien-form/core — Validation utilities
  */
+export { isEmptyValue } from "@alien-form/protocol";
 import type { FieldError, DataSourceItem } from "./types";
-
-export function isEmptyValue(value: any): boolean {
-  return (
-    value === undefined ||
-    value === null ||
-    value === "" ||
-    (Array.isArray(value) && value.length === 0)
-  );
-}
 
 export function normalizeDataSource(ds?: any[] | null): DataSourceItem[] {
   if (!ds || !Array.isArray(ds)) return [];

@@ -120,6 +120,22 @@ c.set("core", core);
 当前项目的完整组合示例见
 [`apps/alien-worker/src/bootstrap/core.ts`](../../apps/alien-worker/src/bootstrap/core.ts)。
 
+## 统一写入校验
+
+所有 CRUD 和 Command mutation 都经过同一条 Core 管道：
+
+```text
+prepare → 默认值与结构归一化 → Schema 表单校验 → defineModel.validate → beforePersist
+```
+
+字段根部的 `type`、`required` 与 `form` 中的 `pattern`、`minLength`、`maxLength`、
+`minimum`、`maximum`、`minItems`、`maxItems` 会在浏览器和服务端执行同一套基础校验。
+嵌套对象与数组也会递归校验，因此直接调用 API 不能绕过表单协议。
+
+`defineModel.validate` 只承载无法静态表达的业务规则，例如查库判重、跨字段约束和
+系统记录保护。`x-validate` 只允许自定义函数或 `{{...}}` 表达式，依赖浏览器运行时，
+不作为服务端安全边界；普通字符串、布尔值和对象不是合法的 `x-validate`。
+
 ## defineModel
 
 `defineModel` 使用互斥选择器声明一个模型定义：

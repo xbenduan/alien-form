@@ -16,14 +16,22 @@ export default function createSchema(constants: {
       title: "角色编码",
       required: true,
       storage: { type: "text", unique: true, index: true },
-      form: { component: "Input", props: { placeholder: "请输入角色编码" } },
+      form: {
+        component: "Input",
+        pattern: "^[A-Za-z_][A-Za-z0-9_-]*$",
+        props: { placeholder: "请输入角色编码" },
+      },
     }),
     physicalField(modelCode, "name", {
       type: "string",
       title: "角色名称",
       required: true,
       storage: { type: "text", index: true },
-      form: { component: "Input", props: { placeholder: "请输入角色名称" } },
+      form: {
+        component: "Input",
+        pattern: "\\S",
+        props: { placeholder: "请输入角色名称" },
+      },
     }),
     physicalField(modelCode, "parentId", {
       type: "string",

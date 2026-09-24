@@ -12,14 +12,22 @@ export default function createSchema(modelCode: string): AlienSchema {
       title: "分类标识",
       required: true,
       storage: { type: "text", unique: true, index: true },
-      form: { component: "Input", props: { placeholder: "请输入分类标识" } },
+      form: {
+        component: "Input",
+        pattern: "^[A-Za-z_][A-Za-z0-9_-]*$",
+        props: { placeholder: "请输入分类标识" },
+      },
     }),
     physicalField(modelCode, "name", {
       type: "string",
       title: "分类名称",
       required: true,
       storage: { type: "text", index: true },
-      form: { component: "Input", props: { placeholder: "请输入分类名称" } },
+      form: {
+        component: "Input",
+        pattern: "\\S",
+        props: { placeholder: "请输入分类名称" },
+      },
     }),
     physicalField(modelCode, "order", {
       type: "number",

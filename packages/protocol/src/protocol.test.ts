@@ -4,6 +4,7 @@ import {
   assertStorageCompatible,
   parseAlienSchema,
   parseAlienPage,
+  validateValueConstraints,
   type AlienSchema,
 } from "./index.ts";
 
@@ -132,6 +133,46 @@ describe("AlienSchema", () => {
     const value = model();
     value.fields[0] = { ...value.fields[0], type: "array" };
     expect(() => assertAlienSchema(value)).toThrow(/只有 json/);
+  });
+
+  it("校验声明式字段约束及其配置", () => {
+    const value = model();
+    value.fields[0].form = {
+      ...value.fields[0].form,
+      pattern: "^[A-Z]+$",
+      minLength: 2,
+      maxLength: 8,
+    };
+
+    expect(() => assertAlienSchema(value)).not.toThrow();
+    expect(
+      validateValueConstraints(
+        { ...value.fields[0].form, type: value.fields[0].type },
+        "invalidvalue",
+        {
+          required: true,
+          label: "name",
+        },
+      ),
+    ).toEqual([
+      { type: "pattern", message: "name 格式不合法" },
+      { type: "maxLength", message: "name 长度不能大于 8" },
+    ]);
+
+    value.fields[0].form.pattern = "[";
+    expect(() => assertAlienSchema(value)).toThrow(/不是合法正则表达式/);
+  });
+
+  it("x-validate 只允许复杂表达式", () => {
+    const valid = model();
+    valid.fields[0].form["x-validate"] = ["{{ $value !== 'forbidden' || '名称不可用' }}"];
+    expect(() => assertAlienSchema(valid)).not.toThrow();
+
+    const invalid = model() as unknown as {
+      fields: Array<{ form: Record<string, unknown> }>;
+    };
+    invalid.fields[0].form["x-validate"] = "名称不可用";
+    expect(() => assertAlienSchema(invalid)).toThrow(/x-validate/);
   });
 
   it("拒绝修改已发布物理字段", () => {

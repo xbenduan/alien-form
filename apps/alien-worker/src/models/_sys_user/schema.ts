@@ -16,7 +16,11 @@ export default function createSchema(
       title: "账号",
       required: true,
       storage: { type: "text", unique: true, index: true },
-      form: { component: "Input", props: { placeholder: "请输入登录账号" } },
+      form: {
+        component: "Input",
+        pattern: "^[A-Za-z_][A-Za-z0-9_.-]{2,63}$",
+        props: { placeholder: "请输入登录账号" },
+      },
     }),
     virtualField(modelCode, "password", {
       type: "string",

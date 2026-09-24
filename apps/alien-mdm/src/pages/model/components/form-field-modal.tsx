@@ -1,6 +1,6 @@
 import { Button, Drawer, Flex, Form, Input, Select } from "antd";
 import { useEffect, useMemo, useRef } from "react";
-import type { AlienFieldSchema, AlienValue, Runtime } from "@alien-form/engine";
+import type { AlienExpression, AlienFieldSchema, AlienValue, Runtime } from "@alien-form/engine";
 import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
 import { FieldsetCard } from "../../../components/fieldset-card";
 import { componentOptions, componentSample, synchronizeRelationForm } from "../builder/codec";
@@ -22,6 +22,7 @@ interface FormFieldValues {
   required?: boolean;
   disabled?: boolean;
   order?: number;
+  pattern?: string;
   defaultJson?: string;
   propsJson?: string;
   decoratorPropsJson?: string;
@@ -45,6 +46,21 @@ function parseJson(text: string | undefined, label: string): AlienValue | undefi
   }
 }
 
+function parseXValidate(text: string | undefined): AlienExpression | AlienExpression[] | undefined {
+  const value = parseJson(text, "x-validate");
+  if (value === undefined) return undefined;
+  const rules = Array.isArray(value) ? value : [value];
+  if (
+    rules.some(
+      (rule) =>
+        typeof rule !== "string" || !rule.trim().startsWith("{{") || !rule.trim().endsWith("}}"),
+    )
+  ) {
+    throw new Error("x-validate 只允许 {{...}} 表达式或表达式数组");
+  }
+  return value as AlienExpression | AlienExpression[];
+}
+
 const jsonRule = (label: string) => ({
   validator: (_r: unknown, value: string) => {
     try {
@@ -55,6 +71,29 @@ const jsonRule = (label: string) => ({
     }
   },
 });
+
+const xValidateRule = {
+  validator: (_rule: unknown, value: string | undefined) => {
+    try {
+      parseXValidate(value);
+      return Promise.resolve();
+    } catch (error) {
+      return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+    }
+  },
+};
+
+const patternRule = {
+  validator: (_rule: unknown, value: string | undefined) => {
+    if (!value) return Promise.resolve();
+    try {
+      new RegExp(value);
+      return Promise.resolve();
+    } catch {
+      return Promise.reject(new Error("正则表达式不合法"));
+    }
+  },
+};
 
 function toValues(node: FieldNode): FormFieldValues {
   const form = node.form as AlienFieldSchema & Record<string, unknown>;
@@ -69,6 +108,7 @@ function toValues(node: FieldNode): FormFieldValues {
     required: node.required,
     disabled: form.disabled as boolean | undefined,
     order: form.order as number | undefined,
+    pattern: form.pattern,
     defaultJson: toJson(form.default),
     propsJson: toJson(form.props),
     decoratorPropsJson: toJson(form.decoratorProps),
@@ -169,6 +209,7 @@ export function FormFieldModal({
         values.display && values.display !== "visible" ? (values.display as never) : undefined,
       disabled: values.disabled || undefined,
       order: values.order,
+      pattern: values.pattern?.trim() || undefined,
       default: parseJson(values.defaultJson, "default"),
       props: parsedProps && Object.keys(parsedProps).length ? parsedProps : undefined,
       decoratorProps:
@@ -179,7 +220,7 @@ export function FormFieldModal({
       "x-reaction": parseJson(values.reactionJson, "x-reaction") as never,
       "x-effect": parseJson(values.effectJson, "x-effect") as never,
       "x-format": parseJson(values.formatJson, "x-format") as never,
-      "x-validate": parseJson(values.validateJson, "x-validate") as never,
+      "x-validate": parseXValidate(values.validateJson),
     };
 
     const next: FieldNode = {
@@ -289,6 +330,11 @@ export function FormFieldModal({
           <Form.Item name="defaultJson" label="默认值" rules={[jsonRule("default")]}>
             <Input.TextArea rows={2} placeholder='"文本" 或 123 或 {"a":1}' />
           </Form.Item>
+          {selectedType === "string" ? (
+            <Form.Item name="pattern" label="正则表达式" rules={[patternRule]}>
+              <Input placeholder="例如 ^[A-Za-z_][A-Za-z0-9_]*$" />
+            </Form.Item>
+          ) : null}
           <Form.Item name="display" label="表单显隐">
             <Select
               placeholder="请选择"
@@ -367,12 +413,8 @@ export function FormFieldModal({
           <Form.Item name="formatJson" label="x-format 格式化(JSON)" rules={[jsonRule("x-format")]}>
             <Input.TextArea rows={2} placeholder='{"input":"...","output":"..."}' />
           </Form.Item>
-          <Form.Item
-            name="validateJson"
-            label="x-validate 校验(JSON)"
-            rules={[jsonRule("x-validate")]}
-          >
-            <Input.TextArea rows={2} />
+          <Form.Item name="validateJson" label="x-validate 复杂校验(JSON)" rules={[xValidateRule]}>
+            <Input.TextArea rows={2} placeholder={'"{{ $service(\\"checkUnique\\")($value) }}"'} />
           </Form.Item>
         </FieldsetCard>
       </Form>

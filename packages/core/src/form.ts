@@ -12,6 +12,7 @@ import {
   getActiveSub,
   setActiveSub,
 } from "alien-signals";
+import { validateValueConstraints } from "@alien-form/protocol";
 import type {
   ArrayFieldNode,
   BaseFieldNode,
@@ -33,6 +34,7 @@ import type {
   RuntimeRuleContext,
   SchemaEffect,
   SchemaRuntimeValue,
+  SchemaXValidateRule,
   ValidateStatus,
   VoidFieldNode,
 } from "./types";
@@ -40,7 +42,7 @@ import { compileExpr } from "./expression";
 import { InstanceStore } from "./instance-store";
 import { PathResolver } from "./path-resolver";
 import { compileSchemaGraph, type SchemaGraph, type SchemaNode } from "./schema-graph";
-import { isEmptyValue, normalizeDataSource, normalizeValidationErrors } from "./validation";
+import { normalizeDataSource, normalizeValidationErrors } from "./validation";
 import { getDeepValue, normalizeNamePath, setDeepValue, sortByOrder } from "./path";
 
 interface FieldContext {
@@ -294,10 +296,10 @@ function createBaseField(
       const version = ctx.store.bumpValidation(field);
       base.validateStatus("validating");
       const value = projectNode(ctx, base as FieldNode, "output");
-      const errors: FieldError[] = [];
-      if (base.required() && isEmptyValue(value)) {
-        errors.push({ message: "该字段为必填项", type: "required" });
-      }
+      const errors: FieldError[] = validateValueConstraints(schema, value, {
+        required: base.required(),
+        label: schema.title ?? base.path,
+      });
       if (schema["x-validate"]) {
         errors.push(...(await runXValidate(ctx, base as FieldNode, schema["x-validate"]!, value)));
       }
@@ -1101,17 +1103,22 @@ function applyReactionValue(ctx: FieldContext, field: FieldNode, key: string, va
 async function runXValidate(
   ctx: FieldContext,
   field: FieldNode,
-  raw: SchemaRuntimeValue | SchemaRuntimeValue[],
+  raw: unknown,
   value: any,
 ): Promise<FieldError[]> {
   const rules = Array.isArray(raw) ? raw : [raw];
   const errors: FieldError[] = [];
   for (const rule of rules) {
+    if (!isXValidateRule(rule)) continue;
     const runtime = buildRuntimeContext(ctx, field, "x-validate", "validate", value);
     const result = await executeRuntimeValue(ctx, field, rule, runtime, "validate");
     errors.push(...normalizeValidationErrors(result));
   }
   return errors;
+}
+
+function isXValidateRule(value: unknown): value is SchemaXValidateRule {
+  return typeof value === "function" || (typeof value === "string" && isExpression(value));
 }
 
 function warnInvalid(ctx: FieldContext, field: FieldNode, key: string, message: string) {

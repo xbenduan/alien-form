@@ -22,6 +22,7 @@ export type {
   SchemaEffect,
   SchemaFormat,
   SchemaXValidate,
+  SchemaXValidateRule,
   RuntimeRuleContext,
   IFieldSchema,
   IFormSchema,
@@ -40,7 +41,13 @@ export type {
 } from "./form-types.ts";
 
 export { alienFieldSchema, alienPageSchema, alienSchema } from "./alien-schema.ts";
-export type { AlienFieldSchema, AlienSchema, AlienValue } from "./alien-schema.ts";
+export type { AlienExpression, AlienFieldSchema, AlienSchema, AlienValue } from "./alien-schema.ts";
+export {
+  isEmptyValue,
+  validateValueConstraints,
+  type ValueConstraintSchema,
+  type ValueValidationIssue,
+} from "./value-validation.ts";
 
 export {
   COMPONENT_CAPABILITIES,

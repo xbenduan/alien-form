@@ -31,7 +31,7 @@ import {
   runBeforePersist,
   validateModelRecord,
 } from "./model-middleware.ts";
-import { normalizeRecord } from "./record-validation.ts";
+import { normalizeRecord, validateRecord } from "./record-validation.ts";
 
 export type ListInput = ListRequest;
 export type OptionsInput = OptionsRequest;
@@ -396,6 +396,7 @@ export class RecordService {
           ? prepared.id
           : await this.records.allocateId();
     const candidate = normalizeRecord(model, { ...previous, ...prepared, id });
+    validateRecord(model, candidate);
     await validateModelRecord(
       this.models,
       this.records,

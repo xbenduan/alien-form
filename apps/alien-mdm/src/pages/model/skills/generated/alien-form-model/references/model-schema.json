@@ -233,6 +233,31 @@
                       }
                     ]
                   },
+                  "pattern": {
+                    "type": "string"
+                  },
+                  "minLength": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "maxLength": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "minimum": {
+                    "type": "number"
+                  },
+                  "maximum": {
+                    "type": "number"
+                  },
+                  "minItems": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "maxItems": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
                   "display": {
                     "anyOf": [
                       {
@@ -310,7 +335,17 @@
                     "additionalProperties": false
                   },
                   "x-validate": {
-                    "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form/properties/default"
+                    "anyOf": [
+                      {
+                        "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form/properties/display/anyOf/1"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form/properties/display/anyOf/1"
+                        }
+                      }
+                    ]
                   },
                   "dataSource": {
                     "$ref": "#/definitions/AlienSchema/properties/fields/items/properties/form/properties/default"

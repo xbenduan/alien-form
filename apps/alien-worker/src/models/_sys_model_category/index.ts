@@ -25,14 +25,8 @@ export default defineModel({
   middleware: {
     validate({ record, previous }) {
       const code = record.code;
-      if (typeof code !== "string" || !/^[A-Za-z_][A-Za-z0-9_-]*$/.test(code)) {
-        throw new Error("分类标识不合法");
-      }
       if (previous && requiredCategoryIds.has(record.id) && code !== previous.code) {
         throw forbidden("系统预置分类标识不可修改");
-      }
-      if (typeof record.name !== "string" || record.name.trim() === "") {
-        throw new Error("分类名称不能为空");
       }
       if (record.id === constants.allId && record.aggregate !== true) {
         throw forbidden("“全部”必须保持为聚合分类");

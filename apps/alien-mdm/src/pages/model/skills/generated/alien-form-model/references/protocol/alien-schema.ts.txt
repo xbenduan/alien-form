@@ -21,6 +21,9 @@ export type AlienValue =
   | AlienValue[]
   | { [key: string]: AlienValue };
 
+/** 可持久化的运行时表达式字符串。 */
+export type AlienExpression = `{{${string}}}`;
+
 /** Recursive AST node shared by forms, definitions, pages, properties, items, and slots. */
 export interface AlienFieldSchema {
   type?: string;
@@ -32,6 +35,20 @@ export interface AlienFieldSchema {
   $ref?: string;
   order?: number;
   required?: boolean | string[];
+  /** 字符串必须满足的 ECMAScript 正则表达式。 */
+  pattern?: string;
+  /** 字符串最小长度。 */
+  minLength?: number;
+  /** 字符串最大长度。 */
+  maxLength?: number;
+  /** 数字最小值。 */
+  minimum?: number;
+  /** 数字最大值。 */
+  maximum?: number;
+  /** 数组最小元素数。 */
+  minItems?: number;
+  /** 数组最大元素数。 */
+  maxItems?: number;
   display?: "visible" | "hidden" | "none" | `{{${string}}}`;
   disabled?: boolean;
   decorator?: string;
@@ -46,7 +63,8 @@ export interface AlienFieldSchema {
     input?: AlienValue;
     output?: AlienValue;
   };
-  "x-validate"?: AlienValue;
+  /** 复杂校验表达式；基础约束必须使用 pattern、长度或范围字段表达。 */
+  "x-validate"?: AlienExpression | AlienExpression[];
   dataSource?: AlienValue;
 }
 
@@ -125,6 +143,13 @@ export const alienFieldSchema: z.ZodType<AlienFieldSchema> = z.lazy(() =>
       $ref: z.string().optional(),
       order: z.number().optional(),
       required: z.union([z.boolean(), z.array(z.string())]).optional(),
+      pattern: z.string().optional(),
+      minLength: z.number().int().nonnegative().optional(),
+      maxLength: z.number().int().nonnegative().optional(),
+      minimum: z.number().finite().optional(),
+      maximum: z.number().finite().optional(),
+      minItems: z.number().int().nonnegative().optional(),
+      maxItems: z.number().int().nonnegative().optional(),
       display: z.union([z.enum(["visible", "hidden", "none"]), expressionSchema]).optional(),
       disabled: z.boolean().optional(),
       decorator: z.string().optional(),
@@ -138,7 +163,7 @@ export const alienFieldSchema: z.ZodType<AlienFieldSchema> = z.lazy(() =>
       "x-format": z
         .object({ input: jsonValue.optional(), output: jsonValue.optional() })
         .optional(),
-      "x-validate": jsonValue.optional(),
+      "x-validate": z.union([expressionSchema, z.array(expressionSchema)]).optional(),
       dataSource: jsonValue.optional(),
     })
     .passthrough(),

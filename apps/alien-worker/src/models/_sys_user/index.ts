@@ -40,12 +40,6 @@ export default defineModel({
       return next;
     },
     async validate({ record, models, records }) {
-      if (
-        typeof record.username !== "string" ||
-        !/^[A-Za-z_][A-Za-z0-9_.-]{2,63}$/.test(record.username)
-      ) {
-        throw new Error("username 必须为 3-64 位合法账号");
-      }
       if (record.id === constants.adminId && record.username !== constants.adminUsername) {
         throw forbidden("系统管理员账号不可修改");
       }

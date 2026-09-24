@@ -86,10 +86,16 @@ alienbase/AccessControl
 写操作固定经过以下阶段：
 
 ```text
-解析 → 鉴权 → prepare → 归一化 → validate → beforePersist
+解析 → 鉴权 → prepare → 默认值与结构归一化 → 协议表单校验
+    → 业务 validate → beforePersist
     → TransactionPlan（记录变更 + 领域事件）
     → D1 batch 原子提交（业务表 + Outbox）→ present
 ```
+
+协议表单校验是 Core 的强制阶段，直接调用 API 或由 Command 生成 mutation 都不能绕过。
+它递归执行字段白名单、`type`、`required`、`pattern`、字符串长度、数值范围和数组长度约束。
+这些静态约束由浏览器表单和服务端共享实现。`x-validate` 只允许代码函数或
+`{{...}}` 表达式，用于浏览器中的复杂自定义校验，不在服务端执行。
 
 模型只能通过固定生命周期扩展行为：
 
@@ -100,8 +106,9 @@ alienbase/AccessControl
 
 同一模型可同时命中多个定义。注册表先按声明顺序组合全部 `match` 定义，再组合
 `name` 或 `schema.name` 精确定义。`prepare` 与 `present` 依次传递结果，
-`validate` 与 `beforePersist` 依次执行。`beforePersist` 只能通过 `EventCollector`
-追加事件，不能自行提交事务或直接执行外部副作用。
+`validate` 与 `beforePersist` 依次执行。业务 `validate` 只负责查库、跨字段和领域不变量，
+不应重复实现 Schema 已表达的必填、类型或正则规则。`beforePersist` 只能通过
+`EventCollector` 追加事件，不能自行提交事务或直接执行外部副作用。
 
 模型专属业务使用声明式 `commands`。Command 必须声明操作权限和允许写入的字段，
 返回 mutation 与 event，由同一条记录执行管道再次完成字段鉴权、生命周期和协议校验。

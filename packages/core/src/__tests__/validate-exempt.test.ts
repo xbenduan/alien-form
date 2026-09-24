@@ -57,4 +57,42 @@ describe("validate — 豁免 hidden / none / disabled 的必填字段", () => {
     const form = createForm({ schema: schemaWith("hidden"), initialValues: { name: "Alice" } });
     await expect(form.submit((values) => values)).resolves.toMatchObject({ name: "Alice" });
   });
+
+  it("执行与服务端共享的声明式类型和正则校验", async () => {
+    const form = createForm({
+      schema: {
+        type: "object",
+        properties: {
+          code: {
+            type: "string",
+            title: "编码",
+            required: true,
+            pattern: "^[A-Z]{2,4}$",
+          },
+        },
+      },
+      initialValues: { code: "invalid" },
+    });
+
+    await expect(form.validate()).resolves.toBe(false);
+    expect(form.errors()).toEqual([{ type: "pattern", message: "编码 格式不合法" }]);
+  });
+
+  it("忽略绕过类型系统传入的静态 x-validate 值", async () => {
+    const form = createForm({
+      schema: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            "x-validate": "静态错误" as never,
+          },
+        },
+      },
+      initialValues: { name: "valid" },
+    });
+
+    await expect(form.validate()).resolves.toBe(true);
+    expect(form.errors()).toEqual([]);
+  });
 });

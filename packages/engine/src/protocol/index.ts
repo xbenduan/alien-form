@@ -5,7 +5,13 @@ import type { CompiledExpression, IFormSchema } from "@alien-form/core";
  * 本文件只保留前端编译产物类型（CompiledNode 等）与本地 JSON 值别名。
  */
 
-export type { AlienSchema, AlienValue, ModelSummary, AlienFieldSchema } from "@alien-form/protocol";
+export type {
+  AlienExpression,
+  AlienSchema,
+  AlienValue,
+  ModelSummary,
+  AlienFieldSchema,
+} from "@alien-form/protocol";
 
 export type ModelMeta = Pick<
   import("@alien-form/protocol").AlienSchema,

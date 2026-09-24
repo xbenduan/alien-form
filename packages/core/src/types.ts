@@ -19,6 +19,7 @@ export type {
   SchemaEffect,
   SchemaFormat,
   SchemaXValidate,
+  SchemaXValidateRule,
   RuntimeRuleContext,
   IFieldSchema,
   IFormSchema,

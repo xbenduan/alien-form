@@ -193,6 +193,61 @@ function assertComponentType(
   }
 }
 
+function assertValueConstraints(schema: AlienFieldSchema, path: string): void {
+  if (schema.pattern !== undefined) {
+    if (schema.type && schema.type !== "string") {
+      throw new Error(`${path}.pattern 只允许用于 string 字段`);
+    }
+    try {
+      new RegExp(schema.pattern);
+    } catch {
+      throw new Error(`${path}.pattern 不是合法正则表达式`);
+    }
+  }
+  if (
+    (schema.minLength !== undefined || schema.maxLength !== undefined) &&
+    schema.type &&
+    schema.type !== "string"
+  ) {
+    throw new Error(`${path}.minLength/maxLength 只允许用于 string 字段`);
+  }
+  if (
+    schema.minLength !== undefined &&
+    schema.maxLength !== undefined &&
+    schema.minLength > schema.maxLength
+  ) {
+    throw new Error(`${path}.minLength 不能大于 maxLength`);
+  }
+  if (
+    (schema.minimum !== undefined || schema.maximum !== undefined) &&
+    schema.type &&
+    schema.type !== "number"
+  ) {
+    throw new Error(`${path}.minimum/maximum 只允许用于 number 字段`);
+  }
+  if (
+    schema.minimum !== undefined &&
+    schema.maximum !== undefined &&
+    schema.minimum > schema.maximum
+  ) {
+    throw new Error(`${path}.minimum 不能大于 maximum`);
+  }
+  if (
+    (schema.minItems !== undefined || schema.maxItems !== undefined) &&
+    schema.type &&
+    schema.type !== "array"
+  ) {
+    throw new Error(`${path}.minItems/maxItems 只允许用于 array 字段`);
+  }
+  if (
+    schema.minItems !== undefined &&
+    schema.maxItems !== undefined &&
+    schema.minItems > schema.maxItems
+  ) {
+    throw new Error(`${path}.minItems 不能大于 maxItems`);
+  }
+}
+
 function assertSlots(
   schema: AlienFieldSchema,
   capability: ComponentCapability,
@@ -221,6 +276,7 @@ function assertSlots(
 }
 
 function assertFieldNode(schema: AlienFieldSchema, path: string, rowScope = false): void {
+  assertValueConstraints(schema, path);
   let capability: ComponentCapability | undefined;
   if (schema.component) {
     capability = assertComponent(schema.component, `${path}.component`);

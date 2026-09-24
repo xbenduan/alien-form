@@ -91,15 +91,6 @@ export default defineModel({
   middleware: {
     async validate(context) {
       const { record } = context;
-      if (typeof record.code !== "string" || !/^[A-Za-z_][A-Za-z0-9_-]*$/.test(record.code)) {
-        throw new Error("角色编码不合法");
-      }
-      if (typeof record.name !== "string" || record.name.trim() === "") {
-        throw new Error("角色名称不能为空");
-      }
-      if (typeof record.canCreateModel !== "boolean") {
-        throw new Error("是否允许新建模型必须为布尔值");
-      }
       await validateParent(context);
       const permissions = record.permissions;
       if (permissions === undefined) return;

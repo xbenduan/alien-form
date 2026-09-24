@@ -2,6 +2,7 @@
  * @alien-form/core — Type definitions
  * Value-capability runtime architecture
  */
+import type { AlienExpression } from "./alien-schema.ts";
 
 // ─── Signal Types ─────────────────────────────────────────────────────────────
 
@@ -96,7 +97,8 @@ export interface SchemaFormat {
   input?: SchemaRuntimeValue;
   output?: SchemaRuntimeValue;
 }
-export type SchemaXValidate = SchemaRuntimeValue | SchemaRuntimeValue[];
+export type SchemaXValidateRule = RuntimeExecutable | AlienExpression;
+export type SchemaXValidate = SchemaXValidateRule | SchemaXValidateRule[];
 
 export interface RuntimeRuleContext {
   field: FieldNode;
@@ -125,6 +127,13 @@ export interface IFieldSchema {
   $ref?: string;
   order?: number;
   required?: boolean | string[];
+  pattern?: string;
+  minLength?: number;
+  maxLength?: number;
+  minimum?: number;
+  maximum?: number;
+  minItems?: number;
+  maxItems?: number;
   display?: FieldDisplayTypes;
   disabled?: boolean;
   decorator?: string;

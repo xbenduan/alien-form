@@ -27,8 +27,9 @@ const schema: AlienSchema = {
       id: "article.title",
       key: "title",
       type: "string",
+      required: true,
       storage: { type: "text" },
-      form: {},
+      form: { pattern: "^.{2,}$" },
     },
     {
       id: "article.secret",
@@ -42,8 +43,8 @@ const schema: AlienSchema = {
   pages: [],
 };
 
-function dependencies(definition: SchemaModelDefinition, events: string[]) {
-  const model = runtimeModel(schema, { lifecycle: definition.middleware });
+function dependencies(definition: SchemaModelDefinition, events: string[], modelSchema = schema) {
+  const model = runtimeModel(modelSchema, { lifecycle: definition.middleware });
   let stored: ModelRecord | undefined;
   const models = {
     get: vi.fn().mockResolvedValue(model),
@@ -137,5 +138,68 @@ describe("model middleware pipeline", () => {
     await dependencies(module, []).create("article", { title: "标题", secret: "hidden" }, "actor");
 
     expect(presented).toEqual({ id: "record", title: "标题" });
+  });
+
+  it("rejects declarative Schema violations before business validate", async () => {
+    const module: SchemaModelDefinition = {
+      schema,
+      middleware: {
+        validate() {
+          throw new Error("不应进入业务校验");
+        },
+      },
+    };
+
+    for (const [values, message] of [
+      [{}, "title 必填"],
+      [{ title: 1 }, "title 必须为字符串"],
+      [{ title: "x" }, "title 格式不合法"],
+    ] as const) {
+      await expect(
+        dependencies(module, []).create("article", values, "actor"),
+      ).rejects.toMatchObject({
+        status: 400,
+        message,
+      });
+    }
+  });
+
+  it("applies nested defaults and validates nested fields for direct API writes", async () => {
+    const nestedSchema: AlienSchema = {
+      ...schema,
+      fields: [
+        ...schema.fields,
+        {
+          id: "article.profile",
+          key: "profile",
+          type: "object",
+          storage: { type: "json" },
+          form: {
+            properties: {
+              code: {
+                type: "string",
+                required: true,
+                pattern: "^[A-Z]+$",
+              },
+              enabled: {
+                type: "boolean",
+                default: true,
+              },
+            },
+          },
+        },
+      ],
+    };
+    const module: SchemaModelDefinition = { schema: nestedSchema };
+    const service = dependencies(module, [], nestedSchema);
+
+    await expect(
+      service.create("article", { title: "标题", profile: { code: "invalid" } }, "actor"),
+    ).rejects.toThrow("profile.code 格式不合法");
+    await expect(
+      service.create("article", { title: "标题", profile: { code: "VALID" } }, "actor"),
+    ).resolves.toMatchObject({
+      profile: { code: "VALID", enabled: true },
+    });
   });
 });

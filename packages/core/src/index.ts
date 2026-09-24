@@ -38,6 +38,7 @@ export type {
   SchemaReactions,
   SchemaFormat,
   SchemaXValidate,
+  SchemaXValidateRule,
   SchemaReactionKey,
   RuntimeRuleContext,
   RuntimeAccessor,
