@@ -165,6 +165,7 @@ export function FormBuilder({
                     spellCheck={false}
                     className={styles.sourceJson}
                     style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+                    autoSize={{ minRows: 10, maxRows: 20 }}
                   />
                 )}
               </div>
