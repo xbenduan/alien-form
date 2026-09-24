@@ -53,7 +53,7 @@ export const createCore = defineCore(({ db, modules = modelModules }: WorkerCore
     access,
   );
 
-  return Object.freeze({
+  return {
     models,
     records,
     auth: new AuthService(compiledModels, recordRepository, sessionRepository, profiles),
@@ -71,7 +71,7 @@ export const createCore = defineCore(({ db, modules = modelModules }: WorkerCore
       };
       for (const module of definitions) await module.database?.initialize?.(context);
     },
-  });
+  };
 });
 
 export type WorkerCore = ReturnType<typeof createCore>;
