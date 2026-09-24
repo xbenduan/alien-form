@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { Container } from "./container.ts";
-import { ensureModelModules } from "./services/bootstrap.ts";
+import { createModelModulesBootstrap } from "./services/bootstrap.ts";
 import { AppError } from "./errors.ts";
 import { ok, fail } from "./http/envelope.ts";
 import { requireSession } from "./http/middleware/session.ts";
@@ -11,12 +11,13 @@ import { authRoutes } from "./http/routes/auth.ts";
 import type { AppEnv } from "./env.ts";
 
 const app = new Hono<AppEnv>();
+const bootstrapModelModules = createModelModulesBootstrap();
 
-// 每个 /api 请求：装配依赖容器 → 挂到 context → 确保内置状态存在（幂等）。
+// 每个 /api 请求装配独立容器；模型发布与数据初始化在当前 isolate 内只成功执行一次。
 app.use("/api/v1/*", async (c, next) => {
   const container = new Container(c.env.DB);
   c.set("container", container);
-  await ensureModelModules(container);
+  await bootstrapModelModules(container);
   await next();
   c.executionCtx.waitUntil(container.outboxDispatcher.dispatchPending());
 });

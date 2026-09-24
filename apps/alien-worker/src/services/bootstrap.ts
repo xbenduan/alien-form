@@ -28,3 +28,22 @@ export async function ensureModelModules(container: Container): Promise<void> {
   };
   for (const module of modules) await module.database?.initialize?.(context);
 }
+
+/**
+ * 创建 isolate 级模型初始化协调器。
+ *
+ * 首批并发请求共享同一个初始化 Promise；初始化失败后清除缓存，使后续请求可以重试。
+ */
+export function createModelModulesBootstrap(): (container: Container) => Promise<void> {
+  let initialization: Promise<void> | undefined;
+
+  return async (container) => {
+    if (!initialization) {
+      initialization = ensureModelModules(container).catch((reason: unknown) => {
+        initialization = undefined;
+        throw reason;
+      });
+    }
+    await initialization;
+  };
+}

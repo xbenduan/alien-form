@@ -49,6 +49,10 @@ Core 不允许：
 | `utils/system-model.ts`          | 构造系统模型协议的纯工具                               |
 | `container.ts`                   | 组合根，负责把具体实现注入 Core 端口                   |
 
+Worker 为每个请求创建独立 `Container`，不跨请求共享请求态对象。模型发布与种子数据初始化
+由模块作用域的 bootstrap 协调器在每个 isolate 内只成功执行一次：首批并发请求共享同一个
+Promise，失败时清除缓存并允许后续请求重试。多 isolate 间仍依赖初始化操作自身的数据库幂等性。
+
 权限职责进一步拆分为：
 
 ```text

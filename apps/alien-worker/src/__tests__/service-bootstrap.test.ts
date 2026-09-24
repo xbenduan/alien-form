@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.ts";
-import { ensureModelModules } from "../services/bootstrap.ts";
+import { createModelModulesBootstrap, ensureModelModules } from "../services/bootstrap.ts";
 import { ModelModules } from "../services/model-modules.ts";
 import roleModule from "../services/models/_sys_role/index.ts";
 import userModule from "../services/models/_sys_user/index.ts";
@@ -38,6 +38,31 @@ describe("service initialization", () => {
     await ensureModelModules(container);
 
     expect(ensureSystemModel).toHaveBeenCalledWith(userModule.schema);
+  });
+
+  it("initializes model modules only once for concurrent requests", async () => {
+    const first = createContainer();
+    const second = createContainer();
+    const bootstrap = createModelModulesBootstrap();
+
+    await Promise.all([bootstrap(first.container), bootstrap(second.container)]);
+    await bootstrap(second.container);
+
+    expect(first.ensureSystemModel).toHaveBeenCalledTimes(1);
+    expect(second.ensureSystemModel).not.toHaveBeenCalled();
+  });
+
+  it("retries model initialization after a failure", async () => {
+    const first = createContainer();
+    const second = createContainer();
+    const bootstrap = createModelModulesBootstrap();
+    first.ensureSystemModel.mockRejectedValueOnce(new Error("bootstrap failed"));
+
+    await expect(bootstrap(first.container)).rejects.toThrow("bootstrap failed");
+    await bootstrap(second.container);
+
+    expect(first.ensureSystemModel).toHaveBeenCalledTimes(1);
+    expect(second.ensureSystemModel).toHaveBeenCalledTimes(1);
   });
 
   it("migrates missing role hierarchy fields without recreating seed records", async () => {
