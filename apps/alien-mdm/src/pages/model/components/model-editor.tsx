@@ -14,7 +14,6 @@ import { BasicInfo } from "./basic-info";
 import { DatabaseBuilder } from "./database-builder";
 import { FormBuilder } from "./form-builder";
 import { PageConfig } from "./page-config";
-import styles from "./model-editor.module.css";
 
 const STEP_TITLES = ["基本信息", "数据库构建", "表单配置", "页面配置"] as const;
 
@@ -106,14 +105,14 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
   };
 
   return (
-    <Flex className="pb-[76px]" vertical gap={16}>
-      <Card className={styles.stepCard}>
+    <Flex className="pb-19" vertical gap={16}>
+      {error && <Alert type="error" title={error} showIcon />}
+      {readOnly ? (
+        <Alert type="info" title="系统模型由系统维护，当前页面仅供查看。" showIcon />
+      ) : null}
+      <Card>
         <Steps current={step} items={STEP_TITLES.map((title) => ({ title }))} />
       </Card>
-      {error && <Alert type="error" message={error} showIcon />}
-      {readOnly ? (
-        <Alert type="info" message="系统模型由系统维护，当前页面仅供查看。" showIcon />
-      ) : null}
       {loading ? (
         <Skeleton active />
       ) : step === 0 ? (

@@ -3,7 +3,6 @@ import { useCallback, useMemo, useState } from "react";
 import { usePage, type ComponentProps, type ValueSource } from "@alien-form/react";
 import type { AlienFieldSchema, AlienSchema } from "@alien-form/engine";
 import type { FilterField } from "../utils/schema";
-import styles from "./filter.module.css";
 
 interface ReferenceValue {
   value: unknown;
@@ -82,20 +81,20 @@ export function Filter({
 
   return (
     <Card styles={{ body: { padding: 16 } }}>
-      <div className={styles.filter}>
-        <div className={styles.filterFields}>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] items-end gap-3 max-[640px]:grid-cols-1">
+        <div className="contents">
           {fields.map((field, index) => (
             <label
               key={field.name}
-              className={styles.filterField}
+              className="flex min-w-0 flex-col gap-1.5"
               style={!expanded && index >= visibleCount ? { display: "none" } : undefined}
             >
-              <span className={styles.filterLabel}>{field.title}</span>
+              <span className="text-[13px] text-[#4e5969]">{field.title}</span>
               {field.render(draft[field.name], (next) => update(field.name, next))}
             </label>
           ))}
         </div>
-        <div className={styles.filterActions}>
+        <div className="flex items-end justify-end">
           <Space>
             {hasExtraFields && (
               <Button type="link" onClick={() => setExpanded((current) => !current)}>

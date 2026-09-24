@@ -67,7 +67,6 @@ import type { RecordActionMode } from "../pages/record-form";
 import { useLayoutLoading } from "./loading-context";
 
 type OpenMode = "page" | "modal" | "drawer";
-import styles from "./table.module.css";
 
 interface OverlayState {
   mode: RecordActionMode;
@@ -152,7 +151,10 @@ function ResizableHeaderCell({ width, onColumnResize, children, ...props }: Resi
     <th {...props}>
       {children}
       {onColumnResize ? (
-        <span className={styles.columnResizeHandle} onMouseDown={startResize} />
+        <span
+          className="absolute inset-y-0 -right-1 z-[1] w-2 cursor-col-resize"
+          onMouseDown={startResize}
+        />
       ) : null}
     </th>
   );
@@ -464,7 +466,7 @@ export function Table({
   }, [filter, parentId]);
 
   const columnSettings = (
-    <div className={styles.columnSettings}>
+    <div className="mt-3 flex max-h-90 min-w-105 flex-col gap-2 overflow-auto">
       <DndContext
         sensors={columnSortSensors}
         collisionDetection={closestCenter}
@@ -531,8 +533,8 @@ export function Table({
 
   return (
     <>
-      <Card className={styles.tableCard} styles={{ body: { padding: 0 } }}>
-        <div className={styles.tableToolbar}>
+      <Card className="overflow-visible" styles={{ body: { padding: 0 } }}>
+        <div className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3 max-[640px]:items-start max-[640px]:flex-col max-[640px]:pb-3">
           <Space wrap>
             {selectedRowKeys.length > 0 ? (
               <>
@@ -648,14 +650,18 @@ function SortableColumnRow({ id, children }: { id: string; children: ReactNode }
   return (
     <div
       ref={setNodeRef}
-      className={styles.columnSettingRow}
+      className="grid grid-cols-[20px_minmax(120px,1fr)_96px_96px] items-center gap-2 bg-white"
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.5 : undefined,
       }}
     >
-      <span className={styles.columnDragHandle} {...attributes} {...listeners}>
+      <span
+        className="inline-flex cursor-grab touch-none items-center justify-center text-black/35 active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
         <HolderOutlined />
       </span>
       {children}

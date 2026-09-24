@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import type { ComponentProps } from "@alien-form/react";
 import type { AlienFieldSchema } from "@alien-form/engine";
 import type { FieldGridProps } from "@utils/field-grid";
-import styles from "./shared.module.css";
 
 /** 关联字段在详情与编辑回显时使用的结构化值。 */
 export interface ReferenceValue {
@@ -50,7 +49,11 @@ export function displayValue(value: any): ReactNode {
 }
 
 export function DetailValue({ value }: { value: unknown }) {
-  return <div className={styles.detailValue}>{displayValue(value)}</div>;
+  return (
+    <div className="min-h-5.5 wrap-anywhere whitespace-pre-wrap leading-5.5 text-[#262626]">
+      {displayValue(value)}
+    </div>
+  );
 }
 
 export type FieldMode = "add" | "edit" | "detail";

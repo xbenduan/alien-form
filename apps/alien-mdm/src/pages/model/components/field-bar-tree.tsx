@@ -12,7 +12,6 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button, Tag, Tooltip } from "antd";
 import { isContainer } from "../builder/codec";
 import type { FieldNode } from "../builder/types";
-import styles from "./field-bar-tree.module.css";
 
 interface FieldBarTreeProps {
   fields: FieldNode[];
@@ -44,17 +43,25 @@ function FieldBar({
     <div>
       <div
         ref={setNodeRef}
-        className={`${styles.fieldBar}${isDragging ? ` ${styles.dragging}` : ""}`}
+        className={`flex items-center gap-2.5 border border-[#e5e6eb] bg-[var(--app-surface-strong,rgba(255,255,255,0.88))] px-3 py-2 ${
+          isDragging ? "opacity-60 shadow-[0_6px_18px_rgba(23,32,51,0.12)]" : ""
+        }`}
         style={{ transform: CSS.Transform.toString(transform), transition, borderRadius }}
       >
-        <span className={styles.dragHandle} {...attributes} {...listeners}>
+        <span
+          className="inline-flex cursor-grab text-[#86909c] active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+        >
           <HolderOutlined />
         </span>
-        <span className={styles.barKey}>{node.key}</span>
-        <Tag className={styles.barComponent}>{node.form.component ?? node.type}</Tag>
-        <span className={styles.barTitle}>{node.title ?? "—"}</span>
+        <span className="min-w-[120px] font-semibold">{node.key}</span>
+        <Tag className="!text-[#4e5969]">{node.form.component ?? node.type}</Tag>
+        <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[#4e5969]">
+          {node.title ?? "—"}
+        </span>
         {node.source === "physical" ? <Tag color="blue">物理</Tag> : <Tag>虚拟</Tag>}
-        <span className={styles.barActions}>
+        <span className="inline-flex gap-0.5">
           {container ? (
             <Tooltip title="新增子项">
               <Button
@@ -89,7 +96,7 @@ function FieldBar({
         </span>
       </div>
       {container ? (
-        <div className={styles.nested}>
+        <div className="rounded-b-lg border border-t-0 border-dashed border-[#c9cdd4] bg-[var(--app-surface-muted,rgba(248,250,255,0.78))] px-3 py-2.5">
           <FieldBarTree
             fields={node.children ?? []}
             onEdit={onEdit}
@@ -126,7 +133,7 @@ export function FieldBarTree({
 
   if (fields.length === 0) {
     return (
-      <div className={styles.muted} style={{ padding: "4px 0" }}>
+      <div className="py-1 text-[#86909c]">
         暂无字段
       </div>
     );
@@ -135,7 +142,7 @@ export function FieldBarTree({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={fields.map((node) => node.id)} strategy={verticalListSortingStrategy}>
-        <div className={styles.fieldList}>
+        <div className="flex flex-col gap-2">
           {fields.map((node) => (
             <FieldBar
               key={node.id}

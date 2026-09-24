@@ -14,7 +14,6 @@ import { FormRenderer, useRuntime } from "@alien-form/react";
 import { compileForm, type AlienFieldSchema } from "@alien-form/engine";
 import { PageActionBar } from "../../../components/page-action-bar";
 import { recordListRoute } from "@utils/record-route";
-import styles from "./record-form.module.css";
 
 export type RecordActionMode = "add" | "edit" | "detail";
 
@@ -137,13 +136,16 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
   if (loading) {
     if (embedded) {
       return (
-        <div className={`${styles.overlayBody} ${styles.actionLoading}`}>
+        <div className="flex min-h-60 items-center justify-center">
           <Spin />
         </div>
       );
     }
     return (
-      <Card className={styles.actionBody} classNames={{ body: styles.actionLoading }}>
+      <Card
+        className="min-h-80 min-w-0"
+        classNames={{ body: "flex min-h-80 items-center justify-center p-0" }}
+      >
         <Spin />
       </Card>
     );
@@ -155,10 +157,15 @@ export const RecordForm = forwardRef<RecordFormHandle, RecordFormProps>(function
     </>
   );
 
-  if (embedded) return <div className={styles.overlayBody}>{content}</div>;
+  if (embedded) return <div className="min-h-60">{content}</div>;
   return (
     <>
-      <Card className={styles.actionBody} classNames={{ body: styles.actionContent }}>
+      <Card
+        className="min-h-80 min-w-0"
+        classNames={{
+          body: "min-h-80 px-4 py-7 max-[640px]:px-3 max-[640px]:py-5",
+        }}
+      >
         {content}
       </Card>
       <PageActionBar>{footer}</PageActionBar>

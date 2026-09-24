@@ -22,7 +22,6 @@ import { FieldsetCard } from "../../../components/fieldset-card";
 import { fieldGridStyle } from "@utils/field-grid";
 import { TableComplexCell } from "./complex-field";
 import { buildProps, type ComplexFieldProps } from "./shared";
-import styles from "./card.module.css";
 
 /** 数组行：支持拖动排序、上/下移与删除，仅在可编辑态展示操作。 */
 function ArrayRow({
@@ -54,20 +53,20 @@ function ArrayRow({
   return (
     <div
       ref={setNodeRef}
-      className={`${styles.arrayRow}${isDragging ? ` ${styles.arrayRowDragging}` : ""}`}
+      className={`box-border w-full min-w-0 max-w-full rounded-lg border border-[#d8dee8] bg-[var(--app-surface-muted,rgba(248,250,255,0.78))] px-3 pt-3 pb-1${isDragging ? " opacity-60 shadow-[0_6px_18px_rgba(23,32,51,0.12)]" : ""}`}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
-      <div className={styles.arrayRowHeader}>
-        <span className={styles.arrayRowIndexGroup}>
+      <div className="mb-1.5 flex min-h-7 items-center justify-between">
+        <span className="inline-flex items-center gap-1.5">
           {readonly ? null : (
-            <span className={styles.arrayRowDragHandle} {...attributes} {...listeners}>
+            <span className="inline-flex cursor-grab text-[#86909c] active:cursor-grabbing" {...attributes} {...listeners}>
               <HolderOutlined />
             </span>
           )}
-          <span className={styles.arrayRowIndex}>#{index + 1}</span>
+          <span className="font-semibold text-[#1677ff]">#{index + 1}</span>
         </span>
         {readonly ? null : (
-          <span className={styles.arrayRowActions}>
+          <span className="inline-flex items-center gap-0.5">
             <Tooltip title="上移">
               <Button
                 type="text"
@@ -101,7 +100,10 @@ function ArrayRow({
           </span>
         )}
       </div>
-      <div className={styles.fieldGrid} style={gridStyle}>
+      <div
+        className="grid w-full min-w-0 max-w-full grid-cols-[repeat(24,minmax(0,1fr))] gap-x-[var(--alien-grid-column-gap)] gap-y-[var(--alien-grid-row-gap)]"
+        style={gridStyle}
+      >
         {renderRow?.(row)}
       </div>
     </div>
@@ -149,7 +151,7 @@ function ArrayContent({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={rows.map((row) => row.id)} strategy={verticalListSortingStrategy}>
-        <div className={styles.arrayRows}>
+        <div className="grid w-full min-w-0 max-w-full gap-2.5">
           {rows.map((row, index) => (
             <ArrayRow
               key={row.id}
@@ -168,7 +170,7 @@ function ArrayContent({
       </SortableContext>
       {readonly ? null : (
         <Button
-          className={styles.addRow}
+          className="mt-2 justify-self-start"
           type="dashed"
           icon={<PlusOutlined />}
           onClick={() => field.push({})}
@@ -212,7 +214,7 @@ export function Card(props: ComplexFieldProps) {
         />
       ) : (
         <div
-          className={styles.fieldGrid}
+          className="grid w-full min-w-0 max-w-full grid-cols-[repeat(24,minmax(0,1fr))] gap-x-[var(--alien-grid-column-gap)] gap-y-[var(--alien-grid-row-gap)]"
           style={fieldGridStyle({ columns: built.columns, gutter: built.gutter })}
         >
           {built.children}

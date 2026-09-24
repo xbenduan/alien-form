@@ -4,7 +4,6 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "@alien-form/react";
 import { Tree, type TreeNode } from "../../../components/tree";
 import type { TreeOptions } from "../utils/tree";
-import styles from "./tree.module.css";
 import { useLayoutLoading } from "./loading-context";
 
 interface TreeLayoutOptions extends TreeOptions {
@@ -72,12 +71,19 @@ export function TreeLayout({
   );
 
   return (
-    <Card className={styles.treeCard}>
-      {title ? <header className={styles.treeHeader}>{title}</header> : null}
+    <Card
+      className="h-full min-h-[520px] overflow-hidden max-[900px]:min-h-[320px]"
+      styles={{ body: { height: "100%", padding: 0 } }}
+    >
+      {title ? (
+        <header className="border-b border-[#e8edf3] bg-[var(--app-surface-muted,rgba(248,250,255,0.78))] px-4 py-3 text-sm font-medium text-[#172033]">
+          {title}
+        </header>
+      ) : null}
       <Spin spinning={loading}>
-        <div className={styles.treeContent} aria-busy={loading}>
+        <div className="min-h-[120px] p-2.5" aria-busy={loading}>
           <Input
-            className={styles.treeSearch}
+            className="mb-2.5 rounded-md"
             allowClear
             placeholder="搜索节点"
             prefix={<SearchOutlined />}

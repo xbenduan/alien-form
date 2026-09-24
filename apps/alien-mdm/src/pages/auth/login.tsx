@@ -3,7 +3,6 @@ import { App, Button, Input, Typography } from "antd";
 import { useState, type FormEvent } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../../app/providers";
-import styles from "./login.module.css";
 
 export default function LoginPage() {
   const auth = useAuth();
@@ -27,26 +26,36 @@ export default function LoginPage() {
   };
 
   return (
-    <main className={styles.loginPage}>
-      <section className={styles.panel} aria-label="登录">
-        <div className={styles.brand}>
-          <div className={styles.brandMark}>
+    <main className="grid min-h-screen place-items-center bg-[linear-gradient(135deg,rgba(22,119,255,0.08),rgba(21,121,88,0.08)),#f5f7fb]">
+      <section
+        className="w-[min(420px,calc(100vw-40px))] rounded-lg border border-[#e0e7f0] bg-white p-[34px] shadow-[0_18px_44px_rgba(30,65,110,0.12)] max-[520px]:p-6"
+        aria-label="登录"
+      >
+        <div className="mb-7 flex items-center gap-3.5">
+          <div className="grid h-[42px] w-[42px] place-items-center overflow-hidden rounded-[7px]">
             <img src="/favicon.svg" alt="" aria-hidden="true" />
           </div>
           <div>
-            <Typography.Text className={styles.kicker}>ALIEN MDM</Typography.Text>
+            <Typography.Text className="text-xs font-bold tracking-[1.2px] text-[#1677ff]">
+              ALIEN MDM
+            </Typography.Text>
             <Typography.Title
               level={3}
-              className={styles.title}
-              style={{ marginTop: 0, marginBottom: 0 }}
+              className="!m-0 text-[#172033]"
             >
               登录工作台
             </Typography.Title>
           </div>
         </div>
-        <form className={styles.form} onSubmit={submit}>
-          <div className={styles.formItem}>
-            <label className={styles.label} htmlFor="login-username">
+        <form
+          className="[&_.ant-input-affix-wrapper]:rounded-md"
+          onSubmit={submit}
+        >
+          <div className="mb-6">
+            <label
+              className="mb-2 inline-flex text-sm leading-[22px] text-[#262626]"
+              htmlFor="login-username"
+            >
               登录账号
             </label>
             <Input
@@ -59,8 +68,11 @@ export default function LoginPage() {
               onChange={(event) => setUsername(event.target.value)}
             />
           </div>
-          <div className={styles.formItem}>
-            <label className={styles.label} htmlFor="login-password">
+          <div className="mb-6">
+            <label
+              className="mb-2 inline-flex text-sm leading-[22px] text-[#262626]"
+              htmlFor="login-password"
+            >
               登录密码
             </label>
             <Input.Password

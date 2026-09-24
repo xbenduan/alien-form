@@ -4,7 +4,6 @@ import { useLocation, useParams } from "react-router-dom";
 import { FormRenderer, PageProvider, useRuntime } from "@alien-form/react";
 import type { PageRuntime } from "@alien-form/engine";
 import { usePageTitle } from "./navigation";
-import styles from "./dynamic-routes.module.css";
 
 export function DynamicPage() {
   const runtime = useRuntime();
@@ -58,12 +57,12 @@ export function DynamicPage() {
   );
 
   if (!modelCode) return <Result status="404" title="模型编码缺失" />;
-  if (error) return <Alert type="error" message="动态页面加载失败" description={error} showIcon />;
+  if (error) return <Alert type="error" title="动态页面加载失败" description={error} showIcon />;
   if (!page) return <Skeleton active />;
   const isAction = page.page.router !== "list";
   return (
     <PageProvider page={page}>
-      <div className={`${styles.recordRoute}${isAction ? ` ${styles.actionRoute}` : ""}`}>
+      <div className={`flex min-w-0 flex-col gap-4 ${isAction ? "mx-auto w-full pb-19" : ""}`}>
         <FormRenderer form={page.form} root={page.page.root} domain={page.domain} />
       </div>
     </PageProvider>

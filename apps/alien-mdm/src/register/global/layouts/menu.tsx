@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Card, Menu as AntMenu, type MenuProps } from "antd";
 import type { ComponentProps } from "@alien-form/react";
-import styles from "./menu.module.css";
 
 export interface MenuItem {
   key: string;
@@ -56,13 +55,24 @@ export function Menu(props: AlienMenuProps) {
 
   return (
     <Card
-      className={styles.menu}
+      className="box-border flex h-full min-h-0 w-full flex-col overflow-hidden"
+      styles={{
+        body: {
+          display: "flex",
+          height: "100%",
+          minHeight: 0,
+          flexDirection: "column",
+          overflowY: "auto",
+          padding: "12px 10px",
+          scrollbarGutter: "stable",
+        },
+      }}
       role="navigation"
       aria-label={typeof title === "string" ? title : "菜单"}
     >
-      {title ? <div className={styles.title}>{title}</div> : null}
+      {title ? <div className="px-3 pt-2 pb-3 text-[15px] font-semibold text-[#172033]">{title}</div> : null}
       <AntMenu
-        className={styles.antdMenu}
+        className="min-h-0 flex-1 !border-e-0 !bg-transparent [&_.ant-menu-item]:my-1 [&_.ant-menu-item]:h-[38px] [&_.ant-menu-item]:rounded-[7px] [&_.ant-menu-item]:leading-[38px] [&_.ant-menu-item-selected]:!bg-[#eaf3ff] [&_.ant-menu-item-selected]:!font-semibold [&_.ant-menu-item-selected]:!text-[#1769e0] [&_.ant-menu-item-selected::after]:!hidden [&_.ant-menu-item:hover]:!bg-[#f2f6fc] [&_.ant-menu-item:hover]:!text-[#1769e0]"
         mode="inline"
         items={toAntMenuItems(items)}
         selectedKeys={selectedKey ? [selectedKey] : []}

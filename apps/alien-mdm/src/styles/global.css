@@ -53,3 +53,28 @@ body {
   backdrop-filter: blur(12px);
   box-shadow: 0 4px 14px rgba(23, 32, 51, 0.05);
 }
+
+.ant-table-sticky-holder {
+  z-index: 10 !important;
+  background: var(--app-surface-strong, rgba(255, 255, 255, 0.88));
+}
+
+.ant-table-sticky-holder .ant-table-thead > tr > th {
+  z-index: 12 !important;
+}
+
+.ant-table-tbody > tr > td.ant-table-cell-fix-start,
+.ant-table-tbody > tr > td.ant-table-cell-fix-end {
+  z-index: 1 !important;
+}
+
+.ant-table-thead > tr > th.ant-table-cell-fix-right,
+.ant-table-thead > tr > th.ant-table-cell-fix-left,
+.ant-table-thead > tr > th.ant-table-cell-fix-end,
+.ant-table-thead > tr > th.ant-table-cell-fix-start,
+.ant-table-sticky-holder .ant-table-cell-fix-left-first,
+.ant-table-sticky-holder .ant-table-cell-fix-left-last,
+.ant-table-sticky-holder .ant-table-cell-fix-start {
+  z-index: 20 !important;
+  background: var(--app-table-fixed-header, #f6f8fc);
+}

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { fieldGridItemStyle } from "@utils/field-grid";
-import styles from "./form-item.module.css";
 
 export function FormItem({
   title,
@@ -23,20 +22,24 @@ export function FormItem({
 }) {
   return (
     <div
-      className={`${styles.formItem}${mode === "detail" ? ` ${styles.detailFormItem}` : ""}`}
+      className="col-span-[var(--alien-grid-item-span,var(--alien-grid-default-span,24))] mb-2 min-w-0 max-[640px]:col-span-full"
       style={fieldGridItemStyle(gridSpan)}
       data-alien-form-field={fieldPath}
       tabIndex={fieldPath ? -1 : undefined}
     >
       {title ? (
-        <label className={`${styles.formItemLabel}${required ? ` ${styles.required}` : ""}`}>
+        <label
+          className={`mb-2 inline-flex items-center text-sm leading-[22px] ${mode === "detail" ? "text-[#8c8c8c]" : "text-[#262626]"}${required ? " before:mr-1 before:font-[SimSun,sans-serif] before:text-sm before:leading-none before:text-[#ff4d4f] before:content-['*']" : ""}`}
+        >
           {title}
         </label>
       ) : null}
-      <div className={styles.formItemControl}>{children}</div>
-      {description ? <div className={styles.formItemDescription}>{description}</div> : null}
+      <div className="min-w-0">{children}</div>
+      {description ? (
+        <div className="mt-1.5 text-sm leading-5 text-[#8c8c8c]">{description}</div>
+      ) : null}
       {errors?.[0]?.message ? (
-        <div className={styles.formItemError} role="alert">
+        <div className="mt-1.5 text-sm leading-5 text-[#ff4d4f]" role="alert">
           {errors[0].message}
         </div>
       ) : null}

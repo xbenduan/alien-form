@@ -27,7 +27,7 @@ export function FieldsetCard({
       {description ? (
         <div className="-mt-0.5 mb-3 text-[13px] leading-5 text-[#8a94a6]">{description}</div>
       ) : null}
-      <div className="min-w-0">{children}</div>
+      <div className="w-full min-w-0 max-w-full">{children}</div>
     </fieldset>
   );
 }

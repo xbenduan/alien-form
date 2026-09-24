@@ -4,7 +4,6 @@ import type { ComponentProps } from "@alien-form/react";
 import { Tree, findTreeTitle, type TreeNode } from "../../../components/tree";
 import type { TreeOptions } from "../utils/tree";
 import { DetailValue, buildProps, isReferenceValue, referenceValue } from "./shared";
-import styles from "./tree-select.module.css";
 
 type TreeLoader = (options: TreeOptions) => Promise<TreeNode[]>;
 
@@ -150,7 +149,10 @@ export function TreeSelect(
       options={options}
       loading={Boolean(loading) || remoteLoading}
       popupRender={() => (
-        <div className={styles.popup} onMouseDown={(event) => event.preventDefault()}>
+        <div
+          className="max-h-80 min-h-12 overflow-y-auto p-1"
+          onMouseDown={(event) => event.preventDefault()}
+        >
           <Spin spinning={remoteLoading}>
             <Tree
               nodes={nodes}
