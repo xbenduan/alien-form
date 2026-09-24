@@ -675,13 +675,19 @@ interface RowButtonContext {
   record: Record<string, unknown>;
 }
 
-interface RecordActionButtonProps extends Omit<ButtonProps, "disabled" | "onClick"> {
+interface TableActionContextProps {
+  row?: Record<string, unknown>;
+  model?: string;
+  rowKey?: string;
+  refresh?: () => void | Promise<void>;
+  openAction?: (mode: RecordActionMode, openMode: OpenMode, recordId?: unknown) => void;
+}
+
+interface RecordActionButtonProps
+  extends Omit<ButtonProps, "disabled" | "onClick">,
+    TableActionContextProps {
   mode: RecordActionMode;
   openMode?: OpenMode;
-  row?: Record<string, unknown>;
-  rowKey?: string;
-  model?: string;
-  openAction?: (mode: RecordActionMode, openMode: OpenMode, recordId?: unknown) => void;
   disabled?: boolean | ((row: Record<string, unknown>) => boolean);
   onClick?: (row: Record<string, unknown> | undefined, context: RowButtonContext) => unknown;
 }
@@ -705,6 +711,7 @@ export function RecordActionButton({
   row,
   rowKey = "id",
   model,
+  refresh: _refresh,
   openAction,
   disabled,
   onClick,
@@ -734,10 +741,9 @@ export function RecordActionButton({
   );
 }
 
-interface BatchButtonProps extends Omit<ButtonProps, "onClick"> {
+interface BatchButtonProps extends Omit<ButtonProps, "onClick">, TableActionContextProps {
   selection?: BatchContext;
   clearSelection?: () => void;
-  refresh?: () => void | Promise<void>;
   confirm?: ReactNode;
   confirmDescription?: ReactNode;
   successMessage?: string;
@@ -750,6 +756,10 @@ export function BatchButton({
   selection,
   clearSelection,
   refresh,
+  row: _row,
+  model: _model,
+  rowKey: _rowKey,
+  openAction: _openAction,
   confirm,
   confirmDescription,
   successMessage,
@@ -805,12 +815,10 @@ export function BatchButton({
   );
 }
 
-interface RowButtonProps extends Omit<ButtonProps, "disabled" | "onClick"> {
+interface RowButtonProps
+  extends Omit<ButtonProps, "disabled" | "onClick">,
+    TableActionContextProps {
   icon?: keyof typeof ICON_MAP;
-  row?: Record<string, unknown>;
-  model?: string;
-  rowKey?: string;
-  refresh?: () => void | Promise<void>;
   confirm?: ReactNode;
   confirmDescription?: ReactNode;
   successMessage?: string;
@@ -831,6 +839,7 @@ export function RowButton({
   model,
   rowKey = "id",
   refresh,
+  openAction: _openAction,
   confirm,
   confirmDescription,
   successMessage,
