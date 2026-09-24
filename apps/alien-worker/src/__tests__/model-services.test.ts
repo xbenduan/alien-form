@@ -39,6 +39,12 @@ describe("ModelModules", () => {
       _sys_role: ["id", "code", "name", "parentId", "createdAt", "updatedAt"],
       _sys_user: ["id", "username", "passwordHash", "createdAt", "updatedAt"],
     });
+    const category = schemas.find(({ name }) => name === "_sys_model_category")!;
+    const role = schemas.find(({ name }) => name === "_sys_role")!;
+    expect(category.fields.find(({ key }) => key === "code")?.form.maxLength).toBe(32);
+    expect(category.fields.find(({ key }) => key === "name")?.form.maxLength).toBe(5);
+    expect(role.fields.find(({ key }) => key === "code")?.form.maxLength).toBe(32);
+    expect(role.fields.find(({ key }) => key === "name")?.form.maxLength).toBe(32);
   });
 
   it("matches batch behavior before exact model behavior", async () => {

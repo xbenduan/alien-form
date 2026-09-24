@@ -19,6 +19,7 @@ export default function createSchema(constants: {
       form: {
         component: "Input",
         pattern: "^[A-Za-z_][A-Za-z0-9_-]*$",
+        maxLength: 32,
         props: { placeholder: "请输入角色编码" },
       },
     }),
@@ -30,6 +31,7 @@ export default function createSchema(constants: {
       form: {
         component: "Input",
         pattern: "\\S",
+        maxLength: 32,
         props: { placeholder: "请输入角色名称" },
       },
     }),

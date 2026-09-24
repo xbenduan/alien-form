@@ -15,6 +15,7 @@ export default function createSchema(modelCode: string): AlienSchema {
       form: {
         component: "Input",
         pattern: "^[A-Za-z_][A-Za-z0-9_-]*$",
+        maxLength: 32,
         props: { placeholder: "请输入分类标识" },
       },
     }),
@@ -26,6 +27,7 @@ export default function createSchema(modelCode: string): AlienSchema {
       form: {
         component: "Input",
         pattern: "\\S",
+        maxLength: 5,
         props: { placeholder: "请输入分类名称" },
       },
     }),
