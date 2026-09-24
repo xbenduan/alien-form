@@ -27,7 +27,7 @@ D1 Repository / Compiler Adapters
 
 AlienBase Core 仅包含：
 
-- 模型定义发布与版本控制。
+- 用户模型定义发布与版本控制。
 - 记录读写的统一执行管道。
 - 模型中间件生命周期调度。
 - 协议级记录校验与可见性。
@@ -46,7 +46,7 @@ AlienBase Core 不允许：
 | 目录或文件                                        | 职责                                               |
 | ------------------------------------------------- | -------------------------------------------------- |
 | `packages/alienbase/src/runtime/`                 | 所有模型必经的执行内核、权限决策和端口             |
-| `packages/alienbase/src/define-core.ts`           | 保留完整类型推导的项目级 Core 工厂                 |
+| `packages/alienbase/src/define-core.ts`           | 项目级静态模型清单与请求级 Core 工厂               |
 | `packages/alienbase/src/define-model.ts`          | 数据库无关的模型模块与初始化上下文                 |
 | `apps/alien-worker/src/bootstrap/core.ts`         | Worker 唯一组合根与 isolate 初始化协调器           |
 | `apps/alien-worker/src/application/`              | 认证、编译模型注册、模型策略与 Outbox 派发         |
@@ -57,7 +57,14 @@ AlienBase Core 不允许：
 | `apps/alien-worker/src/index.ts`                  | Cloudflare Worker 最小入口                         |
 
 Worker 为每个请求通过 `createCore({ db })` 创建独立运行时，不跨请求共享请求态对象。
-模型发布与种子数据初始化由 `initializeCore` 在每个 isolate 内只成功执行一次：首批并发
+模型定义通过 `defineCore.models` 中的字面量动态导入静态注册，使 Worker 构建器能够确定
+完整模块图，不再通过文件扫描生成 manifest。只有携带 `schema` 的定义才进入代码模型
+目录并占用系统模型名；`name` 与 `match` 定义只为数据库 Schema 附加行为，不改变模型
+所有权。系统模型 Schema 始终从代码目录读取，不写入 `models` 表；`models` 表只保存
+用户创建的模型。系统模型物理表只允许通过显式 D1 migration 变更，修改代码 Schema
+不会触发建表或字段迁移。
+
+种子数据初始化由 `initializeCore` 在每个 isolate 内只成功执行一次：首批并发
 请求共享同一个 Promise，失败时清除缓存并允许后续请求重试。多 isolate 间仍依赖初始化
 操作自身的数据库幂等性。
 
@@ -91,25 +98,30 @@ alienbase/AccessControl
 - `beforePersist`
 - `present`
 
-每个模型每个阶段最多一个处理函数。`beforePersist` 只能通过 `EventCollector`
+同一模型可同时命中多个定义。注册表先按声明顺序组合全部 `match` 定义，再组合
+`name` 或 `schema.name` 精确定义。`prepare` 与 `present` 依次传递结果，
+`validate` 与 `beforePersist` 依次执行。`beforePersist` 只能通过 `EventCollector`
 追加事件，不能自行提交事务或直接执行外部副作用。
 
 模型专属业务使用声明式 `commands`。Command 必须声明操作权限和允许写入的字段，
 返回 mutation 与 event，由同一条记录执行管道再次完成字段鉴权、生命周期和协议校验。
+多个定义中的 Command 名称不得重复，冲突会在 `CompiledModel` 编译时失败。
 HTTP 入口统一为 `POST /api/v1/records/:model/actions/:command`。
 
 ## 编译与缓存
 
-协议发布后，`CompiledModels` 按 `model@version` 编译并缓存以下不可变计划：
+`CompiledModels` 优先从代码目录读取系统 Schema，找不到时才从模型仓储读取用户 Schema。
+Schema 来源确定后，注册表只按统一协议匹配行为，下游不再区分代码模型和数据库模型。
+最终按 `model@version` 编译、缓存以下不可变计划：
 
 - 存储表、字段、索引与关系计划。
 - 查询字段表达式及过滤、排序能力。
 - 公私字段策略。
 - 校验字段映射。
-- 代码模型声明的生命周期、Command 和事件消费者。
+- 所有匹配定义组合后的生命周期、Command 和事件消费者。
 
 读写服务、鉴权身份解析、引用展开和模型策略只接收 `CompiledModelProvider`，
-不会在请求路径中重复解释协议。模型发布后必须使该模型的缓存失效。
+不会在请求路径中重复解释协议。用户模型发布后必须使该模型的缓存失效。
 
 ## 事务与事件
 
@@ -119,13 +131,15 @@ D1 不提供跨任意异步逻辑的交互式事务。本系统先完成读取�
 
 提交后，Worker 使用 `executionCtx.waitUntil()` 调用 `OutboxDispatcher`。消费者成功后
 写入 `processed_at`；失败则增加 `attempts` 并保存 `last_error`，供后续请求重试。
-因此外部副作用不阻塞事务，也不会在业务提交前执行。
+同一主题命中的消费者按定义组合顺序全部执行。因此外部通知等副作用不阻塞事务，
+也不会在业务提交前执行。
 
 ## 端口边界
 
 AlienBase Runtime 只能依赖 `packages/alienbase/src/runtime/contracts.ts` 中定义的端口：
 
-- `ModelRepository`：模型元数据发布与版本控制。
+- `ModelRepository`：用户模型元数据发布与版本控制。
+- `CodeModelCatalog`：代码内系统模型的只读协议目录。
 - `CompiledModelProvider`：运行时模型解析与缓存。
 - `RecordReader`：受控数据读取。
 - `UnitOfWork`：原子提交 `TransactionPlan`。

@@ -2,9 +2,13 @@ export { defineCore } from "./define-core.ts";
 export {
   defineModel,
   ensureRecord,
+  type MatchedModelDefinition,
   type ModelDatabaseConfig,
   type ModelDatabaseContext,
-  type ModelModule,
+  type ModelDefinition,
+  type ModelMatchContext,
+  type NamedModelDefinition,
+  type SchemaModelDefinition,
 } from "./define-model.ts";
 export { AppError, badRequest, conflict, forbidden, notFound, unauthorized } from "./errors.ts";
 export {

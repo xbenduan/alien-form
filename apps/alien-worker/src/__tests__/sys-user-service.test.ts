@@ -33,8 +33,17 @@ function context(record: ModelRecord, roleIds: string[]): ModelValidationContext
 }
 
 describe("_sys_user service", () => {
-  it("declares the user role as a required many-to-many field", () => {
+  it("declares only credentials, roles, and system fields", () => {
     expect(() => parseAlienSchema(userModule.schema)).not.toThrow();
+    expect(userModule.schema.fields.map((field) => field.key)).toEqual([
+      "id",
+      "username",
+      "password",
+      "passwordHash",
+      "roleId",
+      "createdAt",
+      "updatedAt",
+    ]);
     expect(userModule.schema.fields.find((field) => field.key === "passwordHash")).toMatchObject({
       private: true,
     });
@@ -55,13 +64,13 @@ describe("_sys_user service", () => {
         { id: "user", username: "student", roleId: ["student", "student", "monitor"] },
         { actorId: userModule.constants.adminId, operation: "update" },
       ),
-    ).resolves.toMatchObject({ roleId: ["student", "monitor"], super: false });
+    ).resolves.toMatchObject({ roleId: ["student", "monitor"] });
     await expect(
       prepare(
         { id: userModule.constants.adminId, username: "_sys_admin", roleId: ["student"] },
         { actorId: userModule.constants.adminId, operation: "update" },
       ),
-    ).resolves.toMatchObject({ roleId: [roleModule.constants.superAdminId], super: true });
+    ).resolves.toMatchObject({ roleId: [roleModule.constants.superAdminId] });
   });
 
   it("requires at least one existing role", async () => {

@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AlienSchema } from "@alien-form/protocol";
 import type { AccessControl } from "@alien-form/alienbase";
-import type { CompiledModelProvider, ModelRepository } from "@alien-form/alienbase";
+import type {
+  CodeModelCatalog,
+  CompiledModelProvider,
+  ModelRepository,
+} from "@alien-form/alienbase";
 import { ModelService, type ModelGroupPolicy } from "@alien-form/alienbase";
 
 /** Creates a minimal valid model schema for service tests. */
@@ -79,6 +83,7 @@ function dependencies() {
     assertCan: vi.fn(),
     assertCanManageModel: vi.fn(),
     canRead: vi.fn().mockReturnValue(true),
+    projectSchema: vi.fn((_profile, value) => value),
   } as unknown as AccessControl;
   const groups = {
     assertValid: vi.fn(),
@@ -86,19 +91,35 @@ function dependencies() {
   return { access, groups, models, publish, remove };
 }
 
-function compiledModels(systemModels: string[] = []): CompiledModelProvider {
+function codeModels(schemas: AlienSchema[] = []): CodeModelCatalog {
   return {
-    get: vi.fn(),
+    list: vi.fn().mockResolvedValue(schemas),
+    has: vi.fn(async (name: string) => schemas.some((item) => item.name === name)),
+  };
+}
+
+function compiledModels(schemas: AlienSchema[] = []): CompiledModelProvider {
+  return {
+    get: vi.fn(async (name: string) => {
+      const value = schemas.find((item) => item.name === name);
+      return value ? ({ schema: value } as never) : undefined;
+    }),
     require: vi.fn(),
     invalidate: vi.fn(),
-    isCodeModel: vi.fn((name: string) => systemModels.includes(name)),
   };
 }
 
 describe("ModelService", () => {
   it("rejects updates and deletes for code-defined system models", async () => {
     const { access, groups, models, remove } = dependencies();
-    const service = new ModelService(models, access, compiledModels(["_sys_test"]), groups);
+    const systemSchema = schema("_sys_test");
+    const service = new ModelService(
+      models,
+      codeModels([systemSchema]),
+      access,
+      compiledModels([systemSchema]),
+      groups,
+    );
 
     await expect(service.update("_sys_test", schema("_sys_test"), "admin")).rejects.toMatchObject({
       status: 403,
@@ -109,7 +130,7 @@ describe("ModelService", () => {
 
   it("records the authenticated creator instead of trusting submitted metadata", async () => {
     const { access, groups, models, publish } = dependencies();
-    const service = new ModelService(models, access, compiledModels(), groups);
+    const service = new ModelService(models, codeModels(), access, compiledModels(), groups);
 
     await service.create({ ...schema(), creatorId: "spoofed", system: true }, "admin");
 
@@ -121,36 +142,60 @@ describe("ModelService", () => {
     );
   });
 
-  it("publishes a newer system schema revision with optimistic locking", async () => {
-    const desired = {
-      ...schema("_sys_test"),
-      system: true,
-      systemRevision: 2,
-      fields: schema("_sys_test").fields.map((field) =>
-        field.key === "updatedAt" ? { ...field, required: false } : field,
-      ),
-    };
-    const current = {
-      ...desired,
-      version: 1,
-      systemRevision: 1,
-      fields: desired.fields.filter((field) => field.key !== "updatedAt"),
-    };
-    const publish = vi.fn(async (_current: AlienSchema | undefined, value: AlienSchema) => value);
-    const models = {
-      get: vi.fn().mockResolvedValue(current),
-      publish,
-    } as unknown as ModelRepository;
-    const service = new ModelService(models, {} as AccessControl, compiledModels(["_sys_test"]), {
-      assertValid: vi.fn(),
-    });
-
-    await service.ensureSystemModel(desired);
-
-    expect(publish).toHaveBeenCalledWith(
-      current,
-      expect.objectContaining({ name: "_sys_test", version: 2 }),
-      1,
+  it("serves code schemas without reading persisted model metadata", async () => {
+    const systemSchema = { ...schema("_sys_test"), version: 1, system: true };
+    const { access, groups, models } = dependencies();
+    const service = new ModelService(
+      models,
+      codeModels([systemSchema]),
+      access,
+      compiledModels([systemSchema]),
+      groups,
     );
+
+    await expect(service.get(systemSchema.name, "admin")).resolves.toEqual(systemSchema);
+    expect(models.get).not.toHaveBeenCalled();
+  });
+
+  it("lists code models once and ignores stale persisted copies", async () => {
+    const systemSchema = { ...schema("_sys_test"), version: 1, system: true };
+    const { access, groups, models } = dependencies();
+    vi.mocked(models.list).mockResolvedValue([
+      {
+        name: systemSchema.name,
+        title: "数据库旧副本",
+        version: 99,
+        fieldCount: 0,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+    const service = new ModelService(
+      models,
+      codeModels([systemSchema]),
+      access,
+      compiledModels([systemSchema]),
+      groups,
+    );
+
+    await expect(service.list("admin")).resolves.toEqual([
+      expect.objectContaining({ name: systemSchema.name, title: "文章", system: true }),
+    ]);
+  });
+
+  it("reserves code model names for system models", async () => {
+    const systemSchema = schema("_sys_test");
+    const { access, groups, models } = dependencies();
+    const service = new ModelService(
+      models,
+      codeModels([systemSchema]),
+      access,
+      compiledModels([systemSchema]),
+      groups,
+    );
+
+    await expect(service.create(schema("_sys_test"), "admin")).rejects.toMatchObject({
+      status: 409,
+    });
+    expect(models.has).not.toHaveBeenCalled();
   });
 });

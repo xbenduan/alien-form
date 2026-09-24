@@ -21,7 +21,6 @@ export async function initialize(
       name: "全部",
       order: 0,
       aggregate: true,
-      description: "聚合展示全部可访问模型。",
     },
     actorId,
   );
@@ -34,7 +33,6 @@ export async function initialize(
       name: "系统",
       order: 10,
       aggregate: false,
-      description: "系统内置模型。",
     },
     actorId,
   );
@@ -47,7 +45,6 @@ export async function initialize(
       name: "其他",
       order: 20,
       aggregate: false,
-      description: "默认业务模型分类。",
     },
     actorId,
   );

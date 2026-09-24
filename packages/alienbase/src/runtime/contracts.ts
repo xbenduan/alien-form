@@ -43,11 +43,19 @@ export interface CompiledModelProvider {
   get(modelCode: string): Promise<CompiledModel | undefined>;
   require(modelCode: string): Promise<CompiledModel>;
   invalidate(modelCode: string): void;
-  isCodeModel(modelCode: string): boolean;
+}
+
+/** 代码内声明的系统模型目录，不参与模型协议持久化。 */
+export interface CodeModelCatalog {
+  /** 返回所有代码模型的不可变协议。 */
+  list(): Promise<readonly AlienSchema[]>;
+  /** 判断模型名是否由代码占用。 */
+  has(modelCode: string): Promise<boolean>;
 }
 
 export class ModelVersionConflictError extends Error {}
 
+/** 用户模型协议仓储；代码系统模型不得写入该端口。 */
 export interface ModelRepository {
   list(): Promise<ModelSummary[]>;
   get(name: string): Promise<AlienSchema | undefined>;

@@ -19,10 +19,6 @@
         "system": {
           "type": "boolean"
         },
-        "systemRevision": {
-          "type": "integer",
-          "minimum": 0
-        },
         "creatorId": {
           "type": "string"
         },

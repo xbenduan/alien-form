@@ -1,57 +1,76 @@
-import { MODEL_MODULE_LOADERS } from "./model-manifest.generated.ts";
-import type { ModelModule } from "@alien-form/alienbase";
+import type {
+  CodeModelCatalog,
+  ModelDefinition,
+  SchemaModelDefinition,
+} from "@alien-form/alienbase";
+import type { AlienSchema } from "@alien-form/protocol";
 
-type ModelModuleImport = { default: ModelModule };
-type ModelModuleImporter = (modelCode: string) => Promise<ModelModuleImport>;
+type ModelModuleImport = { default: ModelDefinition };
+export type ModelModuleLoaders = Readonly<Record<string, () => Promise<ModelModuleImport>>>;
 
-const generatedModelCodes = Object.keys(MODEL_MODULE_LOADERS);
-
-async function importModelModule(modelCode: string): Promise<ModelModuleImport> {
-  const loader = MODEL_MODULE_LOADERS[modelCode as keyof typeof MODEL_MODULE_LOADERS];
-  if (!loader) throw new Error(`未知模型模块：${modelCode}`);
-  return loader();
+function ownsSchema(definition: ModelDefinition): definition is SchemaModelDefinition {
+  return definition.schema !== undefined;
 }
 
-/** Resolves convention-based model modules and caches their immutable definitions. */
-export class ModelModules {
-  private readonly cache = new Map<string, Promise<ModelModule | undefined>>();
+/** 解析 Core 静态声明的模型定义，并按协议组合所有匹配行为。 */
+export class ModelModules implements CodeModelCatalog {
+  private definitions?: Promise<readonly ModelDefinition[]>;
 
-  constructor(
-    private readonly modelCodes: readonly string[] = generatedModelCodes,
-    private readonly importer: ModelModuleImporter = importModelModule,
-  ) {}
+  constructor(private readonly loaders: ModelModuleLoaders) {}
 
-  static from(modules: readonly ModelModule[]): ModelModules {
-    const byCode = new Map(modules.map((module) => [module.schema.name, module]));
-    return new ModelModules([...byCode.keys()], async (modelCode) => {
-      const module = byCode.get(modelCode);
-      if (!module) throw new Error(`未知模型模块：${modelCode}`);
-      return { default: module };
+  static from(definitions: readonly ModelDefinition[]): ModelModules {
+    return new ModelModules(
+      Object.fromEntries(
+        definitions.map((definition, index) => [
+          String(index),
+          async () => ({ default: definition }),
+        ]),
+      ),
+    );
+  }
+
+  async has(modelCode: string): Promise<boolean> {
+    return !!(await this.schema(modelCode));
+  }
+
+  async schema(modelCode: string): Promise<AlienSchema | undefined> {
+    return (await this.entries())
+      .filter(ownsSchema)
+      .map((definition) => definition.schema)
+      .find(({ name }) => name === modelCode);
+  }
+
+  async matching(schema: AlienSchema): Promise<readonly ModelDefinition[]> {
+    const definitions = await this.entries();
+    const matched = definitions.filter(
+      (definition) => definition.match && definition.match({ schema }),
+    );
+    const exact = definitions.filter((definition) => {
+      if (definition.schema) return definition.schema.name === schema.name;
+      return definition.name === schema.name;
     });
+    return [...matched, ...exact];
   }
 
-  has(modelCode: string): boolean {
-    return this.modelCodes.includes(modelCode);
-  }
-
-  async get(modelCode: string): Promise<ModelModule | undefined> {
-    if (!this.has(modelCode)) return undefined;
-    let pending = this.cache.get(modelCode);
-    if (!pending) {
-      pending = this.importer(modelCode).then(({ default: module }) => {
-        if (module.schema.name !== modelCode) {
-          throw new Error(`模型目录名与 AlienSchema.name 不一致：${modelCode}`);
+  async entries(): Promise<readonly ModelDefinition[]> {
+    if (!this.definitions) {
+      this.definitions = Promise.all(
+        Object.values(this.loaders).map(async (load) => (await load()).default),
+      ).then((definitions) => {
+        const schemas = definitions.filter(ownsSchema).map((definition) => definition.schema);
+        const names = new Set<string>();
+        for (const schema of schemas) {
+          if (names.has(schema.name)) throw new Error(`代码模型重复定义：${schema.name}`);
+          names.add(schema.name);
         }
-        return module;
+        return definitions;
       });
-      this.cache.set(modelCode, pending);
     }
-    return pending;
+    return this.definitions;
   }
 
-  async entries(): Promise<readonly ModelModule[]> {
-    return Promise.all(this.modelCodes.map(async (modelCode) => (await this.get(modelCode))!));
+  /** 只返回真正由代码持有的 Schema；纯行为定义不占用模型名。 */
+  async list(): Promise<readonly AlienSchema[]> {
+    return (await this.entries()).filter(ownsSchema).map((definition) => definition.schema);
   }
 }
-
-export const modelModules = new ModelModules();

@@ -2,6 +2,7 @@ import { parseAlienSchema, type AlienSchema, type ModelSummary } from "@alien-fo
 import { badRequest, conflict, forbidden, notFound } from "../errors.ts";
 import type { AccessControl } from "./access-control.ts";
 import {
+  type CodeModelCatalog,
   ModelVersionConflictError,
   type CompiledModelProvider,
   type ModelRepository,
@@ -16,26 +17,35 @@ export interface ModelGroupPolicy {
 export class ModelService {
   constructor(
     private readonly models: ModelRepository,
+    private readonly codeModels: CodeModelCatalog,
     private readonly access: AccessControl,
     private readonly compiledModels: CompiledModelProvider,
     private readonly groups: ModelGroupPolicy,
   ) {}
 
   async list(actorId: string): Promise<ModelSummary[]> {
-    const [models, profile] = await Promise.all([this.models.list(), this.access.profile(actorId)]);
-    return models
-      .map((model) => ({ ...model, system: this.isSystem(model.name) }))
-      .filter((model) => this.access.canRead(profile, model));
+    const [storedModels, codeSchemas, profile] = await Promise.all([
+      this.models.list(),
+      this.codeModels.list(),
+      this.access.profile(actorId),
+    ]);
+    const codeModels = codeSchemas.map((schema) => this.summarize(schema));
+    const codeModelNames = new Set(codeSchemas.map(({ name }) => name));
+    return [
+      ...codeModels,
+      ...storedModels.filter((model) => !codeModelNames.has(model.name)),
+    ].filter((model) => this.access.canRead(profile, model));
   }
 
   async get(name: string, actorId: string): Promise<AlienSchema> {
-    const model = await this.models.get(name);
-    if (!model) throw notFound(`模型不存在：${name}`);
+    const compiled = await this.compiledModels.get(name);
+    if (!compiled) throw notFound(`模型不存在：${name}`);
+    const model = compiled.schema;
     const profile = await this.access.profile(actorId);
     this.access.assertCan(profile, model, "read");
     return {
       ...this.access.projectSchema(profile, model),
-      system: this.isSystem(name),
+      system: await this.codeModels.has(name),
     };
   }
 
@@ -44,17 +54,18 @@ export class ModelService {
     const incoming = this.parse({
       ...(value as object),
       system: false,
-      systemRevision: undefined,
       creatorId: actorId,
     });
     await this.groups.assertValid(incoming.group);
     if (incoming.version !== 0) throw conflict("新模型 version 必须为 0");
-    if (await this.models.has(incoming.name)) throw conflict(`模型已存在：${incoming.name}`);
+    if ((await this.codeModels.has(incoming.name)) || (await this.models.has(incoming.name))) {
+      throw conflict(`模型已存在：${incoming.name}`);
+    }
     return this.publish(undefined, incoming);
   }
 
   async update(name: string, value: unknown, actorId: string): Promise<AlienSchema> {
-    if (this.isSystem(name)) throw forbidden("系统模型禁止修改");
+    if (await this.codeModels.has(name)) throw forbidden("系统模型禁止修改");
     const submitted = this.parse(value);
     const current = await this.models.get(name);
     if (!current) throw notFound(`模型不存在：${name}`);
@@ -62,7 +73,6 @@ export class ModelService {
     const incoming = this.parse({
       ...submitted,
       system: false,
-      systemRevision: undefined,
       creatorId: current.creatorId,
     });
     if (incoming.name !== name) throw conflict("模型 name 与请求路径不一致");
@@ -74,23 +84,12 @@ export class ModelService {
   }
 
   async remove(name: string, actorId: string): Promise<void> {
-    if (this.isSystem(name)) throw forbidden("系统模型禁止删除");
+    if (await this.codeModels.has(name)) throw forbidden("系统模型禁止删除");
     const current = await this.models.get(name);
     if (!current) return;
     this.access.assertCanManageModel(await this.access.profile(actorId), current);
     await this.models.delete(current);
     this.compiledModels.invalidate(name);
-  }
-
-  /** Installs or upgrades a code-owned system schema during bootstrap. */
-  async ensureSystemModel(value: AlienSchema): Promise<AlienSchema> {
-    const desired = this.parse({ ...value, system: true, creatorId: undefined });
-    const current = await this.models.get(desired.name);
-    if (!current) return this.publish(undefined, { ...desired, version: 0 });
-    if ((current.systemRevision ?? 0) >= (desired.systemRevision ?? 0)) {
-      return current;
-    }
-    return this.publish(current, this.parse({ ...desired, version: current.version }));
   }
 
   private async publish(
@@ -121,7 +120,19 @@ export class ModelService {
     }
   }
 
-  private isSystem(name: string): boolean {
-    return this.compiledModels.isCodeModel(name);
+  private summarize(schema: AlienSchema): ModelSummary {
+    return {
+      name: schema.name,
+      title: schema.title,
+      version: schema.version,
+      system: true,
+      subtitle: schema.subtitle,
+      description: schema.description,
+      group: schema.group,
+      singularLabel: schema.singularLabel,
+      pluralLabel: schema.pluralLabel,
+      defaultPageSize: schema.defaultPageSize,
+      fieldCount: schema.fields.length,
+    };
   }
 }

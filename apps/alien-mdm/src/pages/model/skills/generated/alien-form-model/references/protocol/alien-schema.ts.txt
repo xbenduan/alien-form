@@ -51,7 +51,7 @@ export interface AlienFieldSchema {
 }
 
 /**
- * Complete persisted Alien model protocol.
+ * Complete Alien model protocol. User models may persist it; system models keep it in code.
  *
  * All non-recursive subtypes must be addressed from this root, for example:
  * `AlienSchema["fields"][number]` and `AlienSchema["pages"][number]`.
@@ -61,7 +61,6 @@ export interface AlienSchema {
   title: string;
   version: number;
   system?: boolean;
-  systemRevision?: number;
   creatorId?: string;
   subtitle?: string;
   description?: string;
@@ -200,7 +199,6 @@ export const alienSchema: z.ZodType<AlienSchema> = z.object({
   title: z.string().min(1, "模型 title 必填"),
   version: z.number().int().nonnegative(),
   system: z.boolean().optional(),
-  systemRevision: z.number().int().nonnegative().optional(),
   creatorId: z.string().optional(),
   subtitle: z.string().optional(),
   description: z.string().optional(),

@@ -16,7 +16,7 @@ export interface ModelSummary {
   pluralLabel?: string;
   defaultPageSize?: number;
   fieldCount: number;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 export const modelSummarySchema: z.ZodType<ModelSummary> = z.object({
@@ -32,7 +32,7 @@ export const modelSummarySchema: z.ZodType<ModelSummary> = z.object({
   pluralLabel: z.string().optional(),
   defaultPageSize: z.number().int().positive().optional(),
   fieldCount: z.number().int().nonnegative(),
-  updatedAt: z.string(),
+  updatedAt: z.string().optional(),
 });
 
 export function parseModelSummaries(value: unknown): ModelSummary[] {

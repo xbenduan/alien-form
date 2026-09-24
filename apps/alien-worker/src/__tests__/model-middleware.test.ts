@@ -8,7 +8,7 @@ import type {
   UnitOfWork,
 } from "@alien-form/alienbase";
 import { RecordService } from "@alien-form/alienbase";
-import type { ModelModule } from "@alien-form/alienbase";
+import type { SchemaModelDefinition } from "@alien-form/alienbase";
 import { runtimeModel } from "./runtime-model.ts";
 
 const schema: AlienSchema = {
@@ -42,8 +42,8 @@ const schema: AlienSchema = {
   pages: [],
 };
 
-function dependencies(module: ModelModule, events: string[]) {
-  const model = runtimeModel(schema, { lifecycle: module.middleware });
+function dependencies(definition: SchemaModelDefinition, events: string[]) {
+  const model = runtimeModel(schema, { lifecycle: definition.middleware });
   let stored: ModelRecord | undefined;
   const models = {
     get: vi.fn().mockResolvedValue(model),
@@ -81,7 +81,7 @@ function dependencies(module: ModelModule, events: string[]) {
 describe("model middleware pipeline", () => {
   it("runs the fixed create phases in order", async () => {
     const events: string[] = [];
-    const module: ModelModule = {
+    const module: SchemaModelDefinition = {
       schema,
       middleware: {
         prepare(values) {
@@ -124,7 +124,7 @@ describe("model middleware pipeline", () => {
 
   it("passes only the authorized representation to present", async () => {
     let presented: Readonly<ModelRecord> | undefined;
-    const module: ModelModule = {
+    const module: SchemaModelDefinition = {
       schema,
       middleware: {
         present(record) {

@@ -26,7 +26,6 @@ function createDatabaseContext(): {
         get: vi.fn().mockResolvedValue({
           id: "existing",
           roleId: ["SYSROLE000001"],
-          super: true,
         }),
         findByField: vi.fn(),
       },

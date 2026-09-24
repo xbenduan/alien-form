@@ -15,7 +15,7 @@ function parseRow(row: Pick<ModelRow, "schema">): AlienSchema {
   return parseAlienSchema(JSON.parse(row.schema));
 }
 
-/** AlienBase 模型仓储端口的 D1 实现。 */
+/** AlienBase 用户模型仓储端口的 D1 实现。 */
 export class D1ModelRepository implements ModelRepository {
   constructor(private readonly db: D1Database) {}
 

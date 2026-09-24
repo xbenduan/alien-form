@@ -29,33 +29,12 @@ export default function createSchema(
     physicalField(modelCode, "passwordHash", {
       type: "string",
       title: "密码摘要",
+      required: true,
       private: true,
       storage: { type: "text" },
       form: { display: "none" },
       table: { hidden: true },
       filter: { hidden: true },
-    }),
-    virtualField(modelCode, "gender", {
-      type: "string",
-      title: "性别",
-      form: {
-        component: "Select",
-        dataSource: [
-          { label: "男", value: "male" },
-          { label: "女", value: "female" },
-          { label: "其他", value: "other" },
-        ],
-      },
-    }),
-    virtualField(modelCode, "city", {
-      type: "string",
-      title: "城市",
-      form: { component: "Input", props: { placeholder: "请输入城市" } },
-    }),
-    virtualField(modelCode, "remark", {
-      type: "string",
-      title: "备注",
-      form: { component: "TextArea", props: { rows: 3 } },
     }),
     physicalField(modelCode, "roleId", {
       type: "array",
@@ -72,32 +51,6 @@ export default function createSchema(
       form: { component: "RemoteSelect" },
       filter: { hidden: true },
     }),
-    // Legacy physical columns remain hidden so existing installations can migrate without rebuilding.
-    physicalField(modelCode, "nickname", {
-      type: "string",
-      title: "昵称",
-      required: true,
-      storage: { type: "text", index: true },
-      form: { display: "none" },
-      table: { hidden: true },
-      filter: { hidden: true },
-    }),
-    physicalField(modelCode, "createBy", {
-      type: "string",
-      title: "创建者",
-      storage: { type: "text", default: constants.adminId, index: true },
-      form: { display: "none", default: constants.adminId },
-      table: { hidden: true },
-      filter: { hidden: true },
-    }),
-    physicalField(modelCode, "super", {
-      type: "boolean",
-      title: "超级管理员",
-      storage: { type: "boolean", default: false, index: true },
-      form: { display: "none", default: false },
-      table: { hidden: true },
-      filter: { hidden: true },
-    }),
     createdAtField,
     updatedAtField,
   ];
@@ -105,25 +58,19 @@ export default function createSchema(
   return {
     name: modelCode,
     title: "用户管理",
-    version: 0,
+    version: 1,
     system: true,
-    systemRevision: 7,
     subtitle: "System Users",
-    description: "系统登录账号、角色与基础资料管理。",
+    description: "系统登录账号与角色管理。",
     group: "system",
     singularLabel: "用户",
     pluralLabel: "用户",
     defaultPageSize: 20,
     fields,
-    form: modelForm(fields, ["username", "password", "gender", "city", "remark", "roleId"]),
-    pages: createRecordPages(modelCode, "用户", [
-      "username",
-      "password",
-      "gender",
-      "city",
-      "remark",
-      "roleId",
-    ]).map((page) => (page.router !== "list" ? page : disableAdminDelete(page, constants.adminId))),
+    form: modelForm(fields, ["username", "password", "roleId"]),
+    pages: createRecordPages(modelCode, "用户", ["username", "password", "roleId"]).map((page) =>
+      page.router !== "list" ? page : disableAdminDelete(page, constants.adminId),
+    ),
   };
 }
 

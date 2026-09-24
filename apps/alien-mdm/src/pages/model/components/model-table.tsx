@@ -21,7 +21,8 @@ function optionalText(value?: string) {
   return value || "—";
 }
 
-function formatDateTime(value: string) {
+function formatDateTime(value?: string) {
+  if (!value) return "内置";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("zh-CN", { hour12: false });
 }

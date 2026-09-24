@@ -1,5 +1,5 @@
 import { createRecordPages, type AlienSchema } from "@alien-form/protocol";
-import { modelForm, physicalField, systemFields, virtualField } from "../../utils/system-model.ts";
+import { modelForm, physicalField, systemFields } from "../../utils/system-model.ts";
 
 /** Builds the category protocol from constants owned by the model entry. */
 export default function createSchema(modelCode: string): AlienSchema {
@@ -42,11 +42,6 @@ export default function createSchema(modelCode: string): AlienSchema {
         ],
       },
     }),
-    virtualField(modelCode, "description", {
-      type: "string",
-      title: "描述",
-      form: { component: "TextArea", props: { rows: 3 } },
-    }),
     createdAtField,
     updatedAtField,
   ];
@@ -54,9 +49,8 @@ export default function createSchema(modelCode: string): AlienSchema {
   return {
     name: modelCode,
     title: "分类标签",
-    version: 0,
+    version: 1,
     system: true,
-    systemRevision: 5,
     subtitle: "Model Categories",
     description: "模型分类标签与模型归属配置。",
     group: "system",
@@ -64,13 +58,7 @@ export default function createSchema(modelCode: string): AlienSchema {
     pluralLabel: "分类标签",
     defaultPageSize: 20,
     fields,
-    form: modelForm(fields, ["code", "name", "order", "aggregate", "description"]),
-    pages: createRecordPages(modelCode, "分类标签", [
-      "code",
-      "name",
-      "order",
-      "aggregate",
-      "description",
-    ]),
+    form: modelForm(fields, ["code", "name", "order", "aggregate"]),
+    pages: createRecordPages(modelCode, "分类标签", ["code", "name", "order", "aggregate"]),
   };
 }

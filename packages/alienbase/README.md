@@ -5,7 +5,7 @@ AlienBase 是 Alien Form 的数据库与平台无关后端运行时。它提供�
 项目通常只需要两个定义入口：
 
 - `defineCore`：定义一个宿主应用的运行时组合根。
-- `defineModel`：定义一个代码模型及其受控扩展。
+- `defineModel`：定义模型 Schema，或为一个及一组模型声明受控行为。
 
 ## 快速判断
 
@@ -15,6 +15,7 @@ AlienBase 是 Alien Form 的数据库与平台无关后端运行时。它提供�
 | 把 D1、PostgreSQL 等基础设施实现注入 AlienBase 端口    | `defineCore`  |
 | 声明一个模型的 Schema、稳定常量和初始化数据            | `defineModel` |
 | 为单个模型增加校验、持久化前逻辑、Command 或事件消费者 | `defineModel` |
+| 为一组同类模型统一增加校验、通知或其他行为             | `defineModel` |
 | 编写 Hono 路由、中间件、Repository 或普通工具函数      | 两者都不用    |
 
 二者的关系如下：
@@ -31,12 +32,16 @@ defineCore({ bindings })
 
 ## defineCore
 
-`defineCore` 定义整个宿主应用如何组装 AlienBase。一个应用通常只有一个 `defineCore` 声明。
+`defineCore` 同时声明静态代码模型目录与宿主应用的运行时装配。一个应用通常只有一个
+`defineCore` 声明。
 
 ```ts
-function defineCore<Input, Runtime extends object>(
-  factory: (input: Input) => Runtime,
-): (input: Input) => Readonly<Runtime>;
+function defineCore<Input, Models extends object, Runtime extends object>(
+  factory: () => {
+    models: Models;
+    create(input: Input, models: Readonly<Models>): Runtime;
+  },
+): ((input: Input) => Readonly<Runtime>) & { readonly models: Readonly<Models> };
 ```
 
 ### 什么时候使用
@@ -58,17 +63,34 @@ interface WorkerCoreInput {
   db: D1Database;
 }
 
-export const createCore = defineCore(({ db }: WorkerCoreInput) => {
-  const modelRepository = createModelRepository(db);
-  const recordRepository = createRecordRepository(db);
-  const compiledModels = createCompiledModels(modelRepository);
-  const access = new AccessControl(createAccessProfileProvider(recordRepository));
-  const groups = createModelGroupPolicy(compiledModels, recordRepository);
-  const refs = createRecordExpander(db, compiledModels);
+export const createCore = defineCore(() => {
+  const modelLoaders = {
+    _sys_user: () => import("./models/_sys_user/index.ts"),
+    cmsBehavior: () => import("./models/cms.ts"),
+  };
+  const codeModels = createCodeModelCatalog(modelLoaders);
 
   return {
-    models: new ModelService(modelRepository, access, compiledModels, groups),
-    records: new RecordService(compiledModels, recordRepository, recordRepository, refs, access),
+    models: modelLoaders,
+    create({ db }: WorkerCoreInput) {
+      const modelRepository = createModelRepository(db);
+      const recordRepository = createRecordRepository(db);
+      const compiledModels = createCompiledModels(modelRepository, codeModels);
+      const access = new AccessControl(createAccessProfileProvider(recordRepository));
+      const groups = createModelGroupPolicy(compiledModels, recordRepository);
+      const refs = createRecordExpander(db, compiledModels);
+
+      return {
+        models: new ModelService(modelRepository, codeModels, access, compiledModels, groups),
+        records: new RecordService(
+          compiledModels,
+          recordRepository,
+          recordRepository,
+          refs,
+          access,
+        ),
+      };
+    },
   };
 });
 ```
@@ -82,7 +104,8 @@ c.set("core", core);
 
 ### 运行时语义
 
-- 工厂每调用一次都会创建新的 Runtime，AlienBase 不缓存请求级对象。
+- 定义工厂只执行一次，`create` 每调用一次都会创建新的 Runtime。
+- `createCore.models` 是构建期可见且不可变的模型定义加载表；键仅是稳定注册 ID。
 - 返回对象会被浅冻结，并在类型上表现为 `Readonly<Runtime>`。
 - 浅冻结只禁止替换 `core.models` 等顶层成员，不会冻结服务实例内部的缓存。
 - 数据库连接、平台环境和请求上下文均由宿主传入，AlienBase 不持有这些对象。
@@ -99,71 +122,89 @@ c.set("core", core);
 
 ## defineModel
 
-`defineModel` 定义一个代码模型的完整模块。每个模型通常在自己的 `{modelCode}/index.ts` 中调用一次，并作为默认导出。
+`defineModel` 使用互斥选择器声明一个模型定义：
 
 ```ts
-function defineModel<const Module extends ModelModule>(factory: () => ModelModule & Module): Module;
+defineModel({ schema, ...behavior }); // 代码拥有 Schema，精确匹配 schema.name
+defineModel({ name, ...behavior }); // 精确装饰一个数据库模型
+defineModel({ match, ...behavior }); // 按 Schema 特征装饰一组模型
 ```
 
-### 什么时候使用
+`schema`、`name`、`match` 三者互斥。下游始终只消费统一的 `CompiledModel`，不会区分
+Schema 来自代码还是数据库。
 
-模型需要以下任一能力时使用 `defineModel`：
-
-- 提供作为唯一真相源的 `AlienSchema`。
-- 声明系统记录 ID 等稳定常量。
-- 在模型发布后幂等写入初始化数据。
-- 扩展统一 CRUD 生命周期。
-- 提供模型专属 Command。
-- 消费事务提交后的 Outbox 事件。
+### 代码 Schema
 
 ```ts
 import { defineModel, ensureRecord } from "@alien-form/alienbase";
 import createSchema from "./schema.ts";
 
-export default defineModel(() => {
-  const constants = {
-    code: "_sys_role",
-    adminId: "SYSROLE000001",
-  } as const;
+const constants = {
+  code: "_sys_role",
+  adminId: "SYSROLE000001",
+} as const;
 
-  return {
-    schema: createSchema(constants),
-    constants,
-    database: {
-      async initialize(context) {
-        await ensureRecord(
-          context,
-          constants.code,
-          constants.adminId,
-          { name: "管理员" },
-          "SYSTEM",
-        );
-      },
+export default defineModel({
+  schema: createSchema(constants),
+  constants,
+  database: {
+    async initialize(context) {
+      await ensureRecord(context, constants.code, constants.adminId, { name: "管理员" }, "SYSTEM");
     },
-    middleware: {
-      validate({ record }) {
-        if (typeof record.name !== "string" || record.name.trim() === "") {
-          throw new Error("角色名称不能为空");
-        }
-      },
+  },
+  middleware: {
+    validate({ record }) {
+      if (typeof record.name !== "string" || record.name.trim() === "") {
+        throw new Error("角色名称不能为空");
+      }
     },
-  };
+  },
 });
 ```
 
-### ModelModule 能力
+只有携带 `schema` 的定义才占用代码模型名，并使模型成为禁止在线修改的系统模型。
+纯 `name` 或 `match` 行为不会改变 Schema 来源和模型所有权。
 
-| 字段                  | 用途                                                | 约束                         |
-| --------------------- | --------------------------------------------------- | ---------------------------- |
-| `schema`              | 定义字段、页面、关系和存储协议                      | 必填，是模型协议的唯一真相源 |
-| `constants`           | 保存稳定 ID 和模型内部常量                          | 不写入协议或数据库           |
-| `database.initialize` | 模型发布后写入种子或初始数据                        | 必须幂等，只能使用受控上下文 |
-| `middleware`          | 扩展 `prepare → validate → beforePersist → present` | 不能绕过权限、校验和事务     |
-| `commands`            | 表达模型专属业务操作                                | 必须声明权限与允许写入的字段 |
-| `events`              | 消费已提交的 Outbox 事件                            | 在业务事务提交后执行         |
+### 数据库模型行为
 
-`defineModel` 会立即执行工厂并保留返回值的精确类型，因此
-`module.constants.adminId` 等字段无需额外声明类型。它不会冻结整个模型模块；运行时会在编译阶段生成不可变的 `CompiledModel`。
+```ts
+export default defineModel({
+  match: ({ schema }) => schema.group === "cms",
+  middleware: {
+    validate({ record }) {
+      if (!record.title) throw new Error("CMS 内容必须有标题");
+    },
+    beforePersist({ events, record }) {
+      events.emit("cms.changed", { id: record.id });
+    },
+  },
+  events: {
+    async "cms.changed"(payload) {
+      await notifyFixedOwner(payload);
+    },
+  },
+});
+```
+
+若只应作用于一个数据库模型，改为 `name: "article"`。同一模型可以同时命中多个定义：
+
+1. 所有 `match` 定义按注册顺序执行。
+2. `name` 或 `schema.name` 精确定义随后按注册顺序执行。
+3. `prepare` 与 `present` 将前一个结果传给下一个；`validate`、`beforePersist` 依次执行。
+4. 同主题事件消费者全部执行；Command 重名会在模型编译时直接报错。
+
+### ModelDefinition 能力
+
+| 字段                  | 用途                                                | 约束                           |
+| --------------------- | --------------------------------------------------- | ------------------------------ |
+| `schema`              | 提供代码模型协议并进行精确匹配                      | 与 `name`、`match` 互斥        |
+| `name`                | 精确匹配一个数据库模型                              | 与 `schema`、`match` 互斥      |
+| `match`               | 按 Schema 特征匹配一组模型                          | 与 `schema`、`name` 互斥       |
+| `constants`           | 保存稳定 ID 和模型内部常量                          | 不写入协议或数据库             |
+| `database.initialize` | 写入幂等种子或初始数据                              | 只能使用受控上下文             |
+| `middleware`          | 扩展 `prepare → validate → beforePersist → present` | 不能绕过权限、校验和事务       |
+| `commands`            | 表达模型专属业务操作                                | 必须声明权限与允许写入的字段   |
+| `events`              | 消费已提交的 Outbox 事件                            | 外部通知必须在该提交后阶段执行 |
 
 ### 不应放入 defineModel 的内容
 

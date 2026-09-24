@@ -10,7 +10,7 @@ import type {
   TransactionPlan,
   UnitOfWork,
 } from "@alien-form/alienbase";
-import { RecordService } from "@alien-form/alienbase";
+import { RecordService, defineModel } from "@alien-form/alienbase";
 import { CompiledModels } from "../application/compiled-models.ts";
 import { OutboxDispatcher } from "../application/events/outbox-dispatcher.ts";
 import { ModelModules } from "../application/model-modules.ts";
@@ -48,7 +48,7 @@ describe("compiled model registry", () => {
     const repository = {
       get: vi.fn(async () => current),
     } as unknown as ModelRepository;
-    const models = new CompiledModels(repository, ModelModules.from([{ schema }]), compileModel);
+    const models = new CompiledModels(repository, ModelModules.from([]), compileModel);
 
     const first = await models.require(schema.name);
     const cached = await models.require(schema.name);
@@ -60,6 +60,108 @@ describe("compiled model registry", () => {
     const next = await models.require(schema.name);
     expect(next).not.toBe(first);
     expect(next.key).toBe("article@2");
+  });
+
+  it("compiles code models without reading persisted schemas", async () => {
+    const repository = {
+      get: vi.fn(),
+    } as unknown as ModelRepository;
+    const models = new CompiledModels(repository, ModelModules.from([{ schema }]), compileModel);
+
+    await expect(models.require(schema.name)).resolves.toMatchObject({ schema });
+    expect(repository.get).not.toHaveBeenCalled();
+  });
+
+  it("composes batch and exact behaviors in deterministic order", async () => {
+    const calls: string[] = [];
+    const cmsSchema = { ...schema, group: "cms" };
+    const repository = {
+      get: vi.fn().mockResolvedValue(cmsSchema),
+    } as unknown as ModelRepository;
+    const modules = ModelModules.from([
+      defineModel({
+        name: "article",
+        middleware: {
+          prepare(values) {
+            calls.push(`exact:${String(values.title)}`);
+            return { ...values, title: `${String(values.title)}-exact` };
+          },
+        },
+        commands: {
+          archive: {
+            permission: "update",
+            writeFields: [],
+            async execute() {
+              return { mutations: [] };
+            },
+          },
+        },
+        events: {
+          changed() {
+            calls.push("event:exact");
+          },
+        },
+      }),
+      defineModel({
+        match: ({ schema }) => schema.group === "cms",
+        middleware: {
+          prepare(values) {
+            calls.push(`batch:${String(values.title)}`);
+            return { ...values, title: `${String(values.title)}-batch` };
+          },
+        },
+        commands: {
+          notify: {
+            permission: "update",
+            writeFields: [],
+            async execute() {
+              return { mutations: [] };
+            },
+          },
+        },
+        events: {
+          changed() {
+            calls.push("event:batch");
+          },
+        },
+      }),
+    ]);
+    const models = new CompiledModels(repository, modules, compileModel);
+
+    const model = await models.require("article");
+    const prepared = await model.lifecycle?.prepare?.(
+      { title: "draft" },
+      { actorId: "actor", operation: "create" },
+    );
+    await model.eventHandlers.changed?.({}, { eventId: "event", model: "article", occurredAt: 1 });
+
+    expect(prepared?.title).toBe("draft-batch-exact");
+    expect(Object.keys(model.commands)).toEqual(["notify", "archive"]);
+    expect(calls).toEqual(["batch:draft", "exact:draft-batch", "event:batch", "event:exact"]);
+  });
+
+  it("rejects duplicate commands while compiling matched behaviors", async () => {
+    const command = {
+      permission: "update" as const,
+      writeFields: [],
+      async execute() {
+        return { mutations: [] };
+      },
+    };
+    const repository = {
+      get: vi.fn().mockResolvedValue({ ...schema, group: "cms" }),
+    } as unknown as ModelRepository;
+    const modules = ModelModules.from([
+      defineModel({
+        match: ({ schema }) => schema.group === "cms",
+        commands: { publish: command },
+      }),
+      defineModel({ name: "article", commands: { publish: command } }),
+    ]);
+
+    await expect(
+      new CompiledModels(repository, modules, compileModel).require("article"),
+    ).rejects.toThrow("模型 article 的 Command 重复定义：publish");
   });
 });
 

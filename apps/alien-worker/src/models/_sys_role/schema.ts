@@ -52,11 +52,6 @@ export default function createSchema(constants: {
         ],
       },
     }),
-    virtualField(modelCode, "description", {
-      type: "string",
-      title: "描述",
-      form: { component: "TextArea", props: { rows: 3 } },
-    }),
     virtualField(modelCode, "permissions", {
       type: "array",
       title: "模型与字段权限",
@@ -118,9 +113,8 @@ export default function createSchema(constants: {
   return {
     name: modelCode,
     title: "角色管理",
-    version: 0,
+    version: 1,
     system: true,
-    systemRevision: 11,
     subtitle: "System Roles",
     description: "树形角色及模型、操作、字段和数据范围权限。",
     group: "system",
@@ -128,70 +122,66 @@ export default function createSchema(constants: {
     pluralLabel: "角色",
     defaultPageSize: 20,
     fields,
-    form: modelForm(fields, ["code", "name", "parentId", "canCreateModel", "description"]),
-    pages: createRecordPages(modelCode, "角色", [
-      "code",
-      "name",
-      "parentId",
-      "canCreateModel",
-      "description",
-    ]).map((page) => {
-      if (page.router !== "list") return page;
-      const content = page.slots!.content!;
-      const table = content.table!;
-      const rowActions = table.slots!.rowActions!;
-      return {
-        ...page,
-        slots: {
-          left: {
-            tree: {
-              type: "string",
-              component: "tree",
-              props: {
-                title: "角色层级",
-                model: modelCode,
-                valueField: "id",
-                parentField: "parentId",
-                labelField: "name",
-                showRoot: true,
-                loadData: '{{ $utils.tree($service("records.subtree")) }}',
+    form: modelForm(fields, ["code", "name", "parentId", "canCreateModel"]),
+    pages: createRecordPages(modelCode, "角色", ["code", "name", "parentId", "canCreateModel"]).map(
+      (page) => {
+        if (page.router !== "list") return page;
+        const content = page.slots!.content!;
+        const table = content.table!;
+        const rowActions = table.slots!.rowActions!;
+        return {
+          ...page,
+          slots: {
+            left: {
+              tree: {
+                type: "string",
+                component: "tree",
+                props: {
+                  title: "角色层级",
+                  model: modelCode,
+                  valueField: "id",
+                  parentField: "parentId",
+                  labelField: "name",
+                  showRoot: true,
+                  loadData: '{{ $utils.tree($service("records.subtree")) }}',
+                },
               },
             },
-          },
-          content: {
-            ...content,
-            table: {
-              ...table,
-              props: {
-                ...table.props,
-                parentId: '{{ $form.getFieldValue("tree") }}',
-              },
-              slots: {
-                ...table.slots,
-                rowActions: {
-                  ...rowActions,
-                  edit: {
-                    ...rowActions.edit,
-                    props: {
-                      ...rowActions.edit?.props,
-                      disabled: `{{ ($row) => $row.id === "${constants.superAdminId}" }}`,
+            content: {
+              ...content,
+              table: {
+                ...table,
+                props: {
+                  ...table.props,
+                  parentId: '{{ $form.getFieldValue("tree") }}',
+                },
+                slots: {
+                  ...table.slots,
+                  rowActions: {
+                    ...rowActions,
+                    edit: {
+                      ...rowActions.edit,
+                      props: {
+                        ...rowActions.edit?.props,
+                        disabled: `{{ ($row) => $row.id === "${constants.superAdminId}" }}`,
+                      },
                     },
-                  },
-                  delete: {
-                    ...rowActions.delete,
-                    props: {
-                      ...rowActions.delete?.props,
-                      disabled: `{{ $row.id === "${constants.superAdminId}" }}`,
-                      confirm: "确认删除该角色？",
-                      confirmDescription: "存在子角色或关联用户时无法删除。",
+                    delete: {
+                      ...rowActions.delete,
+                      props: {
+                        ...rowActions.delete?.props,
+                        disabled: `{{ $row.id === "${constants.superAdminId}" }}`,
+                        confirm: "确认删除该角色？",
+                        confirmDescription: "存在子角色或关联用户时无法删除。",
+                      },
                     },
                   },
                 },
               },
             },
           },
-        },
-      };
-    }),
+        };
+      },
+    ),
   };
 }

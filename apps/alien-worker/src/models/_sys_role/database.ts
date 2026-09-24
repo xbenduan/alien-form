@@ -10,7 +10,7 @@ async function ensureDefaultRole(
   values: Record<string, unknown>,
 ): Promise<void> {
   const model = await context.models.get(modelCode);
-  if (!model) throw new Error(`内置模型未发布：${modelCode}`);
+  if (!model) throw new Error(`内置模型未注册：${modelCode}`);
   const existing = await context.records.get(model, id);
   if (!existing) {
     await context.create(modelCode, { id, ...values }, actorId);
@@ -65,7 +65,6 @@ export async function initialize(
     {
       code: constants.superAdminCode,
       name: "超级管理员",
-      description: "拥有全部模型与数据权限。",
       canCreateModel: true,
       permissions: [],
     },
@@ -76,7 +75,6 @@ export async function initialize(
     name: "管理员",
     parentId: constants.superAdminId,
     canCreateModel: true,
-    description: "默认管理分支，可新建并管理自己创建的模型。",
     permissions: [],
   });
   await ensureDefaultRole(context, constants.code, actorId, constants.userId, {
@@ -84,7 +82,6 @@ export async function initialize(
     name: "用户",
     parentId: constants.superAdminId,
     canCreateModel: false,
-    description: "默认用户分支，权限由节点配置。",
     permissions: [],
   });
 }

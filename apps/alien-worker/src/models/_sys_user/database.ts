@@ -13,7 +13,7 @@ export async function initialize(
   superAdminRoleId: string,
 ): Promise<void> {
   const model = await context.models.get(constants.code);
-  if (!model) throw new Error("内置用户模型未发布");
+  if (!model) throw new Error("内置用户模型未注册");
   const existing =
     (await context.records.get(model, constants.adminId)) ??
     (await context.records.findByField(model, "username", constants.adminUsername));
@@ -21,8 +21,7 @@ export async function initialize(
     if (
       !Array.isArray(existing.roleId) ||
       existing.roleId.length !== 1 ||
-      existing.roleId[0] !== superAdminRoleId ||
-      existing.super !== true
+      existing.roleId[0] !== superAdminRoleId
     ) {
       await context.update(
         model.schema.name,
@@ -40,9 +39,6 @@ export async function initialize(
       username: constants.adminUsername,
       passwordHash: await hashPassword(constants.adminDefaultPassword),
       roleId: [superAdminRoleId],
-      createBy: constants.adminId,
-      super: true,
-      remark: "系统内置管理员（首次启动自动创建）。",
     },
     constants.adminId,
   );

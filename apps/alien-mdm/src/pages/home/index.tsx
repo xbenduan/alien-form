@@ -53,7 +53,8 @@ function writeFavoriteModelNames(names: string[]): void {
   }
 }
 
-function formatUpdatedAt(value: string): string {
+function formatUpdatedAt(value?: string): string {
+  if (!value) return "内置";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "更新时间未知";
   return `${UPDATED_AT_FORMATTER.format(date)} 更新`;
