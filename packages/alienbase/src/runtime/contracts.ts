@@ -108,7 +108,6 @@ export interface RecordSubtreeParams {
 }
 
 export interface RecordReader {
-  allocateId(): Promise<string>;
   list(model: CompiledModel, params: RecordListParams): Promise<RecordListResult>;
   options(model: CompiledModel, params: RecordOptionsParams): Promise<RecordOptionResult>;
   subtree(model: CompiledModel, params: RecordSubtreeParams): Promise<ModelRecord[]>;
@@ -170,7 +169,6 @@ export interface OutboxRepository {
 
 export interface RecordExpander {
   expand(schema: AlienSchema, records: ModelRecord[]): Promise<ModelRecord[]>;
-  expandOne(schema: AlienSchema, record: ModelRecord): Promise<ModelRecord>;
 }
 
 export type ModelWriteOperation = "create" | "update" | "delete";

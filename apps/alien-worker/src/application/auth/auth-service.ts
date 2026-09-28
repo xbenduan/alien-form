@@ -1,6 +1,6 @@
 import { AppError, unauthorized } from "@alien-form/alienbase";
 import { randomHex, verifyPassword } from "./password.ts";
-import type { LoginRequest, LoginResponse, ModelRecord } from "@alien-form/protocol";
+import type { LoginRequest, LoginResponse } from "@alien-form/protocol";
 import type { AccessProfileProvider } from "@alien-form/alienbase";
 import type { CompiledModelProvider, RecordReader } from "@alien-form/alienbase";
 import { publicRecord } from "@alien-form/alienbase";
@@ -9,8 +9,6 @@ import userModule from "../../models/_sys_user/index.ts";
 export interface Session {
   token: string;
   userId: string;
-  provider: string;
-  createdAt: number;
 }
 
 /** 会话持久化端口，由 Worker 的 D1 适配器实现。 */
@@ -20,33 +18,7 @@ export interface SessionRepository {
   remove(token: string): Promise<void>;
 }
 
-/**
- * 登录 provider 契约：给定登录参数，认证成功返回用户记录，否则 undefined。
- * 新增登录方式（如 openid / sso）只需实现此接口并在 PROVIDERS 里登记。
- */
-export interface AuthProvider {
-  readonly name: string;
-  authenticate(ctx: AuthService, body: LoginRequest): Promise<ModelRecord | undefined>;
-}
-
-/** 账号密码 provider。 */
-const passwordProvider: AuthProvider = {
-  name: "password",
-  async authenticate(ctx, body) {
-    const username = String(body.username ?? body.account ?? "").trim();
-    const password = String(body.password ?? "");
-    if (!username || !password) return undefined;
-    const user = await ctx.findUserByUsername(username);
-    if (!user) return undefined;
-    return (await verifyPassword(password, user.passwordHash)) ? user : undefined;
-  },
-};
-
-const PROVIDERS: Record<string, AuthProvider> = {
-  [passwordProvider.name]: passwordProvider,
-};
-
-/** 认证服务：登录 / 登出 / 会话查询，编排 provider 与持久化端口。 */
+/** 认证服务：密码登录、登出与会话查询。 */
 export class AuthService {
   constructor(
     private readonly models: CompiledModelProvider,
@@ -55,26 +27,21 @@ export class AuthService {
     private readonly profiles: AccessProfileProvider,
   ) {}
 
-  /** 按用户名查用户记录（供 provider 复用）。 */
-  async findUserByUsername(username: string): Promise<ModelRecord | undefined> {
-    const model = await this.models.get(userModule.schema.name);
-    if (!model) throw new AppError("用户模型尚未初始化", 500);
-    return this.records.findByField(model, "username", username);
-  }
-
   async login(body: LoginRequest): Promise<LoginResponse> {
     const providerName = body.provider ?? "password";
-    const provider = PROVIDERS[providerName];
-    if (!provider) throw new AppError(`不支持的登录方式：${providerName}`, 400);
-
-    const user = await provider.authenticate(this, body);
-    if (!user) throw unauthorized("账号或密码错误");
+    if (providerName !== "password") throw new AppError(`不支持的登录方式：${providerName}`, 400);
+    const username = String(body.username ?? body.account ?? "").trim();
+    const password = String(body.password ?? "");
+    const model = await this.models.get(userModule.schema.name);
+    if (!model) throw new AppError("用户模型尚未初始化", 500);
+    const user = username ? await this.records.findByField(model, "username", username) : undefined;
+    if (!user || !password || !(await verifyPassword(password, user.passwordHash))) {
+      throw unauthorized("账号或密码错误");
+    }
 
     const session: Session = {
       token: randomHex(32),
       userId: String(user.id),
-      provider: provider.name,
-      createdAt: Date.now(),
     };
     await this.sessions.create(session);
     const profile = await this.profiles.profile(session.userId);
@@ -84,7 +51,7 @@ export class AuthService {
         ...publicRecord(userModule.schema, user),
         canCreateModel: profile.canCreateModel,
       },
-      provider: provider.name,
+      provider: providerName,
     };
   }
 

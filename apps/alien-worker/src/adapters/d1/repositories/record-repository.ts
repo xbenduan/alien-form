@@ -13,7 +13,6 @@ import type {
   UnitOfWork,
 } from "@alien-form/alienbase";
 import { columnName, fieldExpression } from "../compiler/field-plan.ts";
-import { formatRecordId } from "../compiler/record-id.ts";
 import { compileRecordFilter } from "../compiler/record-filter.ts";
 import { quoteColumn, quoteTable } from "../compiler/sql.ts";
 
@@ -89,18 +88,6 @@ function relationValues(value: unknown): string[] {
 /** AlienBase 记录读取与事务提交端口的 D1 实现。 */
 export class D1RecordRepository implements RecordReader, UnitOfWork {
   constructor(private readonly db: D1Database) {}
-
-  async allocateId(): Promise<string> {
-    const row = await this.db
-      .prepare(
-        `INSERT INTO "_sequences" (name, next) VALUES ('__global__', 1)
-         ON CONFLICT(name) DO UPDATE SET next = next + 1
-         RETURNING next`,
-      )
-      .first<{ next: number }>();
-    if (!row) throw new Error("记录 ID 分配失败");
-    return formatRecordId(row.next);
-  }
 
   private async attachManyRelations(
     model: CompiledModel,

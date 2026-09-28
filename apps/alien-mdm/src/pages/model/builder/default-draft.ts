@@ -13,7 +13,7 @@ function systemFields(): FieldNode[] {
       title: "ID",
       required: true,
       source: "physical",
-      // id 是所有模型的唯一主键（后端建为 PRIMARY KEY，按模型自增 MDM0000000001），
+      // id 是所有模型的唯一主键（后端建为 PRIMARY KEY，并在创建记录时自动生成），
       // 故显式声明 唯一 + 非空 + 索引，作为模型的唯一索引。
       storage: {
         type: "text",

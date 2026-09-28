@@ -11,10 +11,6 @@ import type {
 import type { AlienSchema } from "@alien-form/protocol";
 import type { ModelModules } from "./model-modules.ts";
 
-export type ModelCompiler = (
-  schema: AlienSchema,
-) => Omit<CompiledModel, "lifecycle" | "commands" | "eventHandlers">;
-
 function composeMiddleware(definitions: readonly ModelDefinition[]): ModelMiddleware | undefined {
   const middleware = definitions.flatMap((definition) =>
     definition.middleware ? [definition.middleware] : [],
@@ -91,7 +87,9 @@ export class CompiledModels implements CompiledModelProvider {
   constructor(
     private readonly models: ModelRepository,
     private readonly modules: ModelModules,
-    private readonly compile: ModelCompiler,
+    private readonly compile: (
+      schema: AlienSchema,
+    ) => Omit<CompiledModel, "lifecycle" | "commands" | "eventHandlers">,
   ) {}
 
   async get(modelCode: string): Promise<CompiledModel | undefined> {

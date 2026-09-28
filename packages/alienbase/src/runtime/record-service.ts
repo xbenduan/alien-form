@@ -225,7 +225,7 @@ export class RecordService {
     const record = await this.records.get(model, id);
     if (!record) throw notFound(`记录不存在：${id}`);
     await this.assertOwnership(scope, model, id, actorId);
-    const expanded = await this.refs.expandOne(model.schema, record);
+    const expanded = (await this.refs.expand(model.schema, [record]))[0];
     return presentModelRecord(
       model,
       actorId,
@@ -394,7 +394,7 @@ export class RecordService {
         ? input.id
         : typeof prepared.id === "string" && prepared.id
           ? prepared.id
-          : await this.records.allocateId();
+          : crypto.randomUUID();
     const candidate = normalizeRecord(model, { ...previous, ...prepared, id });
     validateRecord(model, candidate);
     await validateModelRecord(
@@ -452,7 +452,7 @@ export class RecordService {
   ): Promise<ModelRecord> {
     const record = await this.records.get(model, mutation.record.id);
     if (!record) throw new Error(`记录提交后无法读取：${mutation.record.id}`);
-    const expanded = await this.refs.expandOne(model.schema, record);
+    const expanded = (await this.refs.expand(model.schema, [record]))[0];
     return presentModelRecord(
       model,
       actorId,

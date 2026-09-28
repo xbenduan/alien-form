@@ -79,8 +79,4 @@ export class D1RecordExpander implements RecordExpander {
     }
     return records;
   }
-
-  async expandOne(schema: AlienSchema, record: ModelRecord): Promise<ModelRecord> {
-    return (await this.expand(schema, [record]))[0];
-  }
 }

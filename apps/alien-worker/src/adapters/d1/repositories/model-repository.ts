@@ -4,9 +4,6 @@ import { compileMigrationPlan } from "../compiler/compiler.ts";
 import { quoteTable } from "../compiler/sql.ts";
 
 interface ModelRow {
-  name: string;
-  title: string;
-  version: number;
   schema: string;
   updated_at: number;
 }
@@ -22,16 +19,16 @@ export class D1ModelRepository implements ModelRepository {
   async list(): Promise<ModelSummary[]> {
     const { results } = await this.db
       .prepare(
-        `SELECT name, title, version, schema, updated_at
+        `SELECT "schema", "updated_at"
          FROM "models" ORDER BY updated_at DESC`,
       )
       .all<ModelRow>();
     return results.map((row) => {
       const model = parseRow(row);
       return {
-        name: row.name,
-        title: row.title,
-        version: row.version,
+        name: model.name,
+        title: model.title,
+        version: model.version,
         system: model.system,
         creatorId: model.creatorId,
         subtitle: model.subtitle,
@@ -65,7 +62,7 @@ export class D1ModelRepository implements ModelRepository {
     schema: AlienSchema,
     expectedVersion: number,
   ): Promise<AlienSchema> {
-    const { manifest, plan } = compileMigrationPlan(current, schema);
+    const { plan } = compileMigrationPlan(current, schema);
     const now = Date.now();
     const statements = plan.operations.map((operation) => this.db.prepare(operation.sql));
 
@@ -74,27 +71,19 @@ export class D1ModelRepository implements ModelRepository {
         this.db
           .prepare(
             `INSERT INTO "models"
-             (name, title, table_name, version, schema, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+             ("name", "version", "schema", "created_at", "updated_at")
+             VALUES (?, ?, ?, ?, ?)`,
           )
-          .bind(
-            schema.name,
-            schema.title,
-            manifest.table,
-            schema.version,
-            JSON.stringify(schema),
-            now,
-            now,
-          ),
+          .bind(schema.name, schema.version, JSON.stringify(schema), now, now),
       );
     } else {
       statements.unshift(
         this.db
           .prepare(
             `INSERT INTO "models"
-             (name, title, table_name, version, schema, created_at, updated_at)
-             SELECT name, title, table_name, version, schema, created_at, updated_at
-             FROM "models" WHERE name = ? AND version <> ?`,
+             ("name", "version", "schema", "created_at", "updated_at")
+             SELECT "name", "version", "schema", "created_at", "updated_at"
+             FROM "models" WHERE "name" = ? AND "version" <> ?`,
           )
           .bind(schema.name, expectedVersion),
       );
@@ -102,17 +91,10 @@ export class D1ModelRepository implements ModelRepository {
         this.db
           .prepare(
             `UPDATE "models"
-             SET title = ?, version = ?, schema = ?, updated_at = ?
-             WHERE name = ? AND version = ?`,
+             SET "version" = ?, "schema" = ?, "updated_at" = ?
+             WHERE "name" = ? AND "version" = ?`,
           )
-          .bind(
-            schema.title,
-            schema.version,
-            JSON.stringify(schema),
-            now,
-            schema.name,
-            expectedVersion,
-          ),
+          .bind(schema.version, JSON.stringify(schema), now, schema.name, expectedVersion),
       );
     }
 

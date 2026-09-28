@@ -3,10 +3,10 @@ import type { CompiledModel } from "@alien-form/alienbase";
 import { compileStorageManifest } from "./compiler.ts";
 import { planFields } from "./field-plan.ts";
 
-export type CompiledProtocolModel = Omit<CompiledModel, "lifecycle" | "commands" | "eventHandlers">;
-
 /** Deterministically compiles one protocol version into immutable runtime plans. */
-export function compileModel(schema: AlienSchema): CompiledProtocolModel {
+export function compileModel(
+  schema: AlienSchema,
+): Omit<CompiledModel, "lifecycle" | "commands" | "eventHandlers"> {
   const fields = schema.fields.map((field) => [field.key, field] as const);
   return {
     key: `${schema.name}@${schema.version}`,

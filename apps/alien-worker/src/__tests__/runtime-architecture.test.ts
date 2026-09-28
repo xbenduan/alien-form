@@ -247,7 +247,6 @@ describe("model commands", () => {
       require: vi.fn().mockResolvedValue(model),
     } as unknown as CompiledModelProvider;
     const records = {
-      allocateId: vi.fn().mockResolvedValue("record"),
       get: vi.fn(async () => stored),
     } as unknown as RecordReader;
     const transactions = {
@@ -258,7 +257,7 @@ describe("model commands", () => {
       }),
     } satisfies UnitOfWork;
     const refs = {
-      expandOne: vi.fn(async (_schema, record) => record),
+      expand: vi.fn(async (_schema, records) => records),
     } as unknown as RecordExpander;
     const access = {
       profile: vi.fn().mockResolvedValue({ actorId: "actor" }),

@@ -10,7 +10,7 @@ import {
 } from "@alien-form/protocol";
 import { quoteColumn, quoteTable, sqlString } from "./sql.ts";
 
-const RESERVED_TABLES = new Set(["models", "sessions", "_sequences"]);
+const RESERVED_TABLES = new Set(["models", "sessions"]);
 
 function physicalColumn(field: AlienSchema["fields"][number]): string {
   if (field.key === "createdAt") return "created_at";

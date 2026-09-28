@@ -51,7 +51,6 @@ function service(owner = "actor") {
     list: vi.fn().mockResolvedValue({ list: [], total: 0 }),
     get: vi.fn().mockImplementation(async () => stored),
     owner: vi.fn().mockResolvedValue(owner),
-    allocateId: vi.fn().mockResolvedValue("record"),
   } as unknown as RecordReader;
   const transactions = {
     commit: vi.fn(async (plan) => {
@@ -61,7 +60,6 @@ function service(owner = "actor") {
   } as UnitOfWork;
   const refs = {
     expand: vi.fn(async (_schema, records) => records),
-    expandOne: vi.fn(async (_schema, record) => record),
   } as unknown as RecordExpander;
   const access = {
     profile: vi.fn().mockResolvedValue({ actorId: "actor" }),

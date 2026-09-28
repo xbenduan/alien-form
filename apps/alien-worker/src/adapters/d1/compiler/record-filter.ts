@@ -1,5 +1,5 @@
-import { AppError } from "@alien-form/alienbase";
-import { fieldExpression, type FieldPlan } from "./field-plan.ts";
+import { AppError, type CompiledFieldPlan } from "@alien-form/alienbase";
+import { fieldExpression } from "./field-plan.ts";
 
 type Scalar = string | number | boolean | null;
 
@@ -16,7 +16,7 @@ type FilterOperator = "=" | "!=" | ">" | ">=" | "<" | "<=" | "~" | "!~";
 
 export interface RecordFilterContext {
   authId: string;
-  fields: ReadonlyMap<string, FieldPlan>;
+  fields: ReadonlyMap<string, CompiledFieldPlan>;
 }
 
 export interface CompiledRecordFilter {
@@ -30,7 +30,7 @@ interface Token {
   offset: number;
 }
 
-const systemFields = new Map<string, FieldPlan>([
+const systemFields = new Map<string, CompiledFieldPlan>([
   [
     "id",
     {
@@ -254,7 +254,7 @@ class Parser {
   }
 }
 
-function fieldPlan(name: string, context: RecordFilterContext): FieldPlan {
+function fieldPlan(name: string, context: RecordFilterContext): CompiledFieldPlan {
   const plan = context.fields.get(name) ?? systemFields.get(name);
   if (!plan || !plan.filterable) invalid(`字段 "${name}" 不允许筛选`);
   return plan;
@@ -266,7 +266,7 @@ function scalarValue(operand: Operand, context: RecordFilterContext): Scalar {
   invalid(`字段 "${operand.name}" 只能作为比较表达式左侧`);
 }
 
-function encodeValue(plan: FieldPlan, value: Scalar): string | number {
+function encodeValue(plan: CompiledFieldPlan, value: Scalar): string | number {
   if (value === null) invalid(`字段 "${plan.field}" 的 null 只能配合 = 或 !=`);
   if (plan.type === "boolean") {
     if (typeof value !== "boolean") invalid(`字段 "${plan.field}" 只能与布尔值比较`);

@@ -51,7 +51,6 @@ function dependencies(definition: SchemaModelDefinition, events: string[], model
     require: vi.fn().mockResolvedValue(model),
   } as unknown as CompiledModelProvider;
   const records = {
-    allocateId: vi.fn().mockResolvedValue("record"),
     get: vi.fn(async () => stored),
   } as unknown as RecordReader;
   const transactions = {
@@ -62,7 +61,7 @@ function dependencies(definition: SchemaModelDefinition, events: string[], model
     }),
   } as UnitOfWork;
   const refs = {
-    expandOne: vi.fn(async (_schema, record) => record),
+    expand: vi.fn(async (_schema, records) => records),
   } as unknown as RecordExpander;
   const access = {
     profile: vi.fn().mockResolvedValue({ actorId: "actor" }),
@@ -120,7 +119,7 @@ describe("model middleware pipeline", () => {
       "persist",
       "present",
     ]);
-    expect(result).toEqual({ id: "record", title: "标题", presented: true });
+    expect(result).toEqual({ id: expect.any(String), title: "标题", presented: true });
   });
 
   it("passes only the authorized representation to present", async () => {
@@ -137,7 +136,7 @@ describe("model middleware pipeline", () => {
 
     await dependencies(module, []).create("article", { title: "标题", secret: "hidden" }, "actor");
 
-    expect(presented).toEqual({ id: "record", title: "标题" });
+    expect(presented).toEqual({ id: expect.any(String), title: "标题" });
   });
 
   it("rejects declarative Schema violations before business validate", async () => {

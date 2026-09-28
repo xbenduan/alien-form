@@ -2,8 +2,6 @@ import type { AlienSchema } from "@alien-form/protocol";
 import type { CompiledFieldPlan } from "@alien-form/alienbase";
 import { quoteColumn } from "./sql.ts";
 
-export type FieldPlan = CompiledFieldPlan;
-
 export interface RefField {
   field: string;
   model: string;
@@ -28,7 +26,7 @@ function inferredType(
   return "text";
 }
 
-export function planFields(schema: AlienSchema): FieldPlan[] {
+export function planFields(schema: AlienSchema): CompiledFieldPlan[] {
   return schema.fields
     .filter((field) => field.relation?.kind !== "many-to-many")
     .map((field) => {
@@ -46,11 +44,11 @@ export function planFields(schema: AlienSchema): FieldPlan[] {
     });
 }
 
-export function planByField(schema: AlienSchema): Map<string, FieldPlan> {
+export function planByField(schema: AlienSchema): Map<string, CompiledFieldPlan> {
   return new Map(planFields(schema).map((plan) => [plan.field, plan]));
 }
 
-export function fieldExpression(plan: FieldPlan): string {
+export function fieldExpression(plan: CompiledFieldPlan): string {
   if (plan.storage === "physical" && plan.column) return quoteColumn(plan.column);
   return `json_extract("data_content", '$.${plan.field}')`;
 }
