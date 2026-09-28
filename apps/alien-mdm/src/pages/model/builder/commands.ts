@@ -148,5 +148,3 @@ function findParentId(fields: FieldNode[], id: string, parent?: string): string 
   }
   return undefined;
 }
-
-export { findNode, findParentId };

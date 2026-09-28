@@ -1,9 +1,9 @@
-import type { ListRequest, ListResponse } from "@app-types";
 import type { DataSourceItem } from "@alien-form/core";
+import type { ListRequest, ListResponse } from "@alien-form/protocol";
 
 type ListService = (request: ListRequest) => ListResponse | Promise<ListResponse>;
 
-interface ReferenceValue {
+export interface ReferenceValue {
   $ref: string;
   value: unknown;
   label?: unknown;
@@ -14,14 +14,19 @@ export interface RelationOptions {
   labelField: string;
 }
 
-function isReferenceValue(value: unknown): value is ReferenceValue {
+export function isReferenceValue(value: unknown): value is ReferenceValue {
   return (
     typeof value === "object" &&
     value !== null &&
     !Array.isArray(value) &&
-    "$ref" in value &&
+    typeof (value as Partial<ReferenceValue>).$ref === "string" &&
     "value" in value
   );
+}
+
+export function referenceValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(referenceValue);
+  return isReferenceValue(value) ? value.value : value;
 }
 
 function displayValue(value: unknown): string {

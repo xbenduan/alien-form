@@ -25,7 +25,7 @@ description: "Builds, creates, and edits renderable Alien Form models."
 
 # Alien Form 模型管理
 
-本 Skill 面向下载时所在的服务 \`__ALIEN_FORM_BASE_URL__\`。模型协议、Runtime 能力、页面模版和 JSON Schema 均由项目协议源码自动生成。
+本 Skill 面向下载时所在的服务 \`__ALIEN_FORM_BASE_URL__\`。模型 JSON Schema、Runtime 能力和页面模版均由项目源码自动生成。
 
 ## 强制流程
 
@@ -170,36 +170,6 @@ async function expectedFiles(
         target: "jsonSchema7",
       }),
     ),
-  );
-  files.set("references/protocol/index.ts.txt", await source("packages/protocol/src/index.ts"));
-  files.set("references/protocol/assert.ts.txt", await source("packages/protocol/src/assert.ts"));
-  files.set(
-    "references/protocol/capabilities.ts.txt",
-    await source("packages/protocol/src/capabilities.ts"),
-  );
-  files.set(
-    "references/protocol/generated-capabilities.ts.txt",
-    await source("packages/protocol/src/generated-capabilities.ts"),
-  );
-  files.set(
-    "references/protocol/alien-schema.ts.txt",
-    await source("packages/protocol/src/alien-schema.ts"),
-  );
-  files.set(
-    "references/protocol/page-templates.ts.txt",
-    await source("packages/protocol/src/page-templates.ts"),
-  );
-  files.set(
-    "references/protocol/model-template.ts.txt",
-    await source("packages/protocol/src/model-template.ts"),
-  );
-  files.set(
-    "references/protocol/form-types.ts.txt",
-    await source("packages/protocol/src/form-types.ts"),
-  );
-  files.set(
-    "references/protocol/runtime-types.ts.txt",
-    await source("packages/protocol/src/runtime-types.ts"),
   );
   files.set("templates/model.json", json(model));
   files.set(

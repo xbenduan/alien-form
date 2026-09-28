@@ -1,15 +1,11 @@
 import type { AlienFieldSchema, Runtime } from "@alien-form/engine";
-import { parseAlienSchema } from "@alien-form/protocol";
-import type {
-  AlienSchema,
-  FieldNode,
-  FieldType,
-  FormConfig,
-  ModelDraft,
-  StorageConfig,
-} from "./types";
-import { createDefaultPages } from "./page-templates";
-import { SYSTEM_FIELD_KEYS } from "./system-fields";
+import {
+  createDefaultPages,
+  parseAlienSchema,
+  SYSTEM_FIELD_KEYS,
+  type AlienSchema,
+} from "@alien-form/protocol";
+import type { FieldNode, FieldType, FormConfig, ModelDraft, StorageConfig } from "./types";
 
 let idCounter = 0;
 /** 生成命令寻址用的稳定 id。 */

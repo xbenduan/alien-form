@@ -1,7 +1,7 @@
 import { Card, Form, Input, InputNumber, Select } from "antd";
 import { useEffect, useState } from "react";
 import { useRuntime } from "@alien-form/react";
-import type { ListResponse, ModelRecord } from "@app-types";
+import type { ListResponse, ModelRecord } from "@alien-form/protocol";
 import type { ModelAction } from "../builder/commands";
 import type { ModelDraft } from "../builder/types";
 

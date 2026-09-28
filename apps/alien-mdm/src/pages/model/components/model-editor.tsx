@@ -3,12 +3,11 @@ import { App, Alert, Button, Card, Flex, Skeleton, Space, Steps } from "antd";
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRuntime } from "@alien-form/react";
-import type { AlienSchema } from "@alien-form/protocol";
+import { createDefaultPages, type AlienSchema } from "@alien-form/protocol";
 import { PageActionBar } from "../../../components/page-action-bar";
 import { createId, decodeModel, encodeModel } from "../builder/codec";
 import { reduceModel } from "../builder/commands";
 import { createDefaultDraft } from "../builder/default-draft";
-import { createDefaultPages } from "../builder/page-templates";
 import type { ModelDraft } from "../builder/types";
 import { BasicInfo } from "./basic-info";
 import { DatabaseBuilder } from "./database-builder";
@@ -28,7 +27,7 @@ export function ModelEditor({ modelCode, copyFrom }: { modelCode?: string; copyF
   const [loading, setLoading] = useState(Boolean(sourceModelCode));
   const [error, setError] = useState<string>();
   const [readOnly, setReadOnly] = useState(false);
-  const initialDraft = useMemo(() => createDefaultDraft(runtime), [runtime]);
+  const initialDraft = useMemo(() => createDefaultDraft(), []);
   const [draft, dispatch] = useReducer(reduceModel, initialDraft);
 
   useEffect(() => {

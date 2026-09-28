@@ -9,10 +9,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      "@binding": src("binding"),
       "@runtime": src("runtime"),
       "@utils": src("utils"),
-      "@app-types": src("runtime/types.ts"),
     },
   },
   server: {

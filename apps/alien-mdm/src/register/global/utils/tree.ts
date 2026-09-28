@@ -1,32 +1,14 @@
-import type { SubtreeRequest, SubtreeResponse } from "@app-types";
+import type { SubtreeRequest, SubtreeResponse } from "@alien-form/protocol";
 import type { TreeNode } from "../../../components/tree";
+import { referenceValue } from "./relation";
 
 type SubtreeService = (request: SubtreeRequest) => SubtreeResponse | Promise<SubtreeResponse>;
-
-interface ReferenceValue {
-  $ref: string;
-  value: unknown;
-}
 
 export interface TreeOptions {
   model: string;
   parentField: string;
   labelField: string;
   valueField?: string;
-}
-
-/** 读取普通字段值或关联引用中的实际值。 */
-function referenceValue(value: unknown): unknown {
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    !Array.isArray(value) &&
-    "$ref" in value &&
-    "value" in value
-  ) {
-    return (value as ReferenceValue).value;
-  }
-  return value;
 }
 
 /** 消费 records.subtree 返回的平铺节点，并装配为嵌套树。 */

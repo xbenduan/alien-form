@@ -2,15 +2,12 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { RuntimeProvider } from "@alien-form/react";
 import { appRuntime } from "@runtime/create-runtime";
-import { hydrateUserInfo } from "@runtime/user-info";
 import { AppProviders } from "../providers";
 import { AppRouter } from "../router";
 import "../../styles/global.css";
 
 const root = document.getElementById("root");
 if (!root) throw new Error("#root is missing");
-
-hydrateUserInfo();
 
 createRoot(root).render(
   <StrictMode>

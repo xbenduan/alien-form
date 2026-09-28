@@ -2,15 +2,15 @@ import { Alert, App, Flex } from "antd";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRuntime } from "@alien-form/react";
-import type { ListResponse, ModelRecord, ModelSummary } from "@app-types";
-import { canManageModels } from "@runtime/user-info";
+import type { ListResponse, ModelRecord, ModelSummary } from "@alien-form/protocol";
+import { useAuth } from "../../app/providers";
 import { ModelTable } from "./components/model-table";
 
 export default function ModelListPage() {
   const navigate = useNavigate();
   const runtime = useRuntime();
+  const { canManageModels } = useAuth();
   const { message } = App.useApp();
-  const canManage = canManageModels();
   const [models, setModels] = useState<ModelSummary[]>([]);
   const [groupLabels, setGroupLabels] = useState<ReadonlyMap<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -103,8 +103,8 @@ export default function ModelListPage() {
         keyword={keyword}
         onKeywordChange={setKeyword}
         onRefresh={() => void load()}
-        onAdd={canManage ? () => navigate("/models/add") : undefined}
-        canManageModels={canManage}
+        onAdd={canManageModels ? () => navigate("/models/add") : undefined}
+        canManageModels={canManageModels}
         groupLabels={groupLabels}
         onView={viewModel}
         onEdit={editModel}

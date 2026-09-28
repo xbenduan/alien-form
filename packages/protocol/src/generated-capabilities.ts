@@ -414,9 +414,6 @@ export const COMPONENT_CAPABILITIES: readonly ComponentCapability[] = [
     },
   },
   {
-    code: "record-page",
-  },
-  {
     code: "record-form",
   },
   {
@@ -424,14 +421,6 @@ export const COMPONENT_CAPABILITIES: readonly ComponentCapability[] = [
   },
 ];
 export const SERVICE_CAPABILITIES: readonly RuntimeCapability[] = [
-  {
-    code: "auth.login",
-    description: "登录",
-  },
-  {
-    code: "auth.logout",
-    description: "退出登录",
-  },
   {
     code: "model.list",
     description: "查询模型列表",

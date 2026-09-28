@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AlienSchema } from "@alien-form/engine";
 import { useRuntime } from "@alien-form/react";
 import { CheckOutlined, CloseOutlined } from "@ant-design/icons";
-import type { ModelSummary } from "@app-types";
+import type { ModelSummary } from "@alien-form/protocol";
 import { FieldsetCard } from "../../../components/fieldset-card";
 import { synchronizeRelationForm } from "../builder/codec";
 import type { FieldNode, FieldSource, FieldType, StorageConfig } from "../builder/types";

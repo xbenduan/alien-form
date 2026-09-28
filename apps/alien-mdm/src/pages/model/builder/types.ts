@@ -75,5 +75,3 @@ export interface ModelDraft {
   /** 页面装配：直接编辑 AlienSchema["pages"][number] JSON，可从代码写死的模版新增。 */
   pages: PageDraft[];
 }
-
-export type { AlienSchema };

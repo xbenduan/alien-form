@@ -2,8 +2,9 @@ import { Select as AntSelect, Spin } from "antd";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "@alien-form/react";
 import { Tree, findTreeTitle, type TreeNode } from "../../../components/tree";
+import { isReferenceValue, referenceValue } from "../utils/relation";
 import type { TreeOptions } from "../utils/tree";
-import { DetailValue, buildProps, isReferenceValue, referenceValue } from "./shared";
+import { DetailValue, buildProps } from "./shared";
 
 type TreeLoader = (options: TreeOptions) => Promise<TreeNode[]>;
 

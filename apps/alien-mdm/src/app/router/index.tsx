@@ -1,6 +1,6 @@
 import { UnorderedListOutlined } from "@ant-design/icons";
 import { Button, Spin, Tooltip, Typography } from "antd";
-import { Suspense, type ReactNode } from "react";
+import { Suspense, useEffect, type ReactNode } from "react";
 import {
   BrowserRouter,
   Link,
@@ -12,9 +12,9 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { useAuth } from "../providers";
-import { canManageModels } from "@runtime/user-info";
 import { PageBreadcrumb } from "../../components/page-breadcrumb";
 import { UserMenu } from "../../components/user-menu";
+import { bindOpenRoute } from "../../register/global/utils/navigation";
 import { DynamicPage } from "./dynamic-routes";
 import { NavigationProvider, useNavigationItems } from "./navigation";
 import { publicRoutes, staticRoutes } from "./static-routes";
@@ -29,8 +29,16 @@ function Protected({ children }: { children: ReactNode }) {
   );
 }
 
+function RuntimeNavigationBridge() {
+  const navigate = useNavigate();
+
+  useEffect(() => bindOpenRoute(navigate), [navigate]);
+  return null;
+}
+
 function ModelManager({ children }: { children: ReactNode }) {
-  return canManageModels() ? children : <Navigate to="/" replace />;
+  const auth = useAuth();
+  return auth.canManageModels ? children : <Navigate to="/" replace />;
 }
 
 function AppTopbar() {
@@ -111,6 +119,7 @@ function AppLoading() {
 export function AppRouter() {
   return (
     <BrowserRouter>
+      <RuntimeNavigationBridge />
       <NavigationProvider>
         <Suspense fallback={<AppLoading />}>
           <Routes>

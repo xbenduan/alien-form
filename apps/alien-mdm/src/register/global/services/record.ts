@@ -7,7 +7,7 @@ import type {
   RecordValues,
   SubtreeRequest,
   SubtreeResponse,
-} from "@app-types";
+} from "@alien-form/protocol";
 import { coalesceRequest } from "@runtime/request-coalescer";
 import { sdkClient } from "@runtime/sdk-client";
 
@@ -111,9 +111,7 @@ export function registerRecordServices(runtime: Runtime): void {
     "record.edit",
     defineService(
       (values: RecordValues, context: { modelCode: string; recordId?: string }) =>
-        sdkClient
-          .collection<ModelRecord>(context.modelCode)
-          .update(context.recordId ?? "", values),
+        sdkClient.collection<ModelRecord>(context.modelCode).update(context.recordId ?? "", values),
       { description: "提交编辑表单" },
     ),
   );

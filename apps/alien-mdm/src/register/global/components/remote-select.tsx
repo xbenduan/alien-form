@@ -1,9 +1,10 @@
 import { Select as AntSelect } from "antd";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DataSourceItem } from "@alien-form/core";
-import type { ListRequest } from "@app-types";
+import type { ListRequest } from "@alien-form/protocol";
 import type { ComponentProps } from "@alien-form/react";
-import { DetailValue, buildProps, isReferenceValue, referenceValue } from "./shared";
+import { isReferenceValue, referenceValue } from "../utils/relation";
+import { DetailValue, buildProps } from "./shared";
 
 interface OptionRequest extends ListRequest {
   valueField: string;

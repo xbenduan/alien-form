@@ -1,8 +1,7 @@
 import { App, Input, Modal, Select, Space, Typography } from "antd";
 import { useEffect, useState } from "react";
-import { parseAlienPage } from "@alien-form/protocol";
+import { findPageTemplate, PAGE_TEMPLATES, parseAlienPage } from "@alien-form/protocol";
 import { createId } from "../builder/codec";
-import { PAGE_TEMPLATES, findPageTemplate } from "../builder/page-templates";
 import type { ModelDraft, PageDraft } from "../builder/types";
 
 /**
@@ -71,7 +70,7 @@ export function PageModal({
       onCancel={onCancel}
       onOk={submit}
     >
-      <Space direction="vertical" size={12} style={{ width: "100%" }}>
+      <Space orientation="vertical" size={12} style={{ width: "100%" }}>
         <Space>
           <Typography.Text type="secondary">选择模版：</Typography.Text>
           <Select

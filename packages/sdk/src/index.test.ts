@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { AlienClient, AlienError, type AuthStore } from "./index.ts";
+import { AlienClient, type AuthStore } from "./index.ts";
 import type { ModelRecord } from "./index.ts";
 
 function store(): AuthStore {
@@ -56,9 +56,12 @@ describe("AlienClient", () => {
       requestCount += 1;
       if (requestCount === 1) return fetcher(url, init);
       calls.push(init ?? {});
-      return new Response(JSON.stringify({ status: "error", msg: "未登录或会话已失效", data: null }), {
-        status: 401,
-      });
+      return new Response(
+        JSON.stringify({ status: "error", msg: "未登录或会话已失效", data: null }),
+        {
+          status: 401,
+        },
+      );
     };
     const client = new AlienClient({
       baseUrl: "https://example.com",

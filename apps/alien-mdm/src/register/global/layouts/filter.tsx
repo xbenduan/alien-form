@@ -2,18 +2,11 @@ import { Button, Card, Space } from "antd";
 import { useCallback, useMemo, useState } from "react";
 import { usePage, type ComponentProps, type ValueSource } from "@alien-form/react";
 import type { AlienFieldSchema, AlienSchema } from "@alien-form/engine";
+import { referenceValue } from "../utils/relation";
 import type { FilterField } from "../utils/schema";
 
-interface ReferenceValue {
-  value: unknown;
-}
-
-function isReferenceValue(value: unknown): value is ReferenceValue {
-  return typeof value === "object" && value !== null && !Array.isArray(value) && "value" in value;
-}
-
 function scalar(value: unknown): string | number | boolean | undefined {
-  const raw = isReferenceValue(value) ? value.value : value;
+  const raw = referenceValue(value);
   if (typeof raw === "string" || typeof raw === "number" || typeof raw === "boolean") return raw;
   return undefined;
 }

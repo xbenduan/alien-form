@@ -2,7 +2,7 @@ import { CopyOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { Button, Card, Popconfirm, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useMemo } from "react";
-import type { ModelSummary } from "@app-types";
+import type { ModelSummary } from "@alien-form/protocol";
 import { ModelListToolbar } from "./model-list-toolbar";
 
 export interface ModelTableProps {

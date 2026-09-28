@@ -5,7 +5,7 @@ description: "Builds, creates, and edits renderable Alien Form models."
 
 # Alien Form 模型管理
 
-本 Skill 面向下载时所在的服务 `__ALIEN_FORM_BASE_URL__`。模型协议、Runtime 能力、页面模版和 JSON Schema 均由项目协议源码自动生成。
+本 Skill 面向下载时所在的服务 `__ALIEN_FORM_BASE_URL__`。模型 JSON Schema、Runtime 能力和页面模版均由项目源码自动生成。
 
 ## 强制流程
 

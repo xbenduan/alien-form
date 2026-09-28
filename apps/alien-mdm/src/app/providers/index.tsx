@@ -9,12 +9,13 @@ import {
   useState,
   type PropsWithChildren,
 } from "react";
+import type { ModelRecord } from "@alien-form/protocol";
 import { sdkClient } from "@runtime/sdk-client";
-import { clearUserInfo, setUserInfo, userInfo, type UserInfo } from "@runtime/user-info";
 
 interface AuthValue {
   authenticated: boolean;
-  user?: UserInfo;
+  canManageModels: boolean;
+  user: ModelRecord | null;
   login(username: string, password: string): Promise<void>;
   logout(): Promise<void>;
 }
@@ -22,33 +23,32 @@ interface AuthValue {
 const AuthContext = createContext<AuthValue | null>(null);
 
 function AuthProvider({ children }: PropsWithChildren) {
-  const [authenticated, setAuthenticated] = useState(() =>
-    Boolean(sdkClient.auth.token && userInfo()),
-  );
+  const [user, setUser] = useState(() => sdkClient.auth.model);
   const login = useCallback(async (username: string, password: string) => {
     const result = await sdkClient.auth.authWithPassword(username, password);
-    setUserInfo(result.user);
-    window.location.reload();
+    setUser(result.user);
   }, []);
   const logout = useCallback(async () => {
     try {
       await sdkClient.auth.logout();
     } finally {
-      clearUserInfo();
-      setAuthenticated(false);
+      setUser(null);
     }
   }, []);
   useEffect(() => {
     // Session expiry (401) clears local auth state so Protected routes redirect to /login.
-    sdkClient.setUnauthorizedHandler(() => {
-      clearUserInfo();
-      setAuthenticated(false);
-    });
+    sdkClient.setUnauthorizedHandler(() => setUser(null));
     return () => sdkClient.setUnauthorizedHandler(undefined);
   }, []);
   const value = useMemo(
-    () => ({ authenticated, user: userInfo(), login, logout }),
-    [authenticated, login, logout],
+    () => ({
+      authenticated: Boolean(sdkClient.auth.token && user),
+      canManageModels: user?.canCreateModel === true,
+      user,
+      login,
+      logout,
+    }),
+    [login, logout, user],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

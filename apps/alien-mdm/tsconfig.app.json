@@ -16,8 +16,7 @@
     "noFallthroughCasesInSwitch": true,
     "paths": {
       "@runtime/*": ["./src/runtime/*"],
-      "@utils/*": ["./src/utils/*"],
-      "@app-types": ["./src/runtime/types.ts"]
+      "@utils/*": ["./src/utils/*"]
     }
   },
   "include": ["src"]

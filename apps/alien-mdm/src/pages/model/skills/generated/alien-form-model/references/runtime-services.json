@@ -2,14 +2,6 @@
   "source": "Runtime.getCapabilities()",
   "services": [
     {
-      "code": "auth.login",
-      "description": "登录"
-    },
-    {
-      "code": "auth.logout",
-      "description": "退出登录"
-    },
-    {
       "code": "model.list",
       "description": "查询模型列表"
     },

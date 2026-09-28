@@ -10,9 +10,9 @@ import {
 } from "@ant-design/icons";
 import { Alert, Button, Empty, Input, Skeleton, Tabs, Tooltip, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
-import type { ModelRecord, ModelSummary } from "@app-types";
+import type { ModelRecord, ModelSummary } from "@alien-form/protocol";
+import { useAuth } from "../../app/providers";
 import { sdkClient } from "@runtime/sdk-client";
-import { canManageModels } from "@runtime/user-info";
 
 type GroupFilter = string;
 
@@ -228,7 +228,7 @@ function FavoriteModelCard({
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const canManage = canManageModels();
+  const { canManageModels } = useAuth();
   const [models, setModels] = useState<ModelSummary[]>();
   const [modelCategories, setModelCategories] = useState<ModelCategoryRecord[]>([]);
   const [error, setError] = useState<string>();
@@ -365,7 +365,7 @@ export default function HomePage() {
                     model={model}
                     onOpen={openModel}
                     onToggleFavorite={toggleFavorite}
-                    onEdit={canManage ? editModel : undefined}
+                    onEdit={canManageModels ? editModel : undefined}
                   />
                 ))}
               </div>
@@ -411,7 +411,7 @@ export default function HomePage() {
                     favorite={favoriteModelNameSet.has(model.name)}
                     onOpen={openModel}
                     onToggleFavorite={toggleFavorite}
-                    onEdit={canManage ? editModel : undefined}
+                    onEdit={canManageModels ? editModel : undefined}
                     groupLabel={
                       model.group ? (groupLabels.get(model.group) ?? model.group) : "未分类"
                     }
