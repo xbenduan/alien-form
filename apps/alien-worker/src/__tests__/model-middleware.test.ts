@@ -5,6 +5,7 @@ import type {
   CompiledModelProvider,
   RecordExpander,
   RecordReader,
+  SequenceAllocator,
   UnitOfWork,
 } from "@alien-form/alienbase";
 import { RecordService } from "@alien-form/alienbase";
@@ -15,6 +16,7 @@ const schema: AlienSchema = {
   name: "article",
   title: "文章",
   version: 1,
+  idPrefix: "ART",
   fields: [
     {
       id: "article.id",
@@ -63,6 +65,13 @@ function dependencies(definition: SchemaModelDefinition, events: string[], model
   const refs = {
     expand: vi.fn(async (_schema, records) => records),
   } as unknown as RecordExpander;
+  let sequence = 0;
+  const sequences = {
+    next: vi.fn(async () => {
+      sequence += 1;
+      return sequence;
+    }),
+  } as unknown as SequenceAllocator;
   const access = {
     profile: vi.fn().mockResolvedValue({ actorId: "actor" }),
     assertCan: vi.fn(() => {
@@ -75,7 +84,7 @@ function dependencies(definition: SchemaModelDefinition, events: string[], model
       return visible;
     }),
   } as unknown as AccessControl;
-  return new RecordService(models, records, transactions, refs, access);
+  return new RecordService(models, records, transactions, refs, access, sequences);
 }
 
 describe("model middleware pipeline", () => {

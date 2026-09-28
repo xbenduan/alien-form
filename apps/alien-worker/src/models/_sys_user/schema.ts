@@ -70,6 +70,7 @@ export default function createSchema(
     singularLabel: "用户",
     pluralLabel: "用户",
     defaultPageSize: 20,
+    idPrefix: "MDM",
     fields,
     form: modelForm(fields, ["username", "password", "roleId"]),
     pages: createRecordPages(modelCode, "用户", ["username", "password", "roleId"]).map((page) =>

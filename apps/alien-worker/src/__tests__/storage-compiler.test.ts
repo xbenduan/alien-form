@@ -29,6 +29,7 @@ function model(fields: AlienSchema["fields"], version = 1): AlienSchema {
     name: "article",
     title: "文章",
     version,
+    idPrefix: "ART",
     fields: allFields,
     form: {
       type: "object",

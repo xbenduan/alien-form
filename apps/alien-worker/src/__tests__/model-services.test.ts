@@ -9,6 +9,7 @@ function schema(name: string): AlienSchema {
     name,
     title: name,
     version: 1,
+    idPrefix: "TST",
     fields: [],
     form: { type: "object" },
     pages: [],

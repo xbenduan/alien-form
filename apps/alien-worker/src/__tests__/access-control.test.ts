@@ -12,6 +12,7 @@ function model(creatorId = "owner"): AlienSchema {
     name: "article",
     title: "文章",
     version: 1,
+    idPrefix: "ART",
     creatorId,
     fields: [
       {
@@ -49,6 +50,7 @@ function stores(user: ModelRecord, roles: ModelRecord[]) {
         name: "_sys_user",
         title: "用户",
         version: 1,
+        idPrefix: "MDM",
         fields: [],
         form: { type: "object" },
         pages: [],
@@ -60,6 +62,7 @@ function stores(user: ModelRecord, roles: ModelRecord[]) {
         name: "_sys_role",
         title: "角色",
         version: 1,
+        idPrefix: "MDM",
         fields: [],
         form: { type: "object" },
         pages: [],

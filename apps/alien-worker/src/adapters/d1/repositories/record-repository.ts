@@ -9,6 +9,7 @@ import type {
   RecordReader,
   RecordSubtreeParams,
   RecordMutation,
+  SequenceAllocator,
   TransactionPlan,
   UnitOfWork,
 } from "@alien-form/alienbase";
@@ -86,8 +87,22 @@ function relationValues(value: unknown): string[] {
 }
 
 /** AlienBase 记录读取与事务提交端口的 D1 实现。 */
-export class D1RecordRepository implements RecordReader, UnitOfWork {
+export class D1RecordRepository implements RecordReader, UnitOfWork, SequenceAllocator {
   constructor(private readonly db: D1Database) {}
+
+  /** 原子递增并返回指定序列的下一个顺序号（首次分配为 1）。 */
+  async next(sequenceKey: string): Promise<number> {
+    const row = await this.db
+      .prepare(
+        `INSERT INTO "_sequences" ("name", "next") VALUES (?, 1)
+         ON CONFLICT("name") DO UPDATE SET "next" = "next" + 1
+         RETURNING "next"`,
+      )
+      .bind(sequenceKey)
+      .first<{ next: number }>();
+    if (!row) throw new Error(`顺序号分配失败：${sequenceKey}`);
+    return row.next;
+  }
 
   private async attachManyRelations(
     model: CompiledModel,

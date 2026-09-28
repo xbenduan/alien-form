@@ -157,6 +157,15 @@ export interface UnitOfWork {
   commit(plan: TransactionPlan): Promise<void>;
 }
 
+/**
+ * 顺序号分配端口。ID 前缀（idPrefix）与编号格式由模型协议持有，
+ * 具体存储适配器负责保证同一序列并发分配时的原子性与唯一性。
+ */
+export interface SequenceAllocator {
+  /** 原子分配指定序列的下一个顺序号（从 1 开始）。 */
+  next(sequenceKey: string): Promise<number>;
+}
+
 export interface OutboxRecord extends DomainEvent {
   readonly attempts: number;
 }

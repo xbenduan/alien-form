@@ -6,6 +6,7 @@
   "singularLabel": "示例模型",
   "pluralLabel": "示例模型",
   "defaultPageSize": 20,
+  "idPrefix": "EX",
   "fields": [
     {
       "id": "example_model.name",

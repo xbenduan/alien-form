@@ -68,6 +68,8 @@ export interface ModelDraft {
   singularLabel?: string;
   pluralLabel?: string;
   defaultPageSize: number;
+  /** 记录 ID 自增前缀，运行时生成「前缀 + 8 位顺序号」形式的记录 ID。 */
+  idPrefix?: string;
   definitions?: AlienSchema["definitions"];
   /** 统一字段树：顶层含落库字段与新增展示元素，嵌套 children 为 object/array 子字段。 */
   fields: FieldNode[];

@@ -20,6 +20,7 @@ export function createModelTemplate(): AlienSchema {
     singularLabel: title,
     pluralLabel: title,
     defaultPageSize: 20,
+    idPrefix: "EX",
     fields: [
       {
         id: `${name}.name`,

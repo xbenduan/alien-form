@@ -5,6 +5,7 @@ import type {
   CompiledModelProvider,
   RecordExpander,
   RecordReader,
+  SequenceAllocator,
   UnitOfWork,
 } from "@alien-form/alienbase";
 import { RecordService } from "@alien-form/alienbase";
@@ -14,6 +15,7 @@ const schema: AlienSchema = {
   name: "article",
   title: "文章",
   version: 1,
+  idPrefix: "ART",
   fields: [
     {
       id: "article.id",
@@ -61,6 +63,9 @@ function service(owner = "actor") {
   const refs = {
     expand: vi.fn(async (_schema, records) => records),
   } as unknown as RecordExpander;
+  const sequences = {
+    next: vi.fn(async () => 1),
+  } as unknown as SequenceAllocator;
   const access = {
     profile: vi.fn().mockResolvedValue({ actorId: "actor" }),
     assertCan: vi.fn().mockReturnValue("own"),
@@ -72,7 +77,8 @@ function service(owner = "actor") {
     model,
     records,
     transactions,
-    value: new RecordService(models, records, transactions, refs, access),
+    sequences,
+    value: new RecordService(models, records, transactions, refs, access, sequences),
   };
 }
 
@@ -102,7 +108,7 @@ describe("RecordService access control", () => {
           expect.objectContaining({
             operation: "create",
             model: expect.objectContaining({ key: "article@1" }),
-            record: expect.objectContaining({ title: "内容" }),
+            record: expect.objectContaining({ id: "ART00000001", title: "内容" }),
             ownerId: "actor",
           }),
         ],

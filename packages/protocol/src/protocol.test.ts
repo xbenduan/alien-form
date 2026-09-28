@@ -58,6 +58,7 @@ function model(): AlienSchema {
     name: "orders",
     title: "订单",
     version: 0,
+    idPrefix: "ORD",
     fields,
     form: {
       type: "object",

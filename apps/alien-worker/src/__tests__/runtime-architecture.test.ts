@@ -7,6 +7,7 @@ import type {
   OutboxRepository,
   RecordExpander,
   RecordReader,
+  SequenceAllocator,
   TransactionPlan,
   UnitOfWork,
 } from "@alien-form/alienbase";
@@ -22,6 +23,7 @@ const schema: AlienSchema = {
   name: "article",
   title: "文章",
   version: 1,
+  idPrefix: "ART",
   fields: [
     {
       id: "article.id",
@@ -265,7 +267,14 @@ describe("model commands", () => {
       assertFields: vi.fn(),
       project: vi.fn((_profile, _schema, record) => record),
     } as unknown as AccessControl;
-    const service = new RecordService(models, records, transactions, refs, access);
+    let sequence = 0;
+    const sequences = {
+      next: vi.fn(async () => {
+        sequence += 1;
+        return sequence;
+      }),
+    } as unknown as SequenceAllocator;
+    const service = new RecordService(models, records, transactions, refs, access, sequences);
 
     const result = await service.executeCommand("article", "publish", {}, "actor");
 

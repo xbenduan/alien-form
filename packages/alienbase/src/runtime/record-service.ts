@@ -22,6 +22,7 @@ import type {
   RecordMutation,
   RecordOptionResult,
   RecordReader,
+  SequenceAllocator,
   TransactionPlan,
   UnitOfWork,
 } from "./contracts.ts";
@@ -101,6 +102,7 @@ export class RecordService {
     private readonly transactions: UnitOfWork,
     private readonly refs: RecordExpander,
     private readonly access: AccessControl,
+    private readonly sequences: SequenceAllocator,
   ) {}
 
   private selfRelation(schema: AlienSchema): AlienSchema["fields"][number] {
@@ -389,12 +391,12 @@ export class RecordService {
       input.operation,
       previous,
     );
-    const id =
-      input.operation === "update"
-        ? input.id
-        : typeof prepared.id === "string" && prepared.id
-          ? prepared.id
-          : crypto.randomUUID();
+    const id = await this.resolveId(
+      model,
+      input.operation,
+      prepared,
+      input.operation === "update" ? input.id : undefined,
+    );
     const candidate = normalizeRecord(model, { ...previous, ...prepared, id });
     validateRecord(model, candidate);
     await validateModelRecord(
@@ -430,6 +432,26 @@ export class RecordService {
             },
       previous,
     };
+  }
+
+  /**
+   * 解析记录 ID：更新沿用原 ID；显式传入的 ID 作为受控逃生口（如种子数据）；
+   * 其余一律由 idPrefix + 8 位顺序号生成。
+   */
+  private async resolveId(
+    model: CompiledModel,
+    operation: "create" | "update",
+    prepared: Record<string, unknown>,
+    explicitId?: string,
+  ): Promise<string> {
+    if (operation === "update") return explicitId as string;
+    if (typeof prepared.id === "string" && prepared.id) return prepared.id;
+    const prefix = model.schema.idPrefix;
+    if (!prefix) {
+      throw new AppError(`模型 ${model.schema.name} 未配置 idPrefix，无法生成记录 ID`, 500);
+    }
+    const sequence = await this.sequences.next(prefix);
+    return `${prefix}${String(sequence).padStart(8, "0")}`;
   }
 
   private async commit(plan: TransactionPlan): Promise<void> {

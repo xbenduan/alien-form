@@ -62,6 +62,7 @@ export const createCore = defineCore(() => {
         recordRepository,
         refs,
         access,
+        recordRepository,
       );
 
       return {

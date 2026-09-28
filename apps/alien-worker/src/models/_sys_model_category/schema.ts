@@ -67,6 +67,7 @@ export default function createSchema(modelCode: string): AlienSchema {
     singularLabel: "分类标签",
     pluralLabel: "分类标签",
     defaultPageSize: 20,
+    idPrefix: "MDM",
     fields,
     form: modelForm(fields, ["code", "name", "order", "aggregate"]),
     pages: createRecordPages(modelCode, "分类标签", ["code", "name", "order", "aggregate"]),

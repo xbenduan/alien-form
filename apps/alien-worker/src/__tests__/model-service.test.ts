@@ -15,6 +15,7 @@ function schema(name = "article"): AlienSchema {
     title: "文章",
     version: 0,
     group: "other",
+    idPrefix: "TST",
     fields: [
       {
         id: `${name}.id`,

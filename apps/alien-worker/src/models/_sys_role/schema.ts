@@ -131,6 +131,7 @@ export default function createSchema(constants: {
     singularLabel: "角色",
     pluralLabel: "角色",
     defaultPageSize: 20,
+    idPrefix: "MDM",
     fields,
     form: modelForm(fields, ["code", "name", "parentId", "canCreateModel"]),
     pages: createRecordPages(modelCode, "角色", ["code", "name", "parentId", "canCreateModel"]).map(

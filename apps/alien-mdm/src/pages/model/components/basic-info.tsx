@@ -67,6 +67,7 @@ export function BasicInfo({
       singularLabel: draft.singularLabel,
       pluralLabel: draft.pluralLabel,
       defaultPageSize: draft.defaultPageSize,
+      idPrefix: draft.idPrefix,
       description: draft.description,
     });
   }, [draft, form]);
@@ -80,6 +81,7 @@ export function BasicInfo({
     if ("singularLabel" in changed) patch.singularLabel = changed.singularLabel as string;
     if ("pluralLabel" in changed) patch.pluralLabel = changed.pluralLabel as string;
     if ("defaultPageSize" in changed) patch.defaultPageSize = Number(changed.defaultPageSize ?? 20);
+    if ("idPrefix" in changed) patch.idPrefix = String(changed.idPrefix ?? "").toUpperCase();
     if ("description" in changed) patch.description = changed.description as string;
     dispatch({ type: "meta.update", patch });
   };
@@ -116,6 +118,20 @@ export function BasicInfo({
         </Form.Item>
         <Form.Item name="defaultPageSize" label="每页条数">
           <InputNumber min={1} style={{ width: "100%" }} />
+        </Form.Item>
+        <Form.Item
+          name="idPrefix"
+          label="ID 前缀"
+          tooltip="记录 ID 自动生成为「前缀 + 8 位顺序号」，如 MDM00000001"
+          rules={[
+            { required: true },
+            {
+              pattern: /^[A-Z][A-Z0-9]{0,7}$/,
+              message: "1-8 位大写字母或数字，且以大写字母开头",
+            },
+          ]}
+        >
+          <Input maxLength={8} placeholder="如 MDM" />
         </Form.Item>
         <Form.Item name="description" label="描述" style={{ gridColumn: "1 / -1" }}>
           <Input.TextArea rows={3} />

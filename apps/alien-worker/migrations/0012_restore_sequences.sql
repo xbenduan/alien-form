@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS "_sequences" (
+  "name" TEXT PRIMARY KEY,
+  "next" INTEGER NOT NULL
+);

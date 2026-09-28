@@ -2,6 +2,8 @@ import { z } from "zod";
 
 const identifierPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const modelNamePattern = /^[A-Za-z_][A-Za-z0-9_-]*$/;
+/** 自增前缀：1-8 位大写字母或数字，必须以大写字母开头。 */
+const idPrefixPattern = /^[A-Z][A-Z0-9]{0,7}$/;
 const expressionSchema = z
   .string()
   .regex(/^\s*\{\{[\s\S]*\}\}\s*$/, "必须是 {{...}} 表达式") as z.ZodType<`{{${string}}}`>;
@@ -86,6 +88,11 @@ export interface AlienSchema {
   singularLabel?: string;
   pluralLabel?: string;
   defaultPageSize?: number;
+  /**
+   * 记录 ID 自增前缀。运行时据此生成「前缀 + 8 位顺序号」的记录 ID，
+   * 例如前缀 MDM 生成 MDM00000001；共用同一前缀的模型共享同一顺序号序列。
+   */
+  idPrefix: string;
   fields: Array<{
     id: string;
     key: string;
@@ -231,6 +238,9 @@ export const alienSchema: z.ZodType<AlienSchema> = z.object({
   singularLabel: z.string().optional(),
   pluralLabel: z.string().optional(),
   defaultPageSize: z.number().int().positive().optional(),
+  idPrefix: z
+    .string()
+    .regex(idPrefixPattern, "idPrefix 必须为 1-8 位大写字母或数字，且以大写字母开头"),
   fields: z.array(alienModelFieldSchema).min(1, "fields 不能为空"),
   form: alienFieldSchema,
   definitions: z.record(alienFieldSchema).optional(),
