@@ -7,7 +7,7 @@ export default function createSchema(constants: {
   readonly superAdminId: string;
 }): AlienSchema {
   const modelCode = constants.code;
-  const [idField, createdAtField, updatedAtField] = systemFields(modelCode);
+  const [idField, createdAtField, updatedAtField] = systemFields(modelCode, "角色 ID");
 
   const fields: AlienSchema["fields"] = [
     idField,

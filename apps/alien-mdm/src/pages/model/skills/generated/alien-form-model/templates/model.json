@@ -26,7 +26,7 @@
       "id": "example_model.id",
       "key": "id",
       "type": "string",
-      "title": "ID",
+      "title": "示例模型 ID",
       "required": true,
       "storage": {
         "type": "text",

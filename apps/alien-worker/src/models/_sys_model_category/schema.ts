@@ -3,7 +3,7 @@ import { modelForm, physicalField, systemFields } from "../../utils/system-model
 
 /** Builds the category protocol from constants owned by the model entry. */
 export default function createSchema(modelCode: string): AlienSchema {
-  const [idField, createdAtField, updatedAtField] = systemFields(modelCode);
+  const [idField, createdAtField, updatedAtField] = systemFields(modelCode, "分类 ID");
 
   const fields: AlienSchema["fields"] = [
     idField,

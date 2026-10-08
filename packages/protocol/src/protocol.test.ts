@@ -190,6 +190,40 @@ describe("AlienSchema", () => {
     expect(() => assertStorageCompatible(current, incoming)).not.toThrow();
   });
 
+  it("允许删除 physical 字段", () => {
+    const current = model();
+    const incoming = model();
+    incoming.fields = incoming.fields.filter((field) => field.key !== "name");
+    expect(() => assertStorageCompatible(current, incoming)).not.toThrow();
+  });
+
+  it("允许修改关联 labelField，拒绝其他关联语义变更", () => {
+    const withRelation = () => {
+      const value = model();
+      const parent = parentField();
+      value.fields.unshift(parent);
+      value.form.properties = {
+        ...value.form.properties,
+        parentId: { $ref: "#/fields/parentId" },
+      };
+      return value;
+    };
+
+    const labelChange = withRelation();
+    labelChange.fields[0] = {
+      ...labelChange.fields[0],
+      relation: { ...labelChange.fields[0].relation!, labelField: "id" },
+    };
+    expect(() => assertStorageCompatible(withRelation(), labelChange)).not.toThrow();
+
+    const targetChange = withRelation();
+    targetChange.fields[0] = {
+      ...targetChange.fields[0],
+      relation: { ...targetChange.fields[0].relation!, target: "invoices" },
+    };
+    expect(() => assertStorageCompatible(withRelation(), targetChange)).toThrow(/relation 不允许修改/);
+  });
+
   it("只允许自关联字段使用 TreeSelect", () => {
     const valid = model();
     valid.fields.unshift(parentField());

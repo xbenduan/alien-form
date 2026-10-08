@@ -141,6 +141,19 @@ function createIndexOperation(index: StorageIndex): MigrationOperation {
   };
 }
 
+/** 删除存量命名索引（唯一或普通索引共用）。 */
+function dropIndexOperation(index: StorageIndex): MigrationOperation {
+  return { kind: "drop-index", sql: `DROP INDEX IF EXISTS ${quoteColumn(index.name)}` };
+}
+
+/** 删除物理列（SQLite ≥ 3.35；调用前必须先删除该列上的全部索引）。 */
+function dropColumnOperation(table: string, column: string): MigrationOperation {
+  return {
+    kind: "drop-column",
+    sql: `ALTER TABLE ${quoteTable(table)} DROP COLUMN ${quoteColumn(column)}`,
+  };
+}
+
 export function compileMigrationPlan(
   current: AlienSchema | undefined,
   incoming: AlienSchema,
@@ -163,52 +176,65 @@ export function compileMigrationPlan(
     const oldColumns = new Set(currentManifest.columns.map((column) => column.fieldId));
     const oldIndexes = new Set(currentManifest.indexes.map((index) => index.name));
     const oldRelations = new Set(currentManifest.relations.map((relation) => relation.field));
+    const newColumns = new Set(manifest.columns.map((column) => column.fieldId));
+    const newIndexes = new Set(manifest.indexes.map((index) => index.name));
+
+    const addedRelationTables = manifest.relations
+      .filter((relation) => !oldRelations.has(relation.field))
+      .map((relation) => ({
+        kind: "add-relation-table" as const,
+        sql: relationTableSql(relation),
+      }));
+    // 先把旧列中的关联值迁入关系表，后续 DROP COLUMN 才不会丢数据。
+    const migratedRelationValues = manifest.relations.flatMap((relation) => {
+      if (oldRelations.has(relation.field)) return [];
+      const previous = current.fields.find(
+        (field) =>
+          field.key === relation.field &&
+          field.storage !== undefined &&
+          field.relation?.kind === "many-to-one",
+      );
+      if (!previous) return [];
+      const idField = current.fields.find((field) => field.key === "id");
+      if (!idField) return [];
+      return [
+        {
+          kind: "migrate-relation-values" as const,
+          sql: migrateRelationValuesSql(
+            current.name,
+            physicalColumn(idField),
+            physicalColumn(previous),
+            relation,
+          ),
+        },
+      ];
+    });
+    const droppedIndexes = currentManifest.indexes
+      .filter((index) => !newIndexes.has(index.name))
+      .map(dropIndexOperation);
+    // DROP COLUMN 要求目标列上不存在任何索引，故删索引在前、删列在后。
+    const droppedColumns = currentManifest.columns
+      .filter((column) => !newColumns.has(column.fieldId))
+      .map((column) => dropColumnOperation(manifest.table, column.column));
+    const addedColumns = manifest.columns
+      .filter((column) => !oldColumns.has(column.fieldId))
+      .map((column) => ({
+        kind: "add-column" as const,
+        sql:
+          `ALTER TABLE ${quoteTable(manifest.table)} ADD COLUMN ` +
+          columnDefinition(column, false),
+      }));
+    const addedIndexes = manifest.indexes
+      .filter((index) => !oldIndexes.has(index.name))
+      .map(createIndexOperation);
 
     operations.push(
-      ...manifest.columns
-        .filter((column) => !oldColumns.has(column.fieldId))
-        .map((column) => ({
-          kind: "add-column" as const,
-          sql:
-            `ALTER TABLE ${quoteTable(manifest.table)} ADD COLUMN ` +
-            columnDefinition(column, false),
-        })),
-    );
-    operations.push(
-      ...manifest.indexes.filter((index) => !oldIndexes.has(index.name)).map(createIndexOperation),
-    );
-    operations.push(
-      ...manifest.relations
-        .filter((relation) => !oldRelations.has(relation.field))
-        .map((relation) => ({
-          kind: "add-relation-table" as const,
-          sql: relationTableSql(relation),
-        })),
-    );
-    operations.push(
-      ...manifest.relations.flatMap((relation) => {
-        if (oldRelations.has(relation.field)) return [];
-        const previous = current.fields.find(
-          (field) =>
-            field.key === relation.field &&
-            field.storage !== undefined &&
-            field.relation?.kind === "many-to-one",
-        );
-        if (!previous) return [];
-        const idField = current.fields.find((field) => field.key === "id");
-        if (!idField) return [];
-        return [
-          {
-            kind: "migrate-relation-values" as const,
-            sql: migrateRelationValuesSql(
-              current.name,
-              physicalColumn(idField),
-              physicalColumn(previous),
-              relation,
-            ),
-          },
-        ];
-      }),
+      ...addedRelationTables,
+      ...migratedRelationValues,
+      ...droppedIndexes,
+      ...droppedColumns,
+      ...addedColumns,
+      ...addedIndexes,
     );
   }
 

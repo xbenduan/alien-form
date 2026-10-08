@@ -93,7 +93,27 @@ describe("Storage Compiler", () => {
     expect(plan.operations.map((operation) => operation.kind)).toEqual(["add-column", "add-index"]);
   });
 
-  it("将单值关联原子迁移到多对多关系表并保留旧列", () => {
+  it("删除字段时按序回收索引与物理列", () => {
+    const current = model([
+      {
+        id: "article.code",
+        key: "code",
+        type: "string",
+        title: "编码",
+        required: true,
+        storage: { type: "text", unique: true, index: true },
+        form: {},
+      },
+    ]);
+    const incoming = model([], 2);
+
+    const { plan } = compileMigrationPlan(current, incoming);
+    expect(plan.operations.map((operation) => operation.kind)).toEqual(["drop-index", "drop-column"]);
+    expect(plan.operations[0]?.sql).toContain("DROP INDEX");
+    expect(plan.operations[1]?.sql).toBe('ALTER TABLE "article" DROP COLUMN "code"');
+  });
+
+  it("将单值关联原子迁移到多对多关系表并回收遗留列", () => {
     const relation = {
       target: "role",
       valueField: "id",
@@ -131,6 +151,8 @@ describe("Storage Compiler", () => {
     expect(plan.operations.map((operation) => operation.kind)).toEqual([
       "add-relation-table",
       "migrate-relation-values",
+      "drop-index",
+      "drop-column",
     ]);
     expect(plan.operations[1]?.sql).toContain(
       'SELECT "id", "roles" FROM "article" WHERE "roles" IS NOT NULL',

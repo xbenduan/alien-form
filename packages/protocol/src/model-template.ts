@@ -35,7 +35,7 @@ export function createModelTemplate(): AlienSchema {
         id: `${name}.id`,
         key: "id",
         type: "string",
-        title: "ID",
+        title: "示例模型 ID",
         required: true,
         storage: {
           type: "text",

@@ -70,8 +70,11 @@ export function modelForm(
   return { type: "object", properties };
 }
 
-/** Creates the common ID and timestamp fields used by built-in models. */
-export function systemFields(model: string): AlienSchema["fields"] {
+/**
+ * Creates the common ID and timestamp fields used by built-in models.
+ * @param idTitle 系统 ID 字段的展示标题（如「用户 ID」）
+ */
+export function systemFields(model: string, idTitle: string): AlienSchema["fields"] {
   const detailOnly = {
     display: "{{ mode === 'detail' ? 'visible' : 'none' }}" as const,
     disabled: true,
@@ -79,7 +82,7 @@ export function systemFields(model: string): AlienSchema["fields"] {
   return [
     physicalField(model, "id", {
       type: "string",
-      title: "ID",
+      title: idTitle,
       required: true,
       storage: { type: "text", system: true, unique: true, index: true },
       form: { ...detailOnly },

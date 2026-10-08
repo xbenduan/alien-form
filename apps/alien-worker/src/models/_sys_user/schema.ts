@@ -7,7 +7,7 @@ export default function createSchema(
   roleModelCode: string,
 ): AlienSchema {
   const modelCode = constants.code;
-  const [idField, createdAtField, updatedAtField] = systemFields(modelCode);
+  const [idField, createdAtField, updatedAtField] = systemFields(modelCode, "用户 ID");
 
   const fields: AlienSchema["fields"] = [
     idField,

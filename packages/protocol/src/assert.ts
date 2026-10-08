@@ -504,6 +504,23 @@ function isManyToManyMigration(
   );
 }
 
+/**
+ * 比较关联的存储语义是否一致。
+ * labelField 仅决定选项展示文案，不影响存储值，允许修改（如指向字段被删除时改显其他字段）。
+ */
+function relationStorageEqual(
+  before: AlienSchema["fields"][number]["relation"],
+  after: AlienSchema["fields"][number]["relation"],
+): boolean {
+  const strip = (relation: NonNullable<typeof before>) => {
+    const { labelField: _labelField, ...rest } = relation;
+    return rest;
+  };
+  if (before === after) return true;
+  if (!before || !after) return false;
+  return JSON.stringify(strip(before)) === JSON.stringify(strip(after));
+}
+
 export function assertStorageCompatible(current: AlienSchema, incoming: AlienSchema): void {
   if (current.name !== incoming.name) throw new Error("模型 name 不允许修改");
   const incomingById = new Map(incoming.fields.map((field) => [field.id, field]));
@@ -511,7 +528,8 @@ export function assertStorageCompatible(current: AlienSchema, incoming: AlienSch
   for (const field of current.fields) {
     if (!field.storage) continue;
     const next = incomingById.get(field.id);
-    if (!next) throw new Error(`物理字段不允许删除：${field.key}`);
+    // 允许整字段删除：其物理列与索引由迁移计划统一回收。
+    if (!next) continue;
     if (!next.storage) throw new Error(`物理字段不允许转为 virtual：${field.key}`);
     if (next.key !== field.key) throw new Error(`物理字段 key 不允许修改：${field.key}`);
     const relationMigration = isManyToManyMigration(field, next);
@@ -530,7 +548,7 @@ export function assertStorageCompatible(current: AlienSchema, incoming: AlienSch
     if (next.storage.default !== field.storage.default) {
       throw new Error(`物理字段 default 不允许修改：${field.key}`);
     }
-    if (!relationMigration && JSON.stringify(next.relation) !== JSON.stringify(field.relation)) {
+    if (!relationMigration && !relationStorageEqual(field.relation, next.relation)) {
       throw new Error(`物理字段 relation 不允许修改：${field.key}`);
     }
     if (field.storage.index && !next.storage.index) {

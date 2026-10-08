@@ -78,7 +78,19 @@ export function BasicInfo({
     if ("title" in changed) patch.title = String(changed.title ?? "");
     if ("subtitle" in changed) patch.subtitle = changed.subtitle as string;
     if ("group" in changed) patch.group = String(changed.group ?? "other");
-    if ("singularLabel" in changed) patch.singularLabel = changed.singularLabel as string;
+    if ("singularLabel" in changed) {
+      patch.singularLabel = changed.singularLabel as string;
+      // id 字段标题随单数标签联动，保持「科室 ID」式单一命名。
+      const label = String(changed.singularLabel ?? "").trim();
+      const idNode = draft.fields.find((field) => field.key === "id");
+      if (label && idNode) {
+        dispatch({
+          type: "field.update",
+          id: idNode.id,
+          node: { ...idNode, title: `${label} ID` },
+        });
+      }
+    }
     if ("pluralLabel" in changed) patch.pluralLabel = changed.pluralLabel as string;
     if ("defaultPageSize" in changed) patch.defaultPageSize = Number(changed.defaultPageSize ?? 20);
     if ("idPrefix" in changed) patch.idPrefix = String(changed.idPrefix ?? "").toUpperCase();

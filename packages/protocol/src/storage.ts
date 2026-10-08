@@ -38,8 +38,10 @@ export interface StorageManifest {
 export type MigrationOperation =
   | { kind: "create-table"; sql: string }
   | { kind: "add-column"; sql: string }
+  | { kind: "drop-column"; sql: string }
   | { kind: "add-index"; sql: string }
   | { kind: "add-unique-index"; sql: string }
+  | { kind: "drop-index"; sql: string }
   | { kind: "add-relation-table"; sql: string }
   | { kind: "migrate-relation-values"; sql: string };
 
