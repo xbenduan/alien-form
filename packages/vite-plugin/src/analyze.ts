@@ -401,7 +401,9 @@ export async function analyzeFormwork(
   };
   return {
     routes,
-    domainIds: [...new Set(definitions.flatMap((definition) => Object.keys(definition.domains)))].sort(),
+    domainIds: [
+      ...new Set(definitions.flatMap((definition) => Object.keys(definition.domains))),
+    ].sort(),
     schemaRouters: definitions
       .filter((definition) => definition.schema)
       .map((definition) => definition.route.router),

@@ -3,20 +3,25 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": { "dev": "vite --host 127.0.0.1 --port 5173 --strictPort", "build": "tsc --noEmit && vite build", "typecheck": "tsc --noEmit", "preview": "vite preview --host 127.0.0.1" },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview --host 127.0.0.1"
+  },
   "dependencies": {
+    "@kobalte/core": "0.13.14",
+    "@solidjs/router": "1.0.0",
     "formwork": "workspace:*",
     "solid-js": "1.9.17",
-    "@solidjs/router": "1.0.0",
-    "@kobalte/core": "0.13.14",
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "formwork-vite-plugin": "workspace:*",
-    "vite": "8.3.5",
-    "vite-plugin-solid": "2.11.14",
-    "tailwindcss": "4.3.3",
     "@tailwindcss/vite": "4.3.3",
-    "typescript": "7.0.2"
+    "formwork-vite-plugin": "workspace:*",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "vite-plugin-solid": "2.11.14"
   }
 }

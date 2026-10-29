@@ -15,16 +15,27 @@ export function createModelStore(dataDir: string): ModelSource {
   };
   const snapshot = (bytes: Buffer, id: string): ModelSnapshot => {
     const result = modelDocumentSchema.safeParse(parseStored(bytes));
-    if (!result.success || result.data.id !== id) throw new FormworkError("INVALID_MODEL", `开发模型 ${id} 无效`);
+    if (!result.success || result.data.id !== id)
+      throw new FormworkError("INVALID_MODEL", `开发模型 ${id} 无效`);
     const document = result.data;
-    return { id, title: document.title, revision: createHash("sha256").update(bytes).digest("hex"), location: { kind: "remote", uri: `formwork-development://models/${id}` }, writable: true, completeness: "full", document };
+    return {
+      id,
+      title: document.title,
+      revision: createHash("sha256").update(bytes).digest("hex"),
+      location: { kind: "remote", uri: `formwork-development://models/${id}` },
+      writable: true,
+      completeness: "full",
+      document,
+    };
   };
   return {
     async list(options) {
       checkAbort(options?.signal);
       await mkdir(directory, { recursive: true });
       const entries = [];
-      for (const name of (await readdir(directory)).filter((name) => name.endsWith(".json")).sort()) {
+      for (const name of (await readdir(directory))
+        .filter((name) => name.endsWith(".json"))
+        .sort()) {
         const value = await this.read(name.slice(0, -5), options);
         const { document: _document, completeness: _full, ...entry } = value;
         entries.push(entry);
@@ -41,13 +52,15 @@ export function createModelStore(dataDir: string): ModelSource {
     async write(document: ModelDocument, options) {
       const parsed = modelDocumentSchema.safeParse(document);
       if (!parsed.success) throw new FormworkError("INVALID_MODEL", parsed.error.message);
-      if (!options || typeof options.ifRevision !== "string" && options.ifRevision !== null) throw new FormworkError("REVISION_CONFLICT", "必须提供 ifRevision");
+      if (!options || (typeof options.ifRevision !== "string" && options.ifRevision !== null))
+        throw new FormworkError("REVISION_CONFLICT", "必须提供 ifRevision");
       const file = path(document.id);
       return serial(document.id, async () => {
         checkAbort(options.signal);
         const bytes = await readStored(file);
         const current = bytes ? snapshot(bytes, document.id).revision : null;
-        if (current !== options.ifRevision) throw new FormworkError("REVISION_CONFLICT", "远端模型版本已变化");
+        if (current !== options.ifRevision)
+          throw new FormworkError("REVISION_CONFLICT", "远端模型版本已变化");
         checkAbort(options.signal);
         await writeStored(file, parsed.data);
         return snapshot((await readStored(file))!, document.id);

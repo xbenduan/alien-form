@@ -3,7 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": { "dev": "tsx src/main.ts", "build": "tsc -p tsconfig.build.json", "typecheck": "tsc --noEmit" },
-  "dependencies": { "formwork": "workspace:*" },
-  "devDependencies": { "typescript": "7.0.2", "tsx": "4.23.15" }
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "formwork": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15",
+    "typescript": "7.0.2"
+  }
 }

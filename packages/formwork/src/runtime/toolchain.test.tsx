@@ -3,7 +3,10 @@ import { createSignal } from "solid-js";
 import { render } from "solid-js/web";
 
 let dispose: (() => void) | undefined;
-afterEach(() => { dispose?.(); document.body.replaceChildren(); });
+afterEach(() => {
+  dispose?.();
+  document.body.replaceChildren();
+});
 
 it("compiles Solid getters and updates the actual DOM", () => {
   const host = document.createElement("div");

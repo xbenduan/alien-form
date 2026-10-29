@@ -1,6 +1,13 @@
 import type { Accessor, Component, JSX } from "solid-js";
 import type { z } from "zod";
-import type { DataSchema, JsonValue, ModelDocument, ModelSource, ValidationIssue, ViewNode } from "../model/types";
+import type {
+  DataSchema,
+  JsonValue,
+  ModelDocument,
+  ModelSource,
+  ValidationIssue,
+  ViewNode,
+} from "../model/types";
 
 /** 注册有效 View 可以引用的异构 Solid 组件。 */
 export type ComponentRegistry = Record<string, Component<any>>;
@@ -29,7 +36,10 @@ export type ActionContext = {
 /** 为已确认 domain 的模型加载提供上下文。 */
 export type LoadContext = ActionContext & { domain: string };
 /** 表示校验结果；stale 不更新当前错误。 */
-export type ValidationResult = { status: "valid" | "invalid" | "stale"; issues: readonly ValidationIssue[] };
+export type ValidationResult = {
+  status: "valid" | "invalid" | "stale";
+  issues: readonly ValidationIssue[];
+};
 /** 操作稳定身份的数组项，move 保留 scope 和 key。 */
 export type ArrayHandle = {
   items: Accessor<readonly { key: string; scope: ValueScope }[]>;
@@ -52,12 +62,20 @@ export type ScopeOptions = {
   value?: JsonValue;
   defaults?: boolean;
   readOnly?: boolean;
-  validate?: (value: JsonValue | undefined, context: { signal: AbortSignal }) => readonly ValidationIssue[] | Promise<readonly ValidationIssue[]>;
+  validate?: (
+    value: JsonValue | undefined,
+    context: { signal: AbortSignal },
+  ) => readonly ValidationIssue[] | Promise<readonly ValidationIssue[]>;
 };
 /** 为一次渲染提供根容器。 */
 export type ContainerProps = { children?: JSX.Element };
 /** 为字段提供标签、必填提示及当前路径的错误。 */
-export type FieldContainerProps = ContainerProps & { path: string; title: string; required: boolean; errors: readonly ValidationIssue[] };
+export type FieldContainerProps = ContainerProps & {
+  path: string;
+  title: string;
+  required: boolean;
+  errors: readonly ValidationIssue[];
+};
 /** 为值组件提供响应式受控属性，onChange 始终执行写入限制。 */
 export type FieldProps = ContainerProps & {
   value: JsonValue | undefined;
@@ -77,12 +95,13 @@ export type RenderProps = {
   components?: ComponentRegistry;
 } & ({ field: string; view?: never } | { view?: ViewNode; field?: never });
 /** 为模型内容提供共享 Render 和独立 scope。 */
-export type PageContext = LoadContext & ContainerProps & {
-  model: ModelDocument;
-  scope: ValueScope;
-  Render: Component<RenderProps>;
-  createScope: (options?: ScopeOptions) => ValueScope;
-};
+export type PageContext = LoadContext &
+  ContainerProps & {
+    model: ModelDocument;
+    scope: ValueScope;
+    Render: Component<RenderProps>;
+    createScope: (options?: ScopeOptions) => ValueScope;
+  };
 /** 保存可以被近层覆盖的渲染与模型加载能力。 */
 export type RenderDefaults = {
   container?: Component<PageContext>;
@@ -95,18 +114,40 @@ export type RenderDefaults = {
 /** 保存一个模型的稀疏覆盖。 */
 export type DomainDefinition = RenderDefaults;
 /** 声明明确的模型覆盖及其延迟导入。 */
-export type Domains = Record<string, DomainDefinition | (() => Promise<{ default: DomainDefinition }>)>;
-type DefinitionBase = { router: string; path?: string; components?: ComponentRegistry; fn?: FnRegistry; domains?: Domains };
+export type Domains = Record<
+  string,
+  DomainDefinition | (() => Promise<{ default: DomainDefinition }>)
+>;
+type DefinitionBase = {
+  router: string;
+  path?: string;
+  components?: ComponentRegistry;
+  fn?: FnRegistry;
+  domains?: Domains;
+};
 type SchemaBody = RenderDefaults & { render?: never };
-type PlainBody = { render: Component<ActionContext>; schema?: never; getSchema?: never; container?: never; fieldContainer?: never };
+type PlainBody = {
+  render: Component<ActionContext>;
+  schema?: never;
+  getSchema?: never;
+  container?: never;
+  fieldContainer?: never;
+};
 /** 声明可寻址的普通内容或模型内容。 */
 export type PageDefinition = DefinitionBase & (SchemaBody | PlainBody);
 /** 支持插件在 JSX 编译前转换直接 render 字面量。 */
-export type PageAuthorDefinition = DefinitionBase & (SchemaBody | (Omit<PlainBody, "render"> & { render: Component<ActionContext> | JSX.Element }));
+export type PageAuthorDefinition = DefinitionBase &
+  (SchemaBody | (Omit<PlainBody, "render"> & { render: Component<ActionContext> | JSX.Element }));
 /** 固定 Window 的 presentation 和直达取消后的 Page。 */
-export type WindowDefinition = PageDefinition & { presentation: "page" | "modal" | "drawer"; returnTo: string };
+export type WindowDefinition = PageDefinition & {
+  presentation: "page" | "modal" | "drawer";
+  returnTo: string;
+};
 /** 为 Window 提供相同的插件作者语法。 */
-export type WindowAuthorDefinition = PageAuthorDefinition & { presentation: "page" | "modal" | "drawer"; returnTo: string };
+export type WindowAuthorDefinition = PageAuthorDefinition & {
+  presentation: "page" | "modal" | "drawer";
+  returnTo: string;
+};
 /** 在当前 owner 内承载完整内容，close 进入取消终态。 */
 export type PresenterProps = { children?: JSX.Element; direct: boolean; close: () => void };
 /** 装配应用定义、完整模型源和三种 Presenter。 */
@@ -114,7 +155,11 @@ export type FormworkDefinition = RenderDefaults & {
   models: ModelSource;
   pages: readonly PageDefinition[];
   windows?: readonly WindowDefinition[];
-  presenters: { page: Component<PresenterProps>; modal?: Component<PresenterProps>; drawer?: Component<PresenterProps> };
+  presenters: {
+    page: Component<PresenterProps>;
+    modal?: Component<PresenterProps>;
+    drawer?: Component<PresenterProps>;
+  };
 };
 /** 每次 render 在调用 owner 下创建独立应用状态。 */
 export type FormworkApplication = { render: Component };

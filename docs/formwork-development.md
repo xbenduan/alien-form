@@ -15,7 +15,7 @@ pnpm install --frozen-lockfile --registry=https://registry.npmjs.org
 pnpm dev
 ```
 
-`pnpm dev` / `pnpm dev:local` 先构建 formwork 与插件，再启动 client 和 service。Ctrl+C 回收这次启动的进程树。服务只监听 loopback，默认开发流程不执行 D1 迁移。
+`pnpm dev` / `pnpm dev:local` 先选择端口、构建 formwork 与插件，再启动 client 和 service。默认端口被占用时向后选择下一个可用 loopback 端口，并在终端输出实际 URL；显式设置的 `FORMWORK_CLIENT_PORT` / `FORMWORK_SERVICE_PORT` 被占用时直接失败。Ctrl+C 回收这次启动的进程树。服务只监听 loopback，默认开发流程不执行 D1 迁移。
 
 | 命令               | 作用                                                                       |
 | ------------------ | -------------------------------------------------------------------------- |

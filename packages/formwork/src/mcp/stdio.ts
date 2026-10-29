@@ -18,19 +18,29 @@ const descriptions: Record<ModelToolName, string> = {
 };
 try {
   const index = process.argv.indexOf("--url");
-  if (index < 0 || !process.argv[index + 1]) throw new Error("用法: formwork-mcp --url http://127.0.0.1:5173");
+  if (index < 0 || !process.argv[index + 1])
+    throw new Error("用法: formwork-mcp --url http://127.0.0.1:5173");
   const client = createToolClient(process.argv[index + 1]!);
   await client.call("models.list", {}, AbortSignal.timeout(10_000));
   const server = new McpServer({ name: "formwork", version: "0.1.0" });
   for (const name of Object.keys(toolInputSchemas) as ModelToolName[]) {
-    server.registerTool(name, { description: descriptions[name], inputSchema: toolInputSchemas[name] }, async (input: unknown, extra: { signal: AbortSignal }) => {
-      try {
-        const result = await client.call(name, input, extra.signal);
-        return { content: [{ type: "text" as const, text: JSON.stringify(result) }] };
-      } catch (error) {
-        return { isError: true, content: [{ type: "text" as const, text: JSON.stringify({ error: errorPayload(error) }) }] };
-      }
-    });
+    server.registerTool(
+      name,
+      { description: descriptions[name], inputSchema: toolInputSchemas[name] },
+      async (input: unknown, extra: { signal: AbortSignal }) => {
+        try {
+          const result = await client.call(name, input, extra.signal);
+          return { content: [{ type: "text" as const, text: JSON.stringify(result) }] };
+        } catch (error) {
+          return {
+            isError: true,
+            content: [
+              { type: "text" as const, text: JSON.stringify({ error: errorPayload(error) }) },
+            ],
+          };
+        }
+      },
+    );
   }
   await server.connect(new StdioServerTransport());
 } catch (error) {

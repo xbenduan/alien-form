@@ -9,13 +9,18 @@ export function createSerialQueue() {
   return async <T>(key: string, action: () => Promise<T>): Promise<T> => {
     const task = (locks.get(key) ?? Promise.resolve()).catch(() => {}).then(action);
     locks.set(key, task);
-    try { return await task; } finally { if (locks.get(key) === task) locks.delete(key); }
+    try {
+      return await task;
+    } finally {
+      if (locks.get(key) === task) locks.delete(key);
+    }
   };
 }
 /** 读取开发文件；不存在时返回 undefined，损坏文件明确失败。 */
 export async function readStored(file: string): Promise<Buffer | undefined> {
-  try { return await readFile(file); }
-  catch (error) {
+  try {
+    return await readFile(file);
+  } catch (error) {
     if (error instanceof Error && "code" in error && error.code === "ENOENT") return undefined;
     throw error;
   }
@@ -27,10 +32,15 @@ export async function writeStored(file: string, value: unknown): Promise<void> {
   try {
     await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, { flag: "wx" });
     await rename(temporary, file);
-  } finally { await rm(temporary, { force: true }); }
+  } finally {
+    await rm(temporary, { force: true });
+  }
 }
 /** 将存储损坏报告为明确服务错误。 */
 export function parseStored(bytes: Buffer): unknown {
-  try { return JSON.parse(bytes.toString("utf8")); }
-  catch { throw new FormworkError("INVALID_DATA", "开发文件不是有效 JSON"); }
+  try {
+    return JSON.parse(bytes.toString("utf8"));
+  } catch {
+    throw new FormworkError("INVALID_DATA", "开发文件不是有效 JSON");
+  }
 }

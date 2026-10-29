@@ -8,13 +8,16 @@ export function createReadonlyModelSource(snapshots: readonly ModelSnapshot[]): 
   const index = new Map<string, ModelSnapshot>();
   for (const input of snapshots) {
     const snapshot = assertSnapshot(input);
-    if (index.has(snapshot.id)) throw new FormworkError("INVALID_MODEL", `重复模型 id ${snapshot.id}`);
+    if (index.has(snapshot.id))
+      throw new FormworkError("INVALID_MODEL", `重复模型 id ${snapshot.id}`);
     index.set(snapshot.id, { ...snapshot, writable: false });
   }
   return {
     async list(options) {
       checkAbort(options?.signal);
-      return [...index.values()].sort((a, b) => a.id.localeCompare(b.id)).map(({ document: _document, completeness: _full, ...entry }) => cloneJson(entry as never));
+      return [...index.values()]
+        .sort((a, b) => a.id.localeCompare(b.id))
+        .map(({ document: _document, completeness: _full, ...entry }) => cloneJson(entry as never));
     },
     async read(id, options) {
       checkAbort(options?.signal);
@@ -22,6 +25,8 @@ export function createReadonlyModelSource(snapshots: readonly ModelSnapshot[]): 
       if (!snapshot) throw new FormworkError("NOT_FOUND", `找不到模型 ${id}`);
       return cloneJson(snapshot as never);
     },
-    async write() { throw new FormworkError("READ_ONLY", "构建产物中的模型源为只读"); },
+    async write() {
+      throw new FormworkError("READ_ONLY", "构建产物中的模型源为只读");
+    },
   };
 }

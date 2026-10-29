@@ -18,8 +18,17 @@ export function checkAbort(signal?: AbortSignal): void {
 }
 
 /** 将未知异常转换成可以通过 HTTP 或 MCP 传输的错误。 */
-export function errorPayload(error: unknown): { code: string; message: string; issues?: readonly Diagnostic[] } {
-  if (error instanceof FormworkError) return { code: error.code, message: error.message, issues: error.issues };
-  if (error instanceof Error && error.name === "AbortError") return { code: "ABORTED", message: "操作已取消" };
-  return { code: "INTERNAL_ERROR", message: error instanceof Error ? error.message : String(error) };
+export function errorPayload(error: unknown): {
+  code: string;
+  message: string;
+  issues?: readonly Diagnostic[];
+} {
+  if (error instanceof FormworkError)
+    return { code: error.code, message: error.message, issues: error.issues };
+  if (error instanceof Error && error.name === "AbortError")
+    return { code: "ABORTED", message: "操作已取消" };
+  return {
+    code: "INTERNAL_ERROR",
+    message: error instanceof Error ? error.message : String(error),
+  };
 }

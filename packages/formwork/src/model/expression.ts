@@ -14,9 +14,20 @@ export function compileExpression(value: string): (...args: unknown[]) => unknow
   let program = programs.get(body);
   if (!program) {
     try {
-      program = new Function("$ctx", "$model", "$values", "$value", "$field", "fn", `"use strict"; return (${body});`) as (...args: unknown[]) => unknown;
+      program = new Function(
+        "$ctx",
+        "$model",
+        "$values",
+        "$value",
+        "$field",
+        "fn",
+        `"use strict"; return (${body});`,
+      ) as (...args: unknown[]) => unknown;
     } catch (error) {
-      throw new FormworkError("INVALID_EXPRESSION", error instanceof Error ? error.message : String(error));
+      throw new FormworkError(
+        "INVALID_EXPRESSION",
+        error instanceof Error ? error.message : String(error),
+      );
     }
     programs.set(body, program);
   }

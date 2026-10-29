@@ -3,7 +3,8 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 test("默认 orders：Filter 草稿、false、Table 同 id 刷新、完整 Modal/Drawer", async ({ page }) => {
-  const errors: string[] = []; page.on("pageerror", (error) => errors.push(error.message));
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/list/orders");
   await expect(page.getByRole("heading", { name: "订单", exact: true })).toBeVisible();
   await expect(page.locator("tbody tr")).toHaveCount(3);
@@ -83,15 +84,25 @@ test("工作台 CAS、HMR 真实预览重挂载，普通编辑保留模型和值
   await expect(page.getByRole("status")).toContainText("REVISION_CONFLICT");
   await page.getByRole("button", { name: "重新载入", exact: true }).click();
   await expect(json).toHaveValue(/外部新版本/u);
-  await expect(page.frameLocator('iframe[title="模型实际预览"]').getByRole("heading", { name: "外部新版本", exact: true })).toBeVisible();
+  await expect(
+    page
+      .frameLocator('iframe[title="模型实际预览"]')
+      .getByRole("heading", { name: "外部新版本", exact: true }),
+  ).toBeVisible();
   await expect(editor.getByRole("dialog").getByRole("heading", { name: "编辑订单" })).toBeVisible();
   await expect(editor.getByRole("dialog").getByLabel("订单号")).toHaveValue("保留未保存");
   const next = { ...initial, title: "HMR 已保存" };
   await json.fill(JSON.stringify(next, null, 2));
   await page.getByRole("button", { name: "保存模型", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("已保存完整模型");
-  await expect(page.frameLocator('iframe[title="模型实际预览"]').getByRole("heading", { name: "HMR 已保存", exact: true })).toBeVisible();
-  expect((await (await page.request.get("/__formwork/models/orders")).json()).revision).not.toBe(snapshot.revision);
+  await expect(
+    page
+      .frameLocator('iframe[title="模型实际预览"]')
+      .getByRole("heading", { name: "HMR 已保存", exact: true }),
+  ).toBeVisible();
+  expect((await (await page.request.get("/__formwork/models/orders")).json()).revision).not.toBe(
+    snapshot.revision,
+  );
   await editor.close();
   await writeFile(file, `${JSON.stringify(initial, null, 2)}\n`);
 });
@@ -105,7 +116,11 @@ test("remote 来源走完整 HTTP Adapter，上传明确且两源独立", async 
   await json.fill(JSON.stringify({ ...original, title: "远端独立订单" }, null, 2));
   await page.getByRole("button", { name: "保存模型", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("已保存完整模型");
-  await expect(page.frameLocator('iframe[title="模型实际预览"]').getByRole("heading", { name: "远端独立订单", exact: true })).toBeVisible();
+  await expect(
+    page
+      .frameLocator('iframe[title="模型实际预览"]')
+      .getByRole("heading", { name: "远端独立订单", exact: true }),
+  ).toBeVisible();
   await page.goto("http://127.0.0.1:5184/models/orders");
   await expect(json).toHaveValue(/"title": "订单"/u);
   await page.getByRole("button", { name: "上传到远端" }).click();
@@ -125,26 +140,39 @@ test("模型文件新增、删除、坏 JSON 与修复刷新目录且源对象�
     (globalThis as any).__formworkSource = (await import(entryPath)).localModels;
   });
   let navigations = 0;
-  page.on("framenavigated", (frame) => { if (frame === page.mainFrame()) navigations++; });
+  page.on("framenavigated", (frame) => {
+    if (frame === page.mainFrame()) navigations++;
+  });
   const base = join(process.env.FORMWORK_E2E_ROOT!, "local/src/models");
   const extra = join(base, "inventory");
   const file = join(base, "orders/model.json");
   const original = await readFile(file, "utf8");
   try {
     await mkdir(extra, { recursive: true });
-    await writeFile(join(extra, "model.json"), JSON.stringify({ id: "inventory", title: "新增库存", data: { type: "object", properties: {} } }));
+    await writeFile(
+      join(extra, "model.json"),
+      JSON.stringify({
+        id: "inventory",
+        title: "新增库存",
+        data: { type: "object", properties: {} },
+      }),
+    );
     await expect(page.getByRole("button", { name: /新增库存/u })).toBeVisible();
     await rm(extra, { recursive: true });
     await expect(page.getByRole("button", { name: /新增库存/u })).toHaveCount(0);
     await writeFile(file, '{"broken":');
     await expect(page.getByRole("alert").first()).toContainText("INVALID_MODEL");
     await writeFile(file, original);
-    await expect(page.getByRole("textbox", { name: "完整模型 JSON" })).toHaveValue(/"id": "orders"/u);
+    await expect(page.getByRole("textbox", { name: "完整模型 JSON" })).toHaveValue(
+      /"id": "orders"/u,
+    );
     await expect(page.locator(".workbench > nav .model-card")).toHaveCount(2);
-    expect(await page.evaluate(async () => {
-      const entryPath = "/src/models.ts";
-      return (globalThis as any).__formworkSource === (await import(entryPath)).localModels;
-    })).toBe(true);
+    expect(
+      await page.evaluate(async () => {
+        const entryPath = "/src/models.ts";
+        return (globalThis as any).__formworkSource === (await import(entryPath)).localModels;
+      }),
+    ).toBe(true);
     expect(navigations).toBe(0);
     expect(errors).toEqual([]);
   } finally {

@@ -6,7 +6,12 @@
     "properties": {
       "id": { "type": "string", "title": "记录 ID", "readOnly": true },
       "orderNo": { "type": "string", "title": "订单号", "minLength": 1 },
-      "status": { "type": "string", "title": "状态", "enum": ["pending", "paid"], "default": "pending" },
+      "status": {
+        "type": "string",
+        "title": "状态",
+        "enum": ["pending", "paid"],
+        "default": "pending"
+      },
       "paid": { "type": "boolean", "title": "已付款", "default": false },
       "amount": { "type": "number", "title": "金额", "minimum": 0 },
       "lines": {

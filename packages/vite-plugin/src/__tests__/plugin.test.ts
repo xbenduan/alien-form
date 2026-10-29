@@ -203,7 +203,11 @@ describe("实际 Vite 工具契约", () => {
     const output = await import(pathToFileURL(join(root, "dist/source.mjs")).href);
     const source = output.default;
     expect(output.capabilities.capabilities("orders", "list").components).toContainEqual(
-      expect.objectContaining({ name: "Input", declaration: expect.any(String), overrides: expect.any(Array) }),
+      expect.objectContaining({
+        name: "Input",
+        declaration: expect.any(String),
+        overrides: expect.any(Array),
+      }),
     );
     await writeFile(
       join(root, "src/models/orders/model.json"),

@@ -7,7 +7,11 @@ export function lifetime() {
   const stops = new Set<() => void>();
   const cleanups = new Set<() => void>();
   const safely = (action: () => void) => {
-    try { action(); } catch (error) { console.error("Formwork cleanup:", error); }
+    try {
+      action();
+    } catch (error) {
+      console.error("Formwork cleanup:", error);
+    }
   };
   const dispose = () => {
     if (!alive) return;

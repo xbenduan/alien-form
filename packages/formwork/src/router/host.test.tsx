@@ -6,22 +6,50 @@ import { defineDomain, defineFormwork, definePage, defineWindow } from "../runti
 import type { ActionContext, PageContext, PresenterProps } from "../runtime/types";
 import type { ModelDocument, ModelSource } from "../model/types";
 
-const model: ModelDocument = { id: "orders", title: "订单", data: { type: "object", properties: { name: { type: "string", default: "初始" } } } };
+const model: ModelDocument = {
+  id: "orders",
+  title: "订单",
+  data: { type: "object", properties: { name: { type: "string", default: "初始" } } },
+};
 let reads = 0;
 const models: ModelSource = {
   list: async () => [],
-  read: async () => { reads++; return { id: "orders", title: "订单", document: model, revision: "one", completeness: "full", writable: false, location: { kind: "local", path: "model.json" } }; },
-  write: async () => { throw new Error("READ_ONLY"); },
+  read: async () => {
+    reads++;
+    return {
+      id: "orders",
+      title: "订单",
+      document: model,
+      revision: "one",
+      completeness: "full",
+      writable: false,
+      location: { kind: "local", path: "model.json" },
+    };
+  },
+  write: async () => {
+    throw new Error("READ_ONLY");
+  },
 };
 const Page: Component<PresenterProps> = (props) => <section>{props.children}</section>;
-const Modal: Component<PresenterProps> = (props) => <aside role="dialog" data-direct={props.direct}>{props.children}<button onClick={props.close}>关闭</button></aside>;
+const Modal: Component<PresenterProps> = (props) => (
+  <aside role="dialog" data-direct={props.direct}>
+    {props.children}
+    <button onClick={props.close}>关闭</button>
+  </aside>
+);
 const wait = async (condition: () => unknown) => expect.poll(condition).toBeTruthy();
 let stop: (() => void) | undefined;
 const original = location.pathname + location.search;
-afterEach(() => { stop?.(); stop = undefined; document.body.replaceChildren(); history.replaceState({}, "", original); });
+afterEach(() => {
+  stop?.();
+  stop = undefined;
+  document.body.replaceChildren();
+  history.replaceState({}, "", original);
+});
 const mount = (App: Component, path: string) => {
   history.replaceState({}, "", path);
-  const element = document.createElement("div"); document.body.append(element);
+  const element = document.createElement("div");
+  document.body.append(element);
   stop = render(() => <App />, element);
   return element;
 };
@@ -32,13 +60,36 @@ describe("常驻 Host 与完整 Window", () => {
     let mounts = 0;
     let cleanups = 0;
     const app = defineFormwork({
-      models, presenters: { page: Page },
-      pages: [definePage({ router: "home", render: (ctx) => { caller = ctx; mounts++; onCleanup(() => cleanups++); return <input aria-label="调用者" />; } })],
-      windows: [defineWindow({ router: "edit", path: "/edit/:domain", returnTo: "home", presentation: "page", container: (ctx) => { editor = ctx; return <p>编辑 {String((ctx.scope.value() as { name: string }).name)}</p>; } })],
+      models,
+      presenters: { page: Page },
+      pages: [
+        definePage({
+          router: "home",
+          render: (ctx) => {
+            caller = ctx;
+            mounts++;
+            onCleanup(() => cleanups++);
+            return <input aria-label="调用者" />;
+          },
+        }),
+      ],
+      windows: [
+        defineWindow({
+          router: "edit",
+          path: "/edit/:domain",
+          returnTo: "home",
+          presentation: "page",
+          container: (ctx) => {
+            editor = ctx;
+            return <p>编辑 {String((ctx.scope.value() as { name: string }).name)}</p>;
+          },
+        }),
+      ],
     });
     const dom = mount(app.render, "/home");
     await wait(() => caller);
-    const input = dom.querySelector("input")!; input.value = "保留";
+    const input = dom.querySelector("input")!;
+    input.value = "保留";
     const promise = caller.open("edit", { domain: "orders" });
     await wait(() => editor);
     expect(input.closest("[hidden]")).toBeTruthy();
@@ -57,11 +108,30 @@ describe("常驻 Host 与完整 Window", () => {
     let edit!: ActionContext;
     let detail!: ActionContext;
     const app = defineFormwork({
-      models, presenters: { page: Page, modal: Modal, drawer: Modal },
+      models,
+      presenters: { page: Page, modal: Modal, drawer: Modal },
       pages: [definePage({ router: "home", render: () => <p>首页</p> })],
       windows: [
-        defineWindow({ router: "edit", path: "/edit/:domain", presentation: "modal", returnTo: "home", render: (ctx) => { edit = ctx; return <p>普通 Window</p>; } }),
-        defineWindow({ router: "detail", path: "/detail/:domain", presentation: "drawer", returnTo: "home", render: (ctx) => { detail = ctx; return <p>子 Window</p>; } }),
+        defineWindow({
+          router: "edit",
+          path: "/edit/:domain",
+          presentation: "modal",
+          returnTo: "home",
+          render: (ctx) => {
+            edit = ctx;
+            return <p>普通 Window</p>;
+          },
+        }),
+        defineWindow({
+          router: "detail",
+          path: "/detail/:domain",
+          presentation: "drawer",
+          returnTo: "home",
+          render: (ctx) => {
+            detail = ctx;
+            return <p>子 Window</p>;
+          },
+        }),
       ],
     });
     reads = 0;
@@ -82,9 +152,30 @@ describe("常驻 Host 与完整 Window", () => {
     let windowCtx!: ActionContext;
     let mounts = 0;
     const app = defineFormwork({
-      models, presenters: { page: Page, modal: Modal },
-      pages: [definePage({ router: "home", render: (ctx) => { caller = ctx; return <p>首页</p>; } })],
-      windows: [defineWindow({ router: "add", path: "/add/:domain", presentation: "modal", returnTo: "home", render: (ctx) => { mounts++; windowCtx = ctx; return <p>新建</p>; } })],
+      models,
+      presenters: { page: Page, modal: Modal },
+      pages: [
+        definePage({
+          router: "home",
+          render: (ctx) => {
+            caller = ctx;
+            return <p>首页</p>;
+          },
+        }),
+      ],
+      windows: [
+        defineWindow({
+          router: "add",
+          path: "/add/:domain",
+          presentation: "modal",
+          returnTo: "home",
+          render: (ctx) => {
+            mounts++;
+            windowCtx = ctx;
+            return <p>新建</p>;
+          },
+        }),
+      ],
     });
     mount(app.render, "/home");
     await wait(() => caller);
@@ -104,10 +195,22 @@ describe("常驻 Host 与完整 Window", () => {
     let attempts = 0;
     const domain = defineDomain({ container: (ctx) => <p>覆盖 {ctx.model.title}</p> });
     const app = defineFormwork({
-      models, presenters: { page: Page }, container: () => <p>默认容器</p>,
-      pages: [definePage({ router: "home", render: () => null }), definePage({
-        router: "list", path: "/list/:domain", domains: { orders: async () => { if (++attempts === 1) throw new Error("Domain 暂不可用"); return { default: domain }; } },
-      })],
+      models,
+      presenters: { page: Page },
+      container: () => <p>默认容器</p>,
+      pages: [
+        definePage({ router: "home", render: () => null }),
+        definePage({
+          router: "list",
+          path: "/list/:domain",
+          domains: {
+            orders: async () => {
+              if (++attempts === 1) throw new Error("Domain 暂不可用");
+              return { default: domain };
+            },
+          },
+        }),
+      ],
     });
     const dom = mount(app.render, "/list/orders");
     await wait(() => dom.textContent?.includes("Domain 暂不可用"));
@@ -120,9 +223,29 @@ describe("常驻 Host 与完整 Window", () => {
     let caller!: ActionContext;
     const windows: PageContext[] = [];
     const app = defineFormwork({
-      models, presenters: { page: Page, modal: Modal },
-      pages: [definePage({ router: "home", render: (ctx) => { caller = ctx; return <p>首页</p>; } })],
-      windows: [defineWindow({ router: "edit", path: "/edit/:domain", presentation: "modal", returnTo: "home", container: (ctx) => { windows.push(ctx); return <p>{String((ctx.scope.value() as { name: string }).name)}</p>; } })],
+      models,
+      presenters: { page: Page, modal: Modal },
+      pages: [
+        definePage({
+          router: "home",
+          render: (ctx) => {
+            caller = ctx;
+            return <p>首页</p>;
+          },
+        }),
+      ],
+      windows: [
+        defineWindow({
+          router: "edit",
+          path: "/edit/:domain",
+          presentation: "modal",
+          returnTo: "home",
+          container: (ctx) => {
+            windows.push(ctx);
+            return <p>{String((ctx.scope.value() as { name: string }).name)}</p>;
+          },
+        }),
+      ],
     });
     mount(app.render, "/home");
     await wait(() => caller);
@@ -144,15 +267,40 @@ describe("常驻 Host 与完整 Window", () => {
     let caller!: ActionContext;
     let editor!: PageContext;
     const app = defineFormwork({
-      models, presenters: { page: Page, modal: Modal },
-      pages: [definePage({ router: "home", render: (ctx) => { caller = ctx; return <p>首页</p>; } })],
-      windows: [defineWindow({ router: "edit", path: "/edit/:domain", presentation: "modal", returnTo: "home", container: (ctx) => {
-        editor = ctx;
-        const one = ctx.createScope();
-        const two = ctx.createScope();
-        onCleanup(() => { throw new Error("cleanup test"); });
-        return <p>{JSON.stringify(one.value())}{JSON.stringify(two.value())}{JSON.stringify(ctx.scope.value())}</p>;
-      } })],
+      models,
+      presenters: { page: Page, modal: Modal },
+      pages: [
+        definePage({
+          router: "home",
+          render: (ctx) => {
+            caller = ctx;
+            return <p>首页</p>;
+          },
+        }),
+      ],
+      windows: [
+        defineWindow({
+          router: "edit",
+          path: "/edit/:domain",
+          presentation: "modal",
+          returnTo: "home",
+          container: (ctx) => {
+            editor = ctx;
+            const one = ctx.createScope();
+            const two = ctx.createScope();
+            onCleanup(() => {
+              throw new Error("cleanup test");
+            });
+            return (
+              <p>
+                {JSON.stringify(one.value())}
+                {JSON.stringify(two.value())}
+                {JSON.stringify(ctx.scope.value())}
+              </p>
+            );
+          },
+        }),
+      ],
     });
     mount(app.render, "/home");
     await wait(() => caller);

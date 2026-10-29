@@ -6,15 +6,42 @@ import { createValueScope } from "../runtime/scope";
 import type { ActionContext, FieldProps, ValueScope } from "../runtime/types";
 import { createRender } from "./render";
 
-const schema: DataSchema = { type: "object", properties: {
-  first: { type: "number" }, second: { type: "number" }, total: { type: "number" }, flag: { type: "boolean" },
-} };
-const ctx: ActionContext = {
-  models: {} as ActionContext["models"], params: {}, fn: {}, signal: new AbortController().signal,
-  navigate: () => {}, open: async () => ({ status: "cancelled" }), complete: () => {},
+const schema: DataSchema = {
+  type: "object",
+  properties: {
+    first: { type: "number" },
+    second: { type: "number" },
+    total: { type: "number" },
+    flag: { type: "boolean" },
+  },
 };
-const Field: Component<FieldProps> = (props) => <input value={String(props.value ?? "")} onInput={(event) => props.onChange(Number(event.currentTarget.value))} />;
-const mount = (body: Component) => { const element = document.createElement("div"); document.body.append(element); const dispose = render(() => body({}), element); return { element, dispose: () => { dispose(); element.remove(); } }; };
+const ctx: ActionContext = {
+  models: {} as ActionContext["models"],
+  params: {},
+  fn: {},
+  signal: new AbortController().signal,
+  navigate: () => {},
+  open: async () => ({ status: "cancelled" }),
+  complete: () => {},
+};
+const Field: Component<FieldProps> = (props) => (
+  <input
+    value={String(props.value ?? "")}
+    onInput={(event) => props.onChange(Number(event.currentTarget.value))}
+  />
+);
+const mount = (body: Component) => {
+  const element = document.createElement("div");
+  document.body.append(element);
+  const dispose = render(() => body({}), element);
+  return {
+    element,
+    dispose: () => {
+      dispose();
+      element.remove();
+    },
+  };
+};
 describe("共用 Render 的绑定与表达式", () => {
   it("同一 Render 响应值更新、getter 与单字段覆盖", () => {
     let scope!: ValueScope;
@@ -35,11 +62,34 @@ describe("共用 Render 的绑定与表达式", () => {
     const pending: Array<(value: string) => void> = [];
     const app = mount(() => {
       scope = createValueScope({ value: { first: 1, second: 1 } }, schema);
-      const Render = createRender({ ctx: { ...ctx, fn: {
-        quote: () => { quoteCalls++; return new Promise<string>((resolve) => pending.push(resolve)); },
-        click: () => calls++,
-      } }, scope: () => scope, components: { Button: (props) => <button title={props.title} onClick={props.onClick}>执行</button> } });
-      return <Render view={{ component: "Button", props: { title: "{{ fn.quote($values.first) }}", onClick: "{{ () => fn.click() }}" } }} />;
+      const Render = createRender({
+        ctx: {
+          ...ctx,
+          fn: {
+            quote: () => {
+              quoteCalls++;
+              return new Promise<string>((resolve) => pending.push(resolve));
+            },
+            click: () => calls++,
+          },
+        },
+        scope: () => scope,
+        components: {
+          Button: (props) => (
+            <button title={props.title} onClick={props.onClick}>
+              执行
+            </button>
+          ),
+        },
+      });
+      return (
+        <Render
+          view={{
+            component: "Button",
+            props: { title: "{{ fn.quote($values.first) }}", onClick: "{{ () => fn.click() }}" },
+          }}
+        />
+      );
     });
     expect(calls).toBe(0);
     scope.set("/second", 2);
@@ -60,7 +110,15 @@ describe("共用 Render 的绑定与表达式", () => {
     const app = mount(() => {
       scope = createValueScope({ value: { first: 3, total: 0, flag: false } }, schema);
       const Render = createRender({ ctx, scope: () => scope, components: { NumberInput: Field } });
-      return <Render view={{ component: "NumberInput", field: "/total", bindings: { value: "{{ $values.flag ? $values.total + 1 : $values.first * 2 }}" } }} />;
+      return (
+        <Render
+          view={{
+            component: "NumberInput",
+            field: "/total",
+            bindings: { value: "{{ $values.flag ? $values.total + 1 : $values.first * 2 }}" },
+          }}
+        />
+      );
     });
     expect(scope.value()).toMatchObject({ total: 6 });
     scope.set("/first", 4);
@@ -75,12 +133,36 @@ describe("共用 Render 的绑定与表达式", () => {
     let resolve!: (value: number) => void;
     const app = mount(() => {
       scope = createValueScope({ value: { first: 1, second: 2, total: 0 } }, schema);
-      const Render = createRender({ ctx: { ...ctx, fn: { quote: () => new Promise<number>((done) => resolve = done) } }, scope: () => scope, components: { Object: (props) => props.children, NumberInput: Field } });
-      return <Render view={{ component: "Object", field: "", children: [
-        { component: "NumberInput", field: "/first", bindings: { value: "{{ $values.second + 1 }}" } },
-        { component: "NumberInput", field: "/second", bindings: { value: "{{ $values.first + 1 }}" } },
-        { component: "NumberInput", field: "/total", bindings: { value: "{{ fn.quote() }}" } },
-      ] }} />;
+      const Render = createRender({
+        ctx: { ...ctx, fn: { quote: () => new Promise<number>((done) => (resolve = done)) } },
+        scope: () => scope,
+        components: { Object: (props) => props.children, NumberInput: Field },
+      });
+      return (
+        <Render
+          view={{
+            component: "Object",
+            field: "",
+            children: [
+              {
+                component: "NumberInput",
+                field: "/first",
+                bindings: { value: "{{ $values.second + 1 }}" },
+              },
+              {
+                component: "NumberInput",
+                field: "/second",
+                bindings: { value: "{{ $values.first + 1 }}" },
+              },
+              {
+                component: "NumberInput",
+                field: "/total",
+                bindings: { value: "{{ fn.quote() }}" },
+              },
+            ],
+          }}
+        />
+      );
     });
     expect(app.element.textContent).toContain("EXPRESSION_CYCLE");
     scope.reset({ first: 10, second: 20, total: 99 });
@@ -93,8 +175,21 @@ describe("共用 Render 的绑定与表达式", () => {
     let scope!: ValueScope;
     const app = mount(() => {
       scope = createValueScope({ value: { first: 1, flag: true } }, schema);
-      const Render = createRender({ ctx, scope: () => scope, components: { Object: (props) => props.children, NumberInput: Field } });
-      return <Render view={{ component: "Object", field: "", bindings: { readOnly: true, visible: "{{ $values.flag }}" }, children: [{ component: "NumberInput", field: "/first" }] }} />;
+      const Render = createRender({
+        ctx,
+        scope: () => scope,
+        components: { Object: (props) => props.children, NumberInput: Field },
+      });
+      return (
+        <Render
+          view={{
+            component: "Object",
+            field: "",
+            bindings: { readOnly: true, visible: "{{ $values.flag }}" },
+            children: [{ component: "NumberInput", field: "/first" }],
+          }}
+        />
+      );
     });
     scope.set("/flag", false);
     expect(app.element.querySelector("input")).toBeNull();

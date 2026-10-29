@@ -4,23 +4,51 @@ import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
+import { selectDevelopmentPort } from "./dev-ports.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const isWindows = process.platform === "win32";
-const clientPort = process.env.FORMWORK_CLIENT_PORT ?? "5173";
-const servicePort = process.env.FORMWORK_SERVICE_PORT ?? "8788";
+const requestedClientPort = process.env.FORMWORK_CLIENT_PORT ?? "5173";
+const requestedServicePort = process.env.FORMWORK_SERVICE_PORT ?? "8788";
 const vite = resolve(root, "apps/client/node_modules/vite/bin/vite.js");
 const tsx = resolve(root, "apps/service/node_modules/tsx/dist/cli.mjs");
 if (!existsSync(vite) || !existsSync(tsx)) {
   console.error("缺少依赖，请先运行 pnpm install。");
   process.exit(1);
 }
-for (const port of [clientPort, servicePort]) {
+for (const port of [requestedClientPort, requestedServicePort]) {
   if (!/^\d+$/u.test(port) || Number(port) < 1 || Number(port) > 65535) {
     console.error("FORMWORK_CLIENT_PORT / FORMWORK_SERVICE_PORT 必须为 1–65535。");
     process.exit(1);
   }
 }
+let clientPort;
+let servicePort;
+try {
+  clientPort = await selectDevelopmentPort({
+    preferred: Number(requestedClientPort),
+    strict: process.env.FORMWORK_CLIENT_PORT !== undefined,
+    label: "client",
+  });
+  servicePort = await selectDevelopmentPort({
+    preferred: Number(requestedServicePort),
+    strict: process.env.FORMWORK_SERVICE_PORT !== undefined,
+    label: "service",
+    reserved: new Set([clientPort]),
+  });
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+}
+if (clientPort !== Number(requestedClientPort))
+  console.log(`Client 端口 ${requestedClientPort} 已占用，改用 ${clientPort}。`);
+if (servicePort !== Number(requestedServicePort))
+  console.log(`Service 端口 ${requestedServicePort} 已占用，改用 ${servicePort}。`);
+const childEnv = {
+  ...process.env,
+  FORMWORK_CLIENT_PORT: String(clientPort),
+  FORMWORK_SERVICE_PORT: String(servicePort),
+};
 for (const name of ["formwork", "formwork-vite-plugin"]) {
   const args = ["--filter", name, "build"];
   const options = { cwd: root, stdio: "inherit" };
@@ -57,7 +85,7 @@ function shutdown(code) {
 function start(label, directory, entry, args) {
   const child = spawn(process.execPath, [entry, ...args], {
     cwd: resolve(root, directory),
-    env: process.env,
+    env: childEnv,
     detached: !isWindows,
     stdio: ["ignore", "pipe", "pipe"],
   });

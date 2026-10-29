@@ -14,8 +14,7 @@ export default defineConfig({
       formats: ["es"],
     },
     rolldownOptions: {
-      external: (id) =>
-        !id.startsWith(".") && !id.startsWith("/") && !id.startsWith("\0"),
+      external: (id) => !id.startsWith(".") && !id.startsWith("/") && !id.startsWith("\0"),
       output: { entryFileNames: "[name].js" },
     },
   },
