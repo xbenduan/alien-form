@@ -1,22 +1,4 @@
 {
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "lib": ["ES2020"]
-  },
-  "files": [],
-  "references": [
-    { "path": "./packages/protocol" },
-    { "path": "./packages/alienbase" },
-    { "path": "./packages/core" },
-    { "path": "./packages/react" }
-  ]
+  "extends": "./tsconfig.node.json",
+  "include": ["scripts/**/*.ts", "vitest.config.ts", "playwright.config.ts"]
 }

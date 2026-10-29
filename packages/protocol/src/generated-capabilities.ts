@@ -1,6 +1,6 @@
 /**
- * Generated from the executable Runtime registry.
- * Run `pnpm generate:model-artifacts` after changing global registrations.
+ * 保留旧 AlienSchema 后端的能力快照。
+ * 旧前端生成链已移除；Formwork 的有效能力由 Vite 插件独立分析。
  */
 import type { ComponentCapability, EnumCapability, RuntimeCapability } from "./capabilities.ts";
 

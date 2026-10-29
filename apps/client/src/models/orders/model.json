@@ -1,0 +1,27 @@
+{
+  "id": "orders",
+  "title": "订单",
+  "data": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "string", "title": "记录 ID", "readOnly": true },
+      "orderNo": { "type": "string", "title": "订单号", "minLength": 1 },
+      "status": { "type": "string", "title": "状态", "enum": ["pending", "paid"], "default": "pending" },
+      "paid": { "type": "boolean", "title": "已付款", "default": false },
+      "amount": { "type": "number", "title": "金额", "minimum": 0 },
+      "lines": {
+        "type": "array",
+        "title": "明细",
+        "items": {
+          "type": "object",
+          "properties": {
+            "sku": { "type": "string", "title": "SKU", "minLength": 1 },
+            "quantity": { "type": "integer", "title": "数量", "minimum": 1, "default": 1 }
+          },
+          "required": ["sku", "quantity"]
+        }
+      }
+    },
+    "required": ["orderNo", "status"]
+  }
+}

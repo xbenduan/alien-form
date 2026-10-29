@@ -108,7 +108,10 @@ describe("Storage Compiler", () => {
     const incoming = model([], 2);
 
     const { plan } = compileMigrationPlan(current, incoming);
-    expect(plan.operations.map((operation) => operation.kind)).toEqual(["drop-index", "drop-column"]);
+    expect(plan.operations.map((operation) => operation.kind)).toEqual([
+      "drop-index",
+      "drop-column",
+    ]);
     expect(plan.operations[0]?.sql).toContain("DROP INDEX");
     expect(plan.operations[1]?.sql).toBe('ALTER TABLE "article" DROP COLUMN "code"');
   });

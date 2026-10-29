@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme { --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif; }
+:root { color: #20252c; background: #f4f6f9; font-family: var(--font-sans); font-size: 14px; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: default; opacity: .45; }
+a { color: #3558db; text-decoration: none; }
+h1 { font-size: 25px; font-weight: 650; margin: 0; letter-spacing: -.6px; }
+h2 { font-size: 17px; font-weight: 600; }
+p { line-height: 1.7; }
+:focus-visible { outline: 3px solid #a2b7ff; outline-offset: 3px; }
+.page-canvas { max-width: 1440px; margin: auto; padding: 36px 44px; min-height: 100vh; }
+.page-header, .actions, .array-item-header, .window-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.page-header { margin-bottom: 26px; }
+.actions { justify-content: flex-start; flex-wrap: wrap; }
+.eyebrow { font-size: 11px; letter-spacing: 1.5px; color: #67768d; margin-bottom: 9px; }
+.muted { color: #798395; }
+.panel { background: white; border: 1px solid #e0e5ed; border-radius: 12px; padding: 24px; margin-bottom: 22px; }
+.button { border: 1px solid #3558db; border-radius: 7px; padding: 9px 16px; background: #3558db; color: white; }
+.button.secondary { color: #384963; background: white; border-color: #d4dce8; }
+.text-button { background: transparent; border: 0; color: #3558db; padding: 4px; }
+.danger { color: #c43749; }
+.control { background: white; border: 1px solid #d3dbe7; border-radius: 7px; min-height: 38px; padding: 8px 11px; width: 100%; }
+.field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+.form-item { min-width: 0; }
+.field-label { font-weight: 550; margin-bottom: 9px; color: #526176; }
+.required, .field-error { color: #bd3548; }
+.field-error { font-size: 12px; margin: 5px 0 0; }
+.switch { display: flex; align-items: center; gap: 9px; min-height: 38px; }
+.switch input { width: 17px; height: 17px; accent-color: #3558db; }
+.array-fields { display: grid; gap: 14px; }
+.array-item { background: #f8faff; border: 1px solid #e0e7f2; border-radius: 8px; padding: 16px; }
+.array-item-header { color: #738099; font-size: 12px; margin-bottom: 14px; }
+.window-overlay { position: fixed; inset: 0; background: #14243a70; z-index: 100; backdrop-filter: blur(2px); }
+.window-content { position: fixed; z-index: 101; background: white; box-shadow: 0 18px 80px #10254145; overflow: auto; }
+.modal { top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 14px; width: min(780px, 94vw); max-height: 90vh; padding: 24px; }
+.drawer { top: 0; bottom: 0; right: 0; width: min(650px, 96vw); padding: 28px; }
+.window-heading { border-bottom: 1px solid #e2e7ef; padding-bottom: 15px; margin-bottom: 24px; font-weight: 600; font-size: 17px; }
+.icon-button { width: 32px; height: 32px; background: #f2f5f9; border: 0; border-radius: 7px; font-size: 23px; }
+.rich-editor { min-height: 220px; resize: vertical; }
+.rich-text { white-space: pre-wrap; line-height: 1.85; }
+.table-scroll { overflow: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: left; font-weight: 550; color: #758297; background: #f7f9fc; white-space: nowrap; }
+th, td { padding: 16px 18px; border-bottom: 1px solid #e8edf4; vertical-align: top; }
+td .field-grid { display: block; }
+td .array-item { min-width: 200px; }
+.table-footer { display: flex; justify-content: space-between; align-items: center; padding: 18px; }
+.filters .field-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.record-form .form-item[data-field-path="/lines"] { grid-column: 1 / -1; }
+.workbench { display: grid; grid-template-columns: 240px 1fr; gap: 22px; }
+.model-card { display: block; width: 100%; text-align: left; background: white; border: 1px solid #dce3ee; border-radius: 9px; padding: 18px; margin-bottom: 12px; }
+.model-card.selected { border-color: #3558db; background: #eff3ff; }
+.preview-frame { width: 100%; min-height: 650px; border: 1px solid #dee5ef; border-radius: 9px; background: white; }
+.model-json { min-height: 430px; font: 12px/1.7 ui-monospace, monospace; }
+.home-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 20px; }
+.home-card { display: block; padding: 30px; }
+@media (max-width: 760px) { .page-canvas { padding: 24px 18px; } .field-grid, .workbench, .home-grid { grid-template-columns: 1fr; } .page-header { align-items: flex-start; } }

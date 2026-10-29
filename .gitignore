@@ -30,3 +30,7 @@ scripts/seed.sql
 
 docs/**
 !docs/backend-system-design.md
+!docs/formwork-development.md
+!docs/formwork-refactor.md
+!docs/formwork-design.md
+!docs/formwork-source-analysis.md

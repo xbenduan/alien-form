@@ -1,6 +1,5 @@
 /**
- * @alien-form/core — Type definitions
- * Value-capability runtime architecture
+ * 保留旧 AlienSchema 后端所使用的值与能力协议类型。
  */
 import type { AlienExpression } from "./alien-schema.ts";
 

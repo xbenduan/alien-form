@@ -1,0 +1,23 @@
+{
+  "id": "cms",
+  "title": "内容",
+  "data": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "string", "title": "记录 ID", "readOnly": true },
+      "title": { "type": "string", "title": "标题", "minLength": 1 },
+      "content": { "type": "string", "title": "正文" }
+    },
+    "required": ["title"]
+  },
+  "views": {
+    "edit": {
+      "component": "Object",
+      "field": "",
+      "children": [
+        { "component": "Input", "field": "/title" },
+        { "component": "RichText", "field": "/content" }
+      ]
+    }
+  }
+}

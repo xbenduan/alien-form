@@ -1,0 +1,45 @@
+{
+  "name": "formwork",
+  "version": "0.1.0",
+  "bin": {
+    "formwork-mcp": "./dist/stdio.js"
+  },
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test.*"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "solid": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./model": {
+      "types": "./dist/model/index.d.ts",
+      "solid": "./src/model/index.ts",
+      "default": "./dist/model.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp/index.d.ts",
+      "default": "./dist/mcp.js"
+    }
+  },
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cfworker/json-schema": "4.1.1",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "@solidjs/router": "1.0.0",
+    "solid-js": "1.9.17",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "vite-plugin-solid": "2.11.14"
+  }
+}

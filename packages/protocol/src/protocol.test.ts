@@ -221,7 +221,9 @@ describe("AlienSchema", () => {
       ...targetChange.fields[0],
       relation: { ...targetChange.fields[0].relation!, target: "invoices" },
     };
-    expect(() => assertStorageCompatible(withRelation(), targetChange)).toThrow(/relation 不允许修改/);
+    expect(() => assertStorageCompatible(withRelation(), targetChange)).toThrow(
+      /relation 不允许修改/,
+    );
   });
 
   it("只允许自关联字段使用 TreeSelect", () => {

@@ -49,7 +49,7 @@ export function createApp(): Hono<AppEnv> {
     if (c.req.method !== "GET" && c.req.method !== "HEAD") {
       return fail(c, `Method ${c.req.method} not allowed`, 405);
     }
-    return c.env.ASSETS.fetch(c.req.raw);
+    return fail(c, `No route for ${c.req.method} ${c.req.path}`, 404);
   });
 
   return app;

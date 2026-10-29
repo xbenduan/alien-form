@@ -221,8 +221,7 @@ export function compileMigrationPlan(
       .map((column) => ({
         kind: "add-column" as const,
         sql:
-          `ALTER TABLE ${quoteTable(manifest.table)} ADD COLUMN ` +
-          columnDefinition(column, false),
+          `ALTER TABLE ${quoteTable(manifest.table)} ADD COLUMN ` + columnDefinition(column, false),
       }));
     const addedIndexes = manifest.indexes
       .filter((index) => !oldIndexes.has(index.name))

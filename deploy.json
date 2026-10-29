@@ -1,12 +1,12 @@
 {
   "$schema": "https://developers.cloudflare.com/pages/configuration/deploy-button-schema.json",
   "deploy": {
-    "projectName": "alien-mdm",
-    "buildCommand": "pnpm run build",
-    "buildOutputDirectory": "apps/alien-mdm/dist",
+    "projectName": "alien-form",
+    "buildCommand": "pnpm run build:new",
+    "buildOutputDirectory": "apps/client/dist",
     "rootDirectory": "",
     "environmentVariables": {
-      "NODE_VERSION": "20"
+      "NODE_VERSION": "26.13.0"
     }
   }
 }
