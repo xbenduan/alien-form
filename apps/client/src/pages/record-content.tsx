@@ -2,6 +2,7 @@ import { createResource, createSignal, Show } from "solid-js";
 import type { Component } from "solid-js";
 import type { PageContext } from "formwork";
 import { DetailItem, FormItem } from "../ui/field-container";
+import { Icon } from "../ui/icons";
 
 /** 装载完整记录内容并以一次提交完成当前 Window。 */
 export const RecordEditor: Component<PageContext> = (ctx) => {
@@ -11,13 +12,32 @@ export const RecordEditor: Component<PageContext> = (ctx) => {
   });
   const [saving, setSaving] = createSignal(false);
   const [failure, setFailure] = createSignal("");
+  let form: HTMLDivElement | undefined;
   const Render = ctx.Render;
+  const reload = async () => {
+    try {
+      await refetch();
+      if (!ctx.signal.aborted && !ready.error)
+        (
+          form?.querySelector<HTMLElement>(".control") ?? form?.querySelector<HTMLElement>("h1")
+        )?.focus();
+    } catch {
+      // Resource 保留加载错误，由当前窗口的重试提示呈现。
+    }
+  };
   const submit = async () => {
-    if (saving() || !ready()) return;
+    if (saving() || ready.error || !ready()) return;
     setSaving(true);
     setFailure("");
     try {
-      if ((await ctx.scope.validate()).status !== "valid") return;
+      if ((await ctx.scope.validate()).status !== "valid") {
+        form
+          ?.querySelector<HTMLElement>(
+            '[aria-invalid="true"], .form-item:has(.field-error) .control',
+          )
+          ?.focus();
+        return;
+      }
       const saved = await ctx.fn.saveRecord(ctx.scope.value());
       if (!ctx.signal.aborted) ctx.complete(saved);
     } catch (error) {
@@ -27,29 +47,50 @@ export const RecordEditor: Component<PageContext> = (ctx) => {
     }
   };
   return (
-    <div class="record-form">
-      <h1>
-        {ctx.params.id ? "编辑" : "新建"}
-        {ctx.model.title}
-      </h1>
+    <div
+      class="record-form"
+      ref={(element) => {
+        form = element;
+      }}
+    >
+      <div class="record-heading">
+        <h1 tabindex="-1">
+          {ctx.params.id ? "编辑" : "新建"}
+          {ctx.model.title}
+        </h1>
+        <Show when={ctx.params.id}>
+          <code class="record-meta">{ctx.params.id}</code>
+        </Show>
+      </div>
       <Show when={ready.error}>
         <p role="alert">
           {String(ready.error)}{" "}
-          <button class="text-button" onClick={() => refetch()}>
+          <button class="text-button" onClick={reload}>
             重试加载
           </button>
         </p>
       </Show>
-      <Show when={ready()} fallback={<p role="status">正在加载记录…</p>}>
-        <div class="panel">
+      <Show
+        when={!ready.error && ready()}
+        fallback={
+          <Show when={ready.loading}>
+            <p role="status">正在加载记录…</p>
+          </Show>
+        }
+      >
+        <div class="record-fields">
           <Render fieldContainer={FormItem} />
         </div>
         <Show when={failure()}>
           <p role="alert">{failure()}</p>
         </Show>
-        <button class="button" disabled={saving()} onClick={submit}>
-          {saving() ? "正在保存…" : "保存"}
-        </button>
+        <div class="record-actions">
+          <span>标记 * 的字段为必填项</span>
+          <button class="button" disabled={saving()} onClick={submit}>
+            <Icon name="check" />
+            {saving() ? "正在保存…" : "保存"}
+          </button>
+        </div>
       </Show>
     </div>
   );
@@ -62,19 +103,43 @@ export const RecordDetail: Component<PageContext> = (ctx) => {
     return true;
   });
   const Render = ctx.Render;
+  let detail: HTMLDivElement | undefined;
+  const reload = async () => {
+    try {
+      await refetch();
+      if (!ctx.signal.aborted && !ready.error) detail?.querySelector<HTMLElement>("h1")?.focus();
+    } catch {
+      // Resource 保留加载错误，由当前窗口的重试提示呈现。
+    }
+  };
   return (
-    <div>
-      <h1>{ctx.model.title}详情</h1>
+    <div
+      class="record-detail"
+      ref={(element) => {
+        detail = element;
+      }}
+    >
+      <div class="record-heading">
+        <h1 tabindex="-1">{ctx.model.title}详情</h1>
+        <code class="record-meta">{ctx.params.id}</code>
+      </div>
       <Show when={ready.error}>
         <p role="alert">
           {String(ready.error)}{" "}
-          <button class="text-button" onClick={() => refetch()}>
+          <button class="text-button" onClick={reload}>
             重试加载
           </button>
         </p>
       </Show>
-      <Show when={ready()} fallback={<p role="status">正在加载记录…</p>}>
-        <div class="panel">
+      <Show
+        when={!ready.error && ready()}
+        fallback={
+          <Show when={ready.loading}>
+            <p role="status">正在加载记录…</p>
+          </Show>
+        }
+      >
+        <div class="detail-fields">
           <Render scope={value} view={ctx.model.views?.detail} fieldContainer={DetailItem} />
         </div>
       </Show>

@@ -9,7 +9,8 @@ test("默认 orders：Filter 草稿、false、Table 同 id 刷新、完整 Modal
   await expect(page.getByRole("heading", { name: "订单", exact: true })).toBeVisible();
   await expect(page.locator("tbody tr")).toHaveCount(3);
   const query = page.locator(".filters");
-  await query.getByLabel("已付款").selectOption({ label: "否" });
+  await query.getByRole("combobox", { name: "已付款" }).click();
+  await page.getByRole("option", { name: "否", exact: true }).click();
   await expect(page.locator("tbody tr")).toHaveCount(3);
   await query.getByRole("button", { name: "查询", exact: true }).click();
   await expect(page.locator("tbody tr")).toHaveCount(2);
@@ -32,6 +33,59 @@ test("默认 orders：Filter 草稿、false、Table 同 id 刷新、完整 Modal
   expect(errors).toEqual([]);
 });
 
+test("首页进入模型工作台，MCP 配置匹配实际端口", async ({ page }) => {
+  await page.goto("/");
+  await expect(page).toHaveURL(/\/models$/u);
+  await expect(page.getByRole("heading", { name: "模型工作台", exact: true })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "完整模型 JSON" })).not.toHaveValue("");
+  await expect(page.getByRole("navigation", { name: "主导航" }).getByRole("link")).toHaveCount(3);
+  await expect(page.getByText("工作区", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: /MCP 接入/u }).click();
+  const config = JSON.parse(await page.getByLabel("MCP 客户端配置").innerText());
+  expect(config.mcpServers.formwork.command).toBe("node");
+  expect(config.mcpServers.formwork.args[0]).toMatch(/\/packages\/formwork\/dist\/stdio\.js$/u);
+  expect(config.mcpServers.formwork.args.slice(1)).toEqual(["--url", "http://127.0.0.1:5184"]);
+  await expect(page.locator(".mcp-tools code")).toHaveCount(6);
+  await page.goto("/home");
+  await expect(page).toHaveURL(/\/models$/u);
+});
+
+test("自绘 Select 支持键盘、分页和 Modal 内浮层，不触发意外提交", async ({ page }) => {
+  await page.goto("/list/orders");
+  const paid = page.locator(".filters").getByRole("combobox", { name: "已付款" });
+  await paid.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(paid).toHaveAttribute("aria-expanded", "true");
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await expect(paid).toContainText("否");
+  await expect(page.locator("tbody tr")).toHaveCount(3);
+  await page.getByRole("button", { name: "查询", exact: true }).click();
+  await expect(page.locator("tbody tr")).toHaveCount(2);
+  await page.getByRole("button", { name: "清空筛选" }).click();
+  await expect(paid).toContainText("未选择");
+  await expect(page.locator("tbody tr")).toHaveCount(3);
+  const pageSize = page.getByRole("combobox", { name: "每页记录数" });
+  await pageSize.focus();
+  await page.keyboard.press("5");
+  await expect(pageSize).toContainText("50 条 / 页");
+  await page.getByRole("button", { name: "新建记录", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "编辑记录" });
+  const status = dialog.getByRole("combobox", { name: "状态 *", exact: true });
+  await status.click();
+  await page.getByRole("option", { name: "已付款", exact: true }).click();
+  await expect(status).toContainText("已付款");
+  await expect(dialog).toBeVisible();
+  await status.click();
+  await page.keyboard.press("Escape");
+  await expect(status).toHaveAttribute("aria-expanded", "false");
+  await expect(dialog).toBeVisible();
+  await expect(status).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toBeVisible();
+  await expect(page.locator("select")).toHaveCount(0);
+});
+
 test("取消不保存、History 返回恢复调用者、新建嵌套明细", async ({ page }) => {
   await page.goto("/list/orders");
   await page.locator('tr[data-record-id="order-1"]').getByRole("button", { name: "编辑" }).click();
@@ -51,9 +105,10 @@ test("取消不保存、History 返回恢复调用者、新建嵌套明细", asy
 });
 
 test("cms 延迟覆盖实际 RichText 与保存 fn；Window 直达保持 Presenter", async ({ page }) => {
+  const { document } = await (await page.request.get("/__formwork/models/cms")).json();
   await page.goto("/edit/cms/article-1");
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByRole("heading", { name: "编辑内容" })).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: `编辑${document.title}` })).toBeVisible();
   await dialog.getByLabel("标题").fill("  cms 已更新  ");
   await dialog.locator(".rich-editor").fill("完整正文\n第二行");
   await dialog.getByRole("button", { name: "保存", exact: true }).click();

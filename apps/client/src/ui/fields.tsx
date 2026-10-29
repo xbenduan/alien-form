@@ -2,7 +2,8 @@ import { createSignal, For, Show } from "solid-js";
 import type { Component } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import type { FieldProps, JsonValue } from "formwork";
-import { useFieldLabel } from "./field-container";
+import { useCompactCell, useFieldLabel } from "./field-container";
+import { SelectControl } from "./select";
 
 const text = (value: JsonValue | undefined) =>
   value === undefined
@@ -14,7 +15,7 @@ const text = (value: JsonValue | undefined) =>
         : String(value);
 /** 编辑字符串，空字符串与缺失值保持独立。 */
 export const Input: Component<FieldProps> = (props) => (
-  <Show when={!props.readOnly} fallback={<span>{text(props.value)}</span>}>
+  <Show when={!props.readOnly} fallback={<span class="value-text">{text(props.value)}</span>}>
     <input
       class="control"
       type="text"
@@ -25,7 +26,12 @@ export const Input: Component<FieldProps> = (props) => (
       onInput={(event) => props.onChange(event.currentTarget.value)}
     />
     <Show when={"type" in props.schema && Array.isArray(props.schema.type)}>
-      <button class="text-button" disabled={props.disabled} onClick={() => props.onChange(null)}>
+      <button
+        type="button"
+        class="text-button"
+        disabled={props.disabled}
+        onClick={() => props.onChange(null)}
+      >
         设为 null
       </button>
     </Show>
@@ -50,7 +56,7 @@ export const NumberInput: Component<FieldProps> = (props) => (
     />
   </Show>
 );
-/** 使用 option 索引保持 enum、boolean、null 与 undefined 的原始类型。 */
+/** 通过自绘 Select 编辑枚举值，保持 boolean、null 与 undefined 的原始类型。 */
 export const Select: Component<FieldProps> = (props) => {
   const options = () =>
     "enum" in props.schema && props.schema.enum
@@ -61,34 +67,64 @@ export const Select: Component<FieldProps> = (props) => {
         ? [true, false, ...(Array.isArray(props.schema.type) ? [null] : [])]
         : [];
   return (
-    <Show when={!props.readOnly} fallback={<span>{text(props.value)}</span>}>
-      <select
-        class="control"
-        aria-labelledby={useFieldLabel()}
-        aria-invalid={props.errors.length > 0}
+    <Show
+      when={!props.readOnly}
+      fallback={
+        <span
+          class="value-badge"
+          classList={{
+            positive: props.value === "paid" || props.value === true,
+            pending: props.value === "pending",
+          }}
+        >
+          <Show
+            when={
+              props.value === "paid" ||
+              props.value === "pending" ||
+              typeof props.value === "boolean"
+            }
+          >
+            <span class="status-dot" />
+          </Show>
+          {props.value === "paid"
+            ? "已付款"
+            : props.value === "pending"
+              ? "待付款"
+              : props.value === true
+                ? "是"
+                : props.value === false
+                  ? "否"
+                  : text(props.value)}
+        </span>
+      }
+    >
+      <SelectControl
+        labelledBy={useFieldLabel()}
+        invalid={props.errors.length > 0}
         disabled={props.disabled}
         value={
           props.value === undefined
-            ? ""
+            ? undefined
             : String(options().findIndex((value) => value === props.value))
         }
-        onChange={(event) =>
-          props.onChange(
-            event.currentTarget.value === ""
-              ? undefined
-              : (options()[Number(event.currentTarget.value)] as JsonValue),
-          )
+        clearable
+        options={options().map((value, index) => ({
+          value: String(index),
+          label:
+            value === true
+              ? "是"
+              : value === false
+                ? "否"
+                : value === "paid"
+                  ? "已付款"
+                  : value === "pending"
+                    ? "待付款"
+                    : text(value),
+        }))}
+        onChange={(value) =>
+          props.onChange(value === undefined ? undefined : (options()[Number(value)] as JsonValue))
         }
-      >
-        <option value="">未选择</option>
-        <For each={options()}>
-          {(value, index) => (
-            <option value={String(index())}>
-              {value === true ? "是" : value === false ? "否" : text(value)}
-            </option>
-          )}
-        </For>
-      </select>
+      />
     </Show>
   );
 };
@@ -96,7 +132,14 @@ export const Select: Component<FieldProps> = (props) => {
 export const Switch: Component<FieldProps> = (props) => (
   <Show
     when={!props.readOnly}
-    fallback={<span>{props.value === undefined ? "—" : props.value ? "是" : "否"}</span>}
+    fallback={
+      <span class="value-badge" classList={{ positive: props.value === true }}>
+        <Show when={props.value !== undefined}>
+          <span class="status-dot" />
+        </Show>
+        {props.value === undefined ? "—" : props.value ? "是" : "否"}
+      </span>
+    }
   >
     <label class="switch">
       <input
@@ -116,6 +159,7 @@ export const ObjectFields: Component<FieldProps> = (props) => (
 );
 /** 渲染稳定身份的明细项，并通过 ArrayHandle 执行结构操作。 */
 export const ArrayFields: Component<FieldProps> = (props) => {
+  const compact = useCompactCell();
   const [error, setError] = createSignal("");
   const add = () => {
     try {
@@ -145,51 +189,59 @@ export const ArrayFields: Component<FieldProps> = (props) => {
     }
   };
   return (
-    <div class="array-fields">
-      <For each={props.array?.items()}>
-        {(item, index) => (
-          <div class="array-item" data-item-key={item.key}>
-            <div class="array-item-header">
-              <span>第 {index() + 1} 项</span>
-              <Show when={!props.readOnly}>
-                <div class="actions">
-                  <button
-                    class="text-button"
-                    disabled={props.disabled || index() === 0}
-                    onClick={() => props.array!.move(item.key, index() - 1)}
-                  >
-                    上移
-                  </button>
-                  <button
-                    class="text-button"
-                    disabled={props.disabled || index() === props.array!.items().length - 1}
-                    onClick={() => props.array!.move(item.key, index() + 1)}
-                  >
-                    下移
-                  </button>
-                  <button
-                    class="text-button danger"
-                    disabled={props.disabled}
-                    onClick={() => props.array!.remove(item.key)}
-                  >
-                    删除明细
-                  </button>
-                </div>
-              </Show>
+    <Show
+      when={!compact || !props.readOnly}
+      fallback={<span class="array-summary">{props.array?.items().length ?? 0} 项</span>}
+    >
+      <div class="array-fields">
+        <For each={props.array?.items()}>
+          {(item, index) => (
+            <div class="array-item" data-item-key={item.key}>
+              <div class="array-item-header">
+                <span>第 {index() + 1} 项</span>
+                <Show when={!props.readOnly}>
+                  <div class="actions">
+                    <button
+                      type="button"
+                      class="text-button"
+                      disabled={props.disabled || index() === 0}
+                      onClick={() => props.array!.move(item.key, index() - 1)}
+                    >
+                      上移
+                    </button>
+                    <button
+                      type="button"
+                      class="text-button"
+                      disabled={props.disabled || index() === props.array!.items().length - 1}
+                      onClick={() => props.array!.move(item.key, index() + 1)}
+                    >
+                      下移
+                    </button>
+                    <button
+                      type="button"
+                      class="text-button danger"
+                      disabled={props.disabled}
+                      onClick={() => props.array!.remove(item.key)}
+                    >
+                      删除明细
+                    </button>
+                  </div>
+                </Show>
+              </div>
+              <Dynamic component={props.Item} scope={item.scope} />
             </div>
-            <Dynamic component={props.Item} scope={item.scope} />
-          </div>
-        )}
-      </For>
-      <Show when={!props.readOnly}>
-        <button class="button secondary" disabled={props.disabled} onClick={add}>
-          添加明细
-        </button>
-      </Show>
-      <Show when={error()}>
-        <p role="alert">{error()}</p>
-      </Show>
-    </div>
+          )}
+        </For>
+        <Show when={!props.readOnly}>
+          <button type="button" class="button secondary" disabled={props.disabled} onClick={add}>
+            添加明细
+          </button>
+        </Show>
+        <Show when={error()}>
+          <p role="alert">{error()}</p>
+        </Show>
+      </div>
+    </Show>
   );
 };
 /** 展示 null 类型字段。 */

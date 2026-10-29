@@ -50,7 +50,7 @@ export PATH="/Users/bytedance/Library/Caches/formwork-toolchain/node-v26.13.0-da
 
 | URL                                     | 实际行为                                             |
 | --------------------------------------- | ---------------------------------------------------- |
-| `/home`                                 | 入口和模型导航；`/` 跳转到这里                       |
+| `/`、`/home`                            | 自动进入模型工作台，默认打开目录中的首个模型         |
 | `/list/orders`                          | 默认字段、草稿筛选、三态付款筛选、标量排序和记录动作 |
 | `/edit/orders/:id`                      | Modal 编辑已有记录                                   |
 | `/add/orders`                           | Modal 创建新记录，可增加嵌套明细                     |
@@ -110,7 +110,9 @@ pnpm mcp --url http://127.0.0.1:5173
 
 stdio 使用官方 `@modelcontextprotocol/sdk`，只连接已有 Vite 工具端点，不另建模型写入源。stdout 只传 MCP，错误写入 stderr；服务不可用返回 `DEV_SERVER_UNAVAILABLE`。
 
-MCP 客户端配置示例（按实际工作区和开发端口调整）：
+模型工作台的“MCP 接入”区域提供当前 Vite 端口与本机 stdio 路径的可复制配置。
+
+MCP 客户端配置示例（按实际项目路径和开发端口调整）：
 
 ```json
 {
