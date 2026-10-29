@@ -4,7 +4,9 @@ import type { Component } from "solid-js";
 import { render } from "solid-js/web";
 import { defineDomain, defineFormwork, definePage, defineWindow } from "../runtime/define";
 import type { ActionContext, PageContext, PresenterProps } from "../runtime/types";
-import type { ModelDocument, ModelSource } from "../model/types";
+import type { ModelDocument } from "../model/types";
+import { createFormworkApi } from "../model/http";
+import type { PageLoadContext } from "../runtime/types";
 
 const model: ModelDocument = {
   id: "orders",
@@ -12,24 +14,19 @@ const model: ModelDocument = {
   data: { type: "object", properties: { name: { type: "string", default: "初始" } } },
 };
 let reads = 0;
-const models: ModelSource = {
-  list: async () => [],
-  read: async () => {
+const api = createFormworkApi({
+  url: "/api/v1",
+  fetch: async () => {
     reads++;
-    return {
-      id: "orders",
-      title: "订单",
-      document: model,
+    return Response.json({
+      schema: model,
+      version: 1,
       revision: "one",
-      completeness: "full",
-      writable: false,
-      location: { kind: "local", path: "model.json" },
-    };
+    });
   },
-  write: async () => {
-    throw new Error("READ_ONLY");
-  },
-};
+});
+const loadSchema = async (ctx: PageLoadContext) =>
+  (await ctx.api.runtime.schema(ctx.domain, { signal: ctx.signal })).schema;
 const Page: Component<PresenterProps> = (props) => <section>{props.children}</section>;
 const Modal: Component<PresenterProps> = (props) => (
   <aside role="dialog" data-direct={props.direct}>
@@ -60,7 +57,7 @@ describe("常驻 Host 与完整 Window", () => {
     let mounts = 0;
     let cleanups = 0;
     const app = defineFormwork({
-      models,
+      api,
       presenters: { page: Page },
       pages: [
         definePage({
@@ -79,6 +76,7 @@ describe("常驻 Host 与完整 Window", () => {
           path: "/edit/:domain",
           returnTo: "home",
           presentation: "page",
+          getSchema: loadSchema,
           container: (ctx) => {
             editor = ctx;
             return <p>编辑 {String((ctx.scope.value() as { name: string }).name)}</p>;
@@ -108,7 +106,7 @@ describe("常驻 Host 与完整 Window", () => {
     let edit!: ActionContext;
     let detail!: ActionContext;
     const app = defineFormwork({
-      models,
+      api,
       presenters: { page: Page, modal: Modal, drawer: Modal },
       pages: [definePage({ router: "home", render: () => <p>首页</p> })],
       windows: [
@@ -152,7 +150,7 @@ describe("常驻 Host 与完整 Window", () => {
     let windowCtx!: ActionContext;
     let mounts = 0;
     const app = defineFormwork({
-      models,
+      api,
       presenters: { page: Page, modal: Modal },
       pages: [
         definePage({
@@ -193,9 +191,9 @@ describe("常驻 Host 与完整 Window", () => {
   });
   it("Domain 失败显示错误和重试，不静默回退；有效覆盖先于挂载", async () => {
     let attempts = 0;
-    const domain = defineDomain({ container: (ctx) => <p>覆盖 {ctx.model.title}</p> });
+    const domain = defineDomain({ container: (ctx) => <p>覆盖 {ctx.schema.title}</p> });
     const app = defineFormwork({
-      models,
+      api,
       presenters: { page: Page },
       container: () => <p>默认容器</p>,
       pages: [
@@ -203,6 +201,7 @@ describe("常驻 Host 与完整 Window", () => {
         definePage({
           router: "list",
           path: "/list/:domain",
+          getSchema: loadSchema,
           domains: {
             orders: async () => {
               if (++attempts === 1) throw new Error("Domain 暂不可用");
@@ -223,7 +222,7 @@ describe("常驻 Host 与完整 Window", () => {
     let caller!: ActionContext;
     const windows: PageContext[] = [];
     const app = defineFormwork({
-      models,
+      api,
       presenters: { page: Page, modal: Modal },
       pages: [
         definePage({
@@ -240,6 +239,7 @@ describe("常驻 Host 与完整 Window", () => {
           path: "/edit/:domain",
           presentation: "modal",
           returnTo: "home",
+          getSchema: loadSchema,
           container: (ctx) => {
             windows.push(ctx);
             return <p>{String((ctx.scope.value() as { name: string }).name)}</p>;
@@ -267,7 +267,7 @@ describe("常驻 Host 与完整 Window", () => {
     let caller!: ActionContext;
     let editor!: PageContext;
     const app = defineFormwork({
-      models,
+      api,
       presenters: { page: Page, modal: Modal },
       pages: [
         definePage({
@@ -284,6 +284,7 @@ describe("常驻 Host 与完整 Window", () => {
           path: "/edit/:domain",
           presentation: "modal",
           returnTo: "home",
+          getSchema: loadSchema,
           container: (ctx) => {
             editor = ctx;
             const one = ctx.createScope();

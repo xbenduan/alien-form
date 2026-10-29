@@ -4,50 +4,44 @@ import { createServer } from "node:http";
 import { resolve } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { createModelTools } from "formwork/mcp";
-import { createReadonlyModelSource } from "formwork/model";
-import { readJson, sendError, sendJson } from "../../../vite-plugin/src/source-http";
 
-it("官方 SDK stdio round trip 连接已有服务并报告结构化错误", async () => {
-  const source = createReadonlyModelSource([
-    {
-      id: "orders",
-      title: "订单",
-      revision: "1",
-      location: { kind: "local", path: "model.json" },
-      writable: false,
-      completeness: "full",
-      document: { id: "orders", title: "订单", data: { type: "object", properties: {} } },
-    },
-  ]);
-  const tools = createModelTools({
-    source,
-    routes: [
-      { router: "models", path: "/models/:domain?" },
-      { router: "list", path: "/list/:domain" },
-    ],
-    schemaRouters: ["list"],
-    capabilities: (modelId, router) => ({
-      modelId,
-      router,
-      components: [],
-      fn: [],
-      modelContract: "ModelDocument",
+it("官方 SDK stdio 使用 Bearer 直连 API 并保留管理诊断和结构化错误", async () => {
+  const snapshot = {
+    id: "orders",
+    title: "未完成",
+    revision: "draft-1",
+    stage: "draft",
+    publishedVersion: null,
+    baseVersion: null,
+    canManage: true,
+    canPublish: false,
+    definition: { document: { id: "orders" } },
+    diagnostics: {
+      errors: [{ path: "/document/data", code: "INVALID_MODEL", message: "缺少 data" }],
       runtimeChecks: [],
-    }),
-  });
+    },
+  };
+  const paths: string[] = [];
   const server = createServer((request, response) => {
-    void (async () => {
-      try {
-        sendJson(
-          response,
-          200,
-          await tools.call(request.url!.split("/").at(-1) as never, await readJson(request)),
-        );
-      } catch (error) {
-        sendError(response, error);
-      }
-    })();
+    paths.push(request.url!);
+    response.setHeader("Content-Type", "application/json");
+    if (request.headers.authorization !== "Bearer test-agent-credential") {
+      response.statusCode = 401;
+      response.end(JSON.stringify({ error: { code: "UNAUTHORIZED", message: "缺少 token" } }));
+    } else if (request.url === "/api/v1/models") {
+      const {
+        definition: _definition,
+        baseVersion: _base,
+        diagnostics: _diagnostics,
+        ...entry
+      } = snapshot;
+      response.end(JSON.stringify([entry]));
+    } else if (request.url === "/api/v1/models/orders") {
+      response.end(JSON.stringify(snapshot));
+    } else {
+      response.statusCode = 400;
+      response.end(JSON.stringify({ error: { code: "UNKNOWN_ROUTER", message: "未知 router" } }));
+    }
   });
   await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
   const transport = new StdioClientTransport({
@@ -57,6 +51,14 @@ it("官方 SDK stdio round trip 连接已有服务并报告结构化错误", asy
       "--url",
       `http://127.0.0.1:${(server.address() as { port: number }).port}`,
     ],
+    env: {
+      ...Object.fromEntries(
+        Object.entries(process.env).filter(
+          (entry): entry is [string, string] => entry[1] !== undefined,
+        ),
+      ),
+      FORMWORK_API_TOKEN: "test-agent-credential",
+    },
     stderr: "pipe",
   });
   const client = new Client({ name: "formwork-test", version: "1" });
@@ -71,16 +73,21 @@ it("官方 SDK stdio round trip 连接已有服务并报告结构化错误", asy
       "models.preview",
     ]);
     const read = await client.callTool({ name: "models.read", arguments: { modelId: "orders" } });
-    expect(JSON.parse((read.content as any[])[0].text)).toMatchObject({
-      completeness: "full",
-      revision: "1",
+    const text = (read.content as Array<{ text: string }>)[0]!.text;
+    expect(JSON.parse(text)).toMatchObject({
+      stage: "draft",
+      revision: "draft-1",
+      diagnostics: snapshot.diagnostics,
     });
     const error = await client.callTool({
       name: "models.preview",
       arguments: { modelId: "orders", router: "missing" },
     });
     expect(error.isError).toBe(true);
-    expect(JSON.parse((error.content as any[])[0].text).error.code).toBe("UNKNOWN_ROUTER");
+    expect(JSON.parse((error.content as Array<{ text: string }>)[0]!.text).error.code).toBe(
+      "UNKNOWN_ROUTER",
+    );
+    expect(paths.every((path) => path.startsWith("/api/v1/"))).toBe(true);
   } finally {
     await client.close();
     await new Promise<void>((done, reject) =>

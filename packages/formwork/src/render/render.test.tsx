@@ -16,7 +16,7 @@ const schema: DataSchema = {
   },
 };
 const ctx: ActionContext = {
-  models: {} as ActionContext["models"],
+  api: {} as ActionContext["api"],
   params: {},
   fn: {},
   signal: new AbortController().signal,

@@ -1,51 +1,90 @@
-import { cp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, rm, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { randomBytes } from "node:crypto";
 import { createServer } from "vite";
-import type { ViteDevServer } from "vite";
-import { createDevelopmentService } from "../apps/service/src/app";
-import { seedDevelopment } from "../apps/service/src/seed";
+import { startLocalWorker } from "./local-worker.mjs";
+import { planMigration } from "../apps/service/src/migration/convert";
+import type { ModelDocument } from "formwork/model";
 
 const root = process.env.FORMWORK_E2E_ROOT;
 if (!root) throw new Error("FORMWORK_E2E_ROOT 必须由 Playwright 配置提供");
 await mkdir(root, { recursive: true });
-const service = createDevelopmentService(join(root, "data"));
-await seedDevelopment(service, [
-  resolve("apps/client/src/models/orders/model.json"),
-  resolve("apps/client/src/domains/cms/model.json"),
-]);
-await service.listen(8788);
-const servers: ViteDevServer[] = [];
-for (const [name, port] of [
-  ["local", 5184],
-  ["remote", 5186],
-] as const) {
-  const appRoot = join(root, name);
-  await mkdir(appRoot, { recursive: true });
-  await cp(resolve("apps/client/src"), join(appRoot, "src"), { recursive: true });
-  await cp(resolve("apps/client/index.html"), join(appRoot, "index.html"));
-  await writeFile(join(appRoot, "package.json"), '{"type":"module"}');
-  await writeFile(
-    join(appRoot, "tsconfig.json"),
-    '{"compilerOptions":{"jsx":"preserve","jsxImportSource":"solid-js"}}',
-  );
-  await symlink(resolve("apps/client/node_modules"), join(appRoot, "node_modules"));
-  const server = await createServer({
-    root: appRoot,
-    configFile: resolve("apps/client/vite.config.ts"),
-    define: { "import.meta.env.VITE_MODEL_SOURCE": JSON.stringify(name) },
-    server: { host: "127.0.0.1", port, strictPort: true },
-  });
-  await server.listen();
-  servers.push(server);
-}
-console.log("Formwork E2E local :5184 / remote :5186 ready");
+const password = randomBytes(24).toString("hex");
+const username = "e2e-admin";
+const capabilityToken = randomBytes(32).toString("hex");
+await writeFile(join(root, "login.json"), JSON.stringify({ username, password }), { mode: 0o600 });
+const documents = await Promise.all(
+  ["orders", "cms"].map(
+    async (id) =>
+      JSON.parse(
+        await readFile(resolve(`apps/service/src/migration/fixtures/${id}.document.json`), "utf8"),
+      ) as ModelDocument,
+  ),
+);
+const plan = await planMigration({
+  models: [],
+  tables: [],
+  files: documents.map((document) => ({
+    document,
+    published: true,
+    records:
+      document.id === "orders"
+        ? [
+            {
+              id: "order-1",
+              orderNo: "SO-2026-001",
+              status: "pending",
+              paid: false,
+              amount: 120,
+              lines: [],
+            },
+            {
+              id: "order-2",
+              orderNo: "SO-2026-002",
+              status: "paid",
+              paid: true,
+              amount: 240,
+              lines: [],
+            },
+            {
+              id: "order-3",
+              orderNo: "SO-2026-003",
+              status: "pending",
+              paid: false,
+              amount: 360,
+              lines: [],
+            },
+          ]
+        : [{ id: "article-1", title: "首篇内容", content: "初始正文" }],
+  })),
+});
+if (plan.errors.length) throw new Error(JSON.stringify(plan.errors));
+process.env.FORMWORK_SERVICE_PORT = "8789";
+process.env.FORMWORK_CAPABILITY_TOKEN = capabilityToken;
+process.env.FORMWORK_CLIENT_ORIGIN = "http://127.0.0.1:5184";
+const worker = await startLocalWorker({
+  directory: root,
+  port: 8789,
+  clientOrigin: process.env.FORMWORK_CLIENT_ORIGIN,
+  username,
+  password,
+  capabilityToken,
+  initialSql: plan.statements,
+  detached: false,
+});
+const server = await createServer({
+  root: resolve("apps/client"),
+  configFile: resolve("apps/client/vite.config.ts"),
+  server: { host: "127.0.0.1", port: 5184, strictPort: true },
+});
+await server.listen();
+console.log("Formwork E2E Vite :5184 / Worker D1 :8789 ready");
 let stopping = false;
 for (const signal of ["SIGINT", "SIGTERM"] as const)
   process.once(signal, () => {
     if (stopping) return;
     stopping = true;
-    void Promise.all(servers.map((server) => server.close()))
-      .then(() => service.close())
+    void Promise.all([worker.close(), server.close()])
       .then(() => rm(root, { recursive: true, force: true }))
       .then(() => {
         process.exitCode = 0;

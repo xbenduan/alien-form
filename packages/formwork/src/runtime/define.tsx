@@ -23,6 +23,8 @@ function assertBody(definition: PageAuthorDefinition) {
     throw new FormworkError("INVALID_DEFINITION", "普通 render 与 schema 内容互斥");
   if (definition.render !== undefined && typeof definition.render !== "function")
     throw new FormworkError("INVALID_DEFINITION", "直接 JSX render 需要 formworkPlugin 转换");
+  if (definition.render === undefined && typeof definition.getSchema !== "function")
+    throw new FormworkError("INVALID_DEFINITION", "模型 Page/Window 必须显式声明 getSchema");
 }
 /** 保存一个可寻址页面，状态在挂载时创建。 */
 export function definePage(definition: PageDefinition | PageAuthorDefinition): PageDefinition {

@@ -105,7 +105,7 @@ function valuesProxy(root: Cell, observe: (cell: Cell) => void): unknown {
   return "properties" in root.schema ? object(root) : read(root);
 }
 
-// 每个属性拥有自己的轮次；writer 图共享同一稳定值身份。
+/** 为属性建立独立表达式轮次和 writer 依赖，保留普通代码 props 的身份。 */
 export function expressionProperty(
   input: unknown,
   ctx: ActionContext,
@@ -113,9 +113,12 @@ export function expressionProperty(
   field?: Cell,
   write = false,
 ) {
-  const [value, setValue] = createSignal<unknown>(expressionBody(input) ? undefined : input);
+  const [value, setValue] = createSignal<unknown>();
   const [errors, setErrors] = createSignal<readonly ValidationIssue[]>([]);
-  if (!expressionBody(input)) return { value, errors };
+  if (!expressionBody(input)) {
+    setValue(() => input);
+    return { value, errors };
+  }
   const root = scopeCell(scope);
   const graph = graphFor(root);
   const writer: Writer | undefined =
@@ -194,7 +197,7 @@ export function expressionProperty(
     try {
       const result = program!({
         $ctx: ctx,
-        $model: ctx.model,
+        $schema: ctx.schema,
         $values: valuesProxy(root, observe),
         get $value() {
           if (field) {

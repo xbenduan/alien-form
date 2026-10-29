@@ -2,7 +2,7 @@ import { defineDomain } from "formwork";
 import type { ActionContext, FieldProps, JsonValue } from "formwork";
 import type { Component } from "solid-js";
 import { Show } from "solid-js";
-import { isObject } from "formwork/model";
+import { defaultComponent, escapePointer, isObject } from "formwork/model";
 import { saveRecord } from "../../fn/records";
 import { cmsDocumentSchema } from "./model.schema";
 import { useFieldLabel } from "../../ui/field-container";
@@ -35,4 +35,18 @@ export default defineDomain({
   components: { RichText },
   fn: { saveRecord: saveCmsRecord },
   schema: cmsDocumentSchema,
+  getSchema: (ctx) => ({
+    ...ctx.schema,
+    views: {
+      ...ctx.schema.views,
+      add: {
+        component: "Object",
+        field: "",
+        children: Object.entries(ctx.schema.data.properties).map(([name, schema]) => ({
+          component: name === "content" ? "RichText" : defaultComponent(schema, ctx.schema.data),
+          field: `/${escapePointer(name)}`,
+        })),
+      },
+    },
+  }),
 });

@@ -12,7 +12,7 @@ import type {
   RenderProps,
   ValueScope,
 } from "../runtime/types";
-import type { ViewNode } from "../model/types";
+import type { RuntimeView } from "../model/types";
 import { defaultView, objectChildren } from "./default-view";
 
 type Configuration = {
@@ -20,7 +20,7 @@ type Configuration = {
   components: ComponentRegistry;
   fieldContainer?: Component<FieldContainerProps>;
   scope: () => ValueScope;
-  view?: ViewNode;
+  view?: RuntimeView;
 };
 const DefaultField: Component<FieldContainerProps> = (props) => (
   <>
@@ -35,7 +35,7 @@ const DefaultField: Component<FieldContainerProps> = (props) => (
   </>
 );
 
-// 一套解释流程服务默认表单、筛选和单字段表格。
+/** 以同一解释流程渲染默认表单、筛选与单字段表格。 */
 export function createRender(configuration: Configuration): Component<RenderProps> {
   return (props) => {
     if (props.field !== undefined && props.view !== undefined)
@@ -51,7 +51,7 @@ export function createRender(configuration: Configuration): Component<RenderProp
           (props.scope ? undefined : configuration.view) ??
           defaultView(root.schema, root.referenceRoot));
     const Node: Component<{
-      view: ViewNode;
+      view: RuntimeView;
       scope: ValueScope;
       base: string;
       rootContainer?: boolean;

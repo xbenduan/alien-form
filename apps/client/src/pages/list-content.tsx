@@ -11,9 +11,9 @@ import { SelectControl } from "../ui/select";
 
 /** 以已提交查询和稳定记录 id 驱动 Filter、Table 与记录 Window。 */
 export const List: Component<PageContext> = (ctx) => {
-  const fields = Object.entries(ctx.model.data.properties).map(([name, original]) => ({
+  const fields = Object.entries(ctx.schema.data.properties).map(([name, original]) => ({
     name,
-    schema: resolveSchema(original, ctx.model.data),
+    schema: resolveSchema(original, ctx.schema.data),
   }));
   const columns = fields.filter(({ name }) => name !== "id");
   const filters = fields.filter(
@@ -128,7 +128,7 @@ export const List: Component<PageContext> = (ctx) => {
     <div class="list-page">
       <header class="page-header">
         <div class="page-title">
-          <h1>{ctx.model.title}</h1>
+          <h1>{ctx.schema.title}</h1>
           <span class="page-meta">
             {records.error ? "加载失败" : `${result()?.total ?? "…"} 条记录`}
           </span>
@@ -202,7 +202,7 @@ export const List: Component<PageContext> = (ctx) => {
           aria-label="记录表格，可横向滚动"
           aria-busy={records.loading}
         >
-          <table aria-label={`${ctx.model.title}记录`}>
+          <table aria-label={`${ctx.schema.title}记录`}>
             <thead>
               <tr>
                 <For each={columns}>

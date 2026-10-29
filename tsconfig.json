@@ -1,4 +1,8 @@
 {
   "extends": "./tsconfig.node.json",
-  "include": ["scripts/**/*.ts", "vitest.config.ts", "playwright.config.ts"]
+  "compilerOptions": {
+    "allowJs": true,
+    "types": ["node", "./apps/service/node_modules/@cloudflare/workers-types"]
+  },
+  "include": ["scripts/**/*.ts", "scripts/**/*.mjs", "vitest.config.ts", "playwright.config.ts"]
 }

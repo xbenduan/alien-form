@@ -18,6 +18,9 @@ jobs:
         with:
           node-version: 26.13.0
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --registry=https://registry.npmjs.org
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm check
+      - run: pnpm --filter @alien-form/service exec wrangler deploy --config ../../wrangler.json --dry-run --outdir "$RUNNER_TEMP/formwork-worker"
+        env:
+          WRANGLER_SEND_METRICS: "false"

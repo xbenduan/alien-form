@@ -1,4 +1,3 @@
-import type { ModelSnapshot } from "formwork/model";
 import type { FormworkAnalysis } from "./analyze";
 
 /** 打包静态能力描述，按模型和 router 选择已解析的有效覆盖。 */
@@ -20,20 +19,4 @@ export function capabilities(modelId,router){
   return {...entry,modelId,runtimeChecks:entry.runtimeChecks.map(item=>({...item,modelId}))};
 }
 export default {routes,capabilities};`;
-}
-
-/** 生成保持对象身份的开发代理或构建期完整只读源。 */
-export function modelVirtualModule(development: boolean, snapshots: readonly ModelSnapshot[]) {
-  if (!development)
-    return `import {createReadonlyModelSource} from "formwork/model";export default createReadonlyModelSource(${JSON.stringify(snapshots)});`;
-  return `import {createHttpModelSource} from "formwork/model";
-const source=import.meta.hot?.data.source ?? createHttpModelSource({url:"/__formwork/models"});
-export default source;
-if(import.meta.hot){
-  import.meta.hot.data.source=source;
-  const update=(detail)=>window.dispatchEvent(new CustomEvent("formwork:model-update",{detail}));
-  import.meta.hot.on("formwork:model-update",update);
-  import.meta.hot.accept();
-  import.meta.hot.dispose(()=>import.meta.hot.off("formwork:model-update",update));
-}`;
 }

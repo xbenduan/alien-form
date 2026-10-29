@@ -1,9 +1,22 @@
 import { z } from "zod";
 import { FormworkError } from "./errors";
-import { compileExpression, expressionBody } from "./expression";
+import { validateExpression, expressionBody } from "./expression";
 import { cloneJson, escapePointer, isObject, pointerSegments } from "./pointer";
 import { resolveSchema, schemaAt, schemaType, validateValue } from "./validation";
-import type { DataSchema, ModelDocument, ModelSnapshot, ValidationIssue, ViewNode } from "./types";
+import type {
+  BackendDefinition,
+  DataSchema,
+  DraftDefinition,
+  ManagedSnapshot,
+  ModelDefinition,
+  ModelDocument,
+  PreviewSnapshot,
+  PublishedSnapshot,
+  RuntimeSchema,
+  RuntimeSnapshot,
+  RuntimeView,
+  ValidationIssue,
+} from "./types";
 
 /** 固定模型与 router 的单段身份规则。 */
 export const modelIdPattern = /^[a-z][a-z0-9_-]*$/u;
@@ -22,7 +35,10 @@ export const controlledProps = new Set([
 const metadata = ["title", "description", "default", "readOnly"];
 
 /** 检查完整模型子集并返回可定位的全部静态诊断。 */
-export function modelIssues(input: unknown): ValidationIssue[] {
+export function modelIssues(
+  input: unknown,
+  options: { runtimeViews?: boolean } = {},
+): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const add = (path: string, message: string, code = "INVALID_MODEL") =>
     issues.push({ path, code, message });
@@ -32,7 +48,8 @@ export function modelIssues(input: unknown): ValidationIssue[] {
   };
   if (!isObject(input)) return [{ path: "", code: "INVALID_MODEL", message: "模型必须是普通对象" }];
   try {
-    cloneJson(input as never);
+    const { views: _views, ...base } = input;
+    cloneJson((options.runtimeViews ? base : input) as never);
   } catch (error) {
     return [
       {
@@ -234,8 +251,8 @@ export function modelIssues(input: unknown): ValidationIssue[] {
           const propPath = `${path}/props/${escapePointer(key)}`;
           if (controlledProps.has(key)) add(propPath, `受控属性 ${key} 只能通过 bindings 配置`);
           try {
-            cloneJson(value as never);
-            if (expressionBody(value) !== undefined) compileExpression(String(value));
+            if (!options.runtimeViews) cloneJson(value as never);
+            if (expressionBody(value) !== undefined) validateExpression(String(value));
           } catch (error) {
             add(
               propPath,
@@ -255,7 +272,7 @@ export function modelIssues(input: unknown): ValidationIssue[] {
           if (typeof value === "boolean" && key !== "value") continue;
           try {
             if (typeof value !== "string") throw new Error("需要 {{ ... }} 表达式");
-            compileExpression(value);
+            validateExpression(value);
           } catch (error) {
             add(
               `${path}/bindings/${key}`,
@@ -295,35 +312,167 @@ export const modelDocumentSchema: z.ZodType<ModelDocument> = z
   })
   .transform((value) => value as ModelDocument);
 
-/** 拒绝 id 不一致和权限投影 envelope，返回独立完整快照。 */
-export function assertSnapshot(input: unknown, modelId?: string): ModelSnapshot {
-  if (
-    !isObject(input) ||
-    input.completeness !== "full" ||
-    typeof input.id !== "string" ||
-    typeof input.title !== "string" ||
-    typeof input.revision !== "string" ||
-    !input.revision ||
-    typeof input.writable !== "boolean" ||
-    !isObject(input.location)
-  )
-    throw new FormworkError("INVALID_MODEL", "需要完整 ModelSnapshot，不能使用权限投影");
-  const parsed = modelDocumentSchema.safeParse(input.document);
-  if (!parsed.success) throw new FormworkError("INVALID_MODEL", parsed.error.message);
-  const document = parsed.data;
-  if (
-    document.id !== input.id ||
-    document.title !== input.title ||
-    (modelId !== undefined && input.id !== modelId)
-  )
-    throw new FormworkError("INVALID_MODEL", "snapshot/document/请求 id 或 title 不一致");
-  const location = input.location;
-  if (
-    !(location.kind === "local" && typeof location.path === "string") &&
-    !(location.kind === "remote" && typeof location.uri === "string")
-  )
-    throw new FormworkError("INVALID_MODEL", "无效源位置");
-  return cloneJson({ ...input, document } as never) as ModelSnapshot;
+/** 验证 Domain 的实际渲染 schema，保留 View props 中的代码身份。 */
+export function assertRuntimeSchema(input: unknown): RuntimeSchema {
+  const issues = modelIssues(input, { runtimeViews: true });
+  if (issues.length) throw new FormworkError("INVALID_MODEL", "RuntimeSchema 校验失败", issues);
+  return input as RuntimeSchema;
+}
+
+/** 验证草稿传输和身份，允许保存尚未有效的 schema/backend。 */
+export function assertDraftDefinition(input: unknown, modelId: string): DraftDefinition {
+  if (!isObject(input) || !isObject(input.document) || input.document.id !== modelId)
+    throw new FormworkError("INVALID_INPUT", "definition.document.id 必须匹配 modelId");
+  try {
+    return cloneJson(input as never) as DraftDefinition;
+  } catch {
+    throw new FormworkError("INVALID_INPUT", "definition 必须是可序列化的 JSON 对象");
+  }
+}
+
+const identity = z.string().regex(modelIdPattern);
+const identifier = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/u);
+/** 校验后端配置结构；存储所有权和目标模型在 Worker 中进一步检查。 */
+export const backendDefinitionSchema: z.ZodType<BackendDefinition> = z
+  .object({
+    storage: z
+      .object({
+        table: identifier,
+        bindings: z.array(
+          z
+            .object({
+              id: z.string().min(1),
+              path: z.string(),
+              column: identifier.optional(),
+              jsonKey: z.string().min(1).optional(),
+              sqlType: z.enum(["TEXT", "INTEGER", "REAL"]),
+              encoding: z.enum(["scalar", "json"]),
+              index: z.enum(["index", "unique"]).optional(),
+            })
+            .strict(),
+        ),
+      })
+      .strict(),
+    relations: z.array(
+      z
+        .object({
+          fieldId: z.string().min(1),
+          targetModel: identity,
+          targetFieldId: z.string().min(1),
+          kind: z.enum(["many-to-one", "many-to-many"]),
+          through: identifier.optional(),
+        })
+        .strict(),
+    ),
+    permissions: z
+      .object({
+        grants: z.array(
+          z
+            .object({
+              roleId: z.string().min(1),
+              actions: z.array(z.enum(["read", "create", "update", "delete", "manage", "publish"])),
+              fields: z.array(z.string().min(1)).optional(),
+              scope: z.enum(["all", "own"]),
+            })
+            .strict(),
+        ),
+        privateFields: z.array(z.string().min(1)),
+      })
+      .strict(),
+    behavior: z
+      .object({
+        rules: z.array(z.string().min(1)),
+        commands: z.record(z.string(), z.string().min(1)),
+        events: z.record(z.string(), z.array(z.string().min(1))),
+      })
+      .strict(),
+  })
+  .strict();
+
+/** 校验完整发布定义；草稿保存不调用此严格解析器。 */
+export const modelDefinitionSchema: z.ZodType<ModelDefinition> = z
+  .object({ document: modelDocumentSchema, backend: backendDefinitionSchema })
+  .strict();
+const issueSchema = z.object({
+  path: z.string(),
+  code: z.string(),
+  message: z.string(),
+  modelId: z.string().optional(),
+  router: z.string().optional(),
+  source: z
+    .object({ file: z.string(), line: z.number().int(), column: z.number().int() })
+    .optional(),
+});
+/** 校验诊断报告的 HTTP envelope。 */
+export const validationReportSchema = z
+  .object({ errors: z.array(issueSchema), runtimeChecks: z.array(issueSchema) })
+  .strict();
+/** 校验管理目录中的能力和阶段，不包含运行时源位置。 */
+export const managedEntrySchema = z
+  .object({
+    id: identity,
+    title: z.string(),
+    revision: z.string().min(1),
+    stage: z.enum(["draft", "published"]),
+    publishedVersion: z.number().int().positive().nullable(),
+    canManage: z.boolean(),
+    canPublish: z.boolean(),
+  })
+  .strict();
+const managedSnapshotSchema = managedEntrySchema.extend({
+  definition: z.unknown(),
+  baseVersion: z.number().int().positive().nullable(),
+  diagnostics: validationReportSchema,
+});
+/** 验证管理快照，但不把无效草稿当成无效 HTTP 返回。 */
+export function assertManagedSnapshot(input: unknown, modelId: string): ManagedSnapshot {
+  const parsed = managedSnapshotSchema.parse(input);
+  if (parsed.id !== modelId) throw new FormworkError("INVALID_MODEL", "快照 id 与请求不一致");
+  return { ...parsed, definition: assertDraftDefinition(parsed.definition, modelId) };
+}
+/** 校验完整且不可变的发布版本，拒绝运行时权限投影。 */
+export function assertPublishedSnapshot(input: unknown, modelId: string): PublishedSnapshot {
+  const parsed = z
+    .object({
+      id: identity,
+      version: z.number().int().positive(),
+      revision: z.string().min(1),
+      definition: modelDefinitionSchema,
+    })
+    .strict()
+    .parse(input);
+  if (parsed.id !== modelId || parsed.definition.document.id !== modelId)
+    throw new FormworkError("INVALID_MODEL", "发布快照 id 与请求不一致");
+  return parsed;
+}
+/** 校验授权后的普通页面 schema envelope。 */
+export function assertRuntimeSnapshot(input: unknown, modelId: string): RuntimeSnapshot {
+  const parsed = z
+    .object({
+      schema: modelDocumentSchema,
+      version: z.number().int().positive(),
+      revision: z.string().min(1),
+    })
+    .strict()
+    .parse(input);
+  if (parsed.schema.id !== modelId)
+    throw new FormworkError("INVALID_MODEL", "运行时 schema id 与请求不一致");
+  return parsed;
+}
+/** 校验管理预览 envelope；baseVersion 可以为空。 */
+export function assertPreviewSnapshot(input: unknown, modelId: string): PreviewSnapshot {
+  const parsed = z
+    .object({
+      schema: modelDocumentSchema,
+      managementRevision: z.string().min(1),
+      stage: z.enum(["draft", "published"]),
+      baseVersion: z.number().int().positive().nullable(),
+    })
+    .strict()
+    .parse(input);
+  if (parsed.schema.id !== modelId)
+    throw new FormworkError("INVALID_MODEL", "预览 schema id 与请求不一致");
+  return parsed;
 }
 
 /** 从 schema 生成默认组件名称，标量 enum 优先选择 Select。 */
@@ -343,7 +492,7 @@ export function defaultComponent(schema: DataSchema, root: DataSchema = schema):
 
 /** 检查当前 Render 已确定的组件和字段引用。 */
 export function viewIssues(
-  view: ViewNode,
+  view: RuntimeView,
   schema: DataSchema,
   components: readonly string[],
   root: DataSchema = schema,

@@ -15,7 +15,12 @@ export default defineConfig(({ command }) => ({
   plugins: [
     formworkPlugin({
       entry: "src/formwork.tsx",
-      models: ["src/models/**/model.json", "src/domains/**/model.json"],
+      appId: "alien-form",
+      capabilities: {
+        apiUrl: `http://127.0.0.1:${process.env.FORMWORK_SERVICE_PORT ?? "8788"}/api/v1`,
+        token: () => process.env.FORMWORK_CAPABILITY_TOKEN,
+        clientOrigin: process.env.FORMWORK_CLIENT_ORIGIN,
+      },
     }),
     solid(),
     tailwind(),

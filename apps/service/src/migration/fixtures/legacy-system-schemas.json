@@ -1,0 +1,1153 @@
+[
+  {
+    "name": "_sys_user",
+    "title": "用户管理",
+    "version": 1,
+    "system": true,
+    "subtitle": "System Users",
+    "description": "系统登录账号与角色管理。",
+    "group": "system",
+    "singularLabel": "用户",
+    "pluralLabel": "用户",
+    "defaultPageSize": 20,
+    "idPrefix": "MDM",
+    "fields": [
+      {
+        "id": "_sys_user.id",
+        "key": "id",
+        "type": "string",
+        "title": "用户 ID",
+        "required": true,
+        "storage": {
+          "type": "text",
+          "system": true,
+          "unique": true,
+          "index": true
+        },
+        "form": {
+          "display": "{{ mode === 'detail' ? 'visible' : 'none' }}",
+          "disabled": true
+        }
+      },
+      {
+        "id": "_sys_user.username",
+        "key": "username",
+        "type": "string",
+        "title": "账号",
+        "required": true,
+        "storage": {
+          "type": "text",
+          "unique": true,
+          "index": true
+        },
+        "form": {
+          "component": "Input",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_.-]{2,63}$",
+          "props": {
+            "placeholder": "请输入登录账号"
+          }
+        }
+      },
+      {
+        "id": "_sys_user.password",
+        "key": "password",
+        "type": "string",
+        "title": "密码",
+        "form": {
+          "component": "Input",
+          "props": {
+            "type": "password",
+            "placeholder": "留空表示不修改密码"
+          }
+        }
+      },
+      {
+        "id": "_sys_user.passwordHash",
+        "key": "passwordHash",
+        "type": "string",
+        "title": "密码摘要",
+        "required": true,
+        "private": true,
+        "storage": {
+          "type": "text"
+        },
+        "form": {
+          "display": "none"
+        },
+        "table": {
+          "hidden": true
+        },
+        "filter": {
+          "hidden": true
+        }
+      },
+      {
+        "id": "_sys_user.roleId",
+        "key": "roleId",
+        "type": "array",
+        "title": "角色",
+        "required": true,
+        "storage": {
+          "type": "json",
+          "index": true
+        },
+        "relation": {
+          "kind": "many-to-many",
+          "target": "_sys_role",
+          "through": "_sys_user_roles",
+          "valueField": "id",
+          "labelField": "name"
+        },
+        "form": {
+          "component": "RemoteSelect"
+        },
+        "filter": {
+          "hidden": true
+        }
+      },
+      {
+        "id": "_sys_user.createdAt",
+        "key": "createdAt",
+        "type": "string",
+        "title": "创建时间",
+        "required": true,
+        "storage": {
+          "type": "integer",
+          "system": true
+        },
+        "form": {
+          "component": "DatePicker",
+          "display": "{{ mode === 'detail' ? 'visible' : 'none' }}",
+          "disabled": true,
+          "props": {
+            "readOnly": true,
+            "showTime": true
+          }
+        }
+      },
+      {
+        "id": "_sys_user.updatedAt",
+        "key": "updatedAt",
+        "type": "string",
+        "title": "更新时间",
+        "required": true,
+        "storage": {
+          "type": "integer",
+          "system": true
+        },
+        "form": {
+          "component": "DatePicker",
+          "display": "{{ mode === 'detail' ? 'visible' : 'none' }}",
+          "disabled": true,
+          "props": {
+            "readOnly": true,
+            "showTime": true
+          }
+        }
+      }
+    ],
+    "form": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "type": "void",
+          "component": "Card",
+          "title": "基础信息",
+          "props": {
+            "gridSpan": 12
+          },
+          "properties": {
+            "username": {
+              "$ref": "#/fields/username"
+            },
+            "password": {
+              "$ref": "#/fields/password"
+            },
+            "roleId": {
+              "$ref": "#/fields/roleId"
+            }
+          }
+        },
+        "passwordHash": {
+          "$ref": "#/fields/passwordHash"
+        },
+        "system": {
+          "type": "void",
+          "component": "Card",
+          "title": "系统信息",
+          "display": "{{ mode === 'detail' ? 'visible' : 'none' }}",
+          "props": {
+            "gridSpan": 12
+          },
+          "properties": {
+            "id": {
+              "$ref": "#/fields/id"
+            },
+            "createdAt": {
+              "$ref": "#/fields/createdAt"
+            },
+            "updatedAt": {
+              "$ref": "#/fields/updatedAt"
+            }
+          }
+        }
+      }
+    },
+    "pages": [
+      {
+        "router": "list",
+        "title": "用户",
+        "permission": "read",
+        "type": "void",
+        "component": "layout",
+        "slots": {
+          "content": {
+            "filter": {
+              "type": "string",
+              "component": "filter",
+              "props": {
+                "schema": {
+                  "$ref": "form-schema"
+                },
+                "filterFields": "{{ $utils.schemaToFilterFields }}"
+              }
+            },
+            "table": {
+              "type": "void",
+              "component": "table",
+              "props": {
+                "rowKey": "id",
+                "modelCode": "_sys_user",
+                "schema": {
+                  "$ref": "form-schema"
+                },
+                "columns": "{{ $utils.schemaToColumns }}",
+                "filter": "{{ $form.getFieldValue(\"filter\") }}",
+                "loadData": "{{ $service(\"records.list\") }}"
+              },
+              "slots": {
+                "toolbar": {
+                  "add": {
+                    "type": "void",
+                    "component": "record-action",
+                    "permission": "create",
+                    "props": {
+                      "mode": "add",
+                      "openMode": "page",
+                      "children": "新增"
+                    }
+                  }
+                },
+                "batchActions": {
+                  "batchDelete": {
+                    "type": "void",
+                    "component": "batch-button",
+                    "permission": "delete",
+                    "props": {
+                      "children": "批量删除",
+                      "danger": true,
+                      "confirm": "确认删除选中的记录吗？",
+                      "successMessage": "记录已删除",
+                      "refreshAfterSuccess": true,
+                      "onClick": "{{ ($selection) => $service(\"records.batchDelete\")($selection) }}"
+                    }
+                  }
+                },
+                "rowActions": {
+                  "edit": {
+                    "type": "void",
+                    "component": "record-action",
+                    "permission": "update",
+                    "props": {
+                      "mode": "edit",
+                      "openMode": "page",
+                      "children": "编辑"
+                    }
+                  },
+                  "detail": {
+                    "type": "void",
+                    "component": "record-action",
+                    "permission": "read",
+                    "props": {
+                      "mode": "detail",
+                      "openMode": "drawer",
+                      "children": "详情"
+                    }
+                  },
+                  "delete": {
+                    "type": "void",
+                    "component": "row-button",
+                    "permission": "delete",
+                    "props": {
+                      "danger": true,
+                      "icon": "delete",
+                      "children": "删除",
+                      "confirm": "确认删除这条记录？",
+                      "confirmDescription": "删除后无法恢复。",
+                      "successMessage": "记录已删除",
+                      "refreshAfterSuccess": true,
+                      "onClick": "{{ ($row) => $service(\"records.delete\")({ model: \"_sys_user\", id: $row.id, record: $row }) }}",
+                      "disabled": "{{ $row.id === \"MDM0000000000\" }}"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "router": "add",
+        "title": "新建用户",
+        "permission": "create",
+        "type": "void",
+        "component": "record-form",
+        "props": {
+          "ok": "确认新增",
+          "mode": "add",
+          "modelCode": "_sys_user",
+          "schema": {
+            "$ref": "form-schema"
+          },
+          "submit": "{{ $service(\"record.add\") }}"
+        }
+      },
+      {
+        "router": "edit",
+        "title": "编辑用户",
+        "permission": "update",
+        "type": "void",
+        "component": "record-form",
+        "props": {
+          "ok": "确认修改",
+          "mode": "edit",
+          "modelCode": "_sys_user",
+          "recordId": "{{ $query.id }}",
+          "schema": {
+            "$ref": "form-schema"
+          },
+          "submit": "{{ $service(\"record.edit\") }}"
+        }
+      },
+      {
+        "router": "detail",
+        "title": "详情用户",
+        "permission": "read",
+        "type": "void",
+        "component": "record-form",
+        "props": {
+          "mode": "detail",
+          "modelCode": "_sys_user",
+          "recordId": "{{ $query.id }}",
+          "schema": {
+            "$ref": "form-schema"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "_sys_role",
+    "title": "角色管理",
+    "version": 1,
+    "system": true,
+    "subtitle": "System Roles",
+    "description": "树形角色及模型、操作、字段和数据范围权限。",
+    "group": "system",
+    "singularLabel": "角色",
+    "pluralLabel": "角色",
+    "defaultPageSize": 20,
+    "idPrefix": "MDM",
+    "fields": [
+      {
+        "id": "_sys_role.id",
+        "key": "id",
+        "type": "string",
+        "title": "角色 ID",
+        "required": true,
+        "storage": {
+          "type": "text",
+          "system": true,
+          "unique": true,
+          "index": true
+        },
+        "form": {
+          "display": "{{ mode === 'detail' ? 'visible' : 'none' }}",
+          "disabled": true
+        }
+      },
+      {
+        "id": "_sys_role.code",
+        "key": "code",
+        "type": "string",
+        "title": "角色编码",
+        "required": true,
+        "storage": {
+          "type": "text",
+          "unique": true,
+          "index": true
+        },
+        "form": {
+          "component": "Input",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_-]*$",
+          "maxLength": 32,
+          "props": {
+            "placeholder": "请输入角色编码"
+          }
+        }
+      },
+      {
+        "id": "_sys_role.name",
+        "key": "name",
+        "type": "string",
+        "title": "角色名称",
+        "required": true,
+        "storage": {
+          "type": "text",
+          "index": true
+        },
+        "form": {
+          "component": "Input",
+          "pattern": "\\S",
+          "maxLength": 32,
+          "props": {
+            "placeholder": "请输入角色名称"
+          }
+        }
+      },
+      {
+        "id": "_sys_role.parentId",
+        "key": "parentId",
+        "type": "string",
+        "title": "父级角色",
+        "storage": {
+          "type": "text",
+          "index": true
+        },
+        "relation": {
+          "kind": "many-to-one",
+          "target": "_sys_role",
+          "valueField": "id",
+          "labelField": "name"
+        },
+        "form": {
+          "component": "TreeSelect",
+          "props": {
+            "disabledValues": "{{ $query.id ? [$query.id] : [] }}"
+          }
+        }
+      },
+      {
+        "id": "_sys_role.canCreateModel",
+        "key": "canCreateModel",
+        "type": "boolean",
+        "title": "允许新建模型",
+        "form": {
+          "component": "Select",
+          "default": false,
+          "dataSource": [
+            {
+              "label": "允许",
+              "value": true
+            },
+            {
+              "label": "不允许",
+              "value": false
+            }
+          ]
+        }
+      },
+      {
+        "id": "_sys_role.permissions",
+        "key": "permissions",
+        "type": "array",
+        "title": "模型与字段权限",
+        "form": {
+          "component": "Card",
+          "items": {
+            "type": "object",
+            "properties": {
+              "model": {
+                "type": "string",
+                "title": "模型",
+                "component": "Select",
+                "required": true,
+                "x-reaction": {
+                  "dataSource": "{{ $service(\"model.options\")() }}"
+                }
+              },
+              "actions": {
+                "type": "array",
+                "title": "操作权限",
+                "component": "Select",
+                "required": true,
+                "props": {
+                  "multiple": true
+                },
+                "dataSource": [
+                  {
+                    "label": "查看",
+                    "value": "read"
+                  },
+                  {
+                    "label": "新建",
+                    "value": "create"
+                  },
+                  {
+                    "label": "编辑",
+                    "value": "update"
+                  },
+                  {
+                    "label": "删除",
+                    "value": "delete"
+                  }
+                ]
+              },
+              "fields": {
+                "type": "array",
+                "title": "可查看字段",
+                "component": "Select",
+                "props": {
+                  "multiple": true,
+                  "onOptionsChange": "clear"
+                },
+                "x-reaction": {
+                  "dataSource": "{{ $service(\"model.fieldOptions\")($row.model) }}"
+                }
+              },
+              "scope": {
+                "type": "string",
+                "title": "数据范围",
+                "component": "Select",
+                "required": true,
+                "default": "all",
+                "dataSource": [
+                  {
+                    "label": "全部数据",
+                    "value": "all"
+                  },
+                  {
+                    "label": "仅本人创建",
+                    "value": "own"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "_sys_role.createdAt",
+        "key": "createdAt",
+        "type": "string",
+        "title": "创建时间",
+        "required": true,
+        "storage": {
+          "type": "integer",
+          "system": true
+        },
+        "form": {
+          "component": "DatePicker",
+          "display": "{{ mode === 'detail' ? 'visible' : 'none' }}",
+          "disabled": true,
+          "props": {
+            "readOnly": true,
+            "showTime": true
+          }
+        }
+      },
+      {
+        "id": "_sys_role.updatedAt",
+        "key": "updatedAt",
+        "type": "string",
+        "title": "更新时间",
+        "required": true,
+        "storage": {
+          "type": "integer",
+          "system": true
+        },
+        "form": {
+          "component": "DatePicker",
+          "display": "{{ mode === 'detail' ? 'visible' : 'none' }}",
+          "disabled": true,
+          "props": {
+            "readOnly": true,
+            "showTime": true
+          }
+        }
+      }
+    ],
+    "form": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "type": "void",
+          "component": "Card",
+          "title": "基础信息",
+          "props": {
+            "gridSpan": 12
+          },
+          "properties": {
+            "code": {
+              "$ref": "#/fields/code"
+            },
+            "name": {
+              "$ref": "#/fields/name"
+            },
+            "parentId": {
+              "$ref": "#/fields/parentId"
+            },
+            "canCreateModel": {
+              "$ref": "#/fields/canCreateModel"
+            }
+          }
+        },
+        "permissions": {
+          "$ref": "#/fields/permissions"
+        },
+        "system": {
+          "type": "void",
+          "component": "Card",
+          "title": "系统信息",
+          "display": "{{ mode === 'detail' ? 'visible' : 'none' }}",
+          "props": {
+            "gridSpan": 12
+          },
+          "properties": {
+            "id": {
+              "$ref": "#/fields/id"
+            },
+            "createdAt": {
+              "$ref": "#/fields/createdAt"
+            },
+            "updatedAt": {
+              "$ref": "#/fields/updatedAt"
+            }
+          }
+        }
+      }
+    },
+    "pages": [
+      {
+        "router": "list",
+        "title": "角色",
+        "permission": "read",
+        "type": "void",
+        "component": "layout",
+        "slots": {
+          "left": {
+            "tree": {
+              "type": "string",
+              "component": "tree",
+              "props": {
+                "title": "角色层级",
+                "model": "_sys_role",
+                "valueField": "id",
+                "parentField": "parentId",
+                "labelField": "name",
+                "showRoot": true,
+                "loadData": "{{ $utils.tree($service(\"records.subtree\")) }}"
+              }
+            }
+          },
+          "content": {
+            "filter": {
+              "type": "string",
+              "component": "filter",
+              "props": {
+                "schema": {
+                  "$ref": "form-schema"
+                },
+                "filterFields": "{{ $utils.schemaToFilterFields }}"
+              }
+            },
+            "table": {
+              "type": "void",
+              "component": "table",
+              "props": {
+                "rowKey": "id",
+                "modelCode": "_sys_role",
+                "schema": {
+                  "$ref": "form-schema"
+                },
+                "columns": "{{ $utils.schemaToColumns }}",
+                "filter": "{{ $form.getFieldValue(\"filter\") }}",
+                "loadData": "{{ $service(\"records.list\") }}",
+                "parentId": "{{ $form.getFieldValue(\"tree\") }}"
+              },
+              "slots": {
+                "toolbar": {
+                  "add": {
+                    "type": "void",
+                    "component": "record-action",
+                    "permission": "create",
+                    "props": {
+                      "mode": "add",
+                      "openMode": "page",
+                      "children": "新增"
+                    }
+                  }
+                },
+                "batchActions": {
+                  "batchDelete": {
+                    "type": "void",
+                    "component": "batch-button",
+                    "permission": "delete",
+                    "props": {
+                      "children": "批量删除",
+                      "danger": true,
+                      "confirm": "确认删除选中的记录吗？",
+                      "successMessage": "记录已删除",
+                      "refreshAfterSuccess": true,
+                      "onClick": "{{ ($selection) => $service(\"records.batchDelete\")($selection) }}"
+                    }
+                  }
+                },
+                "rowActions": {
+                  "edit": {
+                    "type": "void",
+                    "component": "record-action",
+                    "permission": "update",
+                    "props": {
+                      "mode": "edit",
+                      "openMode": "page",
+                      "children": "编辑",
+                      "disabled": "{{ ($row) => $row.id === \"SYSROLE000001\" }}"
+                    }
+                  },
+                  "detail": {
+                    "type": "void",
+                    "component": "record-action",
+                    "permission": "read",
+                    "props": {
+                      "mode": "detail",
+                      "openMode": "drawer",
+                      "children": "详情"
+                    }
+                  },
+                  "delete": {
+                    "type": "void",
+                    "component": "row-button",
+                    "permission": "delete",
+                    "props": {
+                      "danger": true,
+                      "icon": "delete",
+                      "children": "删除",
+                      "confirm": "确认删除该角色？",
+                      "confirmDescription": "存在子角色或关联用户时无法删除。",
+                      "successMessage": "记录已删除",
+                      "refreshAfterSuccess": true,
+                      "onClick": "{{ ($row) => $service(\"records.delete\")({ model: \"_sys_role\", id: $row.id, record: $row }) }}",
+                      "disabled": "{{ $row.id === \"SYSROLE000001\" }}"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "router": "add",
+        "title": "新建角色",
+        "permission": "create",
+        "type": "void",
+        "component": "record-form",
+        "props": {
+          "ok": "确认新增",
+          "mode": "add",
+          "modelCode": "_sys_role",
+          "schema": {
+            "$ref": "form-schema"
+          },
+          "submit": "{{ $service(\"record.add\") }}"
+        }
+      },
+      {
+        "router": "edit",
+        "title": "编辑角色",
+        "permission": "update",
+        "type": "void",
+        "component": "record-form",
+        "props": {
+          "ok": "确认修改",
+          "mode": "edit",
+          "modelCode": "_sys_role",
+          "recordId": "{{ $query.id }}",
+          "schema": {
+            "$ref": "form-schema"
+          },
+          "submit": "{{ $service(\"record.edit\") }}"
+        }
+      },
+      {
+        "router": "detail",
+        "title": "详情角色",
+        "permission": "read",
+        "type": "void",
+        "component": "record-form",
+        "props": {
+          "mode": "detail",
+          "modelCode": "_sys_role",
+          "recordId": "{{ $query.id }}",
+          "schema": {
+            "$ref": "form-schema"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "_sys_model_category",
+    "title": "分类标签",
+    "version": 1,
+    "system": true,
+    "subtitle": "Model Categories",
+    "description": "模型分类标签与模型归属配置。",
+    "group": "system",
+    "singularLabel": "分类标签",
+    "pluralLabel": "分类标签",
+    "defaultPageSize": 20,
+    "idPrefix": "MDM",
+    "fields": [
+      {
+        "id": "_sys_model_category.id",
+        "key": "id",
+        "type": "string",
+        "title": "分类 ID",
+        "required": true,
+        "storage": {
+          "type": "text",
+          "system": true,
+          "unique": true,
+          "index": true
+        },
+        "form": {
+          "display": "{{ mode === 'detail' ? 'visible' : 'none' }}",
+          "disabled": true
+        }
+      },
+      {
+        "id": "_sys_model_category.code",
+        "key": "code",
+        "type": "string",
+        "title": "分类标识",
+        "required": true,
+        "storage": {
+          "type": "text",
+          "unique": true,
+          "index": true
+        },
+        "form": {
+          "component": "Input",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_-]*$",
+          "maxLength": 32,
+          "props": {
+            "placeholder": "请输入分类标识"
+          }
+        }
+      },
+      {
+        "id": "_sys_model_category.name",
+        "key": "name",
+        "type": "string",
+        "title": "分类名称",
+        "required": true,
+        "storage": {
+          "type": "text",
+          "index": true
+        },
+        "form": {
+          "component": "Input",
+          "pattern": "\\S",
+          "maxLength": 5,
+          "props": {
+            "placeholder": "请输入分类名称"
+          }
+        }
+      },
+      {
+        "id": "_sys_model_category.order",
+        "key": "order",
+        "type": "number",
+        "title": "排序",
+        "required": true,
+        "storage": {
+          "type": "integer",
+          "default": 0,
+          "index": true
+        },
+        "form": {
+          "component": "NumberInput",
+          "default": 0,
+          "props": {
+            "min": 0
+          }
+        }
+      },
+      {
+        "id": "_sys_model_category.aggregate",
+        "key": "aggregate",
+        "type": "boolean",
+        "title": "聚合分类",
+        "required": true,
+        "storage": {
+          "type": "boolean",
+          "default": false
+        },
+        "form": {
+          "component": "Select",
+          "default": false,
+          "dataSource": [
+            {
+              "label": "是",
+              "value": true
+            },
+            {
+              "label": "否",
+              "value": false
+            }
+          ]
+        }
+      },
+      {
+        "id": "_sys_model_category.createdAt",
+        "key": "createdAt",
+        "type": "string",
+        "title": "创建时间",
+        "required": true,
+        "storage": {
+          "type": "integer",
+          "system": true
+        },
+        "form": {
+          "component": "DatePicker",
+          "display": "{{ mode === 'detail' ? 'visible' : 'none' }}",
+          "disabled": true,
+          "props": {
+            "readOnly": true,
+            "showTime": true
+          }
+        }
+      },
+      {
+        "id": "_sys_model_category.updatedAt",
+        "key": "updatedAt",
+        "type": "string",
+        "title": "更新时间",
+        "required": true,
+        "storage": {
+          "type": "integer",
+          "system": true
+        },
+        "form": {
+          "component": "DatePicker",
+          "display": "{{ mode === 'detail' ? 'visible' : 'none' }}",
+          "disabled": true,
+          "props": {
+            "readOnly": true,
+            "showTime": true
+          }
+        }
+      }
+    ],
+    "form": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "type": "void",
+          "component": "Card",
+          "title": "基础信息",
+          "props": {
+            "gridSpan": 12
+          },
+          "properties": {
+            "code": {
+              "$ref": "#/fields/code"
+            },
+            "name": {
+              "$ref": "#/fields/name"
+            },
+            "order": {
+              "$ref": "#/fields/order"
+            },
+            "aggregate": {
+              "$ref": "#/fields/aggregate"
+            }
+          }
+        },
+        "system": {
+          "type": "void",
+          "component": "Card",
+          "title": "系统信息",
+          "display": "{{ mode === 'detail' ? 'visible' : 'none' }}",
+          "props": {
+            "gridSpan": 12
+          },
+          "properties": {
+            "id": {
+              "$ref": "#/fields/id"
+            },
+            "createdAt": {
+              "$ref": "#/fields/createdAt"
+            },
+            "updatedAt": {
+              "$ref": "#/fields/updatedAt"
+            }
+          }
+        }
+      }
+    },
+    "pages": [
+      {
+        "router": "list",
+        "title": "分类标签",
+        "permission": "read",
+        "type": "void",
+        "component": "layout",
+        "slots": {
+          "content": {
+            "filter": {
+              "type": "string",
+              "component": "filter",
+              "props": {
+                "schema": {
+                  "$ref": "form-schema"
+                },
+                "filterFields": "{{ $utils.schemaToFilterFields }}"
+              }
+            },
+            "table": {
+              "type": "void",
+              "component": "table",
+              "props": {
+                "rowKey": "id",
+                "modelCode": "_sys_model_category",
+                "schema": {
+                  "$ref": "form-schema"
+                },
+                "columns": "{{ $utils.schemaToColumns }}",
+                "filter": "{{ $form.getFieldValue(\"filter\") }}",
+                "loadData": "{{ $service(\"records.list\") }}"
+              },
+              "slots": {
+                "toolbar": {
+                  "add": {
+                    "type": "void",
+                    "component": "record-action",
+                    "permission": "create",
+                    "props": {
+                      "mode": "add",
+                      "openMode": "page",
+                      "children": "新增"
+                    }
+                  }
+                },
+                "batchActions": {
+                  "batchDelete": {
+                    "type": "void",
+                    "component": "batch-button",
+                    "permission": "delete",
+                    "props": {
+                      "children": "批量删除",
+                      "danger": true,
+                      "confirm": "确认删除选中的记录吗？",
+                      "successMessage": "记录已删除",
+                      "refreshAfterSuccess": true,
+                      "onClick": "{{ ($selection) => $service(\"records.batchDelete\")($selection) }}"
+                    }
+                  }
+                },
+                "rowActions": {
+                  "edit": {
+                    "type": "void",
+                    "component": "record-action",
+                    "permission": "update",
+                    "props": {
+                      "mode": "edit",
+                      "openMode": "page",
+                      "children": "编辑"
+                    }
+                  },
+                  "detail": {
+                    "type": "void",
+                    "component": "record-action",
+                    "permission": "read",
+                    "props": {
+                      "mode": "detail",
+                      "openMode": "drawer",
+                      "children": "详情"
+                    }
+                  },
+                  "delete": {
+                    "type": "void",
+                    "component": "row-button",
+                    "permission": "delete",
+                    "props": {
+                      "danger": true,
+                      "icon": "delete",
+                      "children": "删除",
+                      "confirm": "确认删除这条记录？",
+                      "confirmDescription": "删除后无法恢复。",
+                      "successMessage": "记录已删除",
+                      "refreshAfterSuccess": true,
+                      "onClick": "{{ ($row) => $service(\"records.delete\")({ model: \"_sys_model_category\", id: $row.id, record: $row }) }}"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "router": "add",
+        "title": "新建分类标签",
+        "permission": "create",
+        "type": "void",
+        "component": "record-form",
+        "props": {
+          "ok": "确认新增",
+          "mode": "add",
+          "modelCode": "_sys_model_category",
+          "schema": {
+            "$ref": "form-schema"
+          },
+          "submit": "{{ $service(\"record.add\") }}"
+        }
+      },
+      {
+        "router": "edit",
+        "title": "编辑分类标签",
+        "permission": "update",
+        "type": "void",
+        "component": "record-form",
+        "props": {
+          "ok": "确认修改",
+          "mode": "edit",
+          "modelCode": "_sys_model_category",
+          "recordId": "{{ $query.id }}",
+          "schema": {
+            "$ref": "form-schema"
+          },
+          "submit": "{{ $service(\"record.edit\") }}"
+        }
+      },
+      {
+        "router": "detail",
+        "title": "详情分类标签",
+        "permission": "read",
+        "type": "void",
+        "component": "record-form",
+        "props": {
+          "mode": "detail",
+          "modelCode": "_sys_model_category",
+          "recordId": "{{ $query.id }}",
+          "schema": {
+            "$ref": "form-schema"
+          }
+        }
+      }
+    ]
+  }
+]

@@ -11,6 +11,8 @@ export default defineConfig({
       {
         test: {
           name: "node",
+          testTimeout: 30000,
+          hookTimeout: 60000,
           include: [
             "packages/formwork/src/model/**/*.test.ts",
             "packages/formwork/src/mcp/**/*.test.ts",

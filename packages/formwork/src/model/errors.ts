@@ -1,14 +1,21 @@
 import type { Diagnostic } from "./types";
 
-/** 保留跨文件源、HTTP 与工具传输的错误 code 和定位。 */
+/** 保留 HTTP 与工具传输的错误 code、定位和冲突 revision。 */
 export class FormworkError extends Error {
   readonly code: string;
   readonly issues: readonly Diagnostic[];
-  constructor(code: string, message: string, issues: readonly Diagnostic[] = []) {
+  readonly currentRevision?: string;
+  constructor(
+    code: string,
+    message: string,
+    issues: readonly Diagnostic[] = [],
+    currentRevision?: string,
+  ) {
     super(message);
     this.name = "FormworkError";
     this.code = code;
     this.issues = issues;
+    this.currentRevision = currentRevision;
   }
 }
 
@@ -22,9 +29,15 @@ export function errorPayload(error: unknown): {
   code: string;
   message: string;
   issues?: readonly Diagnostic[];
+  currentRevision?: string;
 } {
   if (error instanceof FormworkError)
-    return { code: error.code, message: error.message, issues: error.issues };
+    return {
+      code: error.code,
+      message: error.message,
+      issues: error.issues,
+      ...(error.currentRevision ? { currentRevision: error.currentRevision } : {}),
+    };
   if (error instanceof Error && error.name === "AbortError")
     return { code: "ABORTED", message: "操作已取消" };
   return {

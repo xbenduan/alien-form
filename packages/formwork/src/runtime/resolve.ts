@@ -5,7 +5,7 @@ import type { DomainDefinition, FormworkDefinition, PageDefinition, RenderDefaul
 export function mergeDefaults(...layers: RenderDefaults[]): RenderDefaults {
   const result: RenderDefaults = { components: {}, fn: {}, schema: modelDocumentSchema };
   for (const layer of layers) {
-    for (const name of ["container", "fieldContainer", "getSchema", "schema"] as const)
+    for (const name of ["container", "fieldContainer", "schema"] as const)
       if (Object.hasOwn(layer, name) && layer[name] !== undefined)
         (result as Record<string, unknown>)[name] = layer[name];
     result.components = { ...result.components, ...layer.components };
@@ -13,11 +13,17 @@ export function mergeDefaults(...layers: RenderDefaults[]): RenderDefaults {
   }
   return result;
 }
+/** 分别保留 Page loader 和 Domain transform，同时合并渲染覆盖。 */
 export async function resolveDefinition(
   app: FormworkDefinition,
   definition: PageDefinition,
   domain?: string,
-): Promise<RenderDefaults> {
+): Promise<
+  RenderDefaults & {
+    pageLoader: PageDefinition["getSchema"];
+    domainTransform: DomainDefinition["getSchema"];
+  }
+> {
   let override: DomainDefinition = {};
   const entry =
     domain && Object.hasOwn(definition.domains ?? {}, domain)
@@ -28,5 +34,9 @@ export async function resolveDefinition(
     if (!override || typeof override !== "object")
       throw new FormworkError("INVALID_DOMAIN", `Domain 导出无效 ${domain}`);
   }
-  return mergeDefaults(app, definition as RenderDefaults, override);
+  return {
+    ...mergeDefaults(app, definition as RenderDefaults, override),
+    pageLoader: definition.getSchema,
+    domainTransform: override.getSchema,
+  };
 }

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   applyDefaults,
-  assertSnapshot,
+  assertDraftDefinition,
+  assertManagedSnapshot,
+  assertPublishedSnapshot,
   cloneJson,
-  createReadonlyModelSource,
   matchRoute,
   modelDocumentSchema,
   modelIssues,
@@ -102,19 +103,28 @@ describe("完整模型契约", () => {
     );
     expect(modelDocumentSchema.safeParse({ ...document(), revision: "x" }).success).toBe(false);
   });
-  it("拒绝权限投影与 id 不一致", () => {
+  it("草稿允许不完整，发布和管理快照仍拒绝身份错误", () => {
     const snapshot = {
       id: "orders",
       title: "订单",
       revision: "opaque",
-      writable: true,
-      location: { kind: "local", path: "model.json" },
-      completeness: "full",
-      document: document(),
+      stage: "draft",
+      publishedVersion: null,
+      baseVersion: null,
+      canManage: true,
+      canPublish: true,
+      diagnostics: { errors: [], runtimeChecks: [] },
+      definition: { document: { id: "orders" } },
     };
-    expect(assertSnapshot(snapshot, "orders").document).toEqual(document());
-    expect(() => assertSnapshot({ ...snapshot, completeness: "projected" })).toThrow();
-    expect(() => assertSnapshot(snapshot, "cms")).toThrow();
+    expect(assertManagedSnapshot(snapshot, "orders").definition).toEqual({
+      document: { id: "orders" },
+    });
+    expect(() => assertManagedSnapshot(snapshot, "cms")).toThrow();
+    expect(() => assertPublishedSnapshot(snapshot, "orders")).toThrow();
+    expect(() => assertDraftDefinition({ document: { id: "cms" } }, "orders")).toThrow();
+    expect(() =>
+      assertDraftDefinition({ document: { id: "orders" }, fn: () => 1 }, "orders"),
+    ).toThrow();
   });
   it("可空 enum 仍约束 null；拒绝未声明字段和数组空洞", () => {
     const schema: DataSchema = { type: ["string", "null"], enum: ["yes"] };
@@ -127,26 +137,6 @@ describe("完整模型契约", () => {
     sparse.length = 2;
     expect(() => cloneJson(sparse)).toThrow();
     expect(() => cloneJson({ value: Number.NaN })).toThrow();
-  });
-  it("生产源保持完整且拒绝写入，读取结果之间不共享对象", async () => {
-    const source = createReadonlyModelSource([
-      {
-        id: "orders",
-        title: "订单",
-        revision: "opaque",
-        writable: true,
-        location: { kind: "local", path: "model.json" },
-        completeness: "full",
-        document: document(),
-      },
-    ]);
-    const first = await source.read("orders");
-    first.document.title = "mutated";
-    expect((await source.read("orders")).document.title).toBe("订单");
-    expect((await source.list())[0]?.writable).toBe(false);
-    await expect(source.write(document(), { ifRevision: "opaque" })).rejects.toMatchObject({
-      code: "READ_ONLY",
-    });
   });
 });
 

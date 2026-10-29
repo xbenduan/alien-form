@@ -2,7 +2,7 @@
 
 迁移前结论：框架可以围绕 `defineFormwork → definePage / defineWindow → 可选 defineDomain` 收敛。Page 定义可复用的页面行为，模型提供动态数据与视图，Domain 只补充少数模型的私域能力；共用渲染内核可以成为 Page 的内部实现，无须先要求使用者声明 `defineRender`。该方向已于 2026-10-29 按 [细化设计](./formwork-design.md) 完成阶段 0–7；当前运行与验收证据见 [开发说明](./formwork-development.md)。[Data-backed / Expert judgment]
 
-下文保留迁移前的只读源码调查，历史链接中的 `apps/alien-mdm`、`packages/core/engine/react/sdk` 已按批准方案删除，可在 Git 历史中查阅。调查当时没有运行测试或请求线上数据库，“已接线”只表示当时存在调用链。当前实现与实际测试结果请使用开发说明，不把下文的旧接口当作现行 Formwork API。
+下文保留迁移前的只读源码调查，历史链接中的 `apps/alien-mdm`、`packages/core/engine/react/sdk`、`apps/alien-worker`、`packages/alienbase/protocol` 已按批准方案删除，可在 Git 历史中查阅。旧协议、文件模型与来源切换仅为历史证据。调查当时没有运行测试或请求线上数据库，“已接线”只表示当时存在调用链。当前实现与实际测试结果请使用开发说明，不把下文的旧接口当作现行 Formwork API。
 
 ## 用户已经明确的方向
 

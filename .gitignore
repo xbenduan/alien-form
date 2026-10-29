@@ -34,3 +34,4 @@ docs/**
 !docs/formwork-refactor.md
 !docs/formwork-design.md
 !docs/formwork-source-analysis.md
+!docs/worker-backend-design.md

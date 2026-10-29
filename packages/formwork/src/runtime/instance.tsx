@@ -10,8 +10,8 @@ import {
 import { Dynamic } from "solid-js/web";
 import { FormworkError, errorPayload } from "../model/errors";
 import { cloneJson } from "../model/pointer";
-import { modelDocumentSchema, viewIssues } from "../model/schema";
-import type { ModelDocument } from "../model/types";
+import { assertRuntimeSchema, modelDocumentSchema, viewIssues } from "../model/schema";
+import type { RuntimeSchema } from "../model/types";
 import { createRender } from "../render/render";
 import { lifetime } from "./lifecycle";
 import { resolveDefinition } from "./resolve";
@@ -19,7 +19,8 @@ import { createValueScope, scopeCell } from "./scope";
 import type {
   ActionContext,
   FormworkDefinition,
-  LoadContext,
+  DomainSchemaContext,
+  PageLoadContext,
   PageContext,
   PageDefinition,
   RenderDefaults,
@@ -37,7 +38,7 @@ const safe = (dispose: () => void) => {
   }
 };
 
-// 加载 owner 与内容 owner 均属于本次挂载，重试会替换全部内容状态。
+/** 在挂载 owner 下依次加载和定制 schema；重试替换本次实例全部状态。 */
 export function createInstance(
   app: FormworkDefinition,
   definition: PageDefinition,
@@ -47,7 +48,7 @@ export function createInstance(
   const parent = getOwner()!;
   const [loaded, setLoaded] = createSignal<{
     effective: RenderDefaults;
-    model?: ModelDocument;
+    schema?: RuntimeSchema;
     ctx: ActionContext;
     life: ReturnType<typeof lifetime>;
   }>();
@@ -76,7 +77,7 @@ export function createInstance(
         const ctx: ActionContext = {
           domain: params.domain,
           params: Object.freeze({ ...params }),
-          models: app.models,
+          api: app.api,
           signal: life.signal,
           fn: {},
           navigate: (...args) => {
@@ -104,32 +105,37 @@ export function createInstance(
                 },
               ]),
             );
-            if (definition.render) return { effective, model: undefined, ctx, life };
+            if (definition.render) return { effective, schema: undefined, ctx, life };
             if (!ctx.domain)
               throw new FormworkError(
                 "PARAMS_REQUIRED",
                 `模型页面 ${definition.router} 缺少 domain`,
               );
-            const input = effective.getSchema
-              ? await effective.getSchema(ctx as LoadContext)
-              : (await ctx.models.read(ctx.domain, { signal: life.signal })).document;
-            const minimal = modelDocumentSchema.parse(input);
-            const normalized = effective.schema!.parse(minimal);
-            const model = cloneJson(
-              modelDocumentSchema.parse(normalized) as never,
-            ) as ModelDocument;
-            if (model.id !== ctx.domain)
+            if (!effective.pageLoader)
+              throw new FormworkError("INVALID_DEFINITION", "模型页面必须声明 getSchema");
+            const input = await effective.pageLoader(ctx as PageLoadContext);
+            if (!life.alive()) return;
+            const minimal = cloneJson(modelDocumentSchema.parse(input) as never);
+            const normalized = modelDocumentSchema.parse(effective.schema!.parse(minimal));
+            if (normalized.id !== ctx.domain)
               throw new FormworkError("INVALID_MODEL", "URL domain 与模型 id 不一致");
+            ctx.schema = cloneJson(normalized as never);
+            const schema = assertRuntimeSchema(
+              effective.domainTransform
+                ? await effective.domainTransform(ctx as DomainSchemaContext)
+                : ctx.schema,
+            );
+            if (!life.alive()) return;
             if (!effective.container)
               throw new FormworkError("INVALID_DEFINITION", `缺少 container: ${definition.router}`);
-            const view = model.views?.[definition.router];
+            const view = schema.views?.[definition.router];
             if (view) {
-              const issues = viewIssues(view, model.data, Object.keys(effective.components ?? {}));
+              const issues = viewIssues(view, schema.data, Object.keys(effective.components ?? {}));
               if (issues.length)
                 throw new FormworkError("INVALID_VIEW", "有效 View 不合法", issues);
             }
-            ctx.model = model;
-            return { effective, model, ctx, life };
+            ctx.schema = schema;
+            return { effective, schema, ctx, life };
           })
           .then((loaded) => {
             if (!loaded || !life.alive() || current !== turn || !alive) return;
@@ -152,7 +158,7 @@ export function createInstance(
   onCleanup(dispose);
   start();
   const Mounted = (props: { data: NonNullable<ReturnType<typeof loaded>> }) => {
-    const { ctx, effective, model, life } = props.data;
+    const { ctx, effective, schema, life } = props.data;
     let disposeContent = () => {};
     const node = createRoot((dispose) => {
       disposeContent = dispose;
@@ -166,7 +172,7 @@ export function createInstance(
       };
       const createScope = (options: ScopeOptions = {}) => {
         checkOwner();
-        const value = createValueScope(options, model!.data, model!.data);
+        const value = createValueScope(options, schema!.data, schema!.data);
         const cell = scopeCell(value);
         const stop = () => cell.stop();
         const cleanup = () => cell.dispose();
@@ -185,12 +191,12 @@ export function createInstance(
         components: effective.components ?? {},
         fieldContainer: effective.fieldContainer,
         scope,
-        view: model!.views?.[definition.router],
+        view: schema!.views?.[definition.router],
       });
       const context: PageContext = {
         ...ctx,
         domain: ctx.domain!,
-        model: model!,
+        schema: schema!,
         Render,
         createScope,
         get scope() {

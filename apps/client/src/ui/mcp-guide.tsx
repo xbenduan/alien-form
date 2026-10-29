@@ -1,6 +1,5 @@
 import { createSignal, For, Show } from "solid-js";
 import type { Component } from "solid-js";
-import { modelSourceName } from "../models";
 import { Icon } from "./icons";
 
 const tools = [
@@ -16,12 +15,19 @@ const tools = [
 export const McpGuide: Component = () => {
   const [open, setOpen] = createSignal(false);
   const [feedback, setFeedback] = createSignal("");
-  const origin = window.location.origin;
+  const origin = new URL(import.meta.env.VITE_FORMWORK_API_URL ?? "/api/v1", window.location.origin)
+    .href;
   const entry =
     import.meta.env.VITE_FORMWORK_MCP_ENTRY ?? "<项目绝对路径>/packages/formwork/dist/stdio.js";
   const config = JSON.stringify(
     {
-      mcpServers: { formwork: { command: "node", args: [entry, "--url", origin] } },
+      mcpServers: {
+        formwork: {
+          command: "node",
+          args: [entry, "--url", origin],
+          env: { FORMWORK_API_TOKEN: "<在 API token 页面签发的 agent token>" },
+        },
+      },
     },
     null,
     2,
@@ -56,7 +62,7 @@ export const McpGuide: Component = () => {
               <div>
                 <h3>保持开发服务运行</h3>
                 <p>
-                  在项目根目录执行 <code>pnpm dev</code>。MCP 通过 stdio 连接 Vite 的本地模型源。
+                  在项目根目录执行 <code>pnpm dev</code>。MCP 通过 stdio 直连 Worker API。
                 </p>
                 <div class="mcp-command">
                   <code>pnpm mcp --url {origin}</code>
@@ -81,19 +87,13 @@ export const McpGuide: Component = () => {
                 <h3>读取、校验并保存模型</h3>
                 <p>
                   先调用 <code>models.read</code>，保存时传入返回的 <code>revision</code> 作为{" "}
-                  <code>ifRevision</code>，再预览结果。
+                  <code>ifRevision</code>，再预览草稿。草稿只能在管理页手动发布。
                 </p>
               </div>
             </div>
-            <Show when={modelSourceName === "remote"}>
-              <p class="mcp-source-note">
-                当前界面使用远端模型源。MCP
-                编辑本地文件模型，需在本地来源界面执行“上传到远端”后同步到远端。
-              </p>
-            </Show>
             <Show when={!import.meta.env.DEV}>
               <p class="mcp-source-note">
-                当前为静态构建。请启动项目的 Vite 开发服务，并将配置中的项目路径与 URL 改为实际值。
+                请将配置中的项目路径与 Worker API URL 改为实际值，并通过环境变量提供 agent token。
               </p>
             </Show>
           </div>

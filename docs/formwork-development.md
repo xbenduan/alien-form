@@ -1,118 +1,103 @@
-# Formwork 开发与验收说明
+# Formwork 启动、API 与验收
 
-完整首版阶段 0–7 已实现。默认入口是 Solid 客户端与独立 Node 文件服务，orders 使用默认能力，cms 使用延迟加载的 RichText、Zod 和 fn 覆盖。旧 React 前端及 core/engine/react/sdk 已清理；旧后端协议、alienbase、Worker 保留为独立系统。
+`apps/service` 是唯一 Worker 后端。客户端与 MCP 通过 `/api/v1` 访问 D1 中的模型定义、共享草稿、发布版本与记录；Vite 只负责代码分析、转换和能力清单登记。
 
-## 启动与工具链
+## 启动与持久化
 
-固定 Node `26.13.0`、pnpm `12.16.1`、TypeScript `7.0.2`、Solid `1.9.17`、Vite `8.3.5`。版本由 `.nvmrc`、`packageManager` 与 `pnpm-lock.yaml` 固定。保留后端使用自己的 TypeScript `5.4.2`、Zod 3 和 Vitest 2。
+固定 Node `26.13.0`、pnpm `12.16.1`、TypeScript `7.0.2`。安装和开发：
 
 ```sh
-# 使用 .nvmrc 中的 Node（已安装 nvm 时）
-nvm install
 nvm use
-
 pnpm install --frozen-lockfile --registry=https://registry.npmjs.org
 pnpm dev
 ```
 
-`pnpm dev` / `pnpm dev:local` 先选择端口、构建 formwork 与插件，再启动 client 和 service。默认端口被占用时向后选择下一个可用 loopback 端口，并在终端输出实际 URL；显式设置的 `FORMWORK_CLIENT_PORT` / `FORMWORK_SERVICE_PORT` 被占用时直接失败。Ctrl+C 回收这次启动的进程树。服务只监听 loopback，默认开发流程不执行 D1 迁移。
+启动器先构建 formwork 和 Vite 插件，应用 `apps/service/migrations` 的本地 D1 migration，启动生产 Worker 入口并等待 health/bootstrap，然后启动 Vite 并等待能力清单登记成功，最后通过 API 补入缺失的 orders/cms 草稿。样例不自动发布、不创建业务记录。登录管理页后审阅并手动发布即可使用。
 
-| 命令               | 作用                                                                       |
-| ------------------ | -------------------------------------------------------------------------- |
-| `pnpm dev`         | 客户端 `:5173` + 独立开发服务 `:8788`                                      |
-| `pnpm dev:web`     | 只启动 client；先执行 `pnpm build:new` 并启动 service                      |
-| `pnpm dev:service` | 只启动独立文件服务；先构建 formwork                                        |
-| `pnpm build:new`   | 顺序构建四个新包与 TS7 声明                                                |
-| `pnpm build`       | 新应用构建 + 保留后端构建、Worker dry-run                                  |
-| `pnpm typecheck`   | 新包和根脚本类型检查；先构建包声明                                         |
-| `pnpm test`        | 45 项新行为测试 + 68 项保留后端回归；先构建新包                            |
-| `pnpm test:e2e`    | 临时两套客户端和独立数据的 6 项 Chromium E2E                               |
-| `pnpm check`       | lint → format → build → typecheck → test → E2E，可从没有 dist 的工作区运行 |
-| `pnpm dev:worker`  | 显式启动旧 Worker，沿用它的本地 D1 迁移                                    |
+| 配置                        | 用途                                                                       |
+| --------------------------- | -------------------------------------------------------------------------- |
+| `FORMWORK_CLIENT_PORT`      | 默认 5173；显式端口被占用直接失败，默认端口被占用向后选择                  |
+| `FORMWORK_SERVICE_PORT`     | 默认 8788；Worker 端口和 Vite 代理目标                                     |
+| `FORMWORK_DATA_DIR`         | 默认 `~/.local/share/alien-form/development/<仓库绝对路径 SHA-256 前16位>` |
+| `VITE_FORMWORK_API_URL`     | 浏览器 API base；默认同源 `/api/v1`，生产独立部署时设为真实 Worker API URL |
+| `FORMWORK_CLIENT_ORIGIN`    | Worker 的客户端 origin 允许列表，以逗号分隔；开发由启动器设置              |
+| `FORMWORK_CAPABILITY_TOKEN` | Vite 或登记脚本使用的 deploy credential，只在服务端环境读取                |
+| `FORMWORK_E2E_ROOT`         | Playwright 临时隔离目录，不使用开发 D1                                     |
 
-首次运行浏览器测试需要 `pnpm exec playwright install chromium`；Linux CI 使用 `--with-deps chromium`。
+开发目录权限为 0700。首次生成 `bootstrap.json`（0600），保存随机用户名、密码和 deploy token；终端仅显示文件路径。`.dev.vars` 同样为 0600，secret 不通过 `VITE_*`、define 或客户端资源传递。重启复用账号和数据库，不重置已发布模型。
 
-| 环境变量                | 默认值与用途                                                                        |
-| ----------------------- | ----------------------------------------------------------------------------------- |
-| `FORMWORK_CLIENT_PORT`  | `5173`，根启动器使用；例如 `FORMWORK_CLIENT_PORT=5188 pnpm dev`                     |
-| `FORMWORK_SERVICE_PORT` | `8788`，服务监听端口及 client `/api` 代理目标                                       |
-| `FORMWORK_DATA_DIR`     | `~/.local/share/alien-form/development/<项目路径的 SHA-256 前16位>`，独立持久化目录 |
-| `VITE_MODEL_SOURCE`     | 默认 local；设为 `remote` 时，整个应用读取 `/api/models`                            |
-| `FORMWORK_E2E_ROOT`     | Playwright 自动创建的临时目录，结束后删除；不用手动设置                             |
+Ctrl+C 回收本次启动的 Vite 和 Worker 进程树。不要将原文件服务目录当作新 D1；旧数据先用下文的迁移工具盘点。
 
-这台机器已安装的隔离工具也可直接使用，避免改变系统默认 Node：
+| 命令                                   | 行为                                                                        |
+| -------------------------------------- | --------------------------------------------------------------------------- |
+| `pnpm dev` / `pnpm dev:local`          | 管理本地 migration、私有凭证、Worker 与 Vite 的完整启动                     |
+| `pnpm dev:web`                         | 独立 Vite；需先启动 Worker 并设置 deploy token、Worker 端口与 client origin |
+| `pnpm dev:service` / `pnpm dev:worker` | 直接 Wrangler；需自行提供本地 migration 与 `.dev.vars`                      |
+| `pnpm build`                           | 顺序构建 formwork、Vite 插件、client、service                               |
+| `pnpm typecheck`                       | 四包及根启动/迁移脚本类型检查                                               |
+| `pnpm test`                            | Node 契约、真实 Worker/D1、迁移、stdio 和 Solid Chromium                    |
+| `pnpm test:e2e`                        | 一套真实 Vite + Worker/D1 的浏览器验收                                      |
+| `pnpm check`                           | lint → format → build → typecheck → test → E2E                              |
+| `pnpm worker:dry-run`                  | 编译 Worker，无实际部署                                                     |
 
-```sh
-export PATH="/Users/bytedance/Library/Caches/formwork-toolchain/node-v26.13.0-darwin-arm64/bin:/Users/bytedance/Library/Caches/formwork-toolchain/pnpm/package:$PATH"
-```
+## 管理与业务页面
 
-## 页面与模型来源
+| URL                                            | 行为                                                                        |
+| ---------------------------------------------- | --------------------------------------------------------------------------- |
+| `/login`                                       | 密码登录；sessionStorage 仅保存当前标签页会话，重新装载通过 `/auth/me` 核实 |
+| `/`、`/home`                                   | 进入 `/models`，未登录进入登录页                                            |
+| `/models/:domain?`                             | 完整 definition、可诊断草稿、CAS 保存、管理预览、手动发布和只读版本目录     |
+| `/model-preview/:domain?router=add&revision=…` | 指定审阅 revision 的独立管理预览；业务写入禁用                              |
+| `/tokens`                                      | 本人 agent/deploy token 签发、一次性明文及撤销                              |
+| `/list/orders`、`/list/cms`                    | 读取授权的最新已发布 schema，分页、筛选和记录操作                           |
+| `/add/:domain`、`/edit/:domain/:id`            | Modal 创建/编辑记录                                                         |
+| `/detail/:domain/:id`                          | Drawer 只读详情                                                             |
 
-| URL                                     | 实际行为                                             |
-| --------------------------------------- | ---------------------------------------------------- |
-| `/`、`/home`                            | 自动进入模型工作台，默认打开目录中的首个模型         |
-| `/list/orders`                          | 默认字段、草稿筛选、三态付款筛选、标量排序和记录动作 |
-| `/edit/orders/:id`                      | Modal 编辑已有记录                                   |
-| `/add/orders`                           | Modal 创建新记录，可增加嵌套明细                     |
-| `/detail/orders/:id`                    | Drawer 只读详情                                      |
-| `/list/cms`、`/edit/cms/:id`            | 显式动态 Domain；示例记录 `article-1`                |
-| `/models`、`/models/:domain`            | 完整模型目录、JSON 编辑、CAS 保存与实际 iframe 预览  |
-| `/models/orders?router=edit&id=order-1` | 预览完整编辑 Window；edit/detail 必须提供记录 id     |
+普通页面新挂载或刷新加载已发布 schema。发布不轮询、不重建旧实例；旧实例仍保留 schema 和输入，提交按当前发布规则校验，返回字段 JSON Pointer 和具体错误。
 
-本地模型按 `apps/client/vite.config.ts` 的 glob 发现：
+管理预览通过受管理权限保护的 draft-schema API 加载；普通业务页不会因为 revision/query 参数读取草稿。未发布模型列表为空，新建预览使用默认值；edit/detail 必须提供真实记录 ID，且模型已有发布基准。预览复用普通 Page、Window 内容和 Domain，并拦截注入 API 的记录写入。
 
-- `apps/client/src/models/orders/model.json`
-- `apps/client/src/domains/cms/model.json`
+## HTTP `/api/v1`
 
-模型目录由源的 `list()` 枚举，与 `domains` 定义独立。新建本地模型写到第一个模式的静态根 `src/models/{id}/model.json`；已有模型保留实际索引位置。浏览器与 MCP 都通过 Vite 中同一个文件源写入，调用者不能指定文件路径。
+成功直接返回 DTO；失败为 `{ error: { code, message, issues?, currentRevision? } }`。除 health/login 外使用 `Authorization: Bearer <credential>`。数据库仅保存 token 摘要，撤销与过期每次请求检查。
 
-模型文件只保存 `{ id, title, data, views? }`。`id` 与 URL domain、Domain key、MCP modelId 一致。`revision` 是原始字节 SHA-256，属于 snapshot；格式变化也改变 revision。`ifRevision:null` 仅创建，更新必须提供最近 revision。冲突返回 `REVISION_CONFLICT`，没有自动重试。
+| 方法与路径                                                      | 语义                                                      |
+| --------------------------------------------------------------- | --------------------------------------------------------- |
+| `GET /health`                                                   | Worker 与 D1 就绪                                         |
+| `POST /auth/login`                                              | `{ username, password }` → 用户会话                       |
+| `GET /auth/me`、`POST /auth/logout`                             | 当前可信身份、撤销当前 user session                       |
+| `GET/POST /auth/tokens`                                         | 本人目录 / `{ label, kind, expiresInDays }` 签发          |
+| `DELETE /auth/tokens/:id`                                       | user 撤销本人 credential                                  |
+| `GET /models`、`GET /models/:id`                                | 可管理目录、优先最新草稿的完整管理快照                    |
+| `PUT /models/:id/draft`                                         | `{ definition, ifRevision }`，不完整草稿返回 diagnostics  |
+| `POST /models/:id/validate`                                     | `{ definition, router? }` → errors/runtimeChecks          |
+| `POST /models/:id/publish`                                      | user + publish 权限；`{ ifRevision }` 发布已保存草稿      |
+| `GET /models/:id/versions`、`GET /models/:id/versions/:version` | user 读取不可变发布版本                                   |
+| `GET /models/:id/preview?router=…&params=…`                     | params 为字符串对象 JSON；返回预览 URL                    |
+| `GET /models/:id/draft-schema?revision=…`                       | user 管理预览，CAS 检查审阅版本                           |
+| `GET /runtime/models/:id/schema`                                | 授权投影 schema/version/revision，无 backend              |
+| `GET /formwork/capabilities?modelId=…&router=…`                 | 路由有效代码声明与运行时检查                              |
+| `PUT /formwork/capabilities/:appId`                             | deploy 登记并激活能力清单                                 |
+| `POST /records/:modelId/query`                                  | `{ filters, page, pageSize, sort?, keyword?, parentId? }` |
+| `GET /records/:modelId/:id`                                     | 授权记录                                                  |
+| `POST /records/:modelId`、`PUT /records/:modelId/:id`           | 创建、合并更新，当前 schema 校验                          |
+| `DELETE /records/:modelId/:id`                                  | 删除，关系引用检查                                        |
+| `POST /records/:modelId/batch-delete`                           | `{ ids }`，逐条结果                                       |
+| `POST /records/:modelId/options`                                | 关系候选项与选中值补齐                                    |
+| `POST /records/:modelId/subtree`                                | 已声明父级关系的子树                                      |
+| `POST /records/:modelId/commands/:command`                      | 已注册可信命令                                            |
 
-开发期 `virtual:formwork/models` 是对象身份稳定的 HTTP 源，每次读取完整 snapshot。模型新增、删除、修改及坏 JSON 都触发 custom HMR；工作台刷新目录与预览，未保存草稿保留原 revision。普通编辑 Instance 保留挂载时的模型和值快照。坏文件显示错误，修复后自动恢复。
+`ifRevision:null` 只创建不存在的模型，其他草稿写入和发布必须携带最近管理 revision。冲突返回 `409 REVISION_CONFLICT`，编辑文本保留，不自动改用最新 revision。记录并发发布返回 `409 SCHEMA_CHANGED`；数据不符合当前 schema 返回 `422 INVALID_VALUE`。详情 metadata 可以包含服务端时间和 owner，表单只加载 schema 声明字段，隐藏存量由服务端合并。
 
-构建期 virtual 源打包完整文档，读取结果互相独立，`writable:false`，write 返回 `READ_ONLY`。`virtual:formwork/capabilities` 提供 `routes` 与 `capabilities(modelId, router)`；返回有效组件/fn、覆盖位置、原始 TS 声明与 JSDoc，普通模型使用默认能力，无需注册 Domain。
+## MCP stdio
 
-额外命名 View 只在文档层检查结构、Pointer 和表达式语法。指定 router 的有效 View 由工具检查，额外 View 的局部 scope 与组件在实际 Render 中检查，并列入 `runtimeChecks`。
-
-## 独立开发 HTTP 服务
-
-首次启动只为独立目录补入缺失的 orders/cms 模型及示例记录；重启保留模型版本和记录，不覆盖已有数据。
-
-| 接口                               | 输入与结果                                                                         |
-| ---------------------------------- | ---------------------------------------------------------------------------------- |
-| `GET /health`                      | 直接访问 service 的健康状态                                                        |
-| `GET /api/models`                  | 完整模型目录                                                                       |
-| `GET /api/models/:id`              | `completeness:"full"` 的 ModelSnapshot                                             |
-| `PUT /api/models/:id`              | `{ document, ifRevision }`，校验、条件写入、返回新 snapshot                        |
-| `POST /api/records/:modelId/query` | `{ filters, page, pageSize, sort?: { field, direction } }`；返回 `{ list, total }` |
-| `GET /api/records/:modelId/:id`    | 读取单条记录                                                                       |
-| `POST /api/records/:modelId`       | 记录 JSON，校验 DataSchema；未提供 id 时生成 UUID                                  |
-| `PUT /api/records/:modelId/:id`    | 完整记录 JSON，body.id 必须与路径一致                                              |
-| `DELETE /api/records/:modelId/:id` | 删除记录                                                                           |
-
-字符串筛选为包含，boolean/number 为精确匹配；空筛选不提交，false 会提交。嵌套值按 DataSchema 校验。客户端通过保留 Host 的同源 Vite proxy 请求，浏览器写入要求同源 Origin；无 Origin 的本地工具请求必须携带 `X-Formwork-Tool: 1`。开发服务拒绝外部监听与跨源写入。
-
-“上传到远端”明确读取已保存的 local snapshot，然后按远端 revision 写入独立服务；不上传当前未保存草稿，不切换当前来源。使用整个 remote 应用：
-
-```sh
-VITE_MODEL_SOURCE=remote FORMWORK_CLIENT_PORT=5188 pnpm dev
-```
-
-这是开发用的完整 HTTP Adapter 与文件存储；生产认证、权限、数据库、关系查询、publish 和历史迁移仍属于后续范围。
-
-## MCP 连接与六项工具
-
-先运行 Vite 开发服务，再启动 stdio：
+通过管理页签发 agent token，在 MCP 服务进程环境提供 `FORMWORK_API_TOKEN`，连接现有 Worker：
 
 ```sh
-pnpm mcp --url http://127.0.0.1:5173
+pnpm mcp --url http://127.0.0.1:8788/api/v1
 ```
 
-stdio 使用官方 `@modelcontextprotocol/sdk`，只连接已有 Vite 工具端点，不另建模型写入源。stdout 只传 MCP，错误写入 stderr；服务不可用返回 `DEV_SERVER_UNAVAILABLE`。
-
-模型工作台的“MCP 接入”区域提供当前 Vite 端口与本机 stdio 路径的可复制配置。
-
-MCP 客户端配置示例（按实际项目路径和开发端口调整）：
+stdout 仅传 MCP 协议，错误写 stderr。可连接本地或远端 HTTP(S) Worker，URL 使用真实 `/api/v1` base；管理页给出当前 API base 和 stdio 入口路径。
 
 ```json
 {
@@ -120,45 +105,59 @@ MCP 客户端配置示例（按实际项目路径和开发端口调整）：
     "formwork": {
       "command": "node",
       "args": [
-        "/Users/bytedance/Documents/cowork/alien-form/packages/formwork/dist/stdio.js",
+        "/项目绝对路径/packages/formwork/dist/stdio.js",
         "--url",
-        "http://127.0.0.1:5173"
-      ]
+        "http://127.0.0.1:8788/api/v1"
+      ],
+      "env": { "FORMWORK_API_TOKEN": "<agent token>" }
     }
   }
 }
 ```
 
-客户端运行的 `node` 也必须是上述固定版本；可把 `command` 设为 Node 26 的绝对路径。
+| 工具                    | 输入                                  |
+| ----------------------- | ------------------------------------- |
+| `models.list`           | `{}`                                  |
+| `models.read`           | `{ modelId }`                         |
+| `formwork.capabilities` | `{ modelId, router }`                 |
+| `models.validate`       | `{ modelId, definition, router? }`    |
+| `models.write`          | `{ modelId, definition, ifRevision }` |
+| `models.preview`        | `{ modelId, router, params? }`        |
 
-| 工具                    | 输入                                                                                                  |
-| ----------------------- | ----------------------------------------------------------------------------------------------------- |
-| `models.list`           | `{}`                                                                                                  |
-| `models.read`           | `{ "modelId": "orders" }`                                                                             |
-| `formwork.capabilities` | `{ "modelId": "orders", "router": "list" }`                                                           |
-| `models.validate`       | `{ "modelId": "orders", "document": { ... }, "router": "edit" }`；router 可省略，检查全部 schema 路由 |
-| `models.write`          | `{ "modelId": "orders", "document": { ... }, "ifRevision": "<read 返回值>" }`                         |
-| `models.preview`        | `{ "modelId": "orders", "router": "edit", "params": { "id": "order-1" } }`                            |
+MCP 永远处理最新共享草稿；无草稿读取最新发布定义，首次修改创建草稿。agent 没有发布工具，即使代表超级管理员也不能调用发布 API；deploy 只登记清单。
 
-validate 返回 `{ errors, runtimeChecks }`。未知 router、缺少预览参数、无法静态确定的定义或不安全 schema 给出明确诊断。表达式返回值、依赖与网络行为必须在浏览器验收。
+## 一次性数据迁移
 
-## 验收证据与构建边界
+旧 0001–0013 SQL 位于 `apps/service/legacy-migrations`，不在活动 migrations_dir。旧协议与文档样本位于 `apps/service/src/migration/fixtures`，仅用于一次性输入。转换器保留记录/user ID、字段身份、物理值、owner、grants 和 through 关系；不能可靠转换的行为报错，旧展示配置保存在迁移输入中并报告默认 View 替代。
 
-2026-10-29 在真实固定工具链执行：
+```sh
+# 只读盘点独立 SQLite 副本和原文件服务保存目录
+pnpm migrate:data --source-db /备份/legacy.sqlite --file-state /备份/旧文件目录 --output /备份/inventory.json
+# 生成 SQL 与守恒报告，不执行
+pnpm migrate:data --mode plan --input /备份/inventory.json --output /备份/plan.json
+# 仅在另一个本地 SQLite 副本显式执行；先停止该副本 Worker
+pnpm migrate:data --mode apply-local --input /备份/inventory.json --target-db /副本/new.sqlite
+```
 
-| 验收                  | 证据                                                                                                    |
-| --------------------- | ------------------------------------------------------------------------------------------------------- |
-| Node / Solid Chromium | 29 项 Node + 16 项 browser：模型、完整源、Vite、stdio、HTTP、数组身份、表达式、Window、清理             |
-| 客户端 E2E            | 6 项通过：筛选、同 id 刷新、Modal/Drawer、History/焦点、嵌套明细、cms、CAS/HMR、两源/上传、文件目录恢复 |
-| 生产模型源            | 实际 Vite library build 后在 Node 读取完整只读快照，修改文件不影响产物，写入拒绝                        |
-| 保留后端              | protocol 16 + alienbase 7 + Worker 45 项回归；独立 TS5 构建与 Wrangler dry-run                          |
-| 新包                  | TS7 类型及声明、Vite 生产构建、cms 独立动态 chunk；client 主 JS 176.38 kB / gzip 58.77 kB               |
-| Node 入口             | `formwork/model` 和 `formwork/mcp` 在没有 document 的 Node 进程实际导入                                 |
-| 完整交付链            | 冻结安装通过；移出四个新包的 dist 后，`pnpm check` 仍全部通过，E2E 7.3s                                 |
-| 根启动器              | 自定义 client :5188 / service :8790，模型读取、保留 Host 的同源写入、退出后两个监听端口回收通过         |
+默认 mode 为 inventory，没有远端 apply。`--samples` 只导入普通示例草稿。原文件服务的已保存历史模型与旧 D1 的已发布定义可以导入基准版本。所有目标表数量和值摘要在本地事务提交前核对，失败整体回滚；相同输入摘要重复导入不覆盖后来修改。
 
-E2E 监听 `127.0.0.1:5184`、`:5186` 和 service `:8788`，复制客户端到临时目录，不修改真实模型或旧 D1。故意错误、清理异常用例会输出相应错误日志。
+## 部署与恢复
 
-默认静态构建产物是 `apps/client/dist`，`deploy.json` 已指向此目录。生产静态源只读，记录请求仍需要适配同源 `/api` 服务；Vite 开发 proxy 不会进入静态产物。当前没有生产 Node 服务或完整发布流程，不能把新 client 直接接到旧 Worker 的 `/api/v1`。
+静态客户端产物为 `apps/client/dist`，Worker 入口为 `apps/service/src/index.ts`。生产客户端若独立部署，构建时配置 `VITE_FORMWORK_API_URL=<真实 Worker origin>/api/v1`；Worker 的 `FORMWORK_CLIENT_ORIGIN` 配置真实客户端 origin。
 
-旧 `wrangler.json` 已移除删除前端的 ASSETS 绑定，Worker 只保留原 D1 和 `/api/v1` 后端，非 API 路径返回 404。协议能力快照保留，旧 UI 生成链已移除。所有验证使用本地测试或 dry-run，本次未 commit、push 或部署。
+发布前先盘点并备份目标 D1，在隔离副本验证迁移与数据守恒。新 metadata 使用 `fw_*`，不要对已有旧数据库无差别重放历史 SQL。配置管理员引导用户名/密码（新库必需）、D1 binding 和 client origin；使用 Wrangler secret 或部署环境提供凭证，禁止把 secret 配置为 `VITE_*`。
+
+部署 Worker 与静态客户端后，通过用户会话签发 deploy token，以环境变量向构建清单登记脚本提供：
+
+```sh
+# 该命令会向指定 Worker 写入清单，属于实际发布流程
+pnpm capabilities:register --api-url https://<Worker 域名>/api/v1 --client-origin https://<客户端域名>
+```
+
+脚本读取 `apps/client/dist/formwork-capabilities.json`，填入客户端 origin、重新计算内容 revision，再登记。生产构建不包含模型快照和 token；只有清单登记后草稿才能按当前代码能力发布。新增模型仍只能管理页手动发布。恢复依据数据备份和迁移记录，不以重放旧 SQL 或 MCP 自动发布代替回退。
+
+## 已执行的本地验收
+
+真实 Worker/D1 覆盖 CAS、原子 DDL 回滚、并发发布/记录 guard、字段投影、own、角色子树、关系及保留历史列。MCP 使用官方 SDK stdio 对真实 Worker 验证六工具与 agent 发布拒绝。迁移验证历史密码登录、owner/关系与事务守恒。
+
+8 项 Chromium E2E 覆盖密码登录、Window/焦点/History/分页/Select、cms Domain、无效草稿、有效预览禁写、手动发布、刷新生效、旧页 422 保留输入、CAS 与 token 撤销；包含 1440px / 390px 截图和页面溢出检查。E2E 使用临时 D1 基线，测试结束回收自身进程，不修改开发或远端数据库。

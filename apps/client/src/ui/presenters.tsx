@@ -5,7 +5,7 @@ import type { PresenterProps } from "formwork";
 import { AppShell } from "./app-shell";
 import { Icon } from "./icons";
 
-const embeddedPreview = new URLSearchParams(window.location.search).get("embedded") === "1";
+const embeddedPreview = window.location.pathname.startsWith("/model-preview/");
 
 /** 在应用画布中承载完整 Page 或 page Window。 */
 export const PagePresenter: Component<PresenterProps> = (props) => {

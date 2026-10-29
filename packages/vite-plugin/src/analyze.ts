@@ -37,7 +37,6 @@ export type FormworkAnalysis = {
   files: Set<string>;
   transforms: Map<string, Array<{ start: number; end: number }>>;
   capabilities: (modelId: string, router: string) => EffectiveCapabilities;
-  validator: (modelId: string, router: string) => { file: string; name: string } | undefined;
 };
 /** 通过 Vite 的实际模块解析规则分析静态定义，不导入或执行应用 UI。 */
 export async function analyzeFormwork(
@@ -288,10 +287,31 @@ export async function analyzeFormwork(
     const comment = preceding
       .match(/\/\*\*([\s\S]*?)\*\/\s*(?:export\s+(?:default\s+)?)?$/u)?.[0]
       ?.trim();
+    const bodies: Array<{ start: number; end: number }> = [];
+    const collect = (node: Ast) => {
+      if (!node || typeof node !== "object") return;
+      if (
+        ["ArrowFunctionExpression", "FunctionExpression", "FunctionDeclaration"].includes(node.type)
+      ) {
+        bodies.push({ start: node.body.start, end: node.body.end });
+        return;
+      }
+      for (const value of Object.values(node)) {
+        if (Array.isArray(value)) for (const child of value) collect(child);
+        else if (value && typeof value === "object") collect(value as Ast);
+      }
+    };
+    collect(declaration);
+    let signature = ref.module.code.slice(declaration.start, declaration.end);
+    for (const body of bodies.sort((a, b) => b.start - a.start))
+      signature =
+        signature.slice(0, body.start - declaration.start) +
+        "/* implementation omitted */" +
+        signature.slice(body.end - declaration.start);
     return {
       name,
       source: source(ref),
-      declaration: ref.module.code.slice(declaration.start, declaration.end),
+      declaration: signature,
       ...(comment ? { jsDoc: comment.replace(/\s*export\s*(?:default\s*)?$/u, "") } : {}),
     };
   };
@@ -305,8 +325,6 @@ export async function analyzeFormwork(
         }
     if (values.has("schema")) {
       const ref = await unwrap(values.get("schema")!);
-      if (!ref.module.file.endsWith(".schema.ts"))
-        return fail(ref, "schema 必须静态定位到 Node-safe *.schema.ts 导出");
       const exported = [...ref.module.exports].find(
         ([, value]) => !("from" in value) && value.node.start === ref.node.start,
       )?.[0];
@@ -363,6 +381,8 @@ export async function analyzeFormwork(
         if (kind === "pages" && route.presentation)
           return fail(input, "Page 不能声明 presentation");
         const render = values.get("render");
+        if (!render && !values.has("getSchema"))
+          return fail(input, "模型 Page/Window 必须显式声明 getSchema");
         if (render) {
           if (values.has("container") || values.has("schema") || values.has("getSchema"))
             return fail(render, "plain render 与 schema 内容互斥");
@@ -418,8 +438,10 @@ export async function analyzeFormwork(
         components: merge(values, "components"),
         fn: merge(values, "fn"),
         schema: schema?.member,
+        pageLoader: values[1]!.getSchema,
+        domainTransform: values[2]?.getSchema,
         modelContract:
-          "ModelDocument: { id, title, data: JSON Schema subset, views? }; source requires completeness:full and ifRevision",
+          "ModelDefinition: { document: { id, title, data, views? }, backend: { storage, relations, permissions, behavior } }; shared drafts require ifRevision; only management user sessions can publish",
         runtimeChecks: [
           {
             modelId: id,
@@ -431,9 +453,6 @@ export async function analyzeFormwork(
           },
         ],
       };
-    },
-    validator(id, router) {
-      return layers(id, router).findLast((value) => value.schema)?.schema;
     },
   };
 }

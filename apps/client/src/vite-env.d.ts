@@ -1,9 +1,5 @@
 /// <reference types="vite/client" />
 
-declare module "virtual:formwork/models" {
-  const models: import("formwork").ModelSource;
-  export default models;
-}
 declare module "virtual:formwork/capabilities" {
   /** 读取静态路由，不引入未使用的能力声明。 */
   export const routes: readonly import("formwork/model").RouteDefinition[];

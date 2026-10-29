@@ -1,169 +1,220 @@
-import {
-  createEffect,
-  createMemo,
-  createResource,
-  createSignal,
-  For,
-  onCleanup,
-  Show,
-} from "solid-js";
+import { createEffect, createMemo, createResource, createSignal, For, Show } from "solid-js";
 import type { Component } from "solid-js";
-import type { ActionContext, ModelDocument } from "formwork";
+import type { ActionContext, Diagnostic } from "formwork";
 import { FormworkError } from "formwork";
-import { errorPayload, routePath } from "formwork/model";
-import { routes } from "virtual:formwork/capabilities";
-import { localModels, modelSourceName, remoteModels } from "../models";
+import { errorPayload, modelIdPattern } from "formwork/model";
+import { sessionUser } from "../models";
 import { Icon } from "../ui/icons";
 import { McpGuide } from "../ui/mcp-guide";
 import { SelectControl } from "../ui/select";
 
-/** 编辑完整模型原文，并用实际路由创建带 revision 的页面预览。 */
+/** 编辑数据库完整 definition，保存可诊断草稿，并手动发布已审阅 revision。 */
 export const ModelWorkbench: Component<ActionContext> = (ctx) => {
   const [directory, { refetch: refreshDirectory }] = createResource(() =>
-    ctx.models.list({ signal: ctx.signal }),
+    ctx.api.models.list({ signal: ctx.signal }),
   );
   const entries = () => (directory.error ? [] : (directory() ?? []));
-  const modelId = () => ctx.params.domain ?? entries()[0]?.id;
-  const [selected, { refetch: refreshSelected }] = createResource(modelId, (id) =>
-    ctx.models.read(id, { signal: ctx.signal }),
+  const [creating, setCreating] = createSignal<string>();
+  const modelId = () => creating() ?? ctx.params.domain ?? entries()[0]?.id;
+  const [selected, { refetch: refreshSelected, mutate }] = createResource(
+    () => (creating() ? undefined : modelId()),
+    (id) => ctx.api.models.read(id, { signal: ctx.signal }),
   );
-  const snapshot = () => (selected.error ? undefined : selected());
-  const initialQuery = new URLSearchParams(location.search);
-  const [router, setRouter] = createSignal(initialQuery.get("router") ?? "list");
-  const [recordId, setRecordId] = createSignal(initialQuery.get("id") ?? "");
+  const snapshot = () => (selected.error || creating() ? undefined : selected());
+  const [versions, { refetch: refreshVersions }] = createResource(
+    () => snapshot()?.id,
+    (id) => ctx.api.models.versions(id, { signal: ctx.signal }),
+  );
+  const [versionNumber, setVersionNumber] = createSignal<number>();
   const [draft, setDraft] = createSignal("");
   const [dirty, setDirty] = createSignal(false);
-  const [revision, setRevision] = createSignal<string>();
+  const [revision, setRevision] = createSignal<string | null>(null);
   const [busy, setBusy] = createSignal(false);
   const [message, setMessage] = createSignal("");
+  const [issues, setIssues] = createSignal<readonly Diagnostic[]>([]);
+  const [router, setRouter] = createSignal("list");
+  const [recordId, setRecordId] = createSignal("");
   const [editorScroll, setEditorScroll] = createSignal(0);
-  const lineNumbers = createMemo(() =>
+  const lines = createMemo(() =>
     Array.from({ length: draft().split("\n").length }, (_, index) => index + 1),
   );
-  const routeLabel = (router: string) =>
-    ({ list: "记录列表", add: "新建记录", edit: "编辑记录", detail: "记录详情" })[router] ?? router;
   createEffect(() => {
     const current = snapshot();
     if (current && !dirty()) {
-      setDraft(JSON.stringify(current.document, null, 2));
+      setDraft(JSON.stringify(current.definition, null, 2));
       setRevision(current.revision);
     }
   });
-  const onUpdate = () => {
-    if (dirty()) setMessage("模型源已更新；当前草稿保留，保存将检查原 revision。");
-    void Promise.allSettled([refreshDirectory(), refreshSelected()]);
-  };
-  window.addEventListener("formwork:model-update", onUpdate);
-  onCleanup(() => window.removeEventListener("formwork:model-update", onUpdate));
   const preview = createMemo(() => {
-    if (!snapshot()) return { url: "", error: "" };
-    try {
-      const url = routePath(routes, router(), {
-        domain: snapshot()!.id,
-        ...(recordId() ? { id: recordId() } : {}),
-      });
-      return {
-        url: `${url}?formworkRevision=${encodeURIComponent(snapshot()!.revision)}&embedded=1`,
-        error: "",
-      };
-    } catch (error) {
-      return { url: "", error: error instanceof Error ? error.message : String(error) };
-    }
+    const current = snapshot();
+    if (!current) return { url: "", error: "请先保存草稿。" };
+    if (dirty()) return { url: "", error: "先保存草稿，再预览审阅结果。" };
+    if (current.diagnostics.errors.length)
+      return { url: "", error: "草稿有校验错误，修复后才能预览。" };
+    if (["edit", "detail"].includes(router()) && !recordId())
+      return { url: "", error: "此页面预览需要记录 ID。" };
+    return {
+      url: `/model-preview/${current.id}?${new URLSearchParams({ router: router(), revision: current.revision, ...(recordId() ? { id: recordId() } : {}) })}`,
+      error: "",
+    };
   });
-  const save = async () => {
-    if (busy() || !snapshot()) return;
+  const reportFailure = (error: unknown) => {
+    if (ctx.signal.aborted) return;
+    const payload = errorPayload(error);
+    setMessage(
+      `${payload.code}: ${payload.message}${error instanceof FormworkError && error.currentRevision ? `；当前 revision ${error.currentRevision}。编辑文本已保留，请重新载入后合并。` : ""}`,
+    );
+    setIssues(payload.issues ?? []);
+  };
+  const run = async (action: () => Promise<void>) => {
+    if (busy()) return;
     setBusy(true);
     setMessage("");
+    setIssues([]);
     try {
-      const document = JSON.parse(draft()) as ModelDocument;
-      if (document.id !== snapshot()!.id)
-        throw new FormworkError("INVALID_MODEL", "模型 id 不能原地修改");
-      await ctx.models.write(document, { ifRevision: revision()!, signal: ctx.signal });
-      if (!ctx.signal.aborted) {
-        setDirty(false);
-        await refreshSelected();
-        await refreshDirectory();
-        setMessage("已保存完整模型，预览已更新。");
-      }
+      await action();
     } catch (error) {
-      if (!ctx.signal.aborted)
-        setMessage(
-          error instanceof FormworkError ? `${error.code}: ${error.message}` : String(error),
-        );
+      reportFailure(error);
     } finally {
       if (!ctx.signal.aborted) setBusy(false);
     }
   };
-  const upload = async () => {
-    if (busy() || !snapshot()) return;
-    setBusy(true);
-    setMessage("");
-    try {
-      const snapshot = await localModels.read(modelId()!, { signal: ctx.signal });
-      let remoteRevision: string | null = null;
-      try {
-        remoteRevision = (await remoteModels.read(snapshot.id, { signal: ctx.signal })).revision;
-      } catch (error) {
-        if (!(error instanceof FormworkError) || error.code !== "NOT_FOUND") throw error;
-      }
-      await remoteModels.write(snapshot.document, {
-        ifRevision: remoteRevision,
+  const save = () =>
+    run(async () => {
+      const id = modelId();
+      if (!id) return;
+      const result = await ctx.api.models.saveDraft(id, JSON.parse(draft()), {
+        ifRevision: revision(),
         signal: ctx.signal,
       });
-      if (!ctx.signal.aborted) setMessage("已上传到独立远端模型源，当前来源保持不变。");
-    } catch (error) {
-      if (!ctx.signal.aborted)
+      if (ctx.signal.aborted) return;
+      setDirty(false);
+      setRevision(result.revision);
+      setDraft(JSON.stringify(result.definition, null, 2));
+      mutate(result);
+      await refreshDirectory();
+      if (creating()) ctx.navigate("models", { domain: id });
+      else
         setMessage(
-          error instanceof FormworkError ? `${error.code}: ${error.message}` : String(error),
+          `已保存草稿；${result.diagnostics.errors.length ? `有 ${result.diagnostics.errors.length} 项错误` : "校验通过"}，尚未发布。`,
         );
-    } finally {
-      if (!ctx.signal.aborted) setBusy(false);
-    }
-  };
+    });
+  const publish = () =>
+    run(async () => {
+      const current = snapshot();
+      if (!current || dirty() || current.stage !== "draft" || !current.canPublish) return;
+      const result = await ctx.api.models.publish(current.id, current.revision, {
+        signal: ctx.signal,
+      });
+      if (ctx.signal.aborted) return;
+      await refreshSelected();
+      await refreshDirectory();
+      await refreshVersions();
+      setMessage(`已手动发布版本 ${result.version}；普通页面刷新后使用新 schema。`);
+    });
   return (
     <div class="workbench-page">
       <header class="page-header">
         <div class="page-title">
           <h1>模型工作台</h1>
-          <span class="eyebrow">{modelSourceName.toUpperCase()}</span>
+          <span class="eyebrow">数据库草稿</span>
         </div>
         <div class="actions">
           <button
             class="button secondary"
             disabled={busy() || !snapshot()}
-            onClick={() => {
-              setDirty(false);
-              void refreshSelected();
-            }}
+            onClick={() =>
+              run(async () => {
+                setDirty(false);
+                await refreshSelected();
+                setMessage("已重新载入最新管理状态。");
+              })
+            }
           >
             <Icon name="refresh" />
             重新载入
           </button>
-          <Show when={modelSourceName === "local"}>
-            <button class="button secondary" disabled={busy() || !snapshot()} onClick={upload}>
-              <Icon name="upload" />
-              上传到远端
-            </button>
-          </Show>
           <button
             class="button"
-            disabled={busy() || !snapshot()?.writable || !dirty()}
+            disabled={busy() || !dirty() || (!creating() && !snapshot()?.canManage)}
             onClick={save}
           >
             <Icon name="check" />
-            {busy() ? "正在处理…" : "保存模型"}
+            保存草稿
+          </button>
+          <button
+            class="button"
+            disabled={
+              busy() ||
+              dirty() ||
+              !snapshot()?.canPublish ||
+              snapshot()?.stage !== "draft" ||
+              !!snapshot()?.diagnostics.errors.length
+            }
+            onClick={publish}
+          >
+            手动发布
           </button>
         </div>
       </header>
       <McpGuide />
       <Show when={directory.error || selected.error}>
-        <p role="alert">
-          {errorPayload(directory.error ?? selected.error).code}:{" "}
-          {errorPayload(directory.error ?? selected.error).message}
+        <p role="alert">{errorPayload(directory.error ?? selected.error).message}</p>
+      </Show>
+      <Show when={message()}>
+        <p class="workbench-message" role="status">
+          {message()}
         </p>
       </Show>
       <div class="workbench">
         <nav aria-label="选择模型">
+          <Show when={sessionUser()?.canCreateModel}>
+            <form
+              class="new-model-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const id = String(new FormData(event.currentTarget).get("modelId"));
+                if (!modelIdPattern.test(id) || id.startsWith("system-")) {
+                  setMessage("模型 ID 必须是单段小写标识，不能使用 system- 前缀。");
+                  return;
+                }
+                setCreating(id);
+                setRevision(null);
+                setDirty(true);
+                setMessage("新模型尚未保存。");
+                setDraft(
+                  JSON.stringify(
+                    {
+                      document: {
+                        id,
+                        title: id,
+                        data: { type: "object", properties: {}, additionalProperties: false },
+                      },
+                      backend: {
+                        storage: { table: `biz_${id.replaceAll("-", "_")}`, bindings: [] },
+                        relations: [],
+                        permissions: { grants: [], privateFields: [] },
+                        behavior: { rules: [], commands: {}, events: {} },
+                      },
+                    },
+                    null,
+                    2,
+                  ),
+                );
+              }}
+            >
+              <input
+                class="control"
+                name="modelId"
+                aria-label="新模型 ID"
+                placeholder="新模型 ID"
+                required
+              />
+              <button class="button secondary" disabled={busy()}>
+                新建模型
+              </button>
+            </form>
+          </Show>
           <For each={entries()}>
             {(entry) => (
               <button
@@ -175,23 +226,26 @@ export const ModelWorkbench: Component<ActionContext> = (ctx) => {
                 <Icon name="model" />
                 <strong>{entry.title}</strong>
                 <code>{entry.id}</code>
-                <Show when={!entry.writable}>
-                  <span class="muted">只读</span>
-                </Show>
+                <span class="muted">
+                  {entry.stage === "draft" ? "共享草稿" : "已发布"} ·{" "}
+                  {entry.publishedVersion === null ? "未发布" : `v${entry.publishedVersion}`}
+                </span>
               </button>
             )}
           </For>
+          <button
+            class="text-button"
+            disabled={directory.loading}
+            onClick={() => refreshDirectory()}
+          >
+            刷新目录
+          </button>
         </nav>
         <Show
-          when={snapshot()}
+          when={snapshot() || creating()}
           fallback={
             <div class="panel workbench-empty">
-              <Icon name="model" />
-              <p>
-                {directory.loading || selected.loading
-                  ? "正在加载模型…"
-                  : "选择一个模型，开始构建界面。"}
-              </p>
+              <p>{selected.loading || directory.loading ? "正在加载模型…" : "选择或新建模型。"}</p>
             </div>
           }
         >
@@ -200,30 +254,31 @@ export const ModelWorkbench: Component<ActionContext> = (ctx) => {
               <div class="editor-heading">
                 <h2>
                   <Icon name="code" />
-                  模型源码
+                  完整 definition
                 </h2>
                 <span class="draft-state" classList={{ dirty: dirty() }}>
-                  <span class="status-dot" />
-                  {dirty() ? "未保存" : "已同步"}
+                  {dirty() ? "未保存" : snapshot()?.stage === "draft" ? "已保存草稿" : "已发布"}
                 </span>
               </div>
               <div class="editor-toolbar">
-                <code>{snapshot()?.id}/model.json</code>
-                <span class="editor-format">JSON</span>
+                <code>
+                  {modelId()} · {revision()?.slice(0, 8) ?? "新建"}
+                </code>
+                <span>JSON</span>
               </div>
               <div class="code-editor">
                 <div class="code-gutter" aria-hidden="true">
                   <div style={{ transform: `translateY(-${editorScroll()}px)` }}>
-                    <For each={lineNumbers()}>{(line) => <div>{line}</div>}</For>
+                    <For each={lines()}>{(line) => <div>{line}</div>}</For>
                   </div>
                 </div>
                 <textarea
-                  aria-label="完整模型 JSON"
+                  aria-label="完整 definition JSON"
                   class="control model-json"
                   spellcheck={false}
                   wrap="off"
                   value={draft()}
-                  readOnly={!snapshot()?.writable}
+                  disabled={busy()}
                   onScroll={(event) => setEditorScroll(event.currentTarget.scrollTop)}
                   onInput={(event) => {
                     setDraft(event.currentTarget.value);
@@ -232,19 +287,70 @@ export const ModelWorkbench: Component<ActionContext> = (ctx) => {
                 />
               </div>
               <div class="editor-footer">
-                <span>{lineNumbers().length} 行</span>
+                <span>{lines().length} 行</span>
                 <span>UTF-8</span>
               </div>
+              <section class="diagnostics" aria-label="草稿诊断">
+                <h2>草稿诊断</h2>
+                <For each={[...(snapshot()?.diagnostics.errors ?? []), ...issues()]}>
+                  {(issue) => (
+                    <p role="alert">
+                      <code>{issue.path || "/"}</code> · {issue.code} · {issue.message}
+                    </p>
+                  )}
+                </For>
+                <Show when={!snapshot()?.diagnostics.errors.length && !issues().length}>
+                  <p class="muted">{dirty() ? "保存后返回最新诊断。" : "没有可确定错误。"}</p>
+                </Show>
+                <For each={snapshot()?.diagnostics.runtimeChecks ?? []}>
+                  {(issue) => (
+                    <p class="muted">
+                      <code>{issue.path}</code> · {issue.message}
+                    </p>
+                  )}
+                </For>
+              </section>
+              <section class="version-directory" aria-label="发布版本">
+                <h2>发布版本 · 只读</h2>
+                <Show when={versions.error}>
+                  <p role="alert">{errorPayload(versions.error).message}</p>
+                </Show>
+                <For each={versions.error ? [] : (versions() ?? [])}>
+                  {(version) => (
+                    <button
+                      class="text-button"
+                      onClick={() =>
+                        setVersionNumber(
+                          versionNumber() === version.version ? undefined : version.version,
+                        )
+                      }
+                    >
+                      v{version.version} · {version.revision.slice(0, 8)}
+                    </button>
+                  )}
+                </For>
+                <Show when={versionNumber()}>
+                  {(number) => (
+                    <pre class="version-json">
+                      {JSON.stringify(
+                        (versions.error ? [] : (versions() ?? [])).find(
+                          (version) => version.version === number(),
+                        )?.definition,
+                        null,
+                        2,
+                      )}
+                    </pre>
+                  )}
+                </Show>
+              </section>
             </section>
             <section class="panel preview-panel">
               <div class="editor-heading">
                 <h2>
                   <Icon name="preview" />
-                  页面预览
+                  管理预览
                 </h2>
-                <span class="source-pill" title={snapshot()?.revision}>
-                  版本 {snapshot()?.revision.slice(0, 8)}
-                </span>
+                <span class="muted">业务写入禁用</span>
               </div>
               <div class="preview-toolbar">
                 <SelectControl
@@ -254,9 +360,12 @@ export const ModelWorkbench: Component<ActionContext> = (ctx) => {
                   onChange={(value) => {
                     if (value) setRouter(value);
                   }}
-                  options={routes
-                    .filter((route) => route.router !== "models" && route.router !== "home")
-                    .map((route) => ({ value: route.router, label: routeLabel(route.router) }))}
+                  options={[
+                    ["list", "记录列表"],
+                    ["add", "新建记录"],
+                    ["edit", "编辑记录"],
+                    ["detail", "记录详情"],
+                  ].map(([value, label]) => ({ value, label }))}
                 />
                 <Show when={router() === "edit" || router() === "detail"}>
                   <input
@@ -267,28 +376,22 @@ export const ModelWorkbench: Component<ActionContext> = (ctx) => {
                     onInput={(event) => setRecordId(event.currentTarget.value)}
                   />
                 </Show>
-                <span class="preview-address">{preview().url.split("?")[0]}</span>
               </div>
               <Show
                 when={preview().url}
                 keyed
                 fallback={
                   <div class="preview-error">
-                    <p role="alert">{preview().error}</p>
+                    <p>{preview().error}</p>
                   </div>
                 }
               >
-                {(url) => <iframe class="preview-frame" title="模型实际预览" src={url} />}
+                {(url) => <iframe class="preview-frame" title="模型管理预览" src={url} />}
               </Show>
             </section>
           </div>
         </Show>
       </div>
-      <Show when={message()}>
-        <p class="workbench-message" role="status">
-          {message()}
-        </p>
-      </Show>
     </div>
   );
 };

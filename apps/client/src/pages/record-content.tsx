@@ -1,6 +1,7 @@
 import { createResource, createSignal, Show } from "solid-js";
 import type { Component } from "solid-js";
-import type { PageContext } from "formwork";
+import { FormworkError } from "formwork";
+import type { PageContext, ValidationIssue } from "formwork";
 import { DetailItem, FormItem } from "../ui/field-container";
 import { Icon } from "../ui/icons";
 
@@ -12,6 +13,7 @@ export const RecordEditor: Component<PageContext> = (ctx) => {
   });
   const [saving, setSaving] = createSignal(false);
   const [failure, setFailure] = createSignal("");
+  const [issues, setIssues] = createSignal<readonly ValidationIssue[]>([]);
   let form: HTMLDivElement | undefined;
   const Render = ctx.Render;
   const reload = async () => {
@@ -29,6 +31,7 @@ export const RecordEditor: Component<PageContext> = (ctx) => {
     if (saving() || ready.error || !ready()) return;
     setSaving(true);
     setFailure("");
+    setIssues([]);
     try {
       if ((await ctx.scope.validate()).status !== "valid") {
         form
@@ -41,7 +44,10 @@ export const RecordEditor: Component<PageContext> = (ctx) => {
       const saved = await ctx.fn.saveRecord(ctx.scope.value());
       if (!ctx.signal.aborted) ctx.complete(saved);
     } catch (error) {
-      if (!ctx.signal.aborted) setFailure(error instanceof Error ? error.message : String(error));
+      if (!ctx.signal.aborted) {
+        setFailure(error instanceof Error ? error.message : String(error));
+        if (error instanceof FormworkError) setIssues(error.issues);
+      }
     } finally {
       if (!ctx.signal.aborted) setSaving(false);
     }
@@ -56,7 +62,7 @@ export const RecordEditor: Component<PageContext> = (ctx) => {
       <div class="record-heading">
         <h1 tabindex="-1">
           {ctx.params.id ? "编辑" : "新建"}
-          {ctx.model.title}
+          {ctx.schema.title}
         </h1>
         <Show when={ctx.params.id}>
           <code class="record-meta">{ctx.params.id}</code>
@@ -83,6 +89,15 @@ export const RecordEditor: Component<PageContext> = (ctx) => {
         </div>
         <Show when={failure()}>
           <p role="alert">{failure()}</p>
+        </Show>
+        <Show when={issues().length}>
+          <ul class="server-issues">
+            {issues().map((issue) => (
+              <li role="alert">
+                <code>{issue.path || "/"}</code> · {issue.message}
+              </li>
+            ))}
+          </ul>
         </Show>
         <div class="record-actions">
           <span>标记 * 的字段为必填项</span>
@@ -120,7 +135,7 @@ export const RecordDetail: Component<PageContext> = (ctx) => {
       }}
     >
       <div class="record-heading">
-        <h1 tabindex="-1">{ctx.model.title}详情</h1>
+        <h1 tabindex="-1">{ctx.schema.title}详情</h1>
         <code class="record-meta">{ctx.params.id}</code>
       </div>
       <Show when={ready.error}>
@@ -140,7 +155,7 @@ export const RecordDetail: Component<PageContext> = (ctx) => {
         }
       >
         <div class="detail-fields">
-          <Render scope={value} view={ctx.model.views?.detail} fieldContainer={DetailItem} />
+          <Render scope={value} view={ctx.schema.views?.detail} fieldContainer={DetailItem} />
         </div>
       </Show>
     </div>
