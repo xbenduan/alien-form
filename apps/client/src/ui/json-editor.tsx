@@ -1,13 +1,11 @@
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { json } from "@codemirror/lang-json";
 import {
-  foldAll,
   foldGutter,
   foldKeymap,
   HighlightStyle,
   indentOnInput,
   syntaxHighlighting,
-  unfoldAll,
 } from "@codemirror/language";
 import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
@@ -89,14 +87,6 @@ export const JsonEditor: Component<{
   });
   return (
     <div class="json-editor">
-      <div class="json-fold-actions" aria-label="JSON 折叠操作">
-        <button class="text-button" type="button" onClick={() => view && foldAll(view)}>
-          折叠全部
-        </button>
-        <button class="text-button" type="button" onClick={() => view && unfoldAll(view)}>
-          展开全部
-        </button>
-      </div>
       <div
         ref={(element) => {
           container = element;

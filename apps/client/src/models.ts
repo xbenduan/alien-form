@@ -4,7 +4,13 @@ import type { PageLoadContext } from "formwork";
 import type { ActorSummary } from "formwork/model";
 
 const sessionKey = "formwork-user-session";
-const [token, setToken] = createSignal(sessionStorage.getItem(sessionKey) ?? undefined);
+const localPreview =
+  window.parent !== window &&
+  /^\/model-preview\/[a-z][a-z0-9_-]*$/u.test(location.pathname) &&
+  new URLSearchParams(location.search).get("embedded") === "1";
+const [token, setToken] = createSignal(
+  localPreview ? undefined : (sessionStorage.getItem(sessionKey) ?? undefined),
+);
 const [user, setUser] = createSignal<ActorSummary>();
 const [loading, setLoading] = createSignal(!!token());
 const [failure, setFailure] = createSignal("");
@@ -14,9 +20,9 @@ export const sessionToken = token;
 export const sessionUser = user;
 /** 表示当前标签页正在核实持久化会话。 */
 export const sessionLoading = loading;
-/** 返回会话核实的临时错误；网络失败不会删除同源预览共享的凭证。 */
+/** 返回会话核实的临时错误，网络失败时保留当前登录凭证。 */
 export const sessionFailure = failure;
-/** 更新登录会话，同源管理 iframe 在首次装载时复用 sessionStorage。 */
+/** 更新当前标签页登录会话，并同步 sessionStorage。 */
 export function setSessionToken(value?: string) {
   if (value) sessionStorage.setItem(sessionKey, value);
   else sessionStorage.removeItem(sessionKey);
@@ -67,7 +73,8 @@ async function restoreSession() {
 export function retrySession(): Promise<void> {
   return loading() ? Promise.resolve() : restoreSession();
 }
-void restoreSession();
+// 嵌入画布只接收父页 Schema 并使用本地数据。
+if (!localPreview) void restoreSession();
 /** 为 Page 和 Window 显式加载当前授权的已发布 schema。 */
 export async function loadPublishedSchema(ctx: PageLoadContext) {
   return (await ctx.api.runtime.schema(ctx.domain, { signal: ctx.signal })).schema;

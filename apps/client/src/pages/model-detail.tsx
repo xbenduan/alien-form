@@ -6,12 +6,14 @@ import {
   createUniqueId,
   For,
   lazy,
+  onCleanup,
+  onMount,
   Show,
 } from "solid-js";
 import type { Component } from "solid-js";
 import type { ActionContext, Diagnostic } from "formwork";
 import { FormworkError } from "formwork";
-import { errorPayload } from "formwork/model";
+import { errorPayload, isObject } from "formwork/model";
 import { refreshModelMenu } from "../model-menu";
 import { Icon } from "../ui/icons";
 import { PageTopbar } from "../ui/page-topbar";
@@ -21,6 +23,23 @@ import { SelectControl } from "../ui/select";
 const JsonEditor = lazy(() =>
   import("../ui/json-editor").then((module) => ({ default: module.JsonEditor })),
 );
+
+const previewPages = [
+  { value: "list", label: "记录列表" },
+  { value: "add", label: "新建记录" },
+  { value: "edit", label: "编辑记录" },
+  { value: "detail", label: "记录详情" },
+];
+
+const diagnosticKey = (issue: Diagnostic) =>
+  JSON.stringify([
+    issue.modelId,
+    issue.router,
+    issue.path,
+    issue.code,
+    issue.message,
+    issue.source,
+  ]);
 
 /** 编辑数据库完整 definition，保存可诊断草稿，并手动发布已审阅 revision。 */
 export const ModelDetail: Component<ActionContext> = (ctx) => {
@@ -40,12 +59,11 @@ export const ModelDetail: Component<ActionContext> = (ctx) => {
   const [busy, setBusy] = createSignal(false);
   const [message, setMessage] = createSignal("");
   const [issues, setIssues] = createSignal<readonly Diagnostic[]>([]);
-  const [router, setRouter] = createSignal("list");
-  const [recordId, setRecordId] = createSignal("");
   const [schemaOpen, setSchemaOpen] = createSignal(true);
-  const [diagnosticsOpen, setDiagnosticsOpen] = createSignal(true);
+  const [diagnosticsOpen, setDiagnosticsOpen] = createSignal(false);
   const schemaId = createUniqueId();
   const diagnosticsId = createUniqueId();
+  const diagnosticsSummaryId = createUniqueId();
   const historical = createMemo(() =>
     versions.error ? undefined : versions()?.find((version) => version.version === versionNumber()),
   );
@@ -56,6 +74,29 @@ export const ModelDetail: Component<ActionContext> = (ctx) => {
         : ""
       : draft(),
   );
+  let previewFrame: HTMLIFrameElement | undefined;
+  const sendPreview = () => {
+    const value = source();
+    previewFrame?.contentWindow?.postMessage(
+      { type: "model-preview:definition", domain: modelId(), source: value },
+      location.origin,
+    );
+  };
+  createEffect(sendPreview);
+  onMount(() => {
+    const receive = (event: MessageEvent) => {
+      if (
+        event.origin === location.origin &&
+        event.source === previewFrame?.contentWindow &&
+        isObject(event.data) &&
+        event.data.type === "model-preview:ready" &&
+        event.data.domain === modelId()
+      )
+        sendPreview();
+    };
+    window.addEventListener("message", receive);
+    onCleanup(() => window.removeEventListener("message", receive));
+  });
   const stateLabel = () =>
     versionNumber() !== undefined
       ? `v${versionNumber()} · 只读`
@@ -66,9 +107,30 @@ export const ModelDetail: Component<ActionContext> = (ctx) => {
           : snapshot()
             ? "已发布"
             : "正在加载";
-  const diagnostics = createMemo(() =>
-    versionNumber() !== undefined ? [] : [...(snapshot()?.diagnostics.errors ?? []), ...issues()],
-  );
+  const diagnostics = createMemo(() => [
+    ...new Map(
+      (versionNumber() !== undefined
+        ? []
+        : [...(snapshot()?.diagnostics.errors ?? []), ...issues()]
+      ).map((issue) => [diagnosticKey(issue), issue]),
+    ).values(),
+  ]);
+  const runtimeChecks = createMemo(() => {
+    const groups = new Map<string, { message: string; locations: Diagnostic[] }>();
+    const checks =
+      versionNumber() !== undefined ? [] : (snapshot()?.diagnostics.runtimeChecks ?? []);
+    for (const issue of new Map(checks.map((issue) => [diagnosticKey(issue), issue])).values()) {
+      const key = JSON.stringify([issue.code, issue.message]);
+      const group = groups.get(key);
+      if (group) group.locations.push(issue);
+      else groups.set(key, { message: issue.message, locations: [issue] });
+    }
+    return [...groups.values()];
+  });
+  const displayedRevision = () => historical()?.revision ?? revision();
+  createEffect(() => {
+    if (diagnostics().length) setDiagnosticsOpen(true);
+  });
   const versionOptions = createMemo(() => [
     {
       value: "latest",
@@ -85,28 +147,6 @@ export const ModelDetail: Component<ActionContext> = (ctx) => {
       setDraft(JSON.stringify(current.definition, null, 2));
       setRevision(current.revision);
     }
-  });
-  const preview = createMemo(() => {
-    const current = snapshot();
-    if (!current) return { url: "", error: "请先保存草稿。" };
-    if (versionNumber() !== undefined && !historical())
-      return { url: "", error: "无法加载历史版本，请重新载入。" };
-    if (versionNumber() === undefined && dirty())
-      return { url: "", error: "先保存草稿，再预览审阅结果。" };
-    if (versionNumber() === undefined && current.diagnostics.errors.length)
-      return { url: "", error: "草稿有校验错误，修复后才能预览。" };
-    if (["edit", "detail"].includes(router()) && !recordId())
-      return { url: "", error: "此页面预览需要记录 ID。" };
-    return {
-      url: `/model-preview/${current.id}?${new URLSearchParams({
-        router: router(),
-        ...(versionNumber() !== undefined
-          ? { version: String(versionNumber()) }
-          : { revision: current.revision }),
-        ...(recordId() ? { id: recordId() } : {}),
-      })}`,
-      error: "",
-    };
   });
   const reportFailure = (error: unknown) => {
     if (ctx.signal.aborted) return;
@@ -291,20 +331,14 @@ export const ModelDetail: Component<ActionContext> = (ctx) => {
                     <Icon name="chevron" class="ui-icon disclosure-chevron" />
                   </button>
                 </h2>
-                <span
-                  class="draft-state"
-                  classList={{ dirty: versionNumber() === undefined && dirty() }}
+                <code
+                  class="editor-metadata"
+                  title={`${modelId()} · ${displayedRevision() ?? "新建"}`}
                 >
-                  {stateLabel()}
-                </span>
+                  {modelId()} · {displayedRevision()?.slice(0, 8) ?? "新建"}
+                </code>
               </div>
               <div id={schemaId} class="schema-body" hidden={!schemaOpen()}>
-                <div class="editor-toolbar">
-                  <code>
-                    {modelId()} · {(historical()?.revision ?? revision())?.slice(0, 8) ?? "新建"}
-                  </code>
-                  <span>{versionNumber() !== undefined ? "历史版本 · 只读" : "JSON"}</span>
-                </div>
                 <JsonEditor
                   value={source()}
                   readOnly={versionNumber() !== undefined || !snapshot()?.canManage}
@@ -315,24 +349,30 @@ export const ModelDetail: Component<ActionContext> = (ctx) => {
                     setDirty(true);
                   }}
                 />
-                <div class="editor-footer">
-                  <span>{source().split("\n").length} 行</span>
-                  <span>UTF-8</span>
-                </div>
               </div>
               <section class="diagnostics" aria-label="草稿诊断">
                 <h2>
                   <button
                     class="section-toggle"
                     type="button"
+                    aria-label="草稿诊断"
+                    aria-describedby={diagnosticsSummaryId}
                     aria-expanded={diagnosticsOpen()}
                     aria-controls={diagnosticsId}
                     onClick={() => setDiagnosticsOpen((value) => !value)}
                   >
                     草稿诊断
-                    <Show when={diagnostics().length}>
-                      <span class="diagnostic-count">{diagnostics().length}</span>
-                    </Show>
+                    <span
+                      id={diagnosticsSummaryId}
+                      class="diagnostic-summary"
+                      classList={{ "diagnostic-count": !!diagnostics().length }}
+                    >
+                      {diagnostics().length
+                        ? `${diagnostics().length} 项错误`
+                        : versionNumber() === undefined && dirty()
+                          ? "待校验"
+                          : "无错误"}
+                    </span>
                     <Icon name="chevron" class="ui-icon disclosure-chevron" />
                   </button>
                 </h2>
@@ -353,17 +393,30 @@ export const ModelDetail: Component<ActionContext> = (ctx) => {
                           : "没有可确定错误。"}
                     </p>
                   </Show>
-                  <For
-                    each={
-                      versionNumber() !== undefined
-                        ? []
-                        : (snapshot()?.diagnostics.runtimeChecks ?? [])
-                    }
-                  >
-                    {(issue) => (
-                      <p class="muted">
-                        <code>{issue.path}</code> · {issue.message}
-                      </p>
+                  <For each={runtimeChecks()}>
+                    {(group) => (
+                      <div class="runtime-check">
+                        <p class="muted">{group.message}</p>
+                        <div class="runtime-locations" aria-label="运行检查位置">
+                          <For each={group.locations}>
+                            {(issue) => (
+                              <code>
+                                {[
+                                  issue.modelId !== modelId() ? issue.modelId : "",
+                                  previewPages.find((page) => page.value === issue.router)?.label ??
+                                    issue.router,
+                                  issue.path,
+                                  issue.source
+                                    ? `${issue.source.file}:${issue.source.line}:${issue.source.column}`
+                                    : "",
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ") || "/"}
+                              </code>
+                            )}
+                          </For>
+                        </div>
+                      </div>
                     )}
                   </For>
                 </div>
@@ -375,46 +428,17 @@ export const ModelDetail: Component<ActionContext> = (ctx) => {
               <div class="editor-heading">
                 <h2>
                   <Icon name="preview" />
-                  管理预览
+                  实时预览
                 </h2>
-                <span class="muted">业务写入禁用</span>
+                <span class="preview-restriction">模拟数据</span>
               </div>
-              <div class="preview-toolbar">
-                <SelectControl
-                  class="preview-select"
-                  label="预览页面"
-                  value={router()}
-                  onChange={(value) => {
-                    if (value) setRouter(value);
-                  }}
-                  options={[
-                    ["list", "记录列表"],
-                    ["add", "新建记录"],
-                    ["edit", "编辑记录"],
-                    ["detail", "记录详情"],
-                  ].map(([value, label]) => ({ value, label }))}
-                />
-                <Show when={router() === "edit" || router() === "detail"}>
-                  <input
-                    class="control"
-                    aria-label="预览记录 ID"
-                    placeholder="记录 ID"
-                    value={recordId()}
-                    onInput={(event) => setRecordId(event.currentTarget.value)}
-                  />
-                </Show>
-              </div>
-              <Show
-                when={preview().url}
-                keyed
-                fallback={
-                  <div class="preview-error">
-                    <p>{preview().error}</p>
-                  </div>
-                }
-              >
-                {(url) => <iframe class="preview-frame" title="模型管理预览" src={url} />}
-              </Show>
+              <iframe
+                ref={(element) => { previewFrame = element; }}
+                class="preview-frame"
+                title="模型管理预览"
+                src={`/model-preview/${modelId()}?embedded=1`}
+                onLoad={sendPreview}
+              />
             </section>
           }
         />

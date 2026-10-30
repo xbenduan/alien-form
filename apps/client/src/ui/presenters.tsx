@@ -1,10 +1,11 @@
-import { Dialog } from "@kobalte/core/dialog";
 import { useLocation } from "@solidjs/router";
 import { Show } from "solid-js";
 import type { Component } from "solid-js";
+import { Dynamic } from "solid-js/web";
 import type { PresenterProps } from "formwork";
 import { AppShell } from "./app-shell";
 import { Icon } from "./icons";
+import { Drawer, OverlayWindow } from "./window";
 
 const embeddedPreview = window.location.pathname.startsWith("/model-preview/");
 
@@ -15,9 +16,16 @@ export const PagePresenter: Component<PresenterProps> = (props) => {
     <Show
       when={!embeddedPreview && !loginPage}
       fallback={
-        <main class={loginPage ? "auth-layout" : "page-canvas embedded-canvas"}>
-          {props.children}
-        </main>
+        <Show
+          when={loginPage}
+          fallback={
+            <div class="embedded-layout">
+              <main class="page-canvas embedded-canvas">{props.children}</main>
+            </div>
+          }
+        >
+          <main class="auth-layout">{props.children}</main>
+        </Show>
       }
     >
       <AppShell>{props.children}</AppShell>
@@ -34,31 +42,18 @@ const Overlay: Component<PresenterProps & { drawer?: boolean }> = (props) => (
         </div>
       </AppShell>
     </Show>
-    <Dialog
+    <Dynamic
+      component={props.drawer ? Drawer : OverlayWindow}
       open
-      onOpenChange={(open) => {
-        if (!open) props.close();
-      }}
+      label={props.drawer ? "记录详情" : "编辑记录"}
+      onClose={props.close}
+      restoreFocus={false}
     >
-      <Dialog.Portal>
-        <Dialog.Overlay class="window-overlay" />
-        <Dialog.Content
-          class={props.drawer ? "window-content drawer" : "window-content modal"}
-          onCloseAutoFocus={(event) => event.preventDefault()}
-        >
-          <div class="window-heading">
-            <Dialog.Title class="sr-only">{props.drawer ? "记录详情" : "编辑记录"}</Dialog.Title>
-            <Dialog.CloseButton class="icon-button" aria-label="关闭窗口">
-              <Icon name="close" />
-            </Dialog.CloseButton>
-          </div>
-          {props.children}
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog>
+      {props.children}
+    </Dynamic>
   </>
 );
 /** 使用 Kobalte 管理 Modal 的焦点、Esc 和关闭动作。 */
 export const ModalPresenter: Component<PresenterProps> = (props) => <Overlay {...props} />;
-/** 使用同一完整内容挂载流程呈现 Drawer。 */
+/** 使用公共 Drawer 呈现完整记录详情。 */
 export const DrawerPresenter: Component<PresenterProps> = (props) => <Overlay {...props} drawer />;

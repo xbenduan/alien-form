@@ -9,10 +9,11 @@ export const ResizablePanels: Component<{ left: JSX.Element; right: JSX.Element 
   let container!: HTMLDivElement;
   let separator!: HTMLDivElement;
   let pointer: number | undefined;
+  const separatorWidth = () => separator.getBoundingClientRect().width;
   const clamp = (value: number) => Math.max(minimum(), Math.min(100 - minimum(), value));
   const measure = () => {
     if (window.innerWidth <= 850) return;
-    const available = Math.max(1, container.clientWidth - 8);
+    const available = Math.max(1, container.clientWidth - separatorWidth());
     setMinimum(Math.min(50, (280 / available) * 100));
     setRatio(clamp(ratio()));
   };
@@ -38,7 +39,9 @@ export const ResizablePanels: Component<{ left: JSX.Element; right: JSX.Element 
       }}
       class="workbench-panels"
       classList={{ "is-resizing": dragging() }}
-      style={{ "grid-template-columns": `${ratio()}fr 8px ${100 - ratio()}fr` }}
+      style={{
+        "grid-template-columns": `${ratio()}fr var(--layout-gap) ${100 - ratio()}fr`,
+      }}
     >
       {props.left}
       <div
@@ -66,8 +69,11 @@ export const ResizablePanels: Component<{ left: JSX.Element; right: JSX.Element 
         onPointerMove={(event) => {
           if (pointer !== event.pointerId) return;
           const bounds = container.getBoundingClientRect();
+          const gap = separatorWidth();
           setRatio(
-            clamp(((event.clientX - bounds.left - 4) / Math.max(1, bounds.width - 8)) * 100),
+            clamp(
+              ((event.clientX - bounds.left - gap / 2) / Math.max(1, bounds.width - gap)) * 100,
+            ),
           );
         }}
         onPointerUp={stop}

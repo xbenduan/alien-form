@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -39,6 +39,36 @@ async function fillJson(page: Page, value: string) {
   await page.keyboard.insertText(value);
   await editor.press("ControlOrMeta+Home");
 }
+async function expectFloatingDrawer(drawer: Locator) {
+  await expect(drawer).toBeVisible();
+  const layout = await drawer.evaluate(async (element) => {
+    await Promise.all(element.getAnimations().map((animation) => animation.finished));
+    const rect = element.getBoundingClientRect();
+    const viewport = element.ownerDocument.defaultView!;
+    const style = getComputedStyle(element);
+    const heading = element.querySelector(".record-heading")!.getBoundingClientRect();
+    const close = element.querySelector(".window-heading button")!.getBoundingClientRect();
+    return {
+      left: rect.left,
+      top: rect.top,
+      right: viewport.innerWidth - rect.right,
+      bottom: viewport.innerHeight - rect.bottom,
+      corners: [
+        style.borderTopLeftRadius,
+        style.borderTopRightRadius,
+        style.borderBottomLeftRadius,
+        style.borderBottomRightRadius,
+      ].map(Number.parseFloat),
+      headingHeight: heading.height,
+      closeWithinHeading: close.top >= heading.top && close.bottom <= heading.bottom,
+    };
+  });
+  for (const gap of [layout.left, layout.top, layout.right, layout.bottom])
+    expect(gap).toBeGreaterThan(0);
+  for (const corner of layout.corners) expect(corner).toBeGreaterThan(0);
+  expect(layout.headingHeight).toBeLessThanOrEqual(64);
+  expect(layout.closeWithinHeading).toBe(true);
+}
 test.beforeEach(async ({ page }) => {
   await login(page);
 });
@@ -56,9 +86,9 @@ test("旧深色偏好和系统深色模式不影响明亮首屏、独立页面�
   expect(await root.evaluate((element) => getComputedStyle(element).colorScheme)).toBe("light");
 
   await page.goto("/models/orders");
-  await page.getByRole("combobox", { name: "预览页面" }).click();
-  await page.getByRole("option", { name: "新建记录", exact: true }).click();
   const preview = page.frameLocator('iframe[title="模型管理预览"]');
+  await preview.getByRole("button", { name: "新建记录", exact: true }).click();
+  await expect(preview.getByRole("dialog")).toBeVisible();
   await expect(preview.locator("html")).toHaveAttribute("data-theme", "light");
   expect(
     await preview.locator("html").evaluate((element) => getComputedStyle(element).colorScheme),
@@ -141,7 +171,9 @@ test("orders：Filter 草稿、false、同 id 刷新、完整 Modal/Drawer", asy
   await expect(modal).not.toBeVisible();
   await expect(row).toContainText("456");
   await row.getByRole("button", { name: "详情" }).click();
-  await expect(page.getByRole("dialog").getByRole("heading", { name: "订单详情" })).toBeVisible();
+  const drawer = page.getByRole("dialog", { name: "记录详情" });
+  await expect(drawer.getByRole("heading", { name: "订单详情" })).toBeVisible();
+  await expectFloatingDrawer(drawer);
   await expect(page.getByRole("dialog")).toContainText("456");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
@@ -320,10 +352,10 @@ test("分隔条指针和键盘调整保留 iframe 表单与 Schema 文本，窄�
   const original = JSON.stringify(definition, null, 2);
   await expect(json).toContainText(definition.document.title);
   const editor = await json.elementHandle();
-  await page.getByRole("combobox", { name: "预览页面" }).click();
-  await page.getByRole("option", { name: "新建记录", exact: true }).click();
   const preview = page.frameLocator('iframe[title="模型管理预览"]');
-  await preview.getByLabel("订单号").fill("DRAG-KEPT");
+  await preview.getByRole("button", { name: "新建记录", exact: true }).click();
+  const form = preview.getByRole("dialog");
+  await form.getByLabel("订单号").fill("DRAG-KEPT");
   const frame = await page.locator("iframe").elementHandle();
   const separator = page.getByRole("separator", { name: "调整 Schema 与预览宽度" });
   const initial = await page.locator(".source-panel").boundingBox();
@@ -331,6 +363,9 @@ test("分隔条指针和键盘调整保留 iframe 表单与 Schema 文本，窄�
   await page.mouse.move(handle.x + handle.width / 2, handle.y + 160);
   await page.mouse.down();
   await page.mouse.move(handle.x + 150, handle.y + 160, { steps: 12 });
+  expect(await separator.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe(
+    "none",
+  );
   await page.mouse.up();
   expect((await page.locator(".source-panel").boundingBox())!.width).toBeGreaterThan(
     initial!.width + 100,
@@ -338,7 +373,7 @@ test("分隔条指针和键盘调整保留 iframe 表单与 Schema 文本，窄�
   expect(
     await page.locator("iframe").evaluate((element, previous) => element === previous, frame),
   ).toBe(true);
-  await expect(preview.getByLabel("订单号")).toHaveValue("DRAG-KEPT");
+  await expect(form.getByLabel("订单号")).toHaveValue("DRAG-KEPT");
   expect(await json.evaluate((element, previous) => element === previous, editor)).toBe(true);
   await expect(json).toContainText(definition.document.title);
   await separator.focus();
@@ -360,6 +395,10 @@ test("分隔条指针和键盘调整保留 iframe 表单与 Schema 文本，窄�
     JSON.stringify("拖动保留草稿"),
   );
   await fillJson(page, changed);
+  await expect(preview.getByRole("heading", { name: "新建拖动保留草稿", exact: true })).toHaveCount(
+    0,
+  );
+  await expect(preview.getByRole("heading", { name: "拖动保留草稿", exact: true })).toBeVisible();
   await separator.focus();
   await page.keyboard.press("ArrowLeft");
   await expect(json).toContainText("拖动保留草稿");
@@ -373,63 +412,217 @@ test("分隔条指针和键盘调整保留 iframe 表单与 Schema 文本，窄�
 });
 
 test("Schema、JSON 节点和诊断独立折叠，保留草稿及预览表单", async ({ page }) => {
+  const current = await (await request(page, "/models/orders")).json();
+  expect(
+    (
+      await request(page, "/models/orders/draft", "PUT", {
+        definition: current.definition,
+        ifRevision: current.revision,
+      })
+    ).ok(),
+  ).toBe(true);
   await page.goto("/models/orders");
   const json = page.getByRole("textbox", { name: "完整 definition JSON" });
   await expect(json).toBeVisible();
-  await page.getByRole("combobox", { name: "预览页面" }).click();
-  await page.getByRole("option", { name: "新建记录", exact: true }).click();
+  const diagnostics = page.getByRole("region", { name: "草稿诊断" });
+  const diagnosticsToggle = diagnostics.getByRole("button", { name: "草稿诊断", exact: true });
+  await expect(diagnosticsToggle).toHaveAttribute("aria-expanded", "false");
+  await expect(diagnosticsToggle).toContainText("无错误");
+  await expect(page.locator(".draft-state")).toHaveCount(1);
+  await expect(page.locator(".editor-toolbar, .editor-footer, .json-fold-actions")).toHaveCount(0);
+  const {
+    definition,
+    diagnostics: report,
+    revision,
+  } = await (await request(page, "/models/orders")).json();
   const preview = page.frameLocator('iframe[title="模型管理预览"]');
-  await preview.getByLabel("订单号").fill("COLLAPSE-KEPT");
+  await preview.getByRole("button", { name: "新建记录", exact: true }).click();
+  const form = preview.getByRole("dialog");
+  await form.getByLabel("订单号").fill("COLLAPSE-KEPT");
+  await expect(preview.locator(".preview-notice")).toHaveCount(0);
+  const standalone = await page.context().newPage();
+  try {
+    const url = new URL(`/model-preview/orders?revision=${revision}`, page.url());
+    await login(standalone);
+    await standalone.goto(url.href);
+    await expect(standalone.locator(".preview-notice")).toContainText("所有操作仅在当前预览中生效");
+    await expect(standalone.locator("tbody tr")).toHaveCount(3);
+  } finally {
+    await standalone.close();
+  }
   const frame = await page.locator("iframe").elementHandle();
   const editor = await json.elementHandle();
   await page.locator('.json-fold-toggle[title="折叠 JSON 节点"]:visible').first().click();
   await expect(page.locator(".cm-foldPlaceholder")).toHaveCount(1);
   await page.locator('.json-fold-toggle[title="展开 JSON 节点"]:visible').first().click();
   await expect(page.locator(".cm-foldPlaceholder")).toHaveCount(0);
-  await page.getByRole("button", { name: "折叠全部", exact: true }).click();
-  await expect(page.locator(".cm-foldPlaceholder")).toHaveCount(1);
-  await page.getByRole("button", { name: "展开全部", exact: true }).click();
-  await expect(page.locator(".cm-foldPlaceholder")).toHaveCount(0);
   await page.getByRole("button", { name: "Schema JSON", exact: true }).click();
   await expect(json).not.toBeVisible();
-  const diagnostics = page.getByRole("region", { name: "草稿诊断" });
-  await diagnostics.getByRole("button", { name: "草稿诊断", exact: true }).click();
+  await diagnosticsToggle.click();
+  await expect(diagnosticsToggle).toHaveAttribute("aria-expanded", "true");
+  const runtimeChecks = report.runtimeChecks as Array<{
+    code: string;
+    message: string;
+    router?: string;
+    path: string;
+  }>;
+  const groups = new Set(runtimeChecks.map((issue) => JSON.stringify([issue.code, issue.message])));
+  expect(runtimeChecks.length).toBeGreaterThan(groups.size);
+  await expect(diagnostics.locator(".runtime-check")).toHaveCount(groups.size);
+  const labels: Record<string, string> = {
+    list: "记录列表",
+    add: "新建记录",
+    edit: "编辑记录",
+    detail: "记录详情",
+  };
+  for (const router of new Set(runtimeChecks.map((issue) => issue.router))) {
+    if (router) {
+      await expect(diagnostics).toContainText(labels[router] ?? router);
+    }
+  }
+  await diagnosticsToggle.click();
   await expect(diagnostics.getByText("没有可确定错误。", { exact: true })).not.toBeVisible();
-  await expect(preview.getByLabel("订单号")).toHaveValue("COLLAPSE-KEPT");
+  await expect(form.getByLabel("订单号")).toHaveValue("COLLAPSE-KEPT");
   await page.getByRole("button", { name: "Schema JSON", exact: true }).click();
   await expect(json).toBeVisible();
   expect(await json.evaluate((element, previous) => element === previous, editor)).toBe(true);
   expect(
     await page.locator("iframe").evaluate((element, previous) => element === previous, frame),
   ).toBe(true);
-  await expect(preview.getByLabel("订单号")).toHaveValue("COLLAPSE-KEPT");
-  const { definition } = await (await request(page, "/models/orders")).json();
+  await expect(form.getByLabel("订单号")).toHaveValue("COLLAPSE-KEPT");
   definition.document.title = "折叠保留草稿";
   await fillJson(page, JSON.stringify(definition, null, 2));
   await page.getByRole("button", { name: "Schema JSON", exact: true }).click();
   await page.getByRole("button", { name: "Schema JSON", exact: true }).click();
   await expect(json).toContainText("折叠保留草稿");
   await expect(page.getByRole("button", { name: "保存草稿", exact: true })).toBeEnabled();
-  await diagnostics.getByRole("button", { name: "草稿诊断", exact: true }).click();
+  await diagnosticsToggle.click();
   await expect(diagnostics).toContainText("保存后返回最新诊断。");
 });
 
-test("预览核实会话时网络中断不清除外层登录状态", async ({ page }) => {
-  let interrupted = false;
-  await page.route("**/api/v1/auth/me", async (route) => {
+test("实时预览完整 CRUD、筛选和刷新均不请求接口，也不改变真实记录", async ({ page }) => {
+  const errors: string[] = [];
+  const previewRequests: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.route("**/api/v1/**", async (route) => {
     if (route.request().frame().parentFrame()) {
-      interrupted = true;
+      previewRequests.push(route.request().url());
       await route.abort("failed");
     } else await route.continue();
   });
+  const query = { filters: {}, page: 1, pageSize: 50 };
+  const original = await (await request(page, "/records/orders/query", "POST", query)).json();
   await page.goto("/models/orders");
-  await expect.poll(() => interrupted).toBe(true);
-  await expect
-    .poll(() => page.evaluate(() => !!sessionStorage.getItem("formwork-user-session")))
-    .toBe(true);
+  await expect(page.getByRole("heading", { name: "实时预览", exact: true })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "预览页面" })).toHaveCount(0);
+  await expect(page.getByLabel("预览记录 ID")).toHaveCount(0);
+  const preview = page.frameLocator('iframe[title="模型管理预览"]');
+  await expect(preview.locator("tbody tr")).toHaveCount(3);
+  const row = preview.locator('tr[data-record-id="preview-1"]');
+  const dialog = preview.getByRole("dialog");
+  await row.getByRole("button", { name: "详情", exact: true }).click();
+  await expect(dialog).toContainText("订单详情");
+  await expectFloatingDrawer(dialog);
+  await expect(dialog).toContainText("订单号 1");
+  await dialog.getByRole("button", { name: "关闭窗口", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(row.getByRole("button", { name: "详情", exact: true })).toBeFocused();
+  await row.getByRole("button", { name: "编辑", exact: true }).click();
+  await dialog.getByLabel("金额").fill("987");
+  await dialog.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(row).toContainText("987");
+  await row.getByRole("button", { name: "编辑", exact: true }).click();
+  await dialog.getByLabel("金额").fill("123");
+  await dialog.getByLabel("金额").press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(row).toContainText("987");
+  await expect(row.getByRole("button", { name: "编辑", exact: true })).toBeFocused();
+  await preview.getByRole("button", { name: "新建记录", exact: true }).click();
+  await dialog.getByLabel("订单号").fill("LOCAL-CREATED");
+  await dialog.getByRole("button", { name: "添加明细", exact: true }).click();
+  await dialog.getByLabel("SKU").fill("LOCAL-SKU");
+  await dialog.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(preview.locator("tbody tr")).toHaveCount(4);
+  const created = preview.getByRole("row").filter({ hasText: "LOCAL-CREATED" });
+  await created.getByRole("button", { name: "详情", exact: true }).click();
+  await expect(dialog).toContainText("LOCAL-SKU");
+  await dialog.getByRole("button", { name: "关闭窗口", exact: true }).click();
+  const filters = preview.getByRole("form", { name: "筛选记录" });
+  await filters.getByLabel("订单号", { exact: true }).fill("LOCAL-CREATED");
+  await filters.getByRole("button", { name: "查询", exact: true }).click();
+  await expect(preview.locator("tbody tr")).toHaveCount(1);
+  await preview.getByRole("button", { name: "刷新", exact: true }).click();
+  await expect(preview.locator("tbody tr")).toHaveCount(1);
+  await filters.getByRole("button", { name: "清空筛选", exact: true }).click();
+  await expect(preview.locator("tbody tr")).toHaveCount(4);
+  await created.getByRole("button", { name: "删除", exact: true }).click();
+  await expect(preview.locator("tbody tr")).toHaveCount(3);
+  expect(await (await request(page, "/records/orders/query", "POST", query)).json()).toEqual(
+    original,
+  );
+  expect(previewRequests).toEqual([]);
+  expect(errors).toEqual([]);
+  await expect(page).toHaveURL(/\/models\/orders$/u);
   await page.goto("/tokens");
   await expect(page.getByRole("heading", { name: "API token", exact: true })).toBeVisible();
   await expect(page.locator(".sidebar-bottom").getByRole("button", { name: "退出" })).toBeVisible();
+});
+
+test("未保存 Schema 实时更新，backend 与无效 JSON 保留当前预览输入", async ({ page }) => {
+  const { definition } = await (await request(page, "/models/orders")).json();
+  await page.goto("/models/orders");
+  const preview = page.frameLocator('iframe[title="模型管理预览"]');
+  await expect(preview.locator("tbody tr")).toHaveCount(3);
+  const frame = await page.locator("iframe").elementHandle();
+  definition.document.title = "实时订单";
+  definition.document.data.properties.previewTag = {
+    type: "string",
+    title: "预览字段",
+    default: "自动示例",
+  };
+  await fillJson(page, JSON.stringify(definition, null, 2));
+  await expect(page.getByRole("button", { name: "保存草稿", exact: true })).toBeEnabled();
+  await expect(preview.getByRole("heading", { name: "实时订单", exact: true })).toBeVisible();
+  await expect(preview.getByRole("columnheader", { name: "预览字段", exact: true })).toBeVisible();
+  await expect(preview.locator("tbody")).toContainText("自动示例");
+  await preview.getByRole("button", { name: "新建记录", exact: true }).click();
+  const dialog = preview.getByRole("dialog");
+  await dialog.getByLabel("订单号").fill("UNSAVED-PREVIEW");
+  await dialog.getByLabel("预览字段").fill("KEPT-PREVIEW");
+  definition.backend.storage.table = "preview_backend_only";
+  const valid = JSON.stringify(definition, null, 2);
+  await fillJson(page, valid);
+  await expect(dialog.getByLabel("订单号")).toHaveValue("UNSAVED-PREVIEW");
+  await expect(dialog.getByLabel("预览字段")).toHaveValue("KEPT-PREVIEW");
+  await fillJson(page, valid.slice(0, -1));
+  await expect(preview.locator(".preview-status")).toContainText("JSON 编辑中");
+  await expect(dialog.getByLabel("预览字段")).toHaveValue("KEPT-PREVIEW");
+  await fillJson(
+    page,
+    JSON.stringify(
+      {
+        ...definition,
+        document: { ...definition.document, data: {} },
+      },
+      null,
+      2,
+    ),
+  );
+  await expect(preview.locator(".preview-status")).toContainText("Schema 暂不可预览");
+  await expect(dialog.getByLabel("预览字段")).toHaveValue("KEPT-PREVIEW");
+  await fillJson(page, valid);
+  await expect(preview.locator(".preview-status")).toHaveCount(0);
+  await expect(dialog.getByLabel("预览字段")).toHaveValue("KEPT-PREVIEW");
+  expect(
+    await page.locator("iframe").evaluate((element, previous) => element === previous, frame),
+  ).toBe(true);
+  await dialog.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(preview.getByRole("row").filter({ hasText: "UNSAVED-PREVIEW" })).toContainText(
+    "KEPT-PREVIEW",
+  );
 });
 
 test("外层会话核实网络失败可重试，真实 401 清理会话与菜单", async ({ page }) => {
@@ -537,7 +730,7 @@ test("cms Domain 从 ctx.schema 定制 RichText、Zod 与保存 fn", async ({ pa
   await expect(page).toHaveURL(/\/list\/cms$/u);
 });
 
-test("无效草稿、有效预览禁写、手动发布、刷新与旧页 422 保留输入", async ({ page, context }) => {
+test("无效草稿、本地预览保存、手动发布、刷新与旧页 422 保留输入", async ({ page, context }) => {
   const source = await (await request(page, "/models/orders")).json();
   const definition = structuredClone(source.definition);
   definition.document.id = "review-orders";
@@ -567,12 +760,22 @@ test("无效草稿、有效预览禁写、手动发布、刷新与旧页 422 保
   const preview = page.frameLocator('iframe[title="模型管理预览"]');
   await expect(preview.getByRole("heading", { name: "审阅订单", exact: true })).toBeVisible();
   await preview.getByRole("button", { name: "新建记录", exact: true }).click();
-  await preview.getByLabel("订单号").fill("PREVIEW-ONLY");
-  await preview.getByRole("button", { name: "保存", exact: true }).click();
-  await expect(preview.getByRole("alert")).toContainText("预览不保存业务数据");
+  await preview.getByRole("dialog").getByLabel("订单号").fill("PREVIEW-ONLY");
+  await preview.getByRole("dialog").getByRole("button", { name: "保存", exact: true }).click();
+  await expect(preview.getByRole("dialog")).toHaveCount(0);
+  await expect(preview.locator("tbody")).toContainText("PREVIEW-ONLY");
   expect((await request(page, "/runtime/models/review-orders")).status()).toBe(404);
   await page.getByRole("button", { name: "手动发布", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("已手动发布版本 1");
+  expect(
+    await (
+      await request(page, "/records/review-orders/query", "POST", {
+        filters: {},
+        page: 1,
+        pageSize: 10,
+      })
+    ).json(),
+  ).toMatchObject({ list: [], total: 0 });
   const created = await request(page, "/records/review-orders", "POST", {
     orderNo: "ORIGINAL",
     status: "pending",
@@ -642,6 +845,9 @@ test("无效草稿、有效预览禁写、手动发布、刷新与旧页 422 保
   await expect(json).toContainText("切换保留最新草稿");
   await expect(json).toHaveAttribute("aria-readonly", "false");
   await expect(page.getByRole("button", { name: "保存草稿", exact: true })).toBeEnabled();
+  await expect(
+    preview.getByRole("heading", { name: "切换保留最新草稿", exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "重新载入", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("已重新载入最新管理状态");
   await expect(json).toContainText("新发布订单");
@@ -721,7 +927,7 @@ test("agent CAS 冲突保留文本、无发布权限、UI token 撤销与注销"
   expect((await request(page, "/auth/me", "GET", undefined, session!)).status()).toBe(401);
 });
 
-test("管理页桌面与移动布局无溢出", async ({ page }, info) => {
+test("管理页 flex 间距统一、内容边缘对齐且桌面与移动无溢出", async ({ page }, info) => {
   for (const [name, width, height] of [
     ["desktop", 1440, 1000],
     ["medium", 960, 900],
@@ -744,6 +950,58 @@ test("管理页桌面与移动布局无溢出", async ({ page }, info) => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
+    const assertAlignment = async () => {
+      const layout = await page.evaluate(() => {
+        const read = (selector: string) => {
+          const element = document.querySelector<HTMLElement>(selector)!;
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return {
+            x: rect.x,
+            y: rect.y,
+            right: rect.right,
+            bottom: rect.bottom,
+            display: style.display,
+            gap: parseFloat(style.gap),
+            padding: style.padding,
+            margin: style.margin,
+          };
+        };
+        return {
+          shell: read(".app-shell"),
+          sidebar: read(".sidebar"),
+          main: read(".app-main"),
+          topbar: read("header.topbar"),
+          canvas: read("#main-content"),
+        };
+      });
+      expect(layout.shell.display).toBe("flex");
+      expect(layout.main.padding).toBe("0px");
+      expect(layout.main.margin).toBe("0px");
+      expect(layout.canvas.padding).toBe("0px");
+      expect(layout.canvas.margin).toBe("0px");
+      expect(layout.topbar.x).toBeCloseTo(layout.canvas.x);
+      expect(layout.topbar.right).toBeCloseTo(layout.canvas.right);
+      expect(layout.canvas.y - layout.topbar.bottom).toBeCloseTo(layout.shell.gap);
+      if (width > 600) {
+        expect(layout.main.x - layout.sidebar.right).toBeCloseTo(layout.shell.gap);
+        expect(layout.main.y).toBeCloseTo(layout.sidebar.y);
+        expect(layout.main.bottom).toBeCloseTo(layout.sidebar.bottom);
+      } else {
+        expect(layout.main.y - layout.sidebar.bottom).toBeCloseTo(layout.shell.gap);
+        expect(layout.main.x).toBeCloseTo(layout.sidebar.x);
+      }
+    };
+    await assertAlignment();
     await page.screenshot({ path: info.outputPath(`${name}.png`), fullPage: true });
+    for (const route of ["/models", "/tokens", "/list/orders"]) {
+      await page.goto(route);
+      await expect(page.locator("header.topbar h1")).toBeVisible();
+      await expect(page.locator("#main-content > div").first()).toBeVisible();
+      await assertAlignment();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+    }
   }
 });
