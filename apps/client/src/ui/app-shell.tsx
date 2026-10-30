@@ -13,6 +13,8 @@ import { modelMenu, modelMenuFailure, modelMenuLoading, refreshModelMenu } from 
 import { BrandMark, Icon } from "./icons";
 import { registerTopbar } from "./page-topbar";
 
+const [pinnedOpen, setPinnedOpen] = createSignal(true);
+
 /** 为页面提供统一导航和可信登录身份，未登录时进入登录页。 */
 export const AppShell: Component<{ children?: JSX.Element }> = (props) => {
   const location = useLocation();
@@ -86,7 +88,7 @@ export const AppShell: Component<{ children?: JSX.Element }> = (props) => {
   const NavItem: Component<{
     href: string;
     title: string;
-    icon: Parameters<typeof Icon>[0]["name"];
+    icon?: Parameters<typeof Icon>[0]["name"];
   }> = (item) => (
     <A
       href={item.href}
@@ -96,7 +98,7 @@ export const AppShell: Component<{ children?: JSX.Element }> = (props) => {
       title={item.title}
       aria-current={active(item.href) ? "page" : undefined}
     >
-      <Icon name={item.icon} />
+      <Show when={item.icon}>{(name) => <Icon name={name()} />}</Show>
       <span>{item.title}</span>
     </A>
   );
@@ -129,20 +131,32 @@ export const AppShell: Component<{ children?: JSX.Element }> = (props) => {
                 />
               )}
             </For>
-            <NavItem href="/tokens" title="API token" icon="code" />
+            <NavItem href="/tokens" title="API token" icon="key" />
           </div>
           <div class="nav-group pinned-group" aria-label="已固定模型">
-            <span class="nav-group-label">已固定模型</span>
-            <For
-              each={modelMenu()?.pinnedModels ?? []}
-              fallback={
-                <span class="nav-empty">
-                  {modelMenuLoading() && !modelMenu() ? "正在加载…" : "暂无固定模型"}
-                </span>
-              }
+            <button
+              class="nav-group-toggle"
+              type="button"
+              aria-expanded={pinnedOpen()}
+              aria-controls="pinned-model-links"
+              onClick={() => setPinnedOpen((value) => !value)}
             >
-              {(entry) => <NavItem href={`/list/${entry.id}`} title={entry.title} icon="pin" />}
-            </For>
+              <span>已固定模型</span>
+              <span class="nav-group-count">{modelMenu()?.pinnedModels.length ?? 0}</span>
+              <Icon name="chevron" class="ui-icon disclosure-chevron" />
+            </button>
+            <div id="pinned-model-links" class="pinned-links" hidden={!pinnedOpen()}>
+              <For
+                each={modelMenu()?.pinnedModels ?? []}
+                fallback={
+                  <span class="nav-empty">
+                    {modelMenuLoading() && !modelMenu() ? "正在加载…" : "暂无固定模型"}
+                  </span>
+                }
+              >
+                {(entry) => <NavItem href={`/list/${entry.id}`} title={entry.title} />}
+              </For>
+            </div>
           </div>
           <Show when={modelMenuFailure()}>
             <div class="nav-error" role="alert">

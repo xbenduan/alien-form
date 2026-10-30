@@ -93,7 +93,7 @@ export const ApiTokens: Component<ActionContext> = (ctx) => {
         <Show when={failure() || directory.error}>
           <p role="alert">{failure() || errorPayload(directory.error).message}</p>
         </Show>
-        <section class="panel table-scroll">
+        <section class="panel table-scroll" tabindex="0" aria-label="token 表格，可横向滚动">
           <table aria-label="本人 token 目录">
             <thead>
               <tr>

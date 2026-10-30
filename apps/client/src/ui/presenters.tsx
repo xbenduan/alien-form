@@ -1,4 +1,5 @@
 import { Dialog } from "@kobalte/core/dialog";
+import { useLocation } from "@solidjs/router";
 import { Show } from "solid-js";
 import type { Component } from "solid-js";
 import type { PresenterProps } from "formwork";
@@ -7,12 +8,17 @@ import { Icon } from "./icons";
 
 const embeddedPreview = window.location.pathname.startsWith("/model-preview/");
 
-/** 在应用画布中承载完整 Page 或 page Window。 */
+/** 以独立登录页、嵌入预览或管理端画布承载完整 Page。 */
 export const PagePresenter: Component<PresenterProps> = (props) => {
+  const loginPage = useLocation().pathname === "/login";
   return (
     <Show
-      when={!embeddedPreview}
-      fallback={<main class="page-canvas embedded-canvas">{props.children}</main>}
+      when={!embeddedPreview && !loginPage}
+      fallback={
+        <main class={loginPage ? "auth-layout" : "page-canvas embedded-canvas"}>
+          {props.children}
+        </main>
+      }
     >
       <AppShell>{props.children}</AppShell>
     </Show>

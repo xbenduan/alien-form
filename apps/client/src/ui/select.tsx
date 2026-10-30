@@ -161,6 +161,9 @@ export const SelectControl: Component<SelectProps> = (props) => {
             aria-label={props.label}
             aria-labelledby={props.labelledBy}
             class="select-menu"
+            onEscapeKeyDown={() => {
+              restoreFocus = true;
+            }}
             onOpenAutoFocus={(event) => event.preventDefault()}
             onCloseAutoFocus={(event) => {
               event.preventDefault();

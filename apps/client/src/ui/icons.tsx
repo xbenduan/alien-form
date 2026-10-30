@@ -16,8 +16,9 @@ type IconName =
   | "close"
   | "upload"
   | "spark"
+  | "search"
   | "layers";
-type MenuIconName = "pin" | "user" | "roles";
+type MenuIconName = "pin" | "user" | "roles" | "key";
 
 const paths: Record<IconName | MenuIconName, string> = {
   grid: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
@@ -35,10 +36,12 @@ const paths: Record<IconName | MenuIconName, string> = {
   close: "M6 6l12 12 M6 18L18 6",
   upload: "M12 16V3 M7 8l5-5 5 5 M4 15v6h16v-6",
   spark: "M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z",
+  search: "M17 10a7 7 0 11-14 0 7 7 0 0114 0 M15 15l6 6",
   layers: "M12 2l10 6-10 6L2 8z M2 12l10 6 10-6 M2 16l10 6 10-6",
   pin: "M9 3h6 M10 3v6l-4 4v2h12v-2l-4-4V3 M12 15v7",
   user: "M16 7a4 4 0 11-8 0 4 4 0 018 0 M4 21v-2a8 8 0 0116 0v2",
   roles: "M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6z M8 12l3 3 5-6",
+  key: "M21 7a5 5 0 11-10 0 5 5 0 0110 0 M12.5 10.5L3 20v1h4v-4h4v-4 M17 7h.01",
 };
 
 /** 提供应用共用的线性图标，装饰图标不参与可访问名称。 */

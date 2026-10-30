@@ -3,17 +3,16 @@ import type { Component } from "solid-js";
 import type { ActionContext } from "formwork";
 import { errorPayload } from "formwork/model";
 import { login } from "../models";
-import { PageTopbar } from "../ui/page-topbar";
+import { BrandMark } from "../ui/icons";
 
 /** 用 Worker 密码登录建立当前标签页会话。 */
 export const Login: Component<ActionContext> = (ctx) => {
   const [busy, setBusy] = createSignal(false);
   const [failure, setFailure] = createSignal("");
   return (
-    <>
-      <PageTopbar title={<h1>登录 Alien Form</h1>} />
       <form
         class="panel auth-panel"
+        aria-labelledby="login-heading"
         onSubmit={async (event) => {
           event.preventDefault();
           if (busy()) return;
@@ -30,7 +29,11 @@ export const Login: Component<ActionContext> = (ctx) => {
           }
         }}
       >
-        <p class="muted">登录后管理模型草稿、发布版本和业务记录。</p>
+        <div class="auth-intro">
+          <BrandMark />
+          <h1 id="login-heading">登录 Alien Form</h1>
+          <p class="muted">管理模型、发布版本和业务记录。</p>
+        </div>
         <label>
           用户名
           <input class="control" name="username" autocomplete="username" required />
@@ -52,6 +55,5 @@ export const Login: Component<ActionContext> = (ctx) => {
           {busy() ? "正在登录…" : "登录"}
         </button>
       </form>
-    </>
   );
 };

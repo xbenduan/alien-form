@@ -8,13 +8,17 @@ import * as recordFns from "../fn/records";
 import { add, detail, edit, list } from "../schema-pages";
 import { FormItem } from "../ui/field-container";
 
-/** 以指定审阅 revision 加载管理草稿，复用 Page 与 Domain 并禁止业务写入。 */
+/** 以审阅 revision 或历史发布版本加载模型预览，复用 Page 与 Domain 并禁止业务写入。 */
 export const ModelPreview: Component<ActionContext> = (ctx) => {
   const query = new URLSearchParams(location.search);
   const revision = query.get("revision");
+  const version = query.has("version") ? Number(query.get("version")) : undefined;
   const initialRouter = query.get("router") ?? "list";
-  if (!ctx.domain || !revision)
-    throw new FormworkError("PARAMS_REQUIRED", "预览需要 domain 和审阅 revision");
+  if (
+    !ctx.domain ||
+    (version === undefined ? !revision : !Number.isSafeInteger(version) || version < 1)
+  )
+    throw new FormworkError("PARAMS_REQUIRED", "预览需要 domain 和审阅 revision 或发布版本");
   const domain = ctx.domain;
   const [target, setTarget] = createSignal({
     router: initialRouter,
@@ -71,7 +75,14 @@ export const ModelPreview: Component<ActionContext> = (ctx) => {
       {
         ...original,
         getSchema: async (load) => {
-          const snapshot = await ctx.api.models.draftSchema(domain, revision, {
+          if (version !== undefined) {
+            const snapshot = await ctx.api.models.version(domain, version, {
+              signal: load.signal,
+            });
+            published = true;
+            return snapshot.definition.document;
+          }
+          const snapshot = await ctx.api.models.draftSchema(domain, revision!, {
             signal: load.signal,
           });
           published = snapshot.baseVersion !== null;
@@ -92,7 +103,10 @@ export const ModelPreview: Component<ActionContext> = (ctx) => {
   };
   return (
     <div class="preview-content">
-      <p class="preview-notice">管理预览 · {revision.slice(0, 8)} · 可编辑表单，业务写入已禁用</p>
+      <p class="preview-notice">
+        管理预览 · {version !== undefined ? `v${version}` : revision!.slice(0, 8)} ·
+        可编辑表单，业务写入已禁用
+      </p>
       <Show when={message()}>
         <p role="status">{message()}</p>
       </Show>

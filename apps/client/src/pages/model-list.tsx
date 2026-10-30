@@ -1,5 +1,5 @@
 import { Dialog } from "@kobalte/core/dialog";
-import { createResource, createSignal, For, Show } from "solid-js";
+import { createMemo, createResource, createSignal, For, Show } from "solid-js";
 import type { Component } from "solid-js";
 import type { ActionContext } from "formwork";
 import { errorPayload, modelIdPattern } from "formwork/model";
@@ -15,6 +15,13 @@ export const ModelList: Component<ActionContext> = (ctx) => {
     ctx.api.models.list({ signal: ctx.signal }),
   );
   const entries = () => (directory.error ? [] : (directory() ?? []));
+  const [search, setSearch] = createSignal("");
+  const visibleEntries = createMemo(() => {
+    const query = search().trim().toLocaleLowerCase();
+    return entries().filter(
+      (entry) => !query || `${entry.title} ${entry.id}`.toLocaleLowerCase().includes(query),
+    );
+  });
   const [open, setOpen] = createSignal(false);
   const [id, setId] = createSignal("");
   const [creating, setCreating] = createSignal(false);
@@ -79,6 +86,24 @@ export const ModelList: Component<ActionContext> = (ctx) => {
           </p>
         </Show>
         <section class="panel model-directory">
+          <div class="model-directory-toolbar">
+            <label class="model-search">
+              <span class="sr-only">搜索模型</span>
+              <Icon name="search" />
+              <input
+                class="control"
+                type="search"
+                placeholder="搜索模型名称或 ID"
+                value={search()}
+                onInput={(event) => setSearch(event.currentTarget.value)}
+              />
+            </label>
+            <span class="muted model-count" role="status">
+              {search().trim()
+                ? `${visibleEntries().length} / ${entries().length} 个模型`
+                : `${entries().length} 个模型`}
+            </span>
+          </div>
           <div
             class="table-scroll"
             tabindex="0"
@@ -93,11 +118,11 @@ export const ModelList: Component<ActionContext> = (ctx) => {
                   <th>类型</th>
                   <th>管理状态</th>
                   <th>已发布版本</th>
-                  <th>操作</th>
+                  <th class="operation-cell">操作</th>
                 </tr>
               </thead>
               <tbody>
-                <For each={entries()}>
+                <For each={visibleEntries()}>
                   {(entry) => (
                     <tr data-model-id={entry.id}>
                       <td>
@@ -131,7 +156,7 @@ export const ModelList: Component<ActionContext> = (ctx) => {
                       <td class="muted">
                         {entry.publishedVersion === null ? "未发布" : `v${entry.publishedVersion}`}
                       </td>
-                      <td class="model-operations">
+                      <td class="operation-cell model-operations">
                         <div class="actions">
                           <button
                             class="text-button"
@@ -207,6 +232,22 @@ export const ModelList: Component<ActionContext> = (ctx) => {
                   ? "点击新建模型开始。"
                   : "请联系管理员分配模型管理权限。"}
               </span>
+            </div>
+          </Show>
+          <Show
+            when={
+              !directory.loading &&
+              !directory.error &&
+              entries().length > 0 &&
+              visibleEntries().length === 0
+            }
+          >
+            <div class="table-empty">
+              <Icon name="search" />
+              <p>没有匹配的模型</p>
+              <button class="text-button" onClick={() => setSearch("")}>
+                清除搜索
+              </button>
             </div>
           </Show>
           <div class="table-footer">
