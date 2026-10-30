@@ -11,7 +11,7 @@ const tools = [
   "models.preview",
 ];
 
-/** 在模型工作台提供与当前开发服务匹配的 stdio MCP 配置和接入步骤。 */
+/** 在模型列表提供与当前开发服务匹配的 stdio MCP 配置和接入步骤。 */
 export const McpGuide: Component = () => {
   const [open, setOpen] = createSignal(false);
   const [feedback, setFeedback] = createSignal("");

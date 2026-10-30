@@ -12,7 +12,7 @@ async function login(page: Page, destination = "/models") {
   await page.getByLabel("用户名", { exact: true }).fill(credentials.username);
   await page.getByLabel("密码", { exact: true }).fill(credentials.password);
   await page.getByRole("button", { name: "登录", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "模型工作台", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "模型列表", exact: true })).toBeVisible();
   if (destination !== "/models") await page.goto(destination);
 }
 async function request(
@@ -32,6 +32,23 @@ async function request(
 }
 test.beforeEach(async ({ page }) => {
   await login(page);
+});
+
+test("本地 localhost 与 127.0.0.1 同端口均可登录，其他 Origin 仍被拒绝", async ({ page }) => {
+  const localhost = "http://localhost:5184";
+  const health = await page.request.get("/api/v1/health", { headers: { Origin: localhost } });
+  expect(health.status()).toBe(200);
+  await login(page, `${localhost}/models`);
+  await expect(page.getByRole("table", { name: "模型列表", exact: true })).toBeVisible();
+  for (const origin of [
+    "http://localhost:5185",
+    "https://evil.example",
+    "http://localhost.evil:5184",
+  ]) {
+    const response = await page.request.get("/api/v1/health", { headers: { Origin: origin } });
+    expect(response.status()).toBe(403);
+    expect(await response.json()).toMatchObject({ error: { message: "客户端 Origin 未获允许" } });
+  }
 });
 
 test("orders：Filter 草稿、false、同 id 刷新、完整 Modal/Drawer", async ({ page }) => {
@@ -65,11 +82,29 @@ test("orders：Filter 草稿、false、同 id 刷新、完整 Modal/Drawer", asy
   expect(errors).toEqual([]);
 });
 
-test("首页工作台和 MCP 直连 Worker 的 token 配置", async ({ page }) => {
+test("首页模型列表和 MCP 直连 Worker 的 token 配置", async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/models$/u);
-  await expect(page.getByRole("textbox", { name: "完整 definition JSON" })).not.toHaveValue("");
-  await expect(page.getByRole("navigation", { name: "主导航" }).getByRole("link")).toHaveCount(4);
+  await expect(page.getByRole("textbox", { name: "完整 definition JSON" })).toHaveCount(0);
+  await expect(page.getByRole("table", { name: "模型列表", exact: true })).toBeVisible();
+  const navigation = page.getByRole("navigation", { name: "主导航" });
+  await expect(navigation.getByRole("link")).toHaveCount(5);
+  expect(
+    await navigation
+      .getByRole("link")
+      .evaluateAll((links) => links.map((link) => link.getAttribute("href"))),
+  ).toEqual([
+    "/models",
+    "/list/system-users",
+    "/list/system-roles",
+    "/list/system-model-categories",
+    "/tokens",
+  ]);
+  await expect(page.locator("header.page-header")).toHaveCount(0);
+  await expect(
+    page.locator("header.topbar").getByRole("button", { name: "新建模型" }),
+  ).toBeVisible();
+  await expect(page.locator(".sidebar-bottom").getByRole("button", { name: "退出" })).toBeVisible();
   await page.getByRole("button", { name: /MCP 接入/u }).click();
   const config = JSON.parse(await page.getByLabel("MCP 客户端配置").innerText());
   expect(config.mcpServers.formwork.command).toBe("node");
@@ -84,6 +119,187 @@ test("首页工作台和 MCP 直连 Worker 的 token 配置", async ({ page }) =
   await expect(page.locator(".mcp-tools code")).toHaveCount(6);
   await page.goto("/home");
   await expect(page).toHaveURL(/\/models$/u);
+});
+
+test("固定用户模型在独立登录中同步，取消后保留业务页面与系统分组", async ({ page, browser }) => {
+  const row = page.locator('tr[data-model-id="orders"]');
+  const nav = page.getByRole("navigation", { name: "主导航" });
+  await expect(nav.getByRole("link", { name: "订单", exact: true })).toHaveCount(0);
+  await row.getByRole("button", { name: "固定到菜单", exact: true }).click();
+  await expect(row.getByRole("button", { name: "取消固定", exact: true })).toBeEnabled();
+  await expect(nav.getByRole("link", { name: "订单", exact: true })).toBeVisible();
+  await nav.getByRole("link", { name: "订单", exact: true }).click();
+  await expect(page).toHaveURL(/\/list\/orders$/u);
+  await expect(nav.getByRole("link", { name: "订单", exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(
+    page.locator("header.topbar").getByRole("button", { name: "查看模型" }),
+  ).toBeVisible();
+  const other = await browser.newContext();
+  try {
+    const second = await other.newPage();
+    await login(second);
+    const secondRow = second.locator('tr[data-model-id="orders"]');
+    await expect(secondRow.getByRole("button", { name: "取消固定", exact: true })).toBeEnabled();
+    await secondRow.getByRole("button", { name: "取消固定", exact: true }).click();
+    await expect(
+      second
+        .getByRole("navigation", { name: "主导航" })
+        .getByRole("link", { name: "订单", exact: true }),
+    ).toHaveCount(0);
+    await page.bringToFront();
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await expect(nav.getByRole("link", { name: "订单", exact: true })).toHaveCount(0);
+    await expect(page).toHaveURL(/\/list\/orders$/u);
+    await expect(page.getByRole("heading", { name: "订单", exact: true })).toBeVisible();
+    await nav.getByRole("link").filter({ hasText: "用户" }).click();
+    await expect(page).toHaveURL(/\/list\/system-users$/u);
+    await page.goto("/models");
+    await page
+      .locator('tr[data-model-id="orders"]')
+      .getByRole("button", { name: "详情", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/models\/orders$/u);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/models$/u);
+  } finally {
+    await other.close();
+  }
+});
+
+test("新建草稿不能固定，发布后开放固定且不自动添加菜单", async ({ page }) => {
+  await page.getByRole("button", { name: "新建模型", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("新模型 ID").fill("menu-created");
+  await dialog.getByRole("button", { name: "创建模型", exact: true }).click();
+  await expect(page).toHaveURL(/\/models\/menu-created$/u);
+  await page
+    .locator("header.topbar")
+    .getByRole("button", { name: "模型列表", exact: true })
+    .click();
+  const row = page.locator('tr[data-model-id="menu-created"]');
+  await expect(row.getByRole("button", { name: "固定到菜单" })).toBeDisabled();
+  await expect(row).toContainText("发布后可固定");
+  await row.getByRole("button", { name: "详情", exact: true }).click();
+  await page.getByRole("button", { name: "手动发布", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("已手动发布版本 1");
+  await page
+    .locator("header.topbar")
+    .getByRole("button", { name: "模型列表", exact: true })
+    .click();
+  await expect(row.getByRole("button", { name: "固定到菜单" })).toBeEnabled();
+  await expect(
+    page
+      .getByRole("navigation", { name: "主导航" })
+      .getByRole("link", { name: "menu-created", exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "新建模型", exact: true }).click();
+  await page.getByLabel("新模型 ID").fill("menu-created");
+  await page.getByRole("button", { name: "创建模型", exact: true }).click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toBeVisible();
+  await expect(page.getByLabel("新模型 ID")).toHaveValue("menu-created");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+});
+
+test("分隔条指针和键盘调整保留 iframe 表单与 Schema 文本，窄屏上下排列", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/models/orders");
+  const json = page.getByRole("textbox", { name: "完整 definition JSON" });
+  const original = await json.inputValue();
+  await page.getByRole("combobox", { name: "预览页面" }).click();
+  await page.getByRole("option", { name: "新建记录", exact: true }).click();
+  const preview = page.frameLocator('iframe[title="模型管理预览"]');
+  await preview.getByLabel("订单号").fill("DRAG-KEPT");
+  const frame = await page.locator("iframe").elementHandle();
+  const separator = page.getByRole("separator", { name: "调整 Schema 与预览宽度" });
+  const initial = await page.locator(".source-panel").boundingBox();
+  const handle = (await separator.boundingBox())!;
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + 160);
+  await page.mouse.down();
+  await page.mouse.move(handle.x + 150, handle.y + 160, { steps: 12 });
+  await page.mouse.up();
+  expect((await page.locator(".source-panel").boundingBox())!.width).toBeGreaterThan(
+    initial!.width + 100,
+  );
+  expect(
+    await page.locator("iframe").evaluate((element, previous) => element === previous, frame),
+  ).toBe(true);
+  await expect(preview.getByLabel("订单号")).toHaveValue("DRAG-KEPT");
+  await expect(json).toHaveValue(original);
+  await separator.focus();
+  const value = Number(await separator.getAttribute("aria-valuenow"));
+  await page.keyboard.press("ArrowLeft");
+  expect(Number(await separator.getAttribute("aria-valuenow"))).toBeLessThan(value);
+  await page.keyboard.press("Home");
+  expect(Number(await separator.getAttribute("aria-valuenow"))).toBeGreaterThanOrEqual(
+    Number(await separator.getAttribute("aria-valuemin")),
+  );
+  expect((await page.locator(".source-panel").boundingBox())!.width).toBeGreaterThanOrEqual(279);
+  await page.keyboard.press("End");
+  expect(Number(await separator.getAttribute("aria-valuenow"))).toBeLessThanOrEqual(
+    Number(await separator.getAttribute("aria-valuemax")),
+  );
+  expect((await page.locator(".preview-panel").boundingBox())!.width).toBeGreaterThanOrEqual(279);
+  await json.fill(`${original}\n `);
+  await separator.focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(json).toHaveValue(`${original}\n `);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(separator).not.toBeVisible();
+  const left = (await page.locator(".source-panel").boundingBox())!;
+  const right = (await page.locator(".preview-panel").boundingBox())!;
+  expect(right.y).toBeGreaterThan(left.y + left.height);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("预览核实会话时网络中断不清除外层登录状态", async ({ page }) => {
+  let interrupted = false;
+  await page.route("**/api/v1/auth/me", async (route) => {
+    if (route.request().frame().parentFrame()) {
+      interrupted = true;
+      await route.abort("failed");
+    } else await route.continue();
+  });
+  await page.goto("/models/orders");
+  await expect.poll(() => interrupted).toBe(true);
+  await expect
+    .poll(() => page.evaluate(() => !!sessionStorage.getItem("formwork-user-session")))
+    .toBe(true);
+  await page.goto("/tokens");
+  await expect(page.getByRole("heading", { name: "API token", exact: true })).toBeVisible();
+  await expect(page.locator(".sidebar-bottom").getByRole("button", { name: "退出" })).toBeVisible();
+});
+
+test("外层会话核实网络失败可重试，真实 401 清理会话与菜单", async ({ page }) => {
+  let fail = true;
+  await page.route("**/api/v1/auth/me", async (route) => {
+    if (fail) await route.abort("failed");
+    else await route.continue();
+  });
+  await page.goto("/models");
+  await expect(page.getByRole("alert")).toContainText("登录会话核实失败");
+  expect(await page.evaluate(() => !!sessionStorage.getItem("formwork-user-session"))).toBe(true);
+  await expect(page.getByRole("table", { name: "模型列表", exact: true })).toHaveCount(0);
+  fail = false;
+  await page.getByRole("button", { name: "重试登录验证" }).click();
+  await expect(page.getByRole("table", { name: "模型列表", exact: true })).toBeVisible();
+  await page.unroute("**/api/v1/auth/me");
+  await page.route("**/api/v1/auth/me", (route) =>
+    route.fulfill({
+      status: 401,
+      contentType: "application/json",
+      body: JSON.stringify({ error: { code: "UNAUTHORIZED", message: "会话已撤销" } }),
+    }),
+  );
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "登录 Alien Form", exact: true })).toBeVisible();
+  expect(await page.evaluate(() => sessionStorage.getItem("formwork-user-session"))).toBeNull();
+  await expect(
+    page.getByRole("navigation", { name: "主导航" }).getByRole("link", { name: "用户管理" }),
+  ).toHaveCount(0);
 });
 
 test("自绘 Select 支持键盘、分页与 Modal 浮层", async ({ page }) => {
@@ -165,8 +381,10 @@ test("无效草稿、有效预览禁写、手动发布、刷新与旧页 422 保
   definition.backend.storage.bindings.forEach((binding: { id: string }) => {
     binding.id = binding.id.replace("orders:", "review-orders:");
   });
-  await page.getByLabel("新模型 ID", { exact: true }).fill("review-orders");
   await page.getByRole("button", { name: "新建模型", exact: true }).click();
+  await page.getByLabel("新模型 ID", { exact: true }).fill("review-orders");
+  await page.getByRole("button", { name: "创建模型", exact: true }).click();
+  await expect(page).toHaveURL(/\/models\/review-orders$/u);
   const json = page.getByRole("textbox", { name: "完整 definition JSON" });
   await json.fill(
     JSON.stringify({ ...definition, document: { ...definition.document, data: {} } }, null, 2),
@@ -308,12 +526,18 @@ test("agent CAS 冲突保留文本、无发布权限、UI token 撤销与注销"
 test("管理页桌面与移动布局无溢出", async ({ page }, info) => {
   for (const [name, width, height] of [
     ["desktop", 1440, 1000],
+    ["medium", 960, 900],
     ["mobile", 390, 844],
   ] as const) {
     await page.setViewportSize({ width, height });
     await page.goto("/models/orders");
     await expect(page.getByRole("button", { name: "退出", exact: true })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "完整 definition JSON" })).toBeVisible();
+    await expect(page.locator("header.page-header")).toHaveCount(0);
+    await expect(
+      page.locator("header.topbar").getByRole("button", { name: "保存草稿" }),
+    ).toBeVisible();
+    if (width < 850) await expect(page.getByRole("separator")).not.toBeVisible();
     await expect(
       page
         .frameLocator('iframe[title="模型管理预览"]')

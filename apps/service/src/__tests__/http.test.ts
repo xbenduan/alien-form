@@ -106,7 +106,7 @@ async function publish(definition: ModelDefinition) {
   return worker.api.models.publish(definition.document.id, current.revision);
 }
 beforeAll(async () => {
-  worker = await startWorker();
+  worker = await startWorker({ password: "menu-integration-password" });
   const value = manifest();
   const response = await worker.request(
     "/formwork/capabilities/alien-form",
@@ -118,6 +118,140 @@ beforeAll(async () => {
 }, 60_000);
 afterAll(async () => {
   await worker?.close();
+});
+
+it("导航固定按账号同步、幂等保留顺序，并发不同模型不覆盖模型与业务状态", async () => {
+  const initial = await worker.api.navigation.read();
+  expect(initial.systemModels.map(({ id }) => id)).toEqual([
+    "system-users",
+    "system-roles",
+    "system-model-categories",
+  ]);
+  expect(initial.pinnedModels).toEqual([]);
+  await publish(definition("menu_one"));
+  await publish(definition("menu_two"));
+  const before = await worker.api.models.read("menu_one");
+  const events = (await worker.sql("SELECT COUNT(*) AS count FROM fw_outbox"))[0].results;
+  const loginApi = createFormworkApi({ url: `${worker.origin}/api/v1` });
+  const secondSession = await loginApi.auth.login("integration-admin", "menu-integration-password");
+  const second = createFormworkApi({
+    url: `${worker.origin}/api/v1`,
+    token: () => secondSession.token,
+  });
+  await Promise.all([
+    worker.api.navigation.pinModel("menu_one"),
+    second.navigation.pinModel("menu_two"),
+  ]);
+  expect((await worker.api.navigation.read()).pinnedModels.map(({ id }) => id).sort()).toEqual([
+    "menu_one",
+    "menu_two",
+  ]);
+  const rows = (
+    await worker.sql("SELECT * FROM fw_model_menu_pins ORDER BY created_at, model_id")
+  )[0].results;
+  await second.navigation.pinModel("menu_one");
+  expect(
+    (await worker.sql("SELECT * FROM fw_model_menu_pins ORDER BY created_at, model_id"))[0].results,
+  ).toEqual(rows);
+  expect((await second.navigation.read()).pinnedModels).toEqual(
+    (await worker.api.navigation.read()).pinnedModels,
+  );
+  expect((await worker.api.models.read("menu_one")).revision).toBe(before.revision);
+  expect(await worker.api.models.versions("menu_one")).toHaveLength(1);
+  expect((await worker.sql("SELECT COUNT(*) AS count FROM fw_outbox"))[0].results).toEqual(events);
+  const renamed = structuredClone(before.definition);
+  renamed.document.title = "未发布名称";
+  const saved = await worker.api.models.saveDraft("menu_one", renamed, {
+    ifRevision: before.revision,
+  });
+  expect(
+    (await second.navigation.read()).pinnedModels.find(({ id }) => id === "menu_one")?.title,
+  ).toBe("menu_one");
+  await worker.api.models.publish("menu_one", saved.revision);
+  expect(
+    (await second.navigation.read()).pinnedModels.find(({ id }) => id === "menu_one")?.title,
+  ).toBe("未发布名称");
+  await second.navigation.unpinModel("menu_one");
+  await second.navigation.unpinModel("menu_one");
+  await worker.api.navigation.unpinModel("menu_two");
+  expect((await worker.api.navigation.read()).pinnedModels).toEqual([]);
+});
+
+it("导航拒绝系统、草稿、agent/deploy；read 与 manage 分离、权限撤销隐藏且可取消失效固定", async () => {
+  await worker.api.models.saveDraft("menu_draft", definition("menu_draft"), { ifRevision: null });
+  await expect(worker.api.navigation.pinModel("menu_draft")).rejects.toMatchObject({
+    code: "INVALID_INPUT",
+  });
+  await expect(worker.api.navigation.pinModel("system-users")).rejects.toMatchObject({
+    code: "INVALID_INPUT",
+  });
+  await expect(worker.api.navigation.pinModel("missing_menu")).rejects.toMatchObject({
+    code: "NOT_FOUND",
+  });
+  expect((await worker.request("/navigation/pins/Bad", "PUT")).status).toBe(400);
+  for (const kind of ["agent", "deploy"] as const) {
+    const token = await worker.api.auth.issueToken({
+      label: `menu ${kind}`,
+      kind,
+      expiresInDays: 1,
+    });
+    for (const [path, method] of [
+      ["/navigation", "GET"],
+      ["/navigation/pins/menu_draft", "PUT"],
+      ["/navigation/pins/menu_draft", "DELETE"],
+    ])
+      expect((await worker.request(path, method, undefined, token.token)).status).toBe(403);
+  }
+  const roles = await worker.api.records.query("system-roles", {
+    filters: {},
+    page: 1,
+    pageSize: 20,
+  });
+  const role = await worker.api.records.create("system-roles", {
+    code: "menu_reader",
+    name: "菜单读取",
+    canCreateModel: true,
+    parentId: roles.list.find((value) => value.code === "super_admin")!.id,
+  });
+  const user = await worker.api.records.create("system-users", {
+    username: "menu-reader",
+    password: "menu-reader-password",
+    roleId: [role.id],
+  });
+  const plain = createFormworkApi({ url: `${worker.origin}/api/v1` });
+  const login = await plain.auth.login("menu-reader", "menu-reader-password");
+  const reader = createFormworkApi({ url: `${worker.origin}/api/v1`, token: () => login.token });
+  const model = definition("menu_acl");
+  model.backend.permissions.grants = [{ roleId: String(role.id), actions: ["read"], scope: "own" }];
+  await publish(model);
+  expect((await reader.models.list()).some(({ id }) => id === "menu_acl")).toBe(false);
+  expect((await reader.navigation.read()).systemModels).toEqual([]);
+  expect((await reader.navigation.read()).pinnableModelIds).toContain("menu_acl");
+  await reader.navigation.pinModel("menu_acl");
+  expect((await worker.api.navigation.read()).pinnedModels).toEqual([]);
+  await reader.models.saveDraft("menu_owned", definition("menu_owned"), { ifRevision: null });
+  const own = await reader.models.read("menu_owned");
+  await reader.models.publish("menu_owned", own.revision);
+  await expect(reader.navigation.pinModel("menu_owned")).rejects.toMatchObject({
+    code: "FORBIDDEN",
+  });
+  const deniedRole = await worker.api.records.create("system-roles", {
+    code: "menu_denied",
+    name: "无菜单权限",
+    parentId: roles.list.find((value) => value.code === "super_admin")!.id,
+  });
+  await worker.api.records.update("system-users", String(user.id), { roleId: [deniedRole.id] });
+  expect((await reader.navigation.read()).pinnedModels).toEqual([]);
+  expect(
+    (await worker.sql(`SELECT model_id FROM fw_model_menu_pins WHERE user_id = '${user.id}'`))[0]
+      .results,
+  ).toEqual([{ model_id: "menu_acl" }]);
+  await reader.navigation.unpinModel("menu_acl");
+  await reader.navigation.unpinModel("missing_menu");
+  expect(
+    (await worker.sql(`SELECT model_id FROM fw_model_menu_pins WHERE user_id = '${user.id}'`))[0]
+      .results,
+  ).toEqual([]);
 });
 
 it("真实 D1 登录、可信 token 类型、撤销与 CORS", async () => {

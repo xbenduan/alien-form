@@ -1,15 +1,17 @@
 import { A, useLocation, useNavigate } from "@solidjs/router";
-import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
+import { createEffect, createSignal, For, on, onCleanup, onMount, Show } from "solid-js";
 import type { Component, JSX } from "solid-js";
-import { logout, sessionLoading, sessionToken, sessionUser } from "../models";
+import {
+  logout,
+  retrySession,
+  sessionFailure,
+  sessionLoading,
+  sessionToken,
+  sessionUser,
+} from "../models";
+import { modelMenu, modelMenuFailure, modelMenuLoading, refreshModelMenu } from "../model-menu";
 import { BrandMark, Icon } from "./icons";
-
-const navigation = [
-  { href: "/models", title: "模型工作台", icon: "model" },
-  { href: "/list/orders", title: "订单管理", icon: "orders" },
-  { href: "/list/cms", title: "内容管理", icon: "content" },
-  { href: "/tokens", title: "API token", icon: "code" },
-] as const;
+import { registerTopbar } from "./page-topbar";
 
 /** 为页面提供统一导航和可信登录身份，未登录时进入登录页。 */
 export const AppShell: Component<{ children?: JSX.Element }> = (props) => {
@@ -29,13 +31,75 @@ export const AppShell: Component<{ children?: JSX.Element }> = (props) => {
     }
   });
   const [failure, setFailure] = createSignal("");
-  const current = () => {
-    if (location.pathname.startsWith("/models")) return navigation[0];
-    if (location.pathname.includes("/orders")) return navigation[1];
-    if (location.pathname.includes("/cms")) return navigation[2];
-    if (location.pathname.startsWith("/tokens")) return navigation[3];
-    return navigation[0];
+  const [pageActive, setPageActive] = createSignal(false);
+  let titleSlot!: HTMLDivElement;
+  let actionsSlot!: HTMLDivElement;
+  const domain = () => location.pathname.split("/")[2];
+  const active = (href: string) => {
+    if (href === "/models") return location.pathname.startsWith("/models");
+    if (href.startsWith("/list/"))
+      return (
+        ["list", "add", "edit", "detail"].includes(location.pathname.split("/")[1] ?? "") &&
+        domain() === href.split("/")[2]
+      );
+    return location.pathname === href;
   };
+  const fallbackTitle = () => {
+    if (location.pathname === "/login") return "登录 Alien Form";
+    if (location.pathname.startsWith("/tokens")) return "API token";
+    if (location.pathname.startsWith("/models")) return domain() ?? "模型列表";
+    return (
+      [...(modelMenu()?.systemModels ?? []), ...(modelMenu()?.pinnedModels ?? [])].find(
+        (entry) => entry.id === domain(),
+      )?.title ??
+      domain() ??
+      "模型列表"
+    );
+  };
+  createEffect(
+    on(
+      () => [location.pathname, sessionToken(), sessionUser()],
+      () => {
+        void refreshModelMenu();
+      },
+    ),
+  );
+  onMount(() => {
+    const unregister = registerTopbar({
+      title: titleSlot,
+      actions: actionsSlot,
+      active: () => setPageActive(true),
+      inactive: () => setPageActive(false),
+    });
+    const refresh = () => void refreshModelMenu();
+    const visible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", visible);
+    onCleanup(() => {
+      unregister();
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", visible);
+    });
+  });
+  const NavItem: Component<{
+    href: string;
+    title: string;
+    icon: Parameters<typeof Icon>[0]["name"];
+  }> = (item) => (
+    <A
+      href={item.href}
+      class="nav-item"
+      classList={{ "is-active": active(item.href) }}
+      aria-label={item.title}
+      title={item.title}
+      aria-current={active(item.href) ? "page" : undefined}
+    >
+      <Icon name={item.icon} />
+      <span>{item.title}</span>
+    </A>
+  );
   return (
     <div class="app-shell">
       <a class="skip-link" href="#main-content">
@@ -47,62 +111,120 @@ export const AppShell: Component<{ children?: JSX.Element }> = (props) => {
           <span class="brand-name">Alien Form</span>
         </A>
         <nav class="main-nav" aria-label="主导航">
-          <For each={navigation}>
-            {(item) => (
-              <A
-                href={item.href}
-                class="nav-item"
-                classList={{ "is-active": current().href === item.href }}
-                aria-label={item.title}
-                title={item.title}
-                aria-current={current().href === item.href ? "page" : undefined}
+          <div class="nav-group" aria-label="模型与系统">
+            <span class="nav-group-label">模型与系统</span>
+            <NavItem href="/models" title="模型列表" icon="model" />
+            <For each={modelMenu()?.systemModels ?? []}>
+              {(entry) => (
+                <NavItem
+                  href={`/list/${entry.id}`}
+                  title={entry.title}
+                  icon={
+                    entry.id === "system-users"
+                      ? "user"
+                      : entry.id === "system-roles"
+                        ? "roles"
+                        : "grid"
+                  }
+                />
+              )}
+            </For>
+            <NavItem href="/tokens" title="API token" icon="code" />
+          </div>
+          <div class="nav-group pinned-group" aria-label="已固定模型">
+            <span class="nav-group-label">已固定模型</span>
+            <For
+              each={modelMenu()?.pinnedModels ?? []}
+              fallback={
+                <span class="nav-empty">
+                  {modelMenuLoading() && !modelMenu() ? "正在加载…" : "暂无固定模型"}
+                </span>
+              }
+            >
+              {(entry) => <NavItem href={`/list/${entry.id}`} title={entry.title} icon="pin" />}
+            </For>
+          </div>
+          <Show when={modelMenuFailure()}>
+            <div class="nav-error" role="alert">
+              {modelMenuFailure()}
+              <button
+                class="text-button"
+                disabled={modelMenuLoading()}
+                onClick={() => refreshModelMenu()}
               >
-                <Icon name={item.icon} />
-                <span>{item.title}</span>
-              </A>
-            )}
-          </For>
+                重试菜单
+              </button>
+            </div>
+          </Show>
         </nav>
         <div class="sidebar-bottom">
-          <Icon name="layers" />
-          <span>Formwork</span>
+          <Show
+            when={sessionUser()}
+            fallback={
+              <A class="nav-item" href="/login" aria-label="登录">
+                <Icon name="user" />
+                <span>登录</span>
+              </A>
+            }
+          >
+            {(actor) => (
+              <div class="account-row">
+                <Icon name="user" />
+                <span class="account-name" title={actor().username}>
+                  {actor().username}
+                </span>
+                <button
+                  class="text-button"
+                  onClick={async () => {
+                    setFailure("");
+                    try {
+                      await logout();
+                    } catch {
+                      setFailure("会话已在本页清除，服务端注销失败。");
+                    }
+                  }}
+                >
+                  退出
+                </button>
+              </div>
+            )}
+          </Show>
+          <Show when={failure()}>
+            <p role="alert">{failure()}</p>
+          </Show>
         </div>
       </aside>
       <div class="app-main">
         <header class="topbar">
-          <div class="breadcrumb">
-            <span>{current().title}</span>
-          </div>
-          <div class="topbar-actions">
-            <Show when={sessionUser()}>
-              {(actor) => (
-                <>
-                  <span class="source-indicator">
-                    {actor().username} · {actor().kind}
-                  </span>
-                  <button
-                    class="text-button"
-                    onClick={async () => {
-                      try {
-                        await logout();
-                      } catch {
-                        setFailure("会话已在本页清除，服务端注销失败。");
-                      }
-                    }}
-                  >
-                    退出
-                  </button>
-                </>
-              )}
+          <div class="page-title topbar-title">
+            <Show when={!pageActive()}>
+              <h1>{fallbackTitle()}</h1>
             </Show>
+            <div
+              ref={(element) => {
+                titleSlot = element;
+              }}
+              class="topbar-title-slot"
+            />
           </div>
+          <div
+            ref={(element) => {
+              actionsSlot = element;
+            }}
+            class="topbar-actions"
+          />
         </header>
         <main id="main-content" class="page-canvas" tabindex="-1">
-          <Show when={failure()}>
-            <p role="alert">{failure()}</p>
-          </Show>
           <Show when={!sessionLoading()} fallback={<p role="status">正在核实登录会话…</p>}>
-            <Show when={sessionToken() || location.pathname === "/login"}>{props.children}</Show>
+            <Show when={sessionFailure()}>
+              <p role="alert">
+                登录会话核实失败：{sessionFailure()}{" "}
+                <button class="text-button" onClick={() => retrySession()}>
+                  重试登录验证
+                </button>
+              </p>
+            </Show>
+            <Show when={sessionUser() || location.pathname === "/login"}>{props.children}</Show>
           </Show>
         </main>
       </div>

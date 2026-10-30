@@ -8,6 +8,7 @@ import { FilterItem, TableCell } from "../ui/field-container";
 import { Select } from "../ui/fields";
 import { Icon } from "../ui/icons";
 import { SelectControl } from "../ui/select";
+import { PageTopbar } from "../ui/page-topbar";
 
 /** 以已提交查询和稳定记录 id 驱动 Filter、Table 与记录 Window。 */
 export const List: Component<PageContext> = (ctx) => {
@@ -126,27 +127,33 @@ export const List: Component<PageContext> = (ctx) => {
   const rowIds = createMemo(() => rowRecords().map((row) => row.id as string));
   return (
     <div class="list-page">
-      <header class="page-header">
-        <div class="page-title">
-          <h1>{ctx.schema.title}</h1>
-          <span class="page-meta">
-            {records.error ? "加载失败" : `${result()?.total ?? "…"} 条记录`}
-          </span>
-        </div>
-        <div class="actions">
-          <button
-            class="button secondary"
-            onClick={() => ctx.navigate("models", { domain: ctx.domain })}
-          >
-            <Icon name="model" />
-            查看模型
-          </button>
-          <button class="button" onClick={() => open("add")}>
-            <Icon name="plus" />
-            新建记录
-          </button>
-        </div>
-      </header>
+      <PageTopbar
+        title={
+          <>
+            <h1>{ctx.schema.title}</h1>
+            <span class="page-meta">
+              {records.error ? "加载失败" : `${result()?.total ?? "…"} 条记录`}
+            </span>
+          </>
+        }
+        actions={
+          <>
+            <Show when={!window.location.pathname.startsWith("/model-preview/")}>
+              <button
+                class="button secondary"
+                onClick={() => ctx.navigate("models", { domain: ctx.domain })}
+              >
+                <Icon name="model" />
+                查看模型
+              </button>
+            </Show>
+            <button class="button" onClick={() => open("add")}>
+              <Icon name="plus" />
+              新建记录
+            </button>
+          </>
+        }
+      />
       <form
         class="panel filters"
         aria-label="筛选记录"

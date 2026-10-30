@@ -215,6 +215,14 @@ export type ActorSummary = {
   super: boolean;
   canCreateModel: boolean;
 };
+/** 提供菜单中已发布模型的身份与展示名称。 */
+export type ModelNavigationEntry = { id: string; title: string };
+/** 返回当前账号可读取的系统模型、固定模型和可固定范围。 */
+export type ModelNavigationSnapshot = {
+  systemModels: ModelNavigationEntry[];
+  pinnedModels: ModelNavigationEntry[];
+  pinnableModelIds: string[];
+};
 /** 返回本人 credential 的可公开目录信息。 */
 export type CredentialEntry = {
   id: string;

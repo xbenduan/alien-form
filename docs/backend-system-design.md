@@ -18,6 +18,7 @@ Client / stdio MCP → HTTP /api/v1 → Bearer 身份与当前角色
 | `src/seed.ts`                                          | 新库系统定义与随机可信身份首次入库，已有状态不重置  |
 | `src/application/auth`                                 | PBKDF2、token 摘要、身份类型、角色子树和授权投影    |
 | `src/application/model-service.ts`                     | 草稿、校验、CAS、发布、版本与 runtime/preview       |
+| `src/application/model-navigation.ts`                  | 按已发布 read 权限生成系统及固定菜单，保存账号偏好  |
 | `src/application/record-service.ts`                    | 权限、参数查询、合并、当前 schema、关系与记录事务   |
 | `src/application/behaviors/rules.ts`                   | 可信系统行为与事务断言                              |
 | `src/application/capabilities.ts`                      | 清单校验、摘要、origin、幂等登记与组件引用保护      |
@@ -62,6 +63,8 @@ Client / stdio MCP → HTTP /api/v1 → Bearer 身份与当前角色
 角色有效集合沿用子树聚合，动作与字段取并集，all 优先于 own；私有字段优先排除。manage/publish 与 record read/create/update/delete 分离，草稿中的 grants 不参与当前授权。
 
 runtime schema 不含 backend。字段投影同步处理 required、$defs/$ref 和 View 引用，根 object/array 子树整体授权。update 先拒绝未授权提交字段，再与存量隐藏值合并，最后校验完整数据；客户端省略隐藏字段不会清空历史值。记录 owner 由服务端生成，own 过滤和写入检查一致。
+
+导航 API 仅接受 user credential，user_id 取可信 Actor.id。`fw_model_menu_pins` 以 `(user_id, model_id)` 为主键，model_id 关联 fw_models 并在删除时级联。PUT 使用 INSERT ON CONFLICT DO NOTHING，重复固定保留 created_at；DELETE 只清理当前账号对应记录。两个设备固定不同模型不会覆盖彼此。GET 从当前已发布版本和 read 权限生成入口，隐藏权限失效模型但保留偏好；取消固定无需仍有读取权限。固定不更新管理 revision、版本或 outbox。客户端采用服务端成功快照，并隔离旧会话及旧读取响应。
 
 ## 能力清单与事件
 

@@ -122,6 +122,7 @@ test("只读盘点和本地原子导入保留 IDs、密码、owner、隐藏数�
   const target = join(source.root, "target.sqlite");
   expect((await applyLocalMigration(target, plan)).skipped).toBe(false);
   const db = new DatabaseSync(target);
+  expect(db.prepare("SELECT * FROM fw_model_menu_pins").all()).toEqual([]);
   expect(db.prepare("SELECT id,passwordHash,data_content FROM _sys_user").get()).toMatchObject({
     id: "legacy-admin",
     passwordHash: source.passwordHash,
@@ -145,6 +146,7 @@ test("迁移输入在真实 D1/workerd 中能登录、读取记录与关系，�
   cleanups.push(() => worker.close());
   expect(worker.user.id).toBe("legacy-admin");
   expect(worker.user.super).toBe(true);
+  expect((await worker.api.navigation.read()).pinnedModels).toEqual([]);
   expect(await worker.api.records.read("inventory", "item-1")).toMatchObject({
     id: "item-1",
     name: "历史库存",

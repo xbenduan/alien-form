@@ -3,6 +3,7 @@ import type { Component } from "solid-js";
 import type { ActionContext } from "formwork";
 import { errorPayload } from "formwork/model";
 import { sessionUser } from "../models";
+import { PageTopbar } from "../ui/page-topbar";
 
 /** 签发并撤销本人 API token，明文仅在签发结果中出现一次。 */
 export const ApiTokens: Component<ActionContext> = (ctx) => {
@@ -27,9 +28,7 @@ export const ApiTokens: Component<ActionContext> = (ctx) => {
   };
   return (
     <div class="token-page">
-      <header class="page-header">
-        <h1>API token</h1>
-      </header>
+      <PageTopbar title={<h1>API token</h1>} />
       <Show
         when={sessionUser()?.kind === "user"}
         fallback={<p role="alert">仅用户登录会话可以签发或撤销 token。</p>}

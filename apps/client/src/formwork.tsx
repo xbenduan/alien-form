@@ -4,7 +4,7 @@ import { api } from "./models";
 import { FormItem } from "./ui/field-container";
 import { DrawerPresenter, ModalPresenter, PagePresenter } from "./ui/presenters";
 import { Home } from "./pages/home";
-import { ModelWorkbench } from "./pages/model-workbench";
+import { Models } from "./pages/models";
 import { Login } from "./pages/login";
 import { ApiTokens } from "./pages/api-tokens";
 import { ModelPreview } from "./pages/model-preview";
@@ -15,7 +15,7 @@ const home = definePage({ router: "home", render: Home });
 const workbench = definePage({
   router: "models",
   path: "/models/:domain?",
-  render: ModelWorkbench,
+  render: Models,
 });
 const login = definePage({ router: "login", path: "/login", render: Login });
 const tokens = definePage({ router: "tokens", path: "/tokens", render: ApiTokens });

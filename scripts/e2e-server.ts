@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import { randomBytes } from "node:crypto";
 import { createServer } from "vite";
 import { startLocalWorker } from "./local-worker.mjs";
+import { selectDevelopmentPort } from "./dev-ports.mjs";
 import { planMigration } from "../apps/service/src/migration/convert";
 import type { ModelDocument } from "formwork/model";
 
@@ -59,12 +60,17 @@ const plan = await planMigration({
   })),
 });
 if (plan.errors.length) throw new Error(JSON.stringify(plan.errors));
-process.env.FORMWORK_SERVICE_PORT = "8789";
+const servicePort = await selectDevelopmentPort({
+  preferred: 8789,
+  label: "E2E Worker",
+  strict: false,
+});
+process.env.FORMWORK_SERVICE_PORT = String(servicePort);
 process.env.FORMWORK_CAPABILITY_TOKEN = capabilityToken;
 process.env.FORMWORK_CLIENT_ORIGIN = "http://127.0.0.1:5184";
 const worker = await startLocalWorker({
   directory: root,
-  port: 8789,
+  port: servicePort,
   clientOrigin: process.env.FORMWORK_CLIENT_ORIGIN,
   username,
   password,
@@ -78,7 +84,7 @@ const server = await createServer({
   server: { host: "127.0.0.1", port: 5184, strictPort: true },
 });
 await server.listen();
-console.log("Formwork E2E Vite :5184 / Worker D1 :8789 ready");
+console.log(`Formwork E2E Vite :5184 / Worker D1 :${servicePort} ready`);
 let stopping = false;
 for (const signal of ["SIGINT", "SIGTERM"] as const)
   process.once(signal, () => {

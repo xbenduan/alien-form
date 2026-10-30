@@ -8,6 +8,7 @@ import {
   assertRuntimeSnapshot,
   managedEntrySchema,
   modelIdPattern,
+  modelNavigationSchema,
   validationReportSchema,
 } from "./schema";
 import type {
@@ -18,6 +19,7 @@ import type {
   JsonValue,
   ManagedEntry,
   ManagedSnapshot,
+  ModelNavigationSnapshot,
   PreviewSnapshot,
   PublishedSnapshot,
   ReadOptions,
@@ -39,6 +41,11 @@ export type FormworkApiOptions = {
 /** 提供模型管理、发布加载、记录和认证的 HTTP 能力。 */
 export type FormworkApi = {
   request: <T>(path: string, method?: string, body?: unknown, options?: ReadOptions) => Promise<T>;
+  navigation: {
+    read: (options?: ReadOptions) => Promise<ModelNavigationSnapshot>;
+    pinModel: (id: string, options?: ReadOptions) => Promise<ModelNavigationSnapshot>;
+    unpinModel: (id: string, options?: ReadOptions) => Promise<ModelNavigationSnapshot>;
+  };
   models: {
     list: (options?: ReadOptions) => Promise<ManagedEntry[]>;
     read: (id: string, options?: ReadOptions) => Promise<ManagedSnapshot>;
@@ -119,11 +126,11 @@ export function createFormworkApi(options: FormworkApiOptions): FormworkApi {
     try {
       result = await response.json();
     } catch {
-      if (response.status === 401) options.onUnauthorized?.();
+      if (response.status === 401 && token === options.token?.()) options.onUnauthorized?.();
       throw new FormworkError("HTTP_ERROR", `HTTP ${response.status}: 返回内容不是 JSON`);
     }
     if (!response.ok) {
-      if (response.status === 401) options.onUnauthorized?.();
+      if (response.status === 401 && token === options.token?.()) options.onUnauthorized?.();
       const error = isObject(result) && isObject(result.error) ? result.error : {};
       throw new FormworkError(
         String(error.code ?? "HTTP_ERROR"),
@@ -144,6 +151,23 @@ export function createFormworkApi(options: FormworkApiOptions): FormworkApi {
   };
   return {
     request,
+    navigation: {
+      async read(settings) {
+        return modelNavigationSchema.parse(
+          await request("/navigation", "GET", undefined, settings),
+        );
+      },
+      async pinModel(id, settings) {
+        return modelNavigationSchema.parse(
+          await request(modelPath(id, "/navigation/pins"), "PUT", undefined, settings),
+        );
+      },
+      async unpinModel(id, settings) {
+        return modelNavigationSchema.parse(
+          await request(modelPath(id, "/navigation/pins"), "DELETE", undefined, settings),
+        );
+      },
+    },
     models: {
       async list(settings) {
         return managedEntrySchema

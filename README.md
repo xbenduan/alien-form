@@ -1,6 +1,6 @@
 # Alien Form / Formwork
 
-Solid 无头表单内核、数据库模型工作台、Vite 代码能力清单和六项 stdio MCP 工具。唯一后端是 `apps/service` 的 Cloudflare Worker，开发使用本地 D1，部署使用 Cloudflare D1。
+Solid 无头表单内核、数据库模型列表与 Schema 详情、Vite 代码能力清单和六项 stdio MCP 工具。唯一后端是 `apps/service` 的 Cloudflare Worker，开发使用本地 D1，部署使用 Cloudflare D1。
 
 使用 Node **26.13.0**、pnpm **12.16.1**：
 
@@ -11,7 +11,7 @@ pnpm dev
 
 启动器输出实际 Client/Worker URL 和私有账号文件路径。默认端口为 `5173` / `8788`，占用时自动选择可用端口；开发数据按用户和仓库隔离，重启保留。管理员随机用户名、密码与清单凭证仅保存在用户目录的 `bootstrap.json`（0600）。
 
-登录后在模型工作台审阅 orders/cms 草稿并点击“手动发布”，随后进入业务页面。保存草稿不改变普通页面；发布后普通页面刷新才加载新 schema，旧页提交按当前版本校验。
+登录后从模型列表打开 orders/cms 详情，左侧编辑 Schema，右侧预览，中间分隔条可拖动。审阅草稿并点击顶栏“手动发布”后即可进入业务页面。模型列表中的“固定到菜单”将已发布用户模型加入侧栏，固定状态按账号保存到 D1；系统模型直接展示。保存草稿不改变普通页面；发布后普通页面刷新才加载新 schema，旧页提交按当前版本校验。
 
 ```sh
 pnpm exec playwright install chromium

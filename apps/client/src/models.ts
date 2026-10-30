@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import { createFormworkApi } from "formwork/model";
+import { createFormworkApi, errorPayload } from "formwork/model";
 import type { PageLoadContext } from "formwork";
 import type { ActorSummary } from "formwork/model";
 
@@ -7,16 +7,24 @@ const sessionKey = "formwork-user-session";
 const [token, setToken] = createSignal(sessionStorage.getItem(sessionKey) ?? undefined);
 const [user, setUser] = createSignal<ActorSummary>();
 const [loading, setLoading] = createSignal(!!token());
+const [failure, setFailure] = createSignal("");
 /** 返回当前浏览器标签页的用户会话。 */
 export const sessionToken = token;
 /** 返回 Worker 已确认的可信身份。 */
 export const sessionUser = user;
 /** 表示当前标签页正在核实持久化会话。 */
 export const sessionLoading = loading;
+/** 返回会话核实的临时错误；网络失败不会删除同源预览共享的凭证。 */
+export const sessionFailure = failure;
 /** 更新登录会话，同源管理 iframe 在首次装载时复用 sessionStorage。 */
 export function setSessionToken(value?: string) {
   if (value) sessionStorage.setItem(sessionKey, value);
   else sessionStorage.removeItem(sessionKey);
+  if (value !== token()) {
+    setUser(undefined);
+    setFailure("");
+    setLoading(false);
+  }
   setToken(value);
   if (!value) setUser(undefined);
 }
@@ -43,14 +51,21 @@ export async function logout() {
 async function restoreSession() {
   const expected = token();
   if (!expected) return;
+  setFailure("");
+  setLoading(true);
   try {
     const actor = await api.auth.me();
     if (expected === token()) setUser(actor);
-  } catch {
-    if (expected === token()) setSessionToken();
+  } catch (error) {
+    // 401 已由 API client 清理；iframe 卸载导致的 fetch 中断不能注销外层会话。
+    if (expected === token()) setFailure(errorPayload(error).message);
   } finally {
-    setLoading(false);
+    if (expected === token()) setLoading(false);
   }
+}
+/** 在临时网络失败后重新核实保留的登录凭证。 */
+export function retrySession(): Promise<void> {
+  return loading() ? Promise.resolve() : restoreSession();
 }
 void restoreSession();
 /** 为 Page 和 Window 显式加载当前授权的已发布 schema。 */

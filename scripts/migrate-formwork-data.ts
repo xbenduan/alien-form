@@ -13,13 +13,15 @@ export async function applyLocalMigration(path: string, plan: MigrationPlan) {
   const db = new DatabaseSync(path);
   try {
     db.exec("PRAGMA foreign_keys=ON; BEGIN IMMEDIATE");
-    if (!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='fw_models'").get())
-      db.exec(
-        await readFile(
-          new URL("../apps/service/migrations/0100_formwork_metadata.sql", import.meta.url),
-          "utf8",
-        ),
-      );
+    if (!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='fw_models'").get()) {
+      for (const migration of ["0100_formwork_metadata.sql", "0101_model_menu_pins.sql"])
+        db.exec(
+          await readFile(
+            new URL(`../apps/service/migrations/${migration}`, import.meta.url),
+            "utf8",
+          ),
+        );
+    }
     const previous = db
       .prepare("SELECT status FROM fw_migration_runs WHERE input_hash=?")
       .get(plan.digest);

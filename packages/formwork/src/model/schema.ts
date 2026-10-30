@@ -10,6 +10,7 @@ import type {
   ManagedSnapshot,
   ModelDefinition,
   ModelDocument,
+  ModelNavigationSnapshot,
   PreviewSnapshot,
   PublishedSnapshot,
   RuntimeSchema,
@@ -331,6 +332,14 @@ export function assertDraftDefinition(input: unknown, modelId: string): DraftDef
 }
 
 const identity = z.string().regex(modelIdPattern);
+/** 校验当前账号的菜单快照，拒绝不符合模型身份规则的入口。 */
+export const modelNavigationSchema: z.ZodType<ModelNavigationSnapshot> = z
+  .object({
+    systemModels: z.array(z.object({ id: identity, title: z.string() }).strict()),
+    pinnedModels: z.array(z.object({ id: identity, title: z.string() }).strict()),
+    pinnableModelIds: z.array(identity),
+  })
+  .strict();
 const identifier = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/u);
 /** 校验后端配置结构；存储所有权和目标模型在 Worker 中进一步检查。 */
 export const backendDefinitionSchema: z.ZodType<BackendDefinition> = z

@@ -7,6 +7,7 @@ import { errorPayload, FormworkError } from "formwork/model";
 import type { Actor, Env } from "./contracts";
 import { bootstrap } from "./seed";
 import { ModelService, assertModelId } from "./application/model-service";
+import { ModelNavigation } from "./application/model-navigation";
 import { RecordService } from "./application/record-service";
 import { registerCapabilities } from "./application/capabilities";
 import { dispatchOutbox } from "./application/outbox";
@@ -125,6 +126,14 @@ export function createApp() {
     return c.json({ revoked: true });
   });
   const models = (c: Context<AppEnv>) => new ModelService(c.env.DB, c.get("actor"));
+  const navigation = (c: Context<AppEnv>) => new ModelNavigation(c.env.DB, c.get("actor"));
+  app.get("/api/v1/navigation", async (c) => c.json(await navigation(c).read()));
+  app.put("/api/v1/navigation/pins/:modelId", async (c) =>
+    c.json(await navigation(c).pin(c.req.param("modelId"))),
+  );
+  app.delete("/api/v1/navigation/pins/:modelId", async (c) =>
+    c.json(await navigation(c).unpin(c.req.param("modelId"))),
+  );
   app.get("/api/v1/models", async (c) => c.json(await models(c).list()));
   app.get("/api/v1/models/:modelId", async (c) =>
     c.json(await models(c).read(c.req.param("modelId"))),

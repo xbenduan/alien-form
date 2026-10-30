@@ -34,7 +34,7 @@ async function stop(child, detached) {
  * @param {object} options
  * @param {string} options.directory 本次 D1、配置与 secret 的目录。
  * @param {number} options.port
- * @param {string} options.clientOrigin
+ * @param {string} options.clientOrigin 客户端地址；本地回环域名同时允许相同协议和端口的 localhost/127.0.0.1。
  * @param {string} options.username
  * @param {string} options.password
  * @param {string} options.capabilityToken
@@ -44,6 +44,12 @@ async function stop(child, detached) {
  */
 export async function startLocalWorker(options) {
   const { directory, port, clientOrigin, username, password, capabilityToken } = options;
+  const allowedOrigins = new Set([clientOrigin]);
+  const clientUrl = new URL(clientOrigin);
+  if (clientUrl.hostname === "localhost" || clientUrl.hostname === "127.0.0.1") {
+    clientUrl.hostname = clientUrl.hostname === "localhost" ? "127.0.0.1" : "localhost";
+    allowedOrigins.add(clientUrl.origin);
+  }
   const detached = options.detached ?? true;
   await mkdir(directory, { recursive: true, mode: 0o700 });
   await chmod(directory, 0o700);
@@ -65,7 +71,7 @@ export async function startLocalWorker(options) {
       name: "formwork-local",
       main: resolve(repository, "apps/service/src/index.ts"),
       compatibility_date: "2026-09-08",
-      vars: { FORMWORK_CLIENT_ORIGIN: clientOrigin },
+      vars: { FORMWORK_CLIENT_ORIGIN: [...allowedOrigins].join(",") },
       d1_databases: [
         {
           binding: "DB",

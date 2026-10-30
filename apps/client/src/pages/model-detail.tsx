@@ -2,25 +2,20 @@ import { createEffect, createMemo, createResource, createSignal, For, Show } fro
 import type { Component } from "solid-js";
 import type { ActionContext, Diagnostic } from "formwork";
 import { FormworkError } from "formwork";
-import { errorPayload, modelIdPattern } from "formwork/model";
-import { sessionUser } from "../models";
+import { errorPayload } from "formwork/model";
+import { refreshModelMenu } from "../model-menu";
 import { Icon } from "../ui/icons";
-import { McpGuide } from "../ui/mcp-guide";
+import { PageTopbar } from "../ui/page-topbar";
+import { ResizablePanels } from "../ui/resizable-panels";
 import { SelectControl } from "../ui/select";
 
 /** 编辑数据库完整 definition，保存可诊断草稿，并手动发布已审阅 revision。 */
-export const ModelWorkbench: Component<ActionContext> = (ctx) => {
-  const [directory, { refetch: refreshDirectory }] = createResource(() =>
-    ctx.api.models.list({ signal: ctx.signal }),
+export const ModelDetail: Component<ActionContext> = (ctx) => {
+  const modelId = () => ctx.domain;
+  const [selected, { refetch: refreshSelected, mutate }] = createResource(modelId, (id) =>
+    ctx.api.models.read(id, { signal: ctx.signal }),
   );
-  const entries = () => (directory.error ? [] : (directory() ?? []));
-  const [creating, setCreating] = createSignal<string>();
-  const modelId = () => creating() ?? ctx.params.domain ?? entries()[0]?.id;
-  const [selected, { refetch: refreshSelected, mutate }] = createResource(
-    () => (creating() ? undefined : modelId()),
-    (id) => ctx.api.models.read(id, { signal: ctx.signal }),
-  );
-  const snapshot = () => (selected.error || creating() ? undefined : selected());
+  const snapshot = () => (selected.error ? undefined : selected());
   const [versions, { refetch: refreshVersions }] = createResource(
     () => snapshot()?.id,
     (id) => ctx.api.models.versions(id, { signal: ctx.signal }),
@@ -92,12 +87,10 @@ export const ModelWorkbench: Component<ActionContext> = (ctx) => {
       setRevision(result.revision);
       setDraft(JSON.stringify(result.definition, null, 2));
       mutate(result);
-      await refreshDirectory();
-      if (creating()) ctx.navigate("models", { domain: id });
-      else
-        setMessage(
-          `已保存草稿；${result.diagnostics.errors.length ? `有 ${result.diagnostics.errors.length} 项错误` : "校验通过"}，尚未发布。`,
-        );
+      await refreshModelMenu();
+      setMessage(
+        `已保存草稿；${result.diagnostics.errors.length ? `有 ${result.diagnostics.errors.length} 项错误` : "校验通过"}，尚未发布。`,
+      );
     });
   const publish = () =>
     run(async () => {
@@ -108,153 +101,97 @@ export const ModelWorkbench: Component<ActionContext> = (ctx) => {
       });
       if (ctx.signal.aborted) return;
       await refreshSelected();
-      await refreshDirectory();
+      await refreshModelMenu();
       await refreshVersions();
       setMessage(`已手动发布版本 ${result.version}；普通页面刷新后使用新 schema。`);
     });
   return (
     <div class="workbench-page">
-      <header class="page-header">
-        <div class="page-title">
-          <h1>模型工作台</h1>
-          <span class="eyebrow">数据库草稿</span>
-        </div>
-        <div class="actions">
-          <button
-            class="button secondary"
-            disabled={busy() || !snapshot()}
-            onClick={() =>
-              run(async () => {
-                setDirty(false);
-                await refreshSelected();
-                setMessage("已重新载入最新管理状态。");
-              })
-            }
-          >
-            <Icon name="refresh" />
-            重新载入
-          </button>
-          <button
-            class="button"
-            disabled={busy() || !dirty() || (!creating() && !snapshot()?.canManage)}
-            onClick={save}
-          >
-            <Icon name="check" />
-            保存草稿
-          </button>
-          <button
-            class="button"
-            disabled={
-              busy() ||
-              dirty() ||
-              !snapshot()?.canPublish ||
-              snapshot()?.stage !== "draft" ||
-              !!snapshot()?.diagnostics.errors.length
-            }
-            onClick={publish}
-          >
-            手动发布
-          </button>
-        </div>
-      </header>
-      <McpGuide />
-      <Show when={directory.error || selected.error}>
-        <p role="alert">{errorPayload(directory.error ?? selected.error).message}</p>
+      <PageTopbar
+        title={
+          <>
+            <button class="text-button back-to-models" onClick={() => ctx.navigate("models")}>
+              模型列表
+            </button>
+            <Icon name="chevron" />
+            <h1>{snapshot()?.title || modelId()}</h1>
+            <span class="draft-state" classList={{ dirty: dirty() }}>
+              {dirty()
+                ? "未保存"
+                : snapshot()?.stage === "draft"
+                  ? "草稿"
+                  : snapshot()
+                    ? "已发布"
+                    : "正在加载"}
+            </span>
+          </>
+        }
+        actions={
+          <>
+            <button
+              class="button secondary"
+              disabled={busy() || !snapshot()}
+              onClick={() =>
+                run(async () => {
+                  setDirty(false);
+                  await refreshSelected();
+                  setMessage("已重新载入最新管理状态。");
+                })
+              }
+            >
+              <Icon name="refresh" />
+              重新载入
+            </button>
+            <button
+              class="button"
+              disabled={busy() || !dirty() || !snapshot()?.canManage}
+              onClick={save}
+            >
+              <Icon name="check" />
+              保存草稿
+            </button>
+            <button
+              class="button"
+              disabled={
+                busy() ||
+                dirty() ||
+                !snapshot()?.canPublish ||
+                snapshot()?.stage !== "draft" ||
+                !!snapshot()?.diagnostics.errors.length
+              }
+              onClick={publish}
+            >
+              手动发布
+            </button>
+          </>
+        }
+      />
+      <Show when={selected.error}>
+        <p role="alert">{errorPayload(selected.error).message}</p>
       </Show>
       <Show when={message()}>
         <p class="workbench-message" role="status">
           {message()}
         </p>
       </Show>
-      <div class="workbench">
-        <nav aria-label="选择模型">
-          <Show when={sessionUser()?.canCreateModel}>
-            <form
-              class="new-model-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                const id = String(new FormData(event.currentTarget).get("modelId"));
-                if (!modelIdPattern.test(id) || id.startsWith("system-")) {
-                  setMessage("模型 ID 必须是单段小写标识，不能使用 system- 前缀。");
-                  return;
-                }
-                setCreating(id);
-                setRevision(null);
-                setDirty(true);
-                setMessage("新模型尚未保存。");
-                setDraft(
-                  JSON.stringify(
-                    {
-                      document: {
-                        id,
-                        title: id,
-                        data: { type: "object", properties: {}, additionalProperties: false },
-                      },
-                      backend: {
-                        storage: { table: `biz_${id.replaceAll("-", "_")}`, bindings: [] },
-                        relations: [],
-                        permissions: { grants: [], privateFields: [] },
-                        behavior: { rules: [], commands: {}, events: {} },
-                      },
-                    },
-                    null,
-                    2,
-                  ),
-                );
-              }}
-            >
-              <input
-                class="control"
-                name="modelId"
-                aria-label="新模型 ID"
-                placeholder="新模型 ID"
-                required
-              />
-              <button class="button secondary" disabled={busy()}>
-                新建模型
-              </button>
-            </form>
-          </Show>
-          <For each={entries()}>
-            {(entry) => (
-              <button
-                class="model-card"
-                classList={{ selected: entry.id === snapshot()?.id }}
-                aria-current={entry.id === snapshot()?.id ? "true" : undefined}
-                onClick={() => ctx.navigate("models", { domain: entry.id })}
-              >
-                <Icon name="model" />
-                <strong>{entry.title}</strong>
-                <code>{entry.id}</code>
-                <span class="muted">
-                  {entry.stage === "draft" ? "共享草稿" : "已发布"} ·{" "}
-                  {entry.publishedVersion === null ? "未发布" : `v${entry.publishedVersion}`}
-                </span>
-              </button>
-            )}
-          </For>
-          <button
-            class="text-button"
-            disabled={directory.loading}
-            onClick={() => refreshDirectory()}
-          >
-            刷新目录
-          </button>
-        </nav>
-        <Show
-          when={snapshot() || creating()}
-          fallback={
-            <div class="panel workbench-empty">
-              <p>{selected.loading || directory.loading ? "正在加载模型…" : "选择或新建模型。"}</p>
-            </div>
-          }
-        >
-          <div class="workbench-panels">
+      <Show
+        when={snapshot()}
+        fallback={
+          <div class="panel workbench-empty">
+            <p>{selected.loading ? "正在加载模型…" : "模型不存在或没有管理权限。"}</p>
+            <button class="text-button" onClick={() => ctx.navigate("models")}>
+              返回模型列表
+            </button>
+          </div>
+        }
+      >
+        <ResizablePanels
+          left={
             <section class="panel source-panel">
               <div class="editor-heading">
                 <h2>
                   <Icon name="code" />
-                  完整 definition
+                  Schema
                 </h2>
                 <span class="draft-state" classList={{ dirty: dirty() }}>
                   {dirty() ? "未保存" : snapshot()?.stage === "draft" ? "已保存草稿" : "已发布"}
@@ -344,6 +281,8 @@ export const ModelWorkbench: Component<ActionContext> = (ctx) => {
                 </Show>
               </section>
             </section>
+          }
+          right={
             <section class="panel preview-panel">
               <div class="editor-heading">
                 <h2>
@@ -389,9 +328,9 @@ export const ModelWorkbench: Component<ActionContext> = (ctx) => {
                 {(url) => <iframe class="preview-frame" title="模型管理预览" src={url} />}
               </Show>
             </section>
-          </div>
-        </Show>
-      </div>
+          }
+        />
+      </Show>
     </div>
   );
 };
