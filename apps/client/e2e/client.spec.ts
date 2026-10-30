@@ -39,9 +39,10 @@ async function fillJson(page: Page, value: string) {
   await page.keyboard.insertText(value);
   await editor.press("ControlOrMeta+Home");
 }
-async function expectFloatingDrawer(drawer: Locator) {
-  await expect(drawer).toBeVisible();
-  const layout = await drawer.evaluate(async (element) => {
+async function expectCompactWindow(window: Locator, floating = false) {
+  await expect(window).toBeVisible();
+  await expect(window.locator(".record-meta")).toHaveCount(0);
+  const layout = await window.evaluate(async (element) => {
     await Promise.all(element.getAnimations().map((animation) => animation.finished));
     const rect = element.getBoundingClientRect();
     const viewport = element.ownerDocument.defaultView!;
@@ -63,8 +64,9 @@ async function expectFloatingDrawer(drawer: Locator) {
       closeWithinHeading: close.top >= heading.top && close.bottom <= heading.bottom,
     };
   });
-  for (const gap of [layout.left, layout.top, layout.right, layout.bottom])
-    expect(gap).toBeGreaterThan(0);
+  if (floating)
+    for (const gap of [layout.left, layout.top, layout.right, layout.bottom])
+      expect(gap).toBeGreaterThan(0);
   for (const corner of layout.corners) expect(corner).toBeGreaterThan(0);
   expect(layout.headingHeight).toBeLessThanOrEqual(64);
   expect(layout.closeWithinHeading).toBe(true);
@@ -166,6 +168,7 @@ test("orders：Filter 草稿、false、同 id 刷新、完整 Modal/Drawer", asy
   await row.getByRole("button", { name: "编辑" }).click();
   const modal = page.getByRole("dialog");
   await expect(modal.getByRole("heading", { name: "编辑订单" })).toBeVisible();
+  await expectCompactWindow(modal);
   await modal.getByLabel("金额").fill("456");
   await modal.getByRole("button", { name: "保存", exact: true }).click();
   await expect(modal).not.toBeVisible();
@@ -173,7 +176,7 @@ test("orders：Filter 草稿、false、同 id 刷新、完整 Modal/Drawer", asy
   await row.getByRole("button", { name: "详情" }).click();
   const drawer = page.getByRole("dialog", { name: "记录详情" });
   await expect(drawer.getByRole("heading", { name: "订单详情" })).toBeVisible();
-  await expectFloatingDrawer(drawer);
+  await expectCompactWindow(drawer, true);
   await expect(page.getByRole("dialog")).toContainText("456");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
@@ -522,12 +525,13 @@ test("实时预览完整 CRUD、筛选和刷新均不请求接口，也不改变
   const dialog = preview.getByRole("dialog");
   await row.getByRole("button", { name: "详情", exact: true }).click();
   await expect(dialog).toContainText("订单详情");
-  await expectFloatingDrawer(dialog);
+  await expectCompactWindow(dialog, true);
   await expect(dialog).toContainText("订单号 1");
   await dialog.getByRole("button", { name: "关闭窗口", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(row.getByRole("button", { name: "详情", exact: true })).toBeFocused();
   await row.getByRole("button", { name: "编辑", exact: true }).click();
+  await expectCompactWindow(dialog);
   await dialog.getByLabel("金额").fill("987");
   await dialog.getByRole("button", { name: "保存", exact: true }).click();
   await expect(dialog).toHaveCount(0);
@@ -539,6 +543,7 @@ test("实时预览完整 CRUD、筛选和刷新均不请求接口，也不改变
   await expect(row).toContainText("987");
   await expect(row.getByRole("button", { name: "编辑", exact: true })).toBeFocused();
   await preview.getByRole("button", { name: "新建记录", exact: true }).click();
+  await expectCompactWindow(dialog);
   await dialog.getByLabel("订单号").fill("LOCAL-CREATED");
   await dialog.getByRole("button", { name: "添加明细", exact: true }).click();
   await dialog.getByLabel("SKU").fill("LOCAL-SKU");

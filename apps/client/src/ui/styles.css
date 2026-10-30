@@ -1790,21 +1790,17 @@ td .rich-text {
   margin: 0 auto;
 }
 .record-heading {
-  min-height: 68px;
-  padding: var(--space-lg);
-  padding-right: 60px;
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  padding: var(--space-sm) var(--space-md);
+  padding-right: 56px;
   border-bottom: 1px solid var(--border);
   background: var(--surface-raised);
 }
 .record-heading h1 {
-  font-size: var(--text-dialog-title);
-}
-.record-meta {
-  display: inline-block;
-  color: var(--muted);
-  font-size: var(--text-caption);
-  margin-top: var(--space-2xs);
-  overflow-wrap: anywhere;
+  max-width: 100%;
+  font-size: var(--text-title);
 }
 .record-fields,
 .detail-fields {
@@ -1886,31 +1882,6 @@ td .rich-text {
   border-radius: var(--radius-panel);
   animation: drawer-in 0.18s ease-out;
 }
-.window-content.drawer .record-heading {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2xs) var(--space-xs);
-  min-height: 52px;
-  padding: var(--space-sm) var(--space-md);
-  padding-right: 56px;
-}
-.window-content.drawer .record-heading h1 {
-  max-width: 100%;
-  font-size: var(--text-title);
-}
-.window-content.drawer .record-meta {
-  flex: 1 1 80px;
-  min-width: 0;
-  margin-top: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.window-content.drawer .window-heading {
-  top: var(--space-sm);
-  right: var(--space-sm);
-}
 .window-content.modal .record-form {
   display: flex;
   flex-direction: column;
@@ -1926,8 +1897,8 @@ td .rich-text {
 }
 .window-heading {
   position: absolute;
-  right: 16px;
-  top: var(--space-lg);
+  right: var(--space-sm);
+  top: var(--space-sm);
   z-index: 1;
 }
 .window-heading .icon-button {
@@ -2175,14 +2146,6 @@ td .rich-text {
   .window-content.modal .record-form {
     max-height: calc(100dvh - 34px);
   }
-  .window-heading {
-    right: var(--space-md);
-    top: var(--space-md);
-  }
-  .record-heading {
-    padding: var(--space-md);
-    padding-right: 64px;
-  }
   .record-fields,
   .detail-fields {
     padding: var(--space-md);
@@ -2250,18 +2213,11 @@ td .rich-text {
     height: 44px;
   }
   .window-heading {
-    top: var(--space-md);
+    top: var(--space-xs);
   }
   .record-heading {
-    min-height: 76px;
-    padding-right: 76px;
-  }
-  .window-content.drawer .record-heading {
     min-height: 60px;
     padding-right: 68px;
-  }
-  .window-content.drawer .window-heading {
-    top: var(--space-xs);
   }
 }
 

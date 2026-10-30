@@ -5,7 +5,7 @@ import { Dynamic } from "solid-js/web";
 import type { PresenterProps } from "formwork";
 import { AppShell } from "./app-shell";
 import { Icon } from "./icons";
-import { Drawer, OverlayWindow } from "./window";
+import { Drawer, Modal } from "./window";
 
 const embeddedPreview = window.location.pathname.startsWith("/model-preview/");
 
@@ -43,7 +43,7 @@ const Overlay: Component<PresenterProps & { drawer?: boolean }> = (props) => (
       </AppShell>
     </Show>
     <Dynamic
-      component={props.drawer ? Drawer : OverlayWindow}
+      component={props.drawer ? Drawer : Modal}
       open
       label={props.drawer ? "记录详情" : "编辑记录"}
       onClose={props.close}
@@ -53,7 +53,7 @@ const Overlay: Component<PresenterProps & { drawer?: boolean }> = (props) => (
     </Dynamic>
   </>
 );
-/** 使用 Kobalte 管理 Modal 的焦点、Esc 和关闭动作。 */
+/** 使用公共 Modal 呈现完整记录表单。 */
 export const ModalPresenter: Component<PresenterProps> = (props) => <Overlay {...props} />;
 /** 使用公共 Drawer 呈现完整记录详情。 */
 export const DrawerPresenter: Component<PresenterProps> = (props) => <Overlay {...props} drawer />;

@@ -64,9 +64,6 @@ export const RecordEditor: Component<PageContext> = (ctx) => {
           {ctx.params.id ? "编辑" : "新建"}
           {ctx.schema.title}
         </h1>
-        <Show when={ctx.params.id}>
-          <code class="record-meta">{ctx.params.id}</code>
-        </Show>
       </div>
       <Show when={ready.error}>
         <p role="alert">
@@ -136,9 +133,6 @@ export const RecordDetail: Component<PageContext> = (ctx) => {
     >
       <div class="record-heading">
         <h1 tabindex="-1">{ctx.schema.title}详情</h1>
-        <code class="record-meta" title={ctx.params.id}>
-          {ctx.params.id}
-        </code>
       </div>
       <Show when={ready.error}>
         <p role="alert">

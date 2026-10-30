@@ -44,6 +44,14 @@ export const OverlayWindow: Component<WindowProps & { presentation?: "modal" | "
 );
 
 /**
+ * 在画布中央显示圆角 Modal，共享窗口关闭和焦点管理。
+ * @example <Modal open={visible()} label="编辑" onClose={() => setVisible(false)}>{content}</Modal>
+ */
+export const Modal: Component<WindowProps> = (props) => (
+  <OverlayWindow {...props} presentation="modal" />
+);
+
+/**
  * 在右侧显示四周留有边距的圆角 Drawer，共享窗口关闭和焦点管理。
  * @example <Drawer open={visible()} label="详情" onClose={() => setVisible(false)}>{content}</Drawer>
  */
