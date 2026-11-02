@@ -1,15 +1,9 @@
 import { createSignal, For, Show } from "solid-js";
 import type { Component } from "solid-js";
+import { toolDescriptions } from "formwork/mcp";
 import { Icon } from "./icons";
 
-const tools = [
-  "models.list",
-  "models.read",
-  "formwork.capabilities",
-  "models.validate",
-  "models.write",
-  "models.preview",
-];
+const tools = Object.keys(toolDescriptions);
 
 /** 在模型列表提供 HTTP/HTTPS MCP 地址和自定义 Headers 鉴权配置。 */
 export const McpGuide: Component = () => {
@@ -87,10 +81,16 @@ export const McpGuide: Component = () => {
             <div class="mcp-step">
               <span class="step-number">3</span>
               <div>
-                <h3>读取、校验并保存模型</h3>
+                <h3>获取指南和组件，开始编辑</h3>
                 <p>
-                  先调用 <code>models.read</code>，保存时传入返回的 <code>revision</code> 作为{" "}
-                  <code>ifRevision</code>，再预览草稿。草稿只能在管理页手动发布。
+                  让 AI 先调用 <code>{"formwork.describe({})"}</code> 获取模型模板和构建指南，
+                  再调用 <code>{"formwork.capabilities({})"}</code> 查看全部组件和页面。
+                  连接后即可开始，无需提供编辑器链接或项目上下文。
+                </p>
+                <p>
+                  修改已有模型先调用 <code>models.read</code>；校验后保存， 用返回的{" "}
+                  <code>revision</code> 作为 <code>ifRevision</code>。 新建模型传{" "}
+                  <code>ifRevision: null</code>，草稿在管理页手动发布。
                 </p>
               </div>
             </div>

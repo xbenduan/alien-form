@@ -15,6 +15,7 @@ import type {
   RouteTarget,
 } from "formwork/model";
 import type { Actor, ModelHead, StoredModel } from "../contracts";
+import { createDefinitionTemplate, definitionJsonSchema, modelAuthoringGuide } from "formwork/mcp";
 import {
   readHead,
   readPublished,
@@ -24,8 +25,8 @@ import {
 import { planStorage } from "../adapters/d1/compiler/storage";
 import { accessFor, projectSchema } from "./auth/access";
 import { requireUser } from "./auth/service";
-import { effectiveCapabilities, readManifest } from "./capabilities";
-import { validateDefinition } from "./model-validation";
+import { capabilityCatalog, effectiveCapabilities, readManifest } from "./capabilities";
+import { behaviorCommands, behaviorEvents, validateDefinition } from "./model-validation";
 import { forbidden, invalid, notFound, ServiceError } from "../http/errors";
 import { isSystemModel } from "../sys-models";
 
@@ -358,6 +359,82 @@ export class ModelService {
       schema: projectSchema(model, this.actor),
       version: model.version,
       revision: model.revision,
+    };
+  }
+  /** 无需模型或页面身份，返回当前应用全部已登记的代码能力。 */
+  async catalog() {
+    return capabilityCatalog(await readManifest(this.db));
+  }
+  /** 返回独立 agent 构建模型所需的指南、结构、模板、权限及具体调用示例。
+   * @param modelId 可指定新模型 ID；省略时生成候选 ID，保存前仍需检查是否已存在。
+   */
+  async describe(modelId = `model_${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`) {
+    assertModelId(modelId);
+    let capabilities: Awaited<ReturnType<ModelService["catalog"]>> | null = null;
+    let capabilitiesError: { code: string; message: string } | undefined;
+    try {
+      capabilities = await this.catalog();
+    } catch (error) {
+      if (!(error instanceof ServiceError && error.code === "CAPABILITIES_UNAVAILABLE"))
+        throw error;
+      capabilitiesError = { code: error.code, message: error.message };
+    }
+    const definitionTemplate = createDefinitionTemplate(modelId);
+    const target = capabilities?.targets.find(
+      (item) => item.model && item.requiredPreviewParams.length === 0,
+    );
+    const route = target
+      ? {
+          router: target.router,
+          ...(target.window === undefined ? {} : { window: target.window }),
+        }
+      : undefined;
+    return {
+      guide: modelAuthoringGuide,
+      definitionJsonSchema,
+      definitionTemplate,
+      capabilities,
+      ...(capabilitiesError
+        ? {
+            capabilitiesError,
+            setup:
+              "指南、结构和模板仍可读取。组件清单需要部署流程将 Vite 生成的 manifest 登记到 Worker；登记完成后调用 formwork.capabilities({})，无需浏览器或编辑器 URL。",
+          }
+        : {}),
+      permissions: {
+        canCreateModel: this.actor.canCreateModel,
+        canPublishViaMcp: false,
+        systemModelsReadOnly: true,
+      },
+      backendCapabilities: {
+        rules: [],
+        commands: [...behaviorCommands],
+        recordEventTopics: ["create", "update", "delete"],
+        eventHandlers: [...behaviorEvents],
+        note: "业务模型只能引用这些已注册处理器；system.* 规则由系统模型代码维护。",
+      },
+      examples: {
+        discover: { name: "formwork.capabilities", arguments: {} },
+        list: { name: "models.list", arguments: {} },
+        ...(route
+          ? {
+              effectiveCapabilities: {
+                name: "formwork.capabilities",
+                arguments: { modelId, ...route },
+              },
+            }
+          : {}),
+        validate: {
+          name: "models.validate",
+          arguments: { modelId, definition: definitionTemplate },
+        },
+        create: {
+          name: "models.write",
+          arguments: { modelId, definition: definitionTemplate, ifRevision: null },
+        },
+        ...(route ? { preview: { name: "models.preview", arguments: { modelId, ...route } } } : {}),
+      },
+      resources: ["formwork://guide", "formwork://capabilities", "formwork://definition-schema"],
     };
   }
   async capabilities(id: string, target: RouteTarget, candidateDomain?: string) {

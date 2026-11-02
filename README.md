@@ -1,6 +1,6 @@
 # Alien Form / Formwork
 
-Solid 无头表单内核、数据库模型列表与 Schema 详情、Vite 代码能力清单和六项 HTTP/HTTPS MCP 工具。唯一后端是 `apps/service` 的 Cloudflare Worker，开发使用本地 D1，部署使用 Cloudflare D1。
+Solid 无头表单内核、数据库模型列表与 Schema 详情、Vite 代码能力清单和七项 HTTP/HTTPS MCP 工具。唯一后端是 `apps/service` 的 Cloudflare Worker，开发使用本地 D1，部署使用 Cloudflare D1。
 
 使用 Node **26.13.0**、pnpm **12.16.1**：
 
@@ -32,7 +32,23 @@ MCP 使用 Streamable HTTP，端点为 `<Worker origin>/mcp`。在 AI 客户端�
 }
 ```
 
-本地使用启动器输出的 Worker HTTP 地址，例如 `http://127.0.0.1:8788/mcp`；Vite 开发服务也会代理 `/mcp`，模型列表可直接复制当前地址的配置。分离部署时设置 `VITE_FORMWORK_API_URL=https://<worker>/api/v1`，接入页会使用对应 Worker 的 `/mcp`。Worker 为每次请求校验凭证与当前权限，凭证撤销后立即生效；六项工具直接操作 D1 中的模型状态。`models.write` 只保存草稿，发布仍需在管理页手动完成。
+本地使用启动器输出的 Worker HTTP 地址，例如 `http://127.0.0.1:8788/mcp`；Vite 开发服务也会代理 `/mcp`，模型列表可直接复制当前地址的配置。分离部署时设置 `VITE_FORMWORK_API_URL=https://<worker>/api/v1`，接入页会使用对应 Worker 的 `/mcp`。Worker 为每次请求校验凭证与当前权限，凭证撤销后立即生效。`models.write` 只保存草稿，发布仍需在管理页手动完成。
+
+MCP 的 `initialize.instructions` 会引导无项目上下文的 agent 从 `formwork.describe({})` 开始，不需要编辑器 URL 或浏览器标签页：
+
+| 工具                    | 用途                                                                                                                                                      |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `formwork.describe`     | 无参数获取完整模型构建指南、definition JSON Schema、完整模板、当前权限、组件目录及具体调用示例；可选 `modelId` 定制模板                                   |
+| `formwork.capabilities` | `{}` 返回当前已登记的全部 Framework/Domain/Page/Window 组件、fn、源码声明、JSDoc、路由与必填参数；`{modelId,router,window?,domain?}` 返回目标实际有效能力 |
+| `models.list`           | 列出当前身份可管理的模型                                                                                                                                  |
+| `models.read`           | 读取共享草稿或已发布定义及最新管理 revision                                                                                                               |
+| `models.validate`       | 校验完整 `{document,backend}`，返回 errors 和浏览器 runtimeChecks                                                                                         |
+| `models.write`          | 保存完整共享草稿；新建用 `ifRevision:null`，修改用最新 read/write 返回的 revision                                                                         |
+| `models.preview`        | 按已登记 router/window 和真实记录参数生成草稿预览链接                                                                                                     |
+
+同样内容可通过 MCP resources 读取：`formwork://guide`、`formwork://capabilities`、`formwork://definition-schema`。目录保留组件所属作用域，按 Framework → 选定 Domain → Page → 本地 Window 覆盖同名能力；不同页面的局部组件不自动全局可用。清单尚未登记时，`describe` 仍返回指南和模板，并明确报告登记状态。
+
+创建模型按 `describe → capabilities → validate → write → preview` 操作；修改已有模型先 `list → read`，保留稳定 storage binding id。`fields` 是 Pointer 到展示配置的映射，完整定义必须同时包含 `document` 和 `backend`。静态错误修正后，还需按 runtimeChecks 验证预览交互。
 
 示例包括订单（orders）、内容管理（cms）、组织架构（departments）和客户档案（customer-profile）。组织架构使用树形列表，可自行添加部门和上级关系；客户档案展示嵌套对象与地址数组卡片。实时预览从空列表开始，用户新增的记录仅保存在当前预览内存中，支持编辑、详情、删除及切换视图；修改有效 Schema 保留已录入记录，预览记录不写入后端。`examples/*.records.json` 提供可选示例数据，E2E 启动器仅在独立测试数据库中按需读取。
 

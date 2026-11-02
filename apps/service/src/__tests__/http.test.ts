@@ -1,6 +1,7 @@
 import { beforeAll, afterAll, afterEach, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 import { createFormworkApi } from "formwork/model";
+import { toolInputSchemas } from "formwork/mcp";
 import type {
   ModelDefinition,
   DraftDefinition,
@@ -31,6 +32,7 @@ function manifest(): CapabilityManifest {
     name,
     source,
     declaration: `(props) => JSX.Element`,
+    jsDoc: `渲染 ${name} 字段，props 由框架绑定。`,
   }));
   const empty = { components: [], fn: [], runtimeChecks: [] };
   const contents: Omit<CapabilityManifest, "revision"> = {
@@ -929,7 +931,7 @@ it("关系去重、options、子树、防环、引用删除保护和停用 throu
     (await worker.sql("SELECT links FROM test_relation WHERE id = 's1'"))[0].results[0].links,
   ).toBe('["t1"]');
 });
-it("官方 SDK 通过 HTTP 和自定义 Headers 调用真实 Worker/D1 六工具，agent 只能保存草稿", async () => {
+it("官方 SDK 通过 HTTP 和自定义 Headers 调用真实 Worker/D1 工具，agent 只能保存草稿", async () => {
   const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
   const { StreamableHTTPClientTransport } =
     await import("@modelcontextprotocol/sdk/client/streamableHttp.js");
@@ -942,14 +944,9 @@ it("官方 SDK 通过 HTTP 和自定义 Headers 调用真实 Worker/D1 六工具
     await publish(definition("mcp_base"));
     await client.connect(transport);
     expect(transport.sessionId).toBeUndefined();
-    expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual([
-      "models.list",
-      "models.read",
-      "formwork.capabilities",
-      "models.validate",
-      "models.write",
-      "models.preview",
-    ]);
+    expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual(
+      Object.keys(toolInputSchemas),
+    );
     const call = async (name: string, args: Record<string, unknown>) => {
       const result = await client.callTool({ name, arguments: args });
       const value = JSON.parse((result.content as Array<{ text: string }>)[0].text);
@@ -1016,6 +1013,177 @@ it("官方 SDK 通过 HTTP 和自定义 Headers 调用真实 Worker/D1 六工具
     await client.close();
   }
 });
+it("无项目上下文的 MCP agent 从握手、零参数工具和资源发现完整能力，再用返回模板构建草稿", async () => {
+  const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+  const { StreamableHTTPClientTransport } =
+    await import("@modelcontextprotocol/sdk/client/streamableHttp.js");
+  const token = await worker.api.auth.issueToken({ label: "零上下文 MCP", expiresInDays: 1 });
+  const client = new Client({ name: "no-project-context-agent", version: "1" });
+  const call = async (name: string, args?: Record<string, unknown>) => {
+    const result = await client.callTool({ name, ...(args ? { arguments: args } : {}) });
+    const value = JSON.parse((result.content as Array<{ text: string }>)[0].text);
+    expect(result.isError, JSON.stringify(value)).not.toBe(true);
+    return value;
+  };
+  try {
+    await client.connect(
+      new StreamableHTTPClientTransport(new URL(`${worker.origin}/mcp`), {
+        requestInit: { headers: { Authorization: `Bearer ${token.token}` } },
+      }),
+    );
+    expect(client.getInstructions()).toContain("formwork.describe({})");
+    expect(client.getInstructions()).toContain("无需编辑器 URL");
+    expect(client.getServerCapabilities()).toMatchObject({ tools: {}, resources: {} });
+    const tools = (await client.listTools()).tools;
+    for (const name of ["formwork.describe", "formwork.capabilities"]) {
+      const tool = tools.find((item) => item.name === name)!;
+      expect(tool.inputSchema.required ?? []).toEqual([]);
+      expect(tool.annotations?.readOnlyHint).toBe(true);
+      expect(tool.description).toContain("{}");
+    }
+    expect(tools.find((item) => item.name === "models.write")!.annotations?.readOnlyHint).toBe(
+      false,
+    );
+    const info = await call("formwork.describe");
+    expect(info.permissions).toEqual({
+      canCreateModel: true,
+      canPublishViaMcp: false,
+      systemModelsReadOnly: true,
+    });
+    expect(info.definitionJsonSchema.properties.document).toBeDefined();
+    expect(info.guide.definition.fields).toContain("不是 fields[]");
+    expect(info.backendCapabilities.commands).toContain("records.count");
+    const catalog = await call("formwork.capabilities");
+    expect(catalog).toEqual(info.capabilities);
+    expect(catalog).toMatchObject({
+      scope: "application",
+      mergeOrder: ["Framework", "selected Domain", "Page", "local Window"],
+      framework: {
+        components: expect.arrayContaining([
+          expect.objectContaining({
+            name: "Input",
+            declaration: expect.any(String),
+            jsDoc: expect.any(String),
+            source: expect.any(Object),
+          }),
+        ]),
+      },
+      domains: { shared: { components: [expect.objectContaining({ name: "SharedEditor" })] } },
+      pages: {
+        list: {
+          capabilities: { fn: [expect.objectContaining({ declaration: "Page identity" })] },
+          windows: {
+            edit: {
+              capabilities: { fn: [expect.objectContaining({ declaration: "Window identity" })] },
+            },
+          },
+        },
+      },
+    });
+    expect(catalog.targets).toContainEqual(
+      expect.objectContaining({
+        router: "list",
+        window: "edit",
+        viewKey: "list/edit",
+        path: "/list/:modelId/edit/:id",
+        requiredParams: ["modelId", "id"],
+        requiredPreviewParams: ["id"],
+      }),
+    );
+    const resources = (await client.listResources()).resources;
+    expect(resources.map((item) => item.uri).sort()).toEqual(info.resources.toSorted());
+    for (const uri of info.resources) {
+      const resource = await client.readResource({ uri });
+      expect(resource.contents[0]).toMatchObject({ uri, mimeType: "application/json" });
+      const value = JSON.parse((resource.contents[0] as { text: string }).text);
+      if (uri === "formwork://definition-schema") expect(value).toEqual(info.definitionJsonSchema);
+      if (uri === "formwork://capabilities") expect(value).toEqual(catalog);
+      if (uri === "formwork://guide") expect(value.guide).toEqual(info.guide);
+    }
+    const scoped = await call(
+      info.examples.effectiveCapabilities.name,
+      info.examples.effectiveCapabilities.arguments,
+    );
+    expect(scoped.components.some((item: { name: string }) => item.name === "SharedEditor")).toBe(
+      false,
+    );
+    const withDomain = await call("formwork.capabilities", {
+      ...info.examples.effectiveCapabilities.arguments,
+      domain: Object.keys(catalog.domains)[0],
+    });
+    expect(
+      withDomain.components.some((item: { name: string }) => item.name === "SharedEditor"),
+    ).toBe(true);
+    const validated = await call(info.examples.validate.name, info.examples.validate.arguments);
+    expect(validated.errors).toEqual([]);
+    const saved = await call(info.examples.create.name, info.examples.create.arguments);
+    expect(saved).toMatchObject({
+      stage: "draft",
+      definition: info.definitionTemplate,
+      diagnostics: { errors: [] },
+    });
+    const preview = await call(info.examples.preview.name, info.examples.preview.arguments);
+    expect(new URL(preview.url).searchParams.get("revision")).toBe(saved.revision);
+    const incompleteTarget = await client.callTool({
+      name: "formwork.capabilities",
+      arguments: { router: "list" },
+    });
+    expect(incompleteTarget.isError).toBe(true);
+    expect(JSON.stringify(incompleteTarget.content)).toContain("发现全部组件请传 {}");
+    const revision = saved.revision;
+    const changed = structuredClone(saved.definition);
+    changed.document.title = "agent 更新的模型";
+    const updated = await call("models.write", {
+      modelId: saved.id,
+      definition: changed,
+      ifRevision: revision,
+    });
+    expect(updated.revision).not.toBe(revision);
+    expect((await call("models.read", { modelId: saved.id })).definition.document.title).toBe(
+      "agent 更新的模型",
+    );
+  } finally {
+    await client.close();
+  }
+});
+it("未登记能力清单时 MCP 仍能提供构建指南和 schema，并明确返回部署状态", async () => {
+  const revision = manifest().revision;
+  await worker.sql("DELETE FROM fw_capability_heads WHERE app_id = 'alien-form'");
+  const invoke = async (name: string) => {
+    const response = await fetch(`${worker.origin}/mcp`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${worker.token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name, arguments: {} },
+      }),
+    });
+    return (await response.json()).result;
+  };
+  try {
+    const described = await invoke("formwork.describe");
+    expect(described.isError).not.toBe(true);
+    const info = JSON.parse(described.content[0].text);
+    expect(info).toMatchObject({
+      capabilities: null,
+      capabilitiesError: { code: "CAPABILITIES_UNAVAILABLE" },
+      definitionTemplate: { document: { id: expect.any(String) }, backend: expect.any(Object) },
+      definitionJsonSchema: { type: "object" },
+    });
+    expect(info.setup).toContain("无需浏览器或编辑器 URL");
+    expect((await invoke("formwork.capabilities")).isError).toBe(true);
+  } finally {
+    await worker.sql(
+      `INSERT INTO fw_capability_heads(app_id, revision) VALUES ('alien-form', '${revision}')`,
+    );
+  }
+});
 it("MCP 每次请求校验 Header credential，拒绝 URL token、deploy、过期及已撤销凭证", async () => {
   const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
   const { StreamableHTTPClientTransport } =
@@ -1046,7 +1214,7 @@ it("MCP 每次请求校验 Header credential，拒绝 URL token、deploy、过�
   });
   try {
     await client.connect(transport);
-    expect((await client.listTools()).tools).toHaveLength(6);
+    expect((await client.listTools()).tools).toHaveLength(Object.keys(toolInputSchemas).length);
     await worker.api.auth.revokeToken(token.id);
     expect((await request({ Authorization: `Bearer ${token.token}` })).status).toBe(401);
     await expect(client.listTools()).rejects.toMatchObject({ code: 401 });

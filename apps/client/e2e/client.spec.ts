@@ -338,8 +338,8 @@ test("首页模型搜索与清除、固定操作列和 MCP 直连 Worker 配置"
     data: { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} },
   });
   expect(mcp.ok()).toBe(true);
-  expect((await mcp.json()).result.tools).toHaveLength(6);
-  await expect(page.locator(".mcp-tools code")).toHaveCount(6);
+  expect((await mcp.json()).result.tools).toHaveLength(7);
+  await expect(page.locator(".mcp-tools code")).toHaveCount(7);
   await page.goto("/home");
   await expect(page).toHaveURL(/\/models$/u);
 });

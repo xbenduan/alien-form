@@ -1,11 +1,27 @@
 import { z } from "zod";
 import {
-  validateRoutes, isObject, viewIssues, fieldIssues, manifestRoutes, schemaTargets,
-  manifestCapabilities, presentationIssues, routeKey, escapePointer, expressionBody, FormworkError, selectDomain,
+  validateRoutes,
+  isObject,
+  viewIssues,
+  fieldIssues,
+  manifestRoutes,
+  schemaTargets,
+  manifestCapabilities,
+  presentationIssues,
+  routeKey,
+  escapePointer,
+  expressionBody,
+  FormworkError,
+  selectDomain,
 } from "formwork/model";
 import type {
-  ModelDefinition, ModelDocument, CapabilityManifest, EffectiveCapabilities, RouteTarget,
-  ValidationReport, JsonValue,
+  ModelDefinition,
+  ModelDocument,
+  CapabilityManifest,
+  EffectiveCapabilities,
+  RouteTarget,
+  ValidationReport,
+  JsonValue,
 } from "formwork/model";
 import type { Env } from "../contracts";
 import { tokenHash } from "./auth/password";
@@ -58,17 +74,27 @@ const manifestSchema = z
     presenters: z.array(z.enum(["page", "modal", "drawer"])),
     framework: layer,
     domains: z.record(z.string().regex(/^[a-z][a-z0-9_-]*$/u), layer),
-    pages: z.record(z.string(), z.object({
-      path: z.string(),
-      model: z.boolean(),
-      capabilities: layer,
-      windows: z.record(z.string(), z.object({
-        path: z.string(),
-        model: z.boolean(),
-        openMode: z.enum(["page", "modal", "drawer"]),
-        capabilities: layer,
-      }).strict()),
-    }).strict()),
+    pages: z.record(
+      z.string(),
+      z
+        .object({
+          path: z.string(),
+          model: z.boolean(),
+          capabilities: layer,
+          windows: z.record(
+            z.string(),
+            z
+              .object({
+                path: z.string(),
+                model: z.boolean(),
+                openMode: z.enum(["page", "modal", "drawer"]),
+                capabilities: layer,
+              })
+              .strict(),
+          ),
+        })
+        .strict(),
+    ),
   })
   .strict();
 
@@ -83,7 +109,11 @@ export async function readManifest(db: D1Database): Promise<CapabilityManifest> 
   if (!row) throw new ServiceError("CAPABILITIES_UNAVAILABLE", "应用代码能力清单尚未登记", 422);
   const parsed = manifestSchema.safeParse(JSON.parse(row.manifest_json));
   if (!parsed.success)
-    throw new ServiceError("CAPABILITIES_UNAVAILABLE", "应用代码能力清单版本已过期，请重新登记", 422);
+    throw new ServiceError(
+      "CAPABILITIES_UNAVAILABLE",
+      "应用代码能力清单版本已过期，请重新登记",
+      422,
+    );
   return parsed.data;
 }
 /** 根据当前模型文档与所属 Page/Window 解析四层代码能力。 */
@@ -95,6 +125,41 @@ export function effectiveCapabilities(
   return manifestCapabilities(manifest, document, target);
 }
 
+/** 列出当前已激活应用的全部代码能力与路由参数，保留各层作用域。 */
+export function capabilityCatalog(manifest: CapabilityManifest) {
+  return {
+    scope: "application" as const,
+    appId: manifest.appId,
+    revision: manifest.revision,
+    clientOrigin: manifest.clientOrigin,
+    mergeOrder: ["Framework", "selected Domain", "Page", "local Window"],
+    domainSelection: "document.domain；省略时匹配同名 modelId 的 Domain，否则只用 Framework。",
+    framework: manifest.framework,
+    domains: manifest.domains,
+    pages: manifest.pages,
+    presenters: manifest.presenters,
+    targets: manifestRoutes(manifest).map((route) => {
+      const path = route.path!;
+      const requiredParams = path
+        .split("/")
+        .filter((part) => part.startsWith(":") && !part.endsWith("?"))
+        .map((part) => part.slice(1));
+      return {
+        router: route.router,
+        ...(route.window === undefined ? {} : { window: route.window }),
+        viewKey: routeKey(route),
+        path,
+        model: route.model === true,
+        ...(route.openMode === undefined ? {} : { openMode: route.openMode }),
+        requiredParams,
+        requiredPreviewParams: requiredParams.filter((name) => name !== "modelId"),
+      };
+    }),
+    usage:
+      "此目录是全部已登记能力，不代表每个目标都能使用所有组件。选定目标后调用 formwork.capabilities({modelId,router,window?,domain?}) 获取实际有效能力。",
+  };
+}
+
 /** 校验文档的代码引用与呈现配置，供发布和清单更新共用。 */
 export function capabilityReport(
   manifest: CapabilityManifest,
@@ -102,29 +167,53 @@ export function capabilityReport(
   requested?: RouteTarget,
 ): ValidationReport {
   const errors: ValidationReport["errors"][number][] = presentationIssues(
-    document, manifestRoutes(manifest), manifest.presenters,
+    document,
+    manifestRoutes(manifest),
+    manifest.presenters,
   ).map((issue) => ({ ...issue, path: `/document${issue.path}`, modelId: document.id }));
   const runtimeChecks: ValidationReport["runtimeChecks"][number][] = [];
   const targets = schemaTargets(manifest);
   const addError = (error: unknown, target?: RouteTarget) => {
-    const issues = error instanceof FormworkError && error.issues.length
-      ? error.issues
-      : [{ path: "/views", code: error instanceof FormworkError ? error.code : "INVALID_MODEL",
-          message: error instanceof Error ? error.message : String(error) }];
-    errors.push(...issues.map((issue) => ({
-      ...issue, path: `/document${issue.path}`, modelId: document.id, ...target,
-    })));
+    const issues =
+      error instanceof FormworkError && error.issues.length
+        ? error.issues
+        : [
+            {
+              path: "/views",
+              code: error instanceof FormworkError ? error.code : "INVALID_MODEL",
+              message: error instanceof Error ? error.message : String(error),
+            },
+          ];
+    errors.push(
+      ...issues.map((issue) => ({
+        ...issue,
+        path: `/document${issue.path}`,
+        modelId: document.id,
+        ...target,
+      })),
+    );
   };
   if (requested && !targets.some((target) => routeKey(target) === routeKey(requested))) {
     try {
       effectiveCapabilities(manifest, document, requested);
-      errors.push({ path: "/document/views", code: "INVALID_ROUTER", message: "此目标不加载 schema", ...requested });
-    } catch (error) { addError(error, requested); }
+      errors.push({
+        path: "/document/views",
+        code: "INVALID_ROUTER",
+        message: "此目标不加载 schema",
+        ...requested,
+      });
+    } catch (error) {
+      addError(error, requested);
+    }
   }
   for (const name of Object.keys(document.views ?? {}))
     if (!targets.some((target) => routeKey(target) === name))
-      errors.push({ path: `/document/views/${escapePointer(name)}`, code: "UNKNOWN_ROUTER",
-        message: "View 的 Page/Window 不存在或不加载 schema", modelId: document.id });
+      errors.push({
+        path: `/document/views/${escapePointer(name)}`,
+        code: "UNKNOWN_ROUTER",
+        message: "View 的 Page/Window 不存在或不加载 schema",
+        modelId: document.id,
+      });
   try {
     // Resolve once even if a manifest has no model pages, so unknown explicit Domains cannot escape.
     selectDomain(document, manifest.domains);
@@ -132,29 +221,56 @@ export function capabilityReport(
     addError(error);
     return { errors, runtimeChecks };
   }
-  for (const target of requested ? targets.filter((item) => routeKey(item) === routeKey(requested)) : targets) {
+  for (const target of requested
+    ? targets.filter((item) => routeKey(item) === routeKey(requested))
+    : targets) {
     const capabilities = effectiveCapabilities(manifest, document, target);
     const name = routeKey(target);
     const components = capabilities.components.map((item) => item.name);
-    errors.push(...fieldIssues(document.fields, components).map((issue) => ({
-      ...issue, path: `/document${issue.path}`, modelId: document.id, ...target,
-    })));
+    errors.push(
+      ...fieldIssues(document.fields, components).map((issue) => ({
+        ...issue,
+        path: `/document${issue.path}`,
+        modelId: document.id,
+        ...target,
+      })),
+    );
     const view = document.views?.[name];
     if (view)
-      errors.push(...viewIssues(view, document.data, components, document.data, "", document.fields)
-        .map((issue) => ({ ...issue, path: `/document/views/${escapePointer(name)}${issue.path}`,
-          modelId: document.id, ...target })));
+      errors.push(
+        ...viewIssues(view, document.data, components, document.data, "", document.fields).map(
+          (issue) => ({
+            ...issue,
+            path: `/document/views/${escapePointer(name)}${issue.path}`,
+            modelId: document.id,
+            ...target,
+          }),
+        ),
+      );
     const visit = (value: JsonValue, path: string) => {
       const body = expressionBody(value);
       if (body) {
         for (const match of body.matchAll(/\bfn\.([A-Za-z_$][\w$]*)/gu))
           if (!capabilities.fn.some((fn) => fn.name === match[1]))
-            errors.push({ path, code: "UNKNOWN_FN", message: `未知 fn ${match[1]}`, modelId: document.id, ...target });
-        runtimeChecks.push({ path, code: "EXPRESSION_RUNTIME", message: "表达式行为需要在浏览器预览执行", modelId: document.id, ...target });
+            errors.push({
+              path,
+              code: "UNKNOWN_FN",
+              message: `未知 fn ${match[1]}`,
+              modelId: document.id,
+              ...target,
+            });
+        runtimeChecks.push({
+          path,
+          code: "EXPRESSION_RUNTIME",
+          message: "表达式行为需要在浏览器预览执行",
+          modelId: document.id,
+          ...target,
+        });
       }
       if (Array.isArray(value)) value.forEach((child, index) => visit(child, `${path}/${index}`));
       else if (value && typeof value === "object")
-        for (const [key, child] of Object.entries(value)) visit(child, `${path}/${escapePointer(key)}`);
+        for (const [key, child] of Object.entries(value))
+          visit(child, `${path}/${escapePointer(key)}`);
     };
     if (view) visit(view as unknown as JsonValue, `/document/views/${escapePointer(name)}`);
     if (document.fields) visit(document.fields as unknown as JsonValue, "/document/fields");
@@ -212,9 +328,12 @@ export async function registerCapabilities(env: Env, appId: string, input: unkno
     const definition = JSON.parse(row.definition_json) as ModelDefinition;
     const report = capabilityReport(manifest, definition.document);
     if (report.errors.length)
-      throw new ServiceError("INVALID_MODEL",
+      throw new ServiceError(
+        "INVALID_MODEL",
         `清单变更使已发布模型 ${definition.document.id} 的代码引用或呈现配置失效，请先迁移该模型`,
-        422, report.errors);
+        422,
+        report.errors,
+      );
   }
   await env.DB.batch([
     env.DB.prepare(
