@@ -890,41 +890,30 @@ code,
   }
 }
 .filters {
-  display: flex;
-  align-items: flex-end;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: end;
   gap: var(--space-sm);
   padding: var(--panel-gutter);
   overflow: visible;
 }
-.filters > .field-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr));
-  flex: 1 1 480px;
-  gap: var(--space-sm);
-  min-width: 0;
-}
-.filters .form-item {
-  min-width: 0;
+/* Keep folded fields mounted so their controls and draft values survive toggling. */
+.filters:not(.filters-expanded) > .form-item:nth-child(n + 6 of .form-item) {
+  display: none;
 }
 .filters .field-label {
-  margin-bottom: var(--space-2xs);
-  font-size: var(--text-small);
+  margin-bottom: calc(var(--space-sm) / 2);
+  font-size: var(--text-body);
   color: var(--muted);
   font-weight: 400;
 }
 .filters .filter-actions {
+  justify-self: start;
   flex-wrap: nowrap;
-  padding-bottom: 0;
   gap: var(--space-xs);
-  margin-left: auto;
 }
-.filter-actions .button.secondary {
-  border-color: transparent;
-  color: var(--muted);
-  background: transparent;
-  padding-right: 4px;
-  padding-left: 4px;
+.filter-actions .text-button {
+  min-height: var(--control-height);
 }
 .control {
   display: block;
@@ -1163,6 +1152,9 @@ th.operation-cell {
   font-size: var(--text-small);
 }
 .sort-indicator {
+  color: var(--muted);
+}
+th:is([aria-sort="ascending"], [aria-sort="descending"]) .sort-indicator {
   color: var(--cyan);
 }
 .value-text {
@@ -2192,15 +2184,27 @@ td .rich-text {
 }
 
 /* Components adapt to their available space, including the embedded preview. */
-@container record-list (max-width: 680px) {
-  .filters > .field-grid {
-    flex-basis: 100%;
+@container record-list (max-width: 1200px) {
+  .filters {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
-@container record-list (max-width: 560px) {
-  .filters > .field-grid {
+@container record-list (max-width: 900px) {
+  .filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@container record-list (max-width: 660px) {
+  .filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container record-list (max-width: 440px) {
+  .filters {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

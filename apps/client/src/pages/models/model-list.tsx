@@ -4,7 +4,12 @@ import type { Component } from "solid-js";
 import type { ActionContext } from "formwork";
 import { errorPayload, modelIdPattern } from "formwork/model";
 import { sessionUser } from "../../formwork/api";
-import { modelMenu, modelMenuLoading, refreshModelMenu, setModelPinned } from "../../formwork/shell/model-menu";
+import {
+  modelMenu,
+  modelMenuLoading,
+  refreshModelMenu,
+  setModelPinned,
+} from "../../formwork/shell/model-menu";
 import { Icon } from "../../formwork/shell/icons";
 import { McpGuide } from "../../formwork/shell/mcp-guide";
 import { PageTopbar } from "../../formwork/shell/page-topbar";
@@ -56,6 +61,16 @@ export const ModelList: Component<ActionContext> = (ctx) => {
           title={<h1>模型列表</h1>}
           actions={
             <>
+              <a
+                class="button secondary"
+                href="/learning-center/index.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="学习中心（新标签页打开）"
+              >
+                <Icon name="book" />
+                学习中心
+              </a>
               <button
                 class="button secondary"
                 disabled={directory.loading}

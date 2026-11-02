@@ -1,15 +1,25 @@
 {
+  "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "alien-mdm",
+  "account_id": "5d8a84b141017bea1940518ec59962a9",
   "main": "src/index.ts",
-  "compatibility_date": "2026-09-08",
+  "compatibility_date": "2026-11-02",
+  "compatibility_flags": ["nodejs_compat"],
+  "upload_source_maps": true,
+  "workers_dev": true,
+  "assets": {
+    "directory": "../client/dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api", "/api/*", "/mcp", "/mcp/*"]
+  },
   "vars": {
-    "FORMWORK_CLIENT_ORIGIN": "http://localhost:5173"
+    "FORMWORK_CLIENT_ORIGIN": "https://alien-mdm.xbenduan.workers.dev"
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "alien-mdm",
-      "database_id": "853ab275-6ce6-48e0-93db-a6002c1cb640"
+      "database_id": "71438a56-d17a-4a5b-9c22-e37c7cca5c0f"
     }
   ],
   "observability": {

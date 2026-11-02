@@ -61,6 +61,7 @@ export const List: Component<PageContext & { parentId?: string; onRecordsChanged
     ),
   };
   const draft = ctx.createScope({ schema: querySchema, defaults: false });
+  const [filtersExpanded, setFiltersExpanded] = createSignal(false);
   const [query, setQuery] = createSignal<RecordQuery>({ filters: {}, page: 1, pageSize: 10 });
   createEffect(() => {
     const parentId = ctx.parentId;
@@ -222,6 +223,7 @@ export const List: Component<PageContext & { parentId?: string; onRecordsChanged
       />
       <form
         class="panel filters"
+        classList={{ "filters-expanded": filtersExpanded() }}
         aria-label="筛选记录"
         onSubmit={(event) => {
           event.preventDefault();
@@ -235,14 +237,21 @@ export const List: Component<PageContext & { parentId?: string; onRecordsChanged
         <Render
           scope={draft}
           mode="filter"
+          container={(props) => props.children}
           fieldContainer={FilterItem}
           components={{ Switch: Select }}
         />
         <div class="actions filter-actions">
-          <button type="submit" class="button" disabled={records.loading}>
-            <Icon name="filter" />
-            查询
-          </button>
+          <Show when={filters.length > 5}>
+            <button
+              type="button"
+              class="text-button"
+              aria-expanded={filtersExpanded()}
+              onClick={() => setFiltersExpanded((value) => !value)}
+            >
+              {filtersExpanded() ? "收起" : "展开"}
+            </button>
+          </Show>
           <button
             type="button"
             class="button secondary"
@@ -251,7 +260,10 @@ export const List: Component<PageContext & { parentId?: string; onRecordsChanged
               setQuery((value) => ({ ...value, filters: {}, page: 1 }));
             }}
           >
-            清空筛选
+            重置
+          </button>
+          <button type="submit" class="button" disabled={records.loading}>
+            查询
           </button>
         </div>
       </form>
@@ -305,28 +317,41 @@ export const List: Component<PageContext & { parentId?: string; onRecordsChanged
                       >
                         <button
                           class="text-button"
+                          title={
+                            query().sort?.field === name
+                              ? query().sort?.direction === "asc"
+                                ? "降序排列"
+                                : "取消排序"
+                              : "升序排列"
+                          }
                           onClick={() =>
-                            setQuery((value) => ({
-                              ...value,
-                              page: 1,
-                              sort: {
-                                field: name,
-                                direction:
-                                  value.sort?.field === name && value.sort.direction === "asc"
-                                    ? "desc"
-                                    : "asc",
-                              },
-                            }))
+                            setQuery(({ sort, ...value }) => {
+                              if (sort?.field === name && sort.direction === "desc")
+                                return { ...value, page: 1 };
+                              return {
+                                ...value,
+                                page: 1,
+                                sort: {
+                                  field: name,
+                                  direction: sort?.field === name ? "desc" : "asc",
+                                },
+                              };
+                            })
                           }
                         >
                           {(presentation?.table && presentation.table.title) ||
                             schema.title ||
                             name}
-                          <Show when={query().sort?.field === name}>
-                            <span class="sort-indicator" aria-hidden="true">
-                              {query().sort?.direction === "asc" ? "↑" : "↓"}
-                            </span>
-                          </Show>
+                          <Icon
+                            name={
+                              query().sort?.field === name
+                                ? query().sort?.direction === "asc"
+                                  ? "sort-asc"
+                                  : "sort-desc"
+                                : "sort"
+                            }
+                            class="ui-icon sort-indicator"
+                          />
                         </button>
                       </Show>
                     </th>

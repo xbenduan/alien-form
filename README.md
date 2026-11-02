@@ -80,8 +80,11 @@ pnpm worker:dry-run
 | `examples/`                                                    | 手动复制使用的普通模型定义及可选示例数据                             |
 
 ```sh
-pnpm deploy:service
-pnpm capabilities:register --api-url https://<worker>/api/v1 --client-origin https://<client>
+pnpm --filter @alien-form/service exec wrangler login
+pnpm deploy
+pnpm capabilities:register --api-url https://<worker>/api/v1 --client-origin https://<worker>
 ```
+
+`pnpm deploy` 先构建全部工作区包，再将 `apps/client/dist` 和 API 一起发布到 `alien-mdm` Worker。前端、学习中心、`/api/v1` 和 `/mcp` 共用同一域名，无需设置 `VITE_FORMWORK_API_URL`；直接访问前端路由会回退到 SPA，API 与 MCP 请求始终进入 Worker。发布前将 `apps/service/wrangler.json` 中的 `FORMWORK_CLIENT_ORIGIN` 设置为实际站点 origin（多个 origin 用逗号分隔）。`pnpm deploy:service` 复用已有前端构建，单独运行前需先执行 `pnpm build`。
 
 远端部署先执行 `migrate.ts` 初始化 metadata 并同步代码中的系统模型，再上传 Worker；保留远端账号和业务记录。系统模型新增字段会补充物理列并生成新版本；改变已有字段存储或关系时，需要直接在该脚本中明确处理。新库在首次请求时初始化管理员，需要设置 `FORMWORK_BOOTSTRAP_ADMIN_USERNAME`、`FORMWORK_BOOTSTRAP_ADMIN_PASSWORD`，清单登记需要 `FORMWORK_CAPABILITY_TOKEN`。可通过 Wrangler secrets 配置，也可通过环境变量传给部署脚本，由它使用私有临时文件执行 `wrangler secret bulk`。`pnpm worker:dry-run` 只检查 Worker 打包，不执行数据库操作或上传 secrets。

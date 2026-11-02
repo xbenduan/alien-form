@@ -9,7 +9,11 @@ type IconName =
   | "chevron"
   | "plus"
   | "filter"
+  | "sort"
+  | "sort-asc"
+  | "sort-desc"
   | "refresh"
+  | "book"
   | "code"
   | "preview"
   | "check"
@@ -29,7 +33,11 @@ const paths: Record<IconName | MenuIconName, string> = {
   chevron: "M9 5l7 7-7 7",
   plus: "M12 5v14 M5 12h14",
   filter: "M4 6h16 M7 12h10 M10 18h4",
+  sort: "M8 9l4-4 4 4 M8 15l4 4 4-4",
+  "sort-asc": "M8 9l4-4 4 4 M12 5v14",
+  "sort-desc": "M8 15l4 4 4-4 M12 5v14",
   refresh: "M20 7v5h-5 M4 17v-5h5 M6.3 6.3A8 8 0 0120 12 M17.7 17.7A8 8 0 014 12",
+  book: "M12 5C9 3 5 3 2 4v15c3-1 7-1 10 1 3-2 7-2 10-1V4c-3-1-7-1-10 1z M12 5v15",
   code: "M8 6l-6 6 6 6 M16 6l6 6-6 6 M14 3l-4 18",
   preview: "M2 4h20v14H2z M8 22h8 M12 18v4 M2 8h20",
   check: "M5 12l4 4L19 6",
