@@ -205,6 +205,7 @@ export function createRender(configuration: Configuration): Component<RenderProp
               component={fieldContainer}
               path={path!}
               title={cell?.schema.title ?? path!}
+              schema={cell?.schema}
               required={
                 !!cell?.parent &&
                 "properties" in cell.parent.schema &&

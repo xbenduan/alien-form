@@ -1,7 +1,13 @@
 import { createSignal, onCleanup, onMount, Show } from "solid-js";
 import type { Component } from "solid-js";
 import { createMemoryNavigation, FormworkHost, FormworkError } from "formwork";
-import type { ActionContext, FormworkDefinition, ModelDocument, PresenterProps } from "formwork";
+import type {
+  ActionContext,
+  FormworkDefinition,
+  ModelDocument,
+  PresenterProps,
+  RecordValue,
+} from "formwork";
 import {
   createRoutes,
   errorPayload,
@@ -36,6 +42,7 @@ export const ModelPreview: Component<ActionContext> = (ctx) => {
   )
     throw new FormworkError("PARAMS_REQUIRED", "预览需要 modelId 和审阅 revision 或发布版本");
   const modelId = ctx.modelId;
+  const records = new Map<string, RecordValue>();
   const [schema, setSchema] = createSignal<ModelDocument>();
   const [message, setMessage] = createSignal("");
   let serialized = "";
@@ -96,13 +103,13 @@ export const ModelPreview: Component<ActionContext> = (ctx) => {
   });
   const Preview: Component<{ schema: ModelDocument }> = (props) => {
     const pages = [list, treeList];
-    const router = query.get("router") ?? "list";
+    const router = query.get("router") ?? (props.schema.tree ? "tree-list" : "list");
     const target = { router, ...(query.has("window") ? { window: query.get("window")! } : {}) };
     const params = { ...Object.fromEntries(query), modelId };
     const navigation = createMemoryNavigation(routePath(createRoutes(pages), target, params));
     const app: FormworkDefinition = {
       ...modelDefaults,
-      api: createPreviewApi(props.schema),
+      api: createPreviewApi(props.schema, records),
       pages,
       presenters: { page: PreviewPage, drawer: DrawerPresenter, modal: ModalPresenter },
     };
@@ -111,7 +118,7 @@ export const ModelPreview: Component<ActionContext> = (ctx) => {
   return (
     <div class="preview-content">
       <Show when={!embedded}>
-        <p class="preview-notice">模拟数据 · 所有操作仅在当前预览中生效</p>
+        <p class="preview-notice">本地预览 · 数据仅保存在当前预览内存中</p>
       </Show>
       <Show when={message()}>
         <p class="preview-status" role="status">

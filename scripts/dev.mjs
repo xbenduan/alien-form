@@ -237,6 +237,13 @@ try {
       { ifRevision: null },
     );
   }
+  for (const id of ["departments", "customer-profile"]) {
+    if (existing.has(id)) continue;
+    const definition = JSON.parse(
+      await readFile(resolve(root, `examples/${id}.definition.json`), "utf8"),
+    );
+    await api.models.saveDraft(id, definition, { ifRevision: null });
+  }
   await api.auth.logout();
   if (stopping) await worker.close();
   else {

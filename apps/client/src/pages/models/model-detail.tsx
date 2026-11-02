@@ -431,7 +431,7 @@ export const ModelDetail: Component<ActionContext> = (ctx) => {
                   <Icon name="preview" />
                   实时预览
                 </h2>
-                <span class="preview-restriction">模拟数据</span>
+                <span class="preview-restriction">本地数据</span>
               </div>
               <iframe
                 ref={(element) => {

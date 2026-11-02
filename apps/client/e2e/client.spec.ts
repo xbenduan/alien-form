@@ -503,8 +503,8 @@ test("Schema、JSON 节点和诊断独立折叠，保留草稿及预览表单", 
     const url = new URL(`/model-preview/orders?revision=${revision}`, page.url());
     await login(standalone);
     await standalone.goto(url.href);
-    await expect(standalone.locator(".preview-notice")).toContainText("所有操作仅在当前预览中生效");
-    await expect(standalone.locator("tbody tr")).toHaveCount(3);
+    await expect(standalone.locator(".preview-notice")).toContainText("数据仅保存在当前预览内存中");
+    await expect(standalone.locator("tbody tr")).toHaveCount(0);
   } finally {
     await standalone.close();
   }
@@ -558,7 +558,7 @@ test("Schema、JSON 节点和诊断独立折叠，保留草稿及预览表单", 
   await expect(diagnostics).toContainText("保存后返回最新诊断。");
 });
 
-test("实时预览完整 CRUD、筛选和刷新均不请求接口，也不改变真实记录", async ({ page }) => {
+test("实时预览从空列表新增，CRUD、筛选和 Schema 重建保留前端缓存且不请求记录接口", async ({ page }) => {
   const errors: string[] = [];
   const previewRequests: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -570,18 +570,25 @@ test("实时预览完整 CRUD、筛选和刷新均不请求接口，也不改变
   });
   const query = { filters: {}, page: 1, pageSize: 50 };
   const original = await (await request(page, "/records/orders/query", "POST", query)).json();
+  const { definition } = await (await request(page, "/models/orders")).json();
   await page.goto("/models/orders");
   await expect(page.getByRole("heading", { name: "实时预览", exact: true })).toBeVisible();
   await expect(page.getByRole("combobox", { name: "预览页面" })).toHaveCount(0);
   await expect(page.getByLabel("预览记录 ID")).toHaveCount(0);
   const preview = page.frameLocator('iframe[title="模型管理预览"]');
-  await expect(preview.locator("tbody tr")).toHaveCount(3);
-  const row = preview.locator('tr[data-record-id="preview-1"]');
+  await expect(preview.locator("tbody tr")).toHaveCount(0);
   const dialog = preview.getByRole("dialog");
+  await preview.getByRole("button", { name: "新建记录", exact: true }).click();
+  await dialog.getByLabel("订单号").fill("LOCAL-FIRST");
+  await dialog.getByLabel("金额").fill("120");
+  await dialog.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  const row = preview.getByRole("row").filter({ hasText: "LOCAL-FIRST" });
+  await expect(row).toBeVisible();
   await row.getByRole("button", { name: "详情", exact: true }).click();
   await expect(preview.getByRole("heading", { name: "订单详情", exact: true })).toBeVisible();
   await expect(preview.locator(".record-page-panel")).toHaveCSS("border-top-style", "solid");
-  await expect(preview.locator(".record-detail")).toContainText("订单号 1");
+  await expect(preview.locator(".record-detail")).toContainText("LOCAL-FIRST");
   await preview.getByRole("button", { name: "返回列表", exact: true }).click();
   await expect(preview.locator(".record-detail")).toHaveCount(0);
   await expect(row.getByRole("button", { name: "详情", exact: true })).toBeFocused();
@@ -604,7 +611,7 @@ test("实时预览完整 CRUD、筛选和刷新均不请求接口，也不改变
   await dialog.getByLabel("SKU").fill("LOCAL-SKU");
   await dialog.getByRole("button", { name: "保存", exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(preview.locator("tbody tr")).toHaveCount(4);
+  await expect(preview.locator("tbody tr")).toHaveCount(2);
   const created = preview.getByRole("row").filter({ hasText: "LOCAL-CREATED" });
   await created.getByRole("button", { name: "详情", exact: true }).click();
   await expect(preview.locator(".record-detail")).toContainText("LOCAL-SKU");
@@ -616,9 +623,13 @@ test("实时预览完整 CRUD、筛选和刷新均不请求接口，也不改变
   await preview.getByRole("button", { name: "刷新", exact: true }).click();
   await expect(preview.locator("tbody tr")).toHaveCount(1);
   await filters.getByRole("button", { name: "清空筛选", exact: true }).click();
-  await expect(preview.locator("tbody tr")).toHaveCount(4);
+  await expect(preview.locator("tbody tr")).toHaveCount(2);
   await created.getByRole("button", { name: "删除", exact: true }).click();
-  await expect(preview.locator("tbody tr")).toHaveCount(3);
+  await expect(preview.locator("tbody tr")).toHaveCount(1);
+  definition.document.title = "缓存订单";
+  await fillJson(page, JSON.stringify(definition, null, 2));
+  await expect(preview.getByRole("heading", { name: "缓存订单", exact: true })).toBeVisible();
+  await expect(row).toContainText("987");
   expect(await (await request(page, "/records/orders/query", "POST", query)).json()).toEqual(
     original,
   );
@@ -634,7 +645,7 @@ test("未保存 Schema 实时更新，backend 与无效 JSON 保留当前预览�
   const { definition } = await (await request(page, "/models/orders")).json();
   await page.goto("/models/orders");
   const preview = page.frameLocator('iframe[title="模型管理预览"]');
-  await expect(preview.locator("tbody tr")).toHaveCount(3);
+  await expect(preview.locator("tbody tr")).toHaveCount(0);
   const frame = await page.locator("iframe").elementHandle();
   definition.document.title = "实时订单";
   definition.document.data.properties.previewTag = {
@@ -646,10 +657,11 @@ test("未保存 Schema 实时更新，backend 与无效 JSON 保留当前预览�
   await expect(page.getByRole("button", { name: "保存草稿", exact: true })).toBeEnabled();
   await expect(preview.getByRole("heading", { name: "实时订单", exact: true })).toBeVisible();
   await expect(preview.getByRole("columnheader", { name: "预览字段", exact: true })).toBeVisible();
-  await expect(preview.locator("tbody")).toContainText("自动示例");
+  await expect(preview.locator("tbody tr")).toHaveCount(0);
   await preview.getByRole("button", { name: "新建记录", exact: true }).click();
   const dialog = preview.getByRole("dialog");
   await dialog.getByLabel("订单号").fill("UNSAVED-PREVIEW");
+  await expect(dialog.getByLabel("预览字段")).toHaveValue("自动示例");
   await dialog.getByLabel("预览字段").fill("KEPT-PREVIEW");
   definition.backend.storage.table = "preview_backend_only";
   const valid = JSON.stringify(definition, null, 2);
@@ -791,6 +803,181 @@ test("cms Domain 从 ctx.schema 定制 RichText、Zod 与保存 fn", async ({ pa
   await expect(page.locator(".record-detail")).toContainText("完整正文");
   await page.getByRole("button", { name: "返回列表", exact: true }).click();
   await expect(page).toHaveURL(/\/list\/cms$/u);
+});
+
+test("组织架构从空 treelist 手动新增三级部门，切换视图保留本地缓存", async ({ page }) => {
+  const definition: ModelDefinition = JSON.parse(
+    await readFile("examples/departments.definition.json", "utf8"),
+  );
+  const saved = await request(page, "/models/departments/draft", "PUT", {
+    definition,
+    ifRevision: null,
+  });
+  expect(saved.ok()).toBe(true);
+  expect((await saved.json()).diagnostics.errors).toEqual([]);
+  const previewRequests: string[] = [];
+  page.on("request", (incoming) => {
+    if (incoming.frame().parentFrame() && incoming.url().includes("/api/v1/"))
+      previewRequests.push(incoming.url());
+  });
+  await page.goto("/models/departments");
+  const preview = page.frameLocator('iframe[title="模型管理预览"]');
+  const tree = preview.getByRole("complementary", { name: "组织架构层级" });
+  await expect(tree).toContainText("暂无层级记录");
+  await expect(preview.locator("tbody tr")).toHaveCount(0);
+  const ids: string[] = [];
+  for (const name of ["总部", "产品部", "研发组"]) {
+    await preview.getByRole("button", { name: "新建记录", exact: true }).click();
+    const drawer = preview.getByRole("dialog");
+    await drawer.getByPlaceholder("输入部门名称").fill(name);
+    if (ids.length) await drawer.getByLabel("上级部门 ID").fill(ids.at(-1)!);
+    await drawer.getByRole("button", { name: "保存", exact: true }).click();
+    await expect(drawer).toHaveCount(0);
+    const row = preview.getByRole("row").filter({ hasText: name });
+    await expect(row).toBeVisible();
+    ids.push((await row.getAttribute("data-record-id"))!);
+  }
+  await expect(tree.getByRole("button", { name: "研发组", exact: true })).toBeVisible();
+  await expect(tree.locator("details")).toHaveCount(2);
+  await expect(preview.locator("tbody tr")).toHaveCount(3);
+  await tree.getByRole("button", { name: "总部", exact: true }).click();
+  await expect(preview.locator("tbody tr")).toHaveCount(1);
+  await expect(preview.locator("tbody")).toContainText("产品部");
+  await expect(preview.locator("tbody")).not.toContainText("研发组");
+  await preview.getByRole("button", { name: "编辑", exact: true }).click();
+  const drawer = preview.getByRole("dialog");
+  await drawer.getByPlaceholder("输入部门名称").fill("研发部门");
+  await drawer.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(drawer).toHaveCount(0);
+  await expect(tree.getByRole("button", { name: "研发部门", exact: true })).toBeVisible();
+  await expect(preview.locator("tbody tr")).toHaveCount(1);
+  await preview.getByRole("button", { name: "列表视图", exact: true }).click();
+  await expect(tree).toHaveCount(0);
+  await expect(preview.locator("tbody tr")).toHaveCount(3);
+  await expect(preview.locator("tbody")).toContainText("研发部门");
+  await preview.getByRole("button", { name: "树形视图", exact: true }).click();
+  await expect(tree.getByRole("button", { name: "研发部门", exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  const layout = await preview.locator(".tree-list-page").evaluate((element) => {
+    const tree = element.querySelector(".tree-panel")!.getBoundingClientRect();
+    const list = element.querySelector(".list-page")!.getBoundingClientRect();
+    return {
+      above: tree.bottom <= list.top,
+      overflow:
+        element.ownerDocument.documentElement.scrollWidth >
+        element.ownerDocument.defaultView!.innerWidth,
+    };
+  });
+  expect(layout).toEqual({ above: true, overflow: false });
+  expect(previewRequests).toEqual([]);
+});
+
+test("客户档案手动录入对象和数组，legend 嵌在虚线中且详情仅垂直居中", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 960 });
+  const definition: ModelDefinition = JSON.parse(
+    await readFile("examples/customer-profile.definition.json", "utf8"),
+  );
+  const saved = await request(page, "/models/customer-profile/draft", "PUT", {
+    definition,
+    ifRevision: null,
+  });
+  expect(saved.ok()).toBe(true);
+  expect((await saved.json()).diagnostics.errors).toEqual([]);
+  await page.goto("/models/customer-profile");
+  const preview = page.frameLocator('iframe[title="模型管理预览"]');
+  await expect(preview.locator("tbody tr")).toHaveCount(0);
+  await preview.getByRole("button", { name: "新建记录", exact: true }).click();
+  const editor = preview.getByRole("dialog");
+  await editor.getByLabel("客户名称").fill(`测试客户 ${"面向企业服务的科技解决方案 ".repeat(8)}`);
+  await editor.getByLabel("所属行业").fill("科技服务");
+  await editor.getByLabel("联系人姓名").fill("张晓");
+  await editor.getByLabel("联系电话").fill("138 0000 1234");
+  await editor.getByLabel("电子邮箱").fill("contact@example.com");
+  await expect(editor.locator(".array-item")).toHaveCount(0);
+  for (const city of ["上海市", "杭州市"]) {
+    await editor.getByRole("button", { name: "添加明细", exact: true }).click();
+    await editor.locator(".array-item").last().getByLabel("城市").fill(city);
+  }
+  await editor.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  const row = preview.getByRole("row").filter({ hasText: "测试客户" });
+  await row.getByRole("button", { name: "详情", exact: true }).click();
+  const detail = preview.locator(".record-detail");
+  await expect(detail).toContainText("科技服务");
+  await expect(detail).toContainText("张晓");
+  await expect(detail.locator(".array-item")).toHaveCount(2);
+  for (const card of [
+    detail.locator('fieldset[data-field-path="/profile"]'),
+    detail.locator('fieldset[data-field-path="/profile/contact"]'),
+    detail.locator('fieldset[data-field-path="/addresses"]'),
+  ]) {
+    await expect(card).toHaveCSS("border-top-style", "dashed");
+    await expect(card).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await expect(card.locator(":scope > legend")).toBeVisible();
+  }
+  await expect(detail.locator('fieldset[data-field-path="/profile"] > legend')).toHaveText("基本资料");
+  await expect(detail.locator('fieldset[data-field-path="/profile/contact"] > legend')).toHaveText("主要联系人");
+  await expect(detail.locator('fieldset[data-field-path="/addresses"] > legend')).toHaveText("联系地址");
+  const alignment = await detail
+    .locator('.form-item[data-field-path="/name"] > .detail-value')
+    .evaluate((element) => {
+      const area = element.getBoundingClientRect();
+      const value = element.firstElementChild!.getBoundingClientRect();
+      return {
+        left: Math.abs(area.left - value.left),
+        vertical: Math.abs(area.top + area.height / 2 - value.top - value.height / 2),
+      };
+    });
+  expect(alignment.left).toBeLessThan(1);
+  expect(alignment.vertical).toBeLessThan(1);
+  const statusAlignment = await detail
+    .locator('.form-item[data-field-path="/status"] > .detail-value')
+    .evaluate((element) => {
+      const area = element.getBoundingClientRect();
+      const value = element.firstElementChild!.getBoundingClientRect();
+      const item = element.parentElement!.getBoundingClientRect();
+      return {
+        vertical: Math.abs(area.top + area.height / 2 - value.top - value.height / 2),
+        fillsBelowLabel: Math.abs(item.bottom - area.bottom),
+        multilineHeight: area.height,
+      };
+    });
+  expect(statusAlignment.vertical).toBeLessThan(1);
+  expect(statusAlignment.fillsBelowLabel).toBeLessThan(1);
+  expect(statusAlignment.multilineHeight).toBeGreaterThan(32);
+  await preview.getByRole("button", { name: "返回列表", exact: true }).click();
+  await row.getByRole("button", { name: "编辑", exact: true }).click();
+  await editor.getByLabel("联系人姓名").fill("李明");
+  await editor
+    .locator(".array-item")
+    .nth(1)
+    .getByRole("button", { name: "上移", exact: true })
+    .click();
+  await expect(editor.locator(".array-item").first().getByLabel("城市")).toHaveValue("杭州市");
+  await editor.locator(".array-item").first().getByLabel("城市").fill("苏州市");
+  await editor
+    .locator(".array-item")
+    .nth(1)
+    .getByRole("button", { name: "删除明细", exact: true })
+    .click();
+  await editor.getByRole("button", { name: "添加明细", exact: true }).click();
+  await editor.locator(".array-item").nth(1).getByLabel("城市").fill("南京市");
+  await editor.locator(".array-item").nth(1).getByLabel("详细地址").fill("示例路 9 号");
+  await editor.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  await row.getByRole("button", { name: "详情", exact: true }).click();
+  await expect(detail).toContainText("李明");
+  await expect(detail.locator(".array-item").first()).toContainText("苏州市");
+  await expect(detail.locator(".array-item").nth(1)).toContainText("南京市");
+  await expect(detail.locator(".array-item")).toHaveCount(2);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await detail.evaluate(
+      (element) =>
+        element.ownerDocument.documentElement.scrollWidth <=
+        element.ownerDocument.defaultView!.innerWidth,
+    ),
+  ).toBe(true);
 });
 
 test("字段配置示例发布后驱动树形 layout、筛选、表格和编辑，移动端上下排列", async ({ page }) => {

@@ -97,6 +97,8 @@ export type ContainerProps = { children?: JSX.Element };
 export type FieldContainerProps = ContainerProps & {
   path: string;
   title: string;
+  /** 已解析的字段 Schema，供容器选择普通字段或对象、数组分组。 */
+  schema?: DataSchema;
   required: boolean;
   errors: readonly ValidationIssue[];
 };

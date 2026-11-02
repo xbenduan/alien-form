@@ -165,19 +165,19 @@ export const List: Component<PageContext & { parentId?: string; onRecordsChanged
         }
         actions={
           <>
+            <Show when={ctx.schema.tree}>
+              <button
+                class="button secondary"
+                onClick={() =>
+                  ctx.navigate(ctx.router === "tree-list" ? "list" : "tree-list", {
+                    modelId: ctx.modelId,
+                  })
+                }
+              >
+                {ctx.router === "tree-list" ? "列表视图" : "树形视图"}
+              </button>
+            </Show>
             <Show when={!window.location.pathname.startsWith("/model-preview/")}>
-              <Show when={ctx.schema.tree}>
-                <button
-                  class="button secondary"
-                  onClick={() =>
-                    ctx.navigate(ctx.router === "tree-list" ? "list" : "tree-list", {
-                      modelId: ctx.modelId,
-                    })
-                  }
-                >
-                  {ctx.router === "tree-list" ? "列表视图" : "树形视图"}
-                </button>
-              </Show>
               <button
                 class="button secondary"
                 onClick={() => ctx.navigate("models", { modelId: ctx.modelId })}

@@ -157,7 +157,7 @@ export const Switch: Component<FieldProps> = (props) => (
 );
 /** 承载对象的惰性子字段，不创建额外业务值。 */
 export const ObjectFields: Component<FieldProps> = (props) => (
-  <div class="field-grid">{props.children}</div>
+  <div class="field-grid object-fields">{props.children}</div>
 );
 /** 渲染稳定身份的明细项，并通过 ArrayHandle 执行结构操作。 */
 export const ArrayFields: Component<FieldProps> = (props) => {
@@ -196,6 +196,9 @@ export const ArrayFields: Component<FieldProps> = (props) => {
       fallback={<span class="array-summary">{props.array?.items().length ?? 0} 项</span>}
     >
       <div class="array-fields">
+        <Show when={!props.array?.items().length}>
+          <p class="field-empty">暂无明细</p>
+        </Show>
         <For each={props.array?.items()}>
           {(item, index) => (
             <div class="array-item" data-item-key={item.key}>
@@ -230,7 +233,9 @@ export const ArrayFields: Component<FieldProps> = (props) => {
                   </div>
                 </Show>
               </div>
-              <Dynamic component={props.Item} scope={item.scope} />
+              <div class="field-grid array-item-body">
+                <Dynamic component={props.Item} scope={item.scope} />
+              </div>
             </div>
           )}
         </For>

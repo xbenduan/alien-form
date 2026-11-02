@@ -1764,8 +1764,35 @@ td .value-text {
 .form-item:has(> .field-grid),
 .form-item:has(> .array-fields),
 .form-item:has(> .rich-editor),
-.form-item:has(> .rich-text) {
+.form-item:has(> .rich-text),
+.form-item:has(> .detail-value > :is(.field-grid, .array-fields, .rich-text)) {
   grid-column: 1 / -1;
+}
+.fieldset-card {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin: 0;
+  padding: var(--space-sm) var(--panel-gutter);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-control);
+  background: transparent;
+}
+.fieldset-legend {
+  display: table;
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 var(--space-2xs);
+  color: var(--text);
+  font-size: var(--text-small);
+  font-weight: 500;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+.fieldset-body {
+  width: 100%;
+  min-width: 0;
+  container: record-fields / inline-size;
 }
 .switch {
   display: inline-flex;
@@ -1819,10 +1846,11 @@ td .value-text {
   justify-self: start;
 }
 .array-item {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface-raised);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-control);
+  background: transparent;
   overflow: hidden;
+  container: record-fields / inline-size;
 }
 .array-item-header {
   display: flex;
@@ -1830,18 +1858,22 @@ td .value-text {
   align-items: center;
   gap: 8px;
   min-height: 36px;
-  padding: var(--space-2xs) var(--space-sm);
+  padding: var(--space-2xs) var(--space-sm) 0;
   flex-wrap: wrap;
-  border-bottom: 1px solid var(--border-soft);
   color: var(--muted);
   font-size: var(--text-caption);
 }
 .array-item-header .text-button {
   font-size: var(--text-small);
 }
-.array-item > .field-grid,
-.array-item > .form-item {
-  padding: 12px;
+.array-item-body {
+  padding: var(--space-sm);
+}
+.field-empty {
+  margin: 0;
+  padding: var(--space-sm) 0;
+  color: var(--muted);
+  font-size: var(--text-small);
 }
 .rich-editor {
   min-height: 160px;
@@ -1918,18 +1950,34 @@ td .rich-text {
 .record-actions > .button {
   margin-left: auto;
 }
+.record-detail .form-item:not(.fieldset-card) {
+  display: flex;
+  flex-direction: column;
+}
 .record-detail .field-label {
+  flex-shrink: 0;
   color: var(--muted);
   font-size: var(--text-small);
   font-weight: 400;
   margin-bottom: var(--space-2xs);
 }
 .record-detail .field-grid {
-  gap: var(--space-lg) var(--space-md);
+  gap: var(--space-md);
 }
-.record-page-panel .detail-fields > .field-grid > .form-item {
-  padding-bottom: var(--space-sm);
-  border-bottom: 1px solid var(--border-soft);
+.detail-value {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-xs);
+  min-width: 0;
+  min-height: var(--control-height);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.detail-value > :is(.field-grid, .array-fields, .rich-text) {
+  width: 100%;
+  min-width: 0;
 }
 .record-page-panel .detail-fields .value-text,
 .record-page-panel .detail-fields .rich-text {
