@@ -1,14 +1,21 @@
 import { createEffect, createMemo, createResource, createSignal, For, Show } from "solid-js";
 import type { Component } from "solid-js";
 import { FormworkError } from "formwork";
-import type { DataSchema, JsonValue, PageContext } from "formwork";
-import { escapePointer, orderedProperties, resolveSchema, schemaType } from "formwork/model";
+import type { DataSchema, FieldContainerProps, JsonValue, PageContext } from "formwork";
+import {
+  escapePointer,
+  orderedProperties,
+  readPointer,
+  resolveSchema,
+  schemaType,
+} from "formwork/model";
 import type { RecordPage, RecordQuery } from "../../formwork/fn/records";
 import { FilterItem, TableCell } from "../../formwork/field-container";
 import { Select } from "../../formwork/components/fields";
 import { Icon } from "../../formwork/shell/icons";
 import { SelectControl } from "../../formwork/shell/select";
 import { PageTopbar } from "../../formwork/shell/page-topbar";
+import { FieldDetail } from "./field-detail";
 
 /** 以已提交查询和稳定记录 id 驱动 Filter、Table 与记录 Window。 */
 export const List: Component<PageContext & { parentId?: string; onRecordsChanged?: () => void }> = (
@@ -65,6 +72,12 @@ export const List: Component<PageContext & { parentId?: string; onRecordsChanged
   );
   const [failure, setFailure] = createSignal("");
   const [removing, setRemoving] = createSignal<string>();
+  const [fieldDetail, setFieldDetail] = createSignal<{
+    field: string;
+    title: string;
+    value: JsonValue | undefined;
+    trigger: HTMLButtonElement;
+  }>();
   const Render = ctx.Render;
   // Solid Resource 在首次请求失败后读取值会抛错；局部错误状态应保留筛选和重试操作。
   const result = () => (records.error ? undefined : records());
@@ -98,6 +111,20 @@ export const List: Component<PageContext & { parentId?: string; onRecordsChanged
   };
   const Row: Component<{ id: string }> = (props) => {
     const scope = ctx.createScope({ readOnly: true, defaults: false });
+    const Cell: Component<FieldContainerProps> = (cell) => {
+      const table = ctx.schema.fields?.[cell.path]?.table;
+      const title = (table && table.title) || cell.title;
+      return (
+        <TableCell
+          {...cell}
+          title={title}
+          value={readPointer(scope.value(), cell.path) as JsonValue | undefined}
+          onDetail={(trigger) =>
+            setFieldDetail({ field: cell.path, title, value: scope.value(), trigger })
+          }
+        />
+      );
+    };
     createEffect(() => {
       const record = rowRecords().find((row) => row.id === props.id);
       if (record) scope.reset(record);
@@ -111,7 +138,7 @@ export const List: Component<PageContext & { parentId?: string; onRecordsChanged
                 scope={scope}
                 mode="table"
                 field={`/${escapePointer(name)}`}
-                fieldContainer={TableCell}
+                fieldContainer={Cell}
               />
             </td>
           )}
@@ -364,6 +391,11 @@ export const List: Component<PageContext & { parentId?: string; onRecordsChanged
           </div>
         </div>
       </section>
+      <Show when={fieldDetail()} keyed>
+        {(detail) => (
+          <FieldDetail ctx={ctx} {...detail} onClose={() => setFieldDetail(undefined)} />
+        )}
+      </Show>
     </div>
   );
 };

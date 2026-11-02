@@ -1124,6 +1124,19 @@ td .value-text {
   color: var(--muted);
   white-space: nowrap;
 }
+.complex-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+.complex-summary {
+  color: var(--muted);
+  white-space: nowrap;
+}
+.complex-cell .text-button {
+  font-size: var(--text-small);
+}
 .query-loading {
   padding: var(--space-sm) var(--panel-gutter);
   font-size: var(--text-small);

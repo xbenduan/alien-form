@@ -111,21 +111,38 @@ test("旧深色偏好和系统深色模式不影响明亮首屏、独立页面�
   }
 });
 
-test("共享 cms Domain 按模型读写，schema 的 Drawer、Page、Modal 与刷新直达一致", async ({ page }) => {
-  const { definition } = await (await request(page, "/models/cms")).json() as { definition: ModelDefinition };
+test("共享 cms Domain 按模型读写，schema 的 Drawer、Page、Modal 与刷新直达一致", async ({
+  page,
+}) => {
+  const { definition } = (await (await request(page, "/models/cms")).json()) as {
+    definition: ModelDefinition;
+  };
   const modelId = "shared-content";
   definition.document.id = modelId;
   definition.document.domain = "cms";
   definition.document.title = "共享内容";
   definition.document.pages = {
-    list: { windows: { add: { openMode: "drawer" }, edit: { openMode: "page" }, detail: { openMode: "modal" } } },
+    list: {
+      windows: {
+        add: { openMode: "drawer" },
+        edit: { openMode: "page" },
+        detail: { openMode: "modal" },
+      },
+    },
   };
   definition.backend.storage.table = "biz_shared_content";
-  const savedResponse = await request(page, `/models/${modelId}/draft`, "PUT", { definition, ifRevision: null });
+  const savedResponse = await request(page, `/models/${modelId}/draft`, "PUT", {
+    definition,
+    ifRevision: null,
+  });
   expect(savedResponse.ok()).toBe(true);
   const saved = await savedResponse.json();
   expect(saved.diagnostics.errors).toEqual([]);
-  expect((await request(page, `/models/${modelId}/publish`, "POST", { ifRevision: saved.revision })).ok()).toBe(true);
+  expect(
+    (
+      await request(page, `/models/${modelId}/publish`, "POST", { ifRevision: saved.revision })
+    ).ok(),
+  ).toBe(true);
   await page.goto(`/list/${modelId}`);
   await page.getByRole("button", { name: "新建记录" }).click();
   const drawer = page.getByRole("dialog");
@@ -139,7 +156,8 @@ test("共享 cms Domain 按模型读写，schema 的 Drawer、Page、Modal 与�
   const id = await record.getAttribute("data-record-id");
   const reads: string[] = [];
   page.on("request", (incoming) => {
-    if (incoming.method() === "GET" && incoming.url().includes(`/records/${modelId}/`)) reads.push(incoming.url());
+    if (incoming.method() === "GET" && incoming.url().includes(`/records/${modelId}/`))
+      reads.push(incoming.url());
   });
   await record.getByRole("button", { name: "编辑", exact: true }).click();
   await expect(page.locator(".record-form .rich-editor")).toHaveValue("第一行\n完整正文");
@@ -151,7 +169,9 @@ test("共享 cms Domain 按模型读写，schema 的 Drawer、Page、Modal 与�
   expect(reads).toHaveLength(2);
   await page.getByRole("button", { name: "返回列表", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/list/${modelId}$`));
-  await expect(page.locator("header.topbar").getByRole("button", { name: "新建记录", exact: true })).toBeVisible();
+  await expect(
+    page.locator("header.topbar").getByRole("button", { name: "新建记录", exact: true }),
+  ).toBeVisible();
   await record.getByRole("button", { name: "详情", exact: true }).click();
   const modal = page.getByRole("dialog");
   await expect(modal).toHaveClass(/modal/u);
@@ -160,8 +180,12 @@ test("共享 cms Domain 按模型读写，schema 的 Drawer、Page、Modal 与�
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.locator(".record-detail")).toContainText("完整正文");
   await page.getByRole("button", { name: "返回列表", exact: true }).click();
-  const rows = await (await request(page, `/records/${modelId}/query`, "POST", { filters: {}, page: 1, pageSize: 10 })).json();
-  expect(rows.list).toContainEqual(expect.objectContaining({ id, title: "共享正文", content: "第一行\n完整正文" }));
+  const rows = await (
+    await request(page, `/records/${modelId}/query`, "POST", { filters: {}, page: 1, pageSize: 10 })
+  ).json();
+  expect(rows.list).toContainEqual(
+    expect.objectContaining({ id, title: "共享正文", content: "第一行\n完整正文" }),
+  );
 });
 
 test("浏览器禁用 localStorage 时明亮登录页仍正常输入", async ({ browser }) => {
@@ -205,7 +229,7 @@ test("本地 localhost 与 127.0.0.1 同端口均可登录，其他 Origin 仍�
   }
 });
 
-test("orders：Filter 草稿、false、同 id 刷新、完整 Modal/Drawer", async ({ page }) => {
+test("orders：Filter 草稿、false、同 id 刷新、完整 Modal/Page", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/list/orders");
@@ -228,14 +252,15 @@ test("orders：Filter 草稿、false、同 id 刷新、完整 Modal/Drawer", asy
   await modal.getByRole("button", { name: "保存", exact: true }).click();
   await expect(modal).not.toBeVisible();
   await expect(row).toContainText("456");
-  await row.getByRole("button", { name: "详情" }).click();
-  const drawer = page.getByRole("dialog", { name: "记录详情" });
-  await expect(drawer.getByRole("heading", { name: "订单详情" })).toBeVisible();
-  await expectCompactWindow(drawer, true);
-  await expect(page.getByRole("dialog")).toContainText("456");
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog")).not.toBeVisible();
-  await expect(row.getByRole("button", { name: "详情" })).toBeFocused();
+  await row.getByRole("button", { name: "详情", exact: true }).click();
+  await expect(
+    page.locator("header.topbar").getByRole("heading", { name: "订单详情" }),
+  ).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".record-detail")).toContainText("456");
+  await page.getByRole("button", { name: "返回列表", exact: true }).click();
+  await expect(page.locator(".record-detail")).toHaveCount(0);
+  await expect(row.getByRole("button", { name: "详情", exact: true })).toBeFocused();
   expect(errors).toEqual([]);
 });
 
@@ -244,6 +269,10 @@ test("首页模型搜索与清除、固定操作列和 MCP 直连 Worker 配置"
   await expect(page).toHaveURL(/\/models$/u);
   await expect(page.getByRole("textbox", { name: "完整 definition JSON" })).toHaveCount(0);
   await expect(page.getByRole("table", { name: "模型列表", exact: true })).toBeVisible();
+  await expect(page.locator('tr[data-model-id="orders"]')).toBeVisible();
+  const modelIds = await page
+    .locator("tbody tr")
+    .evaluateAll((rows) => rows.map((row) => row.getAttribute("data-model-id")));
   const navigation = page.getByRole("navigation", { name: "主导航" });
   await expect(navigation.getByRole("link")).toHaveCount(5);
   expect(
@@ -273,7 +302,12 @@ test("首页模型搜索与清除、固定操作列和 MCP 直连 Worker 配置"
   await expect(page.getByText("没有匹配的模型", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "清除搜索" }).click();
   await expect(search).toHaveValue("");
-  await expect(page.locator("tbody tr")).toHaveCount(5);
+  await expect(page.locator("tbody tr")).toHaveCount(modelIds.length);
+  expect(
+    await page
+      .locator("tbody tr")
+      .evaluateAll((rows) => rows.map((row) => row.getAttribute("data-model-id"))),
+  ).toEqual(modelIds);
   await page.setViewportSize({ width: 390, height: 844 });
   const operations = page.locator('tr[data-model-id="orders"] .operation-cell');
   expect(await operations.evaluate((element) => getComputedStyle(element).position)).toBe("sticky");
@@ -558,7 +592,9 @@ test("Schema、JSON 节点和诊断独立折叠，保留草稿及预览表单", 
   await expect(diagnostics).toContainText("保存后返回最新诊断。");
 });
 
-test("实时预览从空列表新增，CRUD、筛选和 Schema 重建保留前端缓存且不请求记录接口", async ({ page }) => {
+test("实时预览从空列表新增，CRUD、筛选和 Schema 重建保留前端缓存且不请求记录接口", async ({
+  page,
+}) => {
   const errors: string[] = [];
   const previewRequests: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -789,7 +825,9 @@ test("cms Domain 从 ctx.schema 定制 RichText、Zod 与保存 fn", async ({ pa
   await expect(page).toHaveURL(/\/list\/cms\/edit\/article-1$/u);
   const editor = page.locator(".record-form");
   await expect(
-    page.locator("header.topbar").getByRole("heading", { name: `编辑${definition.document.title}` }),
+    page
+      .locator("header.topbar")
+      .getByRole("heading", { name: `编辑${definition.document.title}` }),
   ).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await editor.getByLabel("标题").fill("  cms 已更新  ");
@@ -872,6 +910,222 @@ test("组织架构从空 treelist 手动新增三级部门，切换视图保留�
   expect(previewRequests).toEqual([]);
 });
 
+test("行内字段详情保留 Domain、完整记录表达式、数组通配配置与转义路径", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const definition: ModelDefinition = JSON.parse(
+    await readFile("examples/customer-profile.definition.json", "utf8"),
+  );
+  const modelId = "inline-field-details";
+  definition.document.id = modelId;
+  definition.document.domain = "cms";
+  definition.document.data.properties.content = { type: "string", title: "正文" };
+  definition.document.data.properties["tags/~"] = {
+    type: "array",
+    title: "数字标签",
+    items: { type: "number" },
+  };
+  const addresses = definition.document.data.properties.addresses!;
+  if (!("items" in addresses) || !("properties" in addresses.items))
+    throw new Error("联系地址必须是对象数组");
+  addresses.items.properties.tags = {
+    type: "array",
+    title: "地址标签",
+    items: { type: "string" },
+  };
+  definition.document.fields = {
+    ...definition.document.fields,
+    "/content": { table: false, filter: false },
+    "/profile": { table: { title: "客户资料" }, filter: false },
+    "/profile/industry": { form: { component: "RichText" } },
+    "/profile/contact/email": {
+      form: { bindings: { visible: "{{ $values.name === '行内客户' }}" } },
+    },
+    "/addresses/*/city": { form: { component: "RichText" } },
+  };
+  definition.backend.storage = {
+    table: "biz_inline_field_details",
+    bindings: [
+      ...definition.backend.storage.bindings,
+      {
+        id: "inline:content",
+        path: "/content",
+        column: "content",
+        sqlType: "TEXT",
+        encoding: "scalar",
+      },
+      { id: "inline:tags", path: "/tags~1~0", column: "tags", sqlType: "TEXT", encoding: "json" },
+    ],
+  };
+  const saved = await request(page, `/models/${modelId}/draft`, "PUT", {
+    definition,
+    ifRevision: null,
+  });
+  expect(saved.ok()).toBe(true);
+  const snapshot = await saved.json();
+  expect(snapshot.diagnostics.errors).toEqual([]);
+  expect(
+    (
+      await request(page, `/models/${modelId}/publish`, "POST", {
+        ifRevision: snapshot.revision,
+      })
+    ).ok(),
+  ).toBe(true);
+  const value = {
+    name: "行内客户",
+    content: "完整记录正文",
+    profile: {
+      industry: "科技服务\n第二行",
+      contact: { name: "张晓", email: "contact@example.com" },
+    },
+    addresses: [
+      { city: "上海市\n浦东新区", primary: false, tags: ["办公", "收货"] },
+      { city: "杭州市", primary: true },
+    ],
+    "tags/~": [0, 2],
+  };
+  const created = await request(page, `/records/${modelId}`, "POST", value);
+  expect(created.ok()).toBe(true);
+  const record = await created.json();
+  const other = await request(page, `/records/${modelId}`, "POST", {
+    ...value,
+    name: "另一客户",
+  });
+  expect(other.ok()).toBe(true);
+  await page.goto(`/list/${modelId}`);
+  const row = page
+    .getByRole("row")
+    .filter({ has: page.getByRole("cell", { name: "行内客户", exact: true }) });
+  await expect(row).toBeVisible();
+  await expect(row.locator(".array-item, .object-fields")).toHaveCount(0);
+  await expect(row.locator('[data-field-path="/profile"] .complex-summary')).toHaveText(
+    "已配置 2 项",
+  );
+  await expect(row.locator('[data-field-path="/addresses"] .complex-summary')).toHaveText(
+    "共 2 项",
+  );
+  const reads: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes(`/api/v1/records/${modelId}`)) reads.push(request.url());
+  });
+  const url = page.url();
+  const profileButton = row.getByRole("button", { name: "查看客户资料详情", exact: true });
+  await profileButton.focus();
+  await profileButton.press("Enter");
+  const modal = page.getByRole("dialog", { name: "客户资料详情", exact: true });
+  await expectCompactWindow(modal);
+  await expect(modal.locator(".rich-text")).toHaveText("科技服务\n第二行");
+  await expect(modal).toContainText("contact@example.com");
+  await expect(modal).not.toContainText("完整记录正文");
+  await expect(modal.locator('fieldset[data-field-path="/profile/contact"]')).toBeVisible();
+  await expect(modal.locator("input, textarea, select, .complex-cell")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(modal).toHaveCount(0);
+  await expect(profileButton).toBeFocused();
+  const addressesButton = row.getByRole("button", { name: "查看联系地址详情", exact: true });
+  await addressesButton.click();
+  const addressesModal = page.getByRole("dialog", { name: "联系地址详情", exact: true });
+  await expect(addressesModal.locator(".rich-text")).toHaveText(["上海市\n浦东新区", "杭州市"]);
+  await expect(addressesModal.locator(".array-item")).toHaveCount(4);
+  await expect(addressesModal).toContainText("办公");
+  await expect(addressesModal).toContainText("收货");
+  await expect(
+    addressesModal.getByRole("button", { name: /添加明细|删除明细|上移|下移/u }),
+  ).toHaveCount(0);
+  await expect(addressesModal.locator("input, textarea, select, .complex-cell")).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const layout = await addressesModal.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      left: rect.left,
+      right: element.ownerDocument.defaultView!.innerWidth - rect.right,
+      overflow: element.scrollWidth > element.clientWidth,
+    };
+  });
+  expect(layout.left).toBeGreaterThan(0);
+  expect(layout.right).toBeGreaterThan(0);
+  expect(layout.overflow).toBe(false);
+  await addressesModal.getByRole("button", { name: "关闭窗口", exact: true }).click();
+  await expect(addressesModal).toHaveCount(0);
+  await expect(addressesButton).toBeFocused();
+  await row.getByRole("button", { name: "查看数字标签详情", exact: true }).click();
+  const tagsModal = page.getByRole("dialog", { name: "数字标签详情", exact: true });
+  await expect(tagsModal.locator(".array-item")).toHaveCount(2);
+  await expect(tagsModal.locator(".array-item").first()).toContainText("0");
+  await page.keyboard.press("Escape");
+  await page
+    .getByRole("row")
+    .filter({ hasText: "另一客户" })
+    .getByRole("button", { name: "查看客户资料详情", exact: true })
+    .click();
+  await expect(modal).toContainText("张晓");
+  await expect(modal).not.toContainText("contact@example.com");
+  await page.keyboard.press("Escape");
+  expect(page.url()).toBe(url);
+  expect(reads).toEqual([]);
+  const updated = await request(page, `/records/${modelId}/${record.id}`, "PUT", {
+    ...value,
+    profile: { industry: "更新行业", contact: { name: "李明", email: "new@example.com" } },
+  });
+  expect(updated.ok()).toBe(true);
+  await page.getByRole("button", { name: "刷新", exact: true }).click();
+  await profileButton.click();
+  await expect(modal).toContainText("更新行业");
+  await expect(modal).toContainText("李明");
+  await expect(modal).not.toContainText("张晓");
+  expect(errors).toEqual([]);
+});
+
+test("行内字段详情区分缺失、null、空对象与空数组", async ({ page }) => {
+  const definition: ModelDefinition = JSON.parse(
+    await readFile("examples/customer-profile.definition.json", "utf8"),
+  );
+  const modelId = "empty-field-details";
+  definition.document.id = modelId;
+  definition.backend.storage.table = "biz_empty_field_details";
+  const saved = await request(page, `/models/${modelId}/draft`, "PUT", {
+    definition,
+    ifRevision: null,
+  });
+  const snapshot = await saved.json();
+  expect(snapshot.diagnostics.errors).toEqual([]);
+  expect(
+    (
+      await request(page, `/models/${modelId}/publish`, "POST", {
+        ifRevision: snapshot.revision,
+      })
+    ).ok(),
+  ).toBe(true);
+  await page.route(`**/api/v1/records/${modelId}/query`, (route) =>
+    route.fulfill({
+      json: {
+        list: [
+          { id: "missing", name: "缺失字段" },
+          { id: "null", name: "null 字段", profile: null, addresses: null },
+          { id: "empty", name: "空字段", profile: {}, addresses: [] },
+        ],
+        total: 3,
+      },
+    }),
+  );
+  await page.goto(`/list/${modelId}`);
+  for (const name of ["缺失字段", "null 字段", "空字段"]) {
+    const row = page.getByRole("row").filter({ hasText: name });
+    await expect(row.locator(".complex-summary")).toHaveText(["—", "—"]);
+    await row.getByRole("button", { name: "查看基本资料详情", exact: true }).click();
+    const modal = page.getByRole("dialog");
+    if (name === "空字段") {
+      await expect(modal.locator('fieldset[data-field-path="/profile"]')).toBeVisible();
+      await expect(modal.locator("input, textarea")).toHaveCount(0);
+    } else await expect(modal).toContainText("暂无字段详情");
+    await page.keyboard.press("Escape");
+    await row.getByRole("button", { name: "查看联系地址详情", exact: true }).click();
+    await expect(modal).toContainText(name === "空字段" ? "暂无明细" : "暂无字段详情");
+    await page.keyboard.press("Escape");
+    await expect(row.getByRole("button", { name: "查看联系地址详情", exact: true })).toBeFocused();
+  }
+});
+
 test("客户档案手动录入对象和数组，legend 嵌在虚线中且详情仅垂直居中", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 960 });
   const definition: ModelDefinition = JSON.parse(
@@ -901,6 +1155,24 @@ test("客户档案手动录入对象和数组，legend 嵌在虚线中且详情�
   await editor.getByRole("button", { name: "保存", exact: true }).click();
   await expect(editor).toHaveCount(0);
   const row = preview.getByRole("row").filter({ hasText: "测试客户" });
+  await expect(row.locator(".complex-summary")).toHaveText(["已配置 2 项", "共 2 项"]);
+  await row.getByRole("button", { name: "查看基本资料详情", exact: true }).click();
+  await expect(
+    editor.getByRole("heading", { name: "基本资料详情", exact: true, level: 1 }),
+  ).toBeVisible();
+  await expect(editor).toContainText("张晓");
+  await expect(editor.locator("input, textarea, .complex-cell")).toHaveCount(0);
+  await expect(editor).not.toContainText("上海市");
+  await preview.locator("h1").filter({ hasText: "基本资料详情" }).press("Escape");
+  await expect(editor).toHaveCount(0);
+  await expect(row.getByRole("button", { name: "查看基本资料详情", exact: true })).toBeFocused();
+  await row.getByRole("button", { name: "查看联系地址详情", exact: true }).click();
+  await expect(editor.locator(".array-item")).toHaveCount(2);
+  await expect(editor).toContainText("上海市");
+  await expect(editor).toContainText("杭州市");
+  await expect(editor.getByRole("button", { name: /添加明细|删除明细|上移|下移/u })).toHaveCount(0);
+  await editor.getByRole("button", { name: "关闭窗口", exact: true }).click();
+  await expect(editor).toHaveCount(0);
   await row.getByRole("button", { name: "详情", exact: true }).click();
   const detail = preview.locator(".record-detail");
   await expect(detail).toContainText("科技服务");
@@ -915,9 +1187,15 @@ test("客户档案手动录入对象和数组，legend 嵌在虚线中且详情�
     await expect(card).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
     await expect(card.locator(":scope > legend")).toBeVisible();
   }
-  await expect(detail.locator('fieldset[data-field-path="/profile"] > legend')).toHaveText("基本资料");
-  await expect(detail.locator('fieldset[data-field-path="/profile/contact"] > legend')).toHaveText("主要联系人");
-  await expect(detail.locator('fieldset[data-field-path="/addresses"] > legend')).toHaveText("联系地址");
+  await expect(detail.locator('fieldset[data-field-path="/profile"] > legend')).toHaveText(
+    "基本资料",
+  );
+  await expect(detail.locator('fieldset[data-field-path="/profile/contact"] > legend')).toHaveText(
+    "主要联系人",
+  );
+  await expect(detail.locator('fieldset[data-field-path="/addresses"] > legend')).toHaveText(
+    "联系地址",
+  );
   const alignment = await detail
     .locator('.form-item[data-field-path="/name"] > .detail-value')
     .evaluate((element) => {
@@ -1137,7 +1415,7 @@ test("无效草稿、本地预览保存、手动发布、刷新与旧页 422 保
   expect((await response).status()).toBe(422);
   await expect(editor.locator(".record-form").getByLabel("订单号")).toHaveValue("kept");
   await expect(
-    editor.locator(".record-form").getByRole("heading", { name: "编辑审阅订单" }),
+    editor.locator("header.topbar").getByRole("heading", { name: "编辑审阅订单" }),
   ).toBeVisible();
   await expect(editor.locator(".server-issues")).toContainText("/orderNo");
   const version = page.getByRole("combobox", { name: "模型版本", exact: true });

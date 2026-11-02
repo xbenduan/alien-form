@@ -1,7 +1,8 @@
 import { createContext, createUniqueId, For, Show, useContext } from "solid-js";
 import type { Component } from "solid-js";
-import type { FieldContainerProps } from "formwork";
+import type { FieldContainerProps, JsonValue } from "formwork";
 import { FieldsetCard } from "./shell/fieldset-card";
+import { Icon } from "./shell/icons";
 
 const FieldLabel = createContext<string>();
 const CompactCell = createContext(false);
@@ -57,10 +58,52 @@ export const FormItem: Component<FieldContainerProps> = (props) => {
 };
 /** 将共享字段渲染成紧凑筛选项。 */
 export const FilterItem: Component<FieldContainerProps> = (props) => <FormItem {...props} />;
-/** 在表格中保留字段绑定，不重复呈现表头标签。 */
-export const TableCell: Component<FieldContainerProps> = (props) => (
+const empty = (value: JsonValue | undefined) =>
+  value === undefined ||
+  value === null ||
+  value === "" ||
+  (Array.isArray(value) && value.length === 0);
+const summary = (value: JsonValue | undefined) => {
+  if (empty(value)) return "—";
+  if (Array.isArray(value)) return `共 ${value.length} 项`;
+  if (value && typeof value === "object") {
+    const count = Object.values(value).filter((item) => !empty(item)).length;
+    return count ? `已配置 ${count} 项` : "—";
+  }
+  return String(value);
+};
+
+/**
+ * 在表格中呈现复杂字段摘要与详情入口，普通字段保留共享渲染。
+ * @param props.onDetail 接收触发按钮，供弹层关闭后恢复焦点。
+ */
+export const TableCell: Component<
+  FieldContainerProps & {
+    value?: JsonValue;
+    onDetail?: (trigger: HTMLButtonElement) => void;
+  }
+> = (props) => (
   <CompactCell.Provider value={true}>
-    {props.children}
+    <Show
+      when={
+        props.onDetail && props.schema && ("properties" in props.schema || "items" in props.schema)
+      }
+      fallback={props.children}
+    >
+      <div class="complex-cell" data-field-path={props.path}>
+        <span class="complex-summary">{summary(props.value)}</span>
+        <button
+          type="button"
+          class="text-button"
+          aria-label={`查看${props.title}详情`}
+          aria-haspopup="dialog"
+          onClick={(event) => props.onDetail?.(event.currentTarget)}
+        >
+          <Icon name="content" />
+          详情
+        </button>
+      </div>
+    </Show>
     <For each={props.errors}>{(error) => <span class="field-error">{error.message}</span>}</For>
   </CompactCell.Provider>
 );

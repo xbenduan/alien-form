@@ -8,11 +8,13 @@ type WindowProps = {
   onClose: () => void;
   children?: JSX.Element;
   restoreFocus?: boolean;
+  returnFocus?: HTMLElement;
 };
 
 /**
  * 用统一遮罩、关闭按钮和键盘交互承载浮层窗口。
  * @param props.restoreFocus 由 Formwork Host 管理焦点时设为 false，普通组件默认由 Dialog 恢复焦点。
+ * @param props.returnFocus 没有 Dialog.Trigger 的普通弹层在关闭后恢复焦点的目标。
  */
 export const OverlayWindow: Component<WindowProps & { presentation?: "modal" | "drawer" }> = (
   props,
@@ -29,6 +31,10 @@ export const OverlayWindow: Component<WindowProps & { presentation?: "modal" | "
         class={`window-content ${props.presentation ?? "modal"}`}
         onCloseAutoFocus={(event) => {
           if (props.restoreFocus === false) event.preventDefault();
+          else if (props.returnFocus?.isConnected) {
+            event.preventDefault();
+            props.returnFocus.focus();
+          }
         }}
       >
         <div class="window-heading">

@@ -57,9 +57,9 @@
     "fields": {
       "/name": { "order": -30 },
       "/status": { "order": -20 },
-      "/profile": { "order": -10, "table": false, "filter": false },
+      "/profile": { "order": -10, "filter": false },
       "/profile/contact/email": { "form": { "props": { "placeholder": "联系人邮箱" } } },
-      "/addresses": { "table": false, "filter": false },
+      "/addresses": { "filter": false },
       "/notes": { "table": false, "filter": false }
     },
     "pages": {
