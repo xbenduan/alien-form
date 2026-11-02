@@ -177,6 +177,7 @@ body:has(.embedded-canvas) {
   border-top: 1px solid var(--border-soft);
 }
 .preview-notice {
+  margin: 0;
   padding: var(--space-sm);
   font-size: var(--text-small);
   color: var(--warning);
@@ -532,9 +533,10 @@ code,
 .embedded-topbar {
   position: static;
   padding: var(--space-xs) var(--panel-gutter);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-panel);
   background: var(--surface);
+  box-shadow: var(--shadow-panel);
 }
 .embedded-topbar .page-title {
   flex: 1 1 160px;
@@ -570,11 +572,21 @@ code,
 .token-page,
 .model-list-page,
 .workbench-page,
-.preview-content {
+.preview-content,
+.record-page {
   display: flex;
   flex-direction: column;
   gap: var(--layout-gap);
   min-width: 0;
+}
+.preview-content {
+  flex: 1;
+}
+.record-page > .embedded-topbar {
+  margin: 0;
+}
+.back-arrow {
+  transform: rotate(180deg);
 }
 .list-page {
   container: record-list / inline-size;
@@ -1856,6 +1868,15 @@ td .rich-text {
   max-width: 720px;
   margin: 0 auto;
 }
+.record-page-panel .record-form,
+.record-page-panel .record-detail {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+.record-section-heading .ui-icon {
+  color: var(--violet);
+}
 .record-heading {
   display: flex;
   align-items: center;
@@ -1905,6 +1926,15 @@ td .rich-text {
 }
 .record-detail .field-grid {
   gap: var(--space-lg) var(--space-md);
+}
+.record-page-panel .detail-fields > .field-grid > .form-item {
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--border-soft);
+}
+.record-page-panel .detail-fields .value-text,
+.record-page-panel .detail-fields .rich-text {
+  display: block;
+  overflow-wrap: anywhere;
 }
 .record-form > [role="alert"],
 .record-detail > [role="alert"] {
@@ -1992,15 +2022,6 @@ td .rich-text {
   height: 24px;
   color: var(--cyan);
 }
-.embedded-canvas > .record-form,
-.embedded-canvas > .record-detail {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-panel);
-  overflow: hidden;
-}
-
 @keyframes overlay-in {
   from {
     opacity: 0;

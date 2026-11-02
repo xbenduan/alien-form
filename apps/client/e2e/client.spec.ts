@@ -579,11 +579,11 @@ test("实时预览完整 CRUD、筛选和刷新均不请求接口，也不改变
   const row = preview.locator('tr[data-record-id="preview-1"]');
   const dialog = preview.getByRole("dialog");
   await row.getByRole("button", { name: "详情", exact: true }).click();
-  await expect(dialog).toContainText("订单详情");
-  await expectCompactWindow(dialog, true);
-  await expect(dialog).toContainText("订单号 1");
-  await dialog.getByRole("button", { name: "关闭窗口", exact: true }).click();
-  await expect(dialog).toHaveCount(0);
+  await expect(preview.getByRole("heading", { name: "订单详情", exact: true })).toBeVisible();
+  await expect(preview.locator(".record-page-panel")).toHaveCSS("border-top-style", "solid");
+  await expect(preview.locator(".record-detail")).toContainText("订单号 1");
+  await preview.getByRole("button", { name: "返回列表", exact: true }).click();
+  await expect(preview.locator(".record-detail")).toHaveCount(0);
   await expect(row.getByRole("button", { name: "详情", exact: true })).toBeFocused();
   await row.getByRole("button", { name: "编辑", exact: true }).click();
   await expectCompactWindow(dialog);
@@ -607,8 +607,8 @@ test("实时预览完整 CRUD、筛选和刷新均不请求接口，也不改变
   await expect(preview.locator("tbody tr")).toHaveCount(4);
   const created = preview.getByRole("row").filter({ hasText: "LOCAL-CREATED" });
   await created.getByRole("button", { name: "详情", exact: true }).click();
-  await expect(dialog).toContainText("LOCAL-SKU");
-  await dialog.getByRole("button", { name: "关闭窗口", exact: true }).click();
+  await expect(preview.locator(".record-detail")).toContainText("LOCAL-SKU");
+  await preview.getByRole("button", { name: "返回列表", exact: true }).click();
   const filters = preview.getByRole("form", { name: "筛选记录" });
   await filters.getByLabel("订单号", { exact: true }).fill("LOCAL-CREATED");
   await filters.getByRole("button", { name: "查询", exact: true }).click();
@@ -777,7 +777,7 @@ test("cms Domain 从 ctx.schema 定制 RichText、Zod 与保存 fn", async ({ pa
   await expect(page).toHaveURL(/\/list\/cms\/edit\/article-1$/u);
   const editor = page.locator(".record-form");
   await expect(
-    editor.getByRole("heading", { name: `编辑${definition.document.title}` }),
+    page.locator("header.topbar").getByRole("heading", { name: `编辑${definition.document.title}` }),
   ).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await editor.getByLabel("标题").fill("  cms 已更新  ");
