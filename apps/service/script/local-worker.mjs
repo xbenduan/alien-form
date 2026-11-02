@@ -1,8 +1,9 @@
 import { spawn } from "node:child_process";
 import { mkdir, writeFile, chmod } from "node:fs/promises";
 import { resolve, join } from "node:path";
+import { initializeDatabase } from "./database.mjs";
 
-const repository = resolve(import.meta.dirname, "..");
+const repository = resolve(import.meta.dirname, "../../..");
 const wrangler = resolve(repository, "apps/service/node_modules/wrangler/bin/wrangler.js");
 
 async function stop(child, detached) {
@@ -30,15 +31,10 @@ async function stop(child, detached) {
 }
 
 /**
- * 启动生产入口的本地 Worker 和独立 D1，凭证只写入私有目录。
- * @param {object} options
+ * 清空本地 D1 并启动生产入口的 Worker，凭证只写入私有目录。
  * @param {string} options.directory 本次 D1、配置与 secret 的目录。
- * @param {number} options.port
  * @param {string} options.clientOrigin 客户端地址；本地回环域名同时允许相同协议和端口的 localhost/127.0.0.1。
- * @param {string} options.username
- * @param {string} options.password
- * @param {string} options.capabilityToken
- * @param {string[]} [options.initialSql] 仅用于导入隔离测试数据库的已发布基线。
+ * @param {string[]} [options.initialSql] 仅用于初始化隔离测试数据库的已发布基线。
  * @param {boolean} [options.detached] 开发进程独立回收；E2E 设为 false 以继承 Playwright 进程组。
  * @returns 就绪的 API 地址、仅本地 SQL 执行器和进程回收函数。
  */
@@ -77,7 +73,6 @@ export async function startLocalWorker(options) {
           binding: "DB",
           database_name: "alien-mdm",
           database_id: "formwork-local-database",
-          migrations_dir: resolve(repository, "apps/service/migrations"),
         },
       ],
     }),
@@ -115,7 +110,7 @@ export async function startLocalWorker(options) {
     });
     return output;
   };
-  await command(["d1", "migrations", "apply", "alien-mdm", ...common]);
+  await initializeDatabase({ directory, state, execute: command, common, local: true });
   if (options.initialSql?.length) {
     const file = join(directory, "baseline.sql");
     await writeFile(file, `${options.initialSql.join(";\n")};\n`, { mode: 0o600 });

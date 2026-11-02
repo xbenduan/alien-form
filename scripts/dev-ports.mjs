@@ -13,7 +13,7 @@ function canListen(port, reserved) {
 }
 
 /**
- * 选择 loopback 开发端口，显式端口冲突时报错，默认端口冲突时向后查找。
+ * 选择项目的 loopback 开发端口，显式冲突时报错，默认冲突时向后查找。
  * @param options reserved 用于避免 client 与 service 在同一次启动中选择相同端口。
  * @returns 最终可监听的端口；探测完成后会立即释放。
  * @example await selectDevelopmentPort({ preferred: 5173, strict: false, label: "client" })

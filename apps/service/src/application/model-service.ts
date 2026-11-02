@@ -1,4 +1,11 @@
-import { assertDraftDefinition, modelIdPattern, routePath, routeKey, manifestRoutes, schemaTargets } from "formwork/model";
+import {
+  assertDraftDefinition,
+  modelIdPattern,
+  routePath,
+  routeKey,
+  manifestRoutes,
+  schemaTargets,
+} from "formwork/model";
 import type {
   DraftDefinition,
   ManagedEntry,
@@ -20,6 +27,7 @@ import { requireUser } from "./auth/service";
 import { effectiveCapabilities, readManifest } from "./capabilities";
 import { validateDefinition } from "./model-validation";
 import { forbidden, invalid, notFound, ServiceError } from "../http/errors";
+import { isSystemModel } from "../sys-models";
 
 /** 检查所有 HTTP 和 MCP 使用的模型身份。 */
 export function assertModelId(id: string): void {
@@ -123,8 +131,9 @@ export class ModelService {
       diagnostics: row.draft_json
         ? JSON.parse(row.diagnostics_json!)
         : { errors: [], runtimeChecks: [] },
-      canManage: true,
+      canManage: !isSystemModel(id),
       canPublish:
+        !isSystemModel(id) &&
         this.actor.kind === "user" &&
         (this.actor.super ||
           head.creator_id === this.actor.id ||
@@ -141,6 +150,7 @@ export class ModelService {
   }
   async save(id: string, input: unknown, ifRevision: string | null): Promise<ManagedSnapshot> {
     assertModelId(id);
+    if (isSystemModel(id)) forbidden("系统模型由 service 代码维护，只能随部署更新");
     const definition = assertDraftDefinition(input, id);
     const head = await readHead(this.db, id);
     if (ifRevision === null) {
@@ -207,6 +217,7 @@ export class ModelService {
   }
   async publish(id: string, ifRevision: string): Promise<PublishedSnapshot> {
     requireUser(this.actor);
+    if (isSystemModel(id)) forbidden("系统模型由 service 代码维护，只能随部署更新");
     const { head, published } = await this.manageable(id, "publish");
     if (head.management_revision !== ifRevision) return revisionConflict(this.db, id);
     const draft = await this.db
@@ -296,14 +307,20 @@ export class ModelService {
       definition: JSON.parse(row.definition_json),
     }));
   }
-  async preview(id: string, target: RouteTarget, params: Record<string, string>, expected?: string) {
+  async preview(
+    id: string,
+    target: RouteTarget,
+    params: Record<string, string>,
+    expected?: string,
+  ) {
     const snapshot = await this.read(id);
     if (expected && snapshot.revision !== expected) return revisionConflict(this.db, id);
     const manifest = await readManifest(this.db);
     const domain = snapshot.definition.document.domain;
     if (domain !== undefined && typeof domain !== "string") invalid("document.domain 必须是字符串");
     effectiveCapabilities(manifest, { id, domain }, target);
-    if (!schemaTargets(manifest).some((item) => routeKey(item) === routeKey(target))) invalid("此目标不加载 schema");
+    if (!schemaTargets(manifest).some((item) => routeKey(item) === routeKey(target)))
+      invalid("此目标不加载 schema");
     if (params.modelId !== undefined && params.modelId !== id) invalid("预览参数不能修改 modelId");
     routePath(manifestRoutes(manifest), target, { ...params, modelId: id });
     const url = new URL(`/model-preview/${encodeURIComponent(id)}`, manifest.clientOrigin);
@@ -311,7 +328,8 @@ export class ModelService {
     if (target.window !== undefined) url.searchParams.set("window", target.window);
     url.searchParams.set("revision", snapshot.revision);
     for (const [key, value] of Object.entries(params))
-      if (!["router", "window", "revision", "modelId", "domain"].includes(key)) url.searchParams.set(key, value);
+      if (!["router", "window", "revision", "modelId", "domain"].includes(key))
+        url.searchParams.set(key, value);
     return { modelId: id, ...target, revision: snapshot.revision, url: url.href };
   }
   async draftSchema(id: string, revision: string): Promise<PreviewSnapshot> {
@@ -351,7 +369,8 @@ export class ModelService {
         await this.manageable(id);
         const snapshot = await this.read(id);
         const domain = snapshot.definition.document.domain;
-        if (domain !== undefined && typeof domain !== "string") invalid("document.domain 必须是字符串");
+        if (domain !== undefined && typeof domain !== "string")
+          invalid("document.domain 必须是字符串");
         document = { id, domain };
       } catch (error) {
         if (!(error instanceof ServiceError && error.status === 403)) throw error;
@@ -359,7 +378,10 @@ export class ModelService {
         document = projectSchema(await readPublished(this.db, id), this.actor);
       }
     } else if (!this.actor.canCreateModel) forbidden();
-    return effectiveCapabilities(await readManifest(this.db),
-      candidateDomain === undefined ? document : { id, domain: candidateDomain }, target);
+    return effectiveCapabilities(
+      await readManifest(this.db),
+      candidateDomain === undefined ? document : { id, domain: candidateDomain },
+      target,
+    );
   }
 }

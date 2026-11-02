@@ -1,0 +1,26 @@
+[
+  {
+    "id": "order-1",
+    "orderNo": "SO-2026-001",
+    "status": "pending",
+    "paid": false,
+    "amount": 120,
+    "lines": []
+  },
+  {
+    "id": "order-2",
+    "orderNo": "SO-2026-002",
+    "status": "paid",
+    "paid": true,
+    "amount": 240,
+    "lines": []
+  },
+  {
+    "id": "order-3",
+    "orderNo": "SO-2026-003",
+    "status": "pending",
+    "paid": false,
+    "amount": 360,
+    "lines": []
+  }
+]

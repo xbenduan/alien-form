@@ -7,6 +7,7 @@ import { createServer } from "node:net";
 import { createServer as createHttpServer } from "node:http";
 import { randomBytes } from "node:crypto";
 import { createFormworkApi } from "formwork/model";
+import { databaseSchema } from "../../script/database.mjs";
 
 const wrangler = resolve("apps/service/node_modules/.bin/wrangler");
 async function freePort() {
@@ -109,7 +110,6 @@ export async function startWorker(options: { initialSql?: string[]; password?: s
             binding: "DB",
             database_name: "alien-mdm",
             database_id: "local-test-database",
-            migrations_dir: resolve("apps/service/migrations"),
           },
         ],
       }),
@@ -125,17 +125,20 @@ export async function startWorker(options: { initialSql?: string[]; password?: s
       ].join("\n"),
       { mode: 0o600 },
     );
+    const schema = join(root, "schema.sql");
+    await writeFile(schema, databaseSchema);
     await command(
       [
         "d1",
-        "migrations",
-        "apply",
+        "execute",
         "alien-mdm",
         "--local",
         "--config",
         config,
         "--persist-to",
         state,
+        "--file",
+        schema,
       ],
       env,
     );
@@ -221,7 +224,8 @@ export async function startWorker(options: { initialSql?: string[]; password?: s
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${sqlToken}` },
           body: JSON.stringify({ sql: typeof sql === "string" ? [sql] : sql }),
         });
-        if (!response.ok) throw new Error(`Test SQL failed (${response.status}): ${await response.text()}`);
+        if (!response.ok)
+          throw new Error(`Test SQL failed (${response.status}): ${await response.text()}`);
         return response.json() as Promise<Array<{ results: Record<string, unknown>[] }>>;
       },
       request(

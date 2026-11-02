@@ -1,12 +1,20 @@
-import { mkdir, rm, readFile, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { randomBytes } from "node:crypto";
 import { createServer } from "vite";
-import { startLocalWorker } from "./local-worker.mjs";
+import { startLocalWorker } from "../apps/service/script/local-worker.mjs";
 import { selectDevelopmentPort } from "./dev-ports.mjs";
-import { planMigration } from "../apps/service/src/migration/convert";
-import type { ModelDocument } from "formwork/model";
+import {
+  bindingKey,
+  createTableSql,
+  literal,
+  quote,
+} from "../apps/service/src/adapters/d1/compiler/storage";
+import { modelDefinitionSchema } from "formwork/model";
+import type { RecordValue } from "formwork/model";
+import type { StorageManifest } from "../apps/service/src/contracts";
 
+const repository = resolve(import.meta.dirname, "..");
 const root = process.env.FORMWORK_E2E_ROOT;
 if (!root) throw new Error("FORMWORK_E2E_ROOT 必须由 Playwright 配置提供");
 await mkdir(root, { recursive: true });
@@ -14,52 +22,57 @@ const password = randomBytes(24).toString("hex");
 const username = "e2e-admin";
 const capabilityToken = randomBytes(32).toString("hex");
 await writeFile(join(root, "login.json"), JSON.stringify({ username, password }), { mode: 0o600 });
-const documents = await Promise.all(
-  ["orders", "cms"].map(
-    async (id) =>
-      JSON.parse(
-        await readFile(resolve(`apps/service/src/migration/fixtures/${id}.document.json`), "utf8"),
-      ) as ModelDocument,
-  ),
-);
-const plan = await planMigration({
-  models: [],
-  tables: [],
-  files: documents.map((document) => ({
-    document,
-    published: true,
-    records:
-      document.id === "orders"
-        ? [
-            {
-              id: "order-1",
-              orderNo: "SO-2026-001",
-              status: "pending",
-              paid: false,
-              amount: 120,
-              lines: [],
-            },
-            {
-              id: "order-2",
-              orderNo: "SO-2026-002",
-              status: "paid",
-              paid: true,
-              amount: 240,
-              lines: [],
-            },
-            {
-              id: "order-3",
-              orderNo: "SO-2026-003",
-              status: "pending",
-              paid: false,
-              amount: 360,
-              lines: [],
-            },
-          ]
-        : [{ id: "article-1", title: "首篇内容", content: "初始正文" }],
-  })),
-});
-if (plan.errors.length) throw new Error(JSON.stringify(plan.errors));
+const initialSql: string[] = [];
+for (const id of ["orders", "cms"]) {
+  const definition = modelDefinitionSchema.parse(
+    JSON.parse(await readFile(resolve(repository, `examples/${id}.definition.json`), "utf8")),
+  );
+  const manifest: StorageManifest = {
+    table: definition.backend.storage.table,
+    bindings: definition.backend.storage.bindings.map((binding) => ({ ...binding, active: true })),
+    relations: [],
+  };
+  const now = new Date().toISOString();
+  initialSql.push(
+    createTableSql(manifest.table, manifest.bindings),
+    `INSERT INTO fw_models(id,creator_id,active_version,management_revision,storage_table,created_at,updated_at)
+     VALUES (${literal(id)},'e2e-fixture',1,${literal(crypto.randomUUID())},${literal(manifest.table)},${literal(now)},${literal(now)})`,
+    `INSERT INTO fw_model_versions(model_id,version,definition_json,storage_manifest_json,publish_revision,published_by,published_at)
+     VALUES (${literal(id)},1,${literal(JSON.stringify(definition))},${literal(JSON.stringify(manifest))},${literal(crypto.randomUUID())},'e2e-fixture',${literal(now)})`,
+  );
+  const records = JSON.parse(
+    await readFile(resolve(repository, `examples/${id}.records.json`), "utf8"),
+  ) as RecordValue[];
+  for (const record of records) {
+    const row: Record<string, string | number | null> = {
+      id: String(record.id),
+      created_at: now,
+      updated_at: now,
+      creator_id: "e2e-fixture",
+      data_content: JSON.stringify(record),
+    };
+    for (const binding of manifest.bindings) {
+      if (!binding.column || Object.hasOwn(row, binding.column)) continue;
+      const value = record[bindingKey(binding)];
+      row[binding.column] =
+        value == null
+          ? null
+          : binding.encoding === "json"
+            ? JSON.stringify(value)
+            : typeof value === "boolean"
+              ? Number(value)
+              : (value as string | number);
+    }
+    initialSql.push(
+      `INSERT INTO ${quote(manifest.table)} (${Object.keys(row).map(quote).join(",")})
+       VALUES (${Object.values(row)
+         .map((value) =>
+           value === null ? "NULL" : typeof value === "number" ? String(value) : literal(value),
+         )
+         .join(",")})`,
+    );
+  }
+}
 const servicePort = await selectDevelopmentPort({
   preferred: 8789,
   label: "E2E Worker",
@@ -75,12 +88,12 @@ const worker = await startLocalWorker({
   username,
   password,
   capabilityToken,
-  initialSql: plan.statements,
+  initialSql,
   detached: false,
 });
 const server = await createServer({
-  root: resolve("apps/client"),
-  configFile: resolve("apps/client/vite.config.ts"),
+  root: resolve(repository, "apps/client"),
+  configFile: resolve(repository, "apps/client/vite.config.ts"),
   server: { host: "127.0.0.1", port: 5184, strictPort: true },
 });
 await server.listen();

@@ -4,12 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --config ../../wrangler.json",
+    "dev": "node ../../scripts/dev.mjs --service-only",
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "cf-typegen": "wrangler types src/worker-configuration.d.ts --include-runtime false --config ../../wrangler.json",
-    "migrate:local": "wrangler d1 migrations apply alien-mdm --local --config ../../wrangler.json",
-    "deploy": "wrangler deploy --config ../../wrangler.json"
+    "cf-typegen": "wrangler types src/worker-configuration.d.ts --include-runtime false --config wrangler.json",
+    "db:reset": "pnpm --filter formwork build && tsx script/migrate.ts --local",
+    "deploy": "pnpm --filter formwork build && node script/deploy.mjs",
+    "deploy:dry-run": "pnpm --filter formwork build && node script/deploy.mjs --dry-run"
   },
   "dependencies": {
     "formwork": "workspace:*",

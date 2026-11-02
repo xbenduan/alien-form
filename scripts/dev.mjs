@@ -2,21 +2,22 @@
 /** 构建共享包并启动 Vite 与本地 Worker/D1；退出时回收自身进程树。 */
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile, chmod } from "node:fs/promises";
-import { homedir } from "node:os";
-import { createHash, randomBytes } from "node:crypto";
+import { mkdir, writeFile, chmod } from "node:fs/promises";
+import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { resolve, join } from "node:path";
 import { selectDevelopmentPort } from "./dev-ports.mjs";
-import { startLocalWorker } from "./local-worker.mjs";
+import { startLocalWorker } from "../apps/service/script/local-worker.mjs";
+import { developmentDirectory } from "../apps/service/script/database.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
+const serviceOnly = process.argv.includes("--service-only");
 const isWindows = process.platform === "win32";
 const requestedClientPort = process.env.FORMWORK_CLIENT_PORT ?? "5173";
 const requestedServicePort = process.env.FORMWORK_SERVICE_PORT ?? "8788";
 const vite = resolve(root, "apps/client/node_modules/vite/bin/vite.js");
 const wrangler = resolve(root, "apps/service/node_modules/wrangler/bin/wrangler.js");
-if (!existsSync(vite) || !existsSync(wrangler)) {
+if ((!serviceOnly && !existsSync(vite)) || !existsSync(wrangler)) {
   console.error("缺少依赖，请先运行 pnpm install。");
   process.exit(1);
 }
@@ -29,16 +30,18 @@ for (const port of [requestedClientPort, requestedServicePort]) {
 let clientPort;
 let servicePort;
 try {
-  clientPort = await selectDevelopmentPort({
-    preferred: Number(requestedClientPort),
-    strict: process.env.FORMWORK_CLIENT_PORT !== undefined,
-    label: "client",
-  });
+  clientPort = serviceOnly
+    ? Number(requestedClientPort)
+    : await selectDevelopmentPort({
+        preferred: Number(requestedClientPort),
+        strict: process.env.FORMWORK_CLIENT_PORT !== undefined,
+        label: "client",
+      });
   servicePort = await selectDevelopmentPort({
     preferred: Number(requestedServicePort),
     strict: process.env.FORMWORK_SERVICE_PORT !== undefined,
     label: "service",
-    reserved: new Set([clientPort]),
+    reserved: new Set(serviceOnly ? [] : [clientPort]),
   });
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
@@ -53,38 +56,20 @@ const childEnv = {
   FORMWORK_CLIENT_PORT: String(clientPort),
   FORMWORK_SERVICE_PORT: String(servicePort),
 };
-const directory =
-  process.env.FORMWORK_DATA_DIR ??
-  join(
-    homedir(),
-    ".local/share/alien-form/development",
-    createHash("sha256").update(root).digest("hex").slice(0, 16),
-  );
+const directory = developmentDirectory();
 await mkdir(directory, { recursive: true, mode: 0o700 });
 await chmod(directory, 0o700);
 const credentialFile = join(directory, "bootstrap.json");
-try {
-  await writeFile(
-    credentialFile,
-    JSON.stringify(
-      {
-        username: `dev-${randomBytes(6).toString("hex")}`,
-        password: randomBytes(24).toString("hex"),
-        capabilityToken: randomBytes(32).toString("hex"),
-      },
-      null,
-      2,
-    ),
-    { flag: "wx", mode: 0o600 },
-  );
-} catch (error) {
-  if (error.code !== "EEXIST") throw error;
-}
+const credentials = {
+  username: `dev-${randomBytes(6).toString("hex")}`,
+  password: randomBytes(24).toString("hex"),
+  capabilityToken: randomBytes(32).toString("hex"),
+};
+await writeFile(credentialFile, JSON.stringify(credentials, null, 2), { mode: 0o600 });
 await chmod(credentialFile, 0o600);
-const credentials = JSON.parse(await readFile(credentialFile, "utf8"));
 childEnv.FORMWORK_CAPABILITY_TOKEN = credentials.capabilityToken;
 childEnv.FORMWORK_CLIENT_ORIGIN = `http://127.0.0.1:${clientPort}`;
-for (const name of ["formwork", "formwork-vite-plugin"]) {
+for (const name of serviceOnly ? ["formwork"] : ["formwork", "formwork-vite-plugin"]) {
   const args = ["--filter", name, "build"];
   const options = { cwd: root, stdio: "inherit" };
   const pnpmEntry = process.env.npm_execpath;
@@ -186,70 +171,27 @@ try {
   worker.child.once("exit", (code) => {
     if (!stopping) void shutdown(code ?? 1);
   });
-  const { createFormworkApi } = await import("formwork/model");
-  const session = await createFormworkApi({ url: `${worker.origin}/api/v1` }).auth.login(
-    credentials.username,
-    credentials.password,
-  );
-  const api = createFormworkApi({ url: `${worker.origin}/api/v1`, token: () => session.token });
   if (stopping) {
     await worker.close();
     process.exit(0);
   }
-  await start("client", "apps/client", vite, [
-    "--host",
-    "127.0.0.1",
-    "--port",
-    clientPort,
-    "--strictPort",
-  ]);
-  const existing = new Set((await api.models.list()).map((entry) => entry.id));
-  for (const id of ["orders", "cms"]) {
-    if (existing.has(id)) continue;
-    const document = JSON.parse(
-      await readFile(
-        resolve(root, `apps/service/src/migration/fixtures/${id}.document.json`),
-        "utf8",
-      ),
-    );
-    const bindings = Object.entries(document.data.properties).map(([key, node]) => ({
-      id: `${id}:${key}`,
-      path: `/${key}`,
-      column: key,
-      sqlType: ["boolean", "integer"].includes(node.type)
-        ? "INTEGER"
-        : node.type === "number"
-          ? "REAL"
-          : "TEXT",
-      encoding: ["array", "object"].includes(node.type) ? "json" : "scalar",
-    }));
-    await api.models.saveDraft(
-      id,
-      {
-        document,
-        backend: {
-          storage: { table: `biz_${id}`, bindings },
-          relations: [],
-          permissions: { grants: [], privateFields: [] },
-          behavior: { rules: [], commands: {}, events: {} },
-        },
-      },
-      { ifRevision: null },
-    );
-  }
-  for (const id of ["departments", "customer-profile"]) {
-    if (existing.has(id)) continue;
-    const definition = JSON.parse(
-      await readFile(resolve(root, `examples/${id}.definition.json`), "utf8"),
-    );
-    await api.models.saveDraft(id, definition, { ifRevision: null });
-  }
-  await api.auth.logout();
+  if (!serviceOnly)
+    await start("client", "apps/client", vite, [
+      "--host",
+      "127.0.0.1",
+      "--port",
+      clientPort,
+      "--strictPort",
+    ]);
   if (stopping) await worker.close();
   else {
-    console.log(`Client: ${childEnv.FORMWORK_CLIENT_ORIGIN} · Worker: ${worker.origin}`);
     console.log(
-      `本地 D1: ${directory}；登录账号与密码保存在 ${credentialFile}（权限 0600）。首次示例为草稿，请在管理页手动发布。`,
+      serviceOnly
+        ? `Worker: ${worker.origin}`
+        : `Client: ${childEnv.FORMWORK_CLIENT_ORIGIN} · Worker: ${worker.origin}`,
+    );
+    console.log(
+      `本地 D1 已清空重建: ${directory}；本次登录账号与密码保存在 ${credentialFile}（权限 0600）。已初始化系统模型。`,
     );
   }
 } catch (error) {

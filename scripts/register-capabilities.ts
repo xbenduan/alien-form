@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { parseArgs } from "node:util";
+import { fileURLToPath } from "node:url";
 import { URL } from "node:url";
 import type { CapabilityManifest } from "formwork/model";
 
@@ -8,7 +9,12 @@ const { values } = parseArgs({
   options: {
     "api-url": { type: "string" },
     "client-origin": { type: "string" },
-    file: { type: "string", default: "apps/client/dist/formwork-capabilities.json" },
+    file: {
+      type: "string",
+      default: fileURLToPath(
+        new URL("../apps/client/dist/formwork-capabilities.json", import.meta.url),
+      ),
+    },
   },
 });
 const token = process.env.FORMWORK_CAPABILITY_TOKEN;

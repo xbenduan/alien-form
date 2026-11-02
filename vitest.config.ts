@@ -18,6 +18,7 @@ export default defineConfig({
             "packages/formwork/src/mcp/**/*.test.ts",
             "packages/vite-plugin/src/**/*.test.ts",
             "apps/service/src/**/*.test.ts",
+            "apps/service/script/**/*.test.mjs",
             "scripts/**/*.test.mjs",
           ],
         },

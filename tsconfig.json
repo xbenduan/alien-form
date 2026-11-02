@@ -4,5 +4,13 @@
     "allowJs": true,
     "types": ["node", "./apps/service/node_modules/@cloudflare/workers-types"]
   },
-  "include": ["scripts/**/*.ts", "scripts/**/*.mjs", "vitest.config.ts", "playwright.config.ts"]
+  "include": [
+    "scripts/**/*.ts",
+    "scripts/**/*.mjs",
+    "apps/service/script/**/*.ts",
+    "apps/service/script/**/*.mjs",
+    "vitest.config.ts",
+    "playwright.config.ts"
+  ],
+  "exclude": ["scripts/**/*.test.mjs", "apps/service/script/**/*.test.mjs"]
 }

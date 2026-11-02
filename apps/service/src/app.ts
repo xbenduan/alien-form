@@ -5,7 +5,7 @@ import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import { errorPayload, FormworkError } from "formwork/model";
 import type { Actor, Env } from "./contracts";
-import { bootstrap } from "./seed";
+import { bootstrap } from "./sys-models/bootstrap";
 import { ModelService, assertModelId } from "./application/model-service";
 import { ModelNavigation } from "./application/model-navigation";
 import { RecordService } from "./application/record-service";
@@ -28,9 +28,16 @@ const saveSchema = z
   .strict();
 const publishSchema = z.object({ ifRevision: z.string().min(1) }).strict();
 const validateSchema = z
-  .object({ definition: z.unknown(), router: z.string().min(1).optional(), window: z.string().min(1).optional() })
+  .object({
+    definition: z.unknown(),
+    router: z.string().min(1).optional(),
+    window: z.string().min(1).optional(),
+  })
   .strict()
-  .refine((input) => !input.window || !!input.router, { message: "window 需要所属 router", path: ["router"] });
+  .refine((input) => !input.window || !!input.router, {
+    message: "window 需要所属 router",
+    path: ["router"],
+  });
 
 /** 创建唯一 Worker HTTP 应用，统一 Bearer 身份、DTO、CORS 和错误编码。 */
 export function createApp() {
@@ -145,8 +152,13 @@ export function createApp() {
   });
   app.post("/api/v1/models/:modelId/validate", async (c) => {
     const body = validateSchema.parse(await c.req.json());
-    return c.json(await models(c).validate(c.req.param("modelId"), body.definition,
-      body.router === undefined ? undefined : { router: body.router, window: body.window }));
+    return c.json(
+      await models(c).validate(
+        c.req.param("modelId"),
+        body.definition,
+        body.router === undefined ? undefined : { router: body.router, window: body.window },
+      ),
+    );
   });
   app.post("/api/v1/models/:modelId/publish", async (c) => {
     const body = publishSchema.parse(await c.req.json());
@@ -174,7 +186,12 @@ export function createApp() {
       }
     }
     return c.json(
-      await models(c).preview(c.req.param("modelId"), { router, window: c.req.query("window") }, params, c.req.query("revision")),
+      await models(c).preview(
+        c.req.param("modelId"),
+        { router, window: c.req.query("window") },
+        params,
+        c.req.query("revision"),
+      ),
     );
   });
   app.get("/api/v1/models/:modelId/draft-schema", async (c) =>

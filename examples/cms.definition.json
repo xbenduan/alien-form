@@ -1,0 +1,58 @@
+{
+  "document": {
+    "id": "cms",
+    "title": "内容111",
+    "data": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "title": "记录 ID", "readOnly": true },
+        "title": { "type": "string", "title": "标题", "minLength": 1 },
+        "content": { "type": "string", "title": "正文" }
+      },
+      "required": ["title"]
+    },
+    "views": {
+      "list/edit": {
+        "component": "Object",
+        "field": "",
+        "children": [
+          { "component": "Input", "field": "/title" },
+          { "component": "RichText", "field": "/content" }
+        ]
+      },
+      "tree-list/edit": {
+        "component": "Object",
+        "field": "",
+        "children": [
+          { "component": "Input", "field": "/title" },
+          { "component": "RichText", "field": "/content" }
+        ]
+      }
+    }
+  },
+  "backend": {
+    "storage": {
+      "table": "biz_cms",
+      "bindings": [
+        { "id": "cms:id", "path": "/id", "column": "id", "sqlType": "TEXT", "encoding": "scalar" },
+        {
+          "id": "cms:title",
+          "path": "/title",
+          "column": "title",
+          "sqlType": "TEXT",
+          "encoding": "scalar"
+        },
+        {
+          "id": "cms:content",
+          "path": "/content",
+          "column": "content",
+          "sqlType": "TEXT",
+          "encoding": "scalar"
+        }
+      ]
+    },
+    "relations": [],
+    "permissions": { "grants": [], "privateFields": [] },
+    "behavior": { "rules": [], "commands": {}, "events": {} }
+  }
+}

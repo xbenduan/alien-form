@@ -26,7 +26,7 @@ async function occupyPort() {
   return server.address().port;
 }
 
-describe("开发启动端口选择", () => {
+describe("项目开发启动端口选择", () => {
   it("默认端口被占用时选择后续可用端口", async () => {
     const occupied = await occupyPort();
     const selected = await selectDevelopmentPort({
