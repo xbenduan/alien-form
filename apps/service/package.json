@@ -13,13 +13,13 @@
     "deploy:dry-run": "pnpm --filter formwork build && node script/deploy.mjs --dry-run"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
     "formwork": "workspace:*",
     "hono": "4.7.0",
     "zod": "4.6.7"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20261028.1",
-    "@modelcontextprotocol/sdk": "1.32.2",
     "typescript": "7.0.2",
     "wrangler": "4.129.0"
   }

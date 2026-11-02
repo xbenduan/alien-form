@@ -260,6 +260,9 @@ importers:
 
   apps/service:
     dependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: 1.32.2
+        version: 1.32.2(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7)
       formwork:
         specifier: workspace:*
         version: link:../../packages/formwork
@@ -273,9 +276,6 @@ importers:
       '@cloudflare/workers-types':
         specifier: 5.20261028.1
         version: 5.20261028.1
-      '@modelcontextprotocol/sdk':
-        specifier: 1.32.2
-        version: 1.32.2(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7)
       typescript:
         specifier: 7.0.2
         version: 7.0.2
@@ -288,9 +288,6 @@ importers:
       '@cfworker/json-schema':
         specifier: 4.1.1
         version: 4.1.1
-      '@modelcontextprotocol/sdk':
-        specifier: 1.32.2
-        version: 1.32.2(@cfworker/json-schema@4.1.1)(supports-color@10.2.2)(zod@4.6.7)
       '@solidjs/router':
         specifier: 1.0.0
         version: 1.0.0(solid-js@1.9.17)

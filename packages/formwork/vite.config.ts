@@ -9,7 +9,6 @@ export default defineConfig({
         index: "src/index.ts",
         model: "src/model/index.ts",
         mcp: "src/mcp/index.ts",
-        stdio: "src/mcp/stdio.ts",
       },
       formats: ["es"],
     },

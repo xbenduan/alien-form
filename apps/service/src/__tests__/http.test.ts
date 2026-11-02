@@ -1,6 +1,5 @@
 import { beforeAll, afterAll, afterEach, expect, it } from "vitest";
 import { createHash } from "node:crypto";
-import { resolve } from "node:path";
 import { createFormworkApi } from "formwork/model";
 import type {
   ModelDefinition,
@@ -930,32 +929,27 @@ it("关系去重、options、子树、防环、引用删除保护和停用 throu
     (await worker.sql("SELECT links FROM test_relation WHERE id = 's1'"))[0].results[0].links,
   ).toBe('["t1"]');
 });
-it("官方 SDK stdio 六工具直接调用真实 Worker/D1，agent 只能保存草稿", async () => {
+it("官方 SDK 通过 HTTP 和自定义 Headers 调用真实 Worker/D1 六工具，agent 只能保存草稿", async () => {
   const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
-  const { StdioClientTransport } = await import("@modelcontextprotocol/sdk/client/stdio.js");
+  const { StreamableHTTPClientTransport } =
+    await import("@modelcontextprotocol/sdk/client/streamableHttp.js");
   const token = await worker.api.auth.issueToken({ label: "真实 MCP", expiresInDays: 1 });
-  const transport = new StdioClientTransport({
-    command: process.execPath,
-    args: [resolve("packages/formwork/dist/stdio.js"), "--url", worker.origin],
-    env: {
-      ...Object.fromEntries(
-        Object.entries(process.env).filter(
-          (entry): entry is [string, string] => entry[1] !== undefined,
-        ),
-      ),
-      FORMWORK_API_TOKEN: token.token,
-    },
-    stderr: "pipe",
+  const transport = new StreamableHTTPClientTransport(new URL(`${worker.origin}/mcp`), {
+    requestInit: { headers: { Authorization: `Bearer ${token.token}` } },
   });
   const client = new Client({ name: "formwork-real-d1-test", version: "1" });
-  let stderr = "";
-  transport.stderr?.on("data", (chunk) => {
-    stderr += String(chunk);
-  });
   try {
     await publish(definition("mcp_base"));
     await client.connect(transport);
-    expect((await client.listTools()).tools).toHaveLength(6);
+    expect(transport.sessionId).toBeUndefined();
+    expect((await client.listTools()).tools.map((tool) => tool.name)).toEqual([
+      "models.list",
+      "models.read",
+      "formwork.capabilities",
+      "models.validate",
+      "models.write",
+      "models.preview",
+    ]);
     const call = async (name: string, args: Record<string, unknown>) => {
       const result = await client.callTool({ name, arguments: args });
       const value = JSON.parse((result.content as Array<{ text: string }>)[0].text);
@@ -984,9 +978,30 @@ it("官方 SDK stdio 六工具直接调用真实 Worker/D1，agent 只能保存�
     const preview = await call("models.preview", {
       modelId: "mcp_model",
       router: "list",
-      window: "add",
+      window: "edit",
+      params: { id: "a/b" },
     });
     expect(new URL(preview.url).searchParams.get("revision")).toBe(saved.revision);
+    expect(new URL(preview.url).searchParams.get("id")).toBe("a/b");
+    const conflict = await client.callTool({
+      name: "models.write",
+      arguments: { modelId: "mcp_model", definition: value, ifRevision: null },
+    });
+    expect(conflict.isError).toBe(true);
+    expect(JSON.parse((conflict.content as Array<{ text: string }>)[0].text)).toMatchObject({
+      error: { code: "REVISION_CONFLICT", currentRevision: saved.revision },
+    });
+    const incomplete = await call("models.write", {
+      modelId: "mcp_incomplete",
+      definition: { document: { id: "mcp_incomplete" } },
+      ifRevision: null,
+    });
+    expect(incomplete.diagnostics.errors.length).toBeGreaterThan(0);
+    expect(await call("models.read", { modelId: "mcp_incomplete" })).toMatchObject({
+      stage: "draft",
+      revision: incomplete.revision,
+      diagnostics: incomplete.diagnostics,
+    });
     expect(
       (
         await worker.request(
@@ -997,12 +1012,86 @@ it("官方 SDK stdio 六工具直接调用真实 Worker/D1，agent 只能保存�
         )
       ).status,
     ).toBe(403);
-  } catch (error) {
-    if (stderr) console.error(`MCP startup: ${stderr}`);
-    throw error;
   } finally {
     await client.close();
   }
+});
+it("MCP 每次请求校验 Header credential，拒绝 URL token、deploy、过期及已撤销凭证", async () => {
+  const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+  const { StreamableHTTPClientTransport } =
+    await import("@modelcontextprotocol/sdk/client/streamableHttp.js");
+  const token = await worker.api.auth.issueToken({ label: "MCP 撤销", expiresInDays: 1 });
+  const request = (headers: Record<string, string> = {}, query = "") =>
+    fetch(`${worker.origin}/mcp${query}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+        ...headers,
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }),
+    });
+  expect((await request()).status).toBe(401);
+  expect((await request({ Authorization: "Bearer invalid" })).status).toBe(401);
+  expect((await request({}, `?token=${encodeURIComponent(token.token)}`)).status).toBe(401);
+  expect((await request({ Authorization: `Bearer ${worker.capabilityToken}` })).status).toBe(403);
+  const expired = await worker.api.auth.issueToken({ label: "MCP 过期", expiresInDays: 1 });
+  await worker.sql(
+    `UPDATE fw_credentials SET expires_at = '2000-01-01' WHERE id = '${expired.id}'`,
+  );
+  expect((await request({ Authorization: `Bearer ${expired.token}` })).status).toBe(401);
+  const client = new Client({ name: "formwork-mcp-revocation-test", version: "1" });
+  const transport = new StreamableHTTPClientTransport(new URL(`${worker.origin}/mcp`), {
+    requestInit: { headers: { Authorization: `Bearer ${token.token}` } },
+  });
+  try {
+    await client.connect(transport);
+    expect((await client.listTools()).tools).toHaveLength(6);
+    await worker.api.auth.revokeToken(token.id);
+    expect((await request({ Authorization: `Bearer ${token.token}` })).status).toBe(401);
+    await expect(client.listTools()).rejects.toMatchObject({ code: 401 });
+  } finally {
+    await client.close();
+  }
+});
+it("MCP 校验 Origin、协议和请求大小，并允许携带鉴权及协议 Header 的 CORS 预检", async () => {
+  const headers = {
+    Authorization: `Bearer ${worker.token}`,
+    Accept: "application/json, text/event-stream",
+    "Content-Type": "application/json",
+  };
+  const list = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} });
+  const request = (body: string, extra: Record<string, string> = {}) =>
+    fetch(`${worker.origin}/mcp`, { method: "POST", headers: { ...headers, ...extra }, body });
+  expect((await request(list, { Origin: "https://untrusted.example" })).status).toBe(403);
+  const preflight = await fetch(`${worker.origin}/mcp`, {
+    method: "OPTIONS",
+    headers: {
+      Origin: "http://localhost:5173",
+      "Access-Control-Request-Method": "POST",
+      "Access-Control-Request-Headers": "authorization,content-type,mcp-protocol-version",
+    },
+  });
+  expect(preflight.status).toBe(204);
+  expect(preflight.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:5173");
+  expect(preflight.headers.get("Access-Control-Allow-Headers")?.toLowerCase()).toContain(
+    "mcp-protocol-version",
+  );
+  const response = await request(list, {
+    Origin: "http://localhost:5173",
+    "MCP-Protocol-Version": "2025-03-26",
+  });
+  expect(response.status).toBe(200);
+  expect(response.headers.get("Content-Type")).toContain("application/json");
+  expect(response.headers.get("Cache-Control")).toBe("no-store");
+  expect(response.headers.get("Mcp-Session-Id")).toBeNull();
+  expect((await request(list, { "MCP-Protocol-Version": "invalid" })).status).toBe(400);
+  expect((await request("{")).status).toBe(400);
+  expect((await request(JSON.stringify({ padding: "x".repeat(2 * 1024 * 1024) }))).status).toBe(
+    413,
+  );
+  expect((await fetch(`${worker.origin}/mcp`, { headers })).status).toBe(405);
+  expect((await fetch(`${worker.origin}/mcp`, { method: "DELETE", headers })).status).toBe(405);
 });
 it("存储不兼容产生可读草稿诊断，不改变当前版本", async () => {
   const model = definition("incompatible");

@@ -1,6 +1,6 @@
 # Alien Form / Formwork
 
-Solid 无头表单内核、数据库模型列表与 Schema 详情、Vite 代码能力清单和六项 stdio MCP 工具。唯一后端是 `apps/service` 的 Cloudflare Worker，开发使用本地 D1，部署使用 Cloudflare D1。
+Solid 无头表单内核、数据库模型列表与 Schema 详情、Vite 代码能力清单和六项 HTTP/HTTPS MCP 工具。唯一后端是 `apps/service` 的 Cloudflare Worker，开发使用本地 D1，部署使用 Cloudflare D1。
 
 使用 Node **26.13.0**、pnpm **12.16.1**：
 
@@ -16,6 +16,23 @@ pnpm dev
 新部署只初始化用户、角色和模型分类三个系统模型。普通模型示例统一放在 `examples/*.definition.json`，不自动导入本地或线上数据库；需要时，在已部署项目的模型管理页创建相同 ID 的模型，复制完整 definition JSON，保存草稿并手动发布即可。
 
 模型详情左侧编辑 Schema，右侧预览，中间分隔条可拖动。模型列表中的“固定到菜单”将已发布用户模型加入侧栏，固定状态按账号保存到 D1；系统模型直接展示。保存草稿不改变普通页面；发布后普通页面刷新才加载新 schema，旧页提交按当前版本校验。
+
+MCP 使用 Streamable HTTP，端点为 `<Worker origin>/mcp`。在 AI 客户端选择 HTTP/HTTPS 连接，在自定义 Headers 中填写 `Authorization: Bearer <agent token>`；agent token 在管理页的 API token 页面签发。客户端配置如下：
+
+```json
+{
+  "mcpServers": {
+    "formwork": {
+      "url": "https://<worker>/mcp",
+      "headers": {
+        "Authorization": "Bearer <agent token>"
+      }
+    }
+  }
+}
+```
+
+本地使用启动器输出的 Worker HTTP 地址，例如 `http://127.0.0.1:8788/mcp`；Vite 开发服务也会代理 `/mcp`，模型列表可直接复制当前地址的配置。分离部署时设置 `VITE_FORMWORK_API_URL=https://<worker>/api/v1`，接入页会使用对应 Worker 的 `/mcp`。Worker 为每次请求校验凭证与当前权限，凭证撤销后立即生效；六项工具直接操作 D1 中的模型状态。`models.write` 只保存草稿，发布仍需在管理页手动完成。
 
 示例包括订单（orders）、内容管理（cms）、组织架构（departments）和客户档案（customer-profile）。组织架构使用树形列表，可自行添加部门和上级关系；客户档案展示嵌套对象与地址数组卡片。实时预览从空列表开始，用户新增的记录仅保存在当前预览内存中，支持编辑、详情、删除及切换视图；修改有效 Schema 保留已录入记录，预览记录不写入后端。`examples/*.records.json` 提供可选示例数据，E2E 启动器仅在独立测试数据库中按需读取。
 

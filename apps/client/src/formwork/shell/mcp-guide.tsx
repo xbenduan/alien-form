@@ -11,21 +11,21 @@ const tools = [
   "models.preview",
 ];
 
-/** 在模型列表提供与当前开发服务匹配的 stdio MCP 配置和接入步骤。 */
+/** 在模型列表提供 HTTP/HTTPS MCP 地址和自定义 Headers 鉴权配置。 */
 export const McpGuide: Component = () => {
   const [open, setOpen] = createSignal(false);
   const [feedback, setFeedback] = createSignal("");
-  const origin = new URL(import.meta.env.VITE_FORMWORK_API_URL ?? "/api/v1", window.location.origin)
-    .href;
-  const entry =
-    import.meta.env.VITE_FORMWORK_MCP_ENTRY ?? "<项目绝对路径>/packages/formwork/dist/stdio.js";
+  const apiUrl = new URL(
+    import.meta.env.VITE_FORMWORK_API_URL ?? "/api/v1",
+    window.location.origin,
+  );
+  const url = new URL("/mcp", apiUrl).href;
   const config = JSON.stringify(
     {
       mcpServers: {
         formwork: {
-          command: "node",
-          args: [entry, "--url", origin],
-          env: { FORMWORK_API_TOKEN: "<在 API token 页面签发的 agent token>" },
+          url,
+          headers: { Authorization: "Bearer <在 API token 页面签发的 agent token>" },
         },
       },
     },
@@ -60,12 +60,13 @@ export const McpGuide: Component = () => {
             <div class="mcp-step">
               <span class="step-number">1</span>
               <div>
-                <h3>保持开发服务运行</h3>
+                <h3>获取地址和 token</h3>
+                <p>在 API token 页面签发 agent token。</p>
                 <p>
-                  在项目根目录执行 <code>pnpm dev</code>。MCP 通过 stdio 直连 Worker API。
+                  本地运行 <code>pnpm dev</code>；线上使用 Worker 的 HTTPS 地址。
                 </p>
                 <div class="mcp-command">
-                  <code>pnpm mcp --url {origin}</code>
+                  <code>{url}</code>
                 </div>
               </div>
             </div>
@@ -74,10 +75,12 @@ export const McpGuide: Component = () => {
               <div>
                 <h3>添加 MCP 服务器</h3>
                 <p>
-                  将右侧配置添加到 AI 客户端的 MCP 设置，再启用 <code>formwork</code>。
+                  选择 HTTP/HTTPS（Streamable HTTP）连接，将右侧配置添加到 AI 客户端的 MCP
+                  设置，再启用 <code>formwork</code>。
                 </p>
                 <p>
-                  项目使用 Node 26.13.0；可将 <code>command</code> 改为对应 Node 的绝对路径。
+                  在自定义 Headers 中添加 <code>Authorization</code>，值为{" "}
+                  <code>Bearer &lt;agent token&gt;</code>。
                 </p>
               </div>
             </div>
@@ -93,13 +96,13 @@ export const McpGuide: Component = () => {
             </div>
             <Show when={!import.meta.env.DEV}>
               <p class="mcp-source-note">
-                请将配置中的项目路径与 Worker API URL 改为实际值，并通过环境变量提供 agent token。
+                请确认 URL 指向实际 Worker 的 /mcp 端点，并将 Headers 中的占位值替换为 agent token。
               </p>
             </Show>
           </div>
           <div class="mcp-config">
             <div class="mcp-config-heading">
-              <span>stdio · 客户端配置</span>
+              <span>HTTP/HTTPS · 客户端配置</span>
               <button type="button" class="text-button" onClick={copy}>
                 <Icon name="code" />
                 复制配置

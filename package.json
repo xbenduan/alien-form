@@ -18,7 +18,6 @@
     "capabilities:register": "tsx scripts/register-capabilities.ts",
     "worker:dry-run": "pnpm --filter @alien-form/service deploy:dry-run",
     "test:e2e": "playwright test",
-    "mcp": "node packages/formwork/dist/stdio.js",
     "check": "pnpm lint && pnpm format:check && pnpm build && pnpm typecheck && pnpm test && pnpm test:e2e",
     "lint": "oxlint --deny-warnings",
     "format": "oxfmt . --write",

@@ -2,16 +2,8 @@ import { defineConfig } from "vite";
 import solid from "vite-plugin-solid";
 import tailwind from "@tailwindcss/vite";
 import { formworkPlugin } from "formwork-vite-plugin";
-import { fileURLToPath } from "node:url";
 
-export default defineConfig(({ command }) => ({
-  define: {
-    "import.meta.env.VITE_FORMWORK_MCP_ENTRY": JSON.stringify(
-      command === "serve"
-        ? fileURLToPath(new URL("./stdio.js", import.meta.resolve("formwork")))
-        : "<项目绝对路径>/packages/formwork/dist/stdio.js",
-    ),
-  },
+export default defineConfig({
   plugins: [
     formworkPlugin({
       entry: "src/formwork/index.ts",
@@ -33,6 +25,10 @@ export default defineConfig(({ command }) => ({
         target: `http://127.0.0.1:${process.env.FORMWORK_SERVICE_PORT ?? "8788"}`,
         changeOrigin: false,
       },
+      "/mcp": {
+        target: `http://127.0.0.1:${process.env.FORMWORK_SERVICE_PORT ?? "8788"}`,
+        changeOrigin: false,
+      },
     },
   },
-}));
+});

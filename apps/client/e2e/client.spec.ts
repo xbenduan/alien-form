@@ -319,15 +319,26 @@ test("首页模型搜索与清除、固定操作列和 MCP 直连 Worker 配置"
   await page.goto("/models");
   await page.getByRole("button", { name: /MCP 接入/u }).click();
   const config = JSON.parse(await page.getByLabel("MCP 客户端配置").innerText());
-  expect(config.mcpServers.formwork.command).toBe("node");
-  expect(config.mcpServers.formwork.args[0]).toMatch(/\/packages\/formwork\/dist\/stdio\.js$/u);
-  expect(config.mcpServers.formwork.args.slice(1)).toEqual([
-    "--url",
-    "http://127.0.0.1:5184/api/v1",
-  ]);
-  expect(config.mcpServers.formwork.env.FORMWORK_API_TOKEN).toBe(
-    "<在 API token 页面签发的 agent token>",
-  );
+  expect(config.mcpServers.formwork).toEqual({
+    url: "http://127.0.0.1:5184/mcp",
+    headers: { Authorization: "Bearer <在 API token 页面签发的 agent token>" },
+  });
+  await expect(page.getByText("HTTP/HTTPS · 客户端配置")).toBeVisible();
+  const { token } = await (
+    await request(page, "/auth/tokens", "POST", {
+      label: "MCP E2E",
+      expiresInDays: 1,
+    })
+  ).json();
+  const mcp = await page.request.post(config.mcpServers.formwork.url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json, text/event-stream",
+    },
+    data: { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} },
+  });
+  expect(mcp.ok()).toBe(true);
+  expect((await mcp.json()).result.tools).toHaveLength(6);
   await expect(page.locator(".mcp-tools code")).toHaveCount(6);
   await page.goto("/home");
   await expect(page).toHaveURL(/\/models$/u);

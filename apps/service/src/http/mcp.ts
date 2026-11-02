@@ -1,0 +1,101 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { checkAbort, errorPayload, FormworkError } from "formwork/model";
+import { toolDescriptions, toolInputSchemas } from "formwork/mcp";
+import type { ModelToolName } from "formwork/mcp";
+import type { Actor, Env } from "../contracts";
+import { ModelService } from "../application/model-service";
+
+async function callTool(service: ModelService, name: ModelToolName, input: unknown) {
+  switch (name) {
+    case "models.list":
+      toolInputSchemas[name].parse(input);
+      return service.list();
+    case "models.read": {
+      const args = toolInputSchemas[name].parse(input);
+      return service.read(args.modelId);
+    }
+    case "formwork.capabilities": {
+      const args = toolInputSchemas[name].parse(input);
+      return service.capabilities(
+        args.modelId,
+        { router: args.router, window: args.window },
+        args.domain,
+      );
+    }
+    case "models.validate": {
+      const args = toolInputSchemas[name].parse(input);
+      return service.validate(
+        args.modelId,
+        args.definition,
+        args.router === undefined ? undefined : { router: args.router, window: args.window },
+      );
+    }
+    case "models.write": {
+      const args = toolInputSchemas[name].parse(input);
+      return service.save(args.modelId, args.definition, args.ifRevision);
+    }
+    case "models.preview": {
+      const args = toolInputSchemas[name].parse(input);
+      return service.preview(
+        args.modelId,
+        { router: args.router, window: args.window },
+        args.params ?? {},
+      );
+    }
+  }
+}
+
+/**
+ * 用当前请求的可信身份处理无状态 Streamable HTTP MCP 调用。
+ * @param actor 已由 authenticate 和 requireBusiness 校验的当前请求身份。
+ */
+export async function handleMcp(request: Request, env: Env, actor: Actor): Promise<Response> {
+  // 六项工具均为请求/响应操作，不提供独立 SSE 通知流或持久 MCP session。
+  if (request.method !== "POST")
+    return new Response(null, { status: 405, headers: { Allow: "POST" } });
+  const service = new ModelService(env.DB, actor);
+  const server = new McpServer({ name: "formwork", version: "0.1.0" });
+  const transport = new WebStandardStreamableHTTPServerTransport({
+    sessionIdGenerator: undefined,
+    enableJsonResponse: true,
+    maxRequestBodySize: 2 * 1024 * 1024,
+  });
+  for (const name of Object.keys(toolInputSchemas) as ModelToolName[]) {
+    server.registerTool(
+      name,
+      { description: toolDescriptions[name], inputSchema: toolInputSchemas[name] },
+      async (input: unknown, extra: { signal: AbortSignal }) => {
+        try {
+          checkAbort(extra.signal);
+          const result = await callTool(service, name, input);
+          return { content: [{ type: "text" as const, text: JSON.stringify(result) }] };
+        } catch (error) {
+          if (!(error instanceof FormworkError)) console.error("MCP tool failed", name, error);
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify({
+                  error: errorPayload(
+                    error instanceof FormworkError
+                      ? error
+                      : new FormworkError("INTERNAL_ERROR", "服务处理请求失败"),
+                  ),
+                }),
+              },
+            ],
+          };
+        }
+      },
+    );
+  }
+  try {
+    await server.connect(transport);
+    return await transport.handleRequest(request);
+  } finally {
+    // JSON 响应已经生成，可在返回前释放当前请求的 transport。
+    await server.close();
+  }
+}

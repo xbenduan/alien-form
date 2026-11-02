@@ -1,7 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { createFormworkApi } from "../http";
 import { assertRuntimeSchema, modelIssues } from "../schema";
-import { createToolClient } from "../../mcp/client";
 
 const draft = {
   id: "orders",
@@ -186,33 +185,4 @@ it("后端可以在禁用 Function 构造器时诊断表达式而不执行代码
   } finally {
     vi.unstubAllGlobals();
   }
-});
-
-it("MCP 连接远端 HTTPS Worker，保留参数和错误，拒绝明文远端与 URL credential", async () => {
-  const paths: string[] = [];
-  const client = createToolClient("https://worker.example", {
-    token: () => "agent-token",
-    fetch: async (url, options) => {
-      paths.push(String(url));
-      expect(new Headers(options?.headers).get("Authorization")).toBe("Bearer agent-token");
-      return Response.json({
-        modelId: "orders",
-        router: "edit",
-        revision: "draft-2",
-        url: "https://client.example/model-preview/orders?router=edit&id=a%2Fb",
-      });
-    },
-  });
-  expect(
-    await client.call("models.preview", {
-      modelId: "orders",
-      router: "edit",
-      params: { id: "a/b" },
-    }),
-  ).toMatchObject({ revision: "draft-2" });
-  const url = new URL(paths[0]!);
-  expect(url.pathname).toBe("/api/v1/models/orders/preview");
-  expect(JSON.parse(url.searchParams.get("params")!)).toEqual({ id: "a/b" });
-  expect(() => createToolClient("http://worker.example")).toThrow();
-  expect(() => createToolClient("https://user:pass@worker.example")).toThrow();
 });

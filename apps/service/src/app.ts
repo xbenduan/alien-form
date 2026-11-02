@@ -21,6 +21,7 @@ import {
   issueCredential,
 } from "./application/auth/service";
 import { ServiceError, forbidden, invalid, notFound } from "./http/errors";
+import { handleMcp } from "./http/mcp";
 
 type AppEnv = { Bindings: Env; Variables: { actor: Actor } };
 const saveSchema = z
@@ -39,7 +40,7 @@ const validateSchema = z
     path: ["router"],
   });
 
-/** 创建唯一 Worker HTTP 应用，统一 Bearer 身份、DTO、CORS 和错误编码。 */
+/** 创建唯一 Worker HTTP 应用，统一 API 与 MCP 的 Header 鉴权、CORS 和错误编码。 */
 export function createApp() {
   const app = new Hono<AppEnv>();
   app.use(
@@ -59,9 +60,24 @@ export function createApp() {
           .includes(origin)
           ? origin
           : "",
-      allowHeaders: ["Authorization", "Content-Type"],
+      allowHeaders: ["Authorization", "Content-Type", "MCP-Protocol-Version"],
       allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     })(c, next);
+  });
+  app.all("/mcp", async (c) => {
+    const origin = c.req.header("Origin");
+    if (
+      origin &&
+      !c.env.FORMWORK_CLIENT_ORIGIN.split(",")
+        .map((value) => value.trim())
+        .includes(origin)
+    )
+      forbidden("客户端 Origin 未获允许");
+    await bootstrap(c.env);
+    const actor = await authenticate(c.env.DB, c.req.header("Authorization"));
+    requireBusiness(actor);
+    const response = await handleMcp(c.req.raw, c.env, actor);
+    return c.newResponse(response.body, response);
   });
   app.use("/api/v1/*", async (c, next) => {
     const origin = c.req.header("Origin");

@@ -1,9 +1,6 @@
 {
   "name": "formwork",
   "version": "0.1.0",
-  "bin": {
-    "formwork-mcp": "./dist/stdio.js"
-  },
   "files": [
     "dist",
     "src",
@@ -32,7 +29,6 @@
   },
   "dependencies": {
     "@cfworker/json-schema": "4.1.1",
-    "@modelcontextprotocol/sdk": "1.32.2",
     "@solidjs/router": "1.0.0",
     "acorn": "8.19.0",
     "solid-js": "1.9.17",
