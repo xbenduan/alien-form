@@ -31,7 +31,7 @@ export const Login: Component<ActionContext> = (ctx) => {
     >
       <div class="auth-intro">
         <BrandMark />
-        <h1 id="login-heading">登录 Alien Form</h1>
+        <h1 id="login-heading">登录 ALIEN CMS</h1>
         <p class="muted">管理模型、发布版本和业务记录。</p>
       </div>
       <label>

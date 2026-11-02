@@ -49,7 +49,7 @@ export const AppShell: Component<{ children?: JSX.Element }> = (props) => {
     return location.pathname === href;
   };
   const fallbackTitle = () => {
-    if (location.pathname === "/login") return "登录 Alien Form";
+    if (location.pathname === "/login") return "登录 ALIEN CMS";
     if (location.pathname.startsWith("/tokens")) return "API token";
     if (location.pathname.startsWith("/models")) return modelId() ?? "模型列表";
     return (
@@ -106,146 +106,161 @@ export const AppShell: Component<{ children?: JSX.Element }> = (props) => {
   );
   return (
     <TopbarContext.Provider value={topbar}>
-    <div class="app-shell">
-      <a class="skip-link" href="#main-content">
-        跳转到内容
-      </a>
-      <aside class="sidebar">
-        <A href="/models" class="brand" aria-label="Alien Form 首页">
-          <BrandMark />
-          <span class="brand-name">Alien Form</span>
-        </A>
-        <nav class="main-nav" aria-label="主导航">
-          <div class="nav-group" aria-label="模型与系统">
-            <span class="nav-group-label">模型与系统</span>
-            <NavItem href="/models" title="模型列表" icon="model" />
-            <For each={modelMenu()?.systemModels ?? []}>
-              {(entry) => (
-                <NavItem
-                  href={`/list/${entry.id}`}
-                  title={entry.title}
-                  icon={
-                    entry.id === "system-users"
-                      ? "user"
-                      : entry.id === "system-roles"
-                        ? "roles"
-                        : "grid"
-                  }
-                />
-              )}
-            </For>
-            <NavItem href="/tokens" title="API token" icon="key" />
-          </div>
-          <div class="nav-group pinned-group" aria-label="已固定模型">
-            <button
-              class="nav-group-toggle"
-              type="button"
-              aria-expanded={pinnedOpen()}
-              aria-controls="pinned-model-links"
-              onClick={() => setPinnedOpen((value) => !value)}
-            >
-              <span>已固定模型</span>
-              <span class="nav-group-count">{modelMenu()?.pinnedModels.length ?? 0}</span>
-              <Icon name="chevron" class="ui-icon disclosure-chevron" />
-            </button>
-            <div id="pinned-model-links" class="pinned-links" hidden={!pinnedOpen()}>
-              <For
-                each={modelMenu()?.pinnedModels ?? []}
-                fallback={
-                  <span class="nav-empty">
-                    {modelMenuLoading() && !modelMenu() ? "正在加载…" : "暂无固定模型"}
-                  </span>
-                }
-              >
-                {(entry) => <NavItem href={`/list/${entry.id}`} title={entry.title} />}
+      <div class="app-shell">
+        <a class="skip-link" href="#main-content">
+          跳转到内容
+        </a>
+        <aside class="sidebar">
+          <A href="/models" class="brand" aria-label="ALIEN CMS 首页">
+            <BrandMark />
+            <span class="brand-name">ALIEN CMS</span>
+          </A>
+          <nav class="main-nav" aria-label="主导航">
+            <div class="nav-group" aria-label="模型与系统">
+              <span class="nav-group-label">模型与系统</span>
+              <NavItem href="/models" title="模型列表" icon="layers" />
+              <For each={modelMenu()?.systemModels ?? []}>
+                {(entry) => (
+                  <NavItem
+                    href={`/list/${entry.id}`}
+                    title={entry.title}
+                    icon={
+                      entry.id === "system-users"
+                        ? "user"
+                        : entry.id === "system-roles"
+                          ? "roles"
+                          : "grid"
+                    }
+                  />
+                )}
               </For>
+              <NavItem href="/tokens" title="API token" icon="key" />
             </div>
-          </div>
-          <Show when={modelMenuFailure()}>
-            <div class="nav-error" role="alert">
-              {modelMenuFailure()}
+            <div class="nav-group pinned-group" aria-label="已固定模型">
               <button
-                class="text-button"
-                disabled={modelMenuLoading()}
-                onClick={() => refreshModelMenu()}
+                class="nav-group-toggle"
+                type="button"
+                aria-expanded={pinnedOpen()}
+                aria-controls="pinned-model-links"
+                onClick={() => setPinnedOpen((value) => !value)}
               >
-                重试菜单
+                <span>已固定模型</span>
+                <span class="nav-group-count">{modelMenu()?.pinnedModels.length ?? 0}</span>
+                <Icon name="chevron" class="ui-icon disclosure-chevron" />
               </button>
+              <div id="pinned-model-links" class="pinned-links" hidden={!pinnedOpen()}>
+                <For
+                  each={modelMenu()?.pinnedModels ?? []}
+                  fallback={
+                    <div class="nav-empty">
+                      <Show
+                        when={modelMenuLoading() && !modelMenu()}
+                        fallback={
+                          <>
+                            <strong>暂无固定模型</strong>
+                            <span>在模型列表中固定常用模型</span>
+                          </>
+                        }
+                      >
+                        <span role="status">正在加载…</span>
+                      </Show>
+                    </div>
+                  }
+                >
+                  {(entry) => (
+                    <NavItem href={`/list/${entry.id}`} title={entry.title} icon="model" />
+                  )}
+                </For>
+              </div>
             </div>
-          </Show>
-        </nav>
-        <div class="sidebar-bottom">
-          <Show
-            when={sessionUser()}
-            fallback={
-              <A class="nav-item" href="/login" aria-label="登录">
-                <Icon name="user" />
-                <span>登录</span>
-              </A>
-            }
-          >
-            {(actor) => (
-              <div class="account-row">
-                <Icon name="user" />
-                <span class="account-name" title={actor().username}>
-                  {actor().username}
-                </span>
+            <Show when={modelMenuFailure()}>
+              <div class="nav-error" role="alert">
+                {modelMenuFailure()}
                 <button
                   class="text-button"
-                  onClick={async () => {
-                    setFailure("");
-                    try {
-                      await logout();
-                    } catch {
-                      setFailure("会话已在本页清除，服务端注销失败。");
-                    }
-                  }}
+                  disabled={modelMenuLoading()}
+                  onClick={() => refreshModelMenu()}
                 >
-                  退出
+                  重试菜单
                 </button>
               </div>
-            )}
-          </Show>
-          <Show when={failure()}>
-            <p role="alert">{failure()}</p>
-          </Show>
-        </div>
-      </aside>
-      <div class="app-main">
-        <header class="topbar">
-          <div class="page-title topbar-title">
-            <Show when={!pageActive()}>
-              <h1>{fallbackTitle()}</h1>
             </Show>
+          </nav>
+          <div class="sidebar-bottom">
+            <Show
+              when={sessionUser()}
+              fallback={
+                <A class="nav-item" href="/login" aria-label="登录">
+                  <Icon name="user" />
+                  <span>登录</span>
+                </A>
+              }
+            >
+              {(actor) => (
+                <div class="account-row">
+                  <Icon name="user" />
+                  <span class="account-name" title={actor().username}>
+                    {actor().username}
+                  </span>
+                  <button
+                    class="account-logout"
+                    type="button"
+                    aria-label="退出"
+                    title="退出登录"
+                    onClick={async () => {
+                      setFailure("");
+                      try {
+                        await logout();
+                      } catch {
+                        setFailure("会话已在本页清除，服务端注销失败。");
+                      }
+                    }}
+                  >
+                    <Icon name="logout" />
+                  </button>
+                </div>
+              )}
+            </Show>
+            <Show when={failure()}>
+              <p role="alert">{failure()}</p>
+            </Show>
+          </div>
+        </aside>
+        <div class="app-main">
+          <header class="topbar">
+            <div class="page-title topbar-title">
+              <Show when={!pageActive()}>
+                <h1>{fallbackTitle()}</h1>
+              </Show>
+              <div
+                ref={(element) => {
+                  titleSlot = element;
+                }}
+                class="topbar-title-slot"
+              />
+            </div>
             <div
               ref={(element) => {
-                titleSlot = element;
+                actionsSlot = element;
               }}
-              class="topbar-title-slot"
+              class="topbar-actions"
             />
-          </div>
-          <div
-            ref={(element) => {
-              actionsSlot = element;
-            }}
-            class="topbar-actions"
-          />
-        </header>
-        <main id="main-content" class="page-canvas" tabindex="-1">
-          <Show when={!sessionLoading()} fallback={<p role="status">正在核实登录会话…</p>}>
-            <Show when={sessionFailure()}>
-              <p role="alert">
-                登录会话核实失败：{sessionFailure()}{" "}
-                <button class="text-button" onClick={() => retrySession()}>
-                  重试登录验证
-                </button>
-              </p>
+          </header>
+          <main id="main-content" class="page-canvas" tabindex="-1">
+            <Show when={!sessionLoading()} fallback={<p role="status">正在核实登录会话…</p>}>
+              <Show when={sessionFailure()}>
+                <p role="alert">
+                  登录会话核实失败：{sessionFailure()}{" "}
+                  <button class="text-button" onClick={() => retrySession()}>
+                    重试登录验证
+                  </button>
+                </p>
+              </Show>
+              <Show when={sessionUser() || location.pathname === "/login"}>{props.children}</Show>
             </Show>
-            <Show when={sessionUser() || location.pathname === "/login"}>{props.children}</Show>
-          </Show>
-        </main>
+          </main>
+        </div>
       </div>
-    </div>
     </TopbarContext.Provider>
   );
 };

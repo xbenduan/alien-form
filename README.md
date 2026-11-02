@@ -1,4 +1,4 @@
-# Alien Form / Formwork
+# ALIEN CMS
 
 Solid 无头表单内核、数据库模型列表与 Schema 详情、Vite 代码能力清单和七项 HTTP/HTTPS MCP 工具。唯一后端是 `apps/service` 的 Cloudflare Worker，开发使用本地 D1，部署使用 Cloudflare D1。
 
@@ -50,7 +50,7 @@ MCP 的 `initialize.instructions` 会引导无项目上下文的 agent 从 `form
 
 创建模型按 `describe → capabilities → validate → write → preview` 操作；修改已有模型先 `list → read`，保留稳定 storage binding id。`fields` 是 Pointer 到展示配置的映射，完整定义必须同时包含 `document` 和 `backend`。静态错误修正后，还需按 runtimeChecks 验证预览交互。
 
-示例包括订单（orders）、内容管理（cms）、组织架构（departments）和客户档案（customer-profile）。组织架构使用树形列表，可自行添加部门和上级关系；客户档案展示嵌套对象与地址数组卡片。实时预览从空列表开始，用户新增的记录仅保存在当前预览内存中，支持编辑、详情、删除及切换视图；修改有效 Schema 保留已录入记录，预览记录不写入后端。`examples/*.records.json` 提供可选示例数据，E2E 启动器仅在独立测试数据库中按需读取。
+示例包括订单（orders）、内容管理（cms）、组织架构（departments）和客户档案（customer-profile）。组织架构使用树形列表，可自行添加部门和上级关系；客户档案展示嵌套对象与地址数组卡片。实时预览从空列表开始，用户新增的记录仅保存在当前预览内存中，支持编辑、详情、删除及切换视图；修改有效 Schema 保留已录入记录，预览记录不写入后端。`examples/*.records.json` 提供可选示例数据。E2E 启动器只初始化系统模型，各用例自行创建所需模型与记录，不依赖 `examples`。
 
 列表中的对象、数组字段显示摘要与行内“详情”入口；点击后通过公共 Modal 展开该字段，复用完整记录的只读快照、原字段路径和 Domain 组件。详情不修改记录或改变路由，普通列表、树形列表与实时预览共用同一实现。
 
@@ -73,7 +73,7 @@ pnpm worker:dry-run
 | 位置                                                           | 用途                                                                 |
 | -------------------------------------------------------------- | -------------------------------------------------------------------- |
 | `scripts/dev.mjs`、`scripts/dev-ports.mjs`                     | 项目开发启动、Client/Worker 编排、端口选择与进程回收                 |
-| `scripts/e2e-server.ts`                                        | 项目 E2E 的独立 Client/Worker 环境，测试模型和数据从 `examples` 读取 |
+| `scripts/e2e-server.ts`                                        | 项目 E2E 的独立 Client/Worker 环境，只初始化系统模型 |
 | `scripts/register-capabilities.ts`                             | 将前端构建的能力清单登记到目标 Worker                                |
 | `apps/service/script/local-worker.mjs`                         | 清空本地 D1、启动 Worker 和初始化系统模型                            |
 | `apps/service/script/database.mjs`、`migrate.ts`、`deploy.mjs` | 当前表结构、本地重建、远端系统模型同步与服务部署                     |

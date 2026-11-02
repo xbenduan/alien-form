@@ -18,7 +18,7 @@ type IconName =
   | "spark"
   | "search"
   | "layers";
-type MenuIconName = "pin" | "user" | "roles" | "key";
+type MenuIconName = "pin" | "user" | "roles" | "key" | "logout";
 
 const paths: Record<IconName | MenuIconName, string> = {
   grid: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
@@ -42,6 +42,7 @@ const paths: Record<IconName | MenuIconName, string> = {
   user: "M16 7a4 4 0 11-8 0 4 4 0 018 0 M4 21v-2a8 8 0 0116 0v2",
   roles: "M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6z M8 12l3 3 5-6",
   key: "M21 7a5 5 0 11-10 0 5 5 0 0110 0 M12.5 10.5L3 20v1h4v-4h4v-4 M17 7h.01",
+  logout: "M9 4H4v16h5 M10 12h11 M17 8l4 4-4 4",
 };
 
 /** 提供应用共用的线性图标，装饰图标不参与可访问名称。 */
@@ -60,7 +61,7 @@ export const Icon: Component<{ name: IconName | MenuIconName; class?: string }> 
   </svg>
 );
 
-/** 绘制 Alien Form 的折叠模型标记。 */
+/** 绘制 ALIEN CMS 的折叠模型标记。 */
 export const BrandMark: Component = () => (
   <svg class="brand-mark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
     <path d="M20 3L36 12V28L20 37L4 28V12L20 3Z" stroke="currentColor" stroke-width="1.5" />

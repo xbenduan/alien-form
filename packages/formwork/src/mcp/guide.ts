@@ -2,7 +2,7 @@ import { controlledProps } from "../model/schema";
 import type { ModelDefinition } from "../model/types";
 
 /** 在 initialize 中说明无需项目上下文即可发现组件并构建模型的入口。 */
-export const mcpInstructions = `此 MCP 管理 Alien Form / Formwork 模型。
+export const mcpInstructions = `此 MCP 管理 ALIEN CMS 的 Formwork 模型。
 首次连接或没有项目上下文时，先调用 formwork.describe({})，取得模型构建指南、完整 definition JSON Schema、可用模板、当前权限和工作流。
 调用 formwork.capabilities({}) 即可列出当前应用全部已登记的 Framework、Domain、Page、Window 组件与 fn，包括声明、JSDoc、源码位置和路由参数。无需编辑器 URL、浏览器标签页或已有模型。
 从目录选择目标，再调用 formwork.capabilities({modelId,router,window?,domain?}) 获取该目标实际有效的组件；不要把不同页面的局部组件当作全局组件。
