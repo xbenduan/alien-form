@@ -1,5 +1,11 @@
 import { FormworkError } from "formwork";
-import { checkAbort, cloneJson, createFormworkApi, pointerSegments } from "formwork/model";
+import {
+  applyDefaults,
+  checkAbort,
+  cloneJson,
+  createFormworkApi,
+  pointerSegments,
+} from "formwork/model";
 import type { FormworkApi, ModelDocument, RecordValue } from "formwork/model";
 import { capabilities } from "virtual:formwork/capabilities";
 
@@ -110,7 +116,10 @@ export function createPreviewApi(
       async create(id, value, options) {
         assertModel(id, options?.signal);
         const recordId = `preview-${crypto.randomUUID()}`;
-        records.set(recordId, { ...cloneJson(value), id: recordId });
+        records.set(recordId, {
+          ...(applyDefaults(document.data, value) as RecordValue),
+          id: recordId,
+        });
         return read(recordId);
       },
       async update(id, recordId, value, options) {

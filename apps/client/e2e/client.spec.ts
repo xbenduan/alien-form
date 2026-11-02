@@ -77,6 +77,152 @@ test.beforeEach(async ({ page }) => {
   await login(page);
 });
 
+test("共享 Domain 新建与编辑排除数据只读字段，服务端保留默认值", async ({ page }) => {
+  const modelId = `readonly-${Date.now()}`;
+  const definition: ModelDefinition = {
+    document: {
+      id: modelId,
+      domain: "cms",
+      title: "只读提交回归",
+      data: {
+        type: "object",
+        properties: {
+          title: { type: "string", title: "标题", minLength: 1 },
+          content: { type: "string", title: "正文" },
+        },
+        required: ["title"],
+      },
+    },
+    backend: {
+      storage: {
+        table: `biz_${modelId.replaceAll("-", "_")}`,
+        bindings: [
+          { id: "title", path: "/title", column: "title", sqlType: "TEXT", encoding: "scalar" },
+          {
+            id: "content",
+            path: "/content",
+            jsonKey: "content",
+            sqlType: "TEXT",
+            encoding: "scalar",
+          },
+        ],
+      },
+      relations: [],
+      permissions: { grants: [], privateFields: [] },
+      behavior: { rules: [], commands: {}, events: {} },
+    },
+  };
+  definition.document.data.$defs = {
+    locked: {
+      type: "object",
+      readOnly: true,
+      default: { label: "服务端对象" },
+      properties: { label: { type: "string" } },
+    },
+  };
+  Object.assign(definition.document.data.properties, {
+    readonlyText: { type: "string", title: "只读字段", readOnly: true, default: "服务端默认值" },
+    readonlyObject: { $ref: "#/$defs/locked", title: "只读对象" },
+    computed: { type: "integer", title: "UI 只读值", default: 0 },
+    disabledText: { type: "string", title: "禁用值", default: "保留禁用值" },
+  });
+  definition.document.fields = {
+    ...definition.document.fields,
+    "/readonlyText": { table: false },
+    "/readonlyObject": { table: false },
+    "/computed": { form: { bindings: { readOnly: true } }, table: false, filter: false },
+    "/disabledText": { form: { bindings: { disabled: true } }, table: false, filter: false },
+  };
+  definition.backend.storage.bindings.push(
+    {
+      id: "readonlyText",
+      path: "/readonlyText",
+      jsonKey: "readonlyText",
+      sqlType: "TEXT",
+      encoding: "scalar",
+    },
+    {
+      id: "readonlyObject",
+      path: "/readonlyObject",
+      jsonKey: "readonlyObject",
+      sqlType: "TEXT",
+      encoding: "json",
+    },
+    {
+      id: "computed",
+      path: "/computed",
+      jsonKey: "computed",
+      sqlType: "INTEGER",
+      encoding: "scalar",
+    },
+    {
+      id: "disabledText",
+      path: "/disabledText",
+      jsonKey: "disabledText",
+      sqlType: "TEXT",
+      encoding: "scalar",
+    },
+  );
+  try {
+    const draft = await request(page, `/models/${modelId}/draft`, "PUT", {
+      definition,
+      ifRevision: null,
+    });
+    expect(draft.ok()).toBe(true);
+    const saved = await draft.json();
+    expect(saved.diagnostics.errors).toEqual([]);
+    expect(
+      (
+        await request(page, `/models/${modelId}/publish`, "POST", { ifRevision: saved.revision })
+      ).ok(),
+    ).toBe(true);
+    await page.goto(`/list/${modelId}`);
+    await page.getByRole("button", { name: "新建记录", exact: true }).click();
+    const editor = page.getByRole("dialog");
+    await editor.getByLabel("标题").fill("  只读新增  ");
+    await editor.locator(".rich-editor").fill("正文");
+    const createResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" && response.url().endsWith(`/records/${modelId}`),
+    );
+    await editor.getByRole("button", { name: "保存", exact: true }).click();
+    const createdResponse = await createResponse;
+    expect(createdResponse.status()).toBe(201);
+    expect(createdResponse.request().postDataJSON()).toMatchObject({
+      title: "只读新增",
+      computed: 0,
+      disabledText: "保留禁用值",
+    });
+    expect(createdResponse.request().postDataJSON()).not.toHaveProperty("readonlyText");
+    expect(createdResponse.request().postDataJSON()).not.toHaveProperty("readonlyObject");
+    const created = await createdResponse.json();
+    expect(created).toMatchObject({
+      readonlyText: "服务端默认值",
+      readonlyObject: { label: "服务端对象" },
+    });
+    await expect(editor).not.toBeVisible();
+    const row = page.locator("tbody tr").filter({ hasText: "只读新增" });
+    await row.getByRole("button", { name: "编辑", exact: true }).click();
+    await editor.getByLabel("标题").fill("  只读编辑  ");
+    const updateResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "PUT" && response.url().includes(`/records/${modelId}/`),
+    );
+    await editor.getByRole("button", { name: "保存", exact: true }).click();
+    const updatedResponse = await updateResponse;
+    expect(updatedResponse.ok()).toBe(true);
+    expect(updatedResponse.request().postDataJSON()).not.toHaveProperty("readonlyText");
+    expect(updatedResponse.request().postDataJSON()).not.toHaveProperty("readonlyObject");
+    expect(await updatedResponse.json()).toMatchObject({
+      title: "只读编辑",
+      readonlyText: "服务端默认值",
+      readonlyObject: { label: "服务端对象" },
+    });
+  } finally {
+    await request(page, `/models/${modelId}`, "DELETE");
+  }
+});
+
 test("旧深色偏好和系统深色模式不影响明亮首屏、独立页面与预览", async ({ page, context }) => {
   await context.addInitScript(() => localStorage.setItem("alien-form-theme", "dark"));
   await page.emulateMedia({ colorScheme: "dark" });

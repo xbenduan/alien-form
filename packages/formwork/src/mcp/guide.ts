@@ -30,7 +30,11 @@ export const modelAuthoringGuide = {
     metadata:
       "title、description、default、readOnly 是数据 schema 元信息。required 只能引用当前 object 的已声明属性；additionalProperties 只能为 false。",
     fields:
-      "fields 是 Pointer 到展示配置的对象，不是 fields[]。例如 {'/title':{order:0,form:{component:'Input'},table:{title:'标题'},filter:false}}。数组项配置使用 /addresses/*/city。form/table/filter 省略时使用默认展示，table/filter 可设为 false。",
+      "fields 是 Pointer 到展示配置的对象，不是 fields[]。例如 {'/title':{order:0,form:{component:'Input'},table:{title:'标题'}}}。数组项配置使用 /addresses/*/city。form/table/filter 省略时使用默认展示，table/filter 可设为 false。",
+    filter:
+      "列表默认为非 readOnly 的根标量字段生成筛选项（string/number/integer/boolean/null，含可空标量和 enum）；object/array 不生成筛选项。fields[pointer].filter:false 会明确隐藏该字段的筛选项，全部设为 false 会使筛选区没有输入控件。需要筛选的标题、状态、数量等字段应省略 filter 或配置 filter:{}；不要因定制 form/table 就批量禁用 filter。",
+    readOnly:
+      "data.properties 中根字段的 readOnly:true 表示数据不可由客户端写入；新建与编辑提交会排除该字段，新建时由服务端补入 default，编辑时保留已有值。仅限制 UI 交互、但仍需保存的计算结果，应使用 fields[pointer].form.bindings.readOnly；disabled 也只限制控件交互，不等同于数据 readOnly。",
     views:
       "views 的键为目录中的 viewKey（router 或 router/window）；ViewNode 使用 component、field、props、bindings、children。component 省略时按 field 类型及字段展示配置推导。",
     scope:

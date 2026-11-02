@@ -1,6 +1,6 @@
 import { FormworkError } from "formwork";
 import type { ActionContext, JsonValue } from "formwork";
-import { isObject, pointerSegments } from "formwork/model";
+import { isObject, pointerSegments, resolveSchema } from "formwork/model";
 import type { RecordPage, RecordQuery } from "formwork/model";
 export type { RecordPage, RecordQuery } from "formwork/model";
 
@@ -31,14 +31,22 @@ export async function loadRecord(ctx: ActionContext) {
     Object.entries(record).filter(([key]) => Object.hasOwn(ctx.schema!.data.properties, key)),
   );
 }
-/** 创建或更新记录，后端合并隐藏字段并校验最新发布 schema。 */
+/** 排除数据只读字段后创建或更新记录，由后端补入默认值并保留已有只读值。 */
 export async function saveRecord(ctx: ActionContext, value: JsonValue | undefined) {
   if (!isObject(value)) throw new FormworkError("INVALID_VALUE", "记录必须是 object");
+  if (!ctx.schema) throw new FormworkError("INVALID_MODEL", "记录页面需要已加载的 schema");
+  const data = ctx.schema.data;
+  const input = Object.fromEntries(
+    Object.entries(value).filter(([key]) => {
+      const schema = data.properties[key];
+      return !schema || !resolveSchema(schema, data).readOnly;
+    }),
+  ) as Record<string, JsonValue>;
   return ctx.params.id
-    ? ctx.api.records.update(target(ctx), ctx.params.id, value as Record<string, JsonValue>, {
+    ? ctx.api.records.update(target(ctx), ctx.params.id, input, {
         signal: ctx.signal,
       })
-    : ctx.api.records.create(target(ctx), value as Record<string, JsonValue>, {
+    : ctx.api.records.create(target(ctx), input, {
         signal: ctx.signal,
       });
 }
