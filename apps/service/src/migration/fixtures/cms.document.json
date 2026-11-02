@@ -22,7 +22,7 @@
     "required": ["title"]
   },
   "views": {
-    "edit": {
+    "list/edit": {
       "component": "Object",
       "field": "",
       "children": [
@@ -34,6 +34,14 @@
           "component": "RichText",
           "field": "/content"
         }
+      ]
+    },
+    "tree-list/edit": {
+      "component": "Object",
+      "field": "",
+      "children": [
+        { "component": "Input", "field": "/title" },
+        { "component": "RichText", "field": "/content" }
       ]
     }
   }

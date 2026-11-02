@@ -11,6 +11,8 @@ pnpm dev
 
 启动器输出实际 Client/Worker URL 和私有账号文件路径。默认端口为 `5173` / `8788`，占用时自动选择可用端口；开发数据按用户和仓库隔离，重启保留。管理员随机用户名、密码与清单凭证仅保存在用户目录的 `bootstrap.json`（0600）。
 
+`pnpm dev` 在启动 Worker 前自动应用本地 D1 migrations。旧定义的全局 `views.add/edit/detail` 会迁移到 `list`、`tree-list` 的同名 Window，保留已有局部覆盖；原始历史版本和草稿定义保存在 `fw_page_local_views_backup`。迁移不改变业务记录、版本号或 revision。清单登记失败时，终端会显示服务端错误及模型、View 路径。
+
 登录后从模型列表打开 orders/cms 详情，左侧编辑 Schema，右侧预览，中间分隔条可拖动。审阅草稿并点击顶栏“手动发布”后即可进入业务页面。模型列表中的“固定到菜单”将已发布用户模型加入侧栏，固定状态按账号保存到 D1；系统模型直接展示。保存草稿不改变普通页面；发布后普通页面刷新才加载新 schema，旧页提交按当前版本校验。
 
 ```sh
@@ -19,9 +21,8 @@ pnpm check
 pnpm worker:dry-run
 ```
 
-- [启动、API、MCP、迁移与部署](docs/formwork-development.md)
-- [公开契约与运行机制](docs/formwork-design.md)
-- [重构决策和验收覆盖](docs/formwork-refactor.md)
-- [Worker/D1 事务与权限](docs/backend-system-design.md)
+- [Formwork、Page、Window 与 Domain API](docs/formwork-api-architecture.md)
+- [Schema、字段展示与页面定义](docs/schema-design.md)
+- [完整目录树模型示例](examples/catalog.definition.json)
 
 旧 Worker、alienbase 和 protocol 已收敛移除；历史 SQL 与一次性迁移样本保存在 service 中。本轮执行本地验证，远端数据迁移和实际部署需要按目标环境单独执行。

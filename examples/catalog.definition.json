@@ -1,0 +1,98 @@
+{
+  "document": {
+    "id": "catalog",
+    "title": "目录",
+    "data": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "名称",
+          "minLength": 1
+        },
+        "parentId": {
+          "type": ["string", "null"],
+          "title": "父级 ID",
+          "default": null
+        },
+        "status": {
+          "type": "string",
+          "title": "状态",
+          "enum": ["启用", "停用"],
+          "default": "启用"
+        },
+        "description": {
+          "type": "string",
+          "title": "说明"
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "fields": {
+      "/name": {
+        "order": -30,
+        "form": {
+          "props": { "placeholder": "输入目录名称" }
+        },
+        "table": { "title": "目录名称" },
+        "filter": {
+          "props": { "placeholder": "查询目录" }
+        }
+      },
+      "/status": { "order": -20 },
+      "/parentId": { "order": -10, "table": false, "filter": false },
+      "/description": { "table": false, "filter": false }
+    },
+    "tree": {
+      "parentField": "/parentId",
+      "labelField": "/name"
+    }
+  },
+  "backend": {
+    "storage": {
+      "table": "biz_catalog",
+      "bindings": [
+        {
+          "id": "catalog:name",
+          "path": "/name",
+          "column": "name",
+          "sqlType": "TEXT",
+          "encoding": "scalar"
+        },
+        {
+          "id": "catalog:parentId",
+          "path": "/parentId",
+          "column": "parent_id",
+          "sqlType": "TEXT",
+          "encoding": "scalar",
+          "index": "index"
+        },
+        {
+          "id": "catalog:status",
+          "path": "/status",
+          "column": "status",
+          "sqlType": "TEXT",
+          "encoding": "scalar"
+        },
+        {
+          "id": "catalog:description",
+          "path": "/description",
+          "column": "description",
+          "sqlType": "TEXT",
+          "encoding": "scalar"
+        }
+      ]
+    },
+    "relations": [
+      {
+        "fieldId": "catalog:parentId",
+        "targetModel": "catalog",
+        "targetFieldId": "id",
+        "kind": "many-to-one"
+      }
+    ],
+    "permissions": { "grants": [], "privateFields": [] },
+    "behavior": { "rules": [], "commands": {}, "events": {} }
+  }
+}

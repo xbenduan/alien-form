@@ -9,6 +9,7 @@ import type {
 import { createTableSql, literal, quote, bindingKey } from "../adapters/d1/compiler/storage";
 import type { StorageManifest } from "../contracts";
 import type { LegacyField, LegacyTable, MigrationInventory, MigrationPlan } from "./types";
+import { migratePageLocalViews } from "./page-local-views";
 
 const systemIds: Record<string, string> = {
   _sys_user: "system-users",
@@ -514,7 +515,7 @@ export async function planMigration(input: MigrationInventory): Promise<Migratio
       }
     }
     for (const file of input.files) {
-      const document = modelDocumentSchema.parse(file.document);
+      const document = modelDocumentSchema.parse(migratePageLocalViews(file.document));
       if (
         plan.models.some((model) => model.definition.document.id === document.id) ||
         document.id.startsWith("system-")

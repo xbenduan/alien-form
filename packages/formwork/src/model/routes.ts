@@ -1,12 +1,12 @@
 import { FormworkError } from "./errors";
 import { modelIdPattern } from "./schema";
+import type { OpenMode, RouteTarget } from "./types";
 
 /** 保存构建工具与浏览器共用的路由定义元信息。 */
-export type RouteDefinition = {
-  router: string;
+export type RouteDefinition = RouteTarget & {
   path?: string;
-  presentation?: "page" | "modal" | "drawer";
-  returnTo?: string;
+  openMode?: OpenMode;
+  model?: boolean;
 };
 /** 表示一个确定的路径匹配，不订阅后续全局参数变化。 */
 export type RouteMatch = {
@@ -35,7 +35,7 @@ function pattern(definition: RouteDefinition): string[] {
         (part.endsWith("?") && i !== parts.length - 1)
       )
         throw new FormworkError("INVALID_ROUTE", `无效参数段 ${part}`);
-    } else if (!part || /[:*?]/u.test(part))
+    } else if (!part || part === "." || part === ".." || /[:*?]/u.test(part))
       throw new FormworkError("INVALID_ROUTE", `无效固定路径段 ${part}`);
   }
   const names = parts
@@ -46,13 +46,49 @@ function pattern(definition: RouteDefinition): string[] {
   return parts;
 }
 
-/** 校验唯一 router、固定段优先规则、同优先级歧义与 Window returnTo。 */
+/** 为 Page 与本地 Window 生成唯一的 View 和诊断索引。 */
+export function routeKey(target: RouteTarget): string {
+  return target.window === undefined ? target.router : `${target.router}/${target.window}`;
+}
+
+/** 从显式 Page 定义生成含本地 Window 归属的路由目录。 */
+export function createRoutes(pages: readonly {
+  router: string;
+  path?: string;
+  render?: unknown;
+  windows?: Record<string, { path?: string; openMode?: OpenMode; render?: unknown }>;
+}[]): RouteDefinition[] {
+  const result: RouteDefinition[] = [];
+  for (const page of pages) {
+    const path = page.path ?? `/${page.router}${page.render === undefined ? "/:modelId" : ""}`;
+    result.push({ router: page.router, path, model: page.render === undefined });
+    for (const [window, definition] of Object.entries(page.windows ?? {})) {
+      const relative = definition.path ?? window;
+      if (!relative || relative.startsWith("/"))
+        throw new FormworkError("INVALID_ROUTE", `Window path 必须是相对路径: ${window}`);
+      result.push({
+        router: page.router,
+        window,
+        path: `${path.replace(/\/$/u, "")}/${relative}`,
+        openMode: definition.openMode ?? "page",
+        model: page.render === undefined && definition.render === undefined,
+      });
+    }
+  }
+  validateRoutes(result);
+  return result;
+}
+
+/** 校验 Page/Window 归属、固定段优先规则和同优先级路径歧义。 */
 export function validateRoutes(definitions: readonly RouteDefinition[]): void {
   const byName = new Map<string, RouteDefinition>();
   for (const definition of definitions) {
-    if (!modelIdPattern.test(definition.router) || byName.has(definition.router))
-      throw new FormworkError("INVALID_ROUTE", `无效或重复 router ${definition.router}`);
-    byName.set(definition.router, definition);
+    const key = routeKey(definition);
+    if (!modelIdPattern.test(definition.router) ||
+        (definition.window !== undefined && !modelIdPattern.test(definition.window)) ||
+        byName.has(key))
+      throw new FormworkError("INVALID_ROUTE", `无效或重复目标 ${key}`);
+    byName.set(key, definition);
     pattern(definition);
   }
   const variants = (definition: RouteDefinition) => {
@@ -73,15 +109,15 @@ export function validateRoutes(definitions: readonly RouteDefinition[]): void {
           )
             throw new FormworkError(
               "INVALID_ROUTE",
-              `路径歧义 ${definitions[i]!.router} / ${definitions[j]!.router}`,
+              `路径歧义 ${routeKey(definitions[i]!)} / ${routeKey(definitions[j]!)}`,
             );
         }
     }
   for (const definition of definitions)
-    if (definition.presentation) {
-      const target = definition.returnTo && byName.get(definition.returnTo);
-      if (!target || target.presentation)
-        throw new FormworkError("INVALID_ROUTE", `returnTo 必须指向 Page: ${definition.router}`);
+    if (definition.window !== undefined) {
+      const target = byName.get(definition.router);
+      if (!target || target.window !== undefined)
+        throw new FormworkError("INVALID_ROUTE", `Window 缺少所属 Page: ${routeKey(definition)}`);
       const names = new Set(
         pattern(definition)
           .filter((part) => part.startsWith(":"))
@@ -89,18 +125,19 @@ export function validateRoutes(definitions: readonly RouteDefinition[]): void {
       );
       for (const part of pattern(target))
         if (part.startsWith(":") && !part.endsWith("?") && !names.has(part.slice(1)))
-          throw new FormworkError("INVALID_ROUTE", `returnTo 缺少参数 ${part}`);
+          throw new FormworkError("INVALID_ROUTE", `Window 缺少所属 Page 参数 ${part}`);
     }
 }
 
 /** 填充并按段编码参数，未知 router 与缺少参数均明确失败。 */
 export function routePath(
   definitions: readonly RouteDefinition[],
-  router: string,
+  target: string | RouteTarget,
   params: Readonly<Record<string, string | undefined>> = {},
 ): string {
-  const definition = definitions.find((item) => item.router === router);
-  if (!definition) throw new FormworkError("UNKNOWN_ROUTER", `未知 router ${router}`);
+  const reference = typeof target === "string" ? { router: target } : target;
+  const definition = definitions.find((item) => routeKey(item) === routeKey(reference));
+  if (!definition) throw new FormworkError("UNKNOWN_ROUTER", `未知目标 ${routeKey(reference)}`);
   const parts: string[] = [];
   for (const part of pattern(definition)) {
     if (!part.startsWith(":")) {
@@ -113,11 +150,24 @@ export function routePath(
       if (!part.endsWith("?")) throw new FormworkError("PARAMS_REQUIRED", `缺少 ${name}`);
       continue;
     }
-    if (name === "domain" && !modelIdPattern.test(value))
-      throw new FormworkError("INVALID_MODEL", `无效 domain ${value}`);
+    if (name === "modelId" && !modelIdPattern.test(value))
+      throw new FormworkError("INVALID_MODEL", `无效 modelId ${value}`);
     parts.push(encodeURIComponent(value));
   }
   return `/${parts.join("/")}`;
+}
+
+/** 只保留指定 Page 路径声明的参数，用于 Window 继承和返回。 */
+export function pageParams(
+  definition: RouteDefinition,
+  params: Readonly<Record<string, string | undefined>>,
+): Readonly<Record<string, string | undefined>> {
+  return Object.fromEntries(pattern(definition)
+    .filter((part) => part.startsWith(":"))
+    .map((part) => {
+      const name = part.replace(/^:|\?$/gu, "");
+      return [name, params[name]];
+    }));
 }
 
 /** 匹配路径并返回独立参数；固定段按从左到右优先于动态段。 */
@@ -151,7 +201,7 @@ export function matchRoute(
           break;
         }
         const name = part.replace(/^:|\?$/gu, "");
-        if (name === "domain" && !modelIdPattern.test(value)) {
+        if (name === "modelId" && !modelIdPattern.test(value)) {
           valid = false;
           break;
         }

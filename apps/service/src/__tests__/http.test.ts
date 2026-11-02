@@ -1,4 +1,4 @@
-import { beforeAll, afterAll, expect, it } from "vitest";
+import { beforeAll, afterAll, afterEach, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { createFormworkApi } from "formwork/model";
@@ -11,6 +11,10 @@ import type {
 import { startWorker } from "./worker-harness";
 
 let worker: Awaited<ReturnType<typeof startWorker>>;
+afterEach(({ task }) => {
+  if (task.result?.state === "fail")
+    console.error(worker?.logs().split("\n").slice(-35).join("\n"));
+});
 const baseComponents = [
   "Object",
   "Array",
@@ -20,44 +24,89 @@ const baseComponents = [
   "Switch",
   "Null",
   "RichText",
+  "FieldOnlyEditor",
 ];
 function manifest(): CapabilityManifest {
-  const source = { file: "src/formwork.tsx", line: 1, column: 1 };
+  const source = { file: "src/formwork/index.ts", line: 1, column: 1 };
   const components = baseComponents.map((name) => ({
     name,
     source,
     declaration: `(props) => JSX.Element`,
   }));
-  const routes = [
-    { router: "list", path: "/list/:domain" },
-    { router: "add", path: "/add/:domain", presentation: "modal" as const, returnTo: "list" },
-    { router: "edit", path: "/edit/:domain/:id", presentation: "modal" as const, returnTo: "list" },
-    {
-      router: "detail",
-      path: "/detail/:domain/:id",
-      presentation: "drawer" as const,
-      returnTo: "list",
-    },
-  ];
-  const contents = {
+  const empty = { components: [], fn: [], runtimeChecks: [] };
+  const contents: Omit<CapabilityManifest, "revision"> = {
+    formatVersion: 2,
     appId: "alien-form",
     clientOrigin: "http://localhost:5173",
-    routes,
-    schemaRouters: routes.map((route) => route.router),
-    defaultCapabilities: Object.fromEntries(
-      routes.map(({ router }) => [
+    presenters: ["page", "modal", "drawer"],
+    framework: { components, fn: [], runtimeChecks: [] },
+    domains: {
+      shared: {
+        components: [
+          {
+            name: "SharedEditor",
+            source: { ...source, file: "src/domains/shared/index.ts" },
+            declaration: "SharedEditor",
+          },
+        ],
+        fn: [
+          {
+            name: "identity",
+            source: { ...source, file: "src/domains/shared/index.ts" },
+            declaration: "Domain identity",
+          },
+        ],
+        runtimeChecks: [],
+      },
+    },
+    pages: Object.fromEntries(
+      ["list", "tree-list"].map((router) => [
         router,
         {
-          modelId: "",
-          router,
-          components,
-          fn: [],
-          modelContract: "ModelDefinition",
-          runtimeChecks: [],
+          path: `/${router}/:modelId`,
+          model: true,
+          capabilities: {
+            ...empty,
+            fn: [
+              {
+                name: "identity",
+                source: { ...source, file: `src/pages/${router}/index.ts` },
+                declaration: "Page identity",
+              },
+            ],
+          },
+          windows: {
+            add: {
+              path: `/${router}/:modelId/add`,
+              model: true,
+              openMode: "modal",
+              capabilities: empty,
+            },
+            edit: {
+              path: `/${router}/:modelId/edit/:id`,
+              model: true,
+              openMode: "modal",
+              capabilities: {
+                ...empty,
+                fn: [
+                  {
+                    name: "identity",
+                    source: { ...source, file: `src/pages/${router}/window/edit.ts` },
+                    declaration: "Window identity",
+                  },
+                ],
+              },
+            },
+            detail: {
+              path: `/${router}/:modelId/detail/:id`,
+              model: true,
+              openMode: "drawer",
+              capabilities: empty,
+            },
+          },
         },
       ]),
     ),
-    domainCapabilities: {},
   };
   return {
     ...contents,
@@ -338,9 +387,15 @@ it("草稿 CAS、发布旧审阅 revision 失败，published/runtime 与最新�
   expect((await worker.api.runtime.schema("cas")).schema.title).toBe("cas");
   expect(await worker.api.models.versions("cas")).toHaveLength(1);
   const saved = await worker.api.models.read("cas");
-  const preview = await worker.api.models.preview("cas", "edit", { id: "../record a" });
+  const preview = await worker.api.models.preview(
+    "cas",
+    { router: "list", window: "edit" },
+    { id: "../record a" },
+  );
   expect(new URL(preview.url).searchParams.get("id")).toBe("../record a");
-  await expect(worker.api.models.preview("cas", "edit")).rejects.toMatchObject({
+  await expect(
+    worker.api.models.preview("cas", { router: "list", window: "edit" }),
+  ).rejects.toMatchObject({
     code: "PARAMS_REQUIRED",
   });
   await worker.api.models.publish("cas", saved.revision);
@@ -482,10 +537,12 @@ it("UNIQUE 失败回滚列、关系 DDL、版本和指针，草稿仍可读回",
 it("实际 NOT NULL 遗留列放宽后仍保留旧值，新增记录不被停用字段阻塞", async () => {
   const model = definition("notnull");
   await publish(model);
-  await worker.sql(`DROP TABLE test_notnull;
-    CREATE TABLE test_notnull(id TEXT PRIMARY KEY, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
-      creator_id TEXT NOT NULL, data_content TEXT NOT NULL DEFAULT '{}', title TEXT, count INTEGER NOT NULL UNIQUE, paid INTEGER);
-    INSERT INTO test_notnull VALUES ('old', '2020', '2020', '${worker.user.id}', '{}', 'Before', 19, 1)`);
+  await worker.sql([
+    "DROP TABLE test_notnull",
+    `CREATE TABLE test_notnull(id TEXT PRIMARY KEY, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      creator_id TEXT NOT NULL, data_content TEXT NOT NULL DEFAULT '{}', title TEXT, count INTEGER NOT NULL UNIQUE, paid INTEGER)`,
+    `INSERT INTO test_notnull VALUES ('old', '2020', '2020', '${worker.user.id}', '{}', 'Before', 19, 1)`,
+  ]);
   const next = definition("notnull", { title: { type: "string" } });
   const current = await worker.api.models.read("notnull");
   const saved = await worker.api.models.saveDraft("notnull", next, {
@@ -567,6 +624,7 @@ it("角色子树聚合、own 范围、私有 $ref/required/View 投影与隐藏�
     title: { type: "string" },
     paid: { type: "boolean" },
     secret: { $ref: "#/$defs/private" },
+    parentId: { type: ["string", "null"] },
   });
   model.document.data.$defs = { private: { type: "string", default: "keep-secret" } };
   model.document.data.required = ["title", "secret"];
@@ -588,7 +646,7 @@ it("角色子树聚合、own 范围、私有 $ref/required/View 投影与隐藏�
     ],
   };
   model.document.views = {
-    edit: {
+    "list/edit": {
       component: "Object",
       field: "",
       children: [
@@ -597,6 +655,20 @@ it("角色子树聚合、own 范围、私有 $ref/required/View 投影与隐藏�
       ],
     },
   };
+  model.document.fields = {
+    "/title": { order: -1, form: { props: { placeholder: "可见标题" } } },
+    "/secret": { form: { component: "RichText" }, table: false },
+    "/parentId": { filter: false },
+  };
+  model.document.tree = { parentField: "/parentId", labelField: "/title" };
+  model.backend.relations = [
+    {
+      fieldId: "acl:parentId",
+      targetModel: "acl",
+      targetFieldId: "id",
+      kind: "many-to-one",
+    },
+  ];
   await publish(model);
   await worker.api.records.create("acl", { id: "admin-record", title: "Admin", paid: true });
   const runtime = await api.runtime.schema("acl");
@@ -605,6 +677,8 @@ it("角色子树聚合、own 范围、私有 $ref/required/View 投影与隐藏�
   expect(runtime.schema.data.required).toEqual(["title"]);
   expect(runtime.schema.data.$defs).toBeUndefined();
   expect(JSON.stringify(runtime.schema.views)).not.toContain("/secret");
+  expect(runtime.schema.fields).toEqual({ "/title": model.document.fields["/title"] });
+  expect(runtime.schema.tree).toBeUndefined();
   const own = await api.records.create("acl", { id: "own-record", title: "Own" });
   expect(own.secret).toBeUndefined();
   await api.records.update("acl", "own-record", { title: "Changed" });
@@ -638,6 +712,159 @@ it("角色子树聚合、own 范围、私有 $ref/required/View 投影与隐藏�
       )
     ).status,
   ).toBe(403);
+});
+it("字段展示按 router 能力诊断组件和 fn，草稿保留错误而发布拒绝", async () => {
+  const model = definition("field_capabilities");
+  model.document.fields = {
+    "/title": {
+      form: {
+        component: "MissingEditor",
+        props: { placeholder: "{{ fn.missingHint() }}" },
+      },
+    },
+  };
+  const saved = await worker.api.models.saveDraft("field_capabilities", model, {
+    ifRevision: null,
+  });
+  expect(saved.diagnostics.errors).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        path: "/document/fields/~1title/form/component",
+        code: "UNKNOWN_COMPONENT",
+        router: "list",
+        window: "edit",
+      }),
+      expect.objectContaining({
+        path: "/document/fields/~1title/form/props/placeholder",
+        code: "UNKNOWN_FN",
+      }),
+    ]),
+  );
+  await expect(
+    worker.api.models.publish("field_capabilities", saved.revision),
+  ).rejects.toMatchObject({
+    code: "INVALID_MODEL",
+  });
+  model.document.fields = {
+    "/title": { form: { component: "Input", props: { placeholder: "{{ $values.title }}" } } },
+  };
+  const valid = await worker.api.models.saveDraft("field_capabilities", model, {
+    ifRevision: saved.revision,
+  });
+  expect(valid.diagnostics.errors).toEqual([]);
+  expect(valid.diagnostics.runtimeChecks).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        path: "/document/fields/~1title/form/props/placeholder",
+        code: "EXPRESSION_RUNTIME",
+        router: "list",
+        window: "edit",
+      }),
+    ]),
+  );
+  await worker.api.models.publish("field_capabilities", valid.revision);
+  expect((await worker.api.runtime.schema("field_capabilities")).schema.fields).toEqual(
+    model.document.fields,
+  );
+});
+it("首次发布自关联树，parentId 与 subtree 使用指定父字段且保留直系子级语义", async () => {
+  const model = definition("field_tree", {
+    title: { type: "string" },
+    otherParent: { type: ["string", "null"] },
+    parentId: { type: ["string", "null"] },
+  });
+  model.document.tree = { parentField: "/parentId", labelField: "/title" };
+  model.backend.storage.bindings = model.backend.storage.bindings.map((binding) =>
+    binding.id === "field_tree:parentId"
+      ? {
+          id: binding.id,
+          path: binding.path,
+          jsonKey: "tree_parent",
+          sqlType: "TEXT",
+          encoding: "scalar",
+        }
+      : binding,
+  );
+  model.backend.relations = ["otherParent", "parentId"].map((key) => ({
+    fieldId: `field_tree:${key}`,
+    targetModel: "field_tree",
+    targetFieldId: "id",
+    kind: "many-to-one" as const,
+  }));
+  const invalid = structuredClone(model);
+  invalid.backend.relations = invalid.backend.relations.slice(0, 1);
+  const current = await worker.api.models.saveDraft("field_tree", invalid, { ifRevision: null });
+  expect(current.diagnostics.errors).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ path: "/document/tree/parentField", code: "INVALID_MODEL" }),
+    ]),
+  );
+  const saved = await worker.api.models.saveDraft("field_tree", model, {
+    ifRevision: current.revision,
+  });
+  expect(saved.diagnostics.errors).toEqual([]);
+  await worker.api.models.publish("field_tree", saved.revision);
+  for (const record of [
+    { id: "tree-root", title: "Root" },
+    { id: "tree-child", title: "Child", parentId: "tree-root" },
+    { id: "tree-grandchild", title: "Grandchild", parentId: "tree-child" },
+    { id: "tree-other", title: "Other", otherParent: "tree-root" },
+  ])
+    await worker.api.records.create("field_tree", record);
+  const direct = await worker.api.records.query("field_tree", {
+    filters: {},
+    parentId: "tree-root",
+    page: 1,
+    pageSize: 20,
+  });
+  expect(direct.list.map((record) => record.id)).toEqual(["tree-child"]);
+  expect(direct.total).toBe(1);
+  expect(
+    (
+      await worker.api.records.subtree("field_tree", {
+        parentField: "parentId",
+        parentValue: "tree-root",
+      })
+    )
+      .map((record) => record.id)
+      .sort(),
+  ).toEqual(["tree-child", "tree-grandchild"]);
+  expect(
+    (
+      await worker.api.records.subtree("field_tree", {
+        parentField: "otherParent",
+        parentValue: "tree-root",
+      })
+    ).map((record) => record.id),
+  ).toEqual(["tree-other"]);
+  expect(await worker.api.records.subtree("field_tree", { parentField: "parentId" })).toHaveLength(
+    4,
+  );
+  await expect(
+    worker.api.records.update("field_tree", "tree-root", { parentId: "tree-grandchild" }),
+  ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  await worker.api.records.create("field_tree", { id: "tree-race-a", title: "A" });
+  await worker.api.records.create("field_tree", { id: "tree-race-b", title: "B" });
+  const writing = worker.request(
+    "/records/field_tree/tree-race-a",
+    "PUT",
+    { parentId: "tree-race-b" },
+    worker.token,
+    { "x-test-gate": "record" },
+  );
+  await Promise.race([
+    worker.waitGate("record"),
+    writing.then(async (response) => {
+      throw new Error(`树记录请求未进入暂停点: ${await response.clone().text()}`);
+    }),
+  ]);
+  try {
+    await worker.api.records.update("field_tree", "tree-race-b", { parentId: "tree-race-a" });
+  } finally {
+    worker.releaseGate("record");
+  }
+  expect(await (await writing).json()).toMatchObject({ error: { code: "REVISION_CONFLICT" } });
+  expect((await worker.api.records.read("field_tree", "tree-race-a")).parentId).toBeNull();
 });
 it("关系去重、options、子树、防环、引用删除保护和停用 through 行保留", async () => {
   const target = definition("target");
@@ -721,6 +948,10 @@ it("官方 SDK stdio 六工具直接调用真实 Worker/D1，agent 只能保存�
     stderr: "pipe",
   });
   const client = new Client({ name: "formwork-real-d1-test", version: "1" });
+  let stderr = "";
+  transport.stderr?.on("data", (chunk) => {
+    stderr += String(chunk);
+  });
   try {
     await publish(definition("mcp_base"));
     await client.connect(transport);
@@ -738,8 +969,8 @@ it("官方 SDK stdio 六工具直接调用真实 Worker/D1，agent 只能保存�
       stage: "published",
     });
     expect(
-      await call("formwork.capabilities", { modelId: "mcp_base", router: "edit" }),
-    ).toMatchObject({ router: "edit", modelId: "mcp_base" });
+      await call("formwork.capabilities", { modelId: "mcp_base", router: "list", window: "edit" }),
+    ).toMatchObject({ router: "list", window: "edit", modelId: "mcp_base" });
     const value = definition("mcp_model");
     expect(
       await call("models.validate", { modelId: "mcp_model", definition: value }),
@@ -750,7 +981,11 @@ it("官方 SDK stdio 六工具直接调用真实 Worker/D1，agent 只能保存�
       ifRevision: null,
     });
     expect(saved).toMatchObject({ stage: "draft", publishedVersion: null, canPublish: false });
-    const preview = await call("models.preview", { modelId: "mcp_model", router: "add" });
+    const preview = await call("models.preview", {
+      modelId: "mcp_model",
+      router: "list",
+      window: "add",
+    });
     expect(new URL(preview.url).searchParams.get("revision")).toBe(saved.revision);
     expect(
       (
@@ -762,6 +997,9 @@ it("官方 SDK stdio 六工具直接调用真实 Worker/D1，agent 只能保存�
         )
       ).status,
     ).toBe(403);
+  } catch (error) {
+    if (stderr) console.error(`MCP startup: ${stderr}`);
+    throw error;
   } finally {
     await client.close();
   }
@@ -789,7 +1027,11 @@ it("存储不兼容产生可读草稿诊断，不改变当前版本", async () =
 it("并发发布只有一个成功，清单不能删除已发布组件", async () => {
   const model = definition("publishing");
   model.document.views = {
-    edit: { component: "Object", field: "", children: [{ component: "Input", field: "/title" }] },
+    "list/edit": {
+      component: "Object",
+      field: "",
+      children: [{ component: "Input", field: "/title" }],
+    },
   };
   const saved = await worker.api.models.saveDraft("publishing", model, { ifRevision: null });
   const results = await Promise.allSettled([
@@ -801,8 +1043,9 @@ it("并发发布只有一个成功，清单不能删除已发布组件", async (
     (results.find((result) => result.status === "rejected") as PromiseRejectedResult).reason.code,
   ).toBe("REVISION_CONFLICT");
   const next = manifest();
-  for (const capability of Object.values(next.defaultCapabilities))
-    capability.components = capability.components.filter((component) => component.name !== "Input");
+  next.framework.components = next.framework.components.filter(
+    (component) => component.name !== "Input",
+  );
   const { revision: _revision, ...contents } = next;
   next.revision = createHash("sha256").update(JSON.stringify(contents)).digest("hex");
   const response = await worker.request(
@@ -812,6 +1055,39 @@ it("并发发布只有一个成功，清单不能删除已发布组件", async (
     worker.capabilityToken,
   );
   expect(response.status).toBe(422);
+  const fieldModel = definition("published_field");
+  fieldModel.document.fields = { "/title": { form: { component: "FieldOnlyEditor" } } };
+  await publish(fieldModel);
+  const withoutFieldComponent = manifest();
+  withoutFieldComponent.framework.components = withoutFieldComponent.framework.components.filter(
+    (component) => component.name !== "FieldOnlyEditor",
+  );
+  const { revision: _fieldRevision, ...fieldContents } = withoutFieldComponent;
+  withoutFieldComponent.revision = createHash("sha256")
+    .update(JSON.stringify(fieldContents))
+    .digest("hex");
+  const fieldResponse = await worker.request(
+    "/formwork/capabilities/alien-form",
+    "PUT",
+    {
+      revision: withoutFieldComponent.revision,
+      manifest: withoutFieldComponent,
+      origin: withoutFieldComponent.clientOrigin,
+    },
+    worker.capabilityToken,
+  );
+  expect(fieldResponse.status).toBe(422);
+  expect(await fieldResponse.json()).toMatchObject({
+    error: {
+      code: "INVALID_MODEL",
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          code: "UNKNOWN_COMPONENT",
+          path: "/document/fields/~1title/form/component",
+        }),
+      ]),
+    },
+  });
 });
 it("JSON 内容存储、可信命令、batch-delete 与已提交 outbox", async () => {
   const model = definition("json_storage");
@@ -859,4 +1135,95 @@ it("JSON 内容存储、可信命令、batch-delete 与已提交 outbox", async 
       ids: ["json1", "missing"],
     }),
   ).toMatchObject({ deleted: ["json1"], failed: [{ id: "missing", code: "NOT_FOUND" }] });
+});
+
+it("共享 Domain 按当前文档选择，Page 与 Window 就近覆盖，配置错误保留具体诊断", async () => {
+  for (const id of ["shared_a", "shared_b"]) {
+    const model = definition(id);
+    model.document.domain = "shared";
+    model.document.fields = { "/title": { form: { component: "SharedEditor" } } };
+    model.document.pages = { list: { windows: { detail: { openMode: "modal" } } } };
+    await publish(model);
+    const capability = await worker.api.capabilities(id, { router: "list", window: "edit" });
+    expect(capability).toMatchObject({
+      modelId: id,
+      domain: "shared",
+      router: "list",
+      window: "edit",
+    });
+    expect(capability.fn.find((item) => item.name === "identity")).toMatchObject({
+      declaration: "Window identity",
+      overrides: expect.arrayContaining([
+        expect.objectContaining({ file: "src/domains/shared/index.ts" }),
+        expect.objectContaining({ file: "src/pages/list/index.ts" }),
+      ]),
+    });
+    expect(capability.components.some((item) => item.name === "SharedEditor")).toBe(true);
+  }
+  const invalidDomain = definition("candidate_domain");
+  invalidDomain.document.domain = "missing";
+  const saved = await worker.api.models.saveDraft("candidate_domain", invalidDomain, {
+    ifRevision: null,
+  });
+  expect(saved.diagnostics.errors).toContainEqual(
+    expect.objectContaining({
+      code: "UNKNOWN_DOMAIN",
+      path: "/document/domain",
+    }),
+  );
+  await expect(worker.api.capabilities("candidate_domain", "list")).rejects.toMatchObject({
+    code: "UNKNOWN_DOMAIN",
+  });
+  expect(
+    await worker.api.capabilities("candidate_domain", "list", { domain: "shared" }),
+  ).toMatchObject({ domain: "shared", modelId: "candidate_domain" });
+  const fallback = await worker.api.capabilities("unregistered_model", "list");
+  expect(fallback.domain).toBeUndefined();
+  expect(fallback.components.some((item) => item.name === "SharedEditor")).toBe(false);
+  const badWindow = definition("bad_window");
+  badWindow.document.pages = { list: { windows: { missing: { openMode: "modal" } } } };
+  expect((await worker.api.models.validate("bad_window", badWindow)).errors).toContainEqual(
+    expect.objectContaining({
+      code: "UNKNOWN_WINDOW",
+      path: "/document/pages/list/windows/missing",
+    }),
+  );
+  const withoutDomain = manifest();
+  delete withoutDomain.domains.shared;
+  const { revision: _revision, ...contents } = withoutDomain;
+  withoutDomain.revision = createHash("sha256").update(JSON.stringify(contents)).digest("hex");
+  const response = await worker.request(
+    "/formwork/capabilities/alien-form",
+    "PUT",
+    {
+      revision: withoutDomain.revision,
+      manifest: withoutDomain,
+      origin: withoutDomain.clientOrigin,
+    },
+    worker.capabilityToken,
+  );
+  expect(response.status).toBe(422);
+  expect(await response.json()).toMatchObject({
+    error: {
+      code: "INVALID_MODEL",
+      issues: expect.arrayContaining([expect.objectContaining({ code: "UNKNOWN_DOMAIN" })]),
+    },
+  });
+  const withoutWindow = manifest();
+  delete withoutWindow.pages.list!.windows.edit;
+  const { revision: _windowRevision, ...windowContents } = withoutWindow;
+  withoutWindow.revision = createHash("sha256")
+    .update(JSON.stringify(windowContents))
+    .digest("hex");
+  const windowResponse = await worker.request(
+    "/formwork/capabilities/alien-form",
+    "PUT",
+    {
+      revision: withoutWindow.revision,
+      manifest: withoutWindow,
+      origin: withoutWindow.clientOrigin,
+    },
+    worker.capabilityToken,
+  );
+  expect(windowResponse.status).toBe(422);
 });

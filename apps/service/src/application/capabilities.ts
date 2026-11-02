@@ -1,10 +1,15 @@
 import { z } from "zod";
-import { validateRoutes, isObject, viewIssues } from "formwork/model";
-import type { ModelDefinition } from "formwork/model";
-import type { CapabilityManifest, EffectiveCapabilities } from "formwork/model";
+import {
+  validateRoutes, isObject, viewIssues, fieldIssues, manifestRoutes, schemaTargets,
+  manifestCapabilities, presentationIssues, routeKey, escapePointer, expressionBody, FormworkError, selectDomain,
+} from "formwork/model";
+import type {
+  ModelDefinition, ModelDocument, CapabilityManifest, EffectiveCapabilities, RouteTarget,
+  ValidationReport, JsonValue,
+} from "formwork/model";
 import type { Env } from "../contracts";
 import { tokenHash } from "./auth/password";
-import { invalid, notFound, ServiceError } from "../http/errors";
+import { invalid, ServiceError } from "../http/errors";
 
 const source = z
   .object({
@@ -29,40 +34,41 @@ const diagnostic = z
     message: z.string(),
     modelId: z.string().optional(),
     router: z.string().optional(),
+    window: z.string().optional(),
     source: source.optional(),
   })
   .strict();
-const capabilities = z
+const layer = z
   .object({
-    modelId: z.string(),
-    router: z.string(),
     components: z.array(member),
     fn: z.array(member),
-    schema: member.optional(),
-    pageLoader: member.optional(),
-    domainTransform: member.optional(),
-    modelContract: z.string(),
+    modelSchema: member.optional(),
+    getSchema: member.optional(),
+    transformSchema: member.optional(),
+    getValue: member.optional(),
     runtimeChecks: z.array(diagnostic),
   })
   .strict();
 const manifestSchema = z
   .object({
+    formatVersion: z.literal(2),
     appId: z.literal("alien-form"),
     revision: z.string().regex(/^[a-f0-9]{64}$/u),
     clientOrigin: z.string().url(),
-    routes: z.array(
-      z
-        .object({
-          router: z.string(),
-          path: z.string().optional(),
-          presentation: z.enum(["page", "modal", "drawer"]).optional(),
-          returnTo: z.string().optional(),
-        })
-        .strict(),
-    ),
-    schemaRouters: z.array(z.string()),
-    defaultCapabilities: z.record(z.string(), capabilities),
-    domainCapabilities: z.record(z.string(), z.record(z.string(), capabilities)),
+    presenters: z.array(z.enum(["page", "modal", "drawer"])),
+    framework: layer,
+    domains: z.record(z.string().regex(/^[a-z][a-z0-9_-]*$/u), layer),
+    pages: z.record(z.string(), z.object({
+      path: z.string(),
+      model: z.boolean(),
+      capabilities: layer,
+      windows: z.record(z.string(), z.object({
+        path: z.string(),
+        model: z.boolean(),
+        openMode: z.enum(["page", "modal", "drawer"]),
+        capabilities: layer,
+      }).strict()),
+    }).strict()),
   })
   .strict();
 
@@ -75,17 +81,86 @@ export async function readManifest(db: D1Database): Promise<CapabilityManifest> 
     )
     .first<{ manifest_json: string }>();
   if (!row) throw new ServiceError("CAPABILITIES_UNAVAILABLE", "应用代码能力清单尚未登记", 422);
-  return JSON.parse(row.manifest_json) as CapabilityManifest;
+  const parsed = manifestSchema.safeParse(JSON.parse(row.manifest_json));
+  if (!parsed.success)
+    throw new ServiceError("CAPABILITIES_UNAVAILABLE", "应用代码能力清单版本已过期，请重新登记", 422);
+  return parsed.data;
 }
-/** 按 domain 覆盖选择路由能力；未知 domain 使用默认声明。 */
+/** 根据当前模型文档与所属 Page/Window 解析四层代码能力。 */
 export function effectiveCapabilities(
   manifest: CapabilityManifest,
-  id: string,
-  router: string,
+  document: Pick<ModelDocument, "id" | "domain">,
+  target: RouteTarget,
 ): EffectiveCapabilities {
-  const value = manifest.domainCapabilities[id]?.[router] ?? manifest.defaultCapabilities[router];
-  if (!value) notFound(`未知 router ${router}`);
-  return { ...value, modelId: id };
+  return manifestCapabilities(manifest, document, target);
+}
+
+/** 校验文档的代码引用与呈现配置，供发布和清单更新共用。 */
+export function capabilityReport(
+  manifest: CapabilityManifest,
+  document: ModelDocument,
+  requested?: RouteTarget,
+): ValidationReport {
+  const errors: ValidationReport["errors"][number][] = presentationIssues(
+    document, manifestRoutes(manifest), manifest.presenters,
+  ).map((issue) => ({ ...issue, path: `/document${issue.path}`, modelId: document.id }));
+  const runtimeChecks: ValidationReport["runtimeChecks"][number][] = [];
+  const targets = schemaTargets(manifest);
+  const addError = (error: unknown, target?: RouteTarget) => {
+    const issues = error instanceof FormworkError && error.issues.length
+      ? error.issues
+      : [{ path: "/views", code: error instanceof FormworkError ? error.code : "INVALID_MODEL",
+          message: error instanceof Error ? error.message : String(error) }];
+    errors.push(...issues.map((issue) => ({
+      ...issue, path: `/document${issue.path}`, modelId: document.id, ...target,
+    })));
+  };
+  if (requested && !targets.some((target) => routeKey(target) === routeKey(requested))) {
+    try {
+      effectiveCapabilities(manifest, document, requested);
+      errors.push({ path: "/document/views", code: "INVALID_ROUTER", message: "此目标不加载 schema", ...requested });
+    } catch (error) { addError(error, requested); }
+  }
+  for (const name of Object.keys(document.views ?? {}))
+    if (!targets.some((target) => routeKey(target) === name))
+      errors.push({ path: `/document/views/${escapePointer(name)}`, code: "UNKNOWN_ROUTER",
+        message: "View 的 Page/Window 不存在或不加载 schema", modelId: document.id });
+  try {
+    // Resolve once even if a manifest has no model pages, so unknown explicit Domains cannot escape.
+    selectDomain(document, manifest.domains);
+  } catch (error) {
+    addError(error);
+    return { errors, runtimeChecks };
+  }
+  for (const target of requested ? targets.filter((item) => routeKey(item) === routeKey(requested)) : targets) {
+    const capabilities = effectiveCapabilities(manifest, document, target);
+    const name = routeKey(target);
+    const components = capabilities.components.map((item) => item.name);
+    errors.push(...fieldIssues(document.fields, components).map((issue) => ({
+      ...issue, path: `/document${issue.path}`, modelId: document.id, ...target,
+    })));
+    const view = document.views?.[name];
+    if (view)
+      errors.push(...viewIssues(view, document.data, components, document.data, "", document.fields)
+        .map((issue) => ({ ...issue, path: `/document/views/${escapePointer(name)}${issue.path}`,
+          modelId: document.id, ...target })));
+    const visit = (value: JsonValue, path: string) => {
+      const body = expressionBody(value);
+      if (body) {
+        for (const match of body.matchAll(/\bfn\.([A-Za-z_$][\w$]*)/gu))
+          if (!capabilities.fn.some((fn) => fn.name === match[1]))
+            errors.push({ path, code: "UNKNOWN_FN", message: `未知 fn ${match[1]}`, modelId: document.id, ...target });
+        runtimeChecks.push({ path, code: "EXPRESSION_RUNTIME", message: "表达式行为需要在浏览器预览执行", modelId: document.id, ...target });
+      }
+      if (Array.isArray(value)) value.forEach((child, index) => visit(child, `${path}/${index}`));
+      else if (value && typeof value === "object")
+        for (const [key, child] of Object.entries(value)) visit(child, `${path}/${escapePointer(key)}`);
+    };
+    if (view) visit(view as unknown as JsonValue, `/document/views/${escapePointer(name)}`);
+    if (document.fields) visit(document.fields as unknown as JsonValue, "/document/fields");
+    runtimeChecks.push(...capabilities.runtimeChecks);
+  }
+  return { errors, runtimeChecks };
 }
 /** 检查来源和内容摘要并幂等登记能力清单，同时激活当前 revision。 */
 export async function registerCapabilities(env: Env, appId: string, input: unknown) {
@@ -110,13 +185,12 @@ export async function registerCapabilities(env: Env, appId: string, input: unkno
     invalid("能力清单 origin 必须是配置的客户端 origin");
   // Keep the original JSON key order: the Vite plugin hashes the serialized content.
   const manifest = isObject(input) ? (input.manifest as CapabilityManifest) : body.manifest;
-  validateRoutes(manifest.routes);
-  if (
-    manifest.schemaRouters.some(
-      (router) => !manifest.routes.some((route) => route.router === router),
-    )
-  )
-    invalid("schemaRouters 必须属于 routes");
+  const routes = manifestRoutes(manifest);
+  validateRoutes(routes);
+  if (!manifest.presenters.includes("page")) invalid("必须注册 page Presenter");
+  for (const route of routes)
+    if (route.window && !manifest.presenters.includes(route.openMode ?? "page"))
+      invalid(`缺少 ${route.openMode} Presenter`);
   const { revision: _revision, ...contents } = manifest;
   if ((await tokenHash(JSON.stringify(contents))) !== manifest.revision)
     invalid("能力清单内容摘要不匹配");
@@ -136,21 +210,11 @@ export async function registerCapabilities(env: Env, appId: string, input: unkno
   ).results;
   for (const row of published) {
     const definition = JSON.parse(row.definition_json) as ModelDefinition;
-    for (const [router, view] of Object.entries(definition.document.views ?? {})) {
-      const capabilities = effectiveCapabilities(manifest, definition.document.id, router);
-      const issues = viewIssues(
-        view,
-        definition.document.data,
-        capabilities.components.map((item) => item.name),
-      );
-      if (issues.some((issue) => issue.code === "UNKNOWN_COMPONENT"))
-        throw new ServiceError(
-          "INVALID_MODEL",
-          `清单删除了模型 ${definition.document.id} 已发布 View 使用的组件，请先迁移该模型`,
-          422,
-          issues,
-        );
-    }
+    const report = capabilityReport(manifest, definition.document);
+    if (report.errors.length)
+      throw new ServiceError("INVALID_MODEL",
+        `清单变更使已发布模型 ${definition.document.id} 的代码引用或呈现配置失效，请先迁移该模型`,
+        422, report.errors);
   }
   await env.DB.batch([
     env.DB.prepare(

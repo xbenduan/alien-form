@@ -54,6 +54,7 @@ export async function startWorker(options: { initialSql?: string[]; password?: s
     config = join(root, "wrangler.json");
   const password = options.password ?? randomBytes(24).toString("hex"),
     capabilityToken = randomBytes(32).toString("hex");
+  const sqlToken = randomBytes(32).toString("hex");
   const port = await freePort(),
     origin = `http://127.0.0.1:${port}`;
   const gates = new Map<
@@ -120,6 +121,7 @@ export async function startWorker(options: { initialSql?: string[]; password?: s
         `FORMWORK_BOOTSTRAP_ADMIN_PASSWORD=${password}`,
         `FORMWORK_CAPABILITY_TOKEN=${capabilityToken}`,
         `FORMWORK_TEST_GATE_URL=${bridgeUrl}`,
+        `FORMWORK_TEST_SQL_TOKEN=${sqlToken}`,
       ].join("\n"),
       { mode: 0o600 },
     );
@@ -175,6 +177,9 @@ export async function startWorker(options: { initialSql?: string[]; password?: s
       { env, stdio: ["ignore", "pipe", "pipe"] },
     );
     let logs = "";
+    child.once("exit", (code, signal) => {
+      logs += `\nWorker exited: code=${code}, signal=${signal}\n`;
+    });
     await new Promise<void>((done, reject) => {
       const timer = setTimeout(() => reject(new Error(`Worker startup timeout: ${logs}`)), 30_000);
       const receive = (chunk: Buffer) => {
@@ -210,24 +215,14 @@ export async function startWorker(options: { initialSql?: string[]; password?: s
       logs: () => logs,
       waitGate: (name: string) => gate(name).ready,
       releaseGate: (name: string) => gate(name).release(),
-      async sql(sql: string) {
-        const output = await command(
-          [
-            "d1",
-            "execute",
-            "alien-mdm",
-            "--local",
-            "--config",
-            config,
-            "--persist-to",
-            state,
-            "--command",
-            sql,
-            "--json",
-          ],
-          env,
-        );
-        return JSON.parse(output) as Array<{ results: Record<string, unknown>[] }>;
+      async sql(sql: string | readonly string[]) {
+        const response = await fetch(`${origin}/__test/sql`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${sqlToken}` },
+          body: JSON.stringify({ sql: typeof sql === "string" ? [sql] : sql }),
+        });
+        if (!response.ok) throw new Error(`Test SQL failed (${response.status}): ${await response.text()}`);
+        return response.json() as Promise<Array<{ results: Record<string, unknown>[] }>>;
       },
       request(
         path: string,

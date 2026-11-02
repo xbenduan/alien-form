@@ -1,42 +1,35 @@
 import { FormworkError } from "../model/errors";
-import { modelDocumentSchema } from "../model/schema";
-import type { DomainDefinition, FormworkDefinition, PageDefinition, RenderDefaults } from "./types";
+import { mergeRegistry } from "../model/definition-policy";
+import type { ActionContext, DomainDefinition, FormworkDefinition, RenderDefaults } from "./types";
 
+/** 合并具名组件和行为，fieldContainer 使用最近定义。 */
 export function mergeDefaults(...layers: RenderDefaults[]): RenderDefaults {
-  const result: RenderDefaults = { components: {}, fn: {}, schema: modelDocumentSchema };
-  for (const layer of layers) {
-    for (const name of ["container", "fieldContainer", "schema"] as const)
-      if (Object.hasOwn(layer, name) && layer[name] !== undefined)
-        (result as Record<string, unknown>)[name] = layer[name];
-    result.components = { ...result.components, ...layer.components };
-    result.fn = { ...result.fn, ...layer.fn };
-  }
-  return result;
-}
-/** 分别保留 Page loader 和 Domain transform，同时合并渲染覆盖。 */
-export async function resolveDefinition(
-  app: FormworkDefinition,
-  definition: PageDefinition,
-  domain?: string,
-): Promise<
-  RenderDefaults & {
-    pageLoader: PageDefinition["getSchema"];
-    domainTransform: DomainDefinition["getSchema"];
-  }
-> {
-  let override: DomainDefinition = {};
-  const entry =
-    domain && Object.hasOwn(definition.domains ?? {}, domain)
-      ? definition.domains![domain]
-      : undefined;
-  if (entry) {
-    override = typeof entry === "function" ? (await entry()).default : entry;
-    if (!override || typeof override !== "object")
-      throw new FormworkError("INVALID_DOMAIN", `Domain 导出无效 ${domain}`);
-  }
   return {
-    ...mergeDefaults(app, definition as RenderDefaults, override),
-    pageLoader: definition.getSchema,
-    domainTransform: override.getSchema,
+    components: mergeRegistry(...layers.map((layer) => layer.components)),
+    fn: mergeRegistry(...layers.map((layer) => layer.fn)),
+    fieldContainer: layers.findLast((layer) => layer.fieldContainer !== undefined)?.fieldContainer,
   };
+}
+
+/** 只加载选中的 Domain，导入失败保留原始错误供实例重试。 */
+export async function resolveDomain(app: FormworkDefinition, name?: string): Promise<DomainDefinition> {
+  if (name === undefined) return {};
+  const entry = app.domains?.[name];
+  if (!entry || !Object.hasOwn(app.domains!, name))
+    throw new FormworkError("UNKNOWN_DOMAIN", `Domain 未注册: ${name}`);
+  const definition = typeof entry === "function" ? (await entry()).default : entry;
+  if (!definition || typeof definition !== "object")
+    throw new FormworkError("INVALID_DOMAIN", `Domain 导出无效: ${name}`);
+  return definition;
+}
+
+/** 将未绑定的声明绑定到当前实例，销毁后拒绝继续调用。 */
+export function bindFunctions(defaults: RenderDefaults, ctx: ActionContext): void {
+  ctx.fn = Object.fromEntries(Object.entries(defaults.fn ?? {}).map(([name, fn]) => [
+    name,
+    (...args: unknown[]) => {
+      if (ctx.signal.aborted) throw new FormworkError("ABORTED", "Instance 已销毁");
+      return fn(ctx, ...args);
+    },
+  ]));
 }

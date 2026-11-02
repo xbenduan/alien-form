@@ -27,6 +27,7 @@ import type {
   RecordQuery,
   RecordValue,
   RuntimeSnapshot,
+  RouteTarget,
   ValidationReport,
   WriteOptions,
 } from "./types";
@@ -38,6 +39,8 @@ export type FormworkApiOptions = {
   token?: () => string | undefined;
   onUnauthorized?: () => void;
 };
+/** 定位 Page 或本地 Window，传字符串时表示 Page；domain 用于审查候选领域选择。 */
+export type CapabilityReadOptions = ReadOptions & { domain?: string };
 /** 提供模型管理、发布加载、记录和认证的 HTTP 能力。 */
 export type FormworkApi = {
   request: <T>(path: string, method?: string, body?: unknown, options?: ReadOptions) => Promise<T>;
@@ -53,7 +56,7 @@ export type FormworkApi = {
     validate: (
       id: string,
       definition: unknown,
-      router?: string,
+      target?: string | RouteTarget,
       options?: ReadOptions,
     ) => Promise<ValidationReport>;
     publish: (id: string, ifRevision: string, options?: ReadOptions) => Promise<PublishedSnapshot>;
@@ -61,17 +64,17 @@ export type FormworkApi = {
     version: (id: string, version: number, options?: ReadOptions) => Promise<PublishedSnapshot>;
     preview: (
       id: string,
-      router: string,
+      target: string | RouteTarget,
       params?: Record<string, string>,
       options?: ReadOptions,
-    ) => Promise<{ modelId: string; router: string; revision: string; url: string }>;
+    ) => Promise<{ modelId: string; router: string; window?: string; revision: string; url: string }>;
     draftSchema: (id: string, revision: string, options?: ReadOptions) => Promise<PreviewSnapshot>;
   };
   runtime: { schema: (id: string, options?: ReadOptions) => Promise<RuntimeSnapshot> };
   capabilities: (
     id: string,
-    router: string,
-    options?: ReadOptions,
+    target: string | RouteTarget,
+    options?: CapabilityReadOptions,
   ) => Promise<EffectiveCapabilities>;
   auth: {
     login: (
@@ -90,6 +93,11 @@ export type FormworkApi = {
   };
   records: {
     query: (id: string, query: RecordQuery, options?: ReadOptions) => Promise<RecordPage>;
+    subtree: (
+      id: string,
+      input: { parentField: string; parentValue?: string },
+      options?: ReadOptions,
+    ) => Promise<RecordValue[]>;
     read: (id: string, recordId: string, options?: ReadOptions) => Promise<RecordValue>;
     create: (id: string, value: RecordValue, options?: ReadOptions) => Promise<RecordValue>;
     update: (
@@ -110,6 +118,10 @@ export type FormworkApi = {
 
 /** 通过带 Bearer 的统一 HTTP 协议访问 Worker；不会重试 CAS 写入。 */
 export function createFormworkApi(options: FormworkApiOptions): FormworkApi {
+  const targetParams = (target: string | RouteTarget) => {
+    const reference = typeof target === "string" ? { router: target } : target;
+    return { router: reference.router, ...(reference.window === undefined ? {} : { window: reference.window }) };
+  };
   const request: FormworkApi["request"] = async (path, method = "GET", body, settings) => {
     checkAbort(settings?.signal);
     const token = options.token?.();
@@ -189,9 +201,10 @@ export function createFormworkApi(options: FormworkApiOptions): FormworkApi {
           id,
         );
       },
-      async validate(id, definition, router, settings) {
+      async validate(id, definition, target, settings) {
+        const reference = target === undefined ? undefined : targetParams(target);
         return validationReportSchema.parse(
-          await request(`${modelPath(id)}/validate`, "POST", { definition, router }, settings),
+          await request(`${modelPath(id)}/validate`, "POST", { definition, ...reference }, settings),
         );
       },
       async publish(id, ifRevision, settings) {
@@ -218,8 +231,9 @@ export function createFormworkApi(options: FormworkApiOptions): FormworkApi {
           id,
         );
       },
-      preview(id, router, params, settings) {
-        const query = new URLSearchParams({ router, params: JSON.stringify(params ?? {}) });
+      preview(id, target, params, settings) {
+        const reference = targetParams(target);
+        const query = new URLSearchParams({ ...reference, params: JSON.stringify(params ?? {}) });
         return request(`${modelPath(id)}/preview?${query}`, "GET", undefined, settings);
       },
       async draftSchema(id, revision, settings) {
@@ -242,9 +256,12 @@ export function createFormworkApi(options: FormworkApiOptions): FormworkApi {
         );
       },
     },
-    capabilities: (id, router, settings) =>
+    capabilities: (id, target, settings) =>
       request(
-        `/formwork/capabilities?${new URLSearchParams({ modelId: id, router })}`,
+        `/formwork/capabilities?${new URLSearchParams({
+          modelId: id, ...targetParams(target),
+          ...(settings?.domain === undefined ? {} : { domain: settings.domain }),
+        })}`,
         "GET",
         undefined,
         settings,
@@ -261,6 +278,8 @@ export function createFormworkApi(options: FormworkApiOptions): FormworkApi {
     },
     records: {
       query: (id, query, settings) => request(`${recordPath(id)}/query`, "POST", query, settings),
+      subtree: (id, input, settings) =>
+        request(`${recordPath(id)}/subtree`, "POST", input, settings),
       read: (id, recordId, settings) =>
         request(recordPath(id, recordId), "GET", undefined, settings),
       create: (id, value, settings) => request(recordPath(id), "POST", value, settings),

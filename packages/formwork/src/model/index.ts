@@ -3,6 +3,8 @@ export * from "./errors";
 export * from "./pointer";
 export * from "./expression";
 export * from "./validation";
+export * from "./presentation";
 export * from "./schema";
 export * from "./routes";
+export * from "./definition-policy";
 export * from "./http";

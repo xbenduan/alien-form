@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
+import type { ModelDefinition } from "formwork/model";
 
 async function login(page: Page, destination = "/models") {
   const credentials = JSON.parse(
@@ -107,6 +109,59 @@ test("旧深色偏好和系统深色模式不影响明亮首屏、独立页面�
   } finally {
     await other.close();
   }
+});
+
+test("共享 cms Domain 按模型读写，schema 的 Drawer、Page、Modal 与刷新直达一致", async ({ page }) => {
+  const { definition } = await (await request(page, "/models/cms")).json() as { definition: ModelDefinition };
+  const modelId = "shared-content";
+  definition.document.id = modelId;
+  definition.document.domain = "cms";
+  definition.document.title = "共享内容";
+  definition.document.pages = {
+    list: { windows: { add: { openMode: "drawer" }, edit: { openMode: "page" }, detail: { openMode: "modal" } } },
+  };
+  definition.backend.storage.table = "biz_shared_content";
+  const savedResponse = await request(page, `/models/${modelId}/draft`, "PUT", { definition, ifRevision: null });
+  expect(savedResponse.ok()).toBe(true);
+  const saved = await savedResponse.json();
+  expect(saved.diagnostics.errors).toEqual([]);
+  expect((await request(page, `/models/${modelId}/publish`, "POST", { ifRevision: saved.revision })).ok()).toBe(true);
+  await page.goto(`/list/${modelId}`);
+  await page.getByRole("button", { name: "新建记录" }).click();
+  const drawer = page.getByRole("dialog");
+  await expect(drawer).toHaveClass(/drawer/u);
+  await drawer.getByLabel("标题").fill("  共享正文  ");
+  await drawer.locator(".rich-editor").fill("第一行\n完整正文");
+  await drawer.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(drawer).not.toBeVisible();
+  const record = page.locator("tbody tr").filter({ hasText: "共享正文" });
+  await expect(record).toBeVisible();
+  const id = await record.getAttribute("data-record-id");
+  const reads: string[] = [];
+  page.on("request", (incoming) => {
+    if (incoming.method() === "GET" && incoming.url().includes(`/records/${modelId}/`)) reads.push(incoming.url());
+  });
+  await record.getByRole("button", { name: "编辑", exact: true }).click();
+  await expect(page.locator(".record-form .rich-editor")).toHaveValue("第一行\n完整正文");
+  await expect(page).toHaveURL(new RegExp(`/list/${modelId}/edit/`));
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(reads).toHaveLength(1);
+  await page.reload();
+  await expect(page.locator(".record-form .rich-editor")).toHaveValue("第一行\n完整正文");
+  expect(reads).toHaveLength(2);
+  await page.getByRole("button", { name: "返回列表", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/list/${modelId}$`));
+  await expect(page.locator("header.topbar").getByRole("button", { name: "新建记录", exact: true })).toBeVisible();
+  await record.getByRole("button", { name: "详情", exact: true }).click();
+  const modal = page.getByRole("dialog");
+  await expect(modal).toHaveClass(/modal/u);
+  await expect(modal.locator(".record-detail")).toContainText("完整正文");
+  await page.reload();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".record-detail")).toContainText("完整正文");
+  await page.getByRole("button", { name: "返回列表", exact: true }).click();
+  const rows = await (await request(page, `/records/${modelId}/query`, "POST", { filters: {}, page: 1, pageSize: 10 })).json();
+  expect(rows.list).toContainEqual(expect.objectContaining({ id, title: "共享正文", content: "第一行\n完整正文" }));
 });
 
 test("浏览器禁用 localStorage 时明亮登录页仍正常输入", async ({ browser }) => {
@@ -684,7 +739,7 @@ test("自绘 Select 支持键盘、分页与 Modal 浮层", async ({ page }) => 
   await page.keyboard.press("5");
   await expect(pageSize).toContainText("50 条 / 页");
   await page.getByRole("button", { name: "新建记录", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "编辑记录" });
+  const dialog = page.getByRole("dialog", { name: "新建记录" });
   const status = dialog.getByRole("combobox", { name: "状态 *", exact: true });
   await status.click();
   await page.getByRole("option", { name: "已付款", exact: true }).click();
@@ -719,20 +774,100 @@ test("取消保留调用者、History 返回、新建嵌套明细", async ({ pag
 test("cms Domain 从 ctx.schema 定制 RichText、Zod 与保存 fn", async ({ page }) => {
   const { definition } = await (await request(page, "/models/cms")).json();
   await page.goto("/edit/cms/article-1");
-  const dialog = page.getByRole("dialog");
+  await expect(page).toHaveURL(/\/list\/cms\/edit\/article-1$/u);
+  const editor = page.locator(".record-form");
   await expect(
-    dialog.getByRole("heading", { name: `编辑${definition.document.title}` }),
+    editor.getByRole("heading", { name: `编辑${definition.document.title}` }),
   ).toBeVisible();
-  await dialog.getByLabel("标题").fill("  cms 已更新  ");
-  await dialog.locator(".rich-editor").fill("完整正文\n第二行");
-  await dialog.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await editor.getByLabel("标题").fill("  cms 已更新  ");
+  await editor.locator(".rich-editor").fill("完整正文\n第二行");
+  await editor.getByRole("button", { name: "保存", exact: true }).click();
   await expect(page).toHaveURL(/\/list\/cms$/u);
   await expect(page.locator("tbody")).toContainText("cms 已更新");
   await expect(page.locator("tbody")).toContainText("完整正文");
   await page.goto("/detail/cms/article-1");
-  await expect(page.getByRole("dialog")).toContainText("完整正文");
-  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/list\/cms\/detail\/article-1$/u);
+  await expect(page.locator(".record-detail")).toContainText("完整正文");
+  await page.getByRole("button", { name: "返回列表", exact: true }).click();
   await expect(page).toHaveURL(/\/list\/cms$/u);
+});
+
+test("字段配置示例发布后驱动树形 layout、筛选、表格和编辑，移动端上下排列", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const definition: ModelDefinition = JSON.parse(
+    await readFile("examples/catalog.definition.json", "utf8"),
+  );
+  await page.getByRole("button", { name: "新建模型", exact: true }).click();
+  await page.getByLabel("新模型 ID", { exact: true }).fill(definition.document.id);
+  await page.getByRole("button", { name: "创建模型", exact: true }).click();
+  await expect(page).toHaveURL(/\/models\/catalog$/u);
+  await fillJson(page, JSON.stringify(definition, null, 2));
+  await page.getByRole("button", { name: "保存草稿", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("校验通过");
+  await page.getByRole("button", { name: "手动发布", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("已手动发布版本 1");
+  for (const record of [
+    { id: "catalog-root", name: "知识库" },
+    { id: "catalog-child", name: "技术文档", parentId: "catalog-root" },
+    { id: "catalog-leaf", name: "API 手册", parentId: "catalog-child" },
+    { id: "catalog-other", name: "产品文档", status: "停用" },
+  ]) {
+    const response = await request(page, "/records/catalog", "POST", record);
+    expect(response.ok(), await response.text()).toBe(true);
+  }
+  await page.goto("/list/catalog");
+  await page.getByRole("button", { name: "树形视图", exact: true }).click();
+  await expect(page).toHaveURL(/\/tree-list\/catalog$/u);
+  const tree = page.getByRole("complementary", { name: "目录层级" });
+  await expect(tree.getByRole("button", { name: "知识库", exact: true })).toBeVisible();
+  const table = page.getByRole("table", { name: "目录记录", exact: true });
+  await expect(table.locator("tbody tr")).toHaveCount(4);
+  await expect(table.locator("thead th")).toHaveText(["目录名称", "状态", "操作"]);
+  const filters = page.getByRole("form", { name: "筛选记录" });
+  await expect(filters.getByPlaceholder("查询目录")).toBeVisible();
+  await expect(filters.getByLabel("父级 ID")).toHaveCount(0);
+  await expect(filters.getByLabel("说明", { exact: true })).toHaveCount(0);
+  await tree.getByRole("button", { name: "知识库", exact: true }).click();
+  await expect(table.locator("tbody tr")).toHaveCount(1);
+  await expect(table.locator("tbody")).toContainText("技术文档");
+  await expect(table.locator("tbody")).not.toContainText("API 手册");
+  await filters.getByPlaceholder("查询目录").fill("不存在");
+  await filters.getByRole("button", { name: "查询", exact: true }).click();
+  await expect(table.locator("tbody tr")).toHaveCount(0);
+  await filters.getByRole("button", { name: "清空筛选", exact: true }).click();
+  await expect(table.locator("tbody tr")).toHaveCount(1);
+  await table.getByRole("button", { name: "编辑", exact: true }).click();
+  const editor = page.getByRole("dialog");
+  await expect(editor.getByPlaceholder("输入目录名称")).toHaveValue("技术文档");
+  await editor.getByPlaceholder("输入目录名称").fill("开发指南");
+  await editor.getByRole("button", { name: "保存", exact: true }).click();
+  await expect(editor).not.toBeVisible();
+  await expect(page).toHaveURL(/\/tree-list\/catalog$/u);
+  await expect(tree.getByRole("button", { name: "开发指南", exact: true })).toBeVisible();
+  await expect(table.locator("tbody tr")).toHaveCount(1);
+  await page.setViewportSize({ width: 1440, height: 960 });
+  await page.screenshot({
+    path: join(tmpdir(), "alien-form-tree-list-desktop.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(tree).toBeVisible();
+  const placement = await page.locator(".tree-list-page").evaluate((element) => {
+    const tree = element.querySelector(".tree-panel")!.getBoundingClientRect();
+    const list = element.querySelector(".list-page")!.getBoundingClientRect();
+    return {
+      above: tree.bottom <= list.top,
+      overflow: document.documentElement.scrollWidth > window.innerWidth,
+    };
+  });
+  expect(placement).toEqual({ above: true, overflow: false });
+  await page.screenshot({
+    path: join(tmpdir(), "alien-form-tree-list-mobile.png"),
+    fullPage: true,
+  });
+  expect(errors).toEqual([]);
 });
 
 test("无效草稿、本地预览保存、手动发布、刷新与旧页 422 保留输入", async ({ page, context }) => {
@@ -791,7 +926,7 @@ test("无效草稿、本地预览保存、手动发布、刷新与旧页 422 保
   const record = await created.json();
   const editor = await context.newPage();
   await login(editor, `/edit/review-orders/${record.id}`);
-  await editor.getByRole("dialog").getByLabel("订单号").fill("kept");
+  await editor.locator(".record-form").getByLabel("订单号").fill("kept");
   const ordinary = await context.newPage();
   await login(ordinary, "/list/review-orders");
   await expect(ordinary.getByRole("heading", { name: "审阅订单", exact: true })).toBeVisible();
@@ -811,11 +946,11 @@ test("无效草稿、本地预览保存、手动发布、刷新与旧页 422 保
       result.url().includes(`/records/review-orders/${record.id}`) &&
       result.request().method() === "PUT",
   );
-  await editor.getByRole("dialog").getByRole("button", { name: "保存", exact: true }).click();
+  await editor.locator(".record-form").getByRole("button", { name: "保存", exact: true }).click();
   expect((await response).status()).toBe(422);
-  await expect(editor.getByRole("dialog").getByLabel("订单号")).toHaveValue("kept");
+  await expect(editor.locator(".record-form").getByLabel("订单号")).toHaveValue("kept");
   await expect(
-    editor.getByRole("dialog").getByRole("heading", { name: "编辑审阅订单" }),
+    editor.locator(".record-form").getByRole("heading", { name: "编辑审阅订单" }),
   ).toBeVisible();
   await expect(editor.locator(".server-issues")).toContainText("/orderNo");
   const version = page.getByRole("combobox", { name: "模型版本", exact: true });

@@ -151,36 +151,36 @@ describe("Pointer 与路由", () => {
   });
   const routes = [
     { router: "home" },
-    { router: "models", path: "/models/:domain?" },
-    { router: "list", path: "/list/:domain" },
+    { router: "models", path: "/models/:modelId?" },
+    { router: "list", path: "/list/:modelId" },
     { router: "featured", path: "/list/featured" },
     {
-      router: "edit",
-      path: "/edit/:domain/:id",
-      presentation: "drawer" as const,
-      returnTo: "list",
+      router: "list",
+      window: "edit",
+      path: "/list/:modelId/edit/:id",
+      openMode: "drawer" as const,
     },
   ];
   it("按段编码参数，固定路径优先，缺少必填 id 不伪造数据", () => {
     validateRoutes(routes);
-    expect(routePath(routes, "edit", { domain: "orders", id: "a/b 中文" })).toBe(
-      "/edit/orders/a%2Fb%20%E4%B8%AD%E6%96%87",
+    expect(routePath(routes, { router: "list", window: "edit" }, { modelId: "orders", id: "a/b 中文" })).toBe(
+      "/list/orders/edit/a%2Fb%20%E4%B8%AD%E6%96%87",
     );
-    expect(matchRoute(routes, "/edit/orders/a%2Fb")?.params.id).toBe("a/b");
+    expect(matchRoute(routes, "/list/orders/edit/a%2Fb")?.params.id).toBe("a/b");
     expect(matchRoute(routes, "/list/featured")?.definition.router).toBe("featured");
     expect(matchRoute(routes, "/models")?.params).toEqual({});
-    expect(() => routePath(routes, "edit", { domain: "orders" })).toThrow(/id/u);
+    expect(() => routePath(routes, { router: "list", window: "edit" }, { modelId: "orders" })).toThrow(/id/u);
     expect(() => routePath(routes, "unknown")).toThrow();
-    expect(() => routePath(routes, "list", { domain: "../cms" })).toThrow();
+    expect(() => routePath(routes, "list", { modelId: "../cms" })).toThrow();
   });
-  it("拒绝歧义和无法填充 returnTo 的 Window", () => {
+  it("拒绝歧义和缺少所属 Page 参数的 Window", () => {
     expect(() => validateRoutes([...routes, { router: "other", path: "/list/:model" }])).toThrow(
       /歧义/u,
     );
     expect(() =>
       validateRoutes([
-        { router: "list", path: "/list/:domain" },
-        { router: "edit", path: "/edit/:id", presentation: "modal", returnTo: "list" },
+        { router: "list", path: "/list/:modelId" },
+        { router: "list", window: "edit", path: "/edit/:id", openMode: "modal" },
       ]),
     ).toThrow(/参数/u);
   });

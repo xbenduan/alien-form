@@ -1,9 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 import { parseSync } from "oxc-parser";
-import { FormworkError, modelIdPattern, validateRoutes } from "formwork/model";
-import type { Diagnostic, RouteDefinition } from "formwork/model";
-import type { CapabilityMember, EffectiveCapabilities } from "formwork/mcp";
+import { FormworkError, modelIdPattern, createRoutes, manifestCapabilities } from "formwork/model";
+import type { CapabilityLayer, CapabilityManifest, CapabilityMember, Diagnostic, EffectiveCapabilities, ModelDocument, OpenMode, PageCapabilities, RouteDefinition, RouteTarget } from "formwork/model";
 
 // Oxc 提供完整 ESTree；本分析器仅按 type 读取有限语法，不求值函数体。
 type Ast = { type: string; start: number; end: number; [key: string]: any };
@@ -17,26 +16,13 @@ type Module = {
   exports: Map<string, Ref | ImportRef>;
   stars: string[];
 };
-type Layer = {
-  components: Record<string, CapabilityMember>;
-  fn: Record<string, CapabilityMember>;
-  schema?: { member: CapabilityMember; file: string; name: string };
-  getSchema?: CapabilityMember;
-};
-type Definition = {
-  route: RouteDefinition;
-  layer: Layer;
-  domains: Record<string, Layer>;
-  schema: boolean;
-};
 /** 保存从实际 entry 可达的路由、覆盖能力和 JSX 转换范围。 */
 export type FormworkAnalysis = {
   routes: RouteDefinition[];
-  domainIds: string[];
-  schemaRouters: string[];
+  catalog: Pick<CapabilityManifest, "formatVersion" | "presenters" | "framework" | "domains" | "pages">;
   files: Set<string>;
   transforms: Map<string, Array<{ start: number; end: number }>>;
-  capabilities: (modelId: string, router: string) => EffectiveCapabilities;
+  capabilities: (document: Pick<ModelDocument, "id" | "domain">, target: RouteTarget) => EffectiveCapabilities;
 };
 /** 通过 Vite 的实际模块解析规则分析静态定义，不导入或执行应用 UI。 */
 export async function analyzeFormwork(
@@ -210,7 +196,7 @@ export async function analyzeFormwork(
   const literal = async (input: Ref): Promise<string | boolean | number | null> => {
     const ref = await unwrap(input);
     if (ref.node.type === "Literal") return ref.node.value;
-    return fail(ref, "定义 key、router、path、presentation 和 returnTo 必须是可解析静态常量");
+    return fail(ref, "定义 key、router、path 和 openMode 必须是可解析静态常量");
   };
   const object = async (input: Ref): Promise<Map<string, Ref>> => {
     const ref = await unwrap(input);
@@ -259,7 +245,7 @@ export async function analyzeFormwork(
   };
   const array = async (input: Ref): Promise<Ref[]> => {
     const ref = await unwrap(input);
-    if (ref.node.type !== "ArrayExpression") return fail(ref, "pages/windows 必须为可解析静态数组");
+    if (ref.node.type !== "ArrayExpression") return fail(ref, "pages 必须为可解析静态数组");
     const result: Ref[] = [];
     for (const item of ref.node.elements as Ast[]) {
       if (!item) return fail(ref, "定义数组不允许空项");
@@ -315,32 +301,38 @@ export async function analyzeFormwork(
       ...(comment ? { jsDoc: comment.replace(/\s*export\s*(?:default\s*)?$/u, "") } : {}),
     };
   };
-  const layer = async (values: Map<string, Ref>): Promise<Layer> => {
-    const result: Layer = { components: {}, fn: {} };
+  const layer = async (values: Map<string, Ref>): Promise<CapabilityLayer> => {
+    const result: CapabilityLayer = { components: [], fn: [], runtimeChecks: [] };
     for (const kind of ["components", "fn"] as const)
       if (values.has(kind))
+      {
+        const members: CapabilityMember[] = [];
         for (const [key, ref] of await object(values.get(kind)!)) {
           if (!/^[A-Za-z_$][\w$]*$/u.test(key)) return fail(ref, `非法 ${kind} key ${key}`);
-          result[kind][key] = await member(key, ref);
+          members.push(await member(key, ref));
         }
-    if (values.has("schema")) {
-      const ref = await unwrap(values.get("schema")!);
-      const exported = [...ref.module.exports].find(
-        ([, value]) => !("from" in value) && value.node.start === ref.node.start,
-      )?.[0];
-      if (!exported) return fail(ref, "schema 必须是具名或 default 导出");
-      result.schema = {
-        member: await member(exported, ref),
-        file: ref.module.file,
-        name: exported,
-      };
-    }
-    if (values.has("getSchema"))
-      result.getSchema = await member("getSchema", values.get("getSchema")!);
+        result[kind] = members;
+      }
+    for (const name of ["modelSchema", "getSchema", "transformSchema", "getValue"] as const)
+      if (values.has(name)) result[name] = await member(name, values.get(name)!);
+    const checks: Diagnostic[] = [{
+      path: "", code: "RUNTIME_RENDER",
+      message: "局部 Render、表达式返回值与网络行为在实际挂载中验证",
+    }];
+    for (const name of ["modelSchema", "transformSchema"] as const)
+      if (result[name]) checks.push({
+        path: "", code: name === "modelSchema" ? "RUNTIME_MODEL_SCHEMA" : "RUNTIME_SCHEMA_TRANSFORM",
+        message: `${name} 需要在浏览器预览中执行`, source: result[name]!.source,
+      });
+    result.runtimeChecks = checks;
     return result;
   };
-  const domainLayers = async (input: Ref): Promise<Record<string, Layer>> => {
-    const result: Record<string, Layer> = {};
+  const reject = (values: Map<string, Ref>, names: readonly string[]) => {
+    for (const name of names) if (values.has(name))
+      fail(values.get(name)!, `当前定义不支持 ${name}`);
+  };
+  const domainLayers = async (input: Ref): Promise<Record<string, CapabilityLayer>> => {
+    const result: Record<string, CapabilityLayer> = {};
     for (const [id, value] of await object(input)) {
       if (!modelIdPattern.test(id)) return fail(value, `非法 Domain id ${id}`);
       let ref = await unwrap(value);
@@ -353,7 +345,9 @@ export async function analyzeFormwork(
           return fail(ref, "Domain 模块缺少 default defineDomain");
         ref = exported;
       }
-      result[id] = await layer(await definitionObject(ref, "defineDomain"));
+      const values = await definitionObject(ref, "defineDomain");
+      reject(values, ["container", "getSchema", "schema", "domains", "router", "windows", "render"]);
+      result[id] = await layer(values);
     }
     return result;
   };
@@ -362,97 +356,68 @@ export async function analyzeFormwork(
   if (!entryRef || "from" in entryRef)
     throw new FormworkError("TOOL_CONTRACT", "entry 必须导出 defineFormwork");
   const app = await definitionObject(entryRef, "defineFormwork");
-  const global = await layer(app);
-  const definitions: Definition[] = [];
-  for (const kind of ["pages", "windows"] as const)
-    if (app.has(kind))
-      for (const input of await array(app.get(kind)!)) {
-        const values = await definitionObject(
-          input,
-          kind === "pages" ? "definePage" : "defineWindow",
-        );
-        if (!values.has("router")) return fail(input, "定义缺少 router");
-        const route: RouteDefinition = { router: String(await literal(values.get("router")!)) };
-        for (const key of ["path", "presentation", "returnTo"] as const)
-          if (values.has(key))
-            (route as Record<string, unknown>)[key] = await literal(values.get(key)!);
-        if (kind === "windows" && !["page", "modal", "drawer"].includes(route.presentation ?? ""))
-          return fail(input, "Window 必须声明固定 presentation");
-        if (kind === "pages" && route.presentation)
-          return fail(input, "Page 不能声明 presentation");
-        const render = values.get("render");
-        if (!render && !values.has("getSchema"))
-          return fail(input, "模型 Page/Window 必须显式声明 getSchema");
-        if (render) {
-          if (values.has("container") || values.has("schema") || values.has("getSchema"))
-            return fail(render, "plain render 与 schema 内容互斥");
-          const ref = await unwrap(render);
-          if (["JSXElement", "JSXFragment"].includes(ref.node.type)) {
-            const ranges = transforms.get(ref.module.file) ?? [];
-            if (!ranges.some((range) => range.start === ref.node.start))
-              ranges.push({ start: ref.node.start, end: ref.node.end });
-            transforms.set(ref.module.file, ranges);
-          }
-        }
-        definitions.push({
-          route,
-          layer: await layer(values),
-          domains: values.has("domains") ? await domainLayers(values.get("domains")!) : {},
-          schema: !render,
-        });
-      }
-  const routes = definitions.map((definition) => definition.route);
-  validateRoutes(routes);
-  const layers = (id: string, router: string) => {
-    const definition = definitions.find((value) => value.route.router === router);
-    if (!definition) throw new FormworkError("UNKNOWN_ROUTER", `未知 router ${router}`);
-    return [global, definition.layer, ...(definition.domains[id] ? [definition.domains[id]!] : [])];
+  reject(app, ["layouts", "windows", "container", "schema"]);
+  const framework = await layer(app);
+  const domains = app.has("domains") ? await domainLayers(app.get("domains")!) : {};
+  const presenters = app.has("presenters") ? [...(await object(app.get("presenters")!)).keys()] : [];
+  if (!presenters.includes("page") || presenters.some((name) => !["page", "drawer", "modal"].includes(name)))
+    throw new FormworkError("TOOL_CONTRACT", "presenters 必须包含 page，且只能注册 page/drawer/modal");
+  const checkBody = async (values: Map<string, Ref>) => {
+    const render = values.get("render");
+    if (!render) {
+      if (!values.has("container")) throw new FormworkError("TOOL_CONTRACT", "模型内容必须声明 container");
+      await unwrap(values.get("container")!);
+      return;
+    }
+    reject(values, ["container", "getSchema", "getValue", "modelSchema", "fieldContainer", "readOnly"]);
+    const ref = await unwrap(render);
+    if (["JSXElement", "JSXFragment"].includes(ref.node.type)) {
+      const ranges = transforms.get(ref.module.file) ?? [];
+      if (!ranges.some((range) => range.start === ref.node.start))
+        ranges.push({ start: ref.node.start, end: ref.node.end });
+      transforms.set(ref.module.file, ranges);
+    }
   };
-  const merge = (values: Layer[], kind: "components" | "fn") => {
-    const result: Record<string, CapabilityMember> = {};
-    for (const value of values)
-      for (const [key, next] of Object.entries(value[kind])) {
-        const previous = result[key];
-        result[key] = previous
-          ? { ...next, overrides: [...(previous.overrides ?? []), previous.source] }
-          : next;
+  const pages: Record<string, PageCapabilities> = {};
+  const registrations: Parameters<typeof createRoutes>[0][number][] = [];
+  if (!app.has("pages")) throw new FormworkError("TOOL_CONTRACT", "Formwork 必须显式注册 pages");
+  for (const input of await array(app.get("pages")!)) {
+    const values = await definitionObject(input, "definePage");
+    reject(values, ["domains", "schema", "modelSchema", "presentation", "returnTo", "openMode", "getValue"]);
+    if (!values.has("router")) return fail(input, "Page 缺少 router");
+    await checkBody(values);
+    const router = String(await literal(values.get("router")!));
+    const model = !values.has("render");
+    if (model && !values.has("getSchema") && !app.has("getSchema"))
+      return fail(input, "模型 Page 必须声明或继承 getSchema");
+    const path = values.has("path") ? String(await literal(values.get("path")!)) : `/${router}${model ? "/:modelId" : ""}`;
+    const windows: PageCapabilities["windows"] = {};
+    const relativeWindows: NonNullable<Parameters<typeof createRoutes>[0][number]["windows"]> = {};
+    if (values.has("windows"))
+      for (const [name, ref] of await object(values.get("windows")!)) {
+        const child = await definitionObject(ref, "defineWindow");
+        reject(child, ["router", "returnTo", "presentation", "getSchema", "schema", "modelSchema", "domains", "windows"]);
+        await checkBody(child);
+        if (!model && !child.has("render")) return fail(ref, "模型 Window 必须属于模型 Page");
+        const relativePath = child.has("path") ? String(await literal(child.get("path")!)) : name;
+        const mode = child.has("openMode") ? await literal(child.get("openMode")!) : "page";
+        if (typeof mode !== "string" || !["page", "modal", "drawer"].includes(mode))
+          return fail(ref, "Window openMode 无效");
+        if (!presenters.includes(mode)) return fail(ref, `缺少 ${mode} Presenter`);
+        relativeWindows[name] = { path: relativePath, openMode: mode as OpenMode, ...(child.has("render") ? { render: true } : {}) };
+        windows[name] = { path: `${path}/${relativePath}`, model: model && !child.has("render"), openMode: mode as OpenMode, capabilities: await layer(child) };
       }
-    return Object.values(result);
-  };
+    registrations.push({ router, path, ...(model ? {} : { render: true }), windows: relativeWindows });
+    pages[router] = { path, model, capabilities: await layer(values), windows };
+  }
+  const routes = createRoutes(registrations);
+  for (const route of routes) if (route.window !== undefined) pages[route.router]!.windows[route.window]!.path = route.path!;
+  const catalog: FormworkAnalysis["catalog"] = { formatVersion: 2, framework, domains, pages, presenters: presenters as OpenMode[] };
   return {
     routes,
-    domainIds: [
-      ...new Set(definitions.flatMap((definition) => Object.keys(definition.domains))),
-    ].sort(),
-    schemaRouters: definitions
-      .filter((definition) => definition.schema)
-      .map((definition) => definition.route.router),
+    catalog,
     files: new Set(modules.keys()),
     transforms,
-    capabilities(id, router) {
-      const values = layers(id, router);
-      const schema = values.findLast((value) => value.schema)?.schema;
-      return {
-        modelId: id,
-        router,
-        components: merge(values, "components"),
-        fn: merge(values, "fn"),
-        schema: schema?.member,
-        pageLoader: values[1]!.getSchema,
-        domainTransform: values[2]?.getSchema,
-        modelContract:
-          "ModelDefinition: { document: { id, title, data, views? }, backend: { storage, relations, permissions, behavior } }; shared drafts require ifRevision; only management user sessions can publish",
-        runtimeChecks: [
-          {
-            modelId: id,
-            router,
-            path: "",
-            code: "RUNTIME_RENDER",
-            message:
-              "局部 Render 的 query schema、组件覆盖、表达式返回值与网络行为在实际挂载中验证",
-          },
-        ],
-      };
-    },
+    capabilities: (document, target) => manifestCapabilities({ ...catalog, appId: "", clientOrigin: "", revision: "" }, document, target),
   };
 }

@@ -1,22 +1,13 @@
 import type { FormworkAnalysis } from "./analyze";
 
-/** 打包静态能力描述，按模型和 router 选择已解析的有效覆盖。 */
+/** 保留声明层，在拿到模型文档后按 Page 与本地 Window 查询有效能力。 */
 export function capabilitiesVirtualModule(analysis: FormworkAnalysis): string {
-  const forRouter = (modelId: string) =>
-    Object.fromEntries(
-      analysis.routes.map(({ router }) => [router, analysis.capabilities(modelId, router)]),
-    );
-  return `import {FormworkError,modelIdPattern} from "formwork/model";
-const defaults=${JSON.stringify(forRouter(""))};
-const domains=${JSON.stringify(Object.fromEntries(analysis.domainIds.map((id) => [id, forRouter(id)])))};
-/** 提供静态路由；只导入此项时可以移除未使用的能力声明。 */
+  return `import {manifestCapabilities} from "formwork/model";
+/** 保存构建分析出的显式注册关系。 */
+export const catalog=${JSON.stringify({ ...analysis.catalog, appId: "", clientOrigin: "", revision: "" })};
+/** 提供 Page 与本地 Window 的结构化路由目录。 */
 export const routes=${JSON.stringify(analysis.routes)};
-/** 查询指定模型和 router 的有效组件、fn 与覆盖元信息。 */
-export function capabilities(modelId,router){
-  if(!modelIdPattern.test(modelId))throw new FormworkError("INVALID_MODEL","无效 modelId");
-  if(!Object.hasOwn(defaults,router))throw new FormworkError("UNKNOWN_ROUTER","未知 router "+router);
-  const entry=domains[modelId]?.[router] ?? defaults[router];
-  return {...entry,modelId,runtimeChecks:entry.runtimeChecks.map(item=>({...item,modelId}))};
-}
-export default {routes,capabilities};`;
+/** 根据实际文档选择 Domain 并合并当前目标的能力。 */
+export function capabilities(document,target){return manifestCapabilities(catalog,document,target);}
+export default {routes,catalog,capabilities};`;
 }

@@ -1,316 +1,198 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, expect, it } from "vitest";
 import { onCleanup } from "solid-js";
-import type { Component } from "solid-js";
 import { render } from "solid-js/web";
-import { defineDomain, defineFormwork, definePage, defineWindow } from "../runtime/define";
-import type { ActionContext, PageContext, PresenterProps } from "../runtime/types";
-import type { ModelDocument } from "../model/types";
 import { createFormworkApi } from "../model/http";
-import type { PageLoadContext } from "../runtime/types";
+import type { ModelDocument } from "../model/types";
+import { defineFormwork, definePage, defineWindow } from "../runtime/define";
+import type { ActionContext, FormworkDefinition, PageContext, PresenterProps, WindowContext } from "../runtime/types";
+import { createMemoryNavigation, FormworkHost } from "./host";
 
-const model: ModelDocument = {
-  id: "orders",
-  title: "订单",
-  data: { type: "object", properties: { name: { type: "string", default: "初始" } } },
-};
-let reads = 0;
-const api = createFormworkApi({
-  url: "/api/v1",
-  fetch: async () => {
-    reads++;
-    return Response.json({
-      schema: model,
-      version: 1,
-      revision: "one",
-    });
-  },
-});
-const loadSchema = async (ctx: PageLoadContext) =>
-  (await ctx.api.runtime.schema(ctx.domain, { signal: ctx.signal })).schema;
-const Page: Component<PresenterProps> = (props) => <section>{props.children}</section>;
-const Modal: Component<PresenterProps> = (props) => (
-  <aside role="dialog" data-direct={props.direct}>
-    {props.children}
-    <button onClick={props.close}>关闭</button>
-  </aside>
-);
-const wait = async (condition: () => unknown) => expect.poll(condition).toBeTruthy();
+const api = createFormworkApi({ url: "/unused" });
+const model: ModelDocument = { id: "orders", title: "订单", data: { type: "object", properties: { name: { type: "string", default: "初始" } } } };
+const Page = (props: PresenterProps) => <section data-mode="page" data-direct={props.direct}>{props.children}{props.window && <button onClick={props.close}>返回</button>}</section>;
+const Modal = (props: PresenterProps) => <aside role="dialog" data-mode="modal">{props.children}<button onClick={props.close}>关闭</button></aside>;
+const Drawer = (props: PresenterProps) => <aside role="dialog" data-mode="drawer">{props.children}<button onClick={props.close}>关闭</button></aside>;
+const presenters = { page: Page, modal: Modal, drawer: Drawer };
 let stop: (() => void) | undefined;
 const original = location.pathname + location.search;
-afterEach(() => {
-  stop?.();
-  stop = undefined;
-  document.body.replaceChildren();
-  history.replaceState({}, "", original);
-});
-const mount = (App: Component, path: string) => {
-  history.replaceState({}, "", path);
-  const element = document.createElement("div");
-  document.body.append(element);
-  stop = render(() => <App />, element);
-  return element;
+afterEach(() => { stop?.(); stop = undefined; document.body.replaceChildren(); history.replaceState({}, "", original); });
+const mount = (app: FormworkDefinition, path: string) => {
+  const element = document.createElement("div"); document.body.append(element);
+  const navigation = createMemoryNavigation(path);
+  stop = render(() => <FormworkHost app={app} navigation={navigation} />, element);
+  return { element, navigation };
 };
-describe("常驻 Host 与完整 Window", () => {
-  it("Page Window 完成恢复原调用者和值，first terminal 胜出", async () => {
-    let caller!: ActionContext;
-    let editor!: PageContext;
-    let mounts = 0;
-    let cleanups = 0;
-    const app = defineFormwork({
-      api,
-      presenters: { page: Page },
-      pages: [
-        definePage({
-          router: "home",
-          render: (ctx) => {
-            caller = ctx;
-            mounts++;
-            onCleanup(() => cleanups++);
-            return <input aria-label="调用者" />;
-          },
-        }),
-      ],
-      windows: [
-        defineWindow({
-          router: "edit",
-          path: "/edit/:domain",
-          returnTo: "home",
-          presentation: "page",
-          getSchema: loadSchema,
-          container: (ctx) => {
-            editor = ctx;
-            return <p>编辑 {String((ctx.scope.value() as { name: string }).name)}</p>;
-          },
-        }),
-      ],
-    });
-    const dom = mount(app.render, "/home");
-    await wait(() => caller);
-    const input = dom.querySelector("input")!;
-    input.value = "保留";
-    const promise = caller.open("edit", { domain: "orders" });
-    await wait(() => editor);
-    expect(input.closest("[hidden]")).toBeTruthy();
-    editor.scope.set("/name", "已编辑");
-    editor.complete("saved");
-    editor.complete("twice");
-    expect(await promise).toEqual({ status: "completed", value: "saved" });
-    await wait(() => location.pathname === "/home");
-    expect(dom.querySelector("input")).toBe(input);
-    expect(input.value).toBe("保留");
-    expect(mounts).toBe(1);
-    expect(cleanups).toBe(0);
-    expect(() => editor.scope.set("/name", "late")).toThrow(/销毁/);
-  });
-  it("直达使用固定 Modal，嵌套 Window 与普通导航均结算取消", async () => {
-    let edit!: ActionContext;
-    let detail!: ActionContext;
-    const app = defineFormwork({
-      api,
-      presenters: { page: Page, modal: Modal, drawer: Modal },
-      pages: [definePage({ router: "home", render: () => <p>首页</p> })],
-      windows: [
-        defineWindow({
-          router: "edit",
-          path: "/edit/:domain",
-          presentation: "modal",
-          returnTo: "home",
-          render: (ctx) => {
-            edit = ctx;
-            return <p>普通 Window</p>;
-          },
-        }),
-        defineWindow({
-          router: "detail",
-          path: "/detail/:domain",
-          presentation: "drawer",
-          returnTo: "home",
-          render: (ctx) => {
-            detail = ctx;
-            return <p>子 Window</p>;
-          },
-        }),
-      ],
-    });
-    reads = 0;
-    const dom = mount(app.render, "/edit/orders");
-    await wait(() => edit);
-    expect(dom.querySelector('[role="dialog"]')?.getAttribute("data-direct")).toBe("true");
-    expect(reads).toBe(0);
-    const nested = edit.open("detail", { domain: "orders" });
-    await wait(() => detail);
-    detail.navigate("home");
-    expect(await nested).toEqual({ status: "cancelled" });
-    await wait(() => location.pathname === "/home");
-    expect(edit.signal.aborted).toBe(true);
-    expect(detail.signal.aborted).toBe(true);
-  });
-  it("浏览器 back 取消、forward 创建新 Instance，调用者仍存活", async () => {
-    let caller!: ActionContext;
-    let windowCtx!: ActionContext;
-    let mounts = 0;
-    const app = defineFormwork({
-      api,
-      presenters: { page: Page, modal: Modal },
-      pages: [
-        definePage({
-          router: "home",
-          render: (ctx) => {
-            caller = ctx;
-            return <p>首页</p>;
-          },
-        }),
-      ],
-      windows: [
-        defineWindow({
-          router: "add",
-          path: "/add/:domain",
-          presentation: "modal",
-          returnTo: "home",
-          render: (ctx) => {
-            mounts++;
-            windowCtx = ctx;
-            return <p>新建</p>;
-          },
-        }),
-      ],
-    });
-    mount(app.render, "/home");
-    await wait(() => caller);
-    const outcome = caller.open("add", { domain: "orders" });
-    await wait(() => windowCtx);
-    const previous = windowCtx;
-    history.back();
-    expect(await outcome).toEqual({ status: "cancelled" });
-    await wait(() => location.pathname === "/home");
-    expect(previous.signal.aborted).toBe(true);
-    history.forward();
-    await wait(() => mounts === 2);
-    expect(windowCtx).not.toBe(previous);
-    expect(caller.signal.aborted).toBe(false);
-  });
-  it("Domain 失败显示错误和重试，不静默回退；有效覆盖先于挂载", async () => {
-    let attempts = 0;
-    const domain = defineDomain({ container: (ctx) => <p>覆盖 {ctx.schema.title}</p> });
-    const app = defineFormwork({
-      api,
-      presenters: { page: Page },
-      container: () => <p>默认容器</p>,
-      pages: [
-        definePage({ router: "home", render: () => null }),
-        definePage({
-          router: "list",
-          path: "/list/:domain",
-          getSchema: loadSchema,
-          domains: {
-            orders: async () => {
-              if (++attempts === 1) throw new Error("Domain 暂不可用");
-              return { default: domain };
-            },
-          },
-        }),
-      ],
-    });
-    const dom = mount(app.render, "/list/orders");
-    await wait(() => dom.textContent?.includes("Domain 暂不可用"));
-    expect(dom.textContent).not.toContain("默认容器");
-    dom.querySelector("button")!.click();
-    await wait(() => dom.textContent?.includes("覆盖 订单"));
-    expect(attempts).toBe(2);
-  });
-  it("同一 Window 双开值与 Promise 独立，提前完成一个不销毁另一个", async () => {
-    let caller!: ActionContext;
-    const windows: PageContext[] = [];
-    const app = defineFormwork({
-      api,
-      presenters: { page: Page, modal: Modal },
-      pages: [
-        definePage({
-          router: "home",
-          render: (ctx) => {
-            caller = ctx;
-            return <p>首页</p>;
-          },
-        }),
-      ],
-      windows: [
-        defineWindow({
-          router: "edit",
-          path: "/edit/:domain",
-          presentation: "modal",
-          returnTo: "home",
-          getSchema: loadSchema,
-          container: (ctx) => {
-            windows.push(ctx);
-            return <p>{String((ctx.scope.value() as { name: string }).name)}</p>;
-          },
-        }),
-      ],
-    });
-    mount(app.render, "/home");
-    await wait(() => caller);
-    const first = caller.open("edit", { domain: "orders" });
-    await wait(() => windows.length === 1 && location.pathname === "/edit/orders");
-    const second = caller.open("edit", { domain: "orders" });
-    await wait(() => windows.length === 2);
-    windows[0]!.scope.set("/name", "第一份");
-    expect(windows[1]!.scope.value()).toEqual({ name: "初始" });
-    windows[0]!.complete(1);
-    expect(await first).toEqual({ status: "completed", value: 1 });
-    expect(windows[1]!.signal.aborted).toBe(false);
-    windows[1]!.complete(2);
-    expect(await second).toEqual({ status: "completed", value: 2 });
-    await wait(() => location.pathname === "/home");
-    expect(caller.signal.aborted).toBe(false);
-  });
-  it("受管清理异常不阻止其余 scope 禁写或 Window Promise 结算", async () => {
-    let caller!: ActionContext;
-    let editor!: PageContext;
-    const app = defineFormwork({
-      api,
-      presenters: { page: Page, modal: Modal },
-      pages: [
-        definePage({
-          router: "home",
-          render: (ctx) => {
-            caller = ctx;
-            return <p>首页</p>;
-          },
-        }),
-      ],
-      windows: [
-        defineWindow({
-          router: "edit",
-          path: "/edit/:domain",
-          presentation: "modal",
-          returnTo: "home",
-          getSchema: loadSchema,
-          container: (ctx) => {
-            editor = ctx;
-            const one = ctx.createScope();
-            const two = ctx.createScope();
-            onCleanup(() => {
-              throw new Error("cleanup test");
-            });
-            return (
-              <p>
-                {JSON.stringify(one.value())}
-                {JSON.stringify(two.value())}
-                {JSON.stringify(ctx.scope.value())}
-              </p>
-            );
-          },
-        }),
-      ],
-    });
-    mount(app.render, "/home");
-    await wait(() => caller);
-    const outcome = caller.open("edit", { domain: "orders" });
-    await wait(() => editor);
-    editor.navigate("home");
-    expect(await outcome).toEqual({ status: "cancelled" });
-    expect(editor.signal.aborted).toBe(true);
-    expect(() => editor.scope.set("/name", "late")).toThrow(/销毁/);
-    await wait(() => location.pathname === "/home");
-  });
+
+for (const mode of ["page", "modal", "drawer"] as const) it(`schema 配置 ${mode} 覆盖 Window 默认方式，完成恢复 Page 状态且仅结算一次`, async () => {
+  let caller!: PageContext;
+  let editor!: WindowContext;
+  let mounts = 0;
+  const app: FormworkDefinition = {
+    api, presenters,
+    getSchema: () => ({ ...model, pages: { list: { windows: { edit: { openMode: mode } } } } }),
+    pages: [definePage({
+      router: "list", container: (ctx) => { caller = ctx; mounts++; return <input aria-label="筛选" />; },
+      windows: { edit: defineWindow({ openMode: "modal", path: "edit/:id", container: (ctx) => { editor = ctx; return <p>编辑</p>; } }) },
+    })],
+  };
+  const { element, navigation } = mount(app, "/list/orders");
+  await expect.poll(() => caller).toBeTruthy();
+  const input = element.querySelector("input")!; input.value = "保留";
+  const outcome = caller.open("edit", { params: { id: "a1" } });
+  await expect.poll(() => editor).toBeTruthy();
+  expect(element.querySelector('[data-formwork-window="edit"]')?.querySelector(`[data-mode="${mode}"]`)).toBeTruthy();
+  expect(!!input.closest("[hidden]")).toBe(mode === "page");
+  editor.scope.set("/name", "独立编辑");
+  editor.complete("saved"); editor.complete("twice");
+  expect(await outcome).toEqual({ status: "completed", value: "saved" });
+  await expect.poll(() => navigation.location().pathname).toBe("/list/orders");
+  expect(element.querySelector("input")).toBe(input); expect(input.value).toBe("保留"); expect(mounts).toBe(1);
+  expect(() => editor.scope.set("/name", "迟到修改")).toThrow(/销毁/u);
+});
+
+it("直达和刷新 Window 使用 Page Presenter，加载 URL 记录，关闭返回所属 Page", async () => {
+  let editor!: WindowContext;
+  let pageMounts = 0;
+  const app: FormworkDefinition = {
+    api, presenters, getSchema: () => model,
+    pages: [definePage({
+      router: "list", container: () => { pageMounts++; return <p>列表</p>; },
+      windows: { detail: defineWindow({
+        path: "detail/:id", openMode: "drawer", readOnly: true,
+        getValue: (ctx) => { expect(ctx.initialValue).toBeUndefined(); expect(ctx.params.id).toBe("a1"); return { name: "完整记录" }; },
+        container: (ctx) => { editor = ctx; return <p>{JSON.stringify(ctx.scope.value())}</p>; },
+      }) },
+    })],
+  };
+  const { element, navigation } = mount(app, "/list/orders/detail/a1");
+  await expect.poll(() => editor).toBeTruthy();
+  expect(element.querySelector('[data-mode="page"][data-direct="true"]')).toBeTruthy();
+  expect(element.querySelector('[role="dialog"]')).toBeNull(); expect(pageMounts).toBe(0);
+  expect(() => editor.scope.set("/name", "修改")).toThrow(/只读/u);
+  element.querySelector("button")!.click();
+  await expect.poll(() => navigation.location().pathname).toBe("/list/orders");
+  await expect.poll(() => element.textContent).toBe("列表");
+});
+
+it("同名 Window 在两个 Page 本地解析，参数继承不可改写，取消返回各自 Page", async () => {
+  let page!: PageContext;
+  let child!: WindowContext;
+  const app: FormworkDefinition = {
+    api, presenters, getSchema: () => model,
+    pages: ["list", "tree-list"].map((router) => definePage({
+      router, container: (ctx) => { page = ctx; return <p>{router}</p>; },
+      windows: { detail: defineWindow({ path: "detail/:id", openMode: "drawer", container: (ctx) => { child = ctx; return <p>{ctx.router}:{ctx.window}</p>; } }) },
+    })),
+  };
+  const { element, navigation } = mount(app, "/tree-list/orders");
+  await expect.poll(() => page).toBeTruthy();
+  await expect(page.open("missing")).rejects.toMatchObject({ code: "UNKNOWN_WINDOW" });
+  await expect(page.open("detail", { params: { modelId: "cms", id: "a1" } })).rejects.toMatchObject({ code: "INVALID_PARAMS" });
+  const outcome = page.open("detail", { params: { id: "a1" } });
+  await expect.poll(() => child).toBeTruthy();
+  expect(navigation.location().pathname).toBe("/tree-list/orders/detail/a1");
+  expect(child.router).toBe("tree-list"); expect(child.window).toBe("detail");
+  element.querySelector('[role="dialog"] button')!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  expect(await outcome).toEqual({ status: "cancelled" });
+  expect(navigation.location().pathname).toBe("/tree-list/orders");
+});
+
+it("浏览器 back 取消，forward 在仍存活的调用者下重建 Instance", async () => {
+  let caller!: ActionContext;
+  let child!: ActionContext;
+  let mounts = 0;
+  const definition: FormworkDefinition = {
+    api, presenters, pages: [definePage({ router: "home", render: (ctx) => { caller = ctx; return <p>首页</p>; },
+      windows: { add: defineWindow({ openMode: "modal", render: (ctx) => { mounts++; child = ctx; return <p>新建</p>; } }) },
+    })],
+  };
+  const app = defineFormwork(definition);
+  const element = document.createElement("div"); document.body.append(element);
+  history.replaceState({}, "", "/home"); stop = render(() => <app.render />, element);
+  await expect.poll(() => caller).toBeTruthy();
+  const outcome = caller.open("add");
+  await expect.poll(() => child).toBeTruthy();
+  const previous = child;
+  history.back();
+  expect(await outcome).toEqual({ status: "cancelled" });
+  await expect.poll(() => location.pathname).toBe("/home");
+  expect(previous.signal.aborted).toBe(true);
+  history.forward();
+  await expect.poll(() => mounts).toBe(2);
+  expect(child).not.toBe(previous); expect(caller.signal.aborted).toBe(false);
+  expect(element.querySelector('[role="dialog"]')).toBeTruthy();
+});
+
+it("加载期间后退只返回一次取消，迟到值不挂载，嵌套导航取消全部调用", async () => {
+  let page!: PageContext;
+  let loading!: ActionContext;
+  let finish!: (value: { name: string }) => void;
+  let child!: WindowContext;
+  let mounts = 0;
+  const app: FormworkDefinition = {
+    api, presenters, getSchema: () => model,
+    pages: [definePage({ router: "home", render: () => <p>首页</p> }), definePage({
+      router: "list", container: (ctx) => { page = ctx; return <p>列表</p>; },
+      windows: {
+        edit: defineWindow({ openMode: "modal", getValue: (ctx) => { loading = ctx; return new Promise((done) => { finish = done; }); }, container: () => { mounts++; return <p>迟到</p>; } }),
+        detail: defineWindow({ openMode: "drawer", container: (ctx) => { child = ctx; return <p>详情</p>; } }),
+      },
+    })],
+  };
+  const { navigation, element } = mount(app, "/list/orders");
+  await expect.poll(() => page).toBeTruthy();
+  let settlements = 0;
+  const result = page.open("edit").then((outcome) => { settlements++; return outcome; });
+  await expect.poll(() => loading).toBeTruthy();
+  navigation.navigate(-1);
+  expect(await result).toEqual({ status: "cancelled" });
+  finish({ name: "迟到" }); await Promise.resolve(); await Promise.resolve();
+  expect(loading.signal.aborted).toBe(true); expect(mounts).toBe(0); expect(settlements).toBe(1);
+  const one = page.open("detail");
+  await expect.poll(() => child).toBeTruthy();
+  const first = child;
+  const two = child.open("detail");
+  await expect.poll(() => child !== first).toBe(true);
+  child.navigate("home");
+  expect(await one).toEqual({ status: "cancelled" }); expect(await two).toEqual({ status: "cancelled" });
+  await expect.poll(() => element.textContent).toBe("首页");
+});
+
+it("同一 Window 双开值和 Promise 独立，完成较早调用保留另一调用", async () => {
+  let page!: PageContext;
+  const windows: WindowContext[] = [];
+  const app: FormworkDefinition = {
+    api, presenters, getSchema: () => model,
+    pages: [definePage({
+      router: "list", container: (ctx) => { page = ctx; return <p>列表</p>; },
+      windows: { edit: defineWindow({ openMode: "modal", container: (ctx) => { windows.push(ctx); return <p>{JSON.stringify(ctx.scope.value())}</p>; } }) },
+    })],
+  };
+  const { navigation } = mount(app, "/list/orders");
+  await expect.poll(() => page).toBeTruthy();
+  const one = page.open("edit", { initialValue: { name: "第一份" } });
+  await expect.poll(() => windows.length).toBe(1);
+  const two = page.open("edit");
+  await expect.poll(() => windows.length).toBe(2);
+  windows[0]!.scope.set("/name", "改动"); expect(windows[1]!.scope.value()).toEqual({ name: "初始" });
+  windows[0]!.complete(1); expect(await one).toEqual({ status: "completed", value: 1 });
+  expect(windows[1]!.signal.aborted).toBe(false);
+  windows[1]!.complete(2); expect(await two).toEqual({ status: "completed", value: 2 });
+  expect(navigation.location().pathname).toBe("/list/orders");
+});
+
+it("清理异常仍 abort 其他 scope 并结算 Window", async () => {
+  let page!: PageContext; let child!: WindowContext;
+  const app: FormworkDefinition = {
+    api, presenters, getSchema: () => model,
+    pages: [definePage({ router: "list", container: (ctx) => { page = ctx; return null; }, windows: {
+      edit: defineWindow({ container: (ctx) => { child = ctx; ctx.createScope(); onCleanup(() => { throw new Error("cleanup test"); }); return <p>{JSON.stringify(ctx.scope.value())}</p>; } }),
+    } })],
+  };
+  const { navigation } = mount(app, "/list/orders");
+  await expect.poll(() => page).toBeTruthy();
+  const result = page.open("edit"); await expect.poll(() => child).toBeTruthy();
+  navigation.navigate(-1);
+  expect(await result).toEqual({ status: "cancelled" }); expect(child.signal.aborted).toBe(true);
+  expect(() => child.scope.set("/name", "迟到")).toThrow(/销毁/u);
 });

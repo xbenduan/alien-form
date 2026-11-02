@@ -67,7 +67,15 @@ function predicates(model: StoredModel, actor: Actor, access: Access, query: Rec
   const filters = { ...query.filters };
   if (query.parentId !== undefined) {
     const relation = model.definition.backend.relations.find(
-      (item) => item.kind === "many-to-one" && item.targetModel === model.head.id,
+      (item) =>
+        item.kind === "many-to-one" &&
+        item.targetModel === model.head.id &&
+        (!model.definition.document.tree ||
+          model.definition.backend.storage.bindings.some(
+            (binding) =>
+              binding.id === item.fieldId &&
+              binding.path === model.definition.document.tree!.parentField,
+          )),
     );
     if (!relation) invalid("模型未声明父级关系");
     const binding = model.definition.backend.storage.bindings.find(
@@ -207,6 +215,32 @@ export class RecordService {
             .first())
         )
           invalid(`关系字段 ${key} 引用了不存在或不可见的目标`);
+        assertions.push({ sql, values });
+      }
+      if (
+        model.definition.document.tree?.parentField === binding.path &&
+        relation.targetModel === model.head.id &&
+        relation.targetFieldId === "id" &&
+        targets.length
+      ) {
+        const parentExpression = bindingExpression(binding);
+        const recursiveParent = binding.column
+          ? `r.${quote(binding.column)}`
+          : parentExpression.replace('"data_content"', 'r."data_content"');
+        const sql = `NOT EXISTS(WITH RECURSIVE ancestors(id, parent_id) AS (
+          SELECT id, ${parentExpression} FROM ${quote(model.manifest.table)} WHERE id = ?
+          UNION SELECT r.id, ${recursiveParent} FROM ${quote(model.manifest.table)} r
+          JOIN ancestors a ON r.id = a.parent_id) SELECT 1 FROM ancestors WHERE id = ?)`;
+        const values = [String(targets[0]), String(record.id)];
+        if (
+          targets[0] === record.id ||
+          !(await this.db
+            .prepare(`SELECT 1 WHERE ${sql}`)
+            .bind(...values)
+            .first())
+        )
+          invalid("树父级形成循环");
+        // 与最终写入同一 batch 再检查，避免两个合法快照并发连成父级环。
         assertions.push({ sql, values });
       }
       assertions.push({
@@ -461,7 +495,12 @@ export class RecordService {
     const model = await this.model(id),
       access = requireAccess(model, this.actor, "read");
     const relation = model.definition.backend.relations.find(
-      (item) => item.kind === "many-to-one" && item.targetModel === id,
+      (item) =>
+        item.kind === "many-to-one" &&
+        item.targetModel === id &&
+        model.definition.backend.storage.bindings.some(
+          (binding) => binding.id === item.fieldId && bindingKey(binding) === body.parentField,
+        ),
     );
     const binding =
       relation &&

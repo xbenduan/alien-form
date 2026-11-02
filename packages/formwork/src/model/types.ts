@@ -44,10 +44,9 @@ export type DataSchema = SchemaMetadata &
     | { type: "array"; items: DataSchema; minItems?: number; maxItems?: number }
     | { $ref: string }
   );
-/** 描述组件树，field 使用相对当前 object 或 item 根的 JSON Pointer。 */
-export type ViewNode = {
-  component: string;
-  field?: string;
+/** 为字段声明组件与联动，省略 component 时根据值类型选择。 */
+export type FieldPresentation = {
+  component?: string;
   props?: Record<string, JsonValue>;
   bindings?: {
     value?: string;
@@ -55,14 +54,40 @@ export type ViewNode = {
     disabled?: boolean | string;
     visible?: boolean | string;
   };
+};
+/** 集中描述字段在表单、表格和筛选中的稀疏覆盖，false 表示不参与该场景。 */
+export type FieldDefinition = {
+  order?: number;
+  form?: FieldPresentation;
+  table?: false | (FieldPresentation & { title?: string });
+  filter?: false | FieldPresentation;
+};
+/** 描述组件树，field 使用相对当前 object 或 item 根的 JSON Pointer。 */
+export type ViewNode = FieldPresentation & {
+  field?: string;
   children?: readonly ViewNode[];
 };
+/** 描述记录的父级与名称字段，不包含页面布局；两个 Pointer 均指向根字段。 */
+export type TreeDefinition = { parentField: string; labelField: string };
+/** 选择完整页面、抽屉或弹窗来承载同一份 Window 内容。 */
+export type OpenMode = "page" | "drawer" | "modal";
+/** 配置当前 Page 已注册 Window 的打开方式。 */
+export type PagePresentation = {
+  windows?: Record<string, { openMode?: OpenMode }>;
+};
+/** 以 Page 与本地 Window 名定位一个注册目标。 */
+export type RouteTarget = { router: string; window?: string };
 /** 保存持久化业务描述；发布版本和权限由 API envelope 承载。 */
 export type ModelDocument = {
   id: string;
+  domain?: string;
   title: string;
   data: ObjectSchema & SchemaMetadata & { $defs?: Record<string, DataSchema> };
+  /** 使用字段 Pointer 索引展示配置，数组项使用星号通配符。 */
+  fields?: Record<string, FieldDefinition>;
+  tree?: TreeDefinition;
   views?: Record<string, ViewNode>;
+  pages?: Record<string, PagePresentation>;
 };
 /** 描述字段的稳定存储身份；path 为根字段 Pointer，停用字段保留物理数据。 */
 export type StorageBinding = {
@@ -151,8 +176,19 @@ export type RuntimeView = Omit<ViewNode, "props" | "children"> & {
   props?: Record<string, unknown>;
   children?: readonly RuntimeView[];
 };
+/** 允许 Domain 在字段展示配置中保留代码 props。 */
+export type RuntimeFieldPresentation = Omit<FieldPresentation, "props"> & {
+  props?: Record<string, unknown>;
+};
+/** 保存 Domain 加工后的字段展示覆盖。 */
+export type RuntimeFieldDefinition = Omit<FieldDefinition, "form" | "table" | "filter"> & {
+  form?: RuntimeFieldPresentation;
+  table?: false | (RuntimeFieldPresentation & { title?: string });
+  filter?: false | RuntimeFieldPresentation;
+};
 /** 表示 Domain 加工后实际渲染的 schema，data 仍使用纯 JSON 契约。 */
-export type RuntimeSchema = Omit<ModelDocument, "views"> & {
+export type RuntimeSchema = Omit<ModelDocument, "views" | "fields"> & {
+  fields?: Record<string, RuntimeFieldDefinition>;
   views?: Record<string, RuntimeView>;
 };
 /** 允许取消 HTTP 请求。 */
@@ -165,6 +201,7 @@ export type ValidationIssue = { path: string; code: string; message: string };
 export type Diagnostic = ValidationIssue & {
   modelId?: string;
   router?: string;
+  window?: string;
   source?: { file: string; line: number; column: number };
 };
 /** 汇总可确定错误与需要浏览器实际执行的行为。 */
@@ -184,28 +221,49 @@ export type CapabilityMember = {
 export type EffectiveCapabilities = {
   modelId: string;
   router: string;
+  window?: string;
+  domain?: string;
   components: readonly CapabilityMember[];
   fn: readonly CapabilityMember[];
-  schema?: CapabilityMember;
+  modelSchema?: CapabilityMember;
   pageLoader?: CapabilityMember;
   domainTransform?: CapabilityMember;
+  valueLoader?: CapabilityMember;
   modelContract: string;
   runtimeChecks: readonly Diagnostic[];
 };
-/** 保存数据库中的应用代码能力清单，不含模型快照。 */
+/** 保存一层代码能力和需要运行时执行的检查，不含模型快照。 */
+export type CapabilityLayer = {
+  components: readonly CapabilityMember[];
+  fn: readonly CapabilityMember[];
+  modelSchema?: CapabilityMember;
+  getSchema?: CapabilityMember;
+  transformSchema?: CapabilityMember;
+  getValue?: CapabilityMember;
+  runtimeChecks: readonly Diagnostic[];
+};
+/** 保存注册 Page 及本地 Window 的静态能力。 */
+export type PageCapabilities = {
+  path: string;
+  model: boolean;
+  capabilities: CapabilityLayer;
+  windows: Record<string, {
+    path: string;
+    model: boolean;
+    openMode: OpenMode;
+    capabilities: CapabilityLayer;
+  }>;
+};
+/** 保存声明层和注册归属，在读取模型文档后选择实际 Domain。 */
 export type CapabilityManifest = {
+  formatVersion: 2;
   appId: string;
   revision: string;
   clientOrigin: string;
-  routes: readonly {
-    router: string;
-    path?: string;
-    presentation?: "page" | "modal" | "drawer";
-    returnTo?: string;
-  }[];
-  schemaRouters: readonly string[];
-  defaultCapabilities: Record<string, EffectiveCapabilities>;
-  domainCapabilities: Record<string, Record<string, EffectiveCapabilities>>;
+  presenters: readonly OpenMode[];
+  framework: CapabilityLayer;
+  domains: Record<string, CapabilityLayer>;
+  pages: Record<string, PageCapabilities>;
 };
 /** 返回可信身份及其模型创建能力。 */
 export type ActorSummary = {

@@ -4,20 +4,20 @@ import {
   escapePointer,
   schemaType,
   resolveSchema,
-  viewIssues,
-  expressionBody,
+  pointerSegments,
+  FormworkError,
 } from "formwork/model";
 import type {
   CapabilityManifest,
   DraftDefinition,
   ModelDefinition,
   ValidationReport,
-  JsonValue,
+  RouteTarget,
 } from "formwork/model";
 import type { StoredModel } from "../contracts";
 import { planStorage, bindingKey } from "../adapters/d1/compiler/storage";
 import { readPublished } from "../adapters/d1/repositories/models";
-import { effectiveCapabilities, readManifest } from "./capabilities";
+import { capabilityReport, readManifest } from "./capabilities";
 import { ServiceError } from "../http/errors";
 
 /** 列出可由定义引用的可信 Worker 规则，上传的源码永远不能进入注册表。 */
@@ -37,7 +37,7 @@ export async function validateDefinition(
   db: D1Database,
   draft: DraftDefinition,
   previous?: StoredModel,
-  router?: string,
+  target?: RouteTarget,
 ): Promise<{
   report: ValidationReport;
   definition?: ModelDefinition;
@@ -137,7 +137,10 @@ export async function validateDefinition(
     )
       add(path, "many-to-many 的 items 必须是 string");
     try {
-      const target = await readPublished(db, relation.targetModel);
+      const target =
+        relation.targetModel === document.id
+          ? { definition }
+          : await readPublished(db, relation.targetModel);
       const binding = target.definition.backend.storage.bindings.find(
         (item) => item.id === relation.targetFieldId,
       );
@@ -158,6 +161,20 @@ export async function validateDefinition(
     } catch {
       add(path, `目标模型 ${relation.targetModel} 尚未发布`);
     }
+  }
+  if (document.tree) {
+    const parentKey = pointerSegments(document.tree.parentField)[0]!;
+    const parent = backend.storage.bindings.find((binding) => bindingKey(binding) === parentKey);
+    if (
+      !backend.relations.some(
+        (relation) =>
+          relation.fieldId === parent?.id &&
+          relation.kind === "many-to-one" &&
+          relation.targetModel === document.id &&
+          relation.targetFieldId === "id",
+      )
+    )
+      add("/document/tree/parentField", "tree 父级字段必须声明指向当前模型 id 的 many-to-one 关系");
   }
   for (const name of backend.behavior.rules) {
     if (!behaviorRules.has(name) || !document.id.startsWith("system-"))
@@ -201,55 +218,14 @@ export async function validateDefinition(
   let manifest: CapabilityManifest | undefined;
   try {
     manifest = await readManifest(db);
-    const routers = router ? [router] : manifest.schemaRouters;
-    for (const name of routers) {
-      const capabilities = effectiveCapabilities(manifest, document.id, name);
-      if (!manifest.schemaRouters.includes(name)) {
-        add("/document/views", `router ${name} 不加载 schema`);
-        continue;
-      }
-      const view = document.views?.[name];
-      if (view)
-        errors.push(
-          ...viewIssues(
-            view,
-            document.data,
-            capabilities.components.map((component) => component.name),
-          ).map((issue) => ({
-            ...issue,
-            path: `/document/views/${escapePointer(name)}${issue.path}`,
-            router: name,
-          })),
-        );
-      const visit = (value: JsonValue, path: string) => {
-        const body = expressionBody(value);
-        if (body) {
-          for (const match of body.matchAll(/\bfn\.([A-Za-z_$][\w$]*)/gu))
-            if (!capabilities.fn.some((fn) => fn.name === match[1]))
-              add(path, `未知 fn ${match[1]}`, "UNKNOWN_FN");
-          runtimeChecks.push({
-            path,
-            code: "EXPRESSION_RUNTIME",
-            message: "表达式行为需要在浏览器预览执行",
-            router: name,
-          });
-        }
-        if (Array.isArray(value)) value.forEach((child, index) => visit(child, `${path}/${index}`));
-        else if (value && typeof value === "object")
-          for (const [key, child] of Object.entries(value))
-            visit(child, `${path}/${escapePointer(key)}`);
-      };
-      if (view) visit(view as unknown as JsonValue, `/document/views/${escapePointer(name)}`);
-      runtimeChecks.push(...capabilities.runtimeChecks);
-    }
-    for (const name of Object.keys(document.views ?? {}))
-      if (!manifest.schemaRouters.includes(name))
-        add(`/document/views/${escapePointer(name)}`, "View router 不存在或不加载 schema");
+    const report = capabilityReport(manifest, document, target);
+    errors.push(...report.errors);
+    runtimeChecks.push(...report.runtimeChecks);
   } catch (error) {
     add(
       "/document/views",
       error instanceof Error ? error.message : String(error),
-      "CAPABILITIES_UNAVAILABLE",
+      error instanceof FormworkError ? error.code : "CAPABILITIES_UNAVAILABLE",
     );
   }
   try {

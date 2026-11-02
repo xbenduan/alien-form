@@ -16,6 +16,7 @@ const schema: DataSchema = {
   },
 };
 const ctx: ActionContext = {
+  router: "list",
   api: {} as ActionContext["api"],
   params: {},
   fn: {},

@@ -28,8 +28,9 @@ const saveSchema = z
   .strict();
 const publishSchema = z.object({ ifRevision: z.string().min(1) }).strict();
 const validateSchema = z
-  .object({ definition: z.unknown(), router: z.string().optional() })
-  .strict();
+  .object({ definition: z.unknown(), router: z.string().min(1).optional(), window: z.string().min(1).optional() })
+  .strict()
+  .refine((input) => !input.window || !!input.router, { message: "window 需要所属 router", path: ["router"] });
 
 /** 创建唯一 Worker HTTP 应用，统一 Bearer 身份、DTO、CORS 和错误编码。 */
 export function createApp() {
@@ -144,7 +145,8 @@ export function createApp() {
   });
   app.post("/api/v1/models/:modelId/validate", async (c) => {
     const body = validateSchema.parse(await c.req.json());
-    return c.json(await models(c).validate(c.req.param("modelId"), body.definition, body.router));
+    return c.json(await models(c).validate(c.req.param("modelId"), body.definition,
+      body.router === undefined ? undefined : { router: body.router, window: body.window }));
   });
   app.post("/api/v1/models/:modelId/publish", async (c) => {
     const body = publishSchema.parse(await c.req.json());
@@ -172,7 +174,7 @@ export function createApp() {
       }
     }
     return c.json(
-      await models(c).preview(c.req.param("modelId"), router, params, c.req.query("revision")),
+      await models(c).preview(c.req.param("modelId"), { router, window: c.req.query("window") }, params, c.req.query("revision")),
     );
   });
   app.get("/api/v1/models/:modelId/draft-schema", async (c) =>
@@ -190,7 +192,8 @@ export function createApp() {
     c.json(
       await models(c).capabilities(
         z.string().min(1).parse(c.req.query("modelId")),
-        z.string().min(1).parse(c.req.query("router")),
+        { router: z.string().min(1).parse(c.req.query("router")), window: c.req.query("window") },
+        c.req.query("domain"),
       ),
     ),
   );

@@ -134,6 +134,19 @@ export function projectSchema(model: StoredModel, actor: Actor): ModelDocument {
   schema.data.required = original.data.required?.filter((key) => fields.has(key));
   delete schema.data.$defs;
   const hidden = new Set(Object.keys(original.data.properties).filter((key) => !fields.has(key)));
+  if (schema.fields)
+    schema.fields = Object.fromEntries(
+      Object.entries(schema.fields).filter(
+        ([pointer]) => !hidden.has(pointerSegments(pointer)[0] ?? ""),
+      ),
+    );
+  if (
+    schema.tree &&
+    [schema.tree.parentField, schema.tree.labelField].some((pointer) =>
+      hidden.has(pointerSegments(pointer)[0]!),
+    )
+  )
+    delete schema.tree;
   const projectView = (view: ViewNode): ViewNode | undefined => {
     const parts = pointerSegments(view.field ?? "");
     if (parts.some((part) => hidden.has(part))) return undefined;

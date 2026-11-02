@@ -1,10 +1,11 @@
-import { assertDraftDefinition, modelIdPattern, routePath } from "formwork/model";
+import { assertDraftDefinition, modelIdPattern, routePath, routeKey, manifestRoutes, schemaTargets } from "formwork/model";
 import type {
   DraftDefinition,
   ManagedEntry,
   ManagedSnapshot,
   PublishedSnapshot,
   PreviewSnapshot,
+  RouteTarget,
 } from "formwork/model";
 import type { Actor, ModelHead, StoredModel } from "../contracts";
 import {
@@ -130,12 +131,12 @@ export class ModelService {
           (!!published && accessFor(published, this.actor, "publish").allowed)),
     };
   }
-  async validate(id: string, input: unknown, router?: string) {
+  async validate(id: string, input: unknown, target?: RouteTarget) {
     assertModelId(id);
     const head = await readHead(this.db, id);
     const previous = head ? (await this.manageable(id)).published : undefined;
     if (!head && (!this.actor.canCreateModel || id.startsWith("system-"))) forbidden();
-    return (await validateDefinition(this.db, assertDraftDefinition(input, id), previous, router))
+    return (await validateDefinition(this.db, assertDraftDefinition(input, id), previous, target))
       .report;
   }
   async save(id: string, input: unknown, ifRevision: string | null): Promise<ManagedSnapshot> {
@@ -295,19 +296,23 @@ export class ModelService {
       definition: JSON.parse(row.definition_json),
     }));
   }
-  async preview(id: string, router: string, params: Record<string, string>, expected?: string) {
+  async preview(id: string, target: RouteTarget, params: Record<string, string>, expected?: string) {
     const snapshot = await this.read(id);
     if (expected && snapshot.revision !== expected) return revisionConflict(this.db, id);
     const manifest = await readManifest(this.db);
-    effectiveCapabilities(manifest, id, router);
-    if (!manifest.schemaRouters.includes(router)) invalid("此 router 不加载 schema");
-    routePath(manifest.routes, router, { ...params, domain: id });
+    const domain = snapshot.definition.document.domain;
+    if (domain !== undefined && typeof domain !== "string") invalid("document.domain 必须是字符串");
+    effectiveCapabilities(manifest, { id, domain }, target);
+    if (!schemaTargets(manifest).some((item) => routeKey(item) === routeKey(target))) invalid("此目标不加载 schema");
+    if (params.modelId !== undefined && params.modelId !== id) invalid("预览参数不能修改 modelId");
+    routePath(manifestRoutes(manifest), target, { ...params, modelId: id });
     const url = new URL(`/model-preview/${encodeURIComponent(id)}`, manifest.clientOrigin);
-    url.searchParams.set("router", router);
+    url.searchParams.set("router", target.router);
+    if (target.window !== undefined) url.searchParams.set("window", target.window);
     url.searchParams.set("revision", snapshot.revision);
     for (const [key, value] of Object.entries(params))
-      if (!["router", "revision", "domain"].includes(key)) url.searchParams.set(key, value);
-    return { modelId: id, router, revision: snapshot.revision, url: url.href };
+      if (!["router", "window", "revision", "modelId", "domain"].includes(key)) url.searchParams.set(key, value);
+    return { modelId: id, ...target, revision: snapshot.revision, url: url.href };
   }
   async draftSchema(id: string, revision: string): Promise<PreviewSnapshot> {
     requireUser(this.actor);
@@ -337,17 +342,24 @@ export class ModelService {
       revision: model.revision,
     };
   }
-  async capabilities(id: string, router: string) {
+  async capabilities(id: string, target: RouteTarget, candidateDomain?: string) {
     assertModelId(id);
     const head = await readHead(this.db, id);
+    let document: { id: string; domain?: string } = { id };
     if (head) {
       try {
         await this.manageable(id);
+        const snapshot = await this.read(id);
+        const domain = snapshot.definition.document.domain;
+        if (domain !== undefined && typeof domain !== "string") invalid("document.domain 必须是字符串");
+        document = { id, domain };
       } catch (error) {
+        if (!(error instanceof ServiceError && error.status === 403)) throw error;
         if (!head.active_version) throw error;
-        projectSchema(await readPublished(this.db, id), this.actor);
+        document = projectSchema(await readPublished(this.db, id), this.actor);
       }
     } else if (!this.actor.canCreateModel) forbidden();
-    return effectiveCapabilities(await readManifest(this.db), id, router);
+    return effectiveCapabilities(await readManifest(this.db),
+      candidateDomain === undefined ? document : { id, domain: candidateDomain }, target);
   }
 }

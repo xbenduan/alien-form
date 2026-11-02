@@ -14,7 +14,11 @@ export async function applyLocalMigration(path: string, plan: MigrationPlan) {
   try {
     db.exec("PRAGMA foreign_keys=ON; BEGIN IMMEDIATE");
     if (!db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='fw_models'").get()) {
-      for (const migration of ["0100_formwork_metadata.sql", "0101_model_menu_pins.sql"])
+      for (const migration of [
+        "0100_formwork_metadata.sql",
+        "0101_model_menu_pins.sql",
+        "0102_page_local_views.sql",
+      ])
         db.exec(
           await readFile(
             new URL(`../apps/service/migrations/${migration}`, import.meta.url),

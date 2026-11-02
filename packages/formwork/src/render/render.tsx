@@ -2,6 +2,7 @@ import { createMemo, For, Show } from "solid-js";
 import type { Component } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import { FormworkError } from "../model/errors";
+import { defaultComponent } from "../model/schema";
 import { expressionProperty } from "../runtime/expression";
 import { scopeCell } from "../runtime/scope";
 import type {
@@ -14,6 +15,7 @@ import type {
 } from "../runtime/types";
 import type { RuntimeView } from "../model/types";
 import { defaultView, objectChildren } from "./default-view";
+import { fieldPresentation } from "../model/presentation";
 
 type Configuration = {
   ctx: ActionContext;
@@ -41,15 +43,14 @@ export function createRender(configuration: Configuration): Component<RenderProp
     if (props.field !== undefined && props.view !== undefined)
       throw new FormworkError("INVALID_VIEW", "field 与 view 不能同时提供");
     const scope = props.scope ?? configuration.scope();
-    const root = scopeCell(scope);
     const components = { ...configuration.components, ...props.components };
     const fieldContainer = props.fieldContainer ?? configuration.fieldContainer ?? DefaultField;
+    const mode = props.mode ?? "form";
+    const fields = configuration.ctx.schema?.fields;
     const view =
       props.field !== undefined
-        ? defaultView(root.at(props.field).schema, root.referenceRoot, props.field)
-        : (props.view ??
-          (props.scope ? undefined : configuration.view) ??
-          defaultView(root.schema, root.referenceRoot));
+        ? defaultView(props.field)
+        : (props.view ?? (props.scope ? undefined : configuration.view) ?? defaultView());
     const Node: Component<{
       view: RuntimeView;
       scope: ValueScope;
@@ -58,14 +59,25 @@ export function createRender(configuration: Configuration): Component<RenderProp
       readOnly?: boolean;
       disabled?: boolean;
     }> = (nodeProps) => {
-      const node = nodeProps.view;
+      const original = nodeProps.view;
       const local = scopeCell(nodeProps.scope);
-      const path = node.field === undefined ? undefined : `${nodeProps.base}${node.field}`;
+      const path = original.field === undefined ? undefined : `${nodeProps.base}${original.field}`;
       const cell = path === undefined ? undefined : local.at(path);
-      const Component = components[node.component];
+      const presentation = cell
+        ? fieldPresentation(fields, cell.referenceRoot, cell.path(), mode)
+        : {};
+      const node: RuntimeView = {
+        ...presentation,
+        ...original,
+        props: { ...presentation.props, ...original.props },
+        bindings: { ...presentation.bindings, ...original.bindings },
+      };
+      const name =
+        node.component ?? (cell ? defaultComponent(cell.schema, cell.referenceRoot) : undefined);
+      const Component = name ? components[name] : undefined;
       if (!Component)
-        throw new FormworkError("UNKNOWN_COMPONENT", `组件不存在 ${node.component}`, [
-          { path: path ?? "", code: "UNKNOWN_COMPONENT", message: `未注册 ${node.component}` },
+        throw new FormworkError("UNKNOWN_COMPONENT", `组件不存在 ${name}`, [
+          { path: path ?? "", code: "UNKNOWN_COMPONENT", message: `未注册 ${name}` },
         ]);
       const evaluated = Object.fromEntries(
         Object.entries(node.props ?? {}).map(([name, value]) => [
@@ -97,7 +109,7 @@ export function createRender(configuration: Configuration): Component<RenderProp
       const disabled = () => !!nodeProps.disabled || !!restrictions.disabled?.value();
       const childViews =
         cell && "properties" in cell.schema
-          ? (node.children ?? objectChildren(cell.schema, cell.referenceRoot))
+          ? (node.children ?? objectChildren(cell.schema, cell.referenceRoot, fields, cell.path()))
           : (node.children ?? []);
       const childBase = cell && "properties" in cell.schema ? path! : nodeProps.base;
       const Item: Component<{ scope: ValueScope }> = (itemProps) => {
@@ -105,8 +117,8 @@ export function createRender(configuration: Configuration): Component<RenderProp
         const itemViews =
           node.children ??
           ("properties" in itemCell.schema
-            ? objectChildren(itemCell.schema, itemCell.referenceRoot)
-            : [defaultView(itemCell.schema, itemCell.referenceRoot)]);
+            ? objectChildren(itemCell.schema, itemCell.referenceRoot, fields, itemCell.path())
+            : [defaultView()]);
         return (
           <For each={itemViews}>
             {(child) => (

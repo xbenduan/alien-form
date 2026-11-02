@@ -4,11 +4,13 @@ import type {
   DataSchema,
   JsonValue,
   ModelDocument,
+  OpenMode,
   RuntimeSchema,
   RuntimeView,
   ValidationIssue,
 } from "../model/types";
 import type { FormworkApi } from "../model/http";
+import type { FieldMode } from "../model/presentation";
 
 /** 注册有效 View 可以引用的异构 Solid 组件。 */
 export type ComponentRegistry = Record<string, Component<any>>;
@@ -22,22 +24,41 @@ export type RouteParams = Readonly<Record<string, string | undefined>>;
 export type Params = Readonly<Record<string, string>>;
 /** 表示 Window 唯一的成功或取消终态。 */
 export type WindowOutcome = { status: "completed"; value: unknown } | { status: "cancelled" };
+/** 为本地 Window 补充路径参数和仅在内存中保存的输入快照。 */
+export type OpenOptions = { params?: Params; initialValue?: JsonValue };
 /** 为当前 Instance 的行为提供 schema、API、取消与导航能力。 */
 export type ActionContext = {
+  modelId?: string;
   domain?: string;
+  router: string;
+  window?: string;
   params: RouteParams;
   schema?: RuntimeSchema;
   api: FormworkApi;
   signal: AbortSignal;
   fn: BoundFn;
   navigate: (router: string, params?: Params) => void;
-  open: (router: string, params?: Params) => Promise<WindowOutcome>;
+  open: (window: string, options?: OpenOptions) => Promise<WindowOutcome>;
   complete: (value: unknown) => void;
 };
-/** 为显式 Page/Window loader 提供当前 domain 和 API。 */
-export type PageLoadContext = ActionContext & { domain: string };
+/** 在选择 Domain 前读取模型文档，不提供尚未解析的领域行为。 */
+export type SchemaLoadContext = {
+  modelId: string;
+  router: string;
+  params: RouteParams;
+  api: FormworkApi;
+  signal: AbortSignal;
+};
+/** 提供已确定数据身份的模型行为上下文。 */
+export type PageLoadContext = ActionContext & { modelId: string };
 /** 为 Domain 加工提供已加载、校验且独立的后端 schema。 */
-export type DomainSchemaContext = PageLoadContext & { schema: ModelDocument };
+export type DomainSchemaContext = PageLoadContext & { domain: string; schema: ModelDocument };
+/** 为 Window loader 提供独立的行为绑定和可选输入快照。 */
+export type WindowLoadContext = PageLoadContext & {
+  window: string;
+  schema: RuntimeSchema;
+  initialValue?: JsonValue;
+};
 /** 表示校验结果；stale 不更新当前错误。 */
 export type ValidationResult = {
   status: "valid" | "invalid" | "stale";
@@ -92,6 +113,7 @@ export type FieldProps = ContainerProps & {
 };
 /** 渲染当前 scope 的默认树、显式 View 或一个字段。 */
 export type RenderProps = {
+  mode?: FieldMode;
   scope?: ValueScope;
   container?: Component<ContainerProps>;
   fieldContainer?: Component<FieldContainerProps>;
@@ -105,63 +127,66 @@ export type PageContext = PageLoadContext &
     Render: Component<RenderProps>;
     createScope: (options?: ScopeOptions) => ValueScope;
   };
-/** 保存可以被近层覆盖的渲染与代码校验能力。 */
+/** 提供本地 Window 的独立模型内容和输入快照。 */
+export type WindowContext = PageContext & { window: string; initialValue?: JsonValue };
+/** 保存可以被近层覆盖的具名渲染和行为能力。 */
 export type RenderDefaults = {
-  container?: Component<PageContext>;
   fieldContainer?: Component<FieldContainerProps>;
   components?: ComponentRegistry;
   fn?: FnRegistry;
-  schema?: z.ZodType<ModelDocument>;
 };
-/** 保存模型的稀疏渲染覆盖；getter 加工 Page 已加载的 schema。 */
+/** 保存可复用的领域能力、扩展模型校验和已加载文档加工。 */
 export type DomainDefinition = RenderDefaults & {
-  getSchema?: (ctx: DomainSchemaContext) => RuntimeSchema | Promise<RuntimeSchema>;
+  modelSchema?: z.ZodType<ModelDocument>;
+  transformSchema?: (ctx: DomainSchemaContext) => RuntimeSchema | Promise<RuntimeSchema>;
 };
 /** 声明明确的模型覆盖及其延迟导入。 */
 export type Domains = Record<
   string,
   DomainDefinition | (() => Promise<{ default: DomainDefinition }>)
 >;
-type DefinitionBase = {
-  router: string;
+type DefinitionBase = RenderDefaults & {
   path?: string;
-  components?: ComponentRegistry;
-  fn?: FnRegistry;
-  domains?: Domains;
 };
-type SchemaBody = RenderDefaults & {
+type SchemaBody<C extends Record<string, any> = PageContext> = {
   render?: never;
-  getSchema: (ctx: PageLoadContext) => ModelDocument | Promise<ModelDocument>;
+  container: Component<C>;
 };
 type PlainBody = {
   render: Component<ActionContext>;
-  schema?: never;
-  getSchema?: never;
   container?: never;
   fieldContainer?: never;
 };
 /** 声明可寻址的普通内容或模型内容。 */
-export type PageDefinition = DefinitionBase & (SchemaBody | PlainBody);
+export type PageDefinition = DefinitionBase & {
+  router: string;
+  windows?: Record<string, WindowDefinition>;
+} & ((SchemaBody & { getSchema?: (ctx: SchemaLoadContext) => ModelDocument | Promise<ModelDocument> }) |
+  (PlainBody & { getSchema?: never }));
 /** 支持插件在 JSX 编译前转换直接 render 字面量。 */
-export type PageAuthorDefinition = DefinitionBase &
-  (SchemaBody | (Omit<PlainBody, "render"> & { render: Component<ActionContext> | JSX.Element }));
-/** 固定 Window 的 presentation 和直达取消后的 Page。 */
-export type WindowDefinition = PageDefinition & {
-  presentation: "page" | "modal" | "drawer";
-  returnTo: string;
+export type PageAuthorDefinition = Omit<PageDefinition, "render"> & {
+  render?: Component<ActionContext> | JSX.Element;
 };
+/** 声明所属 Page 的相对路径、默认打开方式与独立值加载。 */
+export type WindowDefinition = DefinitionBase & {
+  openMode?: OpenMode;
+} & ((SchemaBody<WindowContext> & {
+  readOnly?: boolean;
+  getValue?: (ctx: WindowLoadContext) => JsonValue | undefined | Promise<JsonValue | undefined>;
+}) | (PlainBody & { readOnly?: never; getValue?: never }));
 /** 为 Window 提供相同的插件作者语法。 */
-export type WindowAuthorDefinition = PageAuthorDefinition & {
-  presentation: "page" | "modal" | "drawer";
-  returnTo: string;
+export type WindowAuthorDefinition = Omit<WindowDefinition, "render"> & {
+  render?: Component<ActionContext> | JSX.Element;
 };
 /** 在当前 owner 内承载完整内容，close 进入取消终态。 */
-export type PresenterProps = { children?: JSX.Element; direct: boolean; close: () => void };
+export type PresenterProps = { children?: JSX.Element; direct: boolean; window?: string; close: () => void };
 /** 装配应用定义、唯一 HTTP API 和三种 Presenter。 */
 export type FormworkDefinition = RenderDefaults & {
   api: FormworkApi;
+  getSchema?: (ctx: SchemaLoadContext) => ModelDocument | Promise<ModelDocument>;
+  modelSchema?: z.ZodType<ModelDocument>;
+  domains?: Domains;
   pages: readonly PageDefinition[];
-  windows?: readonly WindowDefinition[];
   presenters: {
     page: Component<PresenterProps>;
     modal?: Component<PresenterProps>;

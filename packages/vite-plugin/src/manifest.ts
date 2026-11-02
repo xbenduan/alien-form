@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { isObject } from "formwork/model";
 import type { CapabilityManifest } from "formwork/model";
 import type { FormworkAnalysis } from "./analyze";
 
@@ -8,17 +9,10 @@ export function createManifest(
   appId: string,
   clientOrigin: string,
 ): CapabilityManifest {
-  const forRouter = (id: string) =>
-    Object.fromEntries(
-      analysis.routes.map(({ router }) => [router, analysis.capabilities(id, router)]),
-    );
   const contents = {
+    ...analysis.catalog,
     appId,
     clientOrigin,
-    routes: analysis.routes,
-    schemaRouters: analysis.schemaRouters,
-    defaultCapabilities: forRouter(""),
-    domainCapabilities: Object.fromEntries(analysis.domainIds.map((id) => [id, forRouter(id)])),
   };
   const revision = createHash("sha256").update(JSON.stringify(contents)).digest("hex");
   return { ...contents, revision };
@@ -43,5 +37,29 @@ export async function registerManifest(
       signal: AbortSignal.timeout(10_000),
     },
   );
-  if (!response.ok) throw new Error(`能力清单登记失败: HTTP ${response.status}`);
+  if (!response.ok) {
+    const lines = [`能力清单登记失败: HTTP ${response.status}`];
+    try {
+      const payload: unknown = await response.json();
+      if (isObject(payload) && isObject(payload.error)) {
+        const error = payload.error;
+        const text = (value: unknown) => (typeof value === "string" ? value : "");
+        lines.push([text(error.code), text(error.message)].filter(Boolean).join(": "));
+        if (Array.isArray(error.issues))
+          for (const issue of error.issues) {
+            if (!isObject(issue)) continue;
+            lines.push(
+              ["modelId", "router", "window", "path", "code", "message"]
+                .map((key) => text(issue[key]))
+                .filter(Boolean)
+                .join(" · "),
+            );
+          }
+      }
+    } catch {
+      // Proxies may return non-JSON errors; the HTTP status still identifies the failure.
+    }
+    const message = lines.filter(Boolean).join("\n");
+    throw new Error(token ? message.replaceAll(token, "[secret]") : message);
+  }
 }

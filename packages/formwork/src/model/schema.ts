@@ -3,6 +3,7 @@ import { FormworkError } from "./errors";
 import { validateExpression, expressionBody } from "./expression";
 import { cloneJson, escapePointer, isObject, pointerSegments } from "./pointer";
 import { resolveSchema, schemaAt, schemaType, validateValue } from "./validation";
+import { fieldPresentation, schemaFieldAt } from "./presentation";
 import type {
   BackendDefinition,
   DataSchema,
@@ -14,6 +15,7 @@ import type {
   PreviewSnapshot,
   PublishedSnapshot,
   RuntimeSchema,
+  RuntimeFieldDefinition,
   RuntimeSnapshot,
   RuntimeView,
   ValidationIssue,
@@ -49,7 +51,7 @@ export function modelIssues(
   };
   if (!isObject(input)) return [{ path: "", code: "INVALID_MODEL", message: "模型必须是普通对象" }];
   try {
-    const { views: _views, ...base } = input;
+    const { views: _views, fields: _fields, ...base } = input;
     cloneJson((options.runtimeViews ? base : input) as never);
   } catch (error) {
     return [
@@ -60,9 +62,12 @@ export function modelIssues(
       },
     ];
   }
-  keys(input, ["id", "title", "data", "views"], "");
+  keys(input, ["id", "domain", "title", "data", "fields", "tree", "views", "pages"], "");
   if (typeof input.id !== "string" || !modelIdPattern.test(input.id))
     add("/id", "id 必须是单段小写标识");
+  if (input.domain !== undefined &&
+      (typeof input.domain !== "string" || !modelIdPattern.test(input.domain)))
+    add("/domain", "domain 必须是非空的单段小写标识");
   if (typeof input.title !== "string" || input.title.trim() === "")
     add("/title", "title 必须是非空字符串");
   const data = input.data;
@@ -224,8 +229,11 @@ export function modelIssues(
       return;
     }
     keys(node, ["component", "field", "props", "bindings", "children"], path);
-    if (typeof node.component !== "string" || !node.component)
-      add(`${path}/component`, "component 必须是非空名称");
+    if (
+      (node.component !== undefined && (typeof node.component !== "string" || !node.component)) ||
+      (node.component === undefined && node.field === undefined)
+    )
+      add(`${path}/component`, "需要非空 component 或绑定 field 以推导组件");
     let childBase = base;
     if (node.field !== undefined) {
       if (typeof node.field !== "string") add(`${path}/field`, "field 必须是 Pointer");
@@ -290,12 +298,113 @@ export function modelIssues(
         node.children.forEach((child, i) => visitView(child, `${path}/children/${i}`, childBase));
     }
   };
+  if (input.fields !== undefined) {
+    if (!isObject(input.fields)) add("/fields", "fields 必须是字段 Pointer 到展示配置的对象");
+    else
+      for (const [pointer, definition] of Object.entries(input.fields)) {
+        const path = `/fields/${escapePointer(pointer)}`;
+        try {
+          if (schemaFieldAt(root, pointer).path !== pointer)
+            add(path, "数组项字段配置必须使用 *，不能固定数组索引");
+        } catch (error) {
+          add(path, error instanceof Error ? error.message : String(error), "UNKNOWN_FIELD");
+        }
+        if (!isObject(definition)) {
+          add(path, "字段配置必须是对象");
+          continue;
+        }
+        keys(definition, ["order", "form", "table", "filter"], path);
+        if (definition.order !== undefined && !Number.isSafeInteger(definition.order))
+          add(`${path}/order`, "order 必须是安全整数");
+        for (const mode of ["form", "table", "filter"] as const) {
+          const presentation = definition[mode];
+          if (presentation === undefined || (mode !== "form" && presentation === false)) continue;
+          const location = `${path}/${mode}`;
+          if (!isObject(presentation)) {
+            add(location, "需要展示配置对象，table/filter 也可设为 false");
+            continue;
+          }
+          keys(
+            presentation,
+            ["component", "props", "bindings", ...(mode === "table" ? ["title"] : [])],
+            location,
+          );
+          if (
+            mode === "table" &&
+            presentation.title !== undefined &&
+            typeof presentation.title !== "string"
+          )
+            add(`${location}/title`, "title 必须是字符串");
+          const { title: _title, ...view } = presentation;
+          visitView({ ...view, field: "" }, location, undefined);
+          if (
+            mode !== "form" &&
+            isObject(presentation.bindings) &&
+            presentation.bindings.value !== undefined
+          )
+            add(`${location}/bindings/value`, "value writer 只能在 form 中声明");
+        }
+      }
+  }
+  if (input.tree !== undefined) {
+    if (!isObject(input.tree)) add("/tree", "tree 必须描述 parentField 和 labelField");
+    else {
+      keys(input.tree, ["parentField", "labelField"], "/tree");
+      for (const name of ["parentField", "labelField"] as const) {
+        try {
+          const pointer = input.tree[name];
+          if (typeof pointer !== "string" || pointerSegments(pointer).length !== 1)
+            throw new Error("tree 字段必须是根字段 Pointer");
+          const schema = schemaFieldAt(root, pointer).schema;
+          if (schemaType(schema) !== "string")
+            throw new Error("tree 字段必须为 string 或可空 string");
+        } catch (error) {
+          add(
+            `/tree/${name}`,
+            error instanceof Error ? error.message : String(error),
+            "UNKNOWN_FIELD",
+          );
+        }
+      }
+      if (input.tree.parentField === input.tree.labelField)
+        add("/tree/labelField", "父级字段与名称字段不能相同");
+    }
+  }
   if (input.views !== undefined) {
     if (!isObject(input.views)) add("/views", "views 必须是对象");
     // 文档层不知道 View 的实际 scope；路由能力和 Render 分别检查已确定的字段。
     else
       for (const [key, view] of Object.entries(input.views))
         visitView(view, `/views/${escapePointer(key)}`, undefined);
+  }
+  if (input.pages !== undefined) {
+    if (!isObject(input.pages)) add("/pages", "pages 必须是 Page 配置映射");
+    else for (const [router, page] of Object.entries(input.pages)) {
+      const path = `/pages/${escapePointer(router)}`;
+      if (!modelIdPattern.test(router)) add(path, "无效 Page 名称");
+      if (!isObject(page)) {
+        add(path, "Page 配置必须是对象");
+        continue;
+      }
+      keys(page, ["windows"], path);
+      if (page.windows === undefined) continue;
+      if (!isObject(page.windows)) {
+        add(`${path}/windows`, "windows 必须是本地 Window 配置映射");
+        continue;
+      }
+      for (const [name, window] of Object.entries(page.windows)) {
+        const location = `${path}/windows/${escapePointer(name)}`;
+        if (!modelIdPattern.test(name)) add(location, "无效 Window 名称");
+        if (!isObject(window)) {
+          add(location, "Window 配置必须是对象");
+          continue;
+        }
+        keys(window, ["openMode"], location);
+        if (window.openMode !== undefined &&
+            !["page", "drawer", "modal"].includes(String(window.openMode)))
+          add(`${location}/openMode`, "openMode 必须为 page、drawer 或 modal", "INVALID_OPEN_MODE");
+      }
+    }
   }
   return issues;
 }
@@ -408,6 +517,7 @@ const issueSchema = z.object({
   message: z.string(),
   modelId: z.string().optional(),
   router: z.string().optional(),
+  window: z.string().optional(),
   source: z
     .object({ file: z.string(), line: z.number().int(), column: z.number().int() })
     .optional(),
@@ -506,15 +616,13 @@ export function viewIssues(
   components: readonly string[],
   root: DataSchema = schema,
   path = "",
+  fields?: Readonly<Record<string, RuntimeFieldDefinition>>,
+  base = "",
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   let bound = schema;
-  if (!components.includes(view.component))
-    issues.push({
-      path: `${path}/component`,
-      code: "UNKNOWN_COMPONENT",
-      message: `未注册组件 ${view.component}`,
-    });
+  let fieldPath = base;
+  if (view.field !== undefined) fieldPath += view.field;
   if (view.field !== undefined) {
     try {
       bound = schemaAt(schema, view.field, root).schema;
@@ -527,15 +635,39 @@ export function viewIssues(
       return issues;
     }
   }
+  const presentation =
+    view.field === undefined ? {} : fieldPresentation(fields, root, fieldPath, "form");
+  const component =
+    view.component ??
+    presentation.component ??
+    (view.field !== undefined ? defaultComponent(bound, root) : undefined);
+  if (!component || !components.includes(component))
+    issues.push({
+      path: `${path}/component`,
+      code: "UNKNOWN_COMPONENT",
+      message: `未注册组件 ${component ?? "(未声明)"}`,
+    });
   const childSchema = "items" in bound ? resolveSchema(bound.items, root) : bound;
+  const childBase = "items" in bound ? `${fieldPath}/*` : fieldPath;
   if (view.children)
     view.children.forEach((child, index) =>
-      issues.push(...viewIssues(child, childSchema, components, root, `${path}/children/${index}`)),
+      issues.push(
+        ...viewIssues(
+          child,
+          childSchema,
+          components,
+          root,
+          `${path}/children/${index}`,
+          fields,
+          childBase,
+        ),
+      ),
     );
   else if (view.field !== undefined) {
-    const walkDefault = (node: DataSchema, location: string) => {
+    const walkDefault = (node: DataSchema, location: string, pointer: string) => {
       node = resolveSchema(node, root);
-      const component = defaultComponent(node, root);
+      const component =
+        fieldPresentation(fields, root, pointer, "form").component ?? defaultComponent(node, root);
       if (!components.includes(component))
         issues.push({
           path: location,
@@ -544,13 +676,37 @@ export function viewIssues(
         });
       if ("properties" in node)
         for (const [key, child] of Object.entries(node.properties))
-          walkDefault(child, `${location}/${escapePointer(key)}`);
-      if ("items" in node) walkDefault(node.items, `${location}/items`);
+          walkDefault(
+            child,
+            `${location}/${escapePointer(key)}`,
+            `${pointer}/${escapePointer(key)}`,
+          );
+      if ("items" in node) walkDefault(node.items, `${location}/items`, `${pointer}/*`);
     };
     if ("properties" in bound)
       for (const [key, child] of Object.entries(bound.properties))
-        walkDefault(child, `${path}/${escapePointer(key)}`);
-    if ("items" in bound) walkDefault(bound.items, `${path}/items`);
+        walkDefault(child, `${path}/${escapePointer(key)}`, `${fieldPath}/${escapePointer(key)}`);
+    if ("items" in bound) walkDefault(bound.items, `${path}/items`, `${fieldPath}/*`);
+  }
+  return issues;
+}
+
+/** 检查字段展示配置引用的组件，供发布、能力清单升级与浏览器挂载共用。 */
+export function fieldIssues(
+  fields: Readonly<Record<string, RuntimeFieldDefinition>> | undefined,
+  components: readonly string[],
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  for (const [pointer, definition] of Object.entries(fields ?? {})) {
+    for (const mode of ["form", "table", "filter"] as const) {
+      const presentation = definition[mode];
+      if (presentation && presentation.component && !components.includes(presentation.component))
+        issues.push({
+          path: `/fields/${escapePointer(pointer)}/${mode}/component`,
+          code: "UNKNOWN_COMPONENT",
+          message: `未注册组件 ${presentation.component}`,
+        });
+    }
   }
   return issues;
 }

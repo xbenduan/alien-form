@@ -35,11 +35,11 @@ export function createToolClient(url: string, options: ToolClientOptions = {}) {
           }
           case "formwork.capabilities": {
             const args = toolInputSchemas[name].parse(input);
-            return await api.capabilities(args.modelId, args.router, { signal });
+            return await api.capabilities(args.modelId, { router: args.router, window: args.window }, { signal, domain: args.domain });
           }
           case "models.validate": {
             const args = toolInputSchemas[name].parse(input);
-            return await api.models.validate(args.modelId, args.definition, args.router, {
+            return await api.models.validate(args.modelId, args.definition, args.router === undefined ? undefined : { router: args.router, window: args.window }, {
               signal,
             });
           }
@@ -52,7 +52,7 @@ export function createToolClient(url: string, options: ToolClientOptions = {}) {
           }
           case "models.preview": {
             const args = toolInputSchemas[name].parse(input);
-            return await api.models.preview(args.modelId, args.router, args.params, { signal });
+            return await api.models.preview(args.modelId, { router: args.router, window: args.window }, args.params, { signal });
           }
           default:
             throw new FormworkError("NOT_FOUND", `未知工具 ${name}`);

@@ -32,7 +32,7 @@ async function fixture(entry?: string) {
   );
   await writeFile(
     join(root, "src/domain.tsx"),
-    `import {defineDomain} from "formwork";import {schema} from "./model.schema";import {Input} from "./ui";export default defineDomain({schema,components:{Input},getSchema:(ctx)=>ctx.schema});`,
+    `import {defineDomain} from "formwork";import {schema} from "./model.schema";import {Input} from "./ui";export default defineDomain({modelSchema:schema,components:{Input},transformSchema:(ctx)=>ctx.schema});`,
   );
   await writeFile(
     join(root, "src/pages.tsx"),
@@ -42,7 +42,7 @@ async function fixture(entry?: string) {
   await writeFile(
     join(root, "src/formwork.tsx"),
     entry ??
-      `import {defineFormwork,definePage,defineWindow} from "formwork";import {home,models} from "./reexport";import {Input,ObjectFields} from "./ui";import * as fn from "./ui";const extras=[home,models];const domains={orders:()=>import("./domain")};const load=(ctx)=>ctx.api.runtime.schema(ctx.domain).then(s=>s.schema);const list=definePage({router:"list",path:"/list/:domain",getSchema:load,domains});const edit=defineWindow({router:"edit",path:"/edit/:domain/:id",presentation:"modal",returnTo:"list",getSchema:load,domains});const common={components:{Input,Object:ObjectFields},fn};export default defineFormwork({...common,pages:[...extras,list],windows:[edit]});`,
+      `import {defineFormwork,definePage,defineWindow} from "formwork";import {home,models} from "./reexport";import {Input,ObjectFields} from "./ui";import * as fn from "./ui";const extras=[home,models];const domains={orders:()=>import("./domain")};const load=(ctx)=>ctx.api.runtime.schema(ctx.modelId).then(s=>s.schema);const edit=defineWindow({path:"edit/:id",openMode:"modal",container:()=>null,getValue:(ctx)=>ctx.initialValue});const windows={edit};const list=definePage({router:"list",getSchema:load,container:()=>null,windows});const tree=definePage({router:"tree-list",getSchema:load,container:()=>null,windows});const common={components:{Input,Object:ObjectFields},fn};export default defineFormwork({...common,domains,pages:[...extras,list,tree],presenters:{page:()=>null,modal:()=>null}});`,
   );
   const server = await createServer({
     root,
@@ -67,7 +67,7 @@ describe("Vite 代码清单与 JSX 契约", () => {
     const map = transformed?.map;
     expect(map && "sources" in map && map.sources).toContain("pages.tsx");
     const virtual = (await server.ssrLoadModule("virtual:formwork/capabilities")).default;
-    const capabilities = virtual.capabilities("orders", "list");
+    const capabilities = virtual.capabilities({ id: "orders" }, { router: "list" });
     expect(
       capabilities.components.find((item: { name: string }) => item.name === "Input"),
     ).toMatchObject({
@@ -80,8 +80,10 @@ describe("Vite 代码清单与 JSX 契约", () => {
     ).toContain("amount: number");
     expect(capabilities.pageLoader).toBeTruthy();
     expect(capabilities.domainTransform).toBeTruthy();
-    expect(virtual.capabilities("new-model", "list").domainTransform).toBeUndefined();
-    expect(() => virtual.capabilities("orders", "missing")).toThrow("未知 router");
+    expect(virtual.capabilities({ id: "new-model" }, { router: "list" }).domainTransform).toBeUndefined();
+    expect(virtual.capabilities({ id: "articles", domain: "orders" }, { router: "tree-list", window: "edit" }).valueLoader).toBeTruthy();
+    expect(() => virtual.capabilities({ id: "articles", domain: "missing" }, { router: "list" })).toThrow("Domain 未注册");
+    expect(() => virtual.capabilities({ id: "orders" }, { router: "missing" })).toThrow("未知 Page");
     expect(JSON.stringify(capabilities)).not.toContain("FUNCTION_BODY_SENTINEL");
   });
   it("开发服务没有文件模型和工具端点", async () => {
@@ -96,20 +98,43 @@ describe("Vite 代码清单与 JSX 契约", () => {
       ).status,
     ).toBe(404);
   });
+  it("应用 loader/Domain 与 Page loader 的有效能力保持一致", async () => {
+    const { server } = await fixture(
+      `import {defineFormwork,definePage} from "formwork";
+       import {Input,ObjectFields} from "./ui";
+       const appLoader=(ctx)=>ctx.api.runtime.schema(ctx.modelId).then(s=>s.schema);
+       const localLoader=(ctx)=>ctx.api.runtime.schema(ctx.modelId).then(s=>s.schema);
+       export default defineFormwork({
+         getSchema:appLoader,
+         domains:{orders:()=>import("./domain")},
+         components:{Input,Object:ObjectFields},
+         pages:[definePage({router:"list",container:()=>null}),definePage({router:"tree-list",container:()=>null,getSchema:localLoader})],
+         presenters:{page:()=>null}
+       });`,
+    );
+    const virtual = (await server.ssrLoadModule("virtual:formwork/capabilities")).default;
+    const list = virtual.capabilities({ id: "orders" }, { router: "list" });
+    const tree = virtual.capabilities({ id: "orders" }, { router: "tree-list" });
+    expect(list.pageLoader.declaration).toContain("appLoader");
+    expect(tree.pageLoader.declaration).toContain("localLoader");
+    expect(list.domainTransform).toBeTruthy();
+    expect(list.modelContract).toContain("fields?");
+    expect(virtual.routes).toContainEqual({ router: "list", path: "/list/:modelId", model: true });
+  });
   it("动态 router、重复路径和缺少 Page loader 在实际分析阶段失败", async () => {
     await expect(
       fixture(
-        `import {defineFormwork,definePage} from "formwork";const router=readRouter();export default defineFormwork({pages:[definePage({router,render:()=>null})]});`,
+        `import {defineFormwork,definePage} from "formwork";const router=readRouter();export default defineFormwork({pages:[definePage({router,render:()=>null})],presenters:{page:()=>null}});`,
       ),
     ).rejects.toThrow("静态常量");
     await expect(
       fixture(
-        `import {defineFormwork,definePage} from "formwork";export default defineFormwork({pages:[definePage({router:"one",path:"/a/:id",render:()=>null}),definePage({router:"two",path:"/a/:other",render:()=>null})]});`,
+        `import {defineFormwork,definePage} from "formwork";export default defineFormwork({pages:[definePage({router:"one",path:"/a/:id",render:()=>null}),definePage({router:"two",path:"/a/:other",render:()=>null})],presenters:{page:()=>null}});`,
       ),
     ).rejects.toThrow("路径歧义");
     await expect(
       fixture(
-        `import {defineFormwork,definePage} from "formwork";export default defineFormwork({pages:[definePage({router:"list",container:()=>null})]});`,
+        `import {defineFormwork,definePage} from "formwork";export default defineFormwork({pages:[definePage({router:"list",container:()=>null})],presenters:{page:()=>null}});`,
       ),
     ).rejects.toThrow("getSchema");
   });
@@ -141,18 +166,21 @@ describe("Vite 代码清单与 JSX 契约", () => {
       },
     });
     const output = await import(pathToFileURL(join(root, "dist/source.mjs")).href);
-    expect(output.default.capabilities("orders", "list").components).toContainEqual(
+    expect(output.default.capabilities({ id: "orders" }, { router: "list" }).components).toContainEqual(
       expect.objectContaining({ name: "Input", overrides: expect.any(Array) }),
     );
     const manifestText = await readFile(join(root, "dist/formwork-capabilities.json"), "utf8");
     const manifest = JSON.parse(manifestText);
     expect(manifest).toMatchObject({
       appId: "alien-form",
+      formatVersion: 2,
       clientOrigin: "https://client.example",
       revision: expect.stringMatching(/^[a-f0-9]{64}$/u),
     });
-    expect(manifest.defaultCapabilities.list.pageLoader).toBeTruthy();
-    expect(manifest.domainCapabilities.orders.list.domainTransform).toBeTruthy();
+    expect(manifest.pages.list.capabilities.getSchema).toBeTruthy();
+    expect(manifest.domains.orders.transformSchema).toBeTruthy();
+    expect(manifest.pages.list.windows.edit.path).toBe("/list/:modelId/edit/:id");
+    expect(manifest.pages["tree-list"].windows.edit.path).toBe("/tree-list/:modelId/edit/:id");
     const files = await readdir(join(root, "dist"));
     const contents = await Promise.all(
       files.map((file) => readFile(join(root, "dist", file), "utf8")),

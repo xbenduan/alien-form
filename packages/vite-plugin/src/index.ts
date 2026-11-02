@@ -19,7 +19,7 @@ export type FormworkPluginOptions = {
 /**
  * 分析可达代码、转换 JSX 并生成能力清单。
  * @param options entry 相对 Vite root；capabilities.token 仅在开发服务进程读取。
- * @example formworkPlugin({ entry: "src/formwork.tsx", appId: "alien-form" })
+ * @example formworkPlugin({ entry: "src/formwork/index.ts", appId: "alien-form" })
  */
 export function formworkPlugin(options: FormworkPluginOptions): Plugin {
   let root = "";
