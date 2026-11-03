@@ -6,6 +6,7 @@ import {
   validateValue,
   pointerSegments,
   escapePointer,
+  queryOperatorSchema,
 } from "formwork/model";
 import type { DataSchema, JsonValue, RecordValue, RecordPage, RecordQuery } from "formwork/model";
 import type { Actor, StoredModel } from "../contracts";
@@ -39,7 +40,7 @@ const querySchema = z
         z
           .object({
             field: z.string(),
-            operator: z.enum(["eq", "in", "contains", "between", "isNull", "isNotNull"]),
+            operator: queryOperatorSchema,
             operand: z.json().optional(),
           })
           .strict(),

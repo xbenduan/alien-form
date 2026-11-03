@@ -20,6 +20,7 @@ import type {
   ModelNavigationSnapshot,
   PreviewSnapshot,
   PublishedSnapshot,
+  QueryOperator,
   RuntimeSchema,
   RuntimeSnapshot,
   ValidationIssue,
@@ -367,6 +368,19 @@ export const managedEntrySchema = z
     canPublish: z.boolean(),
   })
   .strict();
+/** 校验前后端共用的查询操作符，字段支持范围由运行时 capabilities 决定。 */
+export const queryOperatorSchema: z.ZodType<QueryOperator> = z.enum([
+  "eq",
+  "gt",
+  "gte",
+  "lt",
+  "lte",
+  "in",
+  "contains",
+  "between",
+  "isNull",
+  "isNotNull",
+]);
 const capabilitiesSchema = z
   .object({
     fields: z.record(
@@ -376,7 +390,7 @@ const capabilitiesSchema = z
           read: z.boolean(),
           create: z.boolean().optional(),
           update: z.boolean().optional(),
-          filter: z.array(z.enum(["eq", "in", "contains", "between", "isNull", "isNotNull"])),
+          filter: z.array(queryOperatorSchema),
           sort: z.boolean(),
         })
         .strict(),

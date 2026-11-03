@@ -58,5 +58,24 @@ export const FormItem: Component<FieldContainerProps> = (props) => {
   );
 };
 
-/** 为筛选保留相同的标签和错误关联。 */
-export const FilterItem: Component<FieldContainerProps> = (props) => <FormItem {...props} />;
+/** 为紧凑筛选值提供屏幕阅读器标签和就近显示的校验错误。 */
+export const FilterItem: Component<FieldContainerProps> = (props) => {
+  const id = createUniqueId();
+  return (
+    <FieldLabel.Provider value={id}>
+      <div class="form-item" data-field-path={props.path}>
+        <span id={id} class="sr-only">
+          {props.title}
+        </span>
+        {props.children}
+        <For each={props.errors}>
+          {(error) => (
+            <p class="field-error" role="alert">
+              {error.message}
+            </p>
+          )}
+        </For>
+      </div>
+    </FieldLabel.Provider>
+  );
+};

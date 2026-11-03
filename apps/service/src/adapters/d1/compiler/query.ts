@@ -72,6 +72,15 @@ export function predicates(model: StoredModel, actor: Actor, access: Access, que
         sql.push(`${expression} = ?`);
         values.push(encodeValue(binding, operand));
         break;
+      case "gt":
+      case "gte":
+      case "lt":
+      case "lte": {
+        const comparison = { gt: ">", gte: ">=", lt: "<", lte: "<=" }[clause.operator];
+        sql.push(`${expression} ${comparison} ?`);
+        values.push(operand as number);
+        break;
+      }
       case "contains":
         sql.push(`instr(${expression}, ?) > 0`);
         values.push(String(operand));

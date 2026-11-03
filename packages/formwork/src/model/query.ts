@@ -9,10 +9,32 @@ import type {
 } from "./types";
 import { validateValue } from "./validation";
 
+/** 根据字段类型生成基础查询能力，调用方再按读取权限和 query.filter 缩小范围。 */
+export function queryOperatorsForField(field: FieldSchema): QueryOperator[] {
+  const scalar = !["object", "array"].includes(field.type!);
+  const operators: QueryOperator[] = scalar
+    ? ["eq", "in"]
+    : field.type === "array" &&
+        ["string", "number", "integer", "boolean"].includes(field.items?.type ?? "")
+      ? ["in"]
+      : [];
+  if (field.type === "string" && !field.enum && !field.relation) operators.push("contains");
+  if (field.type === "number" || field.type === "integer")
+    operators.push("gt", "gte", "lt", "lte", "between");
+  if (
+    field.nullable ||
+    field.type === "null" ||
+    enumOptions(field).some((option) => option.value === null)
+  )
+    operators.push("isNull", "isNotNull");
+  return operators;
+}
+
 /** 按查询操作生成独立 operand 契约，不继承记录 required、default 和写入约束。 */
 export function operandSchema(field: FieldSchema, operator: QueryOperator): DataSchema | undefined {
   if (operator === "isNull" || operator === "isNotNull") return undefined;
   if (operator === "contains") return { type: "string" };
+  if (["gt", "gte", "lt", "lte"].includes(operator)) return { type: "number" };
   const scalar = {
     type: field.type === "array" ? field.items?.type : field.type,
     ...(field.enum

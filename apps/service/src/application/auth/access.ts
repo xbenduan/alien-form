@@ -1,11 +1,16 @@
-import { runtimeDocument, resolveFieldSchema, resolveModel, pointerSegments } from "formwork/model";
+import {
+  runtimeDocument,
+  resolveFieldSchema,
+  resolveModel,
+  pointerSegments,
+  queryOperatorsForField,
+} from "formwork/model";
 import type {
   ModelAction,
   ModelDocument,
   RecordValue,
   FieldSchema,
   RecordCapabilities,
-  QueryOperator,
 } from "formwork/model";
 import type { Actor, StoredModel } from "../../contracts";
 import { readPublished } from "../../adapters/d1/repositories/models";
@@ -128,27 +133,13 @@ export function recordCapabilities(model: StoredModel, actor: Actor): RecordCapa
           (read.fields.has(key) || ["id", "createdAt", "updatedAt", "creatorId"].includes(key));
         const schema = field.schema;
         const scalar = !["object", "array"].includes(schema.type!);
-        const operators: QueryOperator[] = scalar
-          ? ["eq", "in"]
-          : schema.type === "array" &&
-              ["string", "number", "integer", "boolean"].includes(schema.items?.type ?? "")
-            ? ["in"]
-            : [];
-        if (schema.type === "string" && !schema.enum && !schema.relation)
-          operators.push("contains");
-        if (schema.type === "number" || schema.type === "integer") operators.push("between");
-        const nullable =
-          schema.nullable ||
-          schema.type === "null" ||
-          field.options.some((option) => option.value === null);
-        if (nullable) operators.push("isNull", "isNotNull");
         return [
           field.path,
           {
             read: canRead,
             create: create.allowed && create.fields.has(key) && !schema.readOnly,
             update: update.allowed && update.fields.has(key) && !schema.readOnly,
-            filter: canRead && schema.query?.filter !== false ? operators : [],
+            filter: canRead && schema.query?.filter !== false ? queryOperatorsForField(schema) : [],
             sort: canRead && scalar && schema.query?.sort !== false,
           },
         ];

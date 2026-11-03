@@ -1,58 +1,53 @@
 import { createSignal } from "solid-js";
 import { FormworkError } from "../model/errors";
 import { defaultOperator, normalizeClause, operandSchema, queryClauseIssues } from "../model/query";
-import type { ResolvedModel } from "../model/field";
-import type { JsonValue, QueryClause, QueryOperator, ValidationIssue } from "../model/types";
+import type { FieldDescriptor, ResolvedModel } from "../model/field";
+import type { JsonValue, QueryClause, QueryOperator } from "../model/types";
 import type { FilterBinding } from "./types";
+
+/** 为一条筛选条件创建独立绑定，同一字段可多次绑定而不共享值或操作符。 */
+export function createFilterBinding(field: FieldDescriptor): FilterBinding {
+  const allowed = field.capabilities?.filter ?? [];
+  if (!allowed.length) throw new FormworkError("UNKNOWN_FIELD", `字段不可筛选 ${field.path}`);
+  const [active, setActive] = createSignal(false);
+  const [operator, setOperator] = createSignal(defaultOperator(field.schema, allowed));
+  const [value, setValue] = createSignal<JsonValue>();
+  return {
+    kind: "filter",
+    path: () => field.path,
+    active,
+    setActive,
+    operator,
+    setOperator(next: QueryOperator) {
+      if (!allowed.includes(next))
+        throw new FormworkError("UNSUPPORTED_OPERATOR", `不支持 ${next}`);
+      setOperator(next);
+      setValue(undefined);
+    },
+    operandSchema: () => operandSchema(field.schema, operator()),
+    value,
+    set(next) {
+      if (next === null && operator() === "eq") {
+        if (!allowed.includes("isNull"))
+          throw new FormworkError("UNSUPPORTED_OPERATOR", "不支持筛选空值");
+        setOperator("isNull");
+        setValue(undefined);
+      } else setValue(() => next);
+      setActive(true);
+    },
+    errors: () =>
+      active()
+        ? queryClauseIssues(field.schema, allowed, normalizeClause(field.path, operator(), value()))
+        : [],
+    readOnly: () => false,
+  };
+}
 
 /** 管理与记录 scope 完全独立的过滤条件，只有 active 条件参与提交。 */
 export function createQueryState(model: ResolvedModel) {
   const bindings = new Map<string, FilterBinding>();
   for (const field of model.fields) {
-    const allowed = field.capabilities?.filter ?? [];
-    if (!allowed.length) continue;
-    const [active, setActive] = createSignal(false);
-    const [operator, setOperator] = createSignal(defaultOperator(field.schema, allowed));
-    const [value, setValue] = createSignal<JsonValue>();
-    const [errors, setErrors] = createSignal<readonly ValidationIssue[]>([]);
-    bindings.set(field.path, {
-      kind: "filter",
-      path: () => field.path,
-      active,
-      setActive: (enabled) => {
-        setActive(enabled);
-        setErrors([]);
-      },
-      operator,
-      setOperator(next: QueryOperator) {
-        if (!allowed.includes(next))
-          throw new FormworkError("UNSUPPORTED_OPERATOR", `不支持 ${next}`);
-        setOperator(next);
-        setValue(undefined);
-        setErrors([]);
-      },
-      operandSchema: () => operandSchema(field.schema, operator()),
-      value,
-      set(next) {
-        if (next === null && operator() === "eq") {
-          if (!allowed.includes("isNull"))
-            throw new FormworkError("UNSUPPORTED_OPERATOR", "不支持筛选空值");
-          setOperator("isNull");
-          setValue(undefined);
-        } else setValue(() => next);
-        setActive(true);
-        setErrors([]);
-      },
-      errors: () => {
-        if (!active()) return errors();
-        return queryClauseIssues(
-          field.schema,
-          allowed,
-          normalizeClause(field.path, operator(), value()),
-        );
-      },
-      readOnly: () => false,
-    });
+    if (field.capabilities?.filter.length) bindings.set(field.path, createFilterBinding(field));
   }
   return {
     fields: [...bindings.values()],

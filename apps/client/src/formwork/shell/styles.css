@@ -890,30 +890,45 @@ code,
   }
 }
 .filters {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: var(--space-sm);
   padding: var(--panel-gutter);
   overflow: visible;
 }
-/* Keep folded fields mounted so their controls and draft values survive toggling. */
-.filter-condition {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+.filter-conditions {
+  display: grid;
+  flex: 1 1 480px;
+  min-width: 0;
+  gap: var(--space-sm);
 }
-.filter-condition .custom-select {
-  flex: 1;
+.filter-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 0.8fr) minmax(160px, 1.5fr) auto;
+  align-items: start;
+  gap: var(--space-xs);
   min-width: 0;
 }
-.filter-enable {
-  display: inline-flex;
+.filter-value {
+  min-width: 0;
+}
+.filter-no-value {
+  display: flex;
   align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-  font-size: 12px;
+  min-height: var(--control-height);
+  padding-inline: var(--space-xs);
+  color: var(--muted);
+  font-size: var(--text-small);
+}
+.filter-add,
+.filter-remove {
+  width: var(--control-height);
+  height: var(--control-height);
+  padding: 0;
+}
+.filter-error {
+  flex-basis: 100%;
 }
 .range-input {
   display: flex;
@@ -944,19 +959,9 @@ code,
   font-size: 12px;
   margin-top: 5px;
 }
-.filters .field-label {
-  margin-bottom: calc(var(--space-sm) / 2);
-  font-size: var(--text-body);
-  color: var(--muted);
-  font-weight: 400;
-}
 .filters .filter-actions {
-  justify-self: start;
   flex-wrap: nowrap;
   gap: var(--space-xs);
-}
-.filter-actions .text-button {
-  min-height: var(--control-height);
 }
 .control {
   display: block;
@@ -2227,27 +2232,17 @@ td .rich-text {
 }
 
 /* Components adapt to their available space, including the embedded preview. */
-@container record-list (max-width: 1200px) {
-  .filters {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+@container record-list (max-width: 480px) {
+  .filter-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   }
-}
-
-@container record-list (max-width: 900px) {
-  .filters {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .filter-value {
+    grid-column: 1 / 3;
+    grid-row: 2;
   }
-}
-
-@container record-list (max-width: 660px) {
-  .filters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@container record-list (max-width: 440px) {
-  .filters {
-    grid-template-columns: minmax(0, 1fr);
+  .filter-remove {
+    grid-column: 3;
+    grid-row: 1;
   }
 }
 

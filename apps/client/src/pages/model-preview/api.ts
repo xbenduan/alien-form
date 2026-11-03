@@ -8,6 +8,7 @@ import {
   readPointer,
   resolveModel,
   queryClauseIssues,
+  queryOperatorsForField,
   validateValue,
 } from "formwork/model";
 import type {
@@ -16,7 +17,6 @@ import type {
   ModelDocument,
   RecordCapabilities,
   RecordValue,
-  QueryOperator,
 } from "formwork/model";
 import { capabilities } from "virtual:formwork/capabilities";
 import { modelContract } from "../../../../../packages/domain-contracts";
@@ -34,29 +34,14 @@ export function createPreviewApi(
     fields: Object.fromEntries(
       model.fields.map((field) => {
         const scalar = !["object", "array"].includes(field.schema.type!);
-        const filter: QueryOperator[] = scalar
-          ? ["eq", "in"]
-          : field.schema.type === "array" &&
-              ["string", "number", "integer", "boolean"].includes(field.schema.items?.type ?? "")
-            ? ["in"]
-            : [];
-        if (field.schema.type === "string" && !field.schema.enum && !field.schema.relation)
-          filter.push("contains");
-        if (field.schema.type === "number" || field.schema.type === "integer")
-          filter.push("between");
-        if (
-          field.schema.nullable ||
-          field.schema.type === "null" ||
-          field.options.some((option) => option.value === null)
-        )
-          filter.push("isNull", "isNotNull");
         return [
           field.path,
           {
             read: true,
             create: !field.schema.readOnly,
             update: !field.schema.readOnly,
-            filter: field.schema.query?.filter === false ? [] : filter,
+            filter:
+              field.schema.query?.filter === false ? [] : queryOperatorsForField(field.schema),
             sort: scalar && field.schema.query?.sort !== false,
           },
         ];
@@ -177,6 +162,14 @@ export function createPreviewApi(
             switch (operator) {
               case "eq":
                 return value === operand;
+              case "gt":
+                return typeof value === "number" && value > (operand as number);
+              case "gte":
+                return typeof value === "number" && value >= (operand as number);
+              case "lt":
+                return typeof value === "number" && value < (operand as number);
+              case "lte":
+                return typeof value === "number" && value <= (operand as number);
               case "contains":
                 return (
                   typeof value === "string" &&

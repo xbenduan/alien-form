@@ -209,7 +209,17 @@ export type PreviewSnapshot = {
 /** 保存当前实例使用的字段协议；代码 props 在调用 RenderItem 时传入。 */
 export type RuntimeSchema = ModelDocument;
 /** 列出内建查询操作，operand 与记录校验相互独立。 */
-export type QueryOperator = "eq" | "in" | "contains" | "between" | "isNull" | "isNotNull";
+export type QueryOperator =
+  | "eq"
+  | "gt"
+  | "gte"
+  | "lt"
+  | "lte"
+  | "in"
+  | "contains"
+  | "between"
+  | "isNull"
+  | "isNotNull";
 /** 描述当前身份与 adapter 实际支持的单字段能力。 */
 export type FieldCapabilities = {
   read: boolean;

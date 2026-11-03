@@ -80,7 +80,9 @@ object 必须声明 properties，字段 required 在各自字段上声明。数�
 }
 ```
 
-操作包括 eq、in、contains、between、isNull、isNotNull，以 capabilities 实际返回为准。between 使用两个数字，in 使用非空数组，空值操作不携带 operand。QueryState 与记录 scope 独立，不继承记录 required / default，也不会把隐藏或未启用条件提交。
+操作包括 eq、gt、gte、lt、lte、in、contains、between、isNull、isNotNull，以 capabilities 实际返回为准。gt/gte/lt/lte 仅用于数值比较，operand 为数字；between 使用两个数字，in 使用非空数组，空值操作不携带 operand。QueryState 与记录 scope 独立，不继承记录 required / default，也不会把隐藏或未启用条件提交。
+
+列表筛选默认显示一条「字段 / 运算符 / 值」条件，点击加号添加，多个条件按 AND 组合，同一字段可重复选择。条件修改后点击查询生效；未填写的初始条件不参与查询，重置清空条件并恢复一条。`createFilterBinding(field)` 为每条条件创建独立绑定，保证同一字段的多个条件互不覆盖。
 
 字段 `query:{filter:false,sort:false}` 可以收窄能力；UI 隐藏只影响展示。`backend` 只定义存储表名例外、权限和可信行为。可选字段 storage 定义 column / jsonKey、index、through。作者不维护 sqlType、encoding 或重复的 relations 列表。
 
