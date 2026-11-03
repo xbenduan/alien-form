@@ -94,7 +94,7 @@ export const ChoiceControl: Component<{
           </span>
           <Icon name="chevron" />
         </Popover.Trigger>
-        <Popover.Portal>
+        <Popover.Portal mount={trigger?.closest<HTMLElement>("[data-formwork-root]") ?? undefined}>
           <Popover.Content
             class="select-menu"
             role="presentation"

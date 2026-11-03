@@ -6,12 +6,8 @@ const modelId = z
   .describe("模型身份，单段小写标识；未知时先 models.list 或 formwork.describe。");
 const router = z
   .string()
-  .regex(/^[a-z][a-z0-9_-]*$/u)
-  .describe("已登记 Page 名；从 formwork.capabilities({}).targets 选择。");
-const window = z
-  .string()
-  .regex(/^[a-z][a-z0-9_-]*$/u)
-  .describe("所属 router 内的 Window 名，从能力目录选择；省略表示 Page。");
+  .regex(/^[a-z][a-z0-9-]*$/u)
+  .describe("已登记 Domain 的 router；从 formwork.capabilities({}).targets 选择。");
 /** 为 Worker 与官方 MCP SDK 提供同一份工具输入约束。 */
 export const toolInputSchemas = {
   "formwork.describe": z
@@ -23,10 +19,6 @@ export const toolInputSchemas = {
     .object({
       modelId: modelId.optional(),
       router: router.optional(),
-      window: window.optional(),
-      domain: modelId
-        .optional()
-        .describe("候选 Domain 名；从全量目录 domains 选择，默认使用模型自身配置。"),
     })
     .strict()
     .superRefine((input, context) => {
@@ -36,8 +28,7 @@ export const toolInputSchemas = {
       )
         context.addIssue({
           code: "custom",
-          message:
-            "发现全部组件请传 {}，无需页面 URL；查询目标能力必须同时提供 modelId 和 router，可选 window/domain。",
+          message: "发现全部组件请传 {}；查询目标能力必须同时提供 modelId 和 router。",
           path: [input.modelId ? "router" : "modelId"],
         });
     }),
@@ -50,13 +41,8 @@ export const toolInputSchemas = {
           "完整 {schemaVersion:1,id,title,data,...}；结构和模板由 formwork.describe 返回。",
         ),
       router: router.optional(),
-      window: window.optional(),
     })
-    .strict()
-    .refine((input) => !input.window || !!input.router, {
-      message: "window 需要所属 router",
-      path: ["router"],
-    }),
+    .strict(),
   "models.write": z
     .object({
       modelId,
@@ -74,13 +60,6 @@ export const toolInputSchemas = {
     .object({
       modelId,
       router,
-      window: window.optional(),
-      params: z
-        .record(z.string(), z.string())
-        .optional()
-        .describe(
-          "目录 targets.requiredPreviewParams 中的真实路径参数，例如 edit 的 {id:'record-id'}；modelId 自动填入。",
-        ),
     })
     .strict(),
 };
@@ -93,8 +72,8 @@ export const toolDescriptions: Record<ModelToolName, string> = {
   "models.list": "列出当前身份可管理的模型目录",
   "models.read": "读取最新共享草稿；无草稿时返回最新发布定义和管理 revision",
   "formwork.capabilities":
-    "传 {} 发现当前应用全部 Framework/Domain/Page/Window 组件与 fn、声明、JSDoc、路由和必填参数；传 {modelId,router,window?,domain?} 查询目标有效能力。无需编辑器 URL 或浏览器。",
+    "传 {} 发现 app 共享组件、formats、UI 声明、JSDoc 和 Domain/Page 路由；传 {modelId,router} 查询目标有效能力。需要应用登记可选静态清单。",
   "models.validate": "校验完整后端 definition 并列出错误和浏览器运行时检查",
   "models.write": "按 ifRevision 保存共享草稿；不完整定义可保存诊断，不发布模型",
-  "models.preview": "返回受管理权限保护的草稿预览 URL，必填记录参数不可省略",
+  "models.preview": "返回受管理权限保护的模型草稿预览 URL，预览记录仅保存在浏览器内存中",
 };

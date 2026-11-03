@@ -8,7 +8,8 @@ import {
   escapePointer,
   queryOperatorSchema,
 } from "formwork/model";
-import type { DataSchema, JsonValue, RecordValue, RecordPage, RecordQuery } from "formwork/model";
+import type { DataSchema, JsonValue, RecordValue, RecordQuery } from "formwork/model";
+import type { QueryResult, RecordSnapshot } from "formwork/data";
 import type { Actor, StoredModel } from "../contracts";
 import {
   readHead,
@@ -30,7 +31,7 @@ import { outboxStatements } from "./outbox";
 import { assertModelId } from "./model-service";
 import { forbidden, invalid, notFound, ServiceError } from "../http/errors";
 import { predicates, queryBinding } from "../adapters/d1/compiler/query";
-import { modelContract } from "../../../../packages/domain-contracts";
+import { cmsContract } from "../../../../packages/domain-contracts";
 
 const metadata = new Set(["id", "createdAt", "updatedAt", "creatorId"]);
 const querySchema = z
@@ -56,11 +57,13 @@ const querySchema = z
     parentId: z.string().optional(),
   })
   .strict();
-const idsSchema = z.array(z.string().min(1)).min(1).max(200);
-
-function recordInput(input: unknown): RecordValue {
-  if (!isObject(input)) invalid("记录必须是 JSON object");
-  return input as RecordValue;
+const conditions = {
+  ifSchemaRevision: z.string().min(1),
+  ifRecordRevision: z.string().min(1),
+};
+function requireCondition(input: unknown, record = false) {
+  if (!isObject(input) || !input.ifSchemaRevision || (record && !input.ifRecordRevision))
+    throw new ServiceError("PRECONDITION_REQUIRED", "写入需要编辑开始时的模型和记录版本", 428);
 }
 
 function assertWritableValue(
@@ -105,7 +108,7 @@ export class RecordService {
     assertModelId(id);
     return readPublished(this.db, id);
   }
-  async query(id: string, input: unknown): Promise<RecordPage> {
+  async query(id: string, input: unknown): Promise<QueryResult> {
     const query = querySchema.parse(input) as RecordQuery;
     const model = await this.model(id),
       access = requireAccess(model, this.actor, "read");
@@ -123,17 +126,27 @@ export class RecordService {
         )
         .bind(...where.values, query.pageSize, (query.page - 1) * query.pageSize),
     ]);
-    const list: RecordValue[] = [];
+    const items: RecordSnapshot[] = [];
     for (const row of rows.results as PhysicalRow[])
-      list.push(projectRecord(await withRelations(this.db, model, row), access));
-    return { total: Number((count.results[0] as { total: number }).total), list };
+      items.push({
+        id: row.id,
+        data: projectRecord(await withRelations(this.db, model, row), access),
+        revision: row._revision,
+        schemaRevision: model.revision,
+      });
+    return { total: Number((count.results[0] as { total: number }).total), items };
   }
-  async read(id: string, recordId: string): Promise<RecordValue> {
+  async read(id: string, recordId: string): Promise<RecordSnapshot> {
     const model = await this.model(id);
     const row = await readRow(this.db, model, recordId);
     if (!row) notFound("记录不存在");
     const record = await withRelations(this.db, model, row);
-    return projectRecord(record, requireAccess(model, this.actor, "read", record));
+    return {
+      id: row.id,
+      data: projectRecord(record, requireAccess(model, this.actor, "read", record)),
+      revision: row._revision,
+      schemaRevision: model.revision,
+    };
   }
   private async relationAssertions(model: StoredModel, record: RecordValue, input: RecordValue) {
     const assertions: { sql: string; values: (string | number | null)[] }[] = [];
@@ -261,34 +274,62 @@ export class RecordService {
     }
     return assertions;
   }
-  async create(id: string, input: unknown): Promise<RecordValue> {
-    return this.write(id, "create", undefined, recordInput(input));
-  }
-  async update(id: string, recordId: string, input: unknown): Promise<RecordValue> {
-    return this.write(id, "update", recordId, recordInput(input));
-  }
-  async patch(id: string, recordId: string, input: unknown): Promise<RecordValue> {
+  async create(id: string, input: unknown): Promise<RecordSnapshot> {
+    requireCondition(input);
     const body = z
       .object({
-        set: z.record(z.string(), z.json()).default({}),
-        unset: z.array(z.string()).max(200).default([]),
+        data: z.record(z.string(), z.json()),
+        ifSchemaRevision: conditions.ifSchemaRevision,
       })
       .strict()
       .parse(input);
-    return this.write(id, "update", recordId, body.set, body.unset);
+    return this.write(id, "create", body, undefined, body.data);
+  }
+  async update(id: string, recordId: string, input: unknown): Promise<RecordSnapshot> {
+    requireCondition(input, true);
+    const body = z
+      .object({
+        ...conditions,
+        changes: z
+          .object({
+            set: z.record(z.string(), z.json()).default({}),
+            unset: z.array(z.string()).max(200).default([]),
+          })
+          .strict(),
+      })
+      .strict()
+      .parse(input);
+    return this.write(id, "update", body, recordId, body.changes.set, body.changes.unset);
   }
   private async write(
     id: string,
     operation: "create" | "update" | "delete",
+    condition: { ifSchemaRevision: string; ifRecordRevision?: string },
     recordId?: string,
     input: RecordValue = {},
     unset: readonly string[] = [],
-  ): Promise<RecordValue> {
+  ): Promise<RecordSnapshot> {
     const model = await this.model(id);
     const previousRow = recordId ? await readRow(this.db, model, recordId) : null;
     if (operation !== "create" && !previousRow) notFound("记录不存在");
     const previous = previousRow ? await withRelations(this.db, model, previousRow) : undefined;
     const access = requireAccess(model, this.actor, operation, previous);
+    if (condition.ifSchemaRevision !== model.revision)
+      throw new ServiceError(
+        "SCHEMA_CONFLICT",
+        "模型已更新，请重新打开编辑器",
+        409,
+        [],
+        model.revision,
+      );
+    if (previousRow && condition.ifRecordRevision !== previousRow._revision)
+      throw new ServiceError(
+        "RECORD_CONFLICT",
+        "记录已被修改，请重新读取后重试",
+        409,
+        [],
+        previousRow._revision,
+      );
     const unsetKeys = unset.map((pointer) => {
       const segments = pointerSegments(pointer);
       if (segments.length !== 1) invalid("unset 必须使用根字段 Pointer；嵌套更新请提交所属对象");
@@ -316,6 +357,7 @@ export class RecordService {
       assertWritableValue(schema, input[key], previous?.[key], `/${escapePointer(key)}`);
     }
     const generatedId = recordId ?? (typeof input.id === "string" ? input.id : crypto.randomUUID());
+    const revision = crypto.randomUUID();
     const now = new Date().toISOString();
     let record: RecordValue = {
       ...(previous
@@ -336,10 +378,7 @@ export class RecordService {
       );
       const issues = [
         ...validateValue(model.definition.document.data, data),
-        ...resolveModel(
-          model.definition.schema,
-          modelContract(model.definition.schema),
-        ).validateFormats(data),
+        ...resolveModel(model.definition.schema, cmsContract).validateFormats(data),
       ];
       if (issues.length)
         throw new ServiceError("INVALID_VALUE", "记录不符合当前已发布 schema", 422, issues);
@@ -352,14 +391,16 @@ export class RecordService {
     );
     if (previousRow)
       assertions.push({
-        sql: `EXISTS(SELECT 1 FROM ${quote(model.manifest.table)} WHERE id = ? AND updated_at = ? AND data_content = ?)`,
-        values: [generatedId, previousRow.updated_at, previousRow.data_content],
+        sql: `EXISTS(SELECT 1 FROM ${quote(model.manifest.table)} WHERE id = ? AND _revision = ?)`,
+        values: [generatedId, condition.ifRecordRevision!],
       });
     const guards = [
       transactionGuard(
         this.db,
-        "EXISTS(SELECT 1 FROM fw_models WHERE id = ? AND active_version = ?)",
-        [id, model.version],
+        `EXISTS(SELECT 1 FROM fw_models m JOIN fw_model_versions v
+          ON m.id = v.model_id AND m.active_version = v.version
+          WHERE m.id = ? AND v.publish_revision = ?)`,
+        [id, condition.ifSchemaRevision],
       ),
       ...assertions.map((assertion) => transactionGuard(this.db, assertion.sql, assertion.values)),
     ];
@@ -367,7 +408,9 @@ export class RecordService {
     const physical = model.definition.backend.storage.bindings.filter(
       (binding) =>
         binding.column &&
-        !["id", "created_at", "updated_at", "creator_id", "data_content"].includes(binding.column),
+        !["id", "created_at", "updated_at", "creator_id", "data_content", "_revision"].includes(
+          binding.column,
+        ),
     );
     if (operation === "delete")
       statements.push(
@@ -382,6 +425,7 @@ export class RecordService {
         "updated_at",
         "creator_id",
         "data_content",
+        "_revision",
         ...physical.map((binding) => binding.column!),
       ];
       statements.push(
@@ -395,11 +439,17 @@ export class RecordService {
             now,
             this.actor.id,
             mergeContent(model, record),
+            revision,
             ...physical.map((binding) => encodeValue(binding, record[bindingKey(binding)])),
           ),
       );
     } else {
-      const columns = ["updated_at", "data_content", ...physical.map((binding) => binding.column!)];
+      const columns = [
+        "updated_at",
+        "data_content",
+        "_revision",
+        ...physical.map((binding) => binding.column!),
+      ];
       statements.push(
         this.db
           .prepare(
@@ -408,6 +458,7 @@ export class RecordService {
           .bind(
             now,
             mergeContent(model, record, previousRow!),
+            revision,
             ...physical.map((binding) => encodeValue(binding, record[bindingKey(binding)])),
             generatedId,
           ),
@@ -442,11 +493,15 @@ export class RecordService {
       await this.db.batch(statements);
     } catch (error) {
       if ((await readHead(this.db, id))?.active_version !== model.version)
-        throw new ServiceError("SCHEMA_CHANGED", "提交期间模型已发布新版本，请重新提交", 409);
+        throw new ServiceError(
+          "SCHEMA_CONFLICT",
+          "提交期间模型已发布新版本，请重新打开编辑器",
+          409,
+        );
       if (operation === "create" && (await readRow(this.db, model, generatedId)))
-        throw new ServiceError("REVISION_CONFLICT", "记录 id 已存在", 409);
+        throw new ServiceError("RECORD_CONFLICT", "记录 id 已存在", 409);
       if (error instanceof Error && /fw_commit_guards|CHECK constraint/iu.test(error.message))
-        throw new ServiceError("REVISION_CONFLICT", "记录或关联数据已改变，请重新读取", 409);
+        throw new ServiceError("RECORD_CONFLICT", "记录或关联数据已改变，请重新读取", 409);
       throw new ServiceError("INVALID_VALUE", "记录存储约束校验失败", 422, [
         {
           path: "",
@@ -455,30 +510,23 @@ export class RecordService {
         },
       ]);
     }
-    return projectRecord(
-      record,
-      accessFor(model, this.actor, "read").allowed ? accessFor(model, this.actor, "read") : access,
-    );
+    return {
+      id: generatedId,
+      data: projectRecord(
+        record,
+        accessFor(model, this.actor, "read").allowed
+          ? accessFor(model, this.actor, "read")
+          : access,
+      ),
+      revision,
+      schemaRevision: model.revision,
+    };
   }
-  async delete(id: string, recordId: string) {
-    await this.write(id, "delete", recordId);
-    return { deleted: true as const };
-  }
-  async batchDelete(id: string, input: unknown) {
-    const body = z.object({ ids: idsSchema }).strict().parse(input);
-    // Each record has a guarded transaction and explicit per-record result.
-    const deleted: string[] = [],
-      failed: { id: string; code: string; message: string }[] = [];
-    for (const recordId of new Set(body.ids)) {
-      try {
-        await this.delete(id, recordId);
-        deleted.push(recordId);
-      } catch (error) {
-        if (!(error instanceof ServiceError)) throw error;
-        failed.push({ id: recordId, code: error.code, message: error.message });
-      }
-    }
-    return { deleted, failed };
+  async delete(id: string, recordId: string, input: unknown) {
+    requireCondition(input, true);
+    const body = z.object(conditions).strict().parse(input);
+    await this.write(id, "delete", body, recordId);
+    return { id: recordId, deleted: true as const };
   }
   async subtree(id: string, input: unknown) {
     const body = z

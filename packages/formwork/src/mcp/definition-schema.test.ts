@@ -27,6 +27,7 @@ it("公开 JSON Schema 与实际解析器接受相同字段协议，拒绝旧 en
         items: { type: "object", properties: { city: { $ref: "#/$defs/city" } } },
       },
       title: { type: "string", props: { placeholder: "标题" }, ui: { filter: false } },
+      body: { type: "string", ui: { form: { props: { placeholder: "正文" } } } },
     },
   };
   for (const value of [template, complete]) {
@@ -40,7 +41,6 @@ it("公开 JSON Schema 与实际解析器接受相同字段协议，拒绝旧 en
     { ...template, views: {} },
     { ...template, pages: {} },
     { document: template },
-    { ...template, data: { title: { type: "string", ui: { form: { props: {} } } } } },
   ]) {
     expect(validator.validate(value).valid).toBe(false);
     expect(modelDefinitionSchema.safeParse(value).success).toBe(false);

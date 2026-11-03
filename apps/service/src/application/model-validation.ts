@@ -19,10 +19,10 @@ import type {
 import type { StoredModel } from "../contracts";
 import { planStorage, bindingKey } from "../adapters/d1/compiler/storage";
 import { readPublished } from "../adapters/d1/repositories/models";
-import { capabilityReport, readManifest } from "./capabilities";
+import { capabilityReport, findManifest } from "./capabilities";
 import { ServiceError } from "../http/errors";
-import { modelContract } from "../../../../packages/domain-contracts";
-import { schemaMigrationReport } from "./schema-migration";
+import { cmsContract } from "../../../../packages/domain-contracts";
+import { schemaCompatibilityReport } from "./schema-compatibility";
 
 /** 列出可由定义引用的可信 Worker 规则，上传的源码永远不能进入注册表。 */
 export const behaviorRules = new Set([
@@ -49,26 +49,7 @@ export async function validateDefinition(
 }> {
   const errors: ValidationReport["errors"][number][] = [];
   const runtimeChecks: ValidationReport["runtimeChecks"][number][] = [];
-  let contract;
-  try {
-    contract = modelContract({
-      id: draft.id,
-      ...(typeof draft.domain === "string" ? { domain: draft.domain } : {}),
-    });
-  } catch (error) {
-    return {
-      report: {
-        errors: [
-          {
-            path: "/domain",
-            code: "UNKNOWN_DOMAIN",
-            message: error instanceof Error ? error.message : String(error),
-          },
-        ],
-        runtimeChecks,
-      },
-    };
-  }
+  const contract = cmsContract;
   const parsed = createModelDefinitionSchema(contract).safeParse(draft);
   if (!parsed.success) {
     errors.push(...modelIssues(draft, contract));
@@ -250,16 +231,24 @@ export async function validateDefinition(
         add("/backend/permissions/privateFields", "系统私有字段不可公开");
   }
   if (previous) {
-    const migration = await schemaMigrationReport(db, previous, definition);
-    errors.push(...migration.errors);
-    runtimeChecks.push(...migration.runtimeChecks);
+    const compatibility = await schemaCompatibilityReport(db, previous, definition);
+    errors.push(...compatibility.errors);
+    runtimeChecks.push(...compatibility.runtimeChecks);
   }
   let manifest: CapabilityManifest | undefined;
   try {
-    manifest = await readManifest(db);
-    const report = capabilityReport(manifest, definition.schema, target);
-    errors.push(...report.errors);
-    runtimeChecks.push(...report.runtimeChecks);
+    manifest = await findManifest(db);
+    if (manifest) {
+      const report = capabilityReport(manifest, definition.schema, target);
+      errors.push(...report.errors);
+      runtimeChecks.push(...report.runtimeChecks);
+    } else {
+      runtimeChecks.push({
+        path: "/data",
+        code: "RUNTIME_COMPONENTS",
+        message: "未登记静态清单；组件和 UI 映射需要在应用中验证。",
+      });
+    }
   } catch (error) {
     add(
       "/data",

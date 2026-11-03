@@ -4,7 +4,6 @@ import {
   assignFieldIds,
   baseFieldSchema,
   compileDefinition,
-  migrateLegacyDefinition,
   modelIssues,
   resolveModel,
 } from "../index";
@@ -90,60 +89,4 @@ it("稳定身份和表名编码不会把连字符及下划线折叠", () => {
   expect(
     assignFieldIds({ id: "sample", data: { title: { type: "string" } } }, draft).data,
   ).toMatchObject({ title: { id: (draft.data as Record<string, { id: string }>).title.id } });
-});
-
-it("旧定义转换保留绑定和枚举，并显式报告布局及 scene props 冲突", () => {
-  const legacy = {
-    document: {
-      id: "legacy",
-      title: "旧模型",
-      data: {
-        type: "object",
-        properties: {
-          title: { type: ["string", "null"] },
-          tags: { type: "array", items: { type: "string", enum: ["a", "b"] } },
-        },
-        required: ["title"],
-      },
-      fields: {
-        "/title": {
-          form: { props: { placeholder: "编辑" } },
-          filter: { props: { placeholder: "筛选" } },
-        },
-      },
-      views: { list: { component: "Object" } },
-    },
-    backend: {
-      storage: {
-        table: "legacy_rows",
-        bindings: [
-          {
-            id: "title-id",
-            path: "/title",
-            column: "heading",
-            sqlType: "TEXT",
-            encoding: "scalar",
-          },
-        ],
-      },
-      relations: [],
-    },
-  };
-  const result = migrateLegacyDefinition(legacy);
-  expect(result.definition.data.title).toMatchObject({
-    id: "title-id",
-    type: "string",
-    nullable: true,
-    required: true,
-    storage: { column: "heading" },
-  });
-  expect(result.definition.data.tags.enum).toEqual(["a", "b"]);
-  expect(result.report.errors.map((issue) => issue.message).join(" ")).toContain("props 冲突");
-  expect(result.report.errors.some((issue) => issue.path === "/document/views")).toBe(true);
-  expect(legacy.document.views).toBeDefined();
-  expect(
-    migrateLegacyDefinition(legacy, { layoutsMigrated: true }).report.errors.some(
-      (issue) => issue.path === "/document/views",
-    ),
-  ).toBe(false);
 });

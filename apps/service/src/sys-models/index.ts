@@ -65,7 +65,7 @@ const users = definition(
       type: "string",
       title: "密码",
       description: "留空保持原密码",
-      ui: { table: false, filter: false },
+      ui: { table: false, filter: false, detail: false },
     },
     passwordHash: { type: "string", readOnly: true, required: true },
     roleId: {

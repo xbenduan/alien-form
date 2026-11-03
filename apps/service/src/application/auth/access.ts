@@ -18,7 +18,7 @@ import { decodeRow, readRow, withRelations } from "../../adapters/d1/repositorie
 import type { PhysicalRow } from "../../adapters/d1/repositories/values";
 import { bindingKey, quote } from "../../adapters/d1/compiler/storage";
 import { forbidden, ServiceError } from "../../http/errors";
-import { modelContract } from "../../../../../packages/domain-contracts";
+import { cmsContract } from "../../../../../packages/domain-contracts";
 
 /** 从 DB 当前用户、角色及可信角色标记构造权限档案，保留角色子树聚合。 */
 export async function resolveActor(
@@ -116,15 +116,23 @@ export function projectRecord(record: RecordValue, access: Access): RecordValue 
   );
 }
 /** 返回当前身份与 D1 实际支持的字段能力，query 只能缩小这个集合。 */
-export function recordCapabilities(model: StoredModel, actor: Actor): RecordCapabilities {
+export function recordCapabilities(
+  model: StoredModel,
+  actor: Actor,
+): RecordCapabilities & {
+  actions: Record<"read" | "create" | "update" | "delete", boolean>;
+} {
   const read = accessFor(model, actor, "read");
   const create = accessFor(model, actor, "create");
   const update = accessFor(model, actor, "update");
-  const resolved = resolveModel(
-    runtimeDocument(model.definition),
-    modelContract(model.definition.schema),
-  );
+  const resolved = resolveModel(runtimeDocument(model.definition), cmsContract);
   return {
+    actions: {
+      read: read.allowed,
+      create: create.allowed,
+      update: update.allowed,
+      delete: accessFor(model, actor, "delete").allowed,
+    },
     fields: Object.fromEntries(
       resolved.fields.map((field) => {
         const key = pointerSegments(field.path)[0]!;

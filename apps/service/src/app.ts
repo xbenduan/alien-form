@@ -32,13 +32,8 @@ const validateSchema = z
   .object({
     definition: z.unknown(),
     router: z.string().min(1).optional(),
-    window: z.string().min(1).optional(),
   })
-  .strict()
-  .refine((input) => !input.window || !!input.router, {
-    message: "window 需要所属 router",
-    path: ["router"],
-  });
+  .strict();
 
 /** 创建唯一 Worker HTTP 应用，统一 API 与 MCP 的 Header 鉴权、CORS 和错误编码。 */
 export function createApp() {
@@ -172,7 +167,7 @@ export function createApp() {
       await models(c).validate(
         c.req.param("modelId"),
         body.definition,
-        body.router === undefined ? undefined : { router: body.router, window: body.window },
+        body.router === undefined ? undefined : { router: body.router },
       ),
     );
   });
@@ -193,21 +188,8 @@ export function createApp() {
   });
   app.get("/api/v1/models/:modelId/preview", async (c) => {
     const router = z.string().min(1).parse(c.req.query("router"));
-    let params: Record<string, string> = {};
-    if (c.req.query("params")) {
-      try {
-        params = z.record(z.string(), z.string()).parse(JSON.parse(c.req.query("params")!));
-      } catch {
-        invalid("params 必须是字符串对象 JSON");
-      }
-    }
     return c.json(
-      await models(c).preview(
-        c.req.param("modelId"),
-        { router, window: c.req.query("window") },
-        params,
-        c.req.query("revision"),
-      ),
+      await models(c).preview(c.req.param("modelId"), { router }, c.req.query("revision")),
     );
   });
   app.get("/api/v1/models/:modelId/draft-schema", async (c) =>
@@ -223,11 +205,9 @@ export function createApp() {
   );
   app.get("/api/v1/formwork/capabilities", async (c) =>
     c.json(
-      await models(c).capabilities(
-        z.string().min(1).parse(c.req.query("modelId")),
-        { router: z.string().min(1).parse(c.req.query("router")), window: c.req.query("window") },
-        c.req.query("domain"),
-      ),
+      await models(c).capabilities(z.string().min(1).parse(c.req.query("modelId")), {
+        router: z.string().min(1).parse(c.req.query("router")),
+      }),
     ),
   );
   app.put("/api/v1/formwork/capabilities/:appId", async (c) => {
@@ -251,9 +231,6 @@ export function createApp() {
   app.post("/api/v1/records/:modelId/subtree", async (c) =>
     c.json(await records(c).subtree(c.req.param("modelId"), await c.req.json())),
   );
-  app.post("/api/v1/records/:modelId/batch-delete", async (c) =>
-    c.json(await records(c).batchDelete(c.req.param("modelId"), await c.req.json())),
-  );
   app.post("/api/v1/records/:modelId/commands/:command", async (c) =>
     c.json(
       (await records(c).command(
@@ -269,14 +246,11 @@ export function createApp() {
   app.get("/api/v1/records/:modelId/:id", async (c) =>
     c.json(await records(c).read(c.req.param("modelId"), c.req.param("id"))),
   );
-  app.put("/api/v1/records/:modelId/:id", async (c) =>
+  app.patch("/api/v1/records/:modelId/:id", async (c) =>
     c.json(await records(c).update(c.req.param("modelId"), c.req.param("id"), await c.req.json())),
   );
-  app.patch("/api/v1/records/:modelId/:id", async (c) =>
-    c.json(await records(c).patch(c.req.param("modelId"), c.req.param("id"), await c.req.json())),
-  );
   app.delete("/api/v1/records/:modelId/:id", async (c) =>
-    c.json(await records(c).delete(c.req.param("modelId"), c.req.param("id"))),
+    c.json(await records(c).delete(c.req.param("modelId"), c.req.param("id"), await c.req.json())),
   );
   app.notFound((c) => c.json({ error: { code: "NOT_FOUND", message: "接口不存在" } }, 404));
   app.onError((error, c) => {

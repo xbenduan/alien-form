@@ -49,7 +49,7 @@ export async function registerManifest(
           for (const issue of error.issues) {
             if (!isObject(issue)) continue;
             lines.push(
-              ["modelId", "router", "window", "path", "code", "message"]
+              ["modelId", "router", "path", "code", "message"]
                 .map((key) => text(issue[key]))
                 .filter(Boolean)
                 .join(" · "),

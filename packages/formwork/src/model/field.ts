@@ -39,10 +39,6 @@ export const controlledProps = new Set([
 ]);
 const json = z.json();
 const scalar = z.union([z.string(), z.number().finite(), z.boolean(), z.null()]);
-const presentation = z.union([
-  z.literal(false),
-  z.object({ component: z.string().min(1).optional() }).strict(),
-]);
 const propsSchema = z
   .object({
     placeholder: z.string().optional(),
@@ -60,6 +56,15 @@ const propsSchema = z
       if (controlledProps.has(key))
         ctx.addIssue({ code: "custom", path: [key], message: `props 不能覆盖受控属性 ${key}` });
   });
+const presentation = z.union([
+  z.literal(false),
+  z
+    .object({
+      component: z.string().min(1).optional(),
+      props: propsSchema.optional(),
+    })
+    .strict(),
+]);
 /** 校验递归字段的协议形状，保留组件所需的扩展 JSON props。 */
 export const baseFieldSchema: z.ZodType<FieldSchema> = z.lazy(() =>
   z
@@ -131,9 +136,8 @@ export const baseFieldSchema: z.ZodType<FieldSchema> = z.lazy(() =>
     .strict(),
 );
 
-/** 声明无 UI 的 format 契约及默认组件名。 */
+/** 声明前后端共享的 format 值契约；视觉映射属于 app.ui。 */
 export type FormatDefinition = {
-  component: string;
   schema: z.ZodType<FieldSchema>;
   normalize?: (field: FieldSchema) => FieldSchema;
   valueSchema?: z.ZodType<JsonValue>;
@@ -154,7 +158,6 @@ const typed = (types: readonly string[]) =>
   });
 function plural(type: "string" | "number" | "boolean"): FormatDefinition {
   return {
-    component: "Select",
     normalize: (field) => ({ ...field, items: field.items ?? { type } }),
     schema: typed(["array"]).refine(
       (field) =>
@@ -168,18 +171,17 @@ function plural(type: "string" | "number" | "boolean"): FormatDefinition {
 }
 /** 提供 Framework 默认格式；复杂数组仍保持逐项数据递归。 */
 export const frameworkFormats: FormatRegistry = {
-  input: { component: "Input", schema: typed(["string"]) },
-  text: { component: "Text", schema: typed(["string"]) },
-  number: { component: "NumberInput", schema: typed(["number", "integer"]) },
-  boolean: { component: "Boolean", schema: typed(["boolean"]) },
-  null: { component: "Null", schema: typed(["null"]) },
-  object: { component: "ObjectFields", schema: typed(["object"]) },
-  array: { component: "ArrayFields", schema: typed(["array"]) },
+  input: { schema: typed(["string"]) },
+  text: { schema: typed(["string"]) },
+  number: { schema: typed(["number", "integer"]) },
+  boolean: { schema: typed(["boolean"]) },
+  null: { schema: typed(["null"]) },
+  object: { schema: typed(["object"]) },
+  array: { schema: typed(["array"]) },
   strings: plural("string"),
   numbers: plural("number"),
   booleans: plural("boolean"),
   select: {
-    component: "Select",
     schema: baseFieldSchema.superRefine((field, ctx) => {
       if (Number(!!field.enum) + Number(!!field.relation) !== 1)
         ctx.addIssue({
@@ -259,7 +261,6 @@ export type FieldDescriptor = {
   schema: FieldSchema;
   valueSchema: DataSchema;
   format: string;
-  component: string;
   props: Record<string, JsonValue>;
   options: readonly EnumOption[];
   capabilities?: FieldCapabilities;
@@ -356,7 +357,6 @@ export function resolveModel(
       schema: field,
       valueSchema,
       format,
-      component: preset.component,
       props: { ...preset.props, ...field.props },
       options,
       capabilities: capabilities?.fields[path],
@@ -454,9 +454,11 @@ export function resolveField(
   options: { scene: Scene; component?: string; props?: Record<string, unknown> },
 ): { component: string; props: Record<string, unknown> } {
   const presentation = field.schema.ui?.[options.scene];
+  const component = options.component ?? (presentation ? presentation.component : undefined);
+  if (!component)
+    throw new FormworkError("MISSING_UI", `字段 ${field.path} 缺少 ${options.scene} 组件映射`);
   return {
-    component:
-      options.component ?? (presentation ? presentation.component : undefined) ?? field.component,
-    props: { ...field.props, ...options.props },
+    component,
+    props: { ...field.props, ...(presentation ? presentation.props : {}), ...options.props },
   };
 }

@@ -151,7 +151,7 @@ export const SelectControl: Component<SelectProps> = (props) => {
           </span>
           <Icon name="chevron" class="select-chevron" />
         </Popover.Trigger>
-        <Popover.Portal>
+        <Popover.Portal mount={trigger?.closest<HTMLElement>("[data-formwork-root]") ?? undefined}>
           <Popover.Content
             ref={(element) => {
               menu = element;

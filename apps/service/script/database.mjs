@@ -109,15 +109,27 @@ export function developmentDirectory() {
   );
 }
 
+/** 按记录存储协议隔离本地 D1，避免新版读取缺少字段存在标记和记录版本的旧 state。 */
+export function localStateDirectory(directory) {
+  return join(directory, "state-records-v1");
+}
+
 /**
- * 按当前表结构初始化 D1，本地部署先删除整个持久化 state。
- * @param options local 为 true 时 state 必须指向本次本地部署的 D1 目录。
+ * 按当前表结构幂等初始化 D1，仅显式 reset 删除本地持久化 state。
+ * @param options reset 只允许 local 数据库且 state 必须是当前协议的数据目录。
  * @param options.execute 接收 Wrangler 参数的执行函数。
  */
-export async function initializeDatabase({ directory, state, execute, common, local }) {
-  if (local) {
-    if (!state || resolve(state) !== resolve(directory, "state"))
-      throw new Error("本地重建只能清空部署目录下的 state");
+export async function initializeDatabase({
+  directory,
+  state,
+  execute,
+  common,
+  local,
+  reset = false,
+}) {
+  if (reset) {
+    if (!local || !state || resolve(state) !== resolve(localStateDirectory(directory)))
+      throw new Error("本地重建只能清空当前记录协议的数据目录");
     await rm(state, { recursive: true, force: true });
   }
   const file = join(directory, "schema.sql");

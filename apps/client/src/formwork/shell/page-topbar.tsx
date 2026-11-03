@@ -9,7 +9,7 @@ export type TopbarSlots = {
   active: () => void;
   inactive: () => void;
 };
-/** 将顶栏限定在当前 Page 的外壳，完整页面 Window 保留调用方插槽。 */
+/** 将顶栏限定在当前应用外壳，记录操作页复用同一插槽。 */
 export const TopbarContext = createContext<Accessor<TopbarSlots | undefined>>();
 
 /** 将页面标题和操作挂到统一顶栏；独立预览页面使用自己的精简顶栏。 */

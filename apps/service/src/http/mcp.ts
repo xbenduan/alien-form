@@ -27,18 +27,14 @@ async function callTool(service: ModelService, name: ModelToolName, input: unkno
     case "formwork.capabilities": {
       const args = toolInputSchemas[name].parse(input);
       if (args.modelId === undefined || args.router === undefined) return service.catalog();
-      return service.capabilities(
-        args.modelId,
-        { router: args.router, window: args.window },
-        args.domain,
-      );
+      return service.capabilities(args.modelId, { router: args.router });
     }
     case "models.validate": {
       const args = toolInputSchemas[name].parse(input);
       return service.validate(
         args.modelId,
         args.definition,
-        args.router === undefined ? undefined : { router: args.router, window: args.window },
+        args.router === undefined ? undefined : { router: args.router },
       );
     }
     case "models.write": {
@@ -47,11 +43,7 @@ async function callTool(service: ModelService, name: ModelToolName, input: unkno
     }
     case "models.preview": {
       const args = toolInputSchemas[name].parse(input);
-      return service.preview(
-        args.modelId,
-        { router: args.router, window: args.window },
-        args.params ?? {},
-      );
+      return service.preview(args.modelId, { router: args.router });
     }
   }
 }
@@ -122,7 +114,7 @@ export async function handleMcp(request: Request, env: Env, actor: Actor): Promi
     {
       name: "application-capabilities",
       uri: "formwork://capabilities",
-      description: "当前应用全部已登记的分层组件、fn、声明、JSDoc 与路由参数",
+      description: "当前应用已登记的组件、formats、schema 加工声明、JSDoc 与 Domain/Page 路由",
       read: () => service.catalog(),
     },
     {

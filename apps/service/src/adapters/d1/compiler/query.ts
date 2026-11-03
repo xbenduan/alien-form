@@ -3,7 +3,7 @@ import type { RecordQuery, StorageBinding } from "formwork/model";
 import type { Actor, StoredModel } from "../../../contracts";
 import { recordCapabilities } from "../../../application/auth/access";
 import type { Access } from "../../../application/auth/access";
-import { modelContract } from "../../../../../../packages/domain-contracts";
+import { cmsContract } from "../../../../../../packages/domain-contracts";
 import { forbidden, invalid, ServiceError } from "../../../http/errors";
 import { bindingExpression, bindingExistsExpression } from "./storage";
 import { encodeValue } from "../repositories/values";
@@ -41,7 +41,7 @@ export function predicates(model: StoredModel, actor: Actor, access: Access, que
         ]),
       ),
     },
-    modelContract(model.definition.schema),
+    cmsContract,
   );
   if (access.scope === "own") {
     sql.push('"creator_id" = ?');

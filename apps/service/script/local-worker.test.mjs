@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile, readFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, readFile, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomBytes } from "node:crypto";
@@ -8,9 +8,59 @@ import { compileDefinition } from "formwork/model";
 import { createDefinitionTemplate } from "formwork/mcp";
 import { startLocalWorker } from "./local-worker.mjs";
 import { selectDevelopmentPort } from "../../../scripts/dev-ports.mjs";
-import { synchronizeSystemModels } from "./migrate";
+import { synchronizeSystemModels } from "./initialize";
 
-it("系统模型部署更新保留版本且幂等，本地重建删除旧模型、业务表和凭证", async () => {
+it("旧版 state 保留原样，新版用账号文件的同一凭证初始化独立数据库", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "alien-form-state-version-"));
+  const options = {
+    directory,
+    port: await selectDevelopmentPort({
+      preferred: 18789,
+      strict: false,
+      label: "state version test",
+    }),
+    clientOrigin: "http://localhost:5173",
+    username: "retained-admin",
+    password: randomBytes(24).toString("hex"),
+    capabilityToken: randomBytes(32).toString("hex"),
+  };
+  let worker;
+  try {
+    worker = await startLocalWorker(options);
+    const api = createFormworkApi({ url: `${worker.origin}/api/v1` });
+    const before = await api.auth.login(options.username, options.password);
+    // 复现旧库：账号和哈希正确，但没有字段存在标记与记录版本列。
+    await worker.sql(
+      "UPDATE sys_users SET data_content='{}'; ALTER TABLE sys_users DROP COLUMN _revision",
+    );
+    const activeState = worker.child.spawnargs[worker.child.spawnargs.indexOf("--persist-to") + 1];
+    await worker.close();
+    worker = undefined;
+    const oldState = join(directory, "state");
+    if (activeState !== oldState) await rename(activeState, oldState);
+    const marker = join(oldState, "keep.txt");
+    await writeFile(marker, "旧数据不删除、不转换");
+
+    worker = await startLocalWorker(options);
+    const after = await api.auth.login(options.username, options.password);
+    expect(after.user.id).not.toBe(before.user.id);
+    expect(after.user.username).toBe(options.username);
+    expect(await readFile(marker, "utf8")).toBe("旧数据不删除、不转换");
+    await worker.close();
+    worker = undefined;
+
+    worker = await startLocalWorker({ ...options, reset: true });
+    await expect(api.auth.login(options.username, options.password)).resolves.toHaveProperty(
+      "token",
+    );
+    expect(await readFile(marker, "utf8")).toBe("旧数据不删除、不转换");
+  } finally {
+    await worker?.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+}, 60_000);
+
+it("普通重启保留数据和账号，系统更新幂等，显式重置清空数据库", async () => {
   const directory = await mkdtemp(join(tmpdir(), "alien-form-reset-"));
   const port = await selectDevelopmentPort({
     preferred: 18788,
@@ -101,8 +151,14 @@ it("系统模型部署更新保留版本且幂等，本地重建删除旧模型�
     await writeFile(join(directory, "keep.txt"), "保留 state 外的文件");
     await worker.close();
     worker = undefined;
+    worker = await startLocalWorker(options);
+    expect((await api.models.read("orders")).definition.id).toBe("orders");
+    expect((await api.auth.me()).username).toBe(options.username);
+    await worker.close();
+    worker = undefined;
     const secondOptions = {
       ...options,
+      reset: true,
       username: "second-admin",
       password: randomBytes(24).toString("hex"),
       capabilityToken: randomBytes(32).toString("hex"),

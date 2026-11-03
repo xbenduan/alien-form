@@ -7,6 +7,9 @@ import type {
   DraftDefinition,
   CapabilityManifest,
   FieldSchema,
+  FormworkApi,
+  RecordQuery,
+  RecordValue,
 } from "formwork/model";
 import { startWorker } from "./worker-harness";
 
@@ -35,80 +38,29 @@ function manifest(): CapabilityManifest {
     declaration: `(props) => JSX.Element`,
     jsDoc: `渲染 ${name} 字段，props 由框架绑定。`,
   }));
-  const empty = { components: [], fn: [], runtimeChecks: [] };
   const contents: Omit<CapabilityManifest, "revision"> = {
-    formatVersion: 2,
+    formatVersion: 1,
     appId: "alien-form",
     clientOrigin: "http://localhost:5173",
-    presenters: ["page", "modal", "drawer"],
-    framework: { components, fn: [], runtimeChecks: [] },
+    app: {
+      components,
+      formats: [],
+      ui: { name: "ui", source, declaration: "FormworkUi" },
+      runtimeChecks: [],
+    },
     domains: {
-      shared: {
-        components: [
-          {
-            name: "SharedEditor",
-            source: { ...source, file: "src/domains/shared/index.ts" },
-            declaration: "SharedEditor",
-          },
-        ],
-        fn: [
-          {
-            name: "identity",
-            source: { ...source, file: "src/domains/shared/index.ts" },
-            declaration: "Domain identity",
-          },
-        ],
+      list: {
+        transformSchema: {
+          name: "transformSchema",
+          source: { ...source, file: "src/domains/list/index.tsx" },
+          declaration: "(ctx) => ctx",
+        },
         runtimeChecks: [],
       },
+      "tree-list": { runtimeChecks: [] },
+      videos: { runtimeChecks: [] },
     },
-    pages: Object.fromEntries(
-      ["list", "tree-list"].map((router) => [
-        router,
-        {
-          path: `/${router}/:modelId`,
-          model: true,
-          capabilities: {
-            ...empty,
-            fn: [
-              {
-                name: "identity",
-                source: { ...source, file: `src/pages/${router}/index.ts` },
-                declaration: "Page identity",
-              },
-            ],
-          },
-          windows: {
-            add: {
-              path: `/${router}/:modelId/add`,
-              model: true,
-              openMode: "modal",
-              capabilities: empty,
-            },
-            edit: {
-              path: `/${router}/:modelId/edit/:id`,
-              model: true,
-              openMode: "modal",
-              capabilities: {
-                ...empty,
-                fn: [
-                  {
-                    name: "identity",
-                    source: { ...source, file: `src/pages/${router}/window/edit.ts` },
-                    declaration: "Window identity",
-                  },
-                ],
-              },
-            },
-            detail: {
-              path: `/${router}/:modelId/detail/:id`,
-              model: true,
-              openMode: "drawer",
-              capabilities: empty,
-            },
-          },
-        },
-      ]),
-    ),
+    pages: ["models", "model-preview"],
   };
   return {
     ...contents,
@@ -157,6 +109,42 @@ async function publish(definition: ModelDefinition) {
   });
   expect(current.diagnostics.errors).toEqual([]);
   return worker.api.models.publish(definition.id, current.revision);
+}
+// 业务测试只关心字段值；快照与条件写入协议由 field-protocol.test.ts 单独覆盖。
+async function createRecord(modelId: string, data: RecordValue, api: FormworkApi = worker.api) {
+  const schema = await api.runtime.schema(modelId);
+  return (await api.records.create({ modelId, data, ifSchemaRevision: schema.schemaRevision }))
+    .data;
+}
+async function readRecord(modelId: string, recordId: string, api: FormworkApi = worker.api) {
+  return (await api.records.get({ modelId, recordId })).data;
+}
+async function updateRecord(
+  modelId: string,
+  recordId: string,
+  set: RecordValue,
+  api: FormworkApi = worker.api,
+) {
+  const record = await api.records.get({ modelId, recordId });
+  return api.records.update({
+    modelId,
+    recordId,
+    changes: { set },
+    ifSchemaRevision: record.schemaRevision,
+    ifRecordRevision: record.revision,
+  });
+}
+async function deleteRecord(modelId: string, recordId: string) {
+  const record = await worker.api.records.get({ modelId, recordId });
+  return worker.api.records.delete({
+    modelId,
+    recordId,
+    ifSchemaRevision: record.schemaRevision,
+    ifRecordRevision: record.revision,
+  });
+}
+function queryRecords(modelId: string, query: RecordQuery, api: FormworkApi = worker.api) {
+  return api.records.query({ modelId, query });
 }
 beforeAll(async () => {
   worker = await startWorker({ password: "menu-integration-password" });
@@ -255,18 +243,18 @@ it("导航拒绝系统、草稿、agent/deploy；read 与 manage 分离、权限
     ])
       expect((await worker.request(path, method, undefined, token.token)).status).toBe(403);
   }
-  const roles = await worker.api.records.query("system-roles", {
+  const roles = await queryRecords("system-roles", {
     clauses: [],
     page: 1,
     pageSize: 20,
   });
-  const role = await worker.api.records.create("system-roles", {
+  const role = await createRecord("system-roles", {
     code: "menu_reader",
     name: "菜单读取",
     canCreateModel: true,
-    parentId: roles.list.find((value) => value.code === "super_admin")!.id,
+    parentId: roles.items.find((value) => value.data.code === "super_admin")!.id,
   });
-  const user = await worker.api.records.create("system-users", {
+  const user = await createRecord("system-users", {
     username: "menu-reader",
     password: "menu-reader-password",
     roleId: [role.id],
@@ -288,12 +276,12 @@ it("导航拒绝系统、草稿、agent/deploy；read 与 manage 分离、权限
   await expect(reader.navigation.pinModel("menu_owned")).rejects.toMatchObject({
     code: "FORBIDDEN",
   });
-  const deniedRole = await worker.api.records.create("system-roles", {
+  const deniedRole = await createRecord("system-roles", {
     code: "menu_denied",
     name: "无菜单权限",
-    parentId: roles.list.find((value) => value.code === "super_admin")!.id,
+    parentId: roles.items.find((value) => value.data.code === "super_admin")!.id,
   });
-  await worker.api.records.update("system-users", String(user.id), { roleId: [deniedRole.id] });
+  await updateRecord("system-users", String(user.id), { roleId: [deniedRole.id] });
   expect((await reader.navigation.read()).pinnedModels).toEqual([]);
   expect(
     (await worker.sql(`SELECT model_id FROM fw_model_menu_pins WHERE user_id = '${user.id}'`))[0]
@@ -383,19 +371,15 @@ it("草稿 CAS、发布旧审阅 revision 失败，published/runtime 与最新�
   expect((await worker.api.runtime.schema("cas")).schema.title).toBe("cas");
   expect(await worker.api.models.versions("cas")).toHaveLength(1);
   const saved = await worker.api.models.read("cas");
-  const preview = await worker.api.models.preview(
-    "cas",
-    { router: "list", window: "edit" },
-    { id: "../record a" },
-  );
-  expect(new URL(preview.url).searchParams.get("id")).toBe("../record a");
-  await expect(
-    worker.api.models.preview("cas", { router: "list", window: "edit" }),
-  ).rejects.toMatchObject({
-    code: "PARAMS_REQUIRED",
+  const preview = await worker.api.models.preview("cas", "list");
+  expect(new URL(preview.url).pathname).toBe("/model-preview");
+  expect(new URL(preview.url).searchParams.get("modelId")).toBe("cas");
+  expect(new URL(preview.url).searchParams.get("revision")).toBe(saved.revision);
+  await expect(worker.api.models.preview("cas", "missing")).rejects.toMatchObject({
+    code: "UNKNOWN_ROUTER",
   });
-  await worker.api.models.publish("cas", saved.revision);
-  expect((await worker.api.runtime.schema("cas")).version).toBe(2);
+  const published = await worker.api.models.publish("cas", saved.revision);
+  expect((await worker.api.runtime.schema("cas")).schemaRevision).toBe(published.revision);
   await expect(worker.api.models.draftSchema("cas", saved.revision)).rejects.toMatchObject({
     code: "REVISION_CONFLICT",
   });
@@ -415,28 +399,28 @@ it("真实记录类型筛选、参数化任意 id、分页、JSON 编码与具�
   });
   await publish(model);
   const id = "../record/a b";
-  await worker.api.records.create("records", {
+  await createRecord("records", {
     id,
     title: "A%_x",
     count: 2,
     paid: false,
     lines: [{ amount: 3 }],
   });
-  await worker.api.records.create("records", { title: "B", count: 5, paid: true });
-  expect(await worker.api.records.read("records", id)).toMatchObject({
+  await createRecord("records", { title: "B", count: 5, paid: true });
+  expect(await readRecord("records", id)).toMatchObject({
     id,
     paid: false,
     lines: [{ amount: 3 }],
   });
   expect(
-    await worker.api.records.query("records", {
+    await queryRecords("records", {
       clauses: [{ field: "/paid", operator: "eq", operand: false }],
       page: 1,
       pageSize: 10,
     }),
   ).toMatchObject({ total: 1 });
   expect(
-    await worker.api.records.query("records", {
+    await queryRecords("records", {
       clauses: [{ field: "/title", operator: "contains", operand: "%_" }],
       page: 1,
       pageSize: 10,
@@ -444,16 +428,16 @@ it("真实记录类型筛选、参数化任意 id、分页、JSON 编码与具�
   ).toMatchObject({ total: 1 });
   expect(
     (
-      await worker.api.records.query("records", {
+      await queryRecords("records", {
         clauses: [],
         sort: { field: "/count", direction: "desc" },
         page: 1,
         pageSize: 1,
       })
-    ).list[0].count,
+    ).items[0].data.count,
   ).toBe(5);
   await expect(
-    worker.api.records.create("records", { title: "C", lines: [{ amount: 0 }] }),
+    createRecord("records", { title: "C", lines: [{ amount: 0 }] }),
   ).rejects.toMatchObject({
     code: "INVALID_VALUE",
     issues: expect.arrayContaining([
@@ -469,8 +453,8 @@ it("真实记录类型筛选、参数化任意 id、分页、JSON 编码与具�
       })
     ).status,
   ).toBe(422);
-  await worker.api.records.update("records", id, { title: "Updated" });
-  expect(await worker.api.records.read("records", id)).toMatchObject({
+  await updateRecord("records", id, { title: "Updated" });
+  expect(await readRecord("records", id)).toMatchObject({
     paid: false,
     count: 2,
     title: "Updated",
@@ -479,7 +463,7 @@ it("真实记录类型筛选、参数化任意 id、分页、JSON 编码与具�
 it("新增必填阻止发布，删除字段保留列与值且后续 manifest 不丢历史", async () => {
   const model = definition("retained");
   await publish(model);
-  await worker.api.records.create("retained", {
+  await createRecord("retained", {
     id: "old",
     title: "Original",
     count: 42,
@@ -490,7 +474,7 @@ it("新增必填阻止发布，删除字段保留列与值且后续 manifest 不
   let current = await worker.api.models.read("retained");
   current = await worker.api.models.saveDraft("retained", next, { ifRevision: current.revision });
   expect(current.diagnostics.errors).toContainEqual(
-    expect.objectContaining({ code: "MIGRATION_REQUIRED" }),
+    expect.objectContaining({ code: "SCHEMA_INCOMPATIBLE" }),
   );
   await expect(worker.api.models.publish("retained", current.revision)).rejects.toMatchObject({
     code: "INVALID_MODEL",
@@ -498,9 +482,9 @@ it("新增必填阻止发布，删除字段保留列与值且后续 manifest 不
   delete next.data.extra!.required;
   current = await worker.api.models.saveDraft("retained", next, { ifRevision: current.revision });
   await worker.api.models.publish("retained", current.revision);
-  expect(await worker.api.records.read("retained", "old")).toMatchObject({ title: "Original" });
-  await worker.api.records.update("retained", "old", { title: "Changed" });
-  await worker.api.records.create("retained", { id: "new", title: "New", extra: "x" });
+  expect(await readRecord("retained", "old")).toMatchObject({ title: "Original" });
+  await updateRecord("retained", "old", { title: "Changed" });
+  await createRecord("retained", { id: "new", title: "New", extra: "x" });
   const sql = await worker.sql("SELECT count, paid FROM test_retained WHERE id = 'old'");
   expect(sql[0].results).toEqual([{ count: 42, paid: 1 }]);
   current = await worker.api.models.read("retained");
@@ -516,8 +500,8 @@ it("新增必填阻止发布，删除字段保留列与值且后续 manifest 不
 it("UNIQUE 失败回滚列、关系 DDL、版本和指针，草稿仍可读回", async () => {
   const model = definition("rollback");
   await publish(model);
-  await worker.api.records.create("rollback", { title: "duplicate" });
-  await worker.api.records.create("rollback", { title: "duplicate" });
+  await createRecord("rollback", { title: "duplicate" });
+  await createRecord("rollback", { title: "duplicate" });
   const next = structuredClone(model);
   next.data.title!.storage = { column: "title", index: "unique" };
   next.data.extra = { id: "rollback:extra", type: "string", storage: { column: "extra" } };
@@ -537,39 +521,14 @@ it("UNIQUE 失败回滚列、关系 DDL、版本和指针，草稿仍可读回",
   ).toBe(false);
   expect((await worker.sql("SELECT * FROM fw_commit_guards"))[0].results).toHaveLength(0);
 });
-it("实际 NOT NULL 遗留列放宽后仍保留旧值，新增记录不被停用字段阻塞", async () => {
-  const model = definition("notnull");
-  await publish(model);
-  await worker.sql([
-    "DROP TABLE test_notnull",
-    `CREATE TABLE test_notnull(id TEXT PRIMARY KEY, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
-      creator_id TEXT NOT NULL, data_content TEXT NOT NULL DEFAULT '{}', title TEXT, count INTEGER NOT NULL UNIQUE, paid INTEGER)`,
-    `INSERT INTO test_notnull VALUES ('old', '2020', '2020', '${worker.user.id}', '{}', 'Before', 19, 1)`,
-  ]);
-  const next = definition("notnull", { title: { type: "string" } });
-  const current = await worker.api.models.read("notnull");
-  const saved = await worker.api.models.saveDraft("notnull", next, {
-    ifRevision: current.revision,
-  });
-  await worker.api.models.publish("notnull", saved.revision);
-  await worker.api.records.create("notnull", { title: "After" });
-  expect(
-    (await worker.sql("SELECT count FROM test_notnull WHERE id = 'old'"))[0].results[0].count,
-  ).toBe(19);
-  expect(
-    (await worker.sql("PRAGMA table_info(test_notnull)"))[0].results.find(
-      (column) => column.name === "count",
-    )?.notnull,
-  ).toBe(0);
-});
 it("记录校验后并发发布，新版 guard 拒绝旧提交且 outbox 没有部分写入", async () => {
   const model = definition("race");
   model.backend.behavior.events = { create: ["audit.record"] };
-  await publish(model);
+  const published = await publish(model);
   const writing = worker.request(
     "/records/race",
     "POST",
-    { id: "racing", title: "old" },
+    { data: { id: "racing", title: "old" }, ifSchemaRevision: published.revision },
     worker.token,
     { "x-test-gate": "record" },
   );
@@ -587,7 +546,7 @@ it("记录校验后并发发布，新版 guard 拒绝旧提交且 outbox 没有�
   worker.releaseGate("record");
   const response = await writing;
   expect(response.status, worker.logs()).toBe(409);
-  expect(await response.json()).toMatchObject({ error: { code: "SCHEMA_CHANGED" } });
+  expect(await response.json()).toMatchObject({ error: { code: "SCHEMA_CONFLICT" } });
   expect((await worker.sql("SELECT * FROM test_race WHERE id = 'racing'"))[0].results).toHaveLength(
     0,
   );
@@ -596,25 +555,25 @@ it("记录校验后并发发布，新版 guard 拒绝旧提交且 outbox 没有�
   ).toHaveLength(0);
 });
 it("角色子树聚合、own 范围、私有字段投影与隐藏值更新守恒", async () => {
-  const roles = await worker.api.records.query("system-roles", {
+  const roles = await queryRecords("system-roles", {
     clauses: [],
     page: 1,
     pageSize: 20,
   });
-  const superRole = String(roles.list[0].id);
-  const parent = await worker.api.records.create("system-roles", {
+  const superRole = String(roles.items[0].id);
+  const parent = await createRecord("system-roles", {
     code: "parent",
     name: "父角色",
     parentId: superRole,
     canCreateModel: false,
   });
-  const child = await worker.api.records.create("system-roles", {
+  const child = await createRecord("system-roles", {
     code: "child",
     name: "子角色",
     parentId: parent.id,
     canCreateModel: true,
   });
-  await worker.api.records.create("system-users", {
+  await createRecord("system-users", {
     username: "normal-user",
     password: "local-test-password",
     roleId: [parent.id],
@@ -654,7 +613,7 @@ it("角色子树聚合、own 范围、私有字段投影与隐藏值更新守恒
   model.tree = { parentField: "/parentId", labelField: "/title" };
   model.data.parentId!.relation = { model: "acl", labelField: "/title" };
   await publish(model);
-  await worker.api.records.create("acl", { id: "admin-record", title: "Admin", paid: true });
+  await createRecord("acl", { id: "admin-record", title: "Admin", paid: true });
   const runtime = await api.runtime.schema("acl");
   expect(Object.keys(runtime.schema.data)).toEqual([
     "id",
@@ -670,28 +629,32 @@ it("角色子树聚合、own 范围、私有字段投影与隐藏值更新守恒
   expect(JSON.stringify(runtime.schema)).not.toContain("secret");
   expect(runtime.schema.data.title!.props).toEqual(model.data.title!.props);
   expect(runtime.schema.tree).toBeUndefined();
-  const own = await api.records.create("acl", { id: "own-record", title: "Own" });
+  const own = await createRecord("acl", { id: "own-record", title: "Own" }, api);
   expect(own.secret).toBeUndefined();
-  await api.records.update("acl", "own-record", { title: "Changed" });
+  await updateRecord("acl", "own-record", { title: "Changed" }, api);
   expect(
     (await worker.sql("SELECT secret FROM test_acl WHERE id = 'own-record'"))[0].results[0].secret,
   ).toBe("keep-secret");
-  await expect(api.records.update("acl", "own-record", { secret: "hack" })).rejects.toMatchObject({
+  await expect(updateRecord("acl", "own-record", { secret: "hack" }, api)).rejects.toMatchObject({
     code: "FORBIDDEN",
   });
-  await expect(api.records.update("acl", "own-record", { paid: true })).rejects.toMatchObject({
+  await expect(updateRecord("acl", "own-record", { paid: true }, api)).rejects.toMatchObject({
     code: "FORBIDDEN",
   });
-  await expect(api.records.read("acl", "admin-record")).rejects.toMatchObject({
+  await expect(readRecord("acl", "admin-record", api)).rejects.toMatchObject({
     code: "NOT_FOUND",
   });
-  expect((await api.records.query("acl", { clauses: [], page: 1, pageSize: 20 })).total).toBe(1);
+  expect((await queryRecords("acl", { clauses: [], page: 1, pageSize: 20 }, api)).total).toBe(1);
   await expect(
-    api.records.query("acl", {
-      clauses: [{ field: "/secret", operator: "contains", operand: "keep" }],
-      page: 1,
-      pageSize: 20,
-    }),
+    queryRecords(
+      "acl",
+      {
+        clauses: [{ field: "/secret", operator: "contains", operand: "keep" }],
+        page: 1,
+        pageSize: 20,
+      },
+      api,
+    ),
   ).rejects.toMatchObject({ code: "FORBIDDEN" });
   expect(
     (await api.models.saveDraft("owned_model", definition("owned_model"), { ifRevision: null }))
@@ -708,7 +671,7 @@ it("角色子树聚合、own 范围、私有字段投影与隐藏值更新守恒
     ).status,
   ).toBe(403);
 });
-it("字段按 router 能力诊断组件，props 按普通 JSON 保留", async () => {
+it("字段按 app 共享能力诊断组件，props 按普通 JSON 保留", async () => {
   const model = definition("field_capabilities");
   model.data.title!.ui = { form: { component: "MissingEditor" } };
   model.data.title!.props = { placeholder: "{{ fn.missingHint() }}" };
@@ -720,8 +683,7 @@ it("字段按 router 能力诊断组件，props 按普通 JSON 保留", async ()
       expect.objectContaining({
         path: "/data/title",
         code: "UNKNOWN_COMPONENT",
-        router: "list",
-        window: "edit",
+        modelId: "field_capabilities",
       }),
     ]),
   );
@@ -770,19 +732,19 @@ it("首次发布自关联树，parentId 与 subtree 使用指定父字段且保�
     { id: "tree-child", title: "Child", parentId: "tree-root" },
     { id: "tree-grandchild", title: "Grandchild", parentId: "tree-child" },
     { id: "tree-other", title: "Other", otherParent: "tree-root" },
-  ])
-    await worker.api.records.create("field_tree", record);
-  const direct = await worker.api.records.query("field_tree", {
+  ] as RecordValue[])
+    await createRecord("field_tree", record);
+  const direct = await queryRecords("field_tree", {
     clauses: [],
     parentId: "tree-root",
     page: 1,
     pageSize: 20,
   });
-  expect(direct.list.map((record) => record.id)).toEqual(["tree-child"]);
+  expect(direct.items.map((record) => record.id)).toEqual(["tree-child"]);
   expect(direct.total).toBe(1);
   expect(
     (
-      await worker.api.records.subtree("field_tree", {
+      await worker.api.request<RecordValue[]>("/records/field_tree/subtree", "POST", {
         parentField: "parentId",
         parentValue: "tree-root",
       })
@@ -792,45 +754,53 @@ it("首次发布自关联树，parentId 与 subtree 使用指定父字段且保�
   ).toEqual(["tree-child", "tree-grandchild"]);
   expect(
     (
-      await worker.api.records.subtree("field_tree", {
+      await worker.api.request<RecordValue[]>("/records/field_tree/subtree", "POST", {
         parentField: "otherParent",
         parentValue: "tree-root",
       })
     ).map((record) => record.id),
   ).toEqual(["tree-other"]);
-  expect(await worker.api.records.subtree("field_tree", { parentField: "parentId" })).toHaveLength(
-    4,
-  );
+  expect(
+    await worker.api.request("/records/field_tree/subtree", "POST", { parentField: "parentId" }),
+  ).toHaveLength(4);
   await expect(
-    worker.api.records.update("field_tree", "tree-root", { parentId: "tree-grandchild" }),
+    updateRecord("field_tree", "tree-root", { parentId: "tree-grandchild" }),
   ).rejects.toMatchObject({ code: "INVALID_INPUT" });
-  await worker.api.records.create("field_tree", { id: "tree-race-a", title: "A" });
-  await worker.api.records.create("field_tree", { id: "tree-race-b", title: "B" });
+  await createRecord("field_tree", { id: "tree-race-a", title: "A" });
+  await createRecord("field_tree", { id: "tree-race-b", title: "B" });
+  const treeRecord = await worker.api.records.get({
+    modelId: "field_tree",
+    recordId: "tree-race-a",
+  });
   const writing = worker.request(
     "/records/field_tree/tree-race-a",
-    "PUT",
-    { parentId: "tree-race-b" },
+    "PATCH",
+    {
+      changes: { set: { parentId: "tree-race-b" } },
+      ifSchemaRevision: treeRecord.schemaRevision,
+      ifRecordRevision: treeRecord.revision,
+    },
     worker.token,
-    { "x-test-gate": "record" },
+    { "x-test-gate": "tree-record" },
   );
   await Promise.race([
-    worker.waitGate("record"),
+    worker.waitGate("tree-record"),
     writing.then(async (response) => {
       throw new Error(`树记录请求未进入暂停点: ${await response.clone().text()}`);
     }),
   ]);
   try {
-    await worker.api.records.update("field_tree", "tree-race-b", { parentId: "tree-race-a" });
+    await updateRecord("field_tree", "tree-race-b", { parentId: "tree-race-a" });
   } finally {
-    worker.releaseGate("record");
+    worker.releaseGate("tree-record");
   }
-  expect(await (await writing).json()).toMatchObject({ error: { code: "REVISION_CONFLICT" } });
-  expect((await worker.api.records.read("field_tree", "tree-race-a")).parentId).toBeUndefined();
+  expect(await (await writing).json()).toMatchObject({ error: { code: "RECORD_CONFLICT" } });
+  expect((await readRecord("field_tree", "tree-race-a")).parentId).toBeUndefined();
 });
 it("关系去重、options、子树、防环、引用删除保护和停用 through 行保留", async () => {
   const target = definition("target");
   await publish(target);
-  await worker.api.records.create("target", { id: "t1", title: "Target" });
+  await createRecord("target", { id: "t1", title: "Target" });
   const source = definition("relation", {
     title: { type: "string" },
     links: { type: "array", items: { type: "string" } },
@@ -839,32 +809,32 @@ it("关系去重、options、子树、防环、引用删除保护和停用 throu
   source.data.links!.storage = { column: "links", through: "test_relation_edges" };
   await publish(source);
   await expect(
-    worker.api.records.create("relation", {
+    createRecord("relation", {
       id: "duplicate",
       title: "Source",
       links: ["t1", "t1"],
     }),
   ).rejects.toMatchObject({ code: "INVALID_VALUE" });
-  await worker.api.records.create("relation", { id: "s1", title: "Source", links: ["t1"] });
-  expect((await worker.api.records.read("relation", "s1")).links).toEqual(["t1"]);
+  await createRecord("relation", { id: "s1", title: "Source", links: ["t1"] });
+  expect((await readRecord("relation", "s1")).links).toEqual(["t1"]);
   expect((await worker.sql("SELECT * FROM test_relation_edges"))[0].results).toHaveLength(1);
-  await expect(worker.api.records.delete("target", "t1")).rejects.toMatchObject({
+  await expect(deleteRecord("target", "t1")).rejects.toMatchObject({
     code: "FORBIDDEN",
   });
   expect(
-    await worker.api.request("/records/relation/options", "POST", { fieldId: "relation:links" }),
+    await worker.api.records.options({ modelId: "relation", fieldId: "relation:links" }),
   ).toMatchObject({ options: [{ value: "t1", label: "Target" }], total: 1 });
-  const roles = await worker.api.records.query("system-roles", {
+  const roles = await queryRecords("system-roles", {
     clauses: [],
     page: 1,
     pageSize: 20,
   });
-  const parent = await worker.api.records.create("system-roles", {
+  const parent = await createRecord("system-roles", {
     code: "tree_parent",
     name: "父级",
-    parentId: roles.list.find((role) => role.code === "super_admin")!.id,
+    parentId: roles.items.find((role) => role.data.code === "super_admin")!.id,
   });
-  const child = await worker.api.records.create("system-roles", {
+  const child = await createRecord("system-roles", {
     code: "tree_child",
     name: "子级",
     parentId: parent.id,
@@ -877,7 +847,7 @@ it("关系去重、options、子树、防环、引用删除保护和停用 throu
     }),
   ).toEqual(expect.arrayContaining([expect.objectContaining({ id: child.id })]));
   await expect(
-    worker.api.records.update("system-roles", String(parent.id), { parentId: child.id }),
+    updateRecord("system-roles", String(parent.id), { parentId: child.id }),
   ).rejects.toMatchObject({ code: "INVALID_INPUT" });
   const removed = definition("relation", { title: { type: "string" } });
   const current = await worker.api.models.read("relation");
@@ -885,7 +855,7 @@ it("关系去重、options、子树、防环、引用删除保护和停用 throu
     ifRevision: current.revision,
   });
   await worker.api.models.publish("relation", saved.revision);
-  await worker.api.records.update("relation", "s1", { title: "Updated" });
+  await updateRecord("relation", "s1", { title: "Updated" });
   expect((await worker.sql("SELECT * FROM test_relation_edges"))[0].results).toHaveLength(1);
   expect(
     (await worker.sql("SELECT links FROM test_relation WHERE id = 's1'"))[0].results[0].links,
@@ -920,8 +890,8 @@ it("官方 SDK 通过 HTTP 和自定义 Headers 调用真实 Worker/D1 工具，
       stage: "published",
     });
     expect(
-      await call("formwork.capabilities", { modelId: "mcp_base", router: "list", window: "edit" }),
-    ).toMatchObject({ router: "list", window: "edit", modelId: "mcp_base" });
+      await call("formwork.capabilities", { modelId: "mcp_base", router: "list" }),
+    ).toMatchObject({ router: "list", modelId: "mcp_base" });
     const value = definition("mcp_model");
     expect(
       await call("models.validate", { modelId: "mcp_model", definition: value }),
@@ -935,11 +905,9 @@ it("官方 SDK 通过 HTTP 和自定义 Headers 调用真实 Worker/D1 工具，
     const preview = await call("models.preview", {
       modelId: "mcp_model",
       router: "list",
-      window: "edit",
-      params: { id: "a/b" },
     });
     expect(new URL(preview.url).searchParams.get("revision")).toBe(saved.revision);
-    expect(new URL(preview.url).searchParams.get("id")).toBe("a/b");
+    expect(new URL(preview.url).searchParams.get("router")).toBe("list");
     const conflict = await client.callTool({
       name: "models.write",
       arguments: { modelId: "mcp_model", definition: value, ifRevision: null },
@@ -1017,8 +985,8 @@ it("无项目上下文的 MCP agent 从握手、零参数工具和资源发现�
     expect(catalog).toEqual(info.capabilities);
     expect(catalog).toMatchObject({
       scope: "application",
-      mergeOrder: ["Framework", "selected Domain", "Page", "local Window"],
-      framework: {
+      transformOrder: ["app", "Domain", "local"],
+      app: {
         components: expect.arrayContaining([
           expect.objectContaining({
             name: "Input",
@@ -1028,25 +996,16 @@ it("无项目上下文的 MCP agent 从握手、零参数工具和资源发现�
           }),
         ]),
       },
-      domains: { shared: { components: [expect.objectContaining({ name: "SharedEditor" })] } },
-      pages: {
-        list: {
-          capabilities: { fn: [expect.objectContaining({ declaration: "Page identity" })] },
-          windows: {
-            edit: {
-              capabilities: { fn: [expect.objectContaining({ declaration: "Window identity" })] },
-            },
-          },
-        },
+      domains: {
+        list: { transformSchema: expect.objectContaining({ declaration: "(ctx) => ctx" }) },
       },
+      pages: ["models", "model-preview"],
     });
     expect(catalog.targets).toContainEqual(
       expect.objectContaining({
         router: "list",
-        window: "edit",
-        path: "/list/:modelId/edit/:id",
-        requiredParams: ["modelId", "id"],
-        requiredPreviewParams: ["id"],
+        path: "/list/:modelId",
+        model: true,
       }),
     );
     const resources = (await client.listResources()).resources;
@@ -1063,16 +1022,13 @@ it("无项目上下文的 MCP agent 从握手、零参数工具和资源发现�
       info.examples.effectiveCapabilities.name,
       info.examples.effectiveCapabilities.arguments,
     );
-    expect(scoped.components.some((item: { name: string }) => item.name === "SharedEditor")).toBe(
-      false,
-    );
+    expect(scoped.components.some((item: { name: string }) => item.name === "Input")).toBe(true);
     const withDomain = await call("formwork.capabilities", {
       ...info.examples.effectiveCapabilities.arguments,
-      domain: Object.keys(catalog.domains)[0],
+      router: "tree-list",
     });
-    expect(
-      withDomain.components.some((item: { name: string }) => item.name === "SharedEditor"),
-    ).toBe(true);
+    expect(withDomain.components).toEqual(scoped.components);
+    expect(withDomain.router).toBe("tree-list");
     const validated = await call(info.examples.validate.name, info.examples.validate.arguments);
     expect(validated.errors).toEqual([]);
     const saved = await call(info.examples.create.name, info.examples.create.arguments);
@@ -1123,7 +1079,11 @@ it("未登记能力清单时 MCP 仍能提供构建指南和 schema，并明确�
         params: { name, arguments: {} },
       }),
     });
-    return (await response.json()).result;
+    return (
+      (await response.json()) as {
+        result: { isError?: boolean; content: { text: string }[] };
+      }
+    ).result;
   };
   try {
     const described = await invoke("formwork.describe");
@@ -1135,7 +1095,7 @@ it("未登记能力清单时 MCP 仍能提供构建指南和 schema，并明确�
       definitionTemplate: { schemaVersion: 1, id: expect.any(String), data: expect.any(Object) },
       definitionJsonSchema: { type: "object" },
     });
-    expect(info.setup).toContain("无需浏览器或编辑器 URL");
+    expect(info.setup).toContain("pnpm capabilities:register");
     expect((await invoke("formwork.capabilities")).isError).toBe(true);
   } finally {
     await worker.sql(
@@ -1230,12 +1190,12 @@ it("存储不兼容产生可读草稿诊断，不改变当前版本", async () =
     ifRevision: current.revision,
   });
   expect(saved.diagnostics.errors).toEqual(
-    expect.arrayContaining([expect.objectContaining({ code: "MIGRATION_REQUIRED" })]),
+    expect.arrayContaining([expect.objectContaining({ code: "STORAGE_INCOMPATIBLE" })]),
   );
   await expect(worker.api.models.publish("incompatible", saved.revision)).rejects.toMatchObject({
     code: "INVALID_MODEL",
   });
-  expect((await worker.api.runtime.schema("incompatible")).version).toBe(1);
+  expect(await worker.api.models.versions("incompatible")).toHaveLength(1);
 });
 it("并发发布只有一个成功，清单不能删除已发布组件", async () => {
   const model = definition("publishing");
@@ -1250,9 +1210,7 @@ it("并发发布只有一个成功，清单不能删除已发布组件", async (
     (results.find((result) => result.status === "rejected") as PromiseRejectedResult).reason.code,
   ).toBe("REVISION_CONFLICT");
   const next = manifest();
-  next.framework.components = next.framework.components.filter(
-    (component) => component.name !== "Input",
-  );
+  next.app.components = next.app.components.filter((component) => component.name !== "Input");
   const { revision: _revision, ...contents } = next;
   next.revision = createHash("sha256").update(JSON.stringify(contents)).digest("hex");
   const response = await worker.request(
@@ -1266,7 +1224,7 @@ it("并发发布只有一个成功，清单不能删除已发布组件", async (
   fieldModel.data.title!.ui = { form: { component: "FieldOnlyEditor" } };
   await publish(fieldModel);
   const withoutFieldComponent = manifest();
-  withoutFieldComponent.framework.components = withoutFieldComponent.framework.components.filter(
+  withoutFieldComponent.app.components = withoutFieldComponent.app.components.filter(
     (component) => component.name !== "FieldOnlyEditor",
   );
   const { revision: _fieldRevision, ...fieldContents } = withoutFieldComponent;
@@ -1296,7 +1254,7 @@ it("并发发布只有一个成功，清单不能删除已发布组件", async (
     },
   });
 });
-it("JSON 内容存储、可信命令、batch-delete 与已提交 outbox", async () => {
+it("JSON 内容存储、可信命令、条件删除与已提交 outbox", async () => {
   const model = definition("json_storage");
   model.data.title!.storage = { jsonKey: "title's key", index: "index" };
   model.backend.behavior = {
@@ -1305,17 +1263,19 @@ it("JSON 内容存储、可信命令、batch-delete 与已提交 outbox", async 
     events: { create: ["audit.record"] },
   };
   await publish(model);
-  await worker.api.records.create("json_storage", { id: "json1", title: "Encoded", paid: false });
+  await createRecord("json_storage", { id: "json1", title: "Encoded", paid: false });
   expect(
     (
-      await worker.api.records.query("json_storage", {
+      await queryRecords("json_storage", {
         clauses: [{ field: "/title", operator: "contains", operand: "code" }],
         page: 1,
         pageSize: 10,
       })
     ).total,
   ).toBe(1);
-  expect(await worker.api.records.command("json_storage", "count", { clauses: [] })).toEqual({
+  expect(
+    await worker.api.request("/records/json_storage/commands/count", "POST", { clauses: [] }),
+  ).toEqual({
     count: 1,
   });
   const events = (
@@ -1326,116 +1286,134 @@ it("JSON 内容存储、可信命令、batch-delete 与已提交 outbox", async 
   expect(events).toHaveLength(1);
   expect(events[0].delivered_at).toBeTypeOf("string");
   expect(events[0].attempts).toBe(1);
-  expect(
-    await worker.api.request("/records/json_storage/batch-delete", "POST", {
-      ids: ["json1", "missing"],
-    }),
-  ).toMatchObject({ deleted: ["json1"], failed: [{ id: "missing", code: "NOT_FOUND" }] });
+  expect(await deleteRecord("json_storage", "json1")).toEqual({ id: "json1", deleted: true });
+  expect((await queryRecords("json_storage", { clauses: [], page: 1, pageSize: 10 })).total).toBe(
+    0,
+  );
 });
 
-it("共享 Domain 按当前文档选择，Page 与 Window 就近覆盖，配置错误保留具体诊断", async () => {
+it("router 显式选择 Domain，共享 app 能力不受业务 domain 分类影响", async () => {
   for (const id of ["shared_a", "shared_b"]) {
     const model = definition(id);
-    model.domain = "shared";
-    model.data.title!.ui = { form: { component: "SharedEditor" } };
+    model.domain = `business-${id}`;
+    model.data.title!.ui = { form: { component: "Input" } };
     await publish(model);
-    const capability = await worker.api.capabilities(id, { router: "list", window: "edit" });
+    const capability = await worker.api.capabilities(id, "list");
     expect(capability).toMatchObject({
       modelId: id,
-      domain: "shared",
       router: "list",
-      window: "edit",
     });
-    expect(capability.fn.find((item) => item.name === "identity")).toMatchObject({
-      declaration: "Window identity",
-      overrides: expect.arrayContaining([
-        expect.objectContaining({ file: "src/domains/shared/index.ts" }),
-        expect.objectContaining({ file: "src/pages/list/index.ts" }),
-      ]),
-    });
-    expect(capability.components.some((item) => item.name === "SharedEditor")).toBe(true);
+    expect(capability.components.some((item) => item.name === "Input")).toBe(true);
+    const tree = await worker.api.capabilities(id, "tree-list");
+    expect(tree.components).toEqual(capability.components);
+    expect(tree.router).toBe("tree-list");
   }
-  const invalidDomain = definition("candidate_domain");
-  invalidDomain.domain = "missing";
-  const saved = await worker.api.models.saveDraft("candidate_domain", invalidDomain, {
+  const category = definition("candidate_domain");
+  category.domain = "unregistered-business-category";
+  const saved = await worker.api.models.saveDraft("candidate_domain", category, {
     ifRevision: null,
   });
-  expect(saved.diagnostics.errors).toContainEqual(
-    expect.objectContaining({
-      code: "UNKNOWN_DOMAIN",
-      path: "/domain",
-    }),
-  );
-  await expect(worker.api.capabilities("candidate_domain", "list")).rejects.toMatchObject({
-    code: "UNKNOWN_DOMAIN",
+  expect(saved.diagnostics.errors).toEqual([]);
+  expect(await worker.api.capabilities("candidate_domain", "list")).toMatchObject({
+    modelId: "candidate_domain",
+    router: "list",
   });
-  expect(
-    await worker.api.capabilities("candidate_domain", "list", { domain: "shared" }),
-  ).toMatchObject({ domain: "shared", modelId: "candidate_domain" });
   const fallback = await worker.api.capabilities("unregistered_model", "list");
-  expect(fallback.domain).toBeUndefined();
-  expect(fallback.components.some((item) => item.name === "SharedEditor")).toBe(false);
-  const badWindow = {
-    ...definition("bad_window"),
-    pages: { list: { windows: { missing: { openMode: "modal" } } } },
-  };
-  expect((await worker.api.models.validate("bad_window", badWindow)).errors).toContainEqual(
+  expect(fallback.components.some((item) => item.name === "Input")).toBe(true);
+  for (const router of ["missing", "models"]) {
+    await expect(worker.api.capabilities("candidate_domain", router)).rejects.toMatchObject({
+      code: "UNKNOWN_ROUTER",
+    });
+  }
+  const layoutInSchema = { ...definition("layout_in_schema"), pages: {} };
+  expect(
+    (await worker.api.models.validate("layout_in_schema", layoutInSchema)).errors,
+  ).toContainEqual(
     expect.objectContaining({
-      code: "MIGRATION_REQUIRED",
+      code: "INVALID_MODEL",
       path: "/pages",
     }),
   );
   const withoutDomain = manifest();
-  delete withoutDomain.domains.shared;
-  const { revision: _revision, ...contents } = withoutDomain;
-  withoutDomain.revision = createHash("sha256").update(JSON.stringify(contents)).digest("hex");
-  const response = await worker.request(
+  delete withoutDomain.domains["tree-list"];
+  try {
+    expect((await register(withoutDomain)).status).toBe(200);
+    await expect(worker.api.capabilities("candidate_domain", "tree-list")).rejects.toMatchObject({
+      code: "UNKNOWN_ROUTER",
+    });
+    expect((await worker.api.runtime.schema("shared_a")).schema.domain).toBe("business-shared_a");
+  } finally {
+    expect((await register(manifest())).status).toBe(200);
+  }
+});
+
+function register(value: CapabilityManifest, gate?: string) {
+  const { revision: _revision, ...contents } = value;
+  value.revision = createHash("sha256").update(JSON.stringify(contents)).digest("hex");
+  return worker.request(
     "/formwork/capabilities/alien-form",
     "PUT",
-    {
-      revision: withoutDomain.revision,
-      manifest: withoutDomain,
-      origin: withoutDomain.clientOrigin,
-    },
+    { revision: value.revision, manifest: value, origin: value.clientOrigin },
     worker.capabilityToken,
+    gate ? { "x-test-gate": gate } : {},
   );
-  expect(response.status).toBe(422);
-  expect(await response.json()).toMatchObject({
-    error: {
-      code: "INVALID_MODEL",
-      issues: expect.arrayContaining([expect.objectContaining({ code: "UNKNOWN_DOMAIN" })]),
-    },
-  });
-  const withoutWindow = manifest();
-  delete withoutWindow.pages.list!.windows.edit;
-  const { revision: _windowRevision, ...windowContents } = withoutWindow;
-  withoutWindow.revision = createHash("sha256")
-    .update(JSON.stringify(windowContents))
-    .digest("hex");
-  const windowResponse = await worker.request(
-    "/formwork/capabilities/alien-form",
-    "PUT",
-    {
-      revision: withoutWindow.revision,
-      manifest: withoutWindow,
-      origin: withoutWindow.clientOrigin,
-    },
-    worker.capabilityToken,
+}
+
+it("清单在校验后变化时，发布事务拒绝旧能力判断", async () => {
+  const model = definition("capability_race");
+  model.data.title!.ui = { form: { component: "Text" } };
+  const draft = await worker.api.models.saveDraft(model.id, model, { ifRevision: null });
+  const pending = worker.request(
+    `/models/${model.id}/publish`,
+    "POST",
+    { ifRevision: draft.revision },
+    worker.token,
+    { "x-test-gate": "publish-capability" },
   );
-  expect(windowResponse.status).toBe(200);
-  const restore = manifest();
-  expect(
-    (
-      await worker.request(
-        "/formwork/capabilities/alien-form",
-        "PUT",
-        {
-          revision: restore.revision,
-          manifest: restore,
-          origin: restore.clientOrigin,
-        },
-        worker.capabilityToken,
-      )
-    ).status,
-  ).toBe(200);
+  await Promise.race([
+    worker.waitGate("publish-capability"),
+    pending.then(async (response) => {
+      throw new Error(await response.clone().text());
+    }),
+  ]);
+  try {
+    const next = manifest();
+    next.app.components = next.app.components.filter((item) => item.name !== "Text");
+    expect((await register(next)).status).toBe(200);
+  } finally {
+    worker.releaseGate("publish-capability");
+  }
+  try {
+    const response = await pending;
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code: "REVISION_CONFLICT" } });
+    expect(await worker.api.models.versions(model.id)).toEqual([]);
+  } finally {
+    expect((await register(manifest())).status).toBe(200);
+  }
+});
+
+it("校验清单后出现新发布版本，登记事务保留原清单并要求重试", async () => {
+  const next = manifest();
+  next.app.components = next.app.components.filter((item) => item.name !== "Text");
+  const pending = register(next, "register-capability");
+  await Promise.race([
+    worker.waitGate("register-capability"),
+    pending.then(async (response) => {
+      throw new Error(await response.clone().text());
+    }),
+  ]);
+  try {
+    const current = await worker.api.models.read("capability_race");
+    await worker.api.models.publish(current.id, current.revision);
+  } finally {
+    worker.releaseGate("register-capability");
+  }
+  const response = await pending;
+  expect(response.status).toBe(409);
+  expect(await response.json()).toMatchObject({ error: { code: "REVISION_CONFLICT" } });
+  const effective = await worker.api.capabilities("capability_race", "list");
+  expect(effective.components.some((item) => item.name === "Text")).toBe(true);
+  expect((await register(next)).status).toBe(422);
+  expect((await worker.sql("SELECT * FROM fw_commit_guards"))[0].results).toEqual([]);
 });

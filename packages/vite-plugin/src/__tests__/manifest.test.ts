@@ -44,7 +44,7 @@ test("真实 HTTP 422 日志包含服务端模型诊断，并遮蔽响应中的 
             path: "/document/views/edit",
             code: "UNKNOWN_ROUTER",
             modelId: "cms",
-            message: `View 的 Page/Window 不存在 ${token}`,
+            message: `目标 Domain 不存在 ${token}`,
           },
         ],
       },
@@ -60,7 +60,7 @@ test("真实 HTTP 422 日志包含服务端模型诊断，并遮蔽响应中的 
   expect(message).toContain("清单变更使已发布模型 cms 失效");
   expect(message).toContain("/document/views/edit");
   expect(message).toContain("UNKNOWN_ROUTER");
-  expect(message).toContain("View 的 Page/Window 不存在");
+  expect(message).toContain("目标 Domain 不存在");
   expect(message).not.toContain(token);
   expect(requests).toEqual([
     {

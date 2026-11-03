@@ -11,7 +11,14 @@ const model = resolveModel({
   schemaVersion: 1,
   id: "orders",
   title: "订单",
-  data: { first: { type: "number", minimum: 1, props: { placeholder: "金额" } } },
+  data: {
+    first: {
+      type: "number",
+      minimum: 1,
+      props: { placeholder: "金额" },
+      ui: { form: { component: "NumberInput" }, table: { component: "NumberInput" } },
+    },
+  },
 });
 const Field: Component<FieldProps> = (props) => (
   <input

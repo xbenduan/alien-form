@@ -13,11 +13,18 @@ const model = resolveModel(
     id: "orders",
     title: "订单",
     data: {
-      total: { type: "number", default: 2, readOnly: true, ui: { form: { component: "Money" } } },
+      total: {
+        type: "number",
+        default: 2,
+        readOnly: true,
+        ui: { form: { component: "Money" }, filter: { component: "NumberInput" } },
+      },
       lines: {
         type: "array",
+        ui: { form: { component: "ArrayFields" } },
         items: {
           type: "object",
+          ui: { form: { component: "ObjectFields" } },
           properties: {
             price: {
               type: "number",

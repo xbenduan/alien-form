@@ -44,7 +44,7 @@ describe("共享字段与代码布局", () => {
   it.each([
     { props: { value: "override" } },
     { props: { scene: "table" } },
-    { ui: { form: { props: { placeholder: "重复" } } } },
+    { ui: { form: { props: { value: "受控值" } } } },
     { ui: { filter: { bindings: { value: "{{ 1 }}" } } } },
     { ui: { form: { visible: true } } },
     { order: 0.5 },
@@ -54,7 +54,7 @@ describe("共享字段与代码布局", () => {
     Object.assign(schema.data.name!, override);
     expect(modelIssues(schema).length).toBeGreaterThan(0);
   });
-  it("代码 props 仅从调用处传入，场景覆盖优先于 format", () => {
+  it("代码 props 从调用处传入，组件映射由 app 显式提供", () => {
     const schema = document();
     const field = resolveModel(schema).field("/lines/0/price");
     const onFocus = () => "price";
@@ -62,7 +62,10 @@ describe("共享字段与代码布局", () => {
       component: "Money",
       props: { onFocus },
     });
-    expect(resolveField(field, { scene: "table" }).component).toBe("NumberInput");
+    expect(() => resolveField(field, { scene: "table" })).toThrow("缺少 table 组件映射");
+    expect(resolveField(field, { scene: "table", component: "NumberInput" }).component).toBe(
+      "NumberInput",
+    );
     expect(resolveField(field, { scene: "form", component: "Explicit" }).component).toBe(
       "Explicit",
     );
@@ -73,7 +76,7 @@ describe("共享字段与代码布局", () => {
       }),
     ).toThrow();
   });
-  it("树字段保持根字符串语义，布局只能由 Page/Window 代码承载", () => {
+  it("树字段保持根字符串语义，布局由 Domain 代码承载", () => {
     expect(
       modelIssues({
         ...document(),
@@ -82,7 +85,7 @@ describe("共享字段与代码布局", () => {
     ).toContain("/tree/parentField");
     for (const key of ["views", "pages", "fields", "layout"])
       expect(modelIssues({ ...document(), [key]: {} })).toContainEqual(
-        expect.objectContaining({ path: `/${key}`, code: "MIGRATION_REQUIRED" }),
+        expect.objectContaining({ path: `/${key}`, code: "INVALID_MODEL" }),
       );
   });
 });

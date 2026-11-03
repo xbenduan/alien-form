@@ -1,12 +1,12 @@
 import { createSignal } from "solid-js";
 import { createFormworkApi, errorPayload } from "formwork/model";
-import type { SchemaLoadContext } from "formwork";
+import type { FormworkApis } from "formwork/data";
 import type { ActorSummary } from "formwork/model";
 
 const sessionKey = "formwork-user-session";
 const localPreview =
   window.parent !== window &&
-  /^\/model-preview\/[a-z][a-z0-9_-]*$/u.test(location.pathname) &&
+  location.pathname === "/model-preview" &&
   new URLSearchParams(location.search).get("embedded") === "1";
 const [token, setToken] = createSignal(
   localPreview ? undefined : (sessionStorage.getItem(sessionKey) ?? undefined),
@@ -75,7 +75,8 @@ export function retrySession(): Promise<void> {
 }
 // 嵌入画布只接收父页 Schema 并使用本地数据。
 if (!localPreview) void restoreSession();
-/** 为 Page 和 Window 显式加载当前授权的已发布 schema。 */
-export async function loadPublishedSchema(ctx: SchemaLoadContext) {
-  return ctx.api.runtime.schema(ctx.modelId, { signal: ctx.signal });
-}
+/** 将 Worker HTTP client 适配为 Formwork 的模型和记录能力。 */
+export const apis: FormworkApis = {
+  models: { get: ({ modelId }, context) => api.runtime.schema(modelId, context) },
+  records: api.records,
+};

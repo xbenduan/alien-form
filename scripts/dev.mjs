@@ -2,8 +2,9 @@
 /** 构建共享包并启动 Vite 与本地 Worker/D1；退出时回收自身进程树。 */
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, writeFile, chmod } from "node:fs/promises";
+import { mkdir, readFile, writeFile, chmod } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
+import { stripVTControlCharacters } from "node:util";
 import { fileURLToPath } from "node:url";
 import { resolve, join } from "node:path";
 import { selectDevelopmentPort } from "./dev-ports.mjs";
@@ -12,6 +13,7 @@ import { developmentDirectory } from "../apps/service/script/database.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const serviceOnly = process.argv.includes("--service-only");
+const reset = process.argv.includes("--reset");
 const isWindows = process.platform === "win32";
 const requestedClientPort = process.env.FORMWORK_CLIENT_PORT ?? "5173";
 const requestedServicePort = process.env.FORMWORK_SERVICE_PORT ?? "8788";
@@ -60,16 +62,32 @@ const directory = developmentDirectory();
 await mkdir(directory, { recursive: true, mode: 0o700 });
 await chmod(directory, 0o700);
 const credentialFile = join(directory, "bootstrap.json");
-const credentials = {
-  username: `dev-${randomBytes(6).toString("hex")}`,
-  password: randomBytes(24).toString("hex"),
-  capabilityToken: randomBytes(32).toString("hex"),
-};
-await writeFile(credentialFile, JSON.stringify(credentials, null, 2), { mode: 0o600 });
+let credentials;
+if (!reset) {
+  try {
+    credentials = JSON.parse(await readFile(credentialFile, "utf8"));
+    if (
+      !["username", "password", "capabilityToken"].every(
+        (key) => typeof credentials[key] === "string" && credentials[key],
+      )
+    )
+      throw new Error("本地 bootstrap.json 格式无效，请修复凭证文件或使用 dev:reset。");
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+}
+if (!credentials) {
+  credentials = {
+    username: `dev-${randomBytes(6).toString("hex")}`,
+    password: randomBytes(24).toString("hex"),
+    capabilityToken: randomBytes(32).toString("hex"),
+  };
+  await writeFile(credentialFile, JSON.stringify(credentials, null, 2), { mode: 0o600 });
+}
 await chmod(credentialFile, 0o600);
 childEnv.FORMWORK_CAPABILITY_TOKEN = credentials.capabilityToken;
 childEnv.FORMWORK_CLIENT_ORIGIN = `http://127.0.0.1:${clientPort}`;
-for (const name of serviceOnly ? ["formwork"] : ["formwork", "formwork-vite-plugin"]) {
+for (const name of ["formwork"]) {
   const args = ["--filter", name, "build"];
   const options = { cwd: root, stdio: "inherit" };
   const pnpmEntry = process.env.npm_execpath;
@@ -117,10 +135,7 @@ function start(label, directory, entry, args) {
     ready = done;
     failed = reject;
   });
-  const timer = setTimeout(
-    () => failed(new Error("Vite 能力清单登记超时，请检查 Worker 和 deploy credential。")),
-    30_000,
-  );
+  const timer = setTimeout(() => failed(new Error("Vite 启动超时，请检查客户端日志。")), 30_000);
   for (const [stream, sink] of [
     [child.stdout, process.stdout],
     [child.stderr, process.stderr],
@@ -132,13 +147,9 @@ function start(label, directory, entry, args) {
       pending = lines.pop() ?? "";
       for (const line of lines) {
         sink.write(`[${label}] ${line}\n`);
-        if (line.includes("Formwork 能力清单已登记")) {
+        if (stripVTControlCharacters(line).includes("Local:")) {
           clearTimeout(timer);
           ready();
-        }
-        if (line.includes("能力清单登记失败") || line.includes("能力清单登记缺少")) {
-          clearTimeout(timer);
-          failed(new Error(line));
         }
       }
     });
@@ -167,6 +178,7 @@ try {
     port: servicePort,
     clientOrigin: childEnv.FORMWORK_CLIENT_ORIGIN,
     ...credentials,
+    reset,
   });
   worker.child.once("exit", (code) => {
     if (!stopping) void shutdown(code ?? 1);
@@ -191,7 +203,7 @@ try {
         : `Client: ${childEnv.FORMWORK_CLIENT_ORIGIN} · Worker: ${worker.origin}`,
     );
     console.log(
-      `本地 D1 已清空重建: ${directory}；本次登录账号与密码保存在 ${credentialFile}（权限 0600）。已初始化系统模型。`,
+      `本地 D1 ${reset ? "已按 --reset 清空重建" : "已就绪，保留当前协议数据"}: ${worker.state}；登录账号与密码保存在 ${credentialFile}（权限 0600）。`,
     );
   }
 } catch (error) {

@@ -1,15 +1,14 @@
 import { createResource, createSignal, For, Show } from "solid-js";
 import type { Component } from "solid-js";
-import type { ActionContext } from "formwork";
+import type { PageContext } from "formwork";
+import { api } from "../../formwork/api";
 import { errorPayload } from "formwork/model";
 import { sessionUser } from "../../formwork/api";
 import { PageTopbar } from "../../formwork/shell/page-topbar";
 
 /** 签发并撤销本人 API token，明文仅在签发结果中出现一次。 */
-export const ApiTokens: Component<ActionContext> = (ctx) => {
-  const [directory, { refetch }] = createResource(() =>
-    ctx.api.auth.tokens({ signal: ctx.signal }),
-  );
+export const ApiTokens: Component<PageContext> = (ctx) => {
+  const [directory, { refetch }] = createResource(() => api.auth.tokens({ signal: ctx.signal }));
   const [issued, setIssued] = createSignal("");
   const [failure, setFailure] = createSignal("");
   const [busy, setBusy] = createSignal(false);
@@ -40,7 +39,7 @@ export const ApiTokens: Component<ActionContext> = (ctx) => {
             const input = new FormData(event.currentTarget);
             void run(async () => {
               setIssued("");
-              const result = await ctx.api.auth.issueToken(
+              const result = await api.auth.issueToken(
                 {
                   label: String(input.get("label")),
                   kind: input.get("kind") === "deploy" ? "deploy" : "agent",
@@ -117,7 +116,7 @@ export const ApiTokens: Component<ActionContext> = (ctx) => {
                         class="text-button danger"
                         disabled={busy() || !!entry.revokedAt}
                         onClick={() =>
-                          run(() => ctx.api.auth.revokeToken(entry.id, { signal: ctx.signal }))
+                          run(() => api.auth.revokeToken(entry.id, { signal: ctx.signal }))
                         }
                       >
                         撤销

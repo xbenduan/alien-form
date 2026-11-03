@@ -1,9 +1,9 @@
 import { Dialog } from "@kobalte/core/dialog";
 import { createMemo, createResource, createSignal, For, Show } from "solid-js";
 import type { Component } from "solid-js";
-import type { ActionContext } from "formwork";
+import type { PageContext } from "formwork";
 import { errorPayload, modelIdPattern } from "formwork/model";
-import { sessionUser } from "../../formwork/api";
+import { api, sessionUser } from "../../formwork/api";
 import {
   modelMenu,
   modelMenuLoading,
@@ -15,10 +15,9 @@ import { McpGuide } from "../../formwork/shell/mcp-guide";
 import { PageTopbar } from "../../formwork/shell/page-topbar";
 
 /** 展示管理模型目录，创建共享草稿，并按账号固定已发布的业务入口。 */
-export const ModelList: Component<ActionContext> = (ctx) => {
-  const [directory, { refetch }] = createResource(() =>
-    ctx.api.models.list({ signal: ctx.signal }),
-  );
+export const ModelList: Component<PageContext> = (ctx) => {
+  const [root, setRoot] = createSignal<HTMLElement>();
+  const [directory, { refetch }] = createResource(() => api.models.list({ signal: ctx.signal }));
   const entries = () => (directory.error ? [] : (directory() ?? []));
   const [search, setSearch] = createSignal("");
   const visibleEntries = createMemo(() => {
@@ -56,7 +55,7 @@ export const ModelList: Component<ActionContext> = (ctx) => {
         if (!creating()) setOpen(value);
       }}
     >
-      <div class="model-list-page">
+      <div class="model-list-page" ref={setRoot}>
         <PageTopbar
           title={<h1>模型列表</h1>}
           actions={
@@ -143,7 +142,9 @@ export const ModelList: Component<ActionContext> = (ctx) => {
                       <td>
                         <button
                           class="text-button model-name"
-                          onClick={() => ctx.navigate("models", { modelId: entry.id })}
+                          onClick={() =>
+                            ctx.navigate(`/models?modelId=${encodeURIComponent(entry.id)}`)
+                          }
                         >
                           <Icon name="model" />
                           {entry.title || entry.id}
@@ -175,7 +176,9 @@ export const ModelList: Component<ActionContext> = (ctx) => {
                         <div class="actions">
                           <button
                             class="text-button"
-                            onClick={() => ctx.navigate("models", { modelId: entry.id })}
+                            onClick={() =>
+                              ctx.navigate(`/models?modelId=${encodeURIComponent(entry.id)}`)
+                            }
                           >
                             详情
                           </button>
@@ -273,7 +276,7 @@ export const ModelList: Component<ActionContext> = (ctx) => {
           </div>
         </section>
       </div>
-      <Dialog.Portal>
+      <Dialog.Portal mount={root()?.closest<HTMLElement>("[data-formwork-root]") ?? undefined}>
         <Dialog.Overlay class="window-overlay" />
         <Dialog.Content class="window-content model-create-dialog">
           <div class="dialog-title-row">
@@ -298,7 +301,7 @@ export const ModelList: Component<ActionContext> = (ctx) => {
               setCreating(true);
               setCreateFailure("");
               try {
-                await ctx.api.models.saveDraft(
+                await api.models.saveDraft(
                   modelId,
                   {
                     schemaVersion: 1,
@@ -308,7 +311,8 @@ export const ModelList: Component<ActionContext> = (ctx) => {
                   },
                   { ifRevision: null, signal: ctx.signal },
                 );
-                if (!ctx.signal.aborted) ctx.navigate("models", { modelId });
+                if (!ctx.signal.aborted)
+                  ctx.navigate(`/models?modelId=${encodeURIComponent(modelId)}`);
               } catch (error) {
                 if (!ctx.signal.aborted) setCreateFailure(errorPayload(error).message);
               } finally {
@@ -334,7 +338,7 @@ export const ModelList: Component<ActionContext> = (ctx) => {
               <button class="button" disabled={creating()}>
                 {creating() ? "正在创建…" : "创建模型"}
               </button>
-              <Dialog.CloseButton class="button secondary" disabled={creating()}>
+              <Dialog.CloseButton class="button secondary" aria-label="取消" disabled={creating()}>
                 取消
               </Dialog.CloseButton>
             </div>

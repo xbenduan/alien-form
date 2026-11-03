@@ -27,7 +27,7 @@ async function run(entry, args) {
 }
 if (!values["dry-run"])
   await run(resolve(import.meta.dirname, "../../../node_modules/tsx/dist/cli.mjs"), [
-    resolve(import.meta.dirname, "migrate.ts"),
+    resolve(import.meta.dirname, "initialize.ts"),
     "--remote",
     ...common,
   ]);

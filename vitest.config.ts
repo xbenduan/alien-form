@@ -15,6 +15,7 @@ export default defineConfig({
           hookTimeout: 60000,
           include: [
             "packages/formwork/src/model/**/*.test.ts",
+            "packages/formwork/src/data/**/*.test.ts",
             "packages/formwork/src/mcp/**/*.test.ts",
             "packages/vite-plugin/src/**/*.test.ts",
             "apps/service/src/**/*.test.ts",
@@ -26,14 +27,14 @@ export default defineConfig({
       {
         plugins: [solid()],
         server: { fs: { allow: [process.cwd(), join(tmpdir(), "alien-form-vitest-attachments")] } },
-        optimizeDeps: { entries: ["packages/formwork/src/router/**/*.test.tsx"] },
+        optimizeDeps: { entries: ["packages/formwork/src/core/**/*.test.tsx"] },
         resolve: { conditions: ["solid", "browser", "development|production"] },
         test: {
           name: "browser",
           include: [
             "packages/formwork/src/runtime/**/*.test.tsx",
             "packages/formwork/src/render/**/*.test.tsx",
-            "packages/formwork/src/router/**/*.test.tsx",
+            "packages/formwork/src/core/**/*.test.tsx",
           ],
           browser: {
             enabled: true,

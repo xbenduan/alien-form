@@ -1,51 +1,45 @@
 import { createSignal, onCleanup, onMount, Show } from "solid-js";
-import type { Component } from "solid-js";
-import { createMemoryNavigation, FormworkHost, FormworkError } from "formwork";
-import type {
-  ActionContext,
-  FormworkDefinition,
-  ModelDocument,
-  PresenterProps,
-  RecordValue,
-} from "formwork";
+import type { Component, JSX } from "solid-js";
+import { createMemoryHistory } from "@solidjs/router";
+import { defineFormwork, Formwork, FormworkError } from "formwork";
+import type { PageContext, ModelDocument } from "formwork";
+import type { RecordSnapshot } from "formwork/data";
 import {
-  createRoutes,
   errorPayload,
   isObject,
   modelDocumentSchema,
   modelIssues,
   identityFields,
-  routePath,
 } from "formwork/model";
-import { modelContract } from "../../../../../packages/domain-contracts";
-import list from "../list";
-import treeList from "../tree-list";
-import { modelDefaults } from "../../formwork/defaults";
-import { DrawerPresenter } from "../../formwork/presenters/drawer";
-import { ModalPresenter } from "../../formwork/presenters/modal";
-import { PageWindow } from "../../formwork/shell/page-window";
+import { cmsContract } from "../../../../../packages/domain-contracts";
+import { domains } from "../../domains";
+import { components } from "../../formwork/components";
+import { ui } from "../../formwork/ui";
+import { api } from "../../formwork/api";
 import { createPreviewApi } from "./api";
 
-const PreviewPage: Component<PresenterProps> = (props) => (
-  <Show when={props.window} fallback={props.children}>
-    <PageWindow {...props} />
-  </Show>
+// 保留弹层外的稳定节点，查询 Suspense 切换时仍能正确恢复外部可访问性状态。
+const PreviewShell: Component<{ children?: JSX.Element }> = (props) => (
+  <div class="preview-surface">{props.children}</div>
 );
 
-/** 在内存数据和导航中复用正式 Host，实时预览 Page 与本地 Window。 */
-export const ModelPreview: Component<ActionContext> = (ctx) => {
-  const query = new URLSearchParams(location.search);
+/** 在独立内存路由和数据中复用正式列表，实时预览当前有效 Schema。 */
+export const ModelPreview: Component<PageContext> = (ctx) => {
+  const query = ctx.query();
   const embedded = query.get("embedded") === "1";
   const revision = query.get("revision");
   const version = query.has("version") ? Number(query.get("version")) : undefined;
   if (
-    !ctx.modelId ||
+    !query.get("modelId") ||
     (!embedded &&
       (version === undefined ? !revision : !Number.isSafeInteger(version) || version < 1))
   )
     throw new FormworkError("PARAMS_REQUIRED", "预览需要 modelId 和审阅 revision 或发布版本");
-  const modelId = ctx.modelId;
-  const records = new Map<string, RecordValue>();
+  const modelId = query.get("modelId")!;
+  const router = query.get("router") ?? "list";
+  if (!domains.some((domain) => domain.router === router))
+    throw new FormworkError("UNKNOWN_ROUTER", "预览 Domain 不存在");
+  const records = new Map<string, RecordSnapshot>();
   const [schema, setSchema] = createSignal<ModelDocument>();
   const [message, setMessage] = createSignal("");
   let serialized = "";
@@ -54,7 +48,7 @@ export const ModelPreview: Component<ActionContext> = (ctx) => {
     if (
       !parsed.success ||
       parsed.data.id !== modelId ||
-      modelIssues(parsed.data, modelContract(parsed.data)).length
+      modelIssues(parsed.data, cmsContract).length
     ) {
       setMessage(
         schema() ? "Schema 暂不可预览，保留上次有效内容。" : "请补全有效的 Schema 以开始预览。",
@@ -100,9 +94,8 @@ export const ModelPreview: Component<ActionContext> = (ctx) => {
         try {
           const definition =
             version !== undefined
-              ? (await ctx.api.models.version(modelId, version, { signal: ctx.signal })).definition
-              : (await ctx.api.models.draftSchema(modelId, revision!, { signal: ctx.signal }))
-                  .schema;
+              ? (await api.models.version(modelId, version, { signal: ctx.signal })).definition
+              : (await api.models.draftSchema(modelId, revision!, { signal: ctx.signal })).schema;
           if (!ctx.signal.aborted) {
             const { backend: _backend, ...document } = definition as ModelDocument & {
               backend?: unknown;
@@ -116,18 +109,17 @@ export const ModelPreview: Component<ActionContext> = (ctx) => {
     }
   });
   const Preview: Component<{ schema: ModelDocument }> = (props) => {
-    const pages = [list, treeList];
-    const router = query.get("router") ?? (props.schema.tree ? "tree-list" : "list");
-    const target = { router, ...(query.has("window") ? { window: query.get("window")! } : {}) };
-    const params = { ...Object.fromEntries(query), modelId };
-    const navigation = createMemoryNavigation(routePath(createRoutes(pages), target, params));
-    const app: FormworkDefinition = {
-      ...modelDefaults,
-      api: createPreviewApi(props.schema, records),
-      pages,
-      presenters: { page: PreviewPage, drawer: DrawerPresenter, modal: ModalPresenter },
-    };
-    return <FormworkHost app={app} navigation={navigation} />;
+    const history = createMemoryHistory();
+    history.set({ value: `/${router}/${encodeURIComponent(modelId)}`, replace: true });
+    const app = defineFormwork({
+      ...cmsContract,
+      apis: createPreviewApi(props.schema, records),
+      components: { ...components, PreviewShell },
+      ui: { ...ui, shell: "PreviewShell" },
+      domains,
+      pages: [],
+    });
+    return <Formwork app={app} memoryHistory={history} class="root-formwork" />;
   };
   return (
     <div class="preview-content">

@@ -9,6 +9,8 @@
     "scripts/**/*.mjs",
     "apps/service/script/**/*.ts",
     "apps/service/script/**/*.mjs",
+    "apps/service/src/__tests__/**/*.ts",
+    "apps/client/e2e/**/*.ts",
     "vitest.config.ts",
     "playwright.config.ts"
   ],

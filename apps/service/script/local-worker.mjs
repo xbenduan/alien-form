@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { mkdir, writeFile, chmod } from "node:fs/promises";
 import { resolve, join } from "node:path";
-import { initializeDatabase } from "./database.mjs";
+import { initializeDatabase, localStateDirectory } from "./database.mjs";
 
 const repository = resolve(import.meta.dirname, "../../..");
 const wrangler = resolve(repository, "apps/service/node_modules/wrangler/bin/wrangler.js");
@@ -31,12 +31,13 @@ async function stop(child, detached) {
 }
 
 /**
- * 清空本地 D1 并启动生产入口的 Worker，凭证只写入私有目录。
+ * 初始化本地 D1 并启动生产入口的 Worker，凭证只写入私有目录。
  * @param {string} options.directory 本次 D1、配置与 secret 的目录。
  * @param {string} options.clientOrigin 客户端地址；本地回环域名同时允许相同协议和端口的 localhost/127.0.0.1。
  * @param {string[]} [options.initialSql] 仅用于初始化隔离测试数据库的已发布基线。
  * @param {boolean} [options.detached] 开发进程独立回收；E2E 设为 false 以继承 Playwright 进程组。
- * @returns 就绪的 API 地址、仅本地 SQL 执行器和进程回收函数。
+ * @param {boolean} [options.reset] 显式清空当前协议的数据目录；其他目录和旧协议数据保留。
+ * @returns 就绪的 API 地址、当前数据目录、仅本地 SQL 执行器和进程回收函数。
  */
 export async function startLocalWorker(options) {
   const { directory, port, clientOrigin, username, password, capabilityToken } = options;
@@ -50,7 +51,7 @@ export async function startLocalWorker(options) {
   await mkdir(directory, { recursive: true, mode: 0o700 });
   await chmod(directory, 0o700);
   const config = join(directory, "wrangler.json");
-  const state = join(directory, "state");
+  const state = localStateDirectory(directory);
   const env = {
     ...process.env,
     WRANGLER_SEND_METRICS: "false",
@@ -110,7 +111,14 @@ export async function startLocalWorker(options) {
     });
     return output;
   };
-  await initializeDatabase({ directory, state, execute: command, common, local: true });
+  await initializeDatabase({
+    directory,
+    state,
+    execute: command,
+    common,
+    local: true,
+    reset: options.reset,
+  });
   if (options.initialSql?.length) {
     const file = join(directory, "baseline.sql");
     await writeFile(file, `${options.initialSql.join(";\n")};\n`, { mode: 0o600 });
@@ -158,6 +166,7 @@ export async function startLocalWorker(options) {
     if (!health.ok) throw new Error(`Worker 初始化失败: ${redact(await health.text())}`);
     return {
       origin,
+      state,
       child,
       logs: () => redact(logs),
       sql: (sql) => command(["d1", "execute", "alien-mdm", ...common, "--command", sql, "--json"]),

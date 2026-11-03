@@ -1,5 +1,5 @@
 import type { Env, StorageManifest } from "../contracts";
-import { createTableSql } from "../adapters/d1/compiler/storage";
+import { createTableSql, presenceKey } from "../adapters/d1/compiler/storage";
 import { hashPassword, tokenHash } from "../application/auth/password";
 import { ServiceError } from "../http/errors";
 import { systemModels } from "./index";
@@ -14,6 +14,10 @@ export async function bootstrap(env: Env): Promise<void> {
   const adminId = crypto.randomUUID(),
     superId = crypto.randomUUID();
   const now = new Date().toISOString();
+  const present = (modelId: string, fields: string[]) =>
+    JSON.stringify({
+      [presenceKey]: Object.fromEntries(fields.map((key) => [`${modelId}:${key}`, true])),
+    });
   const statements: D1PreparedStatement[] = [
     db
       .prepare("INSERT INTO fw_system_identities(name, record_id) VALUES ('bootstrap', ?)")
@@ -66,12 +70,19 @@ export async function bootstrap(env: Env): Promise<void> {
       "INSERT INTO fw_relation_tables(source_model_id, field_id, table_name) VALUES ('system-users', 'system-users:roleId', 'sys_user_roles')",
     ),
     db
-      .prepare(`INSERT INTO sys_roles(id, code, name, canCreateModel, created_at, updated_at, creator_id)
-      VALUES (?, 'super_admin', '超级管理员', 1, ?, ?, ?)`)
-      .bind(superId, now, now, adminId),
+      .prepare(`INSERT INTO sys_roles(id, code, name, canCreateModel, created_at, updated_at, creator_id, _revision, data_content)
+      VALUES (?, 'super_admin', '超级管理员', 1, ?, ?, ?, ?, ?)`)
+      .bind(
+        superId,
+        now,
+        now,
+        adminId,
+        crypto.randomUUID(),
+        present("system-roles", ["code", "name", "canCreateModel"]),
+      ),
     db
-      .prepare(`INSERT INTO sys_users(id, username, passwordHash, roleId, created_at, updated_at, creator_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?)`)
+      .prepare(`INSERT INTO sys_users(id, username, passwordHash, roleId, created_at, updated_at, creator_id, _revision, data_content)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .bind(
         adminId,
         env.FORMWORK_BOOTSTRAP_ADMIN_USERNAME,
@@ -80,6 +91,8 @@ export async function bootstrap(env: Env): Promise<void> {
         now,
         now,
         adminId,
+        crypto.randomUUID(),
+        present("system-users", ["username", "passwordHash", "roleId"]),
       ),
     db
       .prepare("INSERT INTO sys_user_roles(source_id, target_value) VALUES (?, ?)")
@@ -96,9 +109,19 @@ export async function bootstrap(env: Env): Promise<void> {
         .prepare("INSERT INTO fw_system_identities(name, record_id) VALUES (?, ?)")
         .bind(`category:${code}`, id),
       db
-        .prepare(`INSERT INTO sys_model_categories(id, code, name, aggregate, created_at, updated_at, creator_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?)`)
-        .bind(id, code, name, aggregate, now, now, adminId),
+        .prepare(`INSERT INTO sys_model_categories(id, code, name, aggregate, created_at, updated_at, creator_id, _revision, data_content)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .bind(
+          id,
+          code,
+          name,
+          aggregate,
+          now,
+          now,
+          adminId,
+          crypto.randomUUID(),
+          present("system-model-categories", ["code", "name", "aggregate"]),
+        ),
     );
   }
   if (env.FORMWORK_CAPABILITY_TOKEN)

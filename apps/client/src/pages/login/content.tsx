@@ -1,12 +1,12 @@
 import { createSignal, Show } from "solid-js";
 import type { Component } from "solid-js";
-import type { ActionContext } from "formwork";
+import type { PageContext } from "formwork";
 import { errorPayload } from "formwork/model";
 import { login } from "../../formwork/api";
 import { BrandMark } from "../../formwork/shell/icons";
 
 /** 用 Worker 密码登录建立当前标签页会话。 */
-export const Login: Component<ActionContext> = (ctx) => {
+export const Login: Component<PageContext> = (ctx) => {
   const [busy, setBusy] = createSignal(false);
   const [failure, setFailure] = createSignal("");
   return (
@@ -21,7 +21,7 @@ export const Login: Component<ActionContext> = (ctx) => {
         setFailure("");
         try {
           await login(String(input.get("username")), String(input.get("password")), ctx.signal);
-          if (!ctx.signal.aborted) ctx.navigate("models");
+          if (!ctx.signal.aborted) ctx.navigate("/models");
         } catch (error) {
           if (!ctx.signal.aborted) setFailure(errorPayload(error).message);
         } finally {

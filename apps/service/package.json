@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "cf-typegen": "wrangler types src/worker-configuration.d.ts --include-runtime false --config wrangler.json",
-    "db:reset": "pnpm --filter formwork build && tsx script/migrate.ts --local",
+    "db:init": "pnpm --filter formwork build && tsx script/initialize.ts --local",
     "deploy": "pnpm --filter formwork build && node script/deploy.mjs",
     "deploy:dry-run": "pnpm --filter formwork build && node script/deploy.mjs --dry-run"
   },

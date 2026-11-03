@@ -1,5 +1,6 @@
 import { checkAbort, FormworkError } from "./errors";
 import { isObject } from "./pointer";
+import type { FormworkApis } from "../data/index";
 import {
   assertDraftDefinition,
   assertManagedSnapshot,
@@ -16,25 +17,24 @@ import type {
   CredentialEntry,
   DraftDefinition,
   EffectiveCapabilities,
-  JsonValue,
   ManagedEntry,
   ManagedSnapshot,
   ModelNavigationSnapshot,
   PreviewSnapshot,
   PublishedSnapshot,
   ReadOptions,
-  RecordPage,
-  RecordQuery,
-  RecordValue,
-  RecordPatch,
-  RelationOptionsInput,
-  RelationOptionsResult,
   RuntimeSnapshot,
   RouteTarget,
   ValidationReport,
   WriteOptions,
 } from "./types";
 
+type HttpRecords = {
+  [K in keyof Required<FormworkApis["records"]>]: (
+    input: Parameters<Required<FormworkApis["records"]>[K]>[0],
+    options?: ReadOptions,
+  ) => ReturnType<Required<FormworkApis["records"]>[K]>;
+};
 /** 配置唯一的 Worker API client；token getter 在每次请求时读取最新会话。 */
 export type FormworkApiOptions = {
   url: string;
@@ -42,8 +42,6 @@ export type FormworkApiOptions = {
   token?: () => string | undefined;
   onUnauthorized?: () => void;
 };
-/** 定位 Page 或本地 Window，传字符串时表示 Page；domain 用于审查候选领域选择。 */
-export type CapabilityReadOptions = ReadOptions & { domain?: string };
 /** 提供模型管理、发布加载、记录和认证的 HTTP 能力。 */
 export type FormworkApi = {
   request: <T>(path: string, method?: string, body?: unknown, options?: ReadOptions) => Promise<T>;
@@ -68,12 +66,10 @@ export type FormworkApi = {
     preview: (
       id: string,
       target: string | RouteTarget,
-      params?: Record<string, string>,
       options?: ReadOptions,
     ) => Promise<{
       modelId: string;
       router: string;
-      window?: string;
       revision: string;
       url: string;
     }>;
@@ -83,7 +79,7 @@ export type FormworkApi = {
   capabilities: (
     id: string,
     target: string | RouteTarget,
-    options?: CapabilityReadOptions,
+    options?: ReadOptions,
   ) => Promise<EffectiveCapabilities>;
   auth: {
     login: (
@@ -100,40 +96,7 @@ export type FormworkApi = {
     ) => Promise<CredentialEntry & { token: string }>;
     revokeToken: (id: string, options?: ReadOptions) => Promise<{ revoked: true }>;
   };
-  records: {
-    options: (
-      id: string,
-      input: RelationOptionsInput,
-      options?: ReadOptions,
-    ) => Promise<RelationOptionsResult>;
-    patch: (
-      id: string,
-      recordId: string,
-      patch: RecordPatch,
-      options?: ReadOptions,
-    ) => Promise<RecordValue>;
-    query: (id: string, query: RecordQuery, options?: ReadOptions) => Promise<RecordPage>;
-    subtree: (
-      id: string,
-      input: { parentField: string; parentValue?: string },
-      options?: ReadOptions,
-    ) => Promise<RecordValue[]>;
-    read: (id: string, recordId: string, options?: ReadOptions) => Promise<RecordValue>;
-    create: (id: string, value: RecordValue, options?: ReadOptions) => Promise<RecordValue>;
-    update: (
-      id: string,
-      recordId: string,
-      value: RecordValue,
-      options?: ReadOptions,
-    ) => Promise<RecordValue>;
-    delete: (id: string, recordId: string, options?: ReadOptions) => Promise<{ deleted: true }>;
-    command: (
-      id: string,
-      command: string,
-      value: JsonValue,
-      options?: ReadOptions,
-    ) => Promise<JsonValue>;
-  };
+  records: HttpRecords;
 };
 
 /** 通过带 Bearer 的统一 HTTP 协议访问 Worker；不会重试 CAS 写入。 */
@@ -142,7 +105,6 @@ export function createFormworkApi(options: FormworkApiOptions): FormworkApi {
     const reference = typeof target === "string" ? { router: target } : target;
     return {
       router: reference.router,
-      ...(reference.window === undefined ? {} : { window: reference.window }),
     };
   };
   const request: FormworkApi["request"] = async (path, method = "GET", body, settings) => {
@@ -259,9 +221,9 @@ export function createFormworkApi(options: FormworkApiOptions): FormworkApi {
           id,
         );
       },
-      preview(id, target, params, settings) {
+      preview(id, target, settings) {
         const reference = targetParams(target);
-        const query = new URLSearchParams({ ...reference, params: JSON.stringify(params ?? {}) });
+        const query = new URLSearchParams(reference);
         return request(`${modelPath(id)}/preview?${query}`, "GET", undefined, settings);
       },
       async draftSchema(id, revision, settings) {
@@ -289,7 +251,6 @@ export function createFormworkApi(options: FormworkApiOptions): FormworkApi {
         `/formwork/capabilities?${new URLSearchParams({
           modelId: id,
           ...targetParams(target),
-          ...(settings?.domain === undefined ? {} : { domain: settings.domain }),
         })}`,
         "GET",
         undefined,
@@ -306,27 +267,18 @@ export function createFormworkApi(options: FormworkApiOptions): FormworkApi {
         request(`/auth/tokens/${encodeURIComponent(id)}`, "DELETE", undefined, settings),
     },
     records: {
-      options: (id, input, settings) =>
-        request(`${recordPath(id)}/options`, "POST", input, settings),
-      patch: (id, recordId, patch, settings) =>
-        request(recordPath(id, recordId), "PATCH", patch, settings),
-      query: (id, query, settings) => request(`${recordPath(id)}/query`, "POST", query, settings),
-      subtree: (id, input, settings) =>
-        request(`${recordPath(id)}/subtree`, "POST", input, settings),
-      read: (id, recordId, settings) =>
-        request(recordPath(id, recordId), "GET", undefined, settings),
-      create: (id, value, settings) => request(recordPath(id), "POST", value, settings),
-      update: (id, recordId, value, settings) =>
-        request(recordPath(id, recordId), "PUT", value, settings),
-      delete: (id, recordId, settings) =>
-        request(recordPath(id, recordId), "DELETE", undefined, settings),
-      command: (id, command, value, settings) =>
-        request(
-          `${recordPath(id)}/commands/${encodeURIComponent(command)}`,
-          "POST",
-          value,
-          settings,
-        ),
+      options: ({ modelId, ...input }, settings) =>
+        request(`${recordPath(modelId)}/options`, "POST", input, settings),
+      query: ({ modelId, query }, settings) =>
+        request(`${recordPath(modelId)}/query`, "POST", query, settings),
+      get: ({ modelId, recordId }, settings) =>
+        request(recordPath(modelId, recordId), "GET", undefined, settings),
+      create: ({ modelId, ...input }, settings) =>
+        request(recordPath(modelId), "POST", input, settings),
+      update: ({ modelId, recordId, ...input }, settings) =>
+        request(recordPath(modelId, recordId), "PATCH", input, settings),
+      delete: ({ modelId, recordId, ...input }, settings) =>
+        request(recordPath(modelId, recordId), "DELETE", input, settings),
     },
   };
 }

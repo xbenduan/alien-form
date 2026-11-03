@@ -1,0 +1,75 @@
+body {
+  margin: 0;
+  background: #f6f8f7;
+}
+.notes-app {
+  color: #243c32;
+  font: 16px/1.5 system-ui;
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 24px;
+  & section {
+    background: white;
+    padding: 20px;
+    border: 1px solid #d5dfd8;
+    border-radius: 12px;
+  }
+  & section[hidden] {
+    display: none;
+  }
+  & header,
+  & footer {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  & button,
+  & input {
+    font: inherit;
+    padding: 8px 12px;
+    margin: 4px;
+    border: 1px solid #859b90;
+    border-radius: 6px;
+  }
+  & button {
+    color: inherit;
+    background: #e4f0e9;
+    cursor: pointer;
+  }
+  & button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  & button:focus-visible,
+  & input:focus-visible {
+    outline: 3px solid #36715a;
+    outline-offset: 2px;
+  }
+  & table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    text-align: left;
+  }
+  & td,
+  & th {
+    border-bottom: 1px solid #d5dfd8;
+    padding: 8px;
+  }
+  & label {
+    display: grid;
+    margin-bottom: 12px;
+  }
+  & [role="alert"] {
+    color: #9c3232;
+  }
+  & .confirmation {
+    position: fixed;
+    inset: 25% max(20px, calc((100vw - 480px) / 2)) auto;
+    padding: 24px;
+    background: white;
+    border: 2px solid #36715a;
+    box-shadow: 0 12px 64px #243c3240;
+  }
+}

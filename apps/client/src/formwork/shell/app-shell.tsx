@@ -26,7 +26,6 @@ export const AppShell: Component<{ children?: JSX.Element }> = (props) => {
   });
   createEffect(() => {
     if (!sessionLoading() && !sessionToken() && location.pathname !== "/login") {
-      // Presenter 构造时 Host 尚未登记 frame；延后导航避免被 Host 的 history replace 覆盖。
       queueMicrotask(() => {
         if (alive && !sessionToken() && location.pathname !== "/login")
           navigate("/login", { replace: true, state: {} });
@@ -43,7 +42,7 @@ export const AppShell: Component<{ children?: JSX.Element }> = (props) => {
     if (href === "/models") return location.pathname.startsWith("/models");
     if (href.startsWith("/list/"))
       return (
-        ["list", "tree-list"].includes(location.pathname.split("/")[1] ?? "") &&
+        ["list", "tree-list", "videos"].includes(location.pathname.split("/")[1] ?? "") &&
         modelId() === href.split("/")[2]
       );
     return location.pathname === href;
@@ -51,7 +50,7 @@ export const AppShell: Component<{ children?: JSX.Element }> = (props) => {
   const fallbackTitle = () => {
     if (location.pathname === "/login") return "登录 ALIEN CMS";
     if (location.pathname.startsWith("/tokens")) return "API token";
-    if (location.pathname.startsWith("/models")) return modelId() ?? "模型列表";
+    if (location.pathname.startsWith("/models")) return "模型列表";
     return (
       [...(modelMenu()?.systemModels ?? []), ...(modelMenu()?.pinnedModels ?? [])].find(
         (entry) => entry.id === modelId(),

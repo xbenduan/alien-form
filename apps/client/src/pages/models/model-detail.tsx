@@ -11,7 +11,8 @@ import {
   Show,
 } from "solid-js";
 import type { Component } from "solid-js";
-import type { ActionContext, Diagnostic } from "formwork";
+import type { PageContext, Diagnostic } from "formwork";
+import { api } from "../../formwork/api";
 import { FormworkError } from "formwork";
 import { errorPayload, isObject } from "formwork/model";
 import { refreshModelMenu } from "../../formwork/shell/model-menu";
@@ -24,18 +25,16 @@ const JsonEditor = lazy(() =>
   import("../../components/ui/json-editor").then((module) => ({ default: module.JsonEditor })),
 );
 
-const previewPages = [
+const previewDomains = [
   { value: "list", label: "记录列表" },
-  { value: "add", label: "新建记录" },
-  { value: "edit", label: "编辑记录" },
-  { value: "detail", label: "记录详情" },
+  { value: "tree-list", label: "树列表示例" },
+  { value: "videos", label: "视频列表示例" },
 ];
 
 const diagnosticKey = (issue: Diagnostic) =>
   JSON.stringify([
     issue.modelId,
     issue.router,
-    issue.window,
     issue.path,
     issue.code,
     issue.message,
@@ -43,19 +42,20 @@ const diagnosticKey = (issue: Diagnostic) =>
   ]);
 
 /** 编辑数据库完整 definition，保存可诊断草稿，并手动发布已审阅 revision。 */
-export const ModelDetail: Component<ActionContext> = (ctx) => {
+export const ModelDetail: Component<PageContext & { modelId: string }> = (ctx) => {
   const modelId = () => ctx.modelId;
   const [selected, { refetch: refreshSelected, mutate }] = createResource(modelId, (id) =>
-    ctx.api.models.read(id, { signal: ctx.signal }),
+    api.models.read(id, { signal: ctx.signal }),
   );
   const snapshot = () => (selected.error ? undefined : selected());
   const [versions, { refetch: refreshVersions }] = createResource(
     () => snapshot()?.id,
-    (id) => ctx.api.models.versions(id, { signal: ctx.signal }),
+    (id) => api.models.versions(id, { signal: ctx.signal }),
   );
   const [versionNumber, setVersionNumber] = createSignal<number>();
   const [draft, setDraft] = createSignal("");
   const [dirty, setDirty] = createSignal(false);
+  onCleanup(ctx.guard(dirty));
   const [revision, setRevision] = createSignal<string | null>(null);
   const [busy, setBusy] = createSignal(false);
   const [message, setMessage] = createSignal("");
@@ -174,7 +174,7 @@ export const ModelDetail: Component<ActionContext> = (ctx) => {
     run(async () => {
       const id = modelId();
       if (!id || versionNumber() !== undefined || !snapshot()?.canManage) return;
-      const result = await ctx.api.models.saveDraft(id, JSON.parse(draft()), {
+      const result = await api.models.saveDraft(id, JSON.parse(draft()), {
         ifRevision: revision(),
         signal: ctx.signal,
       });
@@ -199,7 +199,7 @@ export const ModelDetail: Component<ActionContext> = (ctx) => {
         !current.canPublish
       )
         return;
-      const result = await ctx.api.models.publish(current.id, current.revision, {
+      const result = await api.models.publish(current.id, current.revision, {
         signal: ctx.signal,
       });
       if (ctx.signal.aborted) return;
@@ -213,7 +213,7 @@ export const ModelDetail: Component<ActionContext> = (ctx) => {
       <PageTopbar
         title={
           <>
-            <button class="text-button back-to-models" onClick={() => ctx.navigate("models")}>
+            <button class="text-button back-to-models" onClick={() => ctx.navigate("/models")}>
               模型列表
             </button>
             <Icon name="chevron" />
@@ -245,6 +245,12 @@ export const ModelDetail: Component<ActionContext> = (ctx) => {
               disabled={busy() || !snapshot()}
               onClick={() =>
                 run(async () => {
+                  if (
+                    versionNumber() === undefined &&
+                    dirty() &&
+                    !(await ctx.confirm("重新载入将丢弃未保存的 Schema，确定继续吗？"))
+                  )
+                    return;
                   if (versionNumber() !== undefined) {
                     await refreshVersions();
                     if (versions.error) throw versions.error;
@@ -309,7 +315,7 @@ export const ModelDetail: Component<ActionContext> = (ctx) => {
         fallback={
           <div class="panel workbench-empty">
             <p>{selected.loading ? "正在加载模型…" : "模型不存在或没有管理权限。"}</p>
-            <button class="text-button" onClick={() => ctx.navigate("models")}>
+            <button class="text-button" onClick={() => ctx.navigate("/models")}>
               返回模型列表
             </button>
           </div>
@@ -404,9 +410,8 @@ export const ModelDetail: Component<ActionContext> = (ctx) => {
                               <code>
                                 {[
                                   issue.modelId !== modelId() ? issue.modelId : "",
-                                  previewPages.find(
-                                    (page) => page.value === (issue.window ?? issue.router),
-                                  )?.label ?? issue.router,
+                                  previewDomains.find((domain) => domain.value === issue.router)
+                                    ?.label ?? issue.router,
                                   issue.path,
                                   issue.source
                                     ? `${issue.source.file}:${issue.source.line}:${issue.source.column}`
@@ -440,7 +445,7 @@ export const ModelDetail: Component<ActionContext> = (ctx) => {
                 }}
                 class="preview-frame"
                 title="模型管理预览"
-                src={`/model-preview/${modelId()}?embedded=1`}
+                src={`/model-preview?modelId=${encodeURIComponent(modelId()!)}&embedded=1`}
                 onLoad={sendPreview}
               />
             </section>

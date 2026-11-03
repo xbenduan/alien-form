@@ -3,7 +3,6 @@ import { resolve } from "node:path";
 import { analyzeFormwork } from "./analyze";
 import type { FormworkAnalysis } from "./analyze";
 import { createManifest, registerManifest } from "./manifest";
-import { transformRender } from "./transform";
 import { capabilitiesVirtualModule } from "./virtual";
 
 /** 配置代码入口及仅在 Vite server 使用的能力清单登记凭证。 */
@@ -17,7 +16,7 @@ export type FormworkPluginOptions = {
   };
 };
 /**
- * 分析可达代码、转换 JSX 并生成能力清单。
+ * 分析可达代码并生成可选能力清单，不改变应用运行时代码。
  * @param options entry 相对 Vite root；capabilities.token 仅在开发服务进程读取。
  * @example formworkPlugin({ entry: "src/formwork/index.ts", appId: "alien-form" })
  */
@@ -83,11 +82,6 @@ export function formworkPlugin(options: FormworkPluginOptions): Plugin {
         await ensureAnalysis();
         return capabilitiesVirtualModule(analysis);
       }
-    },
-    async transform(code, id) {
-      if (!/\.[cm]?[jt]sx?(?:\?|$)/u.test(id) || id.includes("node_modules")) return null;
-      await ensureAnalysis();
-      return transformRender(code, id, analysis.transforms.get(id.split("?")[0]!) ?? []);
     },
     configureServer(vite) {
       server = vite;

@@ -5,7 +5,7 @@ import { FieldsetCard } from "../../formwork/shell/fieldset-card";
 
 const FieldLabel = createContext<string>();
 
-/** 关联最近字段容器的标签，供 Framework 与 Domain 控件共用。 */
+/** 关联最近字段容器的标签，供应用字段控件共用。 */
 export function useFieldLabel() {
   return useContext(FieldLabel);
 }
@@ -25,6 +25,46 @@ export const FormItem: Component<FieldContainerProps> = (props) => {
   const content = () => (
     <>
       {props.children}
+      <Show
+        when={
+          props.scene === "form" &&
+          props.binding &&
+          !props.readOnly &&
+          !props.schema?.readOnly &&
+          !props.binding.readOnly()
+        }
+      >
+        <div class="actions field-value-actions">
+          <Show when={!props.required && props.binding!.value() !== undefined}>
+            <button
+              type="button"
+              class="text-button"
+              disabled={props.disabled}
+              onClick={() => props.binding!.set(undefined)}
+            >
+              删除字段值
+            </button>
+          </Show>
+          <Show
+            when={
+              props.schema &&
+              "type" in props.schema &&
+              Array.isArray(props.schema.type) &&
+              props.schema.type.includes("null") &&
+              props.binding!.value() !== null
+            }
+          >
+            <button
+              type="button"
+              class="text-button"
+              disabled={props.disabled}
+              onClick={() => props.binding!.set(null)}
+            >
+              设为 null
+            </button>
+          </Show>
+        </div>
+      </Show>
       <Show when={props.field?.props.help}>
         <p class="muted">{String(props.field?.props.help)}</p>
       </Show>

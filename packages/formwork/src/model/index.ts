@@ -4,7 +4,6 @@ export * from "./pointer";
 export * from "./validation";
 export * from "./field";
 export * from "./backend";
-export * from "./migration";
 export * from "./query";
 export * from "./presentation";
 export * from "./schema";

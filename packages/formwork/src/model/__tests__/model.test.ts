@@ -5,7 +5,7 @@ import {
   assertManagedSnapshot,
   assertPublishedSnapshot,
   cloneJson,
-  matchRoute,
+  createRoutes,
   modelDocumentSchema,
   modelIssues,
   pointerSegments,
@@ -63,7 +63,7 @@ describe("完整模型契约", () => {
     expect(validateValue(model.data, value).map((item) => item.path)).toContain("/title");
   });
   it.each([
-    ["未知关键字", { title: { type: "string", oneOf: [] } }, "/data/title"],
+    ["未知关键字", { title: { type: "string", oneOf: [] } }, "/data/title/oneOf"],
     ["required", { title: { type: "string", required: ["missing"] } }, "/data/title/required"],
     [
       "范围倒置",
@@ -90,7 +90,7 @@ describe("完整模型契约", () => {
       expect.arrayContaining(["/data/title/props/value"]),
     );
     expect(modelIssues({ ...document(), views: {} })).toContainEqual(
-      expect.objectContaining({ path: "/views", code: "MIGRATION_REQUIRED" }),
+      expect.objectContaining({ path: "/views", code: "INVALID_MODEL" }),
     );
     expect(modelDocumentSchema.safeParse({ ...document(), revision: "x" }).success).toBe(false);
   });
@@ -137,41 +137,19 @@ describe("Pointer 与路由", () => {
     expect(() => pointerSegments("/bad~2")).toThrow();
     expect(readPointer(false, "")).toBe(false);
   });
-  const routes = [
-    { router: "home" },
-    { router: "models", path: "/models/:modelId?" },
-    { router: "list", path: "/list/:modelId" },
-    { router: "featured", path: "/list/featured" },
-    {
-      router: "list",
-      window: "edit",
-      path: "/list/:modelId/edit/:id",
-      openMode: "drawer" as const,
-    },
-  ];
-  it("按段编码参数，固定路径优先，缺少必填 id 不伪造数据", () => {
+  const routes = createRoutes([{ router: "list" }], [{ router: "home" }, { router: "models" }]);
+  it("Domain 需要 modelId，普通 Page 使用固定路径", () => {
     validateRoutes(routes);
-    expect(
-      routePath(routes, { router: "list", window: "edit" }, { modelId: "orders", id: "a/b 中文" }),
-    ).toBe("/list/orders/edit/a%2Fb%20%E4%B8%AD%E6%96%87");
-    expect(matchRoute(routes, "/list/orders/edit/a%2Fb")?.params.id).toBe("a/b");
-    expect(matchRoute(routes, "/list/featured")?.definition.router).toBe("featured");
-    expect(matchRoute(routes, "/models")?.params).toEqual({});
-    expect(() =>
-      routePath(routes, { router: "list", window: "edit" }, { modelId: "orders" }),
-    ).toThrow(/id/u);
+    expect(routePath(routes, "list", "orders")).toBe("/list/orders");
+    expect(routePath(routes, "models")).toBe("/models");
+    expect(() => routePath(routes, "list")).toThrow(/modelId/u);
     expect(() => routePath(routes, "unknown")).toThrow();
-    expect(() => routePath(routes, "list", { modelId: "../cms" })).toThrow();
+    expect(() => routePath(routes, "list", "../cms")).toThrow();
   });
-  it("拒绝歧义和缺少所属 Page 参数的 Window", () => {
-    expect(() => validateRoutes([...routes, { router: "other", path: "/list/:model" }])).toThrow(
-      /歧义/u,
+  it("拒绝 Domain/Page 重名和自由路径", () => {
+    expect(() => createRoutes([{ router: "list" }], [{ router: "list" }])).toThrow(/重复/u);
+    expect(() => validateRoutes([{ router: "list", path: "/list/:id", model: true }])).toThrow(
+      /无效路径/u,
     );
-    expect(() =>
-      validateRoutes([
-        { router: "list", path: "/list/:modelId" },
-        { router: "list", window: "edit", path: "/edit/:id", openMode: "modal" },
-      ]),
-    ).toThrow(/参数/u);
   });
 });

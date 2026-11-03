@@ -102,6 +102,9 @@ export function createRenderItem(configuration: Configuration): Component<Render
               schema={child.valueSchema}
               required={!!child.schema.required}
               errors={scope?.field(pointer).errors() ?? []}
+              binding={scope?.field(pointer)}
+              disabled={props.disabled}
+              readOnly={readonly()}
             >
               <Child
                 pointer={`${field.path}${pointer}`}
@@ -183,6 +186,8 @@ export function createRender(configuration: Configuration): Component<RenderProp
             scene={scene}
             required={!!field.schema.required}
             errors={scope.field(field.path).errors()}
+            binding={scope.field(field.path)}
+            readOnly={scene === "detail" || scene === "table"}
           >
             <RenderItem field={field} scene={scene} binding={scope.field(field.path)} />
           </Dynamic>

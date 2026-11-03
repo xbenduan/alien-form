@@ -1,8 +1,20 @@
-export { defineFormwork, definePage, defineWindow, defineDomain } from "./runtime/define";
-export { createInstance } from "./runtime/instance";
-export { FormworkHost, createMemoryNavigation } from "./router/host";
-export type { NavigationAdapter } from "./router/host";
-export type * from "./runtime/types";
+export { defineFormwork, definePage, defineDomain } from "./core/define";
+export { Formwork } from "./core/formwork";
+export type { FormworkProps } from "./core/formwork";
+export type * from "./core/types";
+export type {
+  ComponentRegistry,
+  ArrayHandle,
+  ValueScope,
+  ValueBinding,
+  FilterBinding,
+  ScopeOptions,
+  ValidationResult,
+  ContainerProps,
+  FieldContainerProps,
+  FieldProps,
+  RenderItemProps,
+} from "./runtime/types";
 export type * from "./model/types";
 export { FormworkError } from "./model/errors";
 export { modelDocumentSchema } from "./model/schema";

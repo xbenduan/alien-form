@@ -7,6 +7,7 @@ import { build, createServer } from "vite";
 import solid from "vite-plugin-solid";
 import type { ViteDevServer } from "vite";
 import { formworkPlugin } from "../index";
+import { analyzeFormwork } from "../analyze";
 
 const roots: string[] = [];
 const servers: ViteDevServer[] = [];
@@ -17,32 +18,37 @@ afterEach(async () => {
 async function fixture(entry?: string) {
   const root = await mkdtemp(join(tmpdir(), "formwork-plugin-"));
   roots.push(root);
-  await mkdir(join(root, "src/models/orders"), { recursive: true });
+  await mkdir(join(root, "src"), { recursive: true });
   await symlink(resolve("apps/client/node_modules"), join(root, "node_modules"));
   await writeFile(join(root, "package.json"), '{"type":"module"}');
-  // 迁移输入可以是坏 JSON；插件不再把文件模型当事实来源。
-  await writeFile(join(root, "src/models/orders/model.json"), '{"private":"MODEL_FILE_SENTINEL"');
-  await writeFile(
-    join(root, "src/model.schema.ts"),
-    `import {modelDocumentSchema} from "formwork/model";/** 只在浏览器执行。 */export const schema=modelDocumentSchema.refine(()=>!!window.document);`,
-  );
   await writeFile(
     join(root, "src/ui.tsx"),
-    `/** 读取当前字段。 */export const Input=(props: {value?: string})=><input value={props.value}/>;export const ObjectFields=(props)=>props.children;/** 返回示例。 */export function quote(ctx: unknown, amount: number){throw new Error("FUNCTION_BODY_SENTINEL");}`,
+    `/** 读取当前字段。 */export const Input=(props: {value?: string})=><input value={props.value}/>;
+     export const ObjectFields=(props)=>props.children;
+     export const ui={types:{string:{form:{component:"Input"}}}};
+     export const formats={richtext:{schema:()=>{throw new Error("FUNCTION_BODY_SENTINEL")}}};`,
   );
   await writeFile(
     join(root, "src/domain.tsx"),
-    `import {defineDomain} from "formwork";import {schema} from "./model.schema";import {Input} from "./ui";export default defineDomain({modelSchema:schema,components:{Input},transformSchema:(ctx)=>ctx.schema});`,
+    `import {defineDomain} from "formwork";
+     export default defineDomain({router:"list",render:()=>null,transformSchema:(ctx)=>ctx});`,
   );
   await writeFile(
     join(root, "src/pages.tsx"),
-    `import {definePage} from "formwork";export const unused=definePage({router:unknownRouter});export const home=definePage({router:"home",render:<><div>Home</div></>});export const models=definePage({router:"models",path:"/models/:domain?",render:()=>null});`,
+    `import {definePage} from "formwork";
+     export const unused=definePage({router:unknownRouter});
+     export const home=definePage({router:"home",render:()=> <div>Home</div>});
+     export const models=definePage({router:"models",render:()=>null});`,
   );
   await writeFile(join(root, "src/reexport.ts"), `export {home,models} from "./pages";`);
   await writeFile(
     join(root, "src/formwork.tsx"),
     entry ??
-      `import {defineFormwork,definePage,defineWindow} from "formwork";import {home,models} from "./reexport";import {Input,ObjectFields} from "./ui";import * as fn from "./ui";const extras=[home,models];const domains={orders:()=>import("./domain")};const load=(ctx)=>ctx.api.runtime.schema(ctx.modelId).then(s=>s.schema);const edit=defineWindow({path:"edit/:id",openMode:"modal",container:()=>null,getValue:(ctx)=>ctx.initialValue});const windows={edit};const list=definePage({router:"list",getSchema:load,container:()=>null,windows});const tree=definePage({router:"tree-list",getSchema:load,container:()=>null,windows});const common={components:{Input,Object:ObjectFields},fn};export default defineFormwork({...common,domains,pages:[...extras,list,tree],presenters:{page:()=>null,modal:()=>null}});`,
+      `import {defineFormwork,defineDomain} from "formwork";
+     import {home,models} from "./reexport";import * as fields from "./ui";
+     import {ui,formats} from "./ui";import list from "./domain";
+     const extras=[home,models];const components={Input:fields.Input,Object:fields.ObjectFields};
+     export default defineFormwork({apis:{},components,ui,formats,domains:[list,defineDomain({router:"tree-list",render:()=>null})],pages:[...extras]});`,
   );
   const server = await createServer({
     root,
@@ -56,49 +62,60 @@ async function fixture(entry?: string) {
   servers.push(server);
   await server.listen();
   const origin = `http://127.0.0.1:${(server.httpServer!.address() as { port: number }).port}`;
-  // 实际 transform 触发 buildStart，不执行 UI 模块。
   await server.transformRequest("/src/pages.tsx");
   return { root, server, origin };
 }
-describe("Vite 代码清单与 JSX 契约", () => {
-  it("可达 const/spread/re-export/namespace/动态 Domain 保留声明和覆盖，不执行 UI/fn", async () => {
+describe("可选 Vite 静态清单", () => {
+  it("默认 CMS 可独立分析，业务 Domain 不覆盖 app 组件", async () => {
+    const root = resolve("apps/client");
+    const server = await createServer({
+      root,
+      configFile: false,
+      server: { middlewareMode: true },
+    });
+    servers.push(server);
+    const analysis = await analyzeFormwork(
+      root,
+      "src/formwork/index.ts",
+      async (id, importer) =>
+        (await server.environments.client.pluginContainer.resolveId(id, importer))?.id,
+    );
+    expect(Object.keys(analysis.catalog.domains)).toEqual(["list", "tree-list", "videos"]);
+    expect(analysis.catalog.pages).toContain("model-preview");
+    expect(analysis.catalog.app.components.map((item) => item.name)).toContain("ListTable");
+    expect(analysis.catalog.app.formats.map((item) => item.name)).toContain("richtext");
+  });
+  it("追踪 const、spread、re-export 和 namespace，不执行应用函数", async () => {
     const { server } = await fixture();
-    const transformed = await server.transformRequest("/src/pages.tsx");
-    expect(transformed?.code).toMatch(/render:\s*\(\)\s*=>/u);
-    const map = transformed?.map;
-    expect(map && "sources" in map && map.sources).toContain("pages.tsx");
     const virtual = (await server.ssrLoadModule("virtual:formwork/capabilities")).default;
-    const capabilities = virtual.capabilities({ id: "orders" }, { router: "list" });
+    const capabilities = virtual.capabilities(
+      { id: "orders", domain: "arbitrary-business" },
+      { router: "list" },
+    );
     expect(
       capabilities.components.find((item: { name: string }) => item.name === "Input"),
     ).toMatchObject({
       declaration: expect.stringContaining("value?: string"),
       jsDoc: expect.stringContaining("读取当前字段"),
-      overrides: expect.any(Array),
     });
-    expect(
-      capabilities.fn.find((item: { name: string }) => item.name === "quote").declaration,
-    ).toContain("amount: number");
-    expect(capabilities.pageLoader).toBeTruthy();
     expect(capabilities.domainTransform).toBeTruthy();
     expect(
-      virtual.capabilities({ id: "new-model" }, { router: "list" }).domainTransform,
+      virtual.capabilities({ id: "orders", domain: "list" }, { router: "tree-list" })
+        .domainTransform,
     ).toBeUndefined();
-    expect(
-      virtual.capabilities(
-        { id: "articles", domain: "orders" },
-        { router: "tree-list", window: "edit" },
-      ).valueLoader,
-    ).toBeTruthy();
-    expect(() =>
-      virtual.capabilities({ id: "articles", domain: "missing" }, { router: "list" }),
-    ).toThrow("Domain 未注册");
+    expect(virtual.routes).toEqual([
+      { router: "list", path: "/list/:modelId", model: true },
+      { router: "tree-list", path: "/tree-list/:modelId", model: true },
+      { router: "home", path: "/home", model: false },
+      { router: "models", path: "/models", model: false },
+    ]);
     expect(() => virtual.capabilities({ id: "orders" }, { router: "missing" })).toThrow(
-      "未知 Page",
+      "已登记的 Domain",
     );
     expect(JSON.stringify(capabilities)).not.toContain("FUNCTION_BODY_SENTINEL");
+    expect(capabilities.ui.declaration).toContain("component");
   });
-  it("开发服务没有文件模型和工具端点", async () => {
+  it("开发服务不增加模型文件或工具端点", async () => {
     const { origin } = await fixture();
     expect((await fetch(`${origin}/__formwork/models/orders`)).status).toBe(404);
     expect(
@@ -110,49 +127,26 @@ describe("Vite 代码清单与 JSX 契约", () => {
       ).status,
     ).toBe(404);
   });
-  it("应用 loader/Domain 与 Page loader 的有效能力保持一致", async () => {
-    const { server } = await fixture(
-      `import {defineFormwork,definePage} from "formwork";
-       import {Input,ObjectFields} from "./ui";
-       const appLoader=(ctx)=>ctx.api.runtime.schema(ctx.modelId).then(s=>s.schema);
-       const localLoader=(ctx)=>ctx.api.runtime.schema(ctx.modelId).then(s=>s.schema);
-       export default defineFormwork({
-         getSchema:appLoader,
-         domains:{orders:()=>import("./domain")},
-         components:{Input,Object:ObjectFields},
-         pages:[definePage({router:"list",container:()=>null}),definePage({router:"tree-list",container:()=>null,getSchema:localLoader})],
-         presenters:{page:()=>null}
-       });`,
-    );
-    const virtual = (await server.ssrLoadModule("virtual:formwork/capabilities")).default;
-    const list = virtual.capabilities({ id: "orders" }, { router: "list" });
-    const tree = virtual.capabilities({ id: "orders" }, { router: "tree-list" });
-    expect(list.pageLoader.declaration).toContain("appLoader");
-    expect(tree.pageLoader.declaration).toContain("localLoader");
-    expect(list.domainTransform).toBeTruthy();
-    expect(list.modelContract).toContain("data:fieldMap");
-    expect(virtual.routes).toContainEqual({ router: "list", path: "/list/:modelId", model: true });
-  });
-  it("动态 router、重复路径和缺少 Page loader 在实际分析阶段失败", async () => {
+  it("拒绝动态 router、跨注册表重名、直接 JSX 和未显式装配", async () => {
+    const app = (rest: string) => `import {defineFormwork,defineDomain,definePage} from "formwork";
+      export default defineFormwork({apis:{},ui:{},components:{},${rest}});`;
     await expect(
-      fixture(
-        `import {defineFormwork,definePage} from "formwork";const router=readRouter();export default defineFormwork({pages:[definePage({router,render:()=>null})],presenters:{page:()=>null}});`,
-      ),
+      fixture(app("domains:[],pages:[definePage({router:readRouter(),render:()=>null})]")),
     ).rejects.toThrow("静态常量");
     await expect(
       fixture(
-        `import {defineFormwork,definePage} from "formwork";export default defineFormwork({pages:[definePage({router:"one",path:"/a/:id",render:()=>null}),definePage({router:"two",path:"/a/:other",render:()=>null})],presenters:{page:()=>null}});`,
+        app(
+          'domains:[defineDomain({router:"list",render:()=>null})],pages:[definePage({router:"list",render:()=>null})]',
+        ),
       ),
-    ).rejects.toThrow("路径歧义");
+    ).rejects.toThrow("重复 router");
     await expect(
-      fixture(
-        `import {defineFormwork,definePage} from "formwork";export default defineFormwork({pages:[definePage({router:"list",container:()=>null})],presenters:{page:()=>null}});`,
-      ),
-    ).rejects.toThrow("getSchema");
+      fixture(app('domains:[],pages:[definePage({router:"home",render:<div/>})]')),
+    ).rejects.toThrow("render 必须是函数");
+    await expect(fixture(app("pages:[]"))).rejects.toThrow("显式注册 domains");
   });
-  it("生产构建 emit 无模型的 manifest，声明不含执行体或 deploy credential", async () => {
+  it("生产构建只登记声明，不包含函数体、模型快照或 credential", async () => {
     const { root, server } = await fixture();
-    // 生产构建不与同目录的 dev watcher/依赖预构建并行。
     await server.close();
     await writeFile(
       join(root, "source.ts"),
@@ -180,25 +174,20 @@ describe("Vite 代码清单与 JSX 契约", () => {
     const output = await import(pathToFileURL(join(root, "dist/source.mjs")).href);
     expect(
       output.default.capabilities({ id: "orders" }, { router: "list" }).components,
-    ).toContainEqual(expect.objectContaining({ name: "Input", overrides: expect.any(Array) }));
-    const manifestText = await readFile(join(root, "dist/formwork-capabilities.json"), "utf8");
-    const manifest = JSON.parse(manifestText);
+    ).toContainEqual(expect.objectContaining({ name: "Input" }));
+    const manifest = JSON.parse(
+      await readFile(join(root, "dist/formwork-capabilities.json"), "utf8"),
+    );
     expect(manifest).toMatchObject({
       appId: "alien-form",
-      formatVersion: 2,
+      formatVersion: 1,
       clientOrigin: "https://client.example",
       revision: expect.stringMatching(/^[a-f0-9]{64}$/u),
     });
-    expect(manifest.pages.list.capabilities.getSchema).toBeTruthy();
-    expect(manifest.domains.orders.transformSchema).toBeTruthy();
-    expect(manifest.pages.list.windows.edit.path).toBe("/list/:modelId/edit/:id");
-    expect(manifest.pages["tree-list"].windows.edit.path).toBe("/tree-list/:modelId/edit/:id");
-    const files = await readdir(join(root, "dist"));
-    const contents = await Promise.all(
-      files.map((file) => readFile(join(root, "dist", file), "utf8")),
-    );
-    for (const text of contents) {
-      expect(text).not.toContain("MODEL_FILE_SENTINEL");
+    expect(manifest.domains.list.transformSchema).toBeTruthy();
+    expect(manifest.pages).toEqual(["home", "models"]);
+    for (const file of await readdir(join(root, "dist"))) {
+      const text = await readFile(join(root, "dist", file), "utf8");
       expect(text).not.toContain("FUNCTION_BODY_SENTINEL");
       expect(text).not.toContain("DEPLOY_TOKEN_SENTINEL");
     }

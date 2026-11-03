@@ -6,7 +6,9 @@
 
 `type` 表示真实 JSON 值，支持 string、number、integer、boolean、object、array、null。`format` 表示经过共享 Zod 校验的字段预设。
 
-解析顺序是显式 format → Domain 的 `inferFormat` → Framework 推导；组件选择是本次 RenderItem 的 component → `ui[scene].component` → format 默认组件。
+格式解析顺序是显式 format → app 的 `inferFormat` → 内置推导。format 的数据契约与 UI 映射分开注册；框架本身不提供视觉组件。
+
+默认映射顺序为 app.ui.formats → app.ui.selectField → app.ui.types。字段 `ui[scene]` 覆盖映射，再执行 app → Domain → 局部 `transformSchema`；单次 RenderItem 的 component 具有最高优先级。下表组件名称来自当前 CMS 的 app.components。
 
 | 字段形态                        | 默认 format                  | 组件         |
 | ------------------------------- | ---------------------------- | ------------ |
@@ -33,7 +35,7 @@
 }
 ```
 
-`props` 仅在字段一级定义，持久化为 JSON。`ui.form/filter/table/detail` 仅支持 `false` 或 `{component}`，不能重复声明 props 或装饰器。动态函数、访问器和业务联动在应用代码中传给 RenderItem 或 scope，不执行持久化的 `{{ ... }}` 表达式。
+`props` 以 JSON 保存字段共享的展示提示。`ui.form/filter/table/detail` 支持 `false` 或 `{component,props?}`，可以收窄到单个场景；代码传给 RenderItem 的 props 优先于场景和字段 props。动态函数、访问器和业务联动放在应用代码中，不执行持久化的 `{{ ... }}` 表达式。
 
 组件收到明确的 scene。scene 不代表权限，readOnly 与 disabled 单独计算；例如 readOnly 记录字段仍可作为可编辑的筛选条件。value、onChange、scene、field、readOnly、errors、options、multiple 等受控属性不能在字段 props 中覆盖。
 
@@ -86,4 +88,6 @@ object 必须声明 properties，字段 required 在各自字段上声明。数�
 
 字段 `query:{filter:false,sort:false}` 可以收窄能力；UI 隐藏只影响展示。`backend` 只定义存储表名例外、权限和可信行为。可选字段 storage 定义 column / jsonKey、index、through。作者不维护 sqlType、encoding 或重复的 relations 列表。
 
-稳定字段 id 在首次保存时补齐。根字段改名保留 id 可复用物理位置；字段退役保留原存储。嵌套删除、改名、类型变化、收紧 required 或改变关系目标必须先处理迁移诊断。
+稳定字段 id 在首次保存时补齐。根字段改名保留 id 可复用物理位置；字段退役保留原存储。发布会检查嵌套结构、值约束和关系目标等变化，不兼容时返回 `SCHEMA_INCOMPATIBLE`，不会静默改写已保存的记录。
+
+此次重构不支持历史协议迁移。普通开发启动保留当前协议数据，显式 `pnpm dev:reset` 才清空本地开发库。

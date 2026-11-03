@@ -4,7 +4,14 @@ import type { StorageManifest } from "../../../contracts";
 import { ServiceError } from "../../../http/errors";
 
 const identifier = /^[A-Za-z_][A-Za-z0-9_]*$/u;
-const reservedColumns = new Set(["id", "created_at", "updated_at", "creator_id", "data_content"]);
+const reservedColumns = new Set([
+  "id",
+  "created_at",
+  "updated_at",
+  "creator_id",
+  "data_content",
+  "_revision",
+]);
 /** 在现有 JSON 容器中记录列字段存在性，避免 NULL 与 unset 混淆。 */
 export const presenceKey = "$fw:present";
 /** 引用已经验证的 SQL 标识符，绝不接受记录值作为标识符。 */
@@ -30,19 +37,20 @@ export function bindingExpression(binding: StorageBinding): string {
     ? quote(binding.column)
     : `json_extract("data_content", ${literal(`$.${JSON.stringify(binding.jsonKey)}`)})`;
 }
-/** 判断字段是否存在；旧列记录保留历史 NULL 语义，后续写入补齐存在性。 */
+/** 根据统一存在性标记区分列值 null 与缺失。 */
 export function bindingExistsExpression(binding: StorageBinding): string {
   if (!binding.column)
     return `json_type("data_content", ${literal(`$.${JSON.stringify(binding.jsonKey)}`)}) IS NOT NULL`;
   if (reservedColumns.has(binding.column)) return "1";
   const presence = `$.${JSON.stringify(presenceKey)}`;
-  return `(CASE WHEN json_type("data_content", ${literal(presence)}) IS NULL THEN 1 ELSE json_type("data_content", ${literal(`${presence}.${JSON.stringify(binding.id)}`)}) IS NOT NULL END)`;
+  return `json_type("data_content", ${literal(`${presence}.${JSON.stringify(binding.id)}`)}) IS NOT NULL`;
 }
 /** 为模型主表创建 nullable 业务列和服务端身份列。 */
 export function createTableSql(table: string, bindings: readonly StorageBinding[]): string {
   return `CREATE TABLE ${quote(table)} (
     "id" TEXT PRIMARY KEY, "created_at" TEXT NOT NULL, "updated_at" TEXT NOT NULL,
-    "creator_id" TEXT NOT NULL, "data_content" TEXT NOT NULL DEFAULT '{}'
+    "creator_id" TEXT NOT NULL, "data_content" TEXT NOT NULL DEFAULT '{}',
+    "_revision" TEXT NOT NULL
     ${bindings
       .filter((binding) => binding.column && !reservedColumns.has(binding.column))
       .map((binding) => `, ${quote(binding.column!)} ${binding.sqlType}`)
@@ -60,7 +68,7 @@ function indexName(table: string, binding: StorageBinding): string {
 }
 function storageIssue(path: string, message: string): never {
   throw new ServiceError("STORAGE_INCOMPATIBLE", message, 422, [
-    { path, code: "MIGRATION_REQUIRED", message },
+    { path, code: "STORAGE_INCOMPATIBLE", message },
   ]);
 }
 /** 合并实际保留列与当前 bindings，生成保留历史数据的原子 DDL 计划。 */
@@ -232,71 +240,14 @@ export async function planStorage(
           active: false,
         });
     }
-    if (actual.some((column) => !reservedColumns.has(column.name) && column.notnull)) {
-      const indexes = (
-        await db
-          .prepare(
-            "SELECT sql FROM sqlite_schema WHERE type = 'index' AND tbl_name = ? AND sql IS NOT NULL",
-          )
-          .bind(table)
-          .all<{ sql: string }>()
-      ).results;
-      const indexList = (
-        await db.prepare(`PRAGMA index_list(${quote(table)})`).all<{
-          name: string;
-          unique: number;
-          origin: string;
-        }>()
-      ).results;
-      for (const [index, item] of indexList.entries()) {
-        if (!item.unique || item.origin !== "u") continue;
-        const columns = (
-          await db.prepare(`PRAGMA index_info(${quote(item.name)})`).all<{ name: string }>()
-        ).results;
-        indexes.push({
-          sql: `CREATE UNIQUE INDEX ${quote(`retained_${table}_${index}`)}
-          ON ${quote(table)} (${columns.map((column) => quote(column.name)).join(", ")})`,
-        });
-      }
-      if ((await db.prepare(`PRAGMA foreign_key_list(${quote(table)})`).all()).results.length)
-        storageIssue("/backend/storage", "遗留表包含外键约束，需要显式迁移后才能放宽 NOT NULL");
-      const triggers = await db
-        .prepare("SELECT 1 FROM sqlite_schema WHERE type = 'trigger' AND tbl_name = ?")
-        .bind(table)
-        .first();
-      if (triggers)
-        storageIssue("/backend/storage", "遗留表包含 trigger，需要显式迁移后才能放宽 NOT NULL");
-      if (!actualNames.has("id") || actual.filter((column) => column.pk).length !== 1)
-        storageIssue("/backend/storage", "遗留表主键不是单一 id，需要显式迁移");
-      const temporary = `${table}_shadow_${crypto.randomUUID().replaceAll("-", "")}`;
-      const retained = actual.map(
-        (column) =>
-          `${quote(column.name)} ${column.type || "TEXT"}${column.pk ? " PRIMARY KEY" : ""}${
-            reservedColumns.has(column.name) && column.notnull && !column.pk ? " NOT NULL" : ""
-          }${column.dflt_value === null ? "" : ` DEFAULT ${column.dflt_value}`}`,
-      );
-      const added = manifest.bindings.filter(
-        (binding) => binding.column && !actualNames.has(binding.column.toLowerCase()),
-      );
-      statements.push(
-        db.prepare(
-          `CREATE TABLE ${quote(temporary)} (${retained.concat(added.map((binding) => `${quote(binding.column!)} ${binding.sqlType}`)).join(", ")})`,
-        ),
-        db.prepare(`INSERT INTO ${quote(temporary)} (${actual.map((column) => quote(column.name)).join(", ")})
-          SELECT ${actual.map((column) => quote(column.name)).join(", ")} FROM ${quote(table)}`),
-        db.prepare(`DROP TABLE ${quote(table)}`),
-        db.prepare(`ALTER TABLE ${quote(temporary)} RENAME TO ${quote(table)}`),
-        ...indexes.map((index) => db.prepare(index.sql)),
-      );
-    } else
-      for (const binding of manifest.bindings) {
-        if (binding.column && !actualNames.has(binding.column.toLowerCase()))
-          statements.push(
-            db.prepare(
-              `ALTER TABLE ${quote(table)} ADD COLUMN ${quote(binding.column)} ${binding.sqlType}`,
-            ),
-          );
-      }
+    for (const binding of manifest.bindings) {
+      if (binding.column && !actualNames.has(binding.column.toLowerCase()))
+        statements.push(
+          db.prepare(
+            `ALTER TABLE ${quote(table)} ADD COLUMN ${quote(binding.column)} ${binding.sqlType}`,
+          ),
+        );
+    }
   }
   for (const binding of previous?.bindings ?? []) {
     if (binding.index)

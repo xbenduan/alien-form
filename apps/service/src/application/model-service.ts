@@ -2,7 +2,6 @@ import {
   assertDraftDefinition,
   modelIdPattern,
   routePath,
-  routeKey,
   manifestRoutes,
   schemaTargets,
   assignFieldIds,
@@ -28,7 +27,12 @@ import {
 import { planStorage } from "../adapters/d1/compiler/storage";
 import { accessFor, projectSchema, recordCapabilities } from "./auth/access";
 import { requireUser } from "./auth/service";
-import { capabilityCatalog, effectiveCapabilities, readManifest } from "./capabilities";
+import {
+  capabilityCatalog,
+  effectiveCapabilities,
+  findManifest,
+  readManifest,
+} from "./capabilities";
 import { behaviorCommands, behaviorEvents, validateDefinition } from "./model-validation";
 import { forbidden, invalid, notFound, ServiceError } from "../http/errors";
 import { isSystemModel } from "../sys-models";
@@ -244,7 +248,7 @@ export class ModelService {
       .first<{ definition_json: string }>();
     if (!draft) invalid("没有可发布的已保存草稿");
     const result = await validateDefinition(this.db, JSON.parse(draft.definition_json), published);
-    if (result.report.errors.length || !result.definition || !result.manifest)
+    if (result.report.errors.length || !result.definition)
       throw new ServiceError("INVALID_MODEL", "草稿未通过发布校验", 422, result.report.errors);
     const plan = await planStorage(this.db, result.definition, published?.manifest);
     const version = (head.active_version ?? 0) + 1;
@@ -253,8 +257,12 @@ export class ModelService {
     const guard = transactionGuard(
       this.db,
       `EXISTS(SELECT 1 FROM fw_models WHERE id = ? AND management_revision = ? AND active_version IS ?)
-       AND EXISTS(SELECT 1 FROM fw_capability_heads WHERE app_id = 'alien-form' AND revision = ?)`,
-      [id, ifRevision, head.active_version, result.manifest.revision],
+       AND ${
+         result.manifest
+           ? "EXISTS(SELECT 1 FROM fw_capability_heads WHERE app_id = 'alien-form' AND revision = ?)"
+           : "NOT EXISTS(SELECT 1 FROM fw_capability_heads WHERE app_id = 'alien-form')"
+       }`,
+      [id, ifRevision, head.active_version, ...(result.manifest ? [result.manifest.revision] : [])],
     );
     try {
       await this.db.batch([
@@ -269,7 +277,7 @@ export class ModelService {
             JSON.stringify(result.definition),
             JSON.stringify(plan.manifest),
             revision,
-            result.manifest.revision,
+            result.manifest?.revision ?? null,
             this.actor.id,
             new Date().toISOString(),
           ),
@@ -288,8 +296,8 @@ export class ModelService {
         current?.active_version !== head.active_version
       )
         return revisionConflict(this.db, id);
-      const manifest = await readManifest(this.db);
-      if (manifest.revision !== result.manifest.revision)
+      const manifest = await findManifest(this.db);
+      if (manifest?.revision !== result.manifest?.revision)
         throw new ServiceError(
           "REVISION_CONFLICT",
           "应用代码能力清单已改变，请重新校验草稿",
@@ -325,29 +333,20 @@ export class ModelService {
       definition: storedDefinition(row.definition_json).schema,
     }));
   }
-  async preview(
-    id: string,
-    target: RouteTarget,
-    params: Record<string, string>,
-    expected?: string,
-  ) {
+  async preview(id: string, target: RouteTarget, expected?: string) {
     const snapshot = await this.read(id);
     if (expected && snapshot.revision !== expected) return revisionConflict(this.db, id);
     const manifest = await readManifest(this.db);
     const domain = snapshot.definition.domain;
     if (domain !== undefined && typeof domain !== "string") invalid("domain 必须是字符串");
     effectiveCapabilities(manifest, { id, domain }, target);
-    if (!schemaTargets(manifest).some((item) => routeKey(item) === routeKey(target)))
+    if (!schemaTargets(manifest).some((item) => item.router === target.router))
       invalid("此目标不加载 schema");
-    if (params.modelId !== undefined && params.modelId !== id) invalid("预览参数不能修改 modelId");
-    routePath(manifestRoutes(manifest), target, { ...params, modelId: id });
-    const url = new URL(`/model-preview/${encodeURIComponent(id)}`, manifest.clientOrigin);
+    routePath(manifestRoutes(manifest), target, id);
+    const url = new URL("/model-preview", manifest.clientOrigin);
+    url.searchParams.set("modelId", id);
     url.searchParams.set("router", target.router);
-    if (target.window !== undefined) url.searchParams.set("window", target.window);
     url.searchParams.set("revision", snapshot.revision);
-    for (const [key, value] of Object.entries(params))
-      if (!["router", "window", "revision", "modelId", "domain"].includes(key))
-        url.searchParams.set(key, value);
     return { modelId: id, ...target, revision: snapshot.revision, url: url.href };
   }
   async draftSchema(id: string, revision: string): Promise<PreviewSnapshot> {
@@ -382,8 +381,7 @@ export class ModelService {
     const model = await readPublished(this.db, id);
     return {
       schema: projectSchema(model, this.actor),
-      version: model.version,
-      revision: model.revision,
+      schemaRevision: model.revision,
       capabilities: recordCapabilities(model, this.actor),
     };
   }
@@ -406,15 +404,8 @@ export class ModelService {
       capabilitiesError = { code: error.code, message: error.message };
     }
     const definitionTemplate = createDefinitionTemplate(modelId);
-    const target = capabilities?.targets.find(
-      (item) => item.model && item.requiredPreviewParams.length === 0,
-    );
-    const route = target
-      ? {
-          router: target.router,
-          ...(target.window === undefined ? {} : { window: target.window }),
-        }
-      : undefined;
+    const target = capabilities?.targets.find((item) => item.model);
+    const route = target ? { router: target.router } : undefined;
     return {
       guide: modelAuthoringGuide,
       definitionJsonSchema,
@@ -424,7 +415,7 @@ export class ModelService {
         ? {
             capabilitiesError,
             setup:
-              "指南、结构和模板仍可读取。组件清单需要部署流程将 Vite 生成的 manifest 登记到 Worker；登记完成后调用 formwork.capabilities({})，无需浏览器或编辑器 URL。",
+              "模型可正常校验、保存和发布。运行 pnpm capabilities:register 或用可选 Vite 插件登记静态清单后，可查询组件声明和生成预览链接。",
           }
         : {}),
       permissions: {
@@ -463,7 +454,7 @@ export class ModelService {
       resources: ["formwork://guide", "formwork://capabilities", "formwork://definition-schema"],
     };
   }
-  async capabilities(id: string, target: RouteTarget, candidateDomain?: string) {
+  async capabilities(id: string, target: RouteTarget) {
     assertModelId(id);
     const head = await readHead(this.db, id);
     let document: { id: string; domain?: string } = { id };
@@ -480,10 +471,6 @@ export class ModelService {
         document = projectSchema(await readPublished(this.db, id), this.actor);
       }
     } else if (!this.actor.canCreateModel) forbidden();
-    return effectiveCapabilities(
-      await readManifest(this.db),
-      candidateDomain === undefined ? document : { id, domain: candidateDomain },
-      target,
-    );
+    return effectiveCapabilities(await readManifest(this.db), document, target);
   }
 }

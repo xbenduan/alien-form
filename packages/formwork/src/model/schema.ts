@@ -27,7 +27,7 @@ import type {
 } from "./types";
 export { controlledProps } from "./field";
 
-/** 固定模型与 router 的单段身份规则。 */
+/** 固定模型的单段身份规则。 */
 export const modelIdPattern = /^[a-z][a-z0-9_-]*$/u;
 const identity = z.string().regex(modelIdPattern);
 const permissions = z
@@ -95,15 +95,10 @@ export function modelIssues(input: unknown, options: ModelCheckOptions = {}): Va
   const add = (path: string, message: string, code = "INVALID_MODEL") =>
     issues.push({ path, code, message });
   if (!parsed.success) {
-    for (const issue of parsed.error.issues) add(issuePath(issue.path), issue.message);
-    if (isObject(input))
-      for (const key of ["document", "views", "pages", "fields", "layout"])
-        if (key in input)
-          add(
-            `/${key}`,
-            `${key} 已移除；请显式迁移字段配置，布局由 Page/Window 代码承载`,
-            "MIGRATION_REQUIRED",
-          );
+    for (const issue of parsed.error.issues)
+      if (issue.code === "unrecognized_keys")
+        for (const key of issue.keys) add(issuePath([...issue.path, key]), `未知属性 ${key}`);
+      else add(issuePath(issue.path), issue.message);
     return issues;
   }
   const document = parsed.data;
@@ -235,7 +230,7 @@ export function modelIssues(input: unknown, options: ModelCheckOptions = {}): Va
       !formats[field.format] &&
       !frameworkFormats[field.format]
     )
-      formats[field.format] = { component: field.format, schema: baseFieldSchema };
+      formats[field.format] = { schema: baseFieldSchema };
     for (const [key, child] of Object.entries(field.properties ?? {}))
       walk(child, `${path}/properties/${escapePointer(key)}`, nextRefs);
     if (field.items) walk(field.items, `${path}/items`, nextRefs);
@@ -310,7 +305,7 @@ export function createModelDefinitionSchema(
       ctx.addIssue({ code: "custom", path: pointerSegments(issue.path), message: issue.message });
   });
 }
-/** 校验传输字段结构；自定义 format 由加载后的 Domain 或服务端注册表校验。 */
+/** 校验传输字段结构；自定义 format 由 app 与服务端的共享契约校验。 */
 export const modelDocumentSchema: z.ZodType<ModelDocument> = documentShape.superRefine(
   (input, ctx) => {
     for (const issue of modelIssues(input, { allowUnknownFormats: true }))
@@ -349,7 +344,6 @@ const issueSchema = z.object({
   message: z.string(),
   modelId: z.string().optional(),
   router: z.string().optional(),
-  window: z.string().optional(),
   source: z.object({ file: z.string(), line: z.number(), column: z.number() }).optional(),
 });
 /** 校验诊断报告的 HTTP envelope。 */
@@ -383,6 +377,14 @@ export const queryOperatorSchema: z.ZodType<QueryOperator> = z.enum([
 ]);
 const capabilitiesSchema = z
   .object({
+    actions: z
+      .object({
+        read: z.boolean(),
+        create: z.boolean(),
+        update: z.boolean(),
+        delete: z.boolean(),
+      })
+      .strict(),
     fields: z.record(
       z.string(),
       z
@@ -429,8 +431,7 @@ export function assertRuntimeSnapshot(input: unknown, modelId: string): RuntimeS
   const parsed = z
     .object({
       schema: modelDocumentSchema,
-      version: z.number().int().positive(),
-      revision: z.string().min(1),
+      schemaRevision: z.string().min(1),
       capabilities: capabilitiesSchema,
     })
     .strict()
@@ -466,12 +467,9 @@ export function fieldIssues(
   const model = resolveModel(document, contract);
   const visit = (pointer: string) => {
     const field = model.field(pointer);
-    for (const name of [
-      field.component,
-      ...Object.values(field.schema.ui ?? {}).flatMap((ui) =>
-        ui && ui.component ? [ui.component] : [],
-      ),
-    ])
+    for (const name of Object.values(field.schema.ui ?? {}).flatMap((ui) =>
+      ui && ui.component ? [ui.component] : [],
+    ))
       if (!components.includes(name))
         issues.push({
           path: `/data${pointer}`,
@@ -481,6 +479,7 @@ export function fieldIssues(
     for (const key of Object.keys(field.schema.properties ?? {}))
       visit(`${pointer}/${escapePointer(key)}`);
     if (field.schema.items) visit(`${pointer}/*`);
+    if (field.schema.additionalProperties) visit(`${pointer}/*`);
   };
   for (const field of model.fields) visit(field.path);
   return issues;

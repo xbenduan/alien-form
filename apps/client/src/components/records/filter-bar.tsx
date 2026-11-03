@@ -145,7 +145,9 @@ export const FilterBar: Component<{
                           props={{ placeholder: field.props.placeholder ?? "输入值" }}
                           component={
                             ["gt", "gte", "lt", "lte", "between"].includes(binding.operator()) &&
-                            !(field.schema.ui?.filter && field.schema.ui.filter.component)
+                            (!field.schema.ui?.filter ||
+                              !field.schema.ui.filter.component ||
+                              field.schema.ui.filter.component === "Select")
                               ? "NumberInput"
                               : undefined
                           }

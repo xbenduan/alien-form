@@ -10,6 +10,7 @@ export type PhysicalRow = Record<string, string | number | null> & {
   updated_at: string;
   creator_id: string;
   data_content: string;
+  _revision: string;
 };
 /** 将单个值编码为绑定参数，布尔值在 SQLite 中使用整数。 */
 export function encodeValue(
@@ -36,8 +37,7 @@ export function decodeRow(model: StoredModel, row: PhysicalRow): RecordValue {
     if (
       binding.column &&
       !["id", "createdAt", "updatedAt", "creatorId"].includes(key) &&
-      isObject(presence) &&
-      !Object.hasOwn(presence, binding.id)
+      (!isObject(presence) || !Object.hasOwn(presence, binding.id))
     )
       continue;
     const raw = binding.column ? row[binding.column] : content[binding.jsonKey!];

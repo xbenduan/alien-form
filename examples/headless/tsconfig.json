@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.solid.json",
+  "compilerOptions": { "types": ["vite/client"] },
+  "include": ["*.ts", "*.tsx"]
+}

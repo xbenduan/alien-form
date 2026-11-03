@@ -8,9 +8,43 @@ import {
 import { ObjectFields, ArrayFields } from "../../components/fields/structured";
 import { Select } from "../../components/fields/select";
 import type { ComponentRegistry } from "formwork";
+import { FormItem } from "../../components/fields/field-container";
+import { Shell } from "../shell/root";
+import { PagePresenter } from "../presenters/page";
+import { ModalPresenter } from "../presenters/modal";
+import { DrawerPresenter } from "../presenters/drawer";
+import {
+  ListLayout,
+  ListActions,
+  ListFilters,
+  ListTable,
+  ListPagination,
+  DetailLayout,
+  EditorLayout,
+  Loading,
+  Empty,
+  Failure,
+  Confirmation,
+} from "./records";
 
-/** 注册默认字段 Adapter，私域可以按名称稀疏替换。 */
+/** 统一注册应用的字段、列表和操作承载组件。 */
 export const components: ComponentRegistry = {
+  FormItem,
+  Shell,
+  PagePresenter,
+  ModalPresenter,
+  DrawerPresenter,
+  ListLayout,
+  ListActions,
+  ListFilters,
+  ListTable,
+  ListPagination,
+  DetailLayout,
+  EditorLayout,
+  Loading,
+  Empty,
+  Failure,
+  Confirmation,
   Input,
   Text,
   NumberInput,

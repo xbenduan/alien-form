@@ -3,15 +3,11 @@ import type { CompiledDefinition } from "formwork/model";
 import type { ModelHead, StorageManifest, StoredModel } from "../../../contracts";
 import { ServiceError } from "../../../http/errors";
 
-/** 读取新协议发布快照；旧快照必须显式迁移，避免静默丢失布局及绑定。 */
+/** 读取已校验发布快照，损坏的存储内容明确失败。 */
 export function storedDefinition(json: string): CompiledDefinition {
   const input: unknown = JSON.parse(json);
   if (!isObject(input) || !isObject(input.schema) || input.schema.schemaVersion !== 1)
-    throw new ServiceError(
-      "MIGRATION_REQUIRED",
-      "模型仍使用旧协议，请先运行 Schema 迁移工具并处理诊断",
-      422,
-    );
+    throw new ServiceError("INVALID_MODEL", "存储的模型快照无效", 422);
   return input as CompiledDefinition;
 }
 
