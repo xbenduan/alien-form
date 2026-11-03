@@ -87,7 +87,6 @@ export const ModelList: Component<PageContext> = (ctx) => {
             </>
           }
         />
-        <McpGuide />
         <ErrorMessage error={directory.error} retry={refetch} retryLabel="重试列表" />
         <section class="panel model-directory">
           <div class="model-directory-toolbar">
@@ -144,7 +143,10 @@ export const ModelList: Component<PageContext> = (ctx) => {
                         <code>{entry.id}</code>
                       </td>
                       <td>
-                        <span class="value-badge">
+                        <span
+                          class="value-badge"
+                          classList={{ "model-type-system": entry.id.startsWith("system-") }}
+                        >
                           {entry.id.startsWith("system-") ? "系统模型" : "用户模型"}
                         </span>
                       </td>
@@ -156,6 +158,7 @@ export const ModelList: Component<PageContext> = (ctx) => {
                             positive: entry.stage === "published",
                           }}
                         >
+                          <span class="status-dot" aria-hidden="true" />
                           {entry.stage === "draft" ? "草稿" : "已发布"}
                         </span>
                       </td>
@@ -260,6 +263,7 @@ export const ModelList: Component<PageContext> = (ctx) => {
             </Show>
           </div>
         </section>
+        <McpGuide />
       </div>
       <Dialog.Portal mount={root()?.closest<HTMLElement>("[data-formwork-root]") ?? undefined}>
         <Dialog.Overlay class="window-overlay" />

@@ -223,7 +223,9 @@ export const EditorLayout: Component<{
             </h1>
           </div>
         </Show>
-        <div class="record-fields">{props.children}</div>
+        <div class="record-fields">
+          <div class="field-grid">{props.children}</div>
+        </div>
         <div class="record-actions">
           <span>标记 * 的字段为必填项</span>
           <button type="submit" class="button" disabled={editor.saving()}>

@@ -92,7 +92,7 @@ export const ChoiceControl: Component<{
               ? props.selected.map((item) => item.label).join("、")
               : (props.placeholder ?? "请选择")}
           </span>
-          <Icon name="chevron" />
+          <Icon name="chevron" class="select-chevron" />
         </Popover.Trigger>
         <Popover.Portal mount={trigger?.closest<HTMLElement>("[data-formwork-root]") ?? undefined}>
           <Popover.Content

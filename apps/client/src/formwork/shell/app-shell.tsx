@@ -112,7 +112,9 @@ export const AppShell: Component<{ children?: JSX.Element }> = (props) => {
         <aside class="sidebar">
           <A href="/models" class="brand" aria-label="ALIEN CMS 首页">
             <BrandMark />
-            <span class="brand-name">ALIEN CMS</span>
+            <span class="brand-name">
+              ALIEN <span class="brand-product">CMS</span>
+            </span>
           </A>
           <nav class="main-nav" aria-label="主导航">
             <div class="nav-group" aria-label="模型与系统">
