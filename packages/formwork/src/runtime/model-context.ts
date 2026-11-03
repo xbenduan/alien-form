@@ -1,17 +1,27 @@
 import { FormworkError } from "../model/errors";
-import { presentationIssues, selectDomain } from "../model/definition-policy";
+import { selectDomain } from "../model/definition-policy";
 import { cloneJson } from "../model/pointer";
-import { createRoutes } from "../model/routes";
 import { assertRuntimeSchema, modelDocumentSchema } from "../model/schema";
-import type { OpenMode, RuntimeSchema } from "../model/types";
+import type { RecordCapabilities, RuntimeSchema } from "../model/types";
+import { resolveModel } from "../model/field";
+import type { FieldContract, ResolvedModel } from "../model/field";
 import { bindFunctions, mergeDefaults, resolveDomain } from "./resolve";
-import type { ActionContext, DomainSchemaContext, FormworkDefinition, PageDefinition, RenderDefaults } from "./types";
+import type {
+  ActionContext,
+  DomainSchemaContext,
+  FormworkDefinition,
+  PageDefinition,
+  RenderDefaults,
+} from "./types";
 
 /** 保存一次 Page 加载后的不可变模型快照及尚未绑定的能力。 */
 export type ModelContext = {
   schema: RuntimeSchema;
   domain?: string;
   effective: RenderDefaults;
+  model: ResolvedModel;
+  contract: FieldContract;
+  capabilities: RecordCapabilities;
 };
 
 function freezeSnapshot<T>(input: T): T {
@@ -28,35 +38,62 @@ export async function prepareModel(
   page: PageDefinition,
   ctx: ActionContext,
 ): Promise<ModelContext> {
-  if (!ctx.modelId) throw new FormworkError("PARAMS_REQUIRED", `模型 Page ${page.router} 缺少 modelId`);
+  if (!ctx.modelId)
+    throw new FormworkError("PARAMS_REQUIRED", `模型 Page ${page.router} 缺少 modelId`);
   const loader = page.getSchema ?? app.getSchema;
   if (!loader) throw new FormworkError("INVALID_DEFINITION", `缺少 getSchema: ${page.router}`);
   const params = ctx.params;
-  const raw = modelDocumentSchema.parse(await loader({
-    modelId: ctx.modelId, router: page.router, params, api: ctx.api, signal: ctx.signal,
-  }));
+  const loaded = await loader({
+    modelId: ctx.modelId,
+    router: page.router,
+    params,
+    api: ctx.api,
+    signal: ctx.signal,
+  });
+  const raw = modelDocumentSchema.parse("schema" in loaded ? loaded.schema : loaded);
+  const capabilities = "capabilities" in loaded ? loaded.capabilities : { fields: {} };
   if (ctx.signal.aborted) throw new FormworkError("ABORTED", "Instance 已销毁");
-  if (raw.id !== ctx.modelId) throw new FormworkError("INVALID_MODEL", "URL modelId 与模型 id 不一致");
+  if (raw.id !== ctx.modelId)
+    throw new FormworkError("INVALID_MODEL", "URL modelId 与模型 id 不一致");
   const domain = selectDomain(raw, app.domains ?? {});
   const override = await resolveDomain(app, domain);
   if (ctx.signal.aborted) throw new FormworkError("ABORTED", "Instance 已销毁");
   const effective = mergeDefaults(app, override, page);
+  const contract: FieldContract = {
+    formats: { ...app.formats, ...override.formats },
+    inferFormat: override.inferFormat ?? app.inferFormat,
+  };
   const validator = override.modelSchema ?? app.modelSchema;
-  const normalized = modelDocumentSchema.parse(validator ? validator.parse(cloneJson(raw as never)) : raw);
+  const normalized = modelDocumentSchema.parse(
+    validator ? validator.parse(cloneJson(raw as never)) : raw,
+  );
   if (normalized.id !== raw.id || normalized.domain !== raw.domain)
     throw new FormworkError("INVALID_MODEL", "modelSchema 不能改变模型 id 或 domain");
   // 加工始终绑定所属 Page；直达 Window 不把记录参数或 Window 能力混入加工。
   const pageContext: ActionContext = {
-    ...ctx, router: page.router, window: undefined, domain, schema: cloneJson(normalized as never), fn: {},
+    ...ctx,
+    router: page.router,
+    window: undefined,
+    domain,
+    schema: cloneJson(normalized as never),
+    fn: {},
   };
   bindFunctions(effective, pageContext);
-  const schema = assertRuntimeSchema(override.transformSchema
-    ? await override.transformSchema(pageContext as DomainSchemaContext)
-    : pageContext.schema);
+  const schema = assertRuntimeSchema(
+    override.transformSchema
+      ? await override.transformSchema(pageContext as DomainSchemaContext)
+      : pageContext.schema,
+    contract,
+  );
   if (ctx.signal.aborted) throw new FormworkError("ABORTED", "Instance 已销毁");
   if (schema.id !== raw.id || schema.domain !== raw.domain)
     throw new FormworkError("INVALID_MODEL", "transformSchema 不能改变模型 id 或 domain");
-  const issues = presentationIssues(schema, createRoutes(app.pages), Object.keys(app.presenters) as OpenMode[]);
-  if (issues.length) throw new FormworkError(issues[0]!.code, "页面打开方式配置不合法", issues);
-  return { schema: freezeSnapshot(schema), domain, effective };
+  return {
+    schema: freezeSnapshot(schema),
+    domain,
+    effective,
+    contract,
+    capabilities,
+    model: resolveModel(schema, contract, capabilities),
+  };
 }

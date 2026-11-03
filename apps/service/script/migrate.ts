@@ -7,8 +7,8 @@ import { pathToFileURL } from "node:url";
 import { developmentDirectory, initializeDatabase } from "./database.mjs";
 import { systemModels } from "../src/sys-models";
 import { createTableSql, literal, quote } from "../src/adapters/d1/compiler/storage";
-import type { ModelDefinition } from "formwork/model";
 import type { StorageManifest } from "../src/contracts";
+import { storedDefinition } from "../src/adapters/d1/repositories/models";
 
 const wrangler = resolve(import.meta.dirname, "../node_modules/wrangler/bin/wrangler.js");
 async function execute(args: string[]): Promise<string> {
@@ -84,6 +84,17 @@ export async function synchronizeSystemModels(
   query: <T>(sql: string) => Promise<T[]>,
   apply: (statements: string[]) => Promise<void>,
 ): Promise<void> {
+  const snapshots = await query<{ definition_json: string }>(
+    `SELECT v.definition_json FROM fw_models m JOIN fw_model_versions v
+     ON v.model_id=m.id AND v.version=m.active_version`,
+  );
+  for (const snapshot of snapshots) storedDefinition(snapshot.definition_json);
+  const drafts = await query<{ model_id: string; definition_json: string }>(
+    "SELECT model_id,definition_json FROM fw_model_drafts",
+  );
+  for (const draft of drafts)
+    if (JSON.parse(draft.definition_json).schemaVersion !== 1)
+      throw new Error(`${draft.model_id} 草稿仍使用旧协议，请先运行显式 Schema 迁移`);
   const [identity] = await query<{ record_id: string }>(
     "SELECT record_id FROM fw_system_identities WHERE name='bootstrap'",
   );
@@ -107,9 +118,7 @@ export async function synchronizeSystemModels(
     const previous = current
       ? (JSON.parse(current.storage_manifest_json) as StorageManifest)
       : undefined;
-    const previousDefinition = current
-      ? (JSON.parse(current.definition_json) as ModelDefinition)
-      : undefined;
+    const previousDefinition = current ? storedDefinition(current.definition_json) : undefined;
     if (JSON.stringify(previousDefinition) === JSON.stringify(definition)) {
       if (current?.draft_id)
         statements.push(`DELETE FROM fw_model_drafts WHERE model_id=${literal(id)}`);

@@ -1,11 +1,19 @@
-import { resolveSchema, pointerSegments } from "formwork/model";
-import type { ModelAction, ModelDocument, RecordValue, ViewNode, DataSchema } from "formwork/model";
+import { runtimeDocument, resolveFieldSchema, resolveModel, pointerSegments } from "formwork/model";
+import type {
+  ModelAction,
+  ModelDocument,
+  RecordValue,
+  FieldSchema,
+  RecordCapabilities,
+  QueryOperator,
+} from "formwork/model";
 import type { Actor, StoredModel } from "../../contracts";
 import { readPublished } from "../../adapters/d1/repositories/models";
 import { decodeRow, readRow, withRelations } from "../../adapters/d1/repositories/values";
 import type { PhysicalRow } from "../../adapters/d1/repositories/values";
 import { bindingKey, quote } from "../../adapters/d1/compiler/storage";
 import { forbidden, ServiceError } from "../../http/errors";
+import { modelContract } from "../../../../../packages/domain-contracts";
 
 /** 从 DB 当前用户、角色及可信角色标记构造权限档案，保留角色子树聚合。 */
 export async function resolveActor(
@@ -102,44 +110,87 @@ export function projectRecord(record: RecordValue, access: Access): RecordValue 
     ),
   );
 }
-/** 投影 schema 时同步收缩 required、展开 $ref 并移除隐藏字段的 View 引用。 */
+/** 返回当前身份与 D1 实际支持的字段能力，query 只能缩小这个集合。 */
+export function recordCapabilities(model: StoredModel, actor: Actor): RecordCapabilities {
+  const read = accessFor(model, actor, "read");
+  const create = accessFor(model, actor, "create");
+  const update = accessFor(model, actor, "update");
+  const resolved = resolveModel(
+    runtimeDocument(model.definition),
+    modelContract(model.definition.schema),
+  );
+  return {
+    fields: Object.fromEntries(
+      resolved.fields.map((field) => {
+        const key = pointerSegments(field.path)[0]!;
+        const canRead =
+          read.allowed &&
+          (read.fields.has(key) || ["id", "createdAt", "updatedAt", "creatorId"].includes(key));
+        const schema = field.schema;
+        const scalar = !["object", "array"].includes(schema.type!);
+        const operators: QueryOperator[] = scalar
+          ? ["eq", "in"]
+          : schema.type === "array" &&
+              ["string", "number", "integer", "boolean"].includes(schema.items?.type ?? "")
+            ? ["in"]
+            : [];
+        if (schema.type === "string" && !schema.enum && !schema.relation)
+          operators.push("contains");
+        if (schema.type === "number" || schema.type === "integer") operators.push("between");
+        const nullable =
+          schema.nullable ||
+          schema.type === "null" ||
+          field.options.some((option) => option.value === null);
+        if (nullable) operators.push("isNull", "isNotNull");
+        return [
+          field.path,
+          {
+            read: canRead,
+            create: create.allowed && create.fields.has(key) && !schema.readOnly,
+            update: update.allowed && update.fields.has(key) && !schema.readOnly,
+            filter: canRead && schema.query?.filter !== false ? operators : [],
+            sort: canRead && scalar && schema.query?.sort !== false,
+          },
+        ];
+      }),
+    ),
+  };
+}
+
+/** 按字段权限投影同一协议，展开引用且剔除物理存储信息。 */
 export function projectSchema(model: StoredModel, actor: Actor): ModelDocument {
-  const original = model.definition.document;
+  const original = runtimeDocument(model.definition);
   const accesses = ["read", "create", "update"].map((action) =>
     accessFor(model, actor, action as ModelAction),
   );
   if (!accesses.some((access) => access.allowed)) forbidden();
   const fields = new Set(accesses.flatMap((access) => (access.allowed ? [...access.fields] : [])));
+  for (const key of ["id", "createdAt", "updatedAt", "creatorId"]) fields.add(key);
   const editable = new Set(
     accesses.slice(1).flatMap((access) => (access.allowed ? [...access.fields] : [])),
   );
-  const inline = (node: DataSchema): DataSchema => {
-    const value = structuredClone(resolveSchema(node, original.data));
-    if ("properties" in value)
+  const inline = (node: FieldSchema): FieldSchema => {
+    const value = structuredClone(resolveFieldSchema(node, original));
+    delete value.storage;
+    if (value.properties)
       value.properties = Object.fromEntries(
         Object.entries(value.properties).map(([key, child]) => [key, inline(child)]),
       );
-    if ("items" in value) value.items = inline(value.items);
+    if (value.items) value.items = inline(value.items);
+    if (value.additionalProperties) value.additionalProperties = inline(value.additionalProperties);
     return value;
   };
   const schema = structuredClone(original);
-  schema.data.properties = Object.fromEntries(
-    Object.entries(original.data.properties)
+  schema.data = Object.fromEntries(
+    Object.entries(original.data)
       .filter(([key]) => fields.has(key))
       .map(([key, node]) => [
         key,
         { ...inline(node), ...(!editable.has(key) ? { readOnly: true } : {}) },
       ]),
   );
-  schema.data.required = original.data.required?.filter((key) => fields.has(key));
-  delete schema.data.$defs;
-  const hidden = new Set(Object.keys(original.data.properties).filter((key) => !fields.has(key)));
-  if (schema.fields)
-    schema.fields = Object.fromEntries(
-      Object.entries(schema.fields).filter(
-        ([pointer]) => !hidden.has(pointerSegments(pointer)[0] ?? ""),
-      ),
-    );
+  delete schema.$defs;
+  const hidden = new Set(Object.keys(original.data).filter((key) => !fields.has(key)));
   if (
     schema.tree &&
     [schema.tree.parentField, schema.tree.labelField].some((pointer) =>
@@ -147,27 +198,5 @@ export function projectSchema(model: StoredModel, actor: Actor): ModelDocument {
     )
   )
     delete schema.tree;
-  const projectView = (view: ViewNode): ViewNode | undefined => {
-    const parts = pointerSegments(view.field ?? "");
-    if (parts.some((part) => hidden.has(part))) return undefined;
-    return {
-      ...view,
-      ...(view.children
-        ? {
-            children: view.children.flatMap((child) => {
-              const projected = projectView(child);
-              return projected ? [projected] : [];
-            }),
-          }
-        : {}),
-    };
-  };
-  if (schema.views)
-    schema.views = Object.fromEntries(
-      Object.entries(schema.views).flatMap(([router, view]) => {
-        const projected = projectView(view);
-        return projected ? [[router, projected]] : [];
-      }),
-    );
   return schema;
 }

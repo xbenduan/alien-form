@@ -2,7 +2,8 @@ import { createSignal, Show } from "solid-js";
 import type { Component } from "solid-js";
 import { FormworkError } from "formwork";
 import type { WindowContext, ValidationIssue } from "formwork";
-import { FormItem } from "../../../formwork/field-container";
+import { RecordForm } from "../../../components/records/record-form";
+import { RecordRelations } from "../../../formwork/data/record-relations";
 import { Icon } from "../../../formwork/shell/icons";
 import { RecordHeading } from "../../../formwork/shell/page-window";
 
@@ -12,7 +13,7 @@ export const RecordEditor: Component<WindowContext> = (ctx) => {
   const [failure, setFailure] = createSignal("");
   const [issues, setIssues] = createSignal<readonly ValidationIssue[]>([]);
   let form: HTMLDivElement | undefined;
-  const Render = ctx.Render;
+  const original = ctx.params.id ? ctx.scope.value() : undefined;
   const submit = async () => {
     if (saving()) return;
     setSaving(true);
@@ -27,7 +28,7 @@ export const RecordEditor: Component<WindowContext> = (ctx) => {
           ?.focus();
         return;
       }
-      const saved = await ctx.fn.saveRecord(ctx.scope.value());
+      const saved = await ctx.fn.saveRecord(ctx.scope.value(), original);
       if (!ctx.signal.aborted) ctx.complete(saved);
     } catch (error) {
       if (!ctx.signal.aborted) {
@@ -50,7 +51,14 @@ export const RecordEditor: Component<WindowContext> = (ctx) => {
         section="填写信息"
       />
       <div class="record-fields">
-        <Render fieldContainer={FormItem} />
+        <RecordRelations ctx={ctx}>
+          <RecordForm
+            model={ctx.model}
+            RenderItem={ctx.RenderItem}
+            scope={ctx.scope}
+            editing={!!ctx.params.id}
+          />
+        </RecordRelations>
       </div>
       <Show when={failure()}>
         <p role="alert">{failure()}</p>

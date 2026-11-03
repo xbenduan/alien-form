@@ -24,7 +24,11 @@ function assertBody(definition: PageAuthorDefinition | WindowAuthorDefinition) {
     throw new FormworkError("INVALID_DEFINITION", "普通 render 与 schema 内容互斥");
   if (definition.render !== undefined && typeof definition.render !== "function")
     throw new FormworkError("INVALID_DEFINITION", "直接 JSX render 需要 formworkPlugin 转换");
-  if ("getSchema" in definition && definition.getSchema !== undefined && typeof definition.getSchema !== "function")
+  if (
+    "getSchema" in definition &&
+    definition.getSchema !== undefined &&
+    typeof definition.getSchema !== "function"
+  )
     throw new FormworkError("INVALID_DEFINITION", "getSchema 必须是函数");
   if (definition.render === undefined && typeof definition.container !== "function")
     throw new FormworkError("INVALID_DEFINITION", "模型内容必须声明 container");
@@ -44,9 +48,16 @@ export function defineWindow(
   definition: WindowDefinition | WindowAuthorDefinition,
 ): WindowDefinition {
   assertBody(definition);
-  if (definition.openMode !== undefined && !["page", "modal", "drawer"].includes(definition.openMode))
+  if (
+    definition.openMode !== undefined &&
+    !["page", "modal", "drawer"].includes(definition.openMode)
+  )
     throw new FormworkError("INVALID_DEFINITION", "Window openMode 无效");
-  if ("getValue" in definition && definition.getValue !== undefined && typeof definition.getValue !== "function")
+  if (
+    "getValue" in definition &&
+    definition.getValue !== undefined &&
+    typeof definition.getValue !== "function"
+  )
     throw new FormworkError("INVALID_DEFINITION", "getValue 必须是函数");
   return { ...definition } as WindowDefinition;
 }

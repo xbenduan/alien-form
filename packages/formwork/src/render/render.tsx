@@ -1,224 +1,200 @@
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, For } from "solid-js";
 import type { Component } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import { FormworkError } from "../model/errors";
-import { defaultComponent } from "../model/schema";
-import { expressionProperty } from "../runtime/expression";
-import { scopeCell } from "../runtime/scope";
+import { readPointer, escapePointer, isObject } from "../model/pointer";
+import { resolveField } from "../model/field";
+import type { ResolvedModel } from "../model/field";
 import type {
-  ActionContext,
   ComponentRegistry,
   FieldContainerProps,
   FieldProps,
+  RenderItemProps,
   RenderProps,
   ValueScope,
 } from "../runtime/types";
-import type { RuntimeView } from "../model/types";
-import { defaultView, objectChildren } from "./default-view";
-import { fieldPresentation } from "../model/presentation";
+import { schemaType } from "../model/validation";
+import { controlledProps } from "../model/field";
 
 type Configuration = {
-  ctx: ActionContext;
+  model: ResolvedModel;
   components: ComponentRegistry;
   fieldContainer?: Component<FieldContainerProps>;
   scope: () => ValueScope;
-  view?: RuntimeView;
 };
-const DefaultField: Component<FieldContainerProps> = (props) => (
-  <>
-    {props.children}
-    <For each={props.errors}>
-      {(error) => (
-        <p role="alert">
-          {error.code}: {error.message}
-        </p>
-      )}
-    </For>
-  </>
-);
+const DefaultField: Component<FieldContainerProps> = (props) => <>{props.children}</>;
 
-/** 以同一解释流程渲染默认表单、筛选与单字段表格。 */
+/** 创建字段 renderer，只递归真实对象和数组数据，不解释页面布局。 */
+export function createRenderItem(configuration: Configuration): Component<RenderItemProps> {
+  const RenderItem: Component<RenderItemProps> = (props) => {
+    const field = props.field;
+    const resolved = createMemo(() =>
+      resolveField(field, {
+        scene: props.scene,
+        component: props.component,
+        props: props.props,
+      }),
+    );
+    const Component = () => {
+      const component = configuration.components[resolved().component];
+      if (!component)
+        throw new FormworkError("UNKNOWN_COMPONENT", `组件未注册 ${resolved().component}`);
+      return component;
+    };
+    const binding = props.binding;
+    if (binding?.kind === "filter" && props.scene !== "filter")
+      throw new FormworkError("INVALID_BINDING", "FilterBinding 只用于 filter 场景");
+    if (props.scene === "filter" && binding?.kind !== "filter")
+      throw new FormworkError("INVALID_BINDING", "filter 必须使用 FilterBinding");
+    const filter = binding?.kind === "filter" ? binding : undefined;
+    const scope = binding?.kind === "value" ? binding.scope : undefined;
+    const value = () => (binding ? binding.value() : props.value);
+    const readonly = () =>
+      !!props.readOnly ||
+      !binding ||
+      (filter ? false : !!field.schema.readOnly) ||
+      !!binding?.readOnly();
+    const editable = () =>
+      Object.fromEntries(
+        Object.entries(resolved().props).filter(([key]) => !controlledProps.has(key)),
+      );
+    const Child: Component<{
+      pointer: string;
+      scope?: ValueScope;
+      value?: import("../model/types").JsonValue;
+    }> = (child) => (
+      <RenderItem
+        field={configuration.model.field(child.pointer)}
+        scene={props.scene}
+        {...(child.scope ? { binding: child.scope.field("") } : { value: child.value })}
+        record={props.record}
+        readOnly={readonly()}
+        disabled={props.disabled}
+      />
+    );
+    const Item: FieldProps["Item"] = (item) => (
+      <Child pointer={`${field.path}/*`} scope={item.scope} />
+    );
+    const ValueItem: FieldProps["ValueItem"] = (item) => (
+      <Child pointer={`${field.path}/*`} value={item.value} />
+    );
+    const childKeys = () => [
+      ...new Set([
+        ...Object.keys(field.schema.properties ?? {}),
+        ...(field.schema.additionalProperties && isObject(value())
+          ? Object.keys(value() as object)
+          : []),
+      ]),
+    ];
+    const Children = () => (
+      <For each={childKeys()}>
+        {(key) => {
+          const pointer = `/${escapePointer(key)}`;
+          const child = configuration.model.field(`${field.path}${pointer}`);
+          if (child.schema.ui?.[props.scene] === false) return null;
+          return (
+            <Dynamic
+              component={configuration.fieldContainer ?? DefaultField}
+              path={scope ? scope.field(pointer).path() : `${field.path}${pointer}`}
+              title={child.schema.title ?? key}
+              field={child}
+              scene={props.scene}
+              schema={child.valueSchema}
+              required={!!child.schema.required}
+              errors={scope?.field(pointer).errors() ?? []}
+            >
+              <Child
+                pointer={`${field.path}${pointer}`}
+                scope={scope?.field(pointer).scope}
+                value={
+                  readPointer(value(), pointer) as import("../model/types").JsonValue | undefined
+                }
+              />
+            </Dynamic>
+          );
+        }}
+      </For>
+    );
+    return (
+      <Dynamic
+        component={Component()}
+        {...editable()}
+        field={field}
+        scene={props.scene}
+        value={value()}
+        onChange={(next: import("../model/types").JsonValue | undefined) => {
+          if (readonly()) throw new FormworkError("READ_ONLY", "字段只读");
+          if (props.disabled) throw new FormworkError("DISABLED", "字段已禁用");
+          binding!.set(next);
+        }}
+        readOnly={readonly()}
+        disabled={!!props.disabled}
+        errors={binding?.errors() ?? []}
+        schema={filter?.operandSchema() ?? field.valueSchema}
+        options={field.options}
+        relation={field.schema.relation}
+        multiple={
+          filter
+            ? schemaType(filter.operandSchema() ?? { type: "null" }) === "array"
+            : field.schema.type === "array"
+        }
+        operator={filter?.operator()}
+        operandSchema={filter?.operandSchema()}
+        record={props.record}
+        {...(field.schema.items && scope ? { array: scope.array(""), Item } : {})}
+        {...(field.schema.items ? { ValueItem } : {})}
+        Detail={() => (
+          <RenderItem field={field} scene="detail" value={value()} record={props.record} />
+        )}
+      >
+        <Children />
+      </Dynamic>
+    );
+  };
+  return RenderItem;
+}
+
+/** 为简单表单提供字段遍历适配器；复杂页面直接组合 RenderItem。 */
 export function createRender(configuration: Configuration): Component<RenderProps> {
   return (props) => {
-    if (props.field !== undefined && props.view !== undefined)
-      throw new FormworkError("INVALID_VIEW", "field 与 view 不能同时提供");
+    const RenderItem = createRenderItem({
+      ...configuration,
+      get components() {
+        return { ...configuration.components, ...props.components };
+      },
+      get fieldContainer() {
+        return props.fieldContainer ?? configuration.fieldContainer;
+      },
+    });
     const scope = props.scope ?? configuration.scope();
-    const components = { ...configuration.components, ...props.components };
-    const fieldContainer = props.fieldContainer ?? configuration.fieldContainer ?? DefaultField;
-    const mode = props.mode ?? "form";
-    const fields = configuration.ctx.schema?.fields;
-    const view =
-      props.field !== undefined
-        ? defaultView(props.field)
-        : (props.view ?? (props.scope ? undefined : configuration.view) ?? defaultView());
-    const Node: Component<{
-      view: RuntimeView;
-      scope: ValueScope;
-      base: string;
-      rootContainer?: boolean;
-      readOnly?: boolean;
-      disabled?: boolean;
-    }> = (nodeProps) => {
-      const original = nodeProps.view;
-      const local = scopeCell(nodeProps.scope);
-      const path = original.field === undefined ? undefined : `${nodeProps.base}${original.field}`;
-      const cell = path === undefined ? undefined : local.at(path);
-      const presentation = cell
-        ? fieldPresentation(fields, cell.referenceRoot, cell.path(), mode)
-        : {};
-      const node: RuntimeView = {
-        ...presentation,
-        ...original,
-        props: { ...presentation.props, ...original.props },
-        bindings: { ...presentation.bindings, ...original.bindings },
-      };
-      const name =
-        node.component ?? (cell ? defaultComponent(cell.schema, cell.referenceRoot) : undefined);
-      const Component = name ? components[name] : undefined;
-      if (!Component)
-        throw new FormworkError("UNKNOWN_COMPONENT", `组件不存在 ${name}`, [
-          { path: path ?? "", code: "UNKNOWN_COMPONENT", message: `未注册 ${name}` },
-        ]);
-      const evaluated = Object.fromEntries(
-        Object.entries(node.props ?? {}).map(([name, value]) => [
-          name,
-          expressionProperty(value, configuration.ctx, nodeProps.scope, cell),
-        ]),
-      );
-      const restrictions = Object.fromEntries(
-        Object.entries(node.bindings ?? {}).map(([name, value]) => [
-          name,
-          expressionProperty(value, configuration.ctx, nodeProps.scope, cell, name === "value"),
-        ]),
-      );
-      const expressionErrors = () =>
-        [...Object.values(evaluated), ...Object.values(restrictions)].flatMap((result) =>
-          result.errors(),
-        );
-      const errors = createMemo(() => [
-        ...nodeProps.scope
-          .errors()
-          .filter(
-            (issue) =>
-              path === undefined || issue.path === path || issue.path.startsWith(path + "/"),
-          ),
-        ...expressionErrors(),
-      ]);
-      const readonly = () =>
-        !!nodeProps.readOnly || !!cell?.readOnly || !!restrictions.readOnly?.value();
-      const disabled = () => !!nodeProps.disabled || !!restrictions.disabled?.value();
-      const childViews =
-        cell && "properties" in cell.schema
-          ? (node.children ?? objectChildren(cell.schema, cell.referenceRoot, fields, cell.path()))
-          : (node.children ?? []);
-      const childBase = cell && "properties" in cell.schema ? path! : nodeProps.base;
-      const Item: Component<{ scope: ValueScope }> = (itemProps) => {
-        const itemCell = scopeCell(itemProps.scope);
-        const itemViews =
-          node.children ??
-          ("properties" in itemCell.schema
-            ? objectChildren(itemCell.schema, itemCell.referenceRoot, fields, itemCell.path())
-            : [defaultView()]);
-        return (
-          <For each={itemViews}>
-            {(child) => (
-              <Node
-                view={child}
-                scope={itemProps.scope}
-                base=""
-                readOnly={readonly()}
-                disabled={disabled()}
-              />
-            )}
-          </For>
-        );
-      };
-      const controlled: Partial<FieldProps> = cell
-        ? {
-            get value() {
-              return cell.scope.value();
-            },
-            onChange: (next) => {
-              if (readonly()) throw new FormworkError("READ_ONLY", "字段只读");
-              if (disabled()) throw new FormworkError("DISABLED", "字段已禁用");
-              nodeProps.scope.set(path!, next);
-            },
-            get readOnly() {
-              return readonly();
-            },
-            get disabled() {
-              return disabled();
-            },
-            get errors() {
-              return errors();
-            },
-            schema: cell.schema,
-            ...("items" in cell.schema ? { array: cell.scope.array(""), Item } : {}),
-          }
-        : {};
-      const dynamicProps = Object.fromEntries(
-        Object.keys(evaluated).map((name) => [name, undefined]),
-      );
-      for (const [name, result] of Object.entries(evaluated))
-        Object.defineProperty(dynamicProps, name, { get: result.value, enumerable: true });
-      const Children = () => (
-        <For each={childViews}>
-          {(child) => (
-            <Node
-              view={child}
-              scope={nodeProps.scope}
-              base={childBase}
-              readOnly={readonly()}
-              disabled={disabled()}
-            />
-          )}
-        </For>
-      );
-      const Content = () =>
-        nodeProps.rootContainer && props.container ? (
-          <Dynamic component={props.container}>
-            <Children />
-          </Dynamic>
-        ) : (
-          <Dynamic component={Component} {...dynamicProps} {...controlled}>
-            <Children />
-          </Dynamic>
-        );
-      return (
-        <Show when={restrictions.visible?.value() !== false}>
-          <Show
-            when={cell && path !== ""}
-            fallback={
-              <>
-                <Content />
-                <For each={expressionErrors()}>
-                  {(error) => (
-                    <p role="alert">
-                      {error.code}: {error.message}
-                    </p>
-                  )}
-                </For>
-              </>
-            }
+    const scene = props.scene ?? props.mode ?? "form";
+    const fields = props.field
+      ? [configuration.model.field(props.field)]
+      : configuration.model.fields;
+    const Content = () => (
+      <For each={fields.filter((field) => field.schema.ui?.[scene] !== false)}>
+        {(field) => (
+          <Dynamic
+            component={props.fieldContainer ?? configuration.fieldContainer ?? DefaultField}
+            path={field.path}
+            title={field.schema.title ?? field.path.slice(1)}
+            schema={field.valueSchema}
+            field={field}
+            scene={scene}
+            required={!!field.schema.required}
+            errors={scope.field(field.path).errors()}
           >
-            <Dynamic
-              component={fieldContainer}
-              path={path!}
-              title={cell?.schema.title ?? path!}
-              schema={cell?.schema}
-              required={
-                !!cell?.parent &&
-                "properties" in cell.parent.schema &&
-                !!cell.parent.schema.required?.includes(cell.segment())
-              }
-              errors={errors()}
-            >
-              <Content />
-            </Dynamic>
-          </Show>
-        </Show>
-      );
-    };
-    return <Node view={view} scope={scope} base="" rootContainer />;
+            <RenderItem field={field} scene={scene} binding={scope.field(field.path)} />
+          </Dynamic>
+        )}
+      </For>
+    );
+    return props.container ? (
+      <Dynamic component={props.container}>
+        <Content />
+      </Dynamic>
+    ) : (
+      <Content />
+    );
   };
 }

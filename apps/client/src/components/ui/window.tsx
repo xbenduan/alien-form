@@ -1,6 +1,6 @@
 import { Dialog } from "@kobalte/core/dialog";
 import type { Component, JSX } from "solid-js";
-import { Icon } from "./icons";
+import { Icon } from "../../formwork/shell/icons";
 
 type WindowProps = {
   open: boolean;

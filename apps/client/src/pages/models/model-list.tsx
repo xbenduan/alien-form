@@ -301,17 +301,10 @@ export const ModelList: Component<ActionContext> = (ctx) => {
                 await ctx.api.models.saveDraft(
                   modelId,
                   {
-                    document: {
-                      id: modelId,
-                      title: modelId,
-                      data: { type: "object", properties: {}, additionalProperties: false },
-                    },
-                    backend: {
-                      storage: { table: `biz_${modelId.replaceAll("-", "_")}`, bindings: [] },
-                      relations: [],
-                      permissions: { grants: [], privateFields: [] },
-                      behavior: { rules: [], commands: {}, events: {} },
-                    },
+                    schemaVersion: 1,
+                    id: modelId,
+                    title: modelId,
+                    data: {},
                   },
                   { ifRevision: null, signal: ctx.signal },
                 );

@@ -1,16 +1,18 @@
 import {
-  modelDefinitionSchema,
+  createModelDefinitionSchema,
   modelIssues,
+  compileDefinition,
   escapePointer,
   schemaType,
   resolveSchema,
   pointerSegments,
   FormworkError,
+  resolveModel,
 } from "formwork/model";
 import type {
   CapabilityManifest,
   DraftDefinition,
-  ModelDefinition,
+  CompiledDefinition,
   ValidationReport,
   RouteTarget,
 } from "formwork/model";
@@ -19,6 +21,8 @@ import { planStorage, bindingKey } from "../adapters/d1/compiler/storage";
 import { readPublished } from "../adapters/d1/repositories/models";
 import { capabilityReport, readManifest } from "./capabilities";
 import { ServiceError } from "../http/errors";
+import { modelContract } from "../../../../packages/domain-contracts";
+import { schemaMigrationReport } from "./schema-migration";
 
 /** 列出可由定义引用的可信 Worker 规则，上传的源码永远不能进入注册表。 */
 export const behaviorRules = new Set([
@@ -40,28 +44,37 @@ export async function validateDefinition(
   target?: RouteTarget,
 ): Promise<{
   report: ValidationReport;
-  definition?: ModelDefinition;
+  definition?: CompiledDefinition;
   manifest?: CapabilityManifest;
 }> {
-  const errors: ValidationReport["errors"][number][] = modelIssues(draft.document).map((issue) => ({
-    ...issue,
-    path: `/document${issue.path}`,
-    modelId: draft.document.id,
-  }));
+  const errors: ValidationReport["errors"][number][] = [];
   const runtimeChecks: ValidationReport["runtimeChecks"][number][] = [];
-  const parsed = modelDefinitionSchema.safeParse(draft);
+  let contract;
+  try {
+    contract = modelContract({
+      id: draft.id,
+      ...(typeof draft.domain === "string" ? { domain: draft.domain } : {}),
+    });
+  } catch (error) {
+    return {
+      report: {
+        errors: [
+          {
+            path: "/domain",
+            code: "UNKNOWN_DOMAIN",
+            message: error instanceof Error ? error.message : String(error),
+          },
+        ],
+        runtimeChecks,
+      },
+    };
+  }
+  const parsed = createModelDefinitionSchema(contract).safeParse(draft);
   if (!parsed.success) {
-    for (const issue of parsed.error.issues) {
-      if (issue.path[0] === "document" && errors.length) continue;
-      errors.push({
-        path: `/${issue.path.map((part) => escapePointer(String(part))).join("/")}`,
-        code: "INVALID_MODEL",
-        message: issue.message,
-      });
-    }
+    errors.push(...modelIssues(draft, contract));
     return { report: { errors, runtimeChecks } };
   }
-  const definition = parsed.data;
+  const definition = compileDefinition(parsed.data, contract, previous?.definition);
   const { backend, document } = definition;
   const add = (path: string, message: string, code = "INVALID_MODEL") =>
     errors.push({ path, message, code });
@@ -90,15 +103,31 @@ export async function validateDefinition(
           ? "REAL"
           : "TEXT";
       if (binding.sqlType !== sqlType) add(path, `${type} 应使用 ${sqlType} 存储`);
-      if (["id", "createdAt", "updatedAt", "creatorId"].includes(key) && !schema.readOnly)
-        add(path, "服务端身份字段必须 readOnly");
+      if (
+        ["id", "createdAt", "updatedAt", "creatorId"].includes(key) &&
+        (!schema.readOnly || type !== "string")
+      )
+        add(path, "服务端身份字段必须是 readOnly string");
     } catch (error) {
       add(path, error instanceof Error ? error.message : String(error));
     }
   }
+  const resolved = resolveModel(definition.schema, contract);
+  const checkNested = (pointer: string) => {
+    const field = resolved.field(pointer);
+    if (pointerSegments(pointer).length > 1 && (field.schema.relation || field.schema.storage))
+      add(
+        `/data${pointer}`,
+        "当前 D1 adapter 仅支持根字段的 relation/storage，请提升为根字段或显式迁移",
+      );
+    for (const key of Object.keys(field.schema.properties ?? {}))
+      checkNested(`${pointer}/${escapePointer(key)}`);
+    if (field.schema.items) checkNested(`${pointer}/*`);
+    if (field.schema.additionalProperties) checkNested(`${pointer}/*`);
+  };
+  for (const field of resolved.fields) checkNested(field.path);
   for (const key of Object.keys(document.data.properties))
-    if (!keys.has(key))
-      add(`/document/data/properties/${escapePointer(key)}`, "字段缺少稳定 storage binding");
+    if (!keys.has(key)) add(`/data/${escapePointer(key)}`, "字段缺少稳定 storage binding");
   for (const id of backend.permissions.privateFields) {
     if (!ids.has(id)) add("/backend/permissions/privateFields", `未知字段 ${id}`);
     const binding = backend.storage.bindings.find((item) => item.id === id);
@@ -119,8 +148,8 @@ export async function validateDefinition(
       if (!ids.has(id)) add(`/backend/permissions/grants/${index}/fields`, `未知稳定字段 ${id}`);
   }
   const relationIds = new Set<string>();
-  for (const [index, relation] of backend.relations.entries()) {
-    const path = `/backend/relations/${index}`;
+  for (const relation of backend.relations) {
+    const path = `/data/${escapePointer(bindingKey(backend.storage.bindings.find((binding) => binding.id === relation.fieldId)!))}/relation`;
     const source = backend.storage.bindings.find((binding) => binding.id === relation.fieldId);
     if (!source || relationIds.has(relation.fieldId)) {
       add(path, "关系源字段不存在或重复");
@@ -128,24 +157,22 @@ export async function validateDefinition(
     }
     relationIds.add(relation.fieldId);
     const schema = resolveSchema(document.data.properties[bindingKey(source)]!, document.data);
-    if (schemaType(schema) !== (relation.kind === "many-to-many" ? "array" : "string"))
-      add(path, "关系字段类型与基数不匹配");
-    if (
-      relation.kind === "many-to-many" &&
-      "items" in schema &&
-      schemaType(resolveSchema(schema.items, document.data)) !== "string"
-    )
-      add(path, "many-to-many 的 items 必须是 string");
+    const sourceType = schemaType(
+      "items" in schema ? resolveSchema(schema.items, document.data) : schema,
+    );
+    if (!["string", "number", "integer", "boolean"].includes(sourceType))
+      add(path, "关系值必须是非 null 原子类型");
     try {
       const target =
         relation.targetModel === document.id
           ? { definition }
           : await readPublished(db, relation.targetModel);
       const binding = target.definition.backend.storage.bindings.find(
-        (item) => item.id === relation.targetFieldId,
+        (item) => item.path === relation.valueField,
       );
-      if (relation.targetFieldId !== "id" && (!binding || binding.index !== "unique"))
+      if (!binding || (binding.path !== "/id" && binding.index !== "unique"))
         add(path, "关系目标必须是 id 或有唯一索引的稳定字段");
+      if (binding) relation.targetFieldId = binding.id;
       if (binding && target.definition.backend.permissions.privateFields.includes(binding.id))
         add(path, "不能引用私有目标字段");
       if (
@@ -155,9 +182,16 @@ export async function validateDefinition(
             target.definition.document.data.properties[bindingKey(binding)]!,
             target.definition.document.data,
           ),
-        ) !== "string"
+        ) !== sourceType
       )
-        add(path, "关系目标值字段必须是 string");
+        add(path, "源值类型必须与目标 valueField 类型相同");
+      const label = target.definition.backend.storage.bindings.find(
+        (item) => item.path === relation.labelField,
+      );
+      if (!label || label.encoding !== "scalar")
+        add(`${path}/labelField`, "labelField 必须指向已声明的根原子字段");
+      else if (target.definition.backend.permissions.privateFields.includes(label.id))
+        add(`${path}/labelField`, "不能展示私有目标字段");
     } catch {
       add(path, `目标模型 ${relation.targetModel} 尚未发布`);
     }
@@ -171,10 +205,10 @@ export async function validateDefinition(
           relation.fieldId === parent?.id &&
           relation.kind === "many-to-one" &&
           relation.targetModel === document.id &&
-          relation.targetFieldId === "id",
+          relation.valueField === "/id",
       )
     )
-      add("/document/tree/parentField", "tree 父级字段必须声明指向当前模型 id 的 many-to-one 关系");
+      add("/tree/parentField", "tree 父级字段必须声明指向当前模型 id 的单引用关系");
   }
   for (const name of backend.behavior.rules) {
     if (!behaviorRules.has(name) || !document.id.startsWith("system-"))
@@ -209,21 +243,26 @@ export async function validateDefinition(
         JSON.stringify(document.data.properties[bindingKey(next)]) !==
           JSON.stringify(previous.definition.document.data.properties[bindingKey(binding)])
       )
-        add("/document/data", "系统身份和认证字段不可删除或改变；可以添加其他字段");
+        add("/data", "系统身份和认证字段不可删除或改变；可以添加其他字段");
     }
     for (const id of previous.definition.backend.permissions.privateFields)
       if (!backend.permissions.privateFields.includes(id))
         add("/backend/permissions/privateFields", "系统私有字段不可公开");
   }
+  if (previous) {
+    const migration = await schemaMigrationReport(db, previous, definition);
+    errors.push(...migration.errors);
+    runtimeChecks.push(...migration.runtimeChecks);
+  }
   let manifest: CapabilityManifest | undefined;
   try {
     manifest = await readManifest(db);
-    const report = capabilityReport(manifest, document, target);
+    const report = capabilityReport(manifest, definition.schema, target);
     errors.push(...report.errors);
     runtimeChecks.push(...report.runtimeChecks);
   } catch (error) {
     add(
-      "/document/views",
+      "/data",
       error instanceof Error ? error.message : String(error),
       error instanceof FormworkError ? error.code : "CAPABILITIES_UNAVAILABLE",
     );

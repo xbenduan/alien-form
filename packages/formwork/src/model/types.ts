@@ -17,10 +17,11 @@ export type SchemaMetadata = {
 };
 /** 描述具名字段；properties 的顺序决定默认展示顺序。 */
 export type ObjectSchema = {
-  type: "object";
+  type: Nullable<"object">;
   properties: Record<string, DataSchema>;
   required?: readonly string[];
-  additionalProperties?: false;
+  additionalProperties?: false | DataSchema;
+  $defs?: Record<string, DataSchema>;
 };
 /** 描述业务值；所有本地 $ref 均相对根 data 解析。 */
 export type DataSchema = SchemaMetadata &
@@ -41,53 +42,68 @@ export type DataSchema = SchemaMetadata &
     | { type: Nullable<"boolean">; enum?: readonly Scalar[] }
     | { type: "null" }
     | ObjectSchema
-    | { type: "array"; items: DataSchema; minItems?: number; maxItems?: number }
+    | {
+        type: Nullable<"array">;
+        items: DataSchema;
+        minItems?: number;
+        maxItems?: number;
+        uniqueItems?: boolean;
+      }
     | { $ref: string }
   );
-/** 为字段声明组件与联动，省略 component 时根据值类型选择。 */
-export type FieldPresentation = {
-  component?: string;
+/** 标识字段的展示场景，独立于当前是否允许编辑。 */
+export type Scene = "form" | "filter" | "table" | "detail";
+/** 描述枚举候选，记录始终保存 value。 */
+export type EnumOption = { value: Scalar; label: string };
+/** 描述一次业务引用，目标地址均为 JSON Pointer。 */
+export type FieldRelation = { model: string; valueField?: string; labelField?: string };
+/** 保存不能由字段推导的物理存储例外。 */
+export type FieldStorage = {
+  column?: string;
+  jsonKey?: string;
+  index?: "index" | "unique";
+  through?: string;
+};
+/** 定义前后端及所有场景共用的一个字段；required 属于当前属性。 */
+export type FieldSchema = SchemaMetadata & {
+  type?: "string" | "number" | "integer" | "boolean" | "object" | "array" | "null";
+  $ref?: string;
+  id?: string;
+  required?: boolean;
+  nullable?: boolean;
+  format?: string;
+  enum?: readonly (Scalar | EnumOption)[];
+  relation?: FieldRelation;
   props?: Record<string, JsonValue>;
-  bindings?: {
-    value?: string;
-    readOnly?: boolean | string;
-    disabled?: boolean | string;
-    visible?: boolean | string;
-  };
-};
-/** 集中描述字段在表单、表格和筛选中的稀疏覆盖，false 表示不参与该场景。 */
-export type FieldDefinition = {
-  order?: number;
-  form?: FieldPresentation;
-  table?: false | (FieldPresentation & { title?: string });
-  filter?: false | FieldPresentation;
-};
-/** 描述组件树，field 使用相对当前 object 或 item 根的 JSON Pointer。 */
-export type ViewNode = FieldPresentation & {
-  field?: string;
-  children?: readonly ViewNode[];
+  ui?: Partial<Record<Scene, false | { component?: string }>>;
+  query?: { filter?: false; sort?: false };
+  storage?: FieldStorage;
+  properties?: Record<string, FieldSchema>;
+  items?: FieldSchema;
+  additionalProperties?: false | FieldSchema;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  minimum?: number;
+  maximum?: number;
+  minItems?: number;
+  maxItems?: number;
 };
 /** 描述记录的父级与名称字段，不包含页面布局；两个 Pointer 均指向根字段。 */
 export type TreeDefinition = { parentField: string; labelField: string };
 /** 选择完整页面、抽屉或弹窗来承载同一份 Window 内容。 */
 export type OpenMode = "page" | "drawer" | "modal";
-/** 配置当前 Page 已注册 Window 的打开方式。 */
-export type PagePresentation = {
-  windows?: Record<string, { openMode?: OpenMode }>;
-};
 /** 以 Page 与本地 Window 名定位一个注册目标。 */
 export type RouteTarget = { router: string; window?: string };
 /** 保存持久化业务描述；发布版本和权限由 API envelope 承载。 */
 export type ModelDocument = {
+  schemaVersion: 1;
   id: string;
   domain?: string;
   title: string;
-  data: ObjectSchema & SchemaMetadata & { $defs?: Record<string, DataSchema> };
-  /** 使用字段 Pointer 索引展示配置，数组项使用星号通配符。 */
-  fields?: Record<string, FieldDefinition>;
+  data: Record<string, FieldSchema>;
+  $defs?: Record<string, FieldSchema>;
   tree?: TreeDefinition;
-  views?: Record<string, ViewNode>;
-  pages?: Record<string, PagePresentation>;
 };
 /** 描述字段的稳定存储身份；path 为根字段 Pointer，停用字段保留物理数据。 */
 export type StorageBinding = {
@@ -106,6 +122,8 @@ export type RelationDefinition = {
   targetFieldId: string;
   kind: "many-to-one" | "many-to-many";
   through?: string;
+  valueField?: string;
+  labelField?: string;
 };
 /** 表示服务端可以授权的独立操作。 */
 export type ModelAction = "read" | "create" | "update" | "delete" | "manage" | "publish";
@@ -127,12 +145,27 @@ export type BackendDefinition = {
     events: Record<string, readonly string[]>;
   };
 };
-/** 保存完整的后端管理定义。 */
-export type ModelDefinition = { document: ModelDocument; backend: BackendDefinition };
-/** 保存尚未通过发布校验的 JSON 定义；document.id 是唯一强制业务字段。 */
+/** 声明模型级权限、可信规则及特殊表名；存储绑定和关系由字段编译。 */
+export type BackendOptions = {
+  storage?: { table?: string };
+  permissions?: BackendDefinition["permissions"];
+  behavior?: Partial<BackendDefinition["behavior"]>;
+};
+/** 保存唯一的作者协议，管理接口可以额外携带后端策略。 */
+export type ModelDefinition = ModelDocument & { backend?: BackendOptions };
+/** 保存内部值 Schema，禁止作为作者协议写入管理接口。 */
+export type CompiledDocument = Omit<ModelDocument, "data" | "$defs"> & {
+  data: ObjectSchema & SchemaMetadata;
+};
+/** 将作者原文与服务端需要的派生产物一起保存。 */
+export type CompiledDefinition = {
+  schema: ModelDefinition;
+  document: CompiledDocument;
+  backend: BackendDefinition;
+};
+/** 保存尚未通过发布校验的 JSON 定义；id 是唯一强制业务字段。 */
 export type DraftDefinition = {
-  document: { id: string; [key: string]: JsonValue };
-  backend?: JsonValue;
+  id: string;
   [key: string]: JsonValue | undefined;
 };
 /** 提供最新共享管理状态及其 CAS revision。 */
@@ -163,6 +196,7 @@ export type RuntimeSnapshot = {
   schema: ModelDocument;
   version: number;
   revision: string;
+  capabilities: RecordCapabilities;
 };
 /** 返回管理预览 schema；草稿不伪造发布版本。 */
 export type PreviewSnapshot = {
@@ -170,27 +204,24 @@ export type PreviewSnapshot = {
   managementRevision: string;
   stage: "draft" | "published";
   baseVersion: number | null;
+  capabilities: RecordCapabilities;
 };
-/** 允许 Domain 在当前实例的 View props 中保留代码值。 */
-export type RuntimeView = Omit<ViewNode, "props" | "children"> & {
-  props?: Record<string, unknown>;
-  children?: readonly RuntimeView[];
+/** 保存当前实例使用的字段协议；代码 props 在调用 RenderItem 时传入。 */
+export type RuntimeSchema = ModelDocument;
+/** 列出内建查询操作，operand 与记录校验相互独立。 */
+export type QueryOperator = "eq" | "in" | "contains" | "between" | "isNull" | "isNotNull";
+/** 描述当前身份与 adapter 实际支持的单字段能力。 */
+export type FieldCapabilities = {
+  read: boolean;
+  create?: boolean;
+  update?: boolean;
+  filter: readonly QueryOperator[];
+  sort: boolean;
 };
-/** 允许 Domain 在字段展示配置中保留代码 props。 */
-export type RuntimeFieldPresentation = Omit<FieldPresentation, "props"> & {
-  props?: Record<string, unknown>;
-};
-/** 保存 Domain 加工后的字段展示覆盖。 */
-export type RuntimeFieldDefinition = Omit<FieldDefinition, "form" | "table" | "filter"> & {
-  form?: RuntimeFieldPresentation;
-  table?: false | (RuntimeFieldPresentation & { title?: string });
-  filter?: false | RuntimeFieldPresentation;
-};
-/** 表示 Domain 加工后实际渲染的 schema，data 仍使用纯 JSON 契约。 */
-export type RuntimeSchema = Omit<ModelDocument, "views" | "fields"> & {
-  fields?: Record<string, RuntimeFieldDefinition>;
-  views?: Record<string, RuntimeView>;
-};
+/** 保存与当前发布版本绑定的记录能力。 */
+export type RecordCapabilities = { fields: Record<string, FieldCapabilities> };
+/** 定义一个已启用的查询条件；空值操作不带 operand。 */
+export type QueryClause = { field: string; operator: QueryOperator; operand?: JsonValue };
 /** 允许取消 HTTP 请求。 */
 export type ReadOptions = { signal?: AbortSignal };
 /** 条件保存共享草稿；ifRevision:null 只允许创建不存在的模型。 */
@@ -225,6 +256,7 @@ export type EffectiveCapabilities = {
   domain?: string;
   components: readonly CapabilityMember[];
   fn: readonly CapabilityMember[];
+  formats: readonly CapabilityMember[];
   modelSchema?: CapabilityMember;
   pageLoader?: CapabilityMember;
   domainTransform?: CapabilityMember;
@@ -236,6 +268,7 @@ export type EffectiveCapabilities = {
 export type CapabilityLayer = {
   components: readonly CapabilityMember[];
   fn: readonly CapabilityMember[];
+  formats?: readonly CapabilityMember[];
   modelSchema?: CapabilityMember;
   getSchema?: CapabilityMember;
   transformSchema?: CapabilityMember;
@@ -247,12 +280,15 @@ export type PageCapabilities = {
   path: string;
   model: boolean;
   capabilities: CapabilityLayer;
-  windows: Record<string, {
-    path: string;
-    model: boolean;
-    openMode: OpenMode;
-    capabilities: CapabilityLayer;
-  }>;
+  windows: Record<
+    string,
+    {
+      path: string;
+      model: boolean;
+      openMode: OpenMode;
+      capabilities: CapabilityLayer;
+    }
+  >;
 };
 /** 保存声明层和注册归属，在读取模型文档后选择实际 Domain。 */
 export type CapabilityManifest = {
@@ -291,7 +327,7 @@ export type CredentialEntry = {
 };
 /** 描述参数化记录查询；filter 值按 schema 类型解释。 */
 export type RecordQuery = {
-  filters: Record<string, JsonValue>;
+  clauses: readonly QueryClause[];
   page: number;
   pageSize: number;
   sort?: { field: string; direction: "asc" | "desc" };
@@ -300,5 +336,16 @@ export type RecordQuery = {
 };
 /** 保存授权后的记录及服务端身份字段。 */
 export type RecordValue = Record<string, JsonValue>;
+/** 部分更新根字段，unset 中的 Pointer 明确删除属性；例如 { unset:["/summary"] }。 */
+export type RecordPatch = { set?: RecordValue; unset?: readonly string[] };
+/** 按关系字段搜索候选或批量解析已有原始值，fieldId 也接受字段 Pointer。 */
+export type RelationOptionsInput = {
+  fieldId: string;
+  keyword?: string;
+  selectedValues?: readonly (string | number | boolean)[];
+  limit?: number;
+};
+/** 返回允许当前身份看到的候选标签，不夹带目标记录的其他字段。 */
+export type RelationOptionsResult = { options: EnumOption[]; total: number };
 /** 返回分页记录与筛选后的总数。 */
 export type RecordPage = { list: RecordValue[]; total: number };

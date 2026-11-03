@@ -48,6 +48,7 @@ async function fixture(entry?: string) {
     root,
     configFile: false,
     plugins: [formworkPlugin({ entry: "src/formwork.tsx" }), solid()],
+    optimizeDeps: { noDiscovery: true, include: [] },
     resolve: { conditions: ["solid", "browser"] },
     server: { host: "127.0.0.1", port: 0 },
     logLevel: "silent",
@@ -80,10 +81,21 @@ describe("Vite 代码清单与 JSX 契约", () => {
     ).toContain("amount: number");
     expect(capabilities.pageLoader).toBeTruthy();
     expect(capabilities.domainTransform).toBeTruthy();
-    expect(virtual.capabilities({ id: "new-model" }, { router: "list" }).domainTransform).toBeUndefined();
-    expect(virtual.capabilities({ id: "articles", domain: "orders" }, { router: "tree-list", window: "edit" }).valueLoader).toBeTruthy();
-    expect(() => virtual.capabilities({ id: "articles", domain: "missing" }, { router: "list" })).toThrow("Domain 未注册");
-    expect(() => virtual.capabilities({ id: "orders" }, { router: "missing" })).toThrow("未知 Page");
+    expect(
+      virtual.capabilities({ id: "new-model" }, { router: "list" }).domainTransform,
+    ).toBeUndefined();
+    expect(
+      virtual.capabilities(
+        { id: "articles", domain: "orders" },
+        { router: "tree-list", window: "edit" },
+      ).valueLoader,
+    ).toBeTruthy();
+    expect(() =>
+      virtual.capabilities({ id: "articles", domain: "missing" }, { router: "list" }),
+    ).toThrow("Domain 未注册");
+    expect(() => virtual.capabilities({ id: "orders" }, { router: "missing" })).toThrow(
+      "未知 Page",
+    );
     expect(JSON.stringify(capabilities)).not.toContain("FUNCTION_BODY_SENTINEL");
   });
   it("开发服务没有文件模型和工具端点", async () => {
@@ -118,7 +130,7 @@ describe("Vite 代码清单与 JSX 契约", () => {
     expect(list.pageLoader.declaration).toContain("appLoader");
     expect(tree.pageLoader.declaration).toContain("localLoader");
     expect(list.domainTransform).toBeTruthy();
-    expect(list.modelContract).toContain("fields?");
+    expect(list.modelContract).toContain("data:fieldMap");
     expect(virtual.routes).toContainEqual({ router: "list", path: "/list/:modelId", model: true });
   });
   it("动态 router、重复路径和缺少 Page loader 在实际分析阶段失败", async () => {
@@ -166,9 +178,9 @@ describe("Vite 代码清单与 JSX 契约", () => {
       },
     });
     const output = await import(pathToFileURL(join(root, "dist/source.mjs")).href);
-    expect(output.default.capabilities({ id: "orders" }, { router: "list" }).components).toContainEqual(
-      expect.objectContaining({ name: "Input", overrides: expect.any(Array) }),
-    );
+    expect(
+      output.default.capabilities({ id: "orders" }, { router: "list" }).components,
+    ).toContainEqual(expect.objectContaining({ name: "Input", overrides: expect.any(Array) }));
     const manifestText = await readFile(join(root, "dist/formwork-capabilities.json"), "utf8");
     const manifest = JSON.parse(manifestText);
     expect(manifest).toMatchObject({

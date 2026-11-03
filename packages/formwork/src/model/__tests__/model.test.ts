@@ -11,6 +11,7 @@ import {
   pointerSegments,
   readPointer,
   routePath,
+  resolveModel,
   schemaAt,
   validateRoutes,
   validateValue,
@@ -18,28 +19,29 @@ import {
 import type { DataSchema, ModelDocument } from "../index";
 
 const document = (): ModelDocument => ({
+  schemaVersion: 1,
   id: "orders",
   title: "订单",
   data: {
-    type: "object",
-    properties: {
-      title: { type: "string", minLength: 1 },
-      enabled: { type: "boolean", default: true },
-      count: { type: "number", default: 9 },
-      optional: { type: ["string", "null"], default: "default" },
-      address: { $ref: "#/$defs/address" },
-      billing: { $ref: "#/$defs/address" },
-    },
-    required: ["title"],
-    $defs: {
-      address: { type: "object", properties: { city: { type: "string", default: "杭州" } } },
+    title: { type: "string", minLength: 1, required: true },
+    enabled: { type: "boolean", default: true },
+    count: { type: "number", default: 9 },
+    optional: { type: "string", nullable: true, default: "default" },
+    address: { $ref: "#/$defs/address" },
+    billing: { $ref: "#/$defs/address" },
+  },
+  $defs: {
+    address: {
+      type: "object",
+      default: {},
+      properties: { city: { type: "string", default: "杭州" } },
     },
   },
 });
 
 describe("完整模型契约", () => {
   it("接受共享引用，但 defaults 与 snapshot 不共享可变对象", () => {
-    const model = modelDocumentSchema.parse(document());
+    const model = { data: resolveModel(modelDocumentSchema.parse(document())).valueSchema };
     const value = applyDefaults(model.data, {
       title: "",
       enabled: false,
@@ -61,45 +63,34 @@ describe("完整模型契约", () => {
     expect(validateValue(model.data, value).map((item) => item.path)).toContain("/title");
   });
   it.each([
-    ["未知关键字", { oneOf: [] }, "/data/oneOf"],
-    ["required", { required: ["missing"] }, "/data/required"],
+    ["未知关键字", { title: { type: "string", oneOf: [] } }, "/data/title"],
+    ["required", { title: { type: "string", required: ["missing"] } }, "/data/title/required"],
     [
       "范围倒置",
-      { properties: { title: { type: "string", minLength: 3, maxLength: 1 } } },
-      "/data/properties/title/maxLength",
+      { title: { type: "string", minLength: 3, maxLength: 1 } },
+      "/data/title/maxLength",
     ],
-    [
-      "enum 类型",
-      { properties: { enabled: { type: "boolean", enum: ["false"] } } },
-      "/data/properties/enabled/enum/0",
-    ],
-    [
-      "非法 default",
-      { properties: { count: { type: "integer", default: 0.5 } } },
-      "/data/properties/count/default",
-    ],
-    [
-      "无效 regex",
-      { properties: { title: { type: "string", pattern: "[" } } },
-      "/data/properties/title/pattern",
-    ],
-    ["悬空引用", { properties: { item: { $ref: "#/$defs/nope" } } }, "/data/properties/item/$ref"],
+    ["enum 类型", { enabled: { type: "boolean", enum: ["false"] } }, "/data/enabled/enum/0"],
+    ["非法 default", { count: { type: "integer", default: 0.5 } }, "/data/count/default"],
+    ["无效 regex", { title: { type: "string", pattern: "[" } }, "/data/title/pattern"],
+    ["悬空引用", { item: { $ref: "#/$defs/nope" } }, "/data/item/$ref"],
   ])("诊断%s并保留 Pointer", (_name, override, path) => {
     const input = document();
     Object.assign(input.data, override);
     expect(modelIssues(input).some((issue) => issue.path === path)).toBe(true);
     expect(modelDocumentSchema.safeParse(input).success).toBe(false);
   });
-  it("拒绝循环 ref、额外 envelope、受控 props 与非法表达式", () => {
+  it("拒绝循环 ref、额外 envelope、旧布局与受控 props", () => {
     const input = document();
-    input.data.$defs = { a: { $ref: "#/$defs/b" }, b: { $ref: "#/$defs/a" } };
+    input.$defs = { a: { $ref: "#/$defs/b" }, b: { $ref: "#/$defs/a" } };
     expect(modelIssues(input).some((issue) => issue.message.includes("循环"))).toBe(true);
     const plain = document();
-    plain.views = {
-      edit: { component: "Input", field: "/title", props: { value: "bad", title: "{{ ( }}" } },
-    };
+    plain.data.title!.props = { value: "bad" };
     expect(modelIssues(plain).map((issue) => issue.path)).toEqual(
-      expect.arrayContaining(["/views/edit/props/value", "/views/edit/props/title"]),
+      expect.arrayContaining(["/data/title/props/value"]),
+    );
+    expect(modelIssues({ ...document(), views: {} })).toContainEqual(
+      expect.objectContaining({ path: "/views", code: "MIGRATION_REQUIRED" }),
     );
     expect(modelDocumentSchema.safeParse({ ...document(), revision: "x" }).success).toBe(false);
   });
@@ -114,25 +105,22 @@ describe("完整模型契约", () => {
       canManage: true,
       canPublish: true,
       diagnostics: { errors: [], runtimeChecks: [] },
-      definition: { document: { id: "orders" } },
+      definition: { id: "orders" },
     };
     expect(assertManagedSnapshot(snapshot, "orders").definition).toEqual({
-      document: { id: "orders" },
+      id: "orders",
     });
     expect(() => assertManagedSnapshot(snapshot, "cms")).toThrow();
     expect(() => assertPublishedSnapshot(snapshot, "orders")).toThrow();
-    expect(() => assertDraftDefinition({ document: { id: "cms" } }, "orders")).toThrow();
-    expect(() =>
-      assertDraftDefinition({ document: { id: "orders" }, fn: () => 1 }, "orders"),
-    ).toThrow();
+    expect(() => assertDraftDefinition({ id: "cms" }, "orders")).toThrow();
+    expect(() => assertDraftDefinition({ id: "orders", fn: () => 1 }, "orders")).toThrow();
   });
   it("可空 enum 仍约束 null；拒绝未声明字段和数组空洞", () => {
     const schema: DataSchema = { type: ["string", "null"], enum: ["yes"] };
     expect(validateValue(schema, null)[0]?.code).toBe("ENUM");
-    expect(validateValue(document().data, { extra: 1 }).map((item) => item.code)).toEqual([
-      "REQUIRED",
-      "UNKNOWN_FIELD",
-    ]);
+    expect(
+      validateValue(resolveModel(document()).valueSchema, { extra: 1 }).map((item) => item.code),
+    ).toEqual(["REQUIRED", "UNKNOWN_FIELD"]);
     const sparse: number[] = [];
     sparse.length = 2;
     expect(() => cloneJson(sparse)).toThrow();
@@ -163,13 +151,15 @@ describe("Pointer 与路由", () => {
   ];
   it("按段编码参数，固定路径优先，缺少必填 id 不伪造数据", () => {
     validateRoutes(routes);
-    expect(routePath(routes, { router: "list", window: "edit" }, { modelId: "orders", id: "a/b 中文" })).toBe(
-      "/list/orders/edit/a%2Fb%20%E4%B8%AD%E6%96%87",
-    );
+    expect(
+      routePath(routes, { router: "list", window: "edit" }, { modelId: "orders", id: "a/b 中文" }),
+    ).toBe("/list/orders/edit/a%2Fb%20%E4%B8%AD%E6%96%87");
     expect(matchRoute(routes, "/list/orders/edit/a%2Fb")?.params.id).toBe("a/b");
     expect(matchRoute(routes, "/list/featured")?.definition.router).toBe("featured");
     expect(matchRoute(routes, "/models")?.params).toEqual({});
-    expect(() => routePath(routes, { router: "list", window: "edit" }, { modelId: "orders" })).toThrow(/id/u);
+    expect(() =>
+      routePath(routes, { router: "list", window: "edit" }, { modelId: "orders" }),
+    ).toThrow(/id/u);
     expect(() => routePath(routes, "unknown")).toThrow();
     expect(() => routePath(routes, "list", { modelId: "../cms" })).toThrow();
   });

@@ -40,89 +40,28 @@ test.beforeEach(async ({ page }) => {
 test("共享 Domain 新建与编辑排除数据只读字段，服务端保留默认值", async ({ page }) => {
   const modelId = `readonly-${Date.now()}`;
   const definition: ModelDefinition = {
-    document: {
-      id: modelId,
-      domain: "cms",
-      title: "只读提交回归",
-      data: {
+    schemaVersion: 1,
+    id: modelId,
+    domain: "cms",
+    title: "只读提交回归",
+    data: {
+      title: { type: "string", title: "标题", minLength: 1, required: true },
+      content: { type: "string", format: "richtext", title: "正文" },
+      readonlyText: { type: "string", title: "只读字段", readOnly: true, default: "服务端默认值" },
+      readonlyObject: { $ref: "#/$defs/locked", title: "只读对象" },
+      scores: { type: "array", format: "numbers", title: "分数", enum: [0, 2], default: [0, 2] },
+      flags: { type: "array", format: "booleans", title: "标记", default: [false, true] },
+      note: { type: "string", title: "备注", default: "待清空" },
+    },
+    $defs: {
+      locked: {
         type: "object",
-        properties: {
-          title: { type: "string", title: "标题", minLength: 1 },
-          content: { type: "string", title: "正文" },
-        },
-        required: ["title"],
+        readOnly: true,
+        default: { label: "服务端对象" },
+        properties: { label: { type: "string" } },
       },
     },
-    backend: {
-      storage: {
-        table: `biz_${modelId.replaceAll("-", "_")}`,
-        bindings: [
-          { id: "title", path: "/title", column: "title", sqlType: "TEXT", encoding: "scalar" },
-          {
-            id: "content",
-            path: "/content",
-            jsonKey: "content",
-            sqlType: "TEXT",
-            encoding: "scalar",
-          },
-        ],
-      },
-      relations: [],
-      permissions: { grants: [], privateFields: [] },
-      behavior: { rules: [], commands: {}, events: {} },
-    },
   };
-  definition.document.data.$defs = {
-    locked: {
-      type: "object",
-      readOnly: true,
-      default: { label: "服务端对象" },
-      properties: { label: { type: "string" } },
-    },
-  };
-  Object.assign(definition.document.data.properties, {
-    readonlyText: { type: "string", title: "只读字段", readOnly: true, default: "服务端默认值" },
-    readonlyObject: { $ref: "#/$defs/locked", title: "只读对象" },
-    computed: { type: "integer", title: "UI 只读值", default: 0 },
-    disabledText: { type: "string", title: "禁用值", default: "保留禁用值" },
-  });
-  definition.document.fields = {
-    ...definition.document.fields,
-    "/readonlyText": { table: false },
-    "/readonlyObject": { table: false },
-    "/computed": { form: { bindings: { readOnly: true } }, table: false, filter: false },
-    "/disabledText": { form: { bindings: { disabled: true } }, table: false, filter: false },
-  };
-  definition.backend.storage.bindings.push(
-    {
-      id: "readonlyText",
-      path: "/readonlyText",
-      jsonKey: "readonlyText",
-      sqlType: "TEXT",
-      encoding: "scalar",
-    },
-    {
-      id: "readonlyObject",
-      path: "/readonlyObject",
-      jsonKey: "readonlyObject",
-      sqlType: "TEXT",
-      encoding: "json",
-    },
-    {
-      id: "computed",
-      path: "/computed",
-      jsonKey: "computed",
-      sqlType: "INTEGER",
-      encoding: "scalar",
-    },
-    {
-      id: "disabledText",
-      path: "/disabledText",
-      jsonKey: "disabledText",
-      sqlType: "TEXT",
-      encoding: "scalar",
-    },
-  );
   try {
     const draft = await request(page, `/models/${modelId}/draft`, "PUT", {
       definition,
@@ -150,8 +89,8 @@ test("共享 Domain 新建与编辑排除数据只读字段，服务端保留默
     expect(createdResponse.status()).toBe(201);
     expect(createdResponse.request().postDataJSON()).toMatchObject({
       title: "只读新增",
-      computed: 0,
-      disabledText: "保留禁用值",
+      scores: [0, 2],
+      flags: [false, true],
     });
     expect(createdResponse.request().postDataJSON()).not.toHaveProperty("readonlyText");
     expect(createdResponse.request().postDataJSON()).not.toHaveProperty("readonlyObject");
@@ -162,18 +101,30 @@ test("共享 Domain 新建与编辑排除数据只读字段，服务端保留默
     });
     await expect(editor).not.toBeVisible();
     const row = page.locator("tbody tr").filter({ hasText: "只读新增" });
+    await expect(row.getByText("否", { exact: true })).toBeVisible();
+    await row.getByRole("button", { name: "查看只读对象详情", exact: true }).click();
+    await expect(page.getByRole("dialog")).toContainText("服务端对象");
+    await page.keyboard.press("Escape");
     await row.getByRole("button", { name: "编辑", exact: true }).click();
     await editor.getByLabel("标题").fill("  只读编辑  ");
+    await editor
+      .locator(".form-item")
+      .filter({ has: page.getByLabel("备注", { exact: true }) })
+      .getByRole("button", { name: "删除字段值" })
+      .click();
     const updateResponse = page.waitForResponse(
       (response) =>
-        response.request().method() === "PUT" && response.url().includes(`/records/${modelId}/`),
+        response.request().method() === "PATCH" && response.url().includes(`/records/${modelId}/`),
     );
     await editor.getByRole("button", { name: "保存", exact: true }).click();
     const updatedResponse = await updateResponse;
     expect(updatedResponse.ok()).toBe(true);
-    expect(updatedResponse.request().postDataJSON()).not.toHaveProperty("readonlyText");
-    expect(updatedResponse.request().postDataJSON()).not.toHaveProperty("readonlyObject");
-    expect(await updatedResponse.json()).toMatchObject({
+    expect(updatedResponse.request().postDataJSON().set).not.toHaveProperty("readonlyText");
+    expect(updatedResponse.request().postDataJSON().set).not.toHaveProperty("readonlyObject");
+    expect(updatedResponse.request().postDataJSON().unset).toContain("/note");
+    const updated = await updatedResponse.json();
+    expect(updated).not.toHaveProperty("note");
+    expect(updated).toMatchObject({
       title: "只读编辑",
       readonlyText: "服务端默认值",
       readonlyObject: { label: "服务端对象" },

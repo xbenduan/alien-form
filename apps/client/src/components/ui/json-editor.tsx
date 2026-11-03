@@ -20,7 +20,7 @@ const syntax = HighlightStyle.define([
   { tag: tags.punctuation, color: "var(--muted)" },
 ]);
 
-/** 编辑完整 JSON，支持语法着色、节点折叠与只读历史版本，外部值同步不触发 onChange。 */
+/** 编辑 JSON，支持语法着色、节点折叠与只读内容，外部值同步不触发 onChange。 */
 export const JsonEditor: Component<{
   value: string;
   onChange: (value: string) => void;

@@ -1,7 +1,7 @@
 import { Popover } from "@kobalte/core/popover";
 import { createEffect, createMemo, createSignal, createUniqueId, For, Show } from "solid-js";
 import type { Component } from "solid-js";
-import { Icon } from "./icons";
+import { Icon } from "../../formwork/shell/icons";
 
 /** 描述自绘下拉框中的可选值与展示文案。 */
 export type SelectOption = { value: string; label: string; disabled?: boolean };

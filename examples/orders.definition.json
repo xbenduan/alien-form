@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "orders",
+  "title": "订单",
+  "data": {
+    "name": { "type": "string", "required": true, "minLength": 1, "title": "订单名称" },
+    "status": {
+      "type": "string",
+      "title": "状态",
+      "default": "pending",
+      "enum": [
+        { "value": "pending", "label": "待支付" },
+        { "value": "paid", "label": "已支付" },
+        { "value": null, "label": "未确定" }
+      ]
+    },
+    "amount": { "type": "number", "title": "金额", "minimum": 0, "default": 0 },
+    "tags": {
+      "type": "array",
+      "format": "strings",
+      "title": "标签",
+      "enum": ["加急", "赠品", "预售"],
+      "props": { "maxTagCount": 2 }
+    },
+    "scores": { "type": "array", "format": "numbers", "title": "评分", "enum": [0, 1, 2, 3, 4, 5] },
+    "lines": {
+      "type": "array",
+      "title": "明细",
+      "items": {
+        "type": "object",
+        "properties": {
+          "product": { "type": "string", "title": "商品", "required": true },
+          "quantity": { "type": "integer", "title": "数量", "minimum": 1, "default": 1 }
+        }
+      }
+    }
+  }
+}

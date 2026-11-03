@@ -1,7 +1,7 @@
 import { createSignal, onCleanup, onMount } from "solid-js";
 import type { Component, JSX } from "solid-js";
 
-/** 并排显示 Schema 与预览，支持指针和键盘调整，窄屏由样式切换为上下排列。 */
+/** 并排显示编辑面板，支持指针和键盘调整，窄屏由样式切换为上下排列。 */
 export const ResizablePanels: Component<{ left: JSX.Element; right: JSX.Element }> = (props) => {
   const [ratio, setRatio] = createSignal(50);
   const [minimum, setMinimum] = createSignal(0);

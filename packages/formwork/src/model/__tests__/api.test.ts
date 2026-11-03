@@ -11,9 +11,9 @@ const draft = {
   baseVersion: null,
   canManage: true,
   canPublish: false,
-  definition: { document: { id: "orders" } },
+  definition: { id: "orders" },
   diagnostics: {
-    errors: [{ path: "/document/data", code: "INVALID_MODEL", message: "缺少 data" }],
+    errors: [{ path: "/data", code: "INVALID_MODEL", message: "缺少 data" }],
     runtimeChecks: [],
   },
 };
@@ -43,15 +43,11 @@ it("带当前 Bearer 保存无效草稿并保留诊断，CAS 冲突暴露当前 
           );
     },
   });
-  const saved = await api.models.saveDraft(
-    "orders",
-    { document: { id: "orders" } },
-    { ifRevision: null },
-  );
-  expect(saved.diagnostics.errors[0]?.path).toBe("/document/data");
+  const saved = await api.models.saveDraft("orders", { id: "orders" }, { ifRevision: null });
+  expect(saved.diagnostics.errors[0]?.path).toBe("/data");
   expect(requests[0]).toMatchObject({
     path: "https://worker.example/api/v1/models/orders/draft",
-    body: { definition: { document: { id: "orders" } }, ifRevision: null },
+    body: { definition: { id: "orders" }, ifRevision: null },
   });
   expect(requests[0]!.headers.get("Authorization")).toBe("Bearer agent-one");
   token = "agent-two";
@@ -149,39 +145,37 @@ it("旧请求的 401 不清除新账号 token", async () => {
   expect(expired).toBe(0);
 });
 
-it("RuntimeSchema 保留函数 props，并继续拒绝受控覆盖", () => {
+it("RuntimeSchema 拒绝函数 props 和受控覆盖", () => {
   const handler = () => 1;
   const schema = {
+    schemaVersion: 1,
     id: "orders",
     title: "订单",
-    data: { type: "object", properties: {} },
-    views: { edit: { component: "Button", props: { onClick: handler } } },
+    data: { title: { type: "string", props: { onClick: handler } } },
   };
-  expect(assertRuntimeSchema(schema).views?.edit?.props?.onClick).toBe(handler);
+  expect(() => assertRuntimeSchema(schema)).toThrow(/校验失败/u);
   expect(() =>
     assertRuntimeSchema({
       ...schema,
-      views: { edit: { component: "Input", props: { onChange: handler } } },
+      data: { title: { type: "string", props: { value: "bad" } } },
     }),
   ).toThrow(/校验失败/u);
 });
 
-it("后端可以在禁用 Function 构造器时诊断表达式而不执行代码", () => {
+it("后端禁用 Function 构造器时仍校验协议，props 字符串不执行", () => {
   vi.stubGlobal("Function", () => {
     throw new Error("Worker 禁止动态代码");
   });
   try {
     const document = {
+      schemaVersion: 1,
       id: "orders",
       title: "订单",
-      data: { type: "object", properties: {} },
-      views: { list: { component: "Button", props: { onClick: "{{ () => fn.save() }}" } } },
+      data: { title: { type: "string", props: { placeholder: "{{ () => fn.save() }}" } } },
     };
     expect(modelIssues(document)).toEqual([]);
-    document.views.list.props.onClick = "{{ ( }}";
-    expect(modelIssues(document)).toContainEqual(
-      expect.objectContaining({ code: "INVALID_EXPRESSION" }),
-    );
+    document.data.title.props.placeholder = "{{ ( }}";
+    expect(modelIssues(document)).toEqual([]);
   } finally {
     vi.unstubAllGlobals();
   }

@@ -128,7 +128,7 @@ export async function handleMcp(request: Request, env: Env, actor: Actor): Promi
     {
       name: "model-definition-schema",
       uri: "formwork://definition-schema",
-      description: "完整 {document,backend} 的 JSON Schema；语义约束另用 models.validate",
+      description: "统一字段协议 ModelDefinition 的 JSON Schema；语义约束另用 models.validate",
       read: () => definitionJsonSchema,
     },
   ];

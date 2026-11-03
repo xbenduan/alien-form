@@ -52,12 +52,14 @@ export function routeKey(target: RouteTarget): string {
 }
 
 /** 从显式 Page 定义生成含本地 Window 归属的路由目录。 */
-export function createRoutes(pages: readonly {
-  router: string;
-  path?: string;
-  render?: unknown;
-  windows?: Record<string, { path?: string; openMode?: OpenMode; render?: unknown }>;
-}[]): RouteDefinition[] {
+export function createRoutes(
+  pages: readonly {
+    router: string;
+    path?: string;
+    render?: unknown;
+    windows?: Record<string, { path?: string; openMode?: OpenMode; render?: unknown }>;
+  }[],
+): RouteDefinition[] {
   const result: RouteDefinition[] = [];
   for (const page of pages) {
     const path = page.path ?? `/${page.router}${page.render === undefined ? "/:modelId" : ""}`;
@@ -84,9 +86,11 @@ export function validateRoutes(definitions: readonly RouteDefinition[]): void {
   const byName = new Map<string, RouteDefinition>();
   for (const definition of definitions) {
     const key = routeKey(definition);
-    if (!modelIdPattern.test(definition.router) ||
-        (definition.window !== undefined && !modelIdPattern.test(definition.window)) ||
-        byName.has(key))
+    if (
+      !modelIdPattern.test(definition.router) ||
+      (definition.window !== undefined && !modelIdPattern.test(definition.window)) ||
+      byName.has(key)
+    )
       throw new FormworkError("INVALID_ROUTE", `无效或重复目标 ${key}`);
     byName.set(key, definition);
     pattern(definition);
@@ -162,12 +166,14 @@ export function pageParams(
   definition: RouteDefinition,
   params: Readonly<Record<string, string | undefined>>,
 ): Readonly<Record<string, string | undefined>> {
-  return Object.fromEntries(pattern(definition)
-    .filter((part) => part.startsWith(":"))
-    .map((part) => {
-      const name = part.replace(/^:|\?$/gu, "");
-      return [name, params[name]];
-    }));
+  return Object.fromEntries(
+    pattern(definition)
+      .filter((part) => part.startsWith(":"))
+      .map((part) => {
+        const name = part.replace(/^:|\?$/gu, "");
+        return [name, params[name]];
+      }),
+  );
 }
 
 /** 匹配路径并返回独立参数；固定段按从左到右优先于动态段。 */

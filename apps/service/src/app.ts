@@ -61,7 +61,7 @@ export function createApp() {
           ? origin
           : "",
       allowHeaders: ["Authorization", "Content-Type", "MCP-Protocol-Version"],
-      allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     })(c, next);
   });
   app.all("/mcp", async (c) => {
@@ -238,7 +238,7 @@ export function createApp() {
     const id = c.req.path.split("/")[4];
     assertModelId(id ?? "");
     await next();
-    if (c.res.ok && ["POST", "PUT", "DELETE"].includes(c.req.method))
+    if (c.res.ok && ["POST", "PUT", "PATCH", "DELETE"].includes(c.req.method))
       c.executionCtx.waitUntil(dispatchOutbox(c.env.DB));
   });
   const records = (c: Context<AppEnv>) => new RecordService(c.env.DB, c.get("actor"));
@@ -271,6 +271,9 @@ export function createApp() {
   );
   app.put("/api/v1/records/:modelId/:id", async (c) =>
     c.json(await records(c).update(c.req.param("modelId"), c.req.param("id"), await c.req.json())),
+  );
+  app.patch("/api/v1/records/:modelId/:id", async (c) =>
+    c.json(await records(c).patch(c.req.param("modelId"), c.req.param("id"), await c.req.json())),
   );
   app.delete("/api/v1/records/:modelId/:id", async (c) =>
     c.json(await records(c).delete(c.req.param("modelId"), c.req.param("id"))),

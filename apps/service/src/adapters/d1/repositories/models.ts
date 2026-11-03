@@ -1,6 +1,19 @@
-import type { ModelDefinition } from "formwork/model";
+import { isObject } from "formwork/model";
+import type { CompiledDefinition } from "formwork/model";
 import type { ModelHead, StorageManifest, StoredModel } from "../../../contracts";
 import { ServiceError } from "../../../http/errors";
+
+/** 读取新协议发布快照；旧快照必须显式迁移，避免静默丢失布局及绑定。 */
+export function storedDefinition(json: string): CompiledDefinition {
+  const input: unknown = JSON.parse(json);
+  if (!isObject(input) || !isObject(input.schema) || input.schema.schemaVersion !== 1)
+    throw new ServiceError(
+      "MIGRATION_REQUIRED",
+      "模型仍使用旧协议，请先运行 Schema 迁移工具并处理诊断",
+      422,
+    );
+  return input as CompiledDefinition;
+}
 
 /** 读取当前模型头；不会使用 isolate 内缓存。 */
 export function readHead(db: D1Database, id: string): Promise<ModelHead | null> {
@@ -27,7 +40,7 @@ export async function readPublished(db: D1Database, id: string): Promise<StoredM
     head: row,
     version: row.active_version!,
     revision: row.publish_revision,
-    definition: JSON.parse(row.definition_json) as ModelDefinition,
+    definition: storedDefinition(row.definition_json),
     manifest: JSON.parse(row.storage_manifest_json) as StorageManifest,
   };
 }

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "cms",
+  "title": "内容管理",
+  "domain": "cms",
+  "data": {
+    "title": {
+      "type": "string",
+      "title": "标题",
+      "required": true,
+      "minLength": 1,
+      "props": { "placeholder": "输入内容标题", "maxWidth": 280 }
+    },
+    "body": {
+      "type": "string",
+      "format": "richtext",
+      "title": "正文",
+      "props": { "minHeight": 240, "maxLines": 2 }
+    },
+    "published": { "type": "boolean", "title": "已发布", "default": false },
+    "tags": { "type": "array", "format": "strings", "title": "关键词" }
+  }
+}

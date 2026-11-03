@@ -1,13 +1,19 @@
 import { z } from "zod";
 import { FormworkError } from "./errors";
-import { validateExpression, expressionBody } from "./expression";
 import { cloneJson, escapePointer, isObject, pointerSegments } from "./pointer";
-import { resolveSchema, schemaAt, schemaType, validateValue } from "./validation";
-import { fieldPresentation, schemaFieldAt } from "./presentation";
+import {
+  baseFieldSchema,
+  enumOptions,
+  frameworkFormats,
+  resolveFieldSchema,
+  resolveModel,
+} from "./field";
+import type { FieldContract, FormatDefinition } from "./field";
+import { validateValue } from "./validation";
 import type {
-  BackendDefinition,
-  DataSchema,
+  BackendOptions,
   DraftDefinition,
+  FieldSchema,
   ManagedSnapshot,
   ModelDefinition,
   ModelDocument,
@@ -15,501 +21,326 @@ import type {
   PreviewSnapshot,
   PublishedSnapshot,
   RuntimeSchema,
-  RuntimeFieldDefinition,
   RuntimeSnapshot,
-  RuntimeView,
   ValidationIssue,
 } from "./types";
+export { controlledProps } from "./field";
 
 /** 固定模型与 router 的单段身份规则。 */
 export const modelIdPattern = /^[a-z][a-z0-9_-]*$/u;
-/** 禁止组件 props 覆盖框架拥有的受控绑定。 */
-export const controlledProps = new Set([
-  "value",
-  "onChange",
-  "readOnly",
-  "disabled",
-  "errors",
-  "schema",
-  "array",
-  "Item",
-  "children",
-]);
-const metadata = ["title", "description", "default", "readOnly"];
+const identity = z.string().regex(modelIdPattern);
+const permissions = z
+  .object({
+    grants: z.array(
+      z
+        .object({
+          roleId: z.string().min(1),
+          actions: z.array(z.enum(["read", "create", "update", "delete", "manage", "publish"])),
+          fields: z.array(z.string().min(1)).optional(),
+          scope: z.enum(["all", "own"]),
+        })
+        .strict(),
+    ),
+    privateFields: z.array(z.string().min(1)),
+  })
+  .strict();
+/** 校验作者可配置的后端策略，不接受派生 bindings 和 relations。 */
+export const backendDefinitionSchema: z.ZodType<BackendOptions> = z
+  .object({
+    storage: z
+      .object({
+        table: z
+          .string()
+          .regex(/^[A-Za-z_][A-Za-z0-9_]*$/u)
+          .optional(),
+      })
+      .strict()
+      .optional(),
+    permissions: permissions.optional(),
+    behavior: z
+      .object({
+        rules: z.array(z.string().min(1)).optional(),
+        commands: z.record(z.string(), z.string().min(1)).optional(),
+        events: z.record(z.string(), z.array(z.string().min(1))).optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+const documentShape = z
+  .object({
+    schemaVersion: z.literal(1),
+    id: identity,
+    domain: identity.optional(),
+    title: z.string(),
+    data: z.record(z.string(), baseFieldSchema),
+    $defs: z.record(z.string(), baseFieldSchema).optional(),
+    tree: z.object({ parentField: z.string(), labelField: z.string() }).strict().optional(),
+  })
+  .strict();
+/** 公开可序列化的作者结构，供 MCP 与编辑器生成 JSON Schema。 */
+export const definitionStructureSchema = documentShape.extend({
+  backend: backendDefinitionSchema.optional(),
+});
+const definitionShape = definitionStructureSchema;
+const issuePath = (path: readonly PropertyKey[]) =>
+  `/${path.map((part) => escapePointer(String(part))).join("/")}`;
+type ModelCheckOptions = FieldContract & { allowUnknownFormats?: boolean };
 
-/** 检查完整模型子集并返回可定位的全部静态诊断。 */
-export function modelIssues(
-  input: unknown,
-  options: { runtimeViews?: boolean } = {},
-): ValidationIssue[] {
+/** 验证作者字段协议及 format 契约，所有诊断使用作者文档地址。 */
+export function modelIssues(input: unknown, options: ModelCheckOptions = {}): ValidationIssue[] {
+  const parsed = definitionShape.safeParse(input, { jitless: true });
   const issues: ValidationIssue[] = [];
   const add = (path: string, message: string, code = "INVALID_MODEL") =>
     issues.push({ path, code, message });
-  const keys = (object: Record<string, unknown>, allowed: readonly string[], path: string) => {
-    for (const key of Object.keys(object))
-      if (!allowed.includes(key)) add(`${path}/${escapePointer(key)}`, `不支持的关键字 ${key}`);
-  };
-  if (!isObject(input)) return [{ path: "", code: "INVALID_MODEL", message: "模型必须是普通对象" }];
-  try {
-    const { views: _views, fields: _fields, ...base } = input;
-    cloneJson((options.runtimeViews ? base : input) as never);
-  } catch (error) {
-    return [
-      {
-        path: "",
-        code: "INVALID_MODEL",
-        message: error instanceof Error ? error.message : String(error),
-      },
-    ];
-  }
-  keys(input, ["id", "domain", "title", "data", "fields", "tree", "views", "pages"], "");
-  if (typeof input.id !== "string" || !modelIdPattern.test(input.id))
-    add("/id", "id 必须是单段小写标识");
-  if (input.domain !== undefined &&
-      (typeof input.domain !== "string" || !modelIdPattern.test(input.domain)))
-    add("/domain", "domain 必须是非空的单段小写标识");
-  if (typeof input.title !== "string" || input.title.trim() === "")
-    add("/title", "title 必须是非空字符串");
-  const data = input.data;
-  if (!isObject(data) || data.type !== "object") {
-    add("/data", "根 data 必须为 object");
+  if (!parsed.success) {
+    for (const issue of parsed.error.issues) add(issuePath(issue.path), issue.message);
+    if (isObject(input))
+      for (const key of ["document", "views", "pages", "fields", "layout"])
+        if (key in input)
+          add(
+            `/${key}`,
+            `${key} 已移除；请显式迁移字段配置，布局由 Page/Window 代码承载`,
+            "MIGRATION_REQUIRED",
+          );
     return issues;
   }
-  const root = data as ModelDocument["data"];
-  const defaults: Array<{ schema: DataSchema; value: unknown; path: string }> = [];
-  const visitSchema = (node: unknown, path: string, refs = new Set<string>()) => {
-    if (!isObject(node)) {
-      add(path, "schema 必须是对象");
-      return;
-    }
-    for (const key of ["title", "description"])
-      if (node[key] !== undefined && typeof node[key] !== "string")
-        add(`${path}/${key}`, "需要字符串");
-    if (node.readOnly !== undefined && typeof node.readOnly !== "boolean")
-      add(`${path}/readOnly`, "需要 boolean");
-    if (Object.hasOwn(node, "default"))
-      defaults.push({ schema: node as DataSchema, value: node.default, path: `${path}/default` });
-    const type = Array.isArray(node.type) ? node.type[0] : node.type;
-    if (
-      Array.isArray(node.type) &&
-      (node.type.length !== 2 ||
-        node.type[1] !== "null" ||
-        !["string", "number", "integer", "boolean"].includes(String(type)))
-    )
-      add(`${path}/type`, "只支持 [scalar, null] 可空类型");
-    const extras: Record<string, string[]> = {
-      string: ["enum", "minLength", "maxLength", "pattern"],
-      number: ["enum", "minimum", "maximum"],
-      integer: ["enum", "minimum", "maximum"],
-      boolean: ["enum"],
-      null: [],
-      object: ["properties", "required", "additionalProperties"],
-      array: ["items", "minItems", "maxItems"],
-    };
-    keys(
-      node,
-      [
-        ...metadata,
-        ...(Object.hasOwn(node, "$ref") ? ["$ref"] : ["type", ...(extras[String(type)] ?? [])]),
-        ...(path === "/data" ? ["$defs"] : []),
-      ],
-      path,
-    );
-    if (Object.hasOwn(node, "$ref")) {
-      const ref = node.$ref;
-      if (typeof ref !== "string" || !ref.startsWith("#/$defs/")) {
-        add(`${path}/$ref`, "仅支持 #/$defs/name");
-        return;
-      }
-      if (refs.has(ref)) {
-        add(`${path}/$ref`, "不支持循环 $ref");
-        return;
-      }
-      try {
-        const parts = pointerSegments(ref.slice(1));
-        const defs = root.$defs;
-        if (parts.length !== 2 || !defs || !Object.hasOwn(defs, parts[1]!))
-          add(`${path}/$ref`, `悬空引用 ${ref}`);
-        else visitSchema(defs[parts[1]!]!, `${path}/$ref`, new Set([...refs, ref]));
-      } catch (error) {
-        add(`${path}/$ref`, String(error));
-      }
-      return;
-    }
-    if (typeof type !== "string" || !Object.hasOwn(extras, type)) {
-      add(`${path}/type`, "不支持的值类型");
-      return;
-    }
-    if (type === "object") {
-      if (!isObject(node.properties)) add(`${path}/properties`, "properties 必须是对象");
-      else
-        for (const [key, child] of Object.entries(node.properties))
-          visitSchema(child, `${path}/properties/${escapePointer(key)}`, refs);
-      if (
-        node.required !== undefined &&
-        (!Array.isArray(node.required) ||
-          node.required.some(
-            (key) =>
-              typeof key !== "string" ||
-              !isObject(node.properties) ||
-              !Object.hasOwn(node.properties, key),
-          ) ||
-          new Set(node.required).size !== node.required.length)
-      )
-        add(`${path}/required`, "required 只能包含不重复的已声明字段");
-      if (node.additionalProperties !== undefined && node.additionalProperties !== false)
-        add(`${path}/additionalProperties`, "首版禁止未声明字段");
-    }
-    if (type === "array") visitSchema(node.items, `${path}/items`, refs);
-    for (const [min, max, integer] of [
-      ["minLength", "maxLength", true],
-      ["minItems", "maxItems", true],
-      ["minimum", "maximum", false],
-    ] as const) {
-      for (const key of [min, max])
-        if (
-          node[key] !== undefined &&
-          (typeof node[key] !== "number" ||
-            !Number.isFinite(node[key]) ||
-            (integer && (!Number.isInteger(node[key]) || node[key] < 0)))
-        )
-          add(`${path}/${key}`, integer ? "需要非负整数" : "需要有限数");
-      if (typeof node[min] === "number" && typeof node[max] === "number" && node[min] > node[max])
-        add(`${path}/${max}`, `${max} 小于 ${min}`);
-    }
-    if (node.pattern !== undefined) {
-      try {
-        if (typeof node.pattern !== "string") throw new Error("pattern 必须是字符串");
-        new RegExp(node.pattern, "u");
-      } catch (error) {
-        add(`${path}/pattern`, error instanceof Error ? error.message : String(error));
-      }
-    }
-    if (node.enum !== undefined) {
-      if (
-        !Array.isArray(node.enum) ||
-        node.enum.length === 0 ||
-        new Set(node.enum.map((value) => JSON.stringify(value))).size !== node.enum.length
-      )
-        add(`${path}/enum`, "enum 必须是非空且不重复的标量数组");
-      else
-        for (let i = 0; i < node.enum.length; i++) {
-          const value = node.enum[i];
-          if (
-            (value === null && !(Array.isArray(node.type) || type === "null")) ||
-            (value !== null &&
-              (typeof value !== (type === "integer" ? "number" : type) ||
-                (type === "integer" && !Number.isInteger(value)) ||
-                (typeof value === "number" && !Number.isFinite(value))))
-          )
-            add(`${path}/enum/${i}`, "enum 值类型必须匹配");
-        }
-    }
-  };
-  visitSchema(data, "/data");
-  if (data.$defs !== undefined) {
-    if (!isObject(data.$defs)) add("/data/$defs", "$defs 必须是对象");
-    else
-      for (const [key, child] of Object.entries(data.$defs))
-        visitSchema(child, `/data/$defs/${escapePointer(key)}`);
-  }
-  for (const item of defaults) {
+  const document = parsed.data;
+  const formats: Record<string, FormatDefinition> = { ...options.formats };
+  const fieldIds = new Set<string>();
+  const walk = (source: FieldSchema, path: string, refs = new Set<string>()) => {
+    let field: FieldSchema;
     try {
-      if (item.value === undefined) throw new Error("default 必须是 JSON 值");
-      cloneJson(item.value as never);
-      for (const issue of validateValue(item.schema, item.value, root))
-        add(`${item.path}${issue.path}`, `default: ${issue.message}`);
+      if (source.$ref && refs.has(source.$ref)) throw new Error(`循环引用 ${source.$ref}`);
+      field = resolveFieldSchema(source, document);
     } catch (error) {
-      add(item.path, String(error));
-    }
-  }
-  const visitView = (node: unknown, path: string, base: DataSchema | undefined) => {
-    if (!isObject(node)) {
-      add(path, "ViewNode 必须是对象");
+      add(`${path}/$ref`, error instanceof Error ? error.message : String(error));
       return;
     }
-    keys(node, ["component", "field", "props", "bindings", "children"], path);
+    const nextRefs = new Set(refs);
+    if (source.$ref) {
+      nextRefs.add(source.$ref);
+      const allowed = [
+        "$ref",
+        "id",
+        "title",
+        "description",
+        "required",
+        "readOnly",
+        "props",
+        "ui",
+        "storage",
+        "query",
+      ];
+      for (const key of Object.keys(source))
+        if (!allowed.includes(key)) add(`${path}/${key}`, "$ref 只允许元信息和展示覆盖");
+    }
+    if (!field.type) add(`${path}/type`, "字段必须声明 type 或有效 $ref");
+    if (source.id) {
+      if (path.startsWith("/$defs/"))
+        add(`${path}/id`, "$defs 不携带物理字段 id，请在引用使用点声明");
+      if (fieldIds.has(source.id)) add(`${path}/id`, "稳定字段 id 重复");
+      fieldIds.add(source.id);
+    }
+    for (const [lower, upper] of [
+      ["minLength", "maxLength"],
+      ["minimum", "maximum"],
+      ["minItems", "maxItems"],
+    ] as const)
+      if (field[lower] !== undefined && field[upper] !== undefined && field[lower]! > field[upper]!)
+        add(`${path}/${upper}`, `${upper} 不得小于 ${lower}`);
+    const allowedConstraints: Record<string, readonly string[]> = {
+      minLength: ["string"],
+      maxLength: ["string"],
+      pattern: ["string"],
+      minimum: ["number", "integer"],
+      maximum: ["number", "integer"],
+      minItems: ["array"],
+      maxItems: ["array"],
+      properties: ["object"],
+      additionalProperties: ["object"],
+      items: ["array"],
+    };
+    for (const [name, types] of Object.entries(allowedConstraints))
+      if (name in field && !types.includes(field.type ?? ""))
+        add(`${path}/${name}`, `${name} 不适用于 ${field.type}`);
+    if (field.type === "object" && !field.properties)
+      add(`${path}/properties`, "object 必须声明 properties");
+    if (field.pattern !== undefined)
+      try {
+        new RegExp(field.pattern, "u");
+      } catch {
+        add(`${path}/pattern`, "无效正则表达式");
+      }
+    if (field.enum && field.relation) add(`${path}/relation`, "enum 和 relation 不能同时声明");
+    if (field.enum && field.type !== "array" && field.nullable !== undefined)
+      add(`${path}/nullable`, "标量 enum 通过 null 成员决定空值，不再声明 nullable");
+    if (field.storage?.column && field.storage.jsonKey)
+      add(`${path}/storage`, "column 和 jsonKey 只能选择一个");
+    if (field.relation) {
+      for (const [key, fallback] of [
+        ["valueField", "/id"],
+        ["labelField", "/name"],
+      ] as const)
+        try {
+          if (!pointerSegments(field.relation[key] ?? fallback).length) throw new Error();
+        } catch {
+          add(`${path}/relation/${key}`, "关系目标必须是非空 JSON Pointer");
+        }
+      const type =
+        field.type === "array"
+          ? (field.items?.type ??
+            (
+              { strings: "string", numbers: "number", booleans: "boolean" } as Record<
+                string,
+                string
+              >
+            )[field.format ?? ""])
+          : field.type;
+      if (!["string", "number", "integer", "boolean"].includes(type ?? ""))
+        add(`${path}/relation`, "relation 只支持原子值或同类型原子值数组");
+    }
+    if (field.enum) {
+      const type =
+        field.type === "array"
+          ? (field.items?.type ??
+            (
+              { strings: "string", numbers: "number", booleans: "boolean" } as Record<
+                string,
+                string
+              >
+            )[field.format ?? ""])
+          : field.type;
+      const values = new Set<string>();
+      for (const [index, option] of enumOptions(field).entries()) {
+        const value = option.value;
+        const key = JSON.stringify(value);
+        if (values.has(key)) add(`${path}/enum/${index}`, "enum 值不能重复");
+        values.add(key);
+        if (
+          value === null
+            ? field.type === "array"
+            : type === "integer"
+              ? typeof value !== "number" || !Number.isInteger(value)
+              : typeof value !== type
+        )
+          add(`${path}/enum/${index}`, `enum 候选必须匹配 ${type}`);
+      }
+    }
+    if (field.items?.enum) add(`${path}/items/enum`, "数组候选统一声明在字段 enum");
     if (
-      (node.component !== undefined && (typeof node.component !== "string" || !node.component)) ||
-      (node.component === undefined && node.field === undefined)
+      options.allowUnknownFormats &&
+      field.format &&
+      !formats[field.format] &&
+      !frameworkFormats[field.format]
     )
-      add(`${path}/component`, "需要非空 component 或绑定 field 以推导组件");
-    let childBase = base;
-    if (node.field !== undefined) {
-      if (typeof node.field !== "string") add(`${path}/field`, "field 必须是 Pointer");
-      else {
-        try {
-          pointerSegments(node.field);
-          if (base && issues.length === 0) {
-            const schema = schemaAt(base, node.field, root).schema;
-            childBase = "items" in schema ? resolveSchema(schema.items, root) : schema;
-          }
-        } catch (error) {
-          add(
-            `${path}/field`,
-            error instanceof Error ? error.message : String(error),
-            "UNKNOWN_FIELD",
-          );
-        }
-      }
-    }
-    if (node.props !== undefined) {
-      if (!isObject(node.props)) add(`${path}/props`, "props 必须是对象");
-      else
-        for (const [key, value] of Object.entries(node.props)) {
-          const propPath = `${path}/props/${escapePointer(key)}`;
-          if (controlledProps.has(key)) add(propPath, `受控属性 ${key} 只能通过 bindings 配置`);
-          try {
-            if (!options.runtimeViews) cloneJson(value as never);
-            if (expressionBody(value) !== undefined) validateExpression(String(value));
-          } catch (error) {
-            add(
-              propPath,
-              error instanceof Error ? error.message : String(error),
-              "INVALID_EXPRESSION",
-            );
-          }
-        }
-    }
-    if (node.bindings !== undefined) {
-      if (!isObject(node.bindings)) add(`${path}/bindings`, "bindings 必须是对象");
-      else {
-        keys(node.bindings, ["value", "readOnly", "disabled", "visible"], `${path}/bindings`);
-        if (Object.hasOwn(node.bindings, "value") && node.field === undefined)
-          add(`${path}/bindings/value`, "value writer 必须绑定字段");
-        for (const [key, value] of Object.entries(node.bindings)) {
-          if (typeof value === "boolean" && key !== "value") continue;
-          try {
-            if (typeof value !== "string") throw new Error("需要 {{ ... }} 表达式");
-            validateExpression(value);
-          } catch (error) {
-            add(
-              `${path}/bindings/${key}`,
-              error instanceof Error ? error.message : String(error),
-              "INVALID_EXPRESSION",
-            );
-          }
-        }
-      }
-    }
-    if (node.children !== undefined) {
-      if (!Array.isArray(node.children)) add(`${path}/children`, "children 必须是数组");
-      else
-        node.children.forEach((child, i) => visitView(child, `${path}/children/${i}`, childBase));
-    }
+      formats[field.format] = { component: field.format, schema: baseFieldSchema };
+    for (const [key, child] of Object.entries(field.properties ?? {}))
+      walk(child, `${path}/properties/${escapePointer(key)}`, nextRefs);
+    if (field.items) walk(field.items, `${path}/items`, nextRefs);
+    if (field.additionalProperties)
+      walk(field.additionalProperties, `${path}/additionalProperties`, nextRefs);
   };
-  if (input.fields !== undefined) {
-    if (!isObject(input.fields)) add("/fields", "fields 必须是字段 Pointer 到展示配置的对象");
-    else
-      for (const [pointer, definition] of Object.entries(input.fields)) {
-        const path = `/fields/${escapePointer(pointer)}`;
-        try {
-          if (schemaFieldAt(root, pointer).path !== pointer)
-            add(path, "数组项字段配置必须使用 *，不能固定数组索引");
-        } catch (error) {
-          add(path, error instanceof Error ? error.message : String(error), "UNKNOWN_FIELD");
-        }
-        if (!isObject(definition)) {
-          add(path, "字段配置必须是对象");
-          continue;
-        }
-        keys(definition, ["order", "form", "table", "filter"], path);
-        if (definition.order !== undefined && !Number.isSafeInteger(definition.order))
-          add(`${path}/order`, "order 必须是安全整数");
-        for (const mode of ["form", "table", "filter"] as const) {
-          const presentation = definition[mode];
-          if (presentation === undefined || (mode !== "form" && presentation === false)) continue;
-          const location = `${path}/${mode}`;
-          if (!isObject(presentation)) {
-            add(location, "需要展示配置对象，table/filter 也可设为 false");
-            continue;
-          }
-          keys(
-            presentation,
-            ["component", "props", "bindings", ...(mode === "table" ? ["title"] : [])],
-            location,
+  for (const [key, field] of Object.entries(document.data))
+    walk(field, `/data/${escapePointer(key)}`);
+  for (const [key, field] of Object.entries(document.$defs ?? {}))
+    walk(field, `/$defs/${escapePointer(key)}`);
+  if (issues.length) return issues;
+  const checkResolved = (data: Record<string, FieldSchema>, prefix: string) => {
+    const model = resolveModel({ ...document, data }, { ...options, formats });
+    const checkDefaults = (pointer: string, path: string) => {
+      const descriptor = model.field(pointer);
+      const field = descriptor.schema;
+      if (Object.hasOwn(field, "default"))
+        for (const issue of [
+          ...validateValue(descriptor.valueSchema, field.default),
+          ...(field.default !== undefined && field.default !== null
+            ? (descriptor.validateFormat?.(field.default) ?? [])
+            : []),
+        ])
+          add(`${path}/default`, issue.message, "INVALID_DEFAULT");
+      for (const [key, child] of Object.entries(field.properties ?? {}))
+        if (child)
+          checkDefaults(
+            `${pointer}/${escapePointer(key)}`,
+            `${path}/properties/${escapePointer(key)}`,
           );
-          if (
-            mode === "table" &&
-            presentation.title !== undefined &&
-            typeof presentation.title !== "string"
-          )
-            add(`${location}/title`, "title 必须是字符串");
-          const { title: _title, ...view } = presentation;
-          visitView({ ...view, field: "" }, location, undefined);
-          if (
-            mode !== "form" &&
-            isObject(presentation.bindings) &&
-            presentation.bindings.value !== undefined
-          )
-            add(`${location}/bindings/value`, "value writer 只能在 form 中声明");
-        }
-      }
-  }
-  if (input.tree !== undefined) {
-    if (!isObject(input.tree)) add("/tree", "tree 必须描述 parentField 和 labelField");
-    else {
-      keys(input.tree, ["parentField", "labelField"], "/tree");
+      if (field.items) checkDefaults(`${pointer}/*`, `${path}/items`);
+      if (field.additionalProperties) checkDefaults(`${pointer}/*`, `${path}/additionalProperties`);
+    };
+    for (const key of Object.keys(data))
+      checkDefaults(`/${escapePointer(key)}`, `${prefix}/${escapePointer(key)}`);
+    return model;
+  };
+  try {
+    const model = checkResolved(document.data, "/data");
+    if (document.tree) {
       for (const name of ["parentField", "labelField"] as const) {
-        try {
-          const pointer = input.tree[name];
-          if (typeof pointer !== "string" || pointerSegments(pointer).length !== 1)
-            throw new Error("tree 字段必须是根字段 Pointer");
-          const schema = schemaFieldAt(root, pointer).schema;
-          if (schemaType(schema) !== "string")
-            throw new Error("tree 字段必须为 string 或可空 string");
-        } catch (error) {
-          add(
-            `/tree/${name}`,
-            error instanceof Error ? error.message : String(error),
-            "UNKNOWN_FIELD",
-          );
-        }
+        const pointer = document.tree[name];
+        if (pointerSegments(pointer).length !== 1 || model.field(pointer).schema.type !== "string")
+          add(`/tree/${name}`, "tree 字段必须是 string 根字段");
       }
-      if (input.tree.parentField === input.tree.labelField)
-        add("/tree/labelField", "父级字段与名称字段不能相同");
+      if (document.tree.parentField === document.tree.labelField)
+        add("/tree/labelField", "名称字段不能与父级相同");
     }
+  } catch (error) {
+    if (error instanceof FormworkError && error.issues.length)
+      for (const issue of error.issues) add(`/data${issue.path}`, issue.message, issue.code);
+    else add("/data", error instanceof Error ? error.message : String(error));
   }
-  if (input.views !== undefined) {
-    if (!isObject(input.views)) add("/views", "views 必须是对象");
-    // 文档层不知道 View 的实际 scope；路由能力和 Render 分别检查已确定的字段。
-    else
-      for (const [key, view] of Object.entries(input.views))
-        visitView(view, `/views/${escapePointer(key)}`, undefined);
-  }
-  if (input.pages !== undefined) {
-    if (!isObject(input.pages)) add("/pages", "pages 必须是 Page 配置映射");
-    else for (const [router, page] of Object.entries(input.pages)) {
-      const path = `/pages/${escapePointer(router)}`;
-      if (!modelIdPattern.test(router)) add(path, "无效 Page 名称");
-      if (!isObject(page)) {
-        add(path, "Page 配置必须是对象");
-        continue;
-      }
-      keys(page, ["windows"], path);
-      if (page.windows === undefined) continue;
-      if (!isObject(page.windows)) {
-        add(`${path}/windows`, "windows 必须是本地 Window 配置映射");
-        continue;
-      }
-      for (const [name, window] of Object.entries(page.windows)) {
-        const location = `${path}/windows/${escapePointer(name)}`;
-        if (!modelIdPattern.test(name)) add(location, "无效 Window 名称");
-        if (!isObject(window)) {
-          add(location, "Window 配置必须是对象");
-          continue;
-        }
-        keys(window, ["openMode"], location);
-        if (window.openMode !== undefined &&
-            !["page", "drawer", "modal"].includes(String(window.openMode)))
-          add(`${location}/openMode`, "openMode 必须为 page、drawer 或 modal", "INVALID_OPEN_MODE");
-      }
+  for (const [key, field] of Object.entries(document.$defs ?? {}))
+    try {
+      checkResolved({ [key]: field }, "/$defs");
+    } catch (error) {
+      if (error instanceof FormworkError && error.issues.length)
+        for (const issue of error.issues) add(`/$defs${issue.path}`, issue.message, issue.code);
+      else
+        add(`/$defs/${escapePointer(key)}`, error instanceof Error ? error.message : String(error));
     }
-  }
   return issues;
 }
 
-/** 校验最小完整文档和 JSON Schema 子集，并保留原文内容。 */
-export const modelDocumentSchema: z.ZodType<ModelDocument> = z
-  .unknown()
-  .superRefine((input, ctx) => {
-    for (const issue of modelIssues(input))
-      ctx.addIssue({
-        code: "custom",
-        path: pointerSegments(issue.path),
-        message: `${issue.code}: ${issue.message}`,
-      });
-  })
-  .transform((value) => value as ModelDocument);
-
-/** 验证 Domain 的实际渲染 schema，保留 View props 中的代码身份。 */
-export function assertRuntimeSchema(input: unknown): RuntimeSchema {
-  const issues = modelIssues(input, { runtimeViews: true });
+/** 为共享领域注册表创建严格的作者定义解析器。 */
+export function createModelDefinitionSchema(
+  contract: FieldContract = {},
+): z.ZodType<ModelDefinition> {
+  return definitionShape.superRefine((input, ctx) => {
+    for (const issue of modelIssues(input, contract))
+      ctx.addIssue({ code: "custom", path: pointerSegments(issue.path), message: issue.message });
+  });
+}
+/** 校验传输字段结构；自定义 format 由加载后的 Domain 或服务端注册表校验。 */
+export const modelDocumentSchema: z.ZodType<ModelDocument> = documentShape.superRefine(
+  (input, ctx) => {
+    for (const issue of modelIssues(input, { allowUnknownFormats: true }))
+      ctx.addIssue({ code: "custom", path: pointerSegments(issue.path), message: issue.message });
+  },
+);
+/** 使用 Framework 契约校验完整作者定义。 */
+export const modelDefinitionSchema = createModelDefinitionSchema();
+/** 校验领域加工后的 JSON Schema，代码 props 只允许在 RenderItem 调用处提供。 */
+export function assertRuntimeSchema(input: unknown, contract: FieldContract = {}): RuntimeSchema {
+  const issues = modelIssues(input, contract);
   if (issues.length) throw new FormworkError("INVALID_MODEL", "RuntimeSchema 校验失败", issues);
   return input as RuntimeSchema;
 }
-
-/** 验证草稿传输和身份，允许保存尚未有效的 schema/backend。 */
+/** 仅校验草稿身份和 JSON 传输，不阻止保存暂时无效的字段定义。 */
 export function assertDraftDefinition(input: unknown, modelId: string): DraftDefinition {
-  if (!isObject(input) || !isObject(input.document) || input.document.id !== modelId)
-    throw new FormworkError("INVALID_INPUT", "definition.document.id 必须匹配 modelId");
+  if (!isObject(input) || input.id !== modelId)
+    throw new FormworkError("INVALID_INPUT", "definition.id 必须匹配 modelId");
   try {
     return cloneJson(input as never) as DraftDefinition;
   } catch {
     throw new FormworkError("INVALID_INPUT", "definition 必须是可序列化的 JSON 对象");
   }
 }
-
-const identity = z.string().regex(modelIdPattern);
-/** 校验当前账号的菜单快照，拒绝不符合模型身份规则的入口。 */
+/** 校验当前账号的菜单快照。 */
 export const modelNavigationSchema: z.ZodType<ModelNavigationSnapshot> = z
   .object({
     systemModels: z.array(z.object({ id: identity, title: z.string() }).strict()),
     pinnedModels: z.array(z.object({ id: identity, title: z.string() }).strict()),
     pinnableModelIds: z.array(identity),
   })
-  .strict();
-const identifier = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/u);
-/** 校验后端配置结构；存储所有权和目标模型在 Worker 中进一步检查。 */
-export const backendDefinitionSchema: z.ZodType<BackendDefinition> = z
-  .object({
-    storage: z
-      .object({
-        table: identifier,
-        bindings: z.array(
-          z
-            .object({
-              id: z.string().min(1),
-              path: z.string(),
-              column: identifier.optional(),
-              jsonKey: z.string().min(1).optional(),
-              sqlType: z.enum(["TEXT", "INTEGER", "REAL"]),
-              encoding: z.enum(["scalar", "json"]),
-              index: z.enum(["index", "unique"]).optional(),
-            })
-            .strict(),
-        ),
-      })
-      .strict(),
-    relations: z.array(
-      z
-        .object({
-          fieldId: z.string().min(1),
-          targetModel: identity,
-          targetFieldId: z.string().min(1),
-          kind: z.enum(["many-to-one", "many-to-many"]),
-          through: identifier.optional(),
-        })
-        .strict(),
-    ),
-    permissions: z
-      .object({
-        grants: z.array(
-          z
-            .object({
-              roleId: z.string().min(1),
-              actions: z.array(z.enum(["read", "create", "update", "delete", "manage", "publish"])),
-              fields: z.array(z.string().min(1)).optional(),
-              scope: z.enum(["all", "own"]),
-            })
-            .strict(),
-        ),
-        privateFields: z.array(z.string().min(1)),
-      })
-      .strict(),
-    behavior: z
-      .object({
-        rules: z.array(z.string().min(1)),
-        commands: z.record(z.string(), z.string().min(1)),
-        events: z.record(z.string(), z.array(z.string().min(1))),
-      })
-      .strict(),
-  })
-  .strict();
-
-/** 校验完整发布定义；草稿保存不调用此严格解析器。 */
-export const modelDefinitionSchema: z.ZodType<ModelDefinition> = z
-  .object({ document: modelDocumentSchema, backend: backendDefinitionSchema })
   .strict();
 const issueSchema = z.object({
   path: z.string(),
@@ -518,15 +349,13 @@ const issueSchema = z.object({
   modelId: z.string().optional(),
   router: z.string().optional(),
   window: z.string().optional(),
-  source: z
-    .object({ file: z.string(), line: z.number().int(), column: z.number().int() })
-    .optional(),
+  source: z.object({ file: z.string(), line: z.number(), column: z.number() }).optional(),
 });
 /** 校验诊断报告的 HTTP envelope。 */
 export const validationReportSchema = z
   .object({ errors: z.array(issueSchema), runtimeChecks: z.array(issueSchema) })
   .strict();
-/** 校验管理目录中的能力和阶段，不包含运行时源位置。 */
+/** 校验管理目录的版本和操作权限。 */
 export const managedEntrySchema = z
   .object({
     id: identity,
@@ -538,39 +367,57 @@ export const managedEntrySchema = z
     canPublish: z.boolean(),
   })
   .strict();
-const managedSnapshotSchema = managedEntrySchema.extend({
-  definition: z.unknown(),
-  baseVersion: z.number().int().positive().nullable(),
-  diagnostics: validationReportSchema,
-});
-/** 验证管理快照，但不把无效草稿当成无效 HTTP 返回。 */
+const capabilitiesSchema = z
+  .object({
+    fields: z.record(
+      z.string(),
+      z
+        .object({
+          read: z.boolean(),
+          create: z.boolean().optional(),
+          update: z.boolean().optional(),
+          filter: z.array(z.enum(["eq", "in", "contains", "between", "isNull", "isNotNull"])),
+          sort: z.boolean(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+/** 验证管理快照，保留尚未通过发布校验的草稿。 */
 export function assertManagedSnapshot(input: unknown, modelId: string): ManagedSnapshot {
-  const parsed = managedSnapshotSchema.parse(input);
+  const parsed = managedEntrySchema
+    .extend({
+      definition: z.unknown(),
+      baseVersion: z.number().int().positive().nullable(),
+      diagnostics: validationReportSchema,
+    })
+    .parse(input);
   if (parsed.id !== modelId) throw new FormworkError("INVALID_MODEL", "快照 id 与请求不一致");
   return { ...parsed, definition: assertDraftDefinition(parsed.definition, modelId) };
 }
-/** 校验完整且不可变的发布版本，拒绝运行时权限投影。 */
+/** 校验不可变发布版本中的作者定义。 */
 export function assertPublishedSnapshot(input: unknown, modelId: string): PublishedSnapshot {
   const parsed = z
     .object({
       id: identity,
       version: z.number().int().positive(),
       revision: z.string().min(1),
-      definition: modelDefinitionSchema,
+      definition: definitionShape,
     })
     .strict()
     .parse(input);
-  if (parsed.id !== modelId || parsed.definition.document.id !== modelId)
+  if (parsed.id !== modelId || parsed.definition.id !== modelId)
     throw new FormworkError("INVALID_MODEL", "发布快照 id 与请求不一致");
   return parsed;
 }
-/** 校验授权后的普通页面 schema envelope。 */
+/** 校验与发布版本绑定的授权 Schema 和查询能力。 */
 export function assertRuntimeSnapshot(input: unknown, modelId: string): RuntimeSnapshot {
   const parsed = z
     .object({
       schema: modelDocumentSchema,
       version: z.number().int().positive(),
       revision: z.string().min(1),
+      capabilities: capabilitiesSchema,
     })
     .strict()
     .parse(input);
@@ -578,7 +425,7 @@ export function assertRuntimeSnapshot(input: unknown, modelId: string): RuntimeS
     throw new FormworkError("INVALID_MODEL", "运行时 schema id 与请求不一致");
   return parsed;
 }
-/** 校验管理预览 envelope；baseVersion 可以为空。 */
+/** 校验草稿预览，不伪造发布 version。 */
 export function assertPreviewSnapshot(input: unknown, modelId: string): PreviewSnapshot {
   const parsed = z
     .object({
@@ -586,6 +433,7 @@ export function assertPreviewSnapshot(input: unknown, modelId: string): PreviewS
       managementRevision: z.string().min(1),
       stage: z.enum(["draft", "published"]),
       baseVersion: z.number().int().positive().nullable(),
+      capabilities: capabilitiesSchema,
     })
     .strict()
     .parse(input);
@@ -594,119 +442,32 @@ export function assertPreviewSnapshot(input: unknown, modelId: string): PreviewS
   return parsed;
 }
 
-/** 从 schema 生成默认组件名称，标量 enum 优先选择 Select。 */
-export function defaultComponent(schema: DataSchema, root: DataSchema = schema): string {
-  schema = resolveSchema(schema, root);
-  if ("enum" in schema && schema.enum) return "Select";
-  return {
-    string: "Input",
-    number: "NumberInput",
-    integer: "NumberInput",
-    boolean: "Switch",
-    object: "Object",
-    array: "Array",
-    null: "Null",
-  }[schemaType(schema)]!;
-}
-
-/** 检查当前 Render 已确定的组件和字段引用。 */
-export function viewIssues(
-  view: RuntimeView,
-  schema: DataSchema,
-  components: readonly string[],
-  root: DataSchema = schema,
-  path = "",
-  fields?: Readonly<Record<string, RuntimeFieldDefinition>>,
-  base = "",
-): ValidationIssue[] {
-  const issues: ValidationIssue[] = [];
-  let bound = schema;
-  let fieldPath = base;
-  if (view.field !== undefined) fieldPath += view.field;
-  if (view.field !== undefined) {
-    try {
-      bound = schemaAt(schema, view.field, root).schema;
-    } catch (error) {
-      issues.push({
-        path: `${path}/field`,
-        code: "UNKNOWN_FIELD",
-        message: error instanceof Error ? error.message : String(error),
-      });
-      return issues;
-    }
-  }
-  const presentation =
-    view.field === undefined ? {} : fieldPresentation(fields, root, fieldPath, "form");
-  const component =
-    view.component ??
-    presentation.component ??
-    (view.field !== undefined ? defaultComponent(bound, root) : undefined);
-  if (!component || !components.includes(component))
-    issues.push({
-      path: `${path}/component`,
-      code: "UNKNOWN_COMPONENT",
-      message: `未注册组件 ${component ?? "(未声明)"}`,
-    });
-  const childSchema = "items" in bound ? resolveSchema(bound.items, root) : bound;
-  const childBase = "items" in bound ? `${fieldPath}/*` : fieldPath;
-  if (view.children)
-    view.children.forEach((child, index) =>
-      issues.push(
-        ...viewIssues(
-          child,
-          childSchema,
-          components,
-          root,
-          `${path}/children/${index}`,
-          fields,
-          childBase,
-        ),
-      ),
-    );
-  else if (view.field !== undefined) {
-    const walkDefault = (node: DataSchema, location: string, pointer: string) => {
-      node = resolveSchema(node, root);
-      const component =
-        fieldPresentation(fields, root, pointer, "form").component ?? defaultComponent(node, root);
-      if (!components.includes(component))
-        issues.push({
-          path: location,
-          code: "UNKNOWN_COMPONENT",
-          message: `缺少默认组件 ${component}`,
-        });
-      if ("properties" in node)
-        for (const [key, child] of Object.entries(node.properties))
-          walkDefault(
-            child,
-            `${location}/${escapePointer(key)}`,
-            `${pointer}/${escapePointer(key)}`,
-          );
-      if ("items" in node) walkDefault(node.items, `${location}/items`, `${pointer}/*`);
-    };
-    if ("properties" in bound)
-      for (const [key, child] of Object.entries(bound.properties))
-        walkDefault(child, `${path}/${escapePointer(key)}`, `${fieldPath}/${escapePointer(key)}`);
-    if ("items" in bound) walkDefault(bound.items, `${path}/items`, `${fieldPath}/*`);
-  }
-  return issues;
-}
-
-/** 检查字段展示配置引用的组件，供发布、能力清单升级与浏览器挂载共用。 */
+/** 验证当前字段组件引用，页面布局不参与 Schema 校验。 */
 export function fieldIssues(
-  fields: Readonly<Record<string, RuntimeFieldDefinition>> | undefined,
+  document: ModelDocument,
   components: readonly string[],
+  contract: FieldContract = {},
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
-  for (const [pointer, definition] of Object.entries(fields ?? {})) {
-    for (const mode of ["form", "table", "filter"] as const) {
-      const presentation = definition[mode];
-      if (presentation && presentation.component && !components.includes(presentation.component))
+  const model = resolveModel(document, contract);
+  const visit = (pointer: string) => {
+    const field = model.field(pointer);
+    for (const name of [
+      field.component,
+      ...Object.values(field.schema.ui ?? {}).flatMap((ui) =>
+        ui && ui.component ? [ui.component] : [],
+      ),
+    ])
+      if (!components.includes(name))
         issues.push({
-          path: `/fields/${escapePointer(pointer)}/${mode}/component`,
+          path: `/data${pointer}`,
           code: "UNKNOWN_COMPONENT",
-          message: `未注册组件 ${presentation.component}`,
+          message: `未注册组件 ${name}`,
         });
-    }
-  }
+    for (const key of Object.keys(field.schema.properties ?? {}))
+      visit(`${pointer}/${escapePointer(key)}`);
+    if (field.schema.items) visit(`${pointer}/*`);
+  };
+  for (const field of model.fields) visit(field.path);
   return issues;
 }

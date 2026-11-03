@@ -26,6 +26,9 @@ import type {
   RecordPage,
   RecordQuery,
   RecordValue,
+  RecordPatch,
+  RelationOptionsInput,
+  RelationOptionsResult,
   RuntimeSnapshot,
   RouteTarget,
   ValidationReport,
@@ -67,7 +70,13 @@ export type FormworkApi = {
       target: string | RouteTarget,
       params?: Record<string, string>,
       options?: ReadOptions,
-    ) => Promise<{ modelId: string; router: string; window?: string; revision: string; url: string }>;
+    ) => Promise<{
+      modelId: string;
+      router: string;
+      window?: string;
+      revision: string;
+      url: string;
+    }>;
     draftSchema: (id: string, revision: string, options?: ReadOptions) => Promise<PreviewSnapshot>;
   };
   runtime: { schema: (id: string, options?: ReadOptions) => Promise<RuntimeSnapshot> };
@@ -92,6 +101,17 @@ export type FormworkApi = {
     revokeToken: (id: string, options?: ReadOptions) => Promise<{ revoked: true }>;
   };
   records: {
+    options: (
+      id: string,
+      input: RelationOptionsInput,
+      options?: ReadOptions,
+    ) => Promise<RelationOptionsResult>;
+    patch: (
+      id: string,
+      recordId: string,
+      patch: RecordPatch,
+      options?: ReadOptions,
+    ) => Promise<RecordValue>;
     query: (id: string, query: RecordQuery, options?: ReadOptions) => Promise<RecordPage>;
     subtree: (
       id: string,
@@ -120,7 +140,10 @@ export type FormworkApi = {
 export function createFormworkApi(options: FormworkApiOptions): FormworkApi {
   const targetParams = (target: string | RouteTarget) => {
     const reference = typeof target === "string" ? { router: target } : target;
-    return { router: reference.router, ...(reference.window === undefined ? {} : { window: reference.window }) };
+    return {
+      router: reference.router,
+      ...(reference.window === undefined ? {} : { window: reference.window }),
+    };
   };
   const request: FormworkApi["request"] = async (path, method = "GET", body, settings) => {
     checkAbort(settings?.signal);
@@ -204,7 +227,12 @@ export function createFormworkApi(options: FormworkApiOptions): FormworkApi {
       async validate(id, definition, target, settings) {
         const reference = target === undefined ? undefined : targetParams(target);
         return validationReportSchema.parse(
-          await request(`${modelPath(id)}/validate`, "POST", { definition, ...reference }, settings),
+          await request(
+            `${modelPath(id)}/validate`,
+            "POST",
+            { definition, ...reference },
+            settings,
+          ),
         );
       },
       async publish(id, ifRevision, settings) {
@@ -259,7 +287,8 @@ export function createFormworkApi(options: FormworkApiOptions): FormworkApi {
     capabilities: (id, target, settings) =>
       request(
         `/formwork/capabilities?${new URLSearchParams({
-          modelId: id, ...targetParams(target),
+          modelId: id,
+          ...targetParams(target),
           ...(settings?.domain === undefined ? {} : { domain: settings.domain }),
         })}`,
         "GET",
@@ -277,6 +306,10 @@ export function createFormworkApi(options: FormworkApiOptions): FormworkApi {
         request(`/auth/tokens/${encodeURIComponent(id)}`, "DELETE", undefined, settings),
     },
     records: {
+      options: (id, input, settings) =>
+        request(`${recordPath(id)}/options`, "POST", input, settings),
+      patch: (id, recordId, patch, settings) =>
+        request(recordPath(id, recordId), "PATCH", patch, settings),
       query: (id, query, settings) => request(`${recordPath(id)}/query`, "POST", query, settings),
       subtree: (id, input, settings) =>
         request(`${recordPath(id)}/subtree`, "POST", input, settings),

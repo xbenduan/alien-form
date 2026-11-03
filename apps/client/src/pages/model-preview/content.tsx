@@ -13,8 +13,11 @@ import {
   errorPayload,
   isObject,
   modelDocumentSchema,
+  modelIssues,
+  identityFields,
   routePath,
 } from "formwork/model";
+import { modelContract } from "../../../../../packages/domain-contracts";
 import list from "../list";
 import treeList from "../tree-list";
 import { modelDefaults } from "../../formwork/defaults";
@@ -48,7 +51,11 @@ export const ModelPreview: Component<ActionContext> = (ctx) => {
   let serialized = "";
   const acceptSchema = (input: unknown) => {
     const parsed = modelDocumentSchema.safeParse(input);
-    if (!parsed.success || parsed.data.id !== modelId) {
+    if (
+      !parsed.success ||
+      parsed.data.id !== modelId ||
+      modelIssues(parsed.data, modelContract(parsed.data)).length
+    ) {
       setMessage(
         schema() ? "Schema 暂不可预览，保留上次有效内容。" : "请补全有效的 Schema 以开始预览。",
       );
@@ -57,7 +64,7 @@ export const ModelPreview: Component<ActionContext> = (ctx) => {
     const next = JSON.stringify(parsed.data);
     if (next !== serialized) {
       serialized = next;
-      setSchema(parsed.data);
+      setSchema({ ...parsed.data, data: { ...identityFields, ...parsed.data.data } });
     }
     setMessage("");
   };
@@ -75,7 +82,10 @@ export const ModelPreview: Component<ActionContext> = (ctx) => {
           return;
         try {
           const input: unknown = JSON.parse(event.data.source);
-          acceptSchema(isObject(input) ? input.document : undefined);
+          if (isObject(input)) {
+            const { backend: _backend, ...schema } = input;
+            acceptSchema(schema);
+          } else acceptSchema(input);
         } catch {
           setMessage(
             schema() ? "JSON 编辑中，保留上次有效内容。" : "请补全有效的 JSON 以开始预览。",
@@ -88,13 +98,17 @@ export const ModelPreview: Component<ActionContext> = (ctx) => {
     } else {
       void (async () => {
         try {
-          const document =
+          const definition =
             version !== undefined
               ? (await ctx.api.models.version(modelId, version, { signal: ctx.signal })).definition
-                  .document
               : (await ctx.api.models.draftSchema(modelId, revision!, { signal: ctx.signal }))
                   .schema;
-          if (!ctx.signal.aborted) acceptSchema(document);
+          if (!ctx.signal.aborted) {
+            const { backend: _backend, ...document } = definition as ModelDocument & {
+              backend?: unknown;
+            };
+            acceptSchema(document);
+          }
         } catch (error) {
           if (!ctx.signal.aborted) setMessage(errorPayload(error).message);
         }

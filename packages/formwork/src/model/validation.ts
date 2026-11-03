@@ -1,6 +1,6 @@
 import { FormworkError } from "./errors";
 import { cloneJson, escapePointer, isObject, pointerSegments } from "./pointer";
-import type { DataSchema, JsonValue, ModelDocument, ValidationIssue } from "./types";
+import type { DataSchema, JsonValue, ObjectSchema, ValidationIssue } from "./types";
 
 /** 解析根 data.$defs 下的本地引用，保留引用处的元信息覆盖。 */
 export function resolveSchema(schema: DataSchema, root: DataSchema): DataSchema {
@@ -12,7 +12,7 @@ export function resolveSchema(schema: DataSchema, root: DataSchema): DataSchema 
     const parts = pointerSegments(ref.startsWith("#") ? ref.slice(1) : ref);
     if (!ref.startsWith("#/$defs/") || parts.length !== 2)
       throw new FormworkError("INVALID_MODEL", `仅支持 #/$defs/name 引用: ${ref}`);
-    const defs = (root as ModelDocument["data"]).$defs;
+    const defs = (root as ObjectSchema).$defs;
     if (!defs || !Object.hasOwn(defs, parts[1]!))
       throw new FormworkError("INVALID_MODEL", `不存在的引用 ${ref}`);
     const { $ref: _ref, ...metadata } = schema;
@@ -132,11 +132,19 @@ export function validateValue(
       if (!Object.hasOwn(value, key)) add("REQUIRED", "必填字段", `${path}/${escapePointer(key)}`);
     for (const [key, child] of Object.entries(value)) {
       const childPath = `${path}/${escapePointer(key)}`;
-      if (!Object.hasOwn(schema.properties, key)) add("UNKNOWN_FIELD", "未声明的字段", childPath);
-      else issues.push(...validateValue(schema.properties[key]!, child, root, childPath));
+      if (!Object.hasOwn(schema.properties, key)) {
+        if (schema.additionalProperties)
+          issues.push(...validateValue(schema.additionalProperties, child, root, childPath));
+        else add("UNKNOWN_FIELD", "未声明的字段", childPath);
+      } else issues.push(...validateValue(schema.properties[key]!, child, root, childPath));
     }
   }
   if (Array.isArray(value) && "items" in schema) {
+    if (
+      schema.uniqueItems &&
+      new Set(value.map((item) => JSON.stringify(item))).size !== value.length
+    )
+      add("UNIQUE_ITEMS", "数组项不能重复");
     if (schema.minItems !== undefined && value.length < schema.minItems)
       add("MIN_ITEMS", `至少 ${schema.minItems} 项`);
     if (schema.maxItems !== undefined && value.length > schema.maxItems)
@@ -158,13 +166,8 @@ export function applyDefaults(
 ): JsonValue | undefined {
   schema = resolveSchema(schema, root);
   if (value === undefined && Object.hasOwn(schema, "default")) value = cloneJson(schema.default);
-  if (
-    schemaType(schema) === "object" &&
-    "properties" in schema &&
-    (value === undefined || isObject(value))
-  ) {
-    const result: Record<string, JsonValue> =
-      value === undefined ? {} : (cloneJson(value) as Record<string, JsonValue>);
+  if (schemaType(schema) === "object" && "properties" in schema && isObject(value)) {
+    const result = cloneJson(value) as Record<string, JsonValue>;
     for (const [key, child] of Object.entries(schema.properties)) {
       const next = applyDefaults(child, Object.hasOwn(result, key) ? result[key] : undefined, root);
       if (next !== undefined)
@@ -175,7 +178,7 @@ export function applyDefaults(
           configurable: true,
         });
     }
-    return value === undefined && Object.keys(result).length === 0 ? undefined : result;
+    return result;
   }
   if (Array.isArray(value) && "items" in schema)
     return value.map((item) => applyDefaults(schema.items, item, root) ?? item);

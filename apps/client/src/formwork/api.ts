@@ -77,5 +77,5 @@ export function retrySession(): Promise<void> {
 if (!localPreview) void restoreSession();
 /** 为 Page 和 Window 显式加载当前授权的已发布 schema。 */
 export async function loadPublishedSchema(ctx: SchemaLoadContext) {
-  return (await ctx.api.runtime.schema(ctx.modelId, { signal: ctx.signal })).schema;
+  return ctx.api.runtime.schema(ctx.modelId, { signal: ctx.signal });
 }

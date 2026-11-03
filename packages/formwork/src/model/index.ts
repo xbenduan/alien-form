@@ -1,8 +1,11 @@
 export type * from "./types";
 export * from "./errors";
 export * from "./pointer";
-export * from "./expression";
 export * from "./validation";
+export * from "./field";
+export * from "./backend";
+export * from "./migration";
+export * from "./query";
 export * from "./presentation";
 export * from "./schema";
 export * from "./routes";

@@ -1,7 +1,7 @@
 import type { Domains } from "formwork";
 import { components } from "./components";
 import * as recordFns from "./fn/records";
-import { FormItem } from "./field-container";
+import { FormItem } from "../components/fields/field-container";
 import { loadPublishedSchema } from "./api";
 
 /** 显式注册可被多个模型共享的领域覆盖。 */

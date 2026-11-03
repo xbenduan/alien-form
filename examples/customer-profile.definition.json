@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "customer-profile",
+  "title": "客户档案",
+  "$defs": {
+    "Address": {
+      "type": "object",
+      "properties": {
+        "city": { "type": "string", "title": "城市", "required": true },
+        "street": { "type": "string", "title": "街道" }
+      }
+    }
+  },
+  "data": {
+    "name": { "type": "string", "title": "客户姓名", "required": true },
+    "contact": {
+      "type": "object",
+      "title": "联系方式",
+      "properties": {
+        "email": { "type": "string", "title": "邮箱" },
+        "phone": { "type": "string", "title": "电话" }
+      }
+    },
+    "address": { "$ref": "#/$defs/Address", "title": "主要地址" },
+    "addresses": { "type": "array", "title": "其他地址", "items": { "$ref": "#/$defs/Address" } },
+    "consents": {
+      "type": "array",
+      "format": "booleans",
+      "title": "授权状态",
+      "enum": [
+        { "value": true, "label": "允许" },
+        { "value": false, "label": "拒绝" }
+      ]
+    }
+  }
+}

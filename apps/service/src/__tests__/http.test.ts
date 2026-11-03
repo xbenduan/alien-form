@@ -6,7 +6,7 @@ import type {
   ModelDefinition,
   DraftDefinition,
   CapabilityManifest,
-  DataSchema,
+  FieldSchema,
 } from "formwork/model";
 import { startWorker } from "./worker-harness";
 
@@ -16,12 +16,13 @@ afterEach(({ task }) => {
     console.error(worker?.logs().split("\n").slice(-35).join("\n"));
 });
 const baseComponents = [
-  "Object",
-  "Array",
+  "ObjectFields",
+  "ArrayFields",
   "Input",
+  "Text",
   "NumberInput",
   "Select",
-  "Switch",
+  "Boolean",
   "Null",
   "RichText",
   "FieldOnlyEditor",
@@ -116,33 +117,34 @@ function manifest(): CapabilityManifest {
 }
 function definition(
   id: string,
-  properties: Record<string, DataSchema> = {
+  properties: Record<string, FieldSchema> = {
     title: { type: "string" },
     count: { type: "integer" },
     paid: { type: "boolean" },
   },
-): ModelDefinition {
+): ModelDefinition & {
+  backend: {
+    permissions: NonNullable<NonNullable<ModelDefinition["backend"]>["permissions"]>;
+    behavior: NonNullable<NonNullable<ModelDefinition["backend"]>["behavior"]>;
+  };
+} {
   return {
-    document: { id, title: id, data: { type: "object", properties, required: ["title"] } },
-    backend: {
-      storage: {
-        table: `test_${id}`,
-        bindings: Object.entries(properties).map(([key, schema]) => ({
+    schemaVersion: 1,
+    id,
+    title: id,
+    data: Object.fromEntries(
+      Object.entries(properties).map(([key, field]) => [
+        key,
+        {
           id: `${id}:${key}`,
-          path: `/${key}`,
-          column: key,
-          sqlType:
-            ("type" in schema && schema.type === "integer") ||
-            ("type" in schema && schema.type === "boolean")
-              ? "INTEGER"
-              : "TEXT",
-          encoding:
-            "type" in schema && ["array", "object"].includes(String(schema.type))
-              ? "json"
-              : "scalar",
-        })),
-      },
-      relations: [],
+          storage: { column: key },
+          ...(key === "title" ? { required: true } : {}),
+          ...field,
+        },
+      ]),
+    ),
+    backend: {
+      storage: { table: `test_${id}` },
       permissions: { grants: [], privateFields: [] },
       behavior: { rules: [], commands: {}, events: {} },
     },
@@ -150,10 +152,11 @@ function definition(
 }
 const draft = (definition: ModelDefinition) => definition as unknown as DraftDefinition;
 async function publish(definition: ModelDefinition) {
-  const current = await worker.api.models.saveDraft(definition.document.id, definition, {
+  const current = await worker.api.models.saveDraft(definition.id, definition, {
     ifRevision: null,
   });
-  return worker.api.models.publish(definition.document.id, current.revision);
+  expect(current.diagnostics.errors).toEqual([]);
+  return worker.api.models.publish(definition.id, current.revision);
 }
 beforeAll(async () => {
   worker = await startWorker({ password: "menu-integration-password" });
@@ -210,7 +213,7 @@ it("导航固定按账号同步、幂等保留顺序，并发不同模型不覆�
   expect(await worker.api.models.versions("menu_one")).toHaveLength(1);
   expect((await worker.sql("SELECT COUNT(*) AS count FROM fw_outbox"))[0].results).toEqual(events);
   const renamed = structuredClone(before.definition);
-  renamed.document.title = "未发布名称";
+  renamed.title = "未发布名称";
   const saved = await worker.api.models.saveDraft("menu_one", renamed, {
     ifRevision: before.revision,
   });
@@ -253,7 +256,7 @@ it("导航拒绝系统、草稿、agent/deploy；read 与 manage 分离、权限
       expect((await worker.request(path, method, undefined, token.token)).status).toBe(403);
   }
   const roles = await worker.api.records.query("system-roles", {
-    filters: {},
+    clauses: [],
     page: 1,
     pageSize: 20,
   });
@@ -338,14 +341,10 @@ it("真实 D1 登录、可信 token 类型、撤销与 CORS", async () => {
 });
 it("无效草稿保存诊断、未发布不能作为 runtime 来源、首次并发创建只有一个成功", async () => {
   const changes = await Promise.allSettled([
+    worker.api.models.saveDraft("incomplete", { id: "incomplete" }, { ifRevision: null }),
     worker.api.models.saveDraft(
       "incomplete",
-      { document: { id: "incomplete" } },
-      { ifRevision: null },
-    ),
-    worker.api.models.saveDraft(
-      "incomplete",
-      { document: { id: "incomplete", title: "other" } },
+      { id: "incomplete", title: "other" },
       { ifRevision: null },
     ),
   ]);
@@ -370,16 +369,12 @@ it("草稿 CAS、发布旧审阅 revision 失败，published/runtime 与最新�
   await publish(model);
   const current = await worker.api.models.read("cas");
   const changes = await Promise.allSettled([
-    worker.api.models.saveDraft(
-      "cas",
-      draft({ ...model, document: { ...model.document, title: "first" } }),
-      { ifRevision: current.revision },
-    ),
-    worker.api.models.saveDraft(
-      "cas",
-      draft({ ...model, document: { ...model.document, title: "second" } }),
-      { ifRevision: current.revision },
-    ),
+    worker.api.models.saveDraft("cas", draft({ ...model, title: "first" }), {
+      ifRevision: current.revision,
+    }),
+    worker.api.models.saveDraft("cas", draft({ ...model, title: "second" }), {
+      ifRevision: current.revision,
+    }),
   ]);
   expect(changes.filter((change) => change.status === "fulfilled")).toHaveLength(1);
   await expect(worker.api.models.publish("cas", current.revision)).rejects.toMatchObject({
@@ -414,8 +409,7 @@ it("真实记录类型筛选、参数化任意 id、分页、JSON 编码与具�
       type: "array",
       items: {
         type: "object",
-        properties: { amount: { type: "integer", minimum: 1 } },
-        required: ["amount"],
+        properties: { amount: { type: "integer", minimum: 1, required: true } },
       },
     },
   });
@@ -435,16 +429,24 @@ it("真实记录类型筛选、参数化任意 id、分页、JSON 编码与具�
     lines: [{ amount: 3 }],
   });
   expect(
-    await worker.api.records.query("records", { filters: { paid: false }, page: 1, pageSize: 10 }),
+    await worker.api.records.query("records", {
+      clauses: [{ field: "/paid", operator: "eq", operand: false }],
+      page: 1,
+      pageSize: 10,
+    }),
   ).toMatchObject({ total: 1 });
   expect(
-    await worker.api.records.query("records", { filters: { title: "%_" }, page: 1, pageSize: 10 }),
+    await worker.api.records.query("records", {
+      clauses: [{ field: "/title", operator: "contains", operand: "%_" }],
+      page: 1,
+      pageSize: 10,
+    }),
   ).toMatchObject({ total: 1 });
   expect(
     (
       await worker.api.records.query("records", {
-        filters: {},
-        sort: { field: "count", direction: "desc" },
+        clauses: [],
+        sort: { field: "/count", direction: "desc" },
         page: 1,
         pageSize: 1,
       })
@@ -461,12 +463,12 @@ it("真实记录类型筛选、参数化任意 id、分页、JSON 编码与具�
   expect(
     (
       await worker.request("/records/records/query", "POST", {
-        filters: { paid: "false" },
+        clauses: [{ field: "/paid", operator: "eq", operand: "false" }],
         page: 1,
         pageSize: 10,
       })
     ).status,
-  ).toBe(400);
+  ).toBe(422);
   await worker.api.records.update("records", id, { title: "Updated" });
   expect(await worker.api.records.read("records", id)).toMatchObject({
     paid: false,
@@ -474,7 +476,7 @@ it("真实记录类型筛选、参数化任意 id、分页、JSON 编码与具�
     title: "Updated",
   });
 });
-it("删除字段保留列与值、收紧 required 允许旧记录读取、后续 manifest 不丢历史", async () => {
+it("新增必填阻止发布，删除字段保留列与值且后续 manifest 不丢历史", async () => {
   const model = definition("retained");
   await publish(model);
   await worker.api.records.create("retained", {
@@ -484,14 +486,20 @@ it("删除字段保留列与值、收紧 required 允许旧记录读取、后续
     paid: true,
   });
   const next = definition("retained", { title: { type: "string" }, extra: { type: "string" } });
-  next.document.data.required = ["title", "extra"];
+  next.data.extra!.required = true;
   let current = await worker.api.models.read("retained");
+  current = await worker.api.models.saveDraft("retained", next, { ifRevision: current.revision });
+  expect(current.diagnostics.errors).toContainEqual(
+    expect.objectContaining({ code: "MIGRATION_REQUIRED" }),
+  );
+  await expect(worker.api.models.publish("retained", current.revision)).rejects.toMatchObject({
+    code: "INVALID_MODEL",
+  });
+  delete next.data.extra!.required;
   current = await worker.api.models.saveDraft("retained", next, { ifRevision: current.revision });
   await worker.api.models.publish("retained", current.revision);
   expect(await worker.api.records.read("retained", "old")).toMatchObject({ title: "Original" });
-  await expect(
-    worker.api.records.update("retained", "old", { title: "Changed" }),
-  ).rejects.toMatchObject({ code: "INVALID_VALUE" });
+  await worker.api.records.update("retained", "old", { title: "Changed" });
   await worker.api.records.create("retained", { id: "new", title: "New", extra: "x" });
   const sql = await worker.sql("SELECT count, paid FROM test_retained WHERE id = 'old'");
   expect(sql[0].results).toEqual([{ count: 42, paid: 1 }]);
@@ -511,14 +519,8 @@ it("UNIQUE 失败回滚列、关系 DDL、版本和指针，草稿仍可读回",
   await worker.api.records.create("rollback", { title: "duplicate" });
   await worker.api.records.create("rollback", { title: "duplicate" });
   const next = structuredClone(model);
-  next.backend.storage.bindings = next.backend.storage.bindings.map((binding, index) =>
-    index === 0 ? { ...binding, index: "unique" } : binding,
-  );
-  next.document.data.properties.extra = { type: "string" };
-  next.backend.storage.bindings = [
-    ...next.backend.storage.bindings,
-    { id: "rollback:extra", path: "/extra", column: "extra", encoding: "scalar", sqlType: "TEXT" },
-  ];
+  next.data.title!.storage = { column: "title", index: "unique" };
+  next.data.extra = { id: "rollback:extra", type: "string", storage: { column: "extra" } };
   const current = await worker.api.models.read("rollback");
   const saved = await worker.api.models.saveDraft("rollback", next, {
     ifRevision: current.revision,
@@ -579,7 +581,7 @@ it("记录校验后并发发布，新版 guard 拒绝旧提交且 outbox 没有�
   ]);
   const current = await worker.api.models.read("race");
   const next = structuredClone(model);
-  next.document.data.required = ["title", "count"];
+  next.data.count!.required = true;
   const saved = await worker.api.models.saveDraft("race", next, { ifRevision: current.revision });
   await worker.api.models.publish("race", saved.revision);
   worker.releaseGate("record");
@@ -593,9 +595,9 @@ it("记录校验后并发发布，新版 guard 拒绝旧提交且 outbox 没有�
     (await worker.sql("SELECT * FROM fw_outbox WHERE model_id = 'race'"))[0].results,
   ).toHaveLength(0);
 });
-it("角色子树聚合、own 范围、私有 $ref/required/View 投影与隐藏值更新守恒", async () => {
+it("角色子树聚合、own 范围、私有字段投影与隐藏值更新守恒", async () => {
   const roles = await worker.api.records.query("system-roles", {
-    filters: {},
+    clauses: [],
     page: 1,
     pageSize: 20,
   });
@@ -625,10 +627,10 @@ it("角色子树聚合、own 范围、私有 $ref/required/View 投影与隐藏�
     title: { type: "string" },
     paid: { type: "boolean" },
     secret: { $ref: "#/$defs/private" },
-    parentId: { type: ["string", "null"] },
+    parentId: { type: "string", nullable: true },
   });
-  model.document.data.$defs = { private: { type: "string", default: "keep-secret" } };
-  model.document.data.required = ["title", "secret"];
+  model.$defs = { private: { type: "string", default: "keep-secret" } };
+  model.data.secret!.required = true;
   model.backend.permissions = {
     privateFields: ["acl:secret"],
     grants: [
@@ -646,39 +648,27 @@ it("角色子树聚合、own 范围、私有 $ref/required/View 投影与隐藏�
       },
     ],
   };
-  model.document.views = {
-    "list/edit": {
-      component: "Object",
-      field: "",
-      children: [
-        { component: "Input", field: "/title" },
-        { component: "Input", field: "/secret" },
-      ],
-    },
-  };
-  model.document.fields = {
-    "/title": { order: -1, form: { props: { placeholder: "可见标题" } } },
-    "/secret": { form: { component: "RichText" }, table: false },
-    "/parentId": { filter: false },
-  };
-  model.document.tree = { parentField: "/parentId", labelField: "/title" };
-  model.backend.relations = [
-    {
-      fieldId: "acl:parentId",
-      targetModel: "acl",
-      targetFieldId: "id",
-      kind: "many-to-one",
-    },
-  ];
+  model.data.title!.props = { placeholder: "可见标题" };
+  model.data.secret!.ui = { form: { component: "RichText" }, table: false };
+  model.data.parentId!.ui = { filter: false };
+  model.tree = { parentField: "/parentId", labelField: "/title" };
+  model.data.parentId!.relation = { model: "acl", labelField: "/title" };
   await publish(model);
   await worker.api.records.create("acl", { id: "admin-record", title: "Admin", paid: true });
   const runtime = await api.runtime.schema("acl");
-  expect(Object.keys(runtime.schema.data.properties)).toEqual(["title", "paid"]);
-  expect(runtime.schema.data.properties.paid.readOnly).toBe(true);
-  expect(runtime.schema.data.required).toEqual(["title"]);
-  expect(runtime.schema.data.$defs).toBeUndefined();
-  expect(JSON.stringify(runtime.schema.views)).not.toContain("/secret");
-  expect(runtime.schema.fields).toEqual({ "/title": model.document.fields["/title"] });
+  expect(Object.keys(runtime.schema.data)).toEqual([
+    "id",
+    "createdAt",
+    "updatedAt",
+    "creatorId",
+    "title",
+    "paid",
+  ]);
+  expect(runtime.schema.data.paid!.readOnly).toBe(true);
+  expect(runtime.schema.data.title!.required).toBe(true);
+  expect(runtime.schema.$defs).toBeUndefined();
+  expect(JSON.stringify(runtime.schema)).not.toContain("secret");
+  expect(runtime.schema.data.title!.props).toEqual(model.data.title!.props);
   expect(runtime.schema.tree).toBeUndefined();
   const own = await api.records.create("acl", { id: "own-record", title: "Own" });
   expect(own.secret).toBeUndefined();
@@ -695,9 +685,13 @@ it("角色子树聚合、own 范围、私有 $ref/required/View 投影与隐藏�
   await expect(api.records.read("acl", "admin-record")).rejects.toMatchObject({
     code: "NOT_FOUND",
   });
-  expect((await api.records.query("acl", { filters: {}, page: 1, pageSize: 20 })).total).toBe(1);
+  expect((await api.records.query("acl", { clauses: [], page: 1, pageSize: 20 })).total).toBe(1);
   await expect(
-    api.records.query("acl", { filters: { secret: "keep" }, page: 1, pageSize: 20 }),
+    api.records.query("acl", {
+      clauses: [{ field: "/secret", operator: "contains", operand: "keep" }],
+      page: 1,
+      pageSize: 20,
+    }),
   ).rejects.toMatchObject({ code: "FORBIDDEN" });
   expect(
     (await api.models.saveDraft("owned_model", definition("owned_model"), { ifRevision: null }))
@@ -714,30 +708,20 @@ it("角色子树聚合、own 范围、私有 $ref/required/View 投影与隐藏�
     ).status,
   ).toBe(403);
 });
-it("字段展示按 router 能力诊断组件和 fn，草稿保留错误而发布拒绝", async () => {
+it("字段按 router 能力诊断组件，props 按普通 JSON 保留", async () => {
   const model = definition("field_capabilities");
-  model.document.fields = {
-    "/title": {
-      form: {
-        component: "MissingEditor",
-        props: { placeholder: "{{ fn.missingHint() }}" },
-      },
-    },
-  };
+  model.data.title!.ui = { form: { component: "MissingEditor" } };
+  model.data.title!.props = { placeholder: "{{ fn.missingHint() }}" };
   const saved = await worker.api.models.saveDraft("field_capabilities", model, {
     ifRevision: null,
   });
   expect(saved.diagnostics.errors).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
-        path: "/document/fields/~1title/form/component",
+        path: "/data/title",
         code: "UNKNOWN_COMPONENT",
         router: "list",
         window: "edit",
-      }),
-      expect.objectContaining({
-        path: "/document/fields/~1title/form/props/placeholder",
-        code: "UNKNOWN_FN",
       }),
     ]),
   );
@@ -746,58 +730,34 @@ it("字段展示按 router 能力诊断组件和 fn，草稿保留错误而发�
   ).rejects.toMatchObject({
     code: "INVALID_MODEL",
   });
-  model.document.fields = {
-    "/title": { form: { component: "Input", props: { placeholder: "{{ $values.title }}" } } },
-  };
+  model.data.title!.ui = { form: { component: "Input" } };
+  model.data.title!.props = { placeholder: "请输入标题" };
   const valid = await worker.api.models.saveDraft("field_capabilities", model, {
     ifRevision: saved.revision,
   });
   expect(valid.diagnostics.errors).toEqual([]);
-  expect(valid.diagnostics.runtimeChecks).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({
-        path: "/document/fields/~1title/form/props/placeholder",
-        code: "EXPRESSION_RUNTIME",
-        router: "list",
-        window: "edit",
-      }),
-    ]),
-  );
+  expect(valid.diagnostics.runtimeChecks).toEqual([]);
   await worker.api.models.publish("field_capabilities", valid.revision);
-  expect((await worker.api.runtime.schema("field_capabilities")).schema.fields).toEqual(
-    model.document.fields,
+  expect((await worker.api.runtime.schema("field_capabilities")).schema.data.title!.props).toEqual(
+    model.data.title!.props,
   );
 });
 it("首次发布自关联树，parentId 与 subtree 使用指定父字段且保留直系子级语义", async () => {
   const model = definition("field_tree", {
     title: { type: "string" },
-    otherParent: { type: ["string", "null"] },
-    parentId: { type: ["string", "null"] },
+    otherParent: { type: "string", nullable: true },
+    parentId: { type: "string", nullable: true },
   });
-  model.document.tree = { parentField: "/parentId", labelField: "/title" };
-  model.backend.storage.bindings = model.backend.storage.bindings.map((binding) =>
-    binding.id === "field_tree:parentId"
-      ? {
-          id: binding.id,
-          path: binding.path,
-          jsonKey: "tree_parent",
-          sqlType: "TEXT",
-          encoding: "scalar",
-        }
-      : binding,
-  );
-  model.backend.relations = ["otherParent", "parentId"].map((key) => ({
-    fieldId: `field_tree:${key}`,
-    targetModel: "field_tree",
-    targetFieldId: "id",
-    kind: "many-to-one" as const,
-  }));
+  model.tree = { parentField: "/parentId", labelField: "/title" };
+  model.data.parentId!.storage = { jsonKey: "tree_parent" };
+  for (const key of ["otherParent", "parentId"])
+    model.data[key]!.relation = { model: "field_tree", labelField: "/title" };
   const invalid = structuredClone(model);
-  invalid.backend.relations = invalid.backend.relations.slice(0, 1);
+  delete invalid.data.parentId!.relation;
   const current = await worker.api.models.saveDraft("field_tree", invalid, { ifRevision: null });
   expect(current.diagnostics.errors).toEqual(
     expect.arrayContaining([
-      expect.objectContaining({ path: "/document/tree/parentField", code: "INVALID_MODEL" }),
+      expect.objectContaining({ path: "/tree/parentField", code: "INVALID_MODEL" }),
     ]),
   );
   const saved = await worker.api.models.saveDraft("field_tree", model, {
@@ -813,7 +773,7 @@ it("首次发布自关联树，parentId 与 subtree 使用指定父字段且保�
   ])
     await worker.api.records.create("field_tree", record);
   const direct = await worker.api.records.query("field_tree", {
-    filters: {},
+    clauses: [],
     parentId: "tree-root",
     page: 1,
     pageSize: 20,
@@ -865,7 +825,7 @@ it("首次发布自关联树，parentId 与 subtree 使用指定父字段且保�
     worker.releaseGate("record");
   }
   expect(await (await writing).json()).toMatchObject({ error: { code: "REVISION_CONFLICT" } });
-  expect((await worker.api.records.read("field_tree", "tree-race-a")).parentId).toBeNull();
+  expect((await worker.api.records.read("field_tree", "tree-race-a")).parentId).toBeUndefined();
 });
 it("关系去重、options、子树、防环、引用删除保护和停用 through 行保留", async () => {
   const target = definition("target");
@@ -875,17 +835,17 @@ it("关系去重、options、子树、防环、引用删除保护和停用 throu
     title: { type: "string" },
     links: { type: "array", items: { type: "string" } },
   });
-  source.backend.relations = [
-    {
-      fieldId: "relation:links",
-      targetModel: "target",
-      targetFieldId: "id",
-      kind: "many-to-many",
-      through: "test_relation_edges",
-    },
-  ];
+  source.data.links!.relation = { model: "target", labelField: "/title" };
+  source.data.links!.storage = { column: "links", through: "test_relation_edges" };
   await publish(source);
-  await worker.api.records.create("relation", { id: "s1", title: "Source", links: ["t1", "t1"] });
+  await expect(
+    worker.api.records.create("relation", {
+      id: "duplicate",
+      title: "Source",
+      links: ["t1", "t1"],
+    }),
+  ).rejects.toMatchObject({ code: "INVALID_VALUE" });
+  await worker.api.records.create("relation", { id: "s1", title: "Source", links: ["t1"] });
   expect((await worker.api.records.read("relation", "s1")).links).toEqual(["t1"]);
   expect((await worker.sql("SELECT * FROM test_relation_edges"))[0].results).toHaveLength(1);
   await expect(worker.api.records.delete("target", "t1")).rejects.toMatchObject({
@@ -895,7 +855,7 @@ it("关系去重、options、子树、防环、引用删除保护和停用 throu
     await worker.api.request("/records/relation/options", "POST", { fieldId: "relation:links" }),
   ).toMatchObject({ options: [{ value: "t1", label: "Target" }], total: 1 });
   const roles = await worker.api.records.query("system-roles", {
-    filters: {},
+    clauses: [],
     page: 1,
     pageSize: 20,
   });
@@ -990,7 +950,7 @@ it("官方 SDK 通过 HTTP 和自定义 Headers 调用真实 Worker/D1 工具，
     });
     const incomplete = await call("models.write", {
       modelId: "mcp_incomplete",
-      definition: { document: { id: "mcp_incomplete" } },
+      definition: { id: "mcp_incomplete" },
       ifRevision: null,
     });
     expect(incomplete.diagnostics.errors.length).toBeGreaterThan(0);
@@ -1032,7 +992,7 @@ it("无项目上下文的 MCP agent 从握手、零参数工具和资源发现�
       }),
     );
     expect(client.getInstructions()).toContain("formwork.describe({})");
-    expect(client.getInstructions()).toContain("无需编辑器 URL");
+    expect(client.getInstructions()).toContain("data 是字段 map");
     expect(client.getServerCapabilities()).toMatchObject({ tools: {}, resources: {} });
     const tools = (await client.listTools()).tools;
     for (const name of ["formwork.describe", "formwork.capabilities"]) {
@@ -1050,8 +1010,8 @@ it("无项目上下文的 MCP agent 从握手、零参数工具和资源发现�
       canPublishViaMcp: false,
       systemModelsReadOnly: true,
     });
-    expect(info.definitionJsonSchema.properties.document).toBeDefined();
-    expect(info.guide.definition.fields).toContain("不是 fields[]");
+    expect(info.definitionJsonSchema.properties.data).toBeDefined();
+    expect(info.guide.definition).toBeDefined();
     expect(info.backendCapabilities.commands).toContain("records.count");
     const catalog = await call("formwork.capabilities");
     expect(catalog).toEqual(info.capabilities);
@@ -1084,7 +1044,6 @@ it("无项目上下文的 MCP agent 从握手、零参数工具和资源发现�
       expect.objectContaining({
         router: "list",
         window: "edit",
-        viewKey: "list/edit",
         path: "/list/:modelId/edit/:id",
         requiredParams: ["modelId", "id"],
         requiredPreviewParams: ["id"],
@@ -1132,14 +1091,14 @@ it("无项目上下文的 MCP agent 从握手、零参数工具和资源发现�
     expect(JSON.stringify(incompleteTarget.content)).toContain("发现全部组件请传 {}");
     const revision = saved.revision;
     const changed = structuredClone(saved.definition);
-    changed.document.title = "agent 更新的模型";
+    changed.title = "agent 更新的模型";
     const updated = await call("models.write", {
       modelId: saved.id,
       definition: changed,
       ifRevision: revision,
     });
     expect(updated.revision).not.toBe(revision);
-    expect((await call("models.read", { modelId: saved.id })).definition.document.title).toBe(
+    expect((await call("models.read", { modelId: saved.id })).definition.title).toBe(
       "agent 更新的模型",
     );
   } finally {
@@ -1173,7 +1132,7 @@ it("未登记能力清单时 MCP 仍能提供构建指南和 schema，并明确�
     expect(info).toMatchObject({
       capabilities: null,
       capabilitiesError: { code: "CAPABILITIES_UNAVAILABLE" },
-      definitionTemplate: { document: { id: expect.any(String) }, backend: expect.any(Object) },
+      definitionTemplate: { schemaVersion: 1, id: expect.any(String), data: expect.any(Object) },
       definitionJsonSchema: { type: "object" },
     });
     expect(info.setup).toContain("无需浏览器或编辑器 URL");
@@ -1265,10 +1224,7 @@ it("存储不兼容产生可读草稿诊断，不改变当前版本", async () =
   const model = definition("incompatible");
   await publish(model);
   const next = structuredClone(model);
-  next.document.data.properties.count = { type: "string" };
-  next.backend.storage.bindings = next.backend.storage.bindings.map((binding) =>
-    binding.id === "incompatible:count" ? { ...binding, sqlType: "TEXT" } : binding,
-  );
+  next.data.count!.type = "string";
   const current = await worker.api.models.read("incompatible");
   const saved = await worker.api.models.saveDraft("incompatible", next, {
     ifRevision: current.revision,
@@ -1283,13 +1239,7 @@ it("存储不兼容产生可读草稿诊断，不改变当前版本", async () =
 });
 it("并发发布只有一个成功，清单不能删除已发布组件", async () => {
   const model = definition("publishing");
-  model.document.views = {
-    "list/edit": {
-      component: "Object",
-      field: "",
-      children: [{ component: "Input", field: "/title" }],
-    },
-  };
+  model.data.title!.ui = { form: { component: "Input" } };
   const saved = await worker.api.models.saveDraft("publishing", model, { ifRevision: null });
   const results = await Promise.allSettled([
     worker.api.models.publish("publishing", saved.revision),
@@ -1313,7 +1263,7 @@ it("并发发布只有一个成功，清单不能删除已发布组件", async (
   );
   expect(response.status).toBe(422);
   const fieldModel = definition("published_field");
-  fieldModel.document.fields = { "/title": { form: { component: "FieldOnlyEditor" } } };
+  fieldModel.data.title!.ui = { form: { component: "FieldOnlyEditor" } };
   await publish(fieldModel);
   const withoutFieldComponent = manifest();
   withoutFieldComponent.framework.components = withoutFieldComponent.framework.components.filter(
@@ -1340,7 +1290,7 @@ it("并发发布只有一个成功，清单不能删除已发布组件", async (
       issues: expect.arrayContaining([
         expect.objectContaining({
           code: "UNKNOWN_COMPONENT",
-          path: "/document/fields/~1title/form/component",
+          path: "/data/title",
         }),
       ]),
     },
@@ -1348,18 +1298,7 @@ it("并发发布只有一个成功，清单不能删除已发布组件", async (
 });
 it("JSON 内容存储、可信命令、batch-delete 与已提交 outbox", async () => {
   const model = definition("json_storage");
-  model.backend.storage.bindings = model.backend.storage.bindings.map((binding) =>
-    binding.id === "json_storage:title"
-      ? {
-          id: binding.id,
-          path: binding.path,
-          jsonKey: "title's key",
-          sqlType: "TEXT",
-          encoding: "scalar",
-          index: "index",
-        }
-      : binding,
-  );
+  model.data.title!.storage = { jsonKey: "title's key", index: "index" };
   model.backend.behavior = {
     rules: [],
     commands: { count: "records.count" },
@@ -1370,13 +1309,13 @@ it("JSON 内容存储、可信命令、batch-delete 与已提交 outbox", async 
   expect(
     (
       await worker.api.records.query("json_storage", {
-        filters: { title: "code" },
+        clauses: [{ field: "/title", operator: "contains", operand: "code" }],
         page: 1,
         pageSize: 10,
       })
     ).total,
   ).toBe(1);
-  expect(await worker.api.records.command("json_storage", "count", { filters: {} })).toEqual({
+  expect(await worker.api.records.command("json_storage", "count", { clauses: [] })).toEqual({
     count: 1,
   });
   const events = (
@@ -1397,9 +1336,8 @@ it("JSON 内容存储、可信命令、batch-delete 与已提交 outbox", async 
 it("共享 Domain 按当前文档选择，Page 与 Window 就近覆盖，配置错误保留具体诊断", async () => {
   for (const id of ["shared_a", "shared_b"]) {
     const model = definition(id);
-    model.document.domain = "shared";
-    model.document.fields = { "/title": { form: { component: "SharedEditor" } } };
-    model.document.pages = { list: { windows: { detail: { openMode: "modal" } } } };
+    model.domain = "shared";
+    model.data.title!.ui = { form: { component: "SharedEditor" } };
     await publish(model);
     const capability = await worker.api.capabilities(id, { router: "list", window: "edit" });
     expect(capability).toMatchObject({
@@ -1418,14 +1356,14 @@ it("共享 Domain 按当前文档选择，Page 与 Window 就近覆盖，配置�
     expect(capability.components.some((item) => item.name === "SharedEditor")).toBe(true);
   }
   const invalidDomain = definition("candidate_domain");
-  invalidDomain.document.domain = "missing";
+  invalidDomain.domain = "missing";
   const saved = await worker.api.models.saveDraft("candidate_domain", invalidDomain, {
     ifRevision: null,
   });
   expect(saved.diagnostics.errors).toContainEqual(
     expect.objectContaining({
       code: "UNKNOWN_DOMAIN",
-      path: "/document/domain",
+      path: "/domain",
     }),
   );
   await expect(worker.api.capabilities("candidate_domain", "list")).rejects.toMatchObject({
@@ -1437,12 +1375,14 @@ it("共享 Domain 按当前文档选择，Page 与 Window 就近覆盖，配置�
   const fallback = await worker.api.capabilities("unregistered_model", "list");
   expect(fallback.domain).toBeUndefined();
   expect(fallback.components.some((item) => item.name === "SharedEditor")).toBe(false);
-  const badWindow = definition("bad_window");
-  badWindow.document.pages = { list: { windows: { missing: { openMode: "modal" } } } };
+  const badWindow = {
+    ...definition("bad_window"),
+    pages: { list: { windows: { missing: { openMode: "modal" } } } },
+  };
   expect((await worker.api.models.validate("bad_window", badWindow)).errors).toContainEqual(
     expect.objectContaining({
-      code: "UNKNOWN_WINDOW",
-      path: "/document/pages/list/windows/missing",
+      code: "MIGRATION_REQUIRED",
+      path: "/pages",
     }),
   );
   const withoutDomain = manifest();
@@ -1482,5 +1422,20 @@ it("共享 Domain 按当前文档选择，Page 与 Window 就近覆盖，配置�
     },
     worker.capabilityToken,
   );
-  expect(windowResponse.status).toBe(422);
+  expect(windowResponse.status).toBe(200);
+  const restore = manifest();
+  expect(
+    (
+      await worker.request(
+        "/formwork/capabilities/alien-form",
+        "PUT",
+        {
+          revision: restore.revision,
+          manifest: restore,
+          origin: restore.clientOrigin,
+        },
+        worker.capabilityToken,
+      )
+    ).status,
+  ).toBe(200);
 });

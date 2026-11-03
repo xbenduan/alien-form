@@ -898,8 +898,51 @@ code,
   overflow: visible;
 }
 /* Keep folded fields mounted so their controls and draft values survive toggling. */
-.filters:not(.filters-expanded) > .form-item:nth-child(n + 6 of .form-item) {
-  display: none;
+.filter-condition {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.filter-condition .custom-select {
+  flex: 1;
+  min-width: 0;
+}
+.filter-enable {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.range-input {
+  display: flex;
+  gap: 8px;
+}
+.range-input .control {
+  min-width: 0;
+}
+.tag-list {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.tag-list .value-badge {
+  white-space: pre-wrap;
+}
+.select-search {
+  margin-bottom: 6px;
+}
+.choice-action {
+  display: block;
+  padding: 8px;
+}
+.field-value-actions {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  margin-top: 5px;
 }
 .filters .field-label {
   margin-bottom: calc(var(--space-sm) / 2);

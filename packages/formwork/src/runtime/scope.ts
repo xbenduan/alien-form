@@ -86,6 +86,18 @@ class Cell {
         }),
       validate: () => this.validate(),
       array: (pointer) => this.at(pointer).array(),
+      field: (pointer) => {
+        const cell = this.at(pointer);
+        return {
+          kind: "value",
+          path: () => cell.path(),
+          value: cell.scope.value,
+          set: (value) => cell.scope.set("", value),
+          errors: cell.scope.errors,
+          readOnly: () => cell.readOnly,
+          scope: cell.scope,
+        };
+      },
     };
     this.item = { key: this.key, scope: this.scope };
     internals.set(this.scope, this);
@@ -140,7 +152,20 @@ class Cell {
     this.setPresent(value !== undefined);
     const type = schemaType(this.schema);
     if (type === "object" && "properties" in this.schema) {
-      for (const [name, schema] of Object.entries(this.schema.properties)) {
+      const properties = { ...this.schema.properties };
+      if (this.schema.additionalProperties && isObject(value))
+        for (const name of Object.keys(value))
+          if (!Object.hasOwn(properties, name))
+            Object.defineProperty(properties, name, {
+              value: this.schema.additionalProperties,
+              enumerable: true,
+            });
+      for (const [name, child] of this.children)
+        if (!Object.hasOwn(properties, name)) {
+          child.dispose();
+          this.children.delete(name);
+        }
+      for (const [name, schema] of Object.entries(properties)) {
         const next =
           isObject(value) && Object.hasOwn(value, name) ? (value[name] as JsonValue) : undefined;
         const existing = this.children.get(name);
@@ -205,7 +230,18 @@ class Cell {
     let cell: Cell = this;
     for (const part of pointerSegments(pointer)) {
       if ("properties" in cell.schema && cell.children.has(part)) cell = cell.children.get(part)!;
-      else if (
+      else if ("properties" in cell.schema && cell.schema.additionalProperties) {
+        const child = new Cell(
+          cell.schema.additionalProperties,
+          cell.referenceRoot,
+          undefined,
+          cell.owner,
+          cell,
+          part,
+        );
+        cell.children.set(part, child);
+        cell = child;
+      } else if (
         "items" in cell.schema &&
         /^(0|[1-9]\d*)$/u.test(part) &&
         Number(part) < cell.entries().length
@@ -327,8 +363,12 @@ class Cell {
           this.ensureArray();
           const items = [...untrack(this.entries)];
           indexCheck(index, items.length);
-          let next = applyDefaults(itemSchema, value, this.referenceRoot);
           const type = schemaType(resolveSchema(itemSchema, this.referenceRoot));
+          let next = applyDefaults(
+            itemSchema,
+            value === undefined && type === "object" ? {} : value,
+            this.referenceRoot,
+          );
           if (next === undefined && type === "object") next = {};
           if (next === undefined && type === "array") next = [];
           if (next === undefined)
@@ -388,11 +428,15 @@ export function createValueScope(
   const owner = getOwner();
   if (!owner) throw new FormworkError("INVALID_OWNER", "createScope 必须在 Solid owner 下调用");
   const schema = options.schema ?? defaultSchema;
+  const type = schemaType(resolveSchema(schema, referenceRoot));
   let value =
     options.defaults === false
       ? cloneJson(options.value)
-      : applyDefaults(schema, options.value, referenceRoot);
-  const type = schemaType(resolveSchema(schema, referenceRoot));
+      : applyDefaults(
+          schema,
+          options.value === undefined && type === "object" ? {} : options.value,
+          referenceRoot,
+        );
   if (value === undefined && type === "object") value = {};
   if (value === undefined && type === "array") value = [];
   const cell = new Cell(

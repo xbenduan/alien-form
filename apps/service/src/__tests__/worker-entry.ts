@@ -11,12 +11,17 @@ export default {
     ctx: ExecutionContext,
   ) {
     if (new URL(request.url).pathname === "/__test/sql") {
-      if (request.method !== "POST" ||
-        request.headers.get("Authorization") !== `Bearer ${env.FORMWORK_TEST_SQL_TOKEN}`)
+      if (
+        request.method !== "POST" ||
+        request.headers.get("Authorization") !== `Bearer ${env.FORMWORK_TEST_SQL_TOKEN}`
+      )
         return new Response("测试 SQL 未获授权", { status: 403 });
       const input: unknown = await request.json();
-      if (!isObject(input) || !Array.isArray(input.sql) ||
-        !input.sql.every((sql) => typeof sql === "string"))
+      if (
+        !isObject(input) ||
+        !Array.isArray(input.sql) ||
+        !input.sql.every((sql) => typeof sql === "string")
+      )
         return new Response("SQL 必须是语句数组", { status: 400 });
       return Response.json(await env.DB.batch(input.sql.map((sql) => env.DB.prepare(sql))));
     }

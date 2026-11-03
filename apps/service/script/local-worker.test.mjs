@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { randomBytes } from "node:crypto";
 import { expect, it } from "vitest";
 import { createFormworkApi } from "formwork/model";
+import { compileDefinition } from "formwork/model";
+import { createDefinitionTemplate } from "formwork/mcp";
 import { startLocalWorker } from "./local-worker.mjs";
 import { selectDevelopmentPort } from "../../../scripts/dev-ports.mjs";
 import { synchronizeSystemModels } from "./migrate";
@@ -41,17 +43,17 @@ it("系统模型部署更新保留版本且幂等，本地重建删除旧模型�
       "system-roles",
       "system-users",
     ]);
-    const sample = JSON.parse(
-      await readFile(new URL("../../../examples/orders.definition.json", import.meta.url), "utf8"),
-    );
-    await api.models.saveDraft(sample.document.id, sample, { ifRevision: null });
+    const sample = createDefinitionTemplate("orders");
+    await api.models.saveDraft(sample.id, sample, { ifRevision: null });
     await worker.sql(
       "CREATE TABLE legacy_records(id TEXT PRIMARY KEY); INSERT INTO legacy_records VALUES ('history')",
     );
     const roles = await api.models.read("system-roles");
-    const previousDefinition = structuredClone(roles.definition);
+    const previousDefinition = compileDefinition(structuredClone(roles.definition));
     previousDefinition.document.title = "旧角色定义";
+    previousDefinition.schema.title = "旧角色定义";
     delete previousDefinition.document.data.properties.canCreateModel;
+    delete previousDefinition.schema.data.canCreateModel;
     previousDefinition.backend.storage.bindings =
       previousDefinition.backend.storage.bindings.filter(
         (binding) => binding.id !== "system-roles:canCreateModel",
@@ -84,7 +86,9 @@ it("系统模型部署更新保留版本且幂等，本地重建删除旧模型�
     const updatedRoles = await api.models.read("system-roles");
     expect(updatedRoles).toMatchObject({ title: "角色管理", publishedVersion: 3 });
     expect(updatedRoles.definition).toEqual(roles.definition);
-    expect((await api.models.version("system-roles", 2)).definition).toEqual(previousDefinition);
+    expect((await api.models.version("system-roles", 2)).definition).toEqual(
+      previousDefinition.schema,
+    );
     expect(await query("SELECT code,name FROM sys_roles")).toEqual([
       { code: "super_admin", name: "超级管理员" },
     ]);

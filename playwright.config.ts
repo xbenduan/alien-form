@@ -18,7 +18,7 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "pnpm exec tsx scripts/e2e-server.ts",
+    command: "node --import tsx scripts/e2e-server.ts",
     url: "http://127.0.0.1:5184",
     timeout: 120_000,
     reuseExistingServer: false,

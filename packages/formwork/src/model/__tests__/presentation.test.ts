@@ -1,98 +1,88 @@
 import { describe, expect, it } from "vitest";
-import {
-  assertRuntimeSchema,
-  fieldIssues,
-  modelDocumentSchema,
-  modelIssues,
-  viewIssues,
-} from "../schema";
-import { schemaFieldAt } from "../presentation";
+import { assertRuntimeSchema, fieldIssues, modelDocumentSchema, modelIssues } from "../schema";
+import { resolveField, resolveModel } from "../field";
 import type { ModelDocument } from "../types";
 
 const document = (): ModelDocument => ({
+  schemaVersion: 1,
   id: "catalog",
   title: "目录",
   data: {
-    type: "object",
-    properties: {
-      name: { type: "string" },
-      parentId: { type: ["string", "null"] },
-      lines: { type: "array", items: { $ref: "#/$defs/line" } },
-      "a/b": { type: "string" },
+    name: { type: "string", props: { placeholder: "名称" } },
+    parentId: { type: "string", nullable: true },
+    lines: { type: "array", items: { $ref: "#/$defs/line" } },
+    "a/b": { type: "string", ui: { table: false, filter: false } },
+  },
+  $defs: {
+    line: {
+      type: "object",
+      properties: { price: { type: "number", ui: { form: { component: "Money" } } } },
     },
-    $defs: { line: { type: "object", properties: { price: { type: "number" } } } },
   },
   tree: { parentField: "/parentId", labelField: "/name" },
-  fields: {
-    "/name": { order: -1, form: { props: { placeholder: "名称" } }, table: { title: "目录名称" } },
-    "/lines/*/price": {
-      form: { component: "Money", bindings: { disabled: "{{ !$values.price }}" } },
-    },
-    "/a~1b": { table: false, filter: false },
-  },
-  views: { edit: { field: "", children: [{ field: "/name" }, { field: "/lines" }] } },
 });
 
-describe("字段展示与值 schema 分层", () => {
-  it("接受稀疏展示和 field 简写，复用数组引用并静态校验推导组件", () => {
-    const model = modelDocumentSchema.parse(document());
-    expect(schemaFieldAt(model.data, "/lines/7/price")).toMatchObject({
+describe("共享字段与代码布局", () => {
+  it("复用数组引用并检查推导与显式组件，保留 escaped 字段地址", () => {
+    const schema = modelDocumentSchema.parse(document());
+    const model = resolveModel(schema);
+    expect(model.field("/lines/7/price")).toMatchObject({
       path: "/lines/*/price",
       schema: { type: "number" },
     });
-    expect(schemaFieldAt(model.data, "/a~1b").schema).toEqual({ type: "string" });
+    expect(model.field("/a~1b").schema.type).toBe("string");
+    expect(() => model.field("/missing")).toThrow();
+    const components = ["Input", "ArrayFields", "ObjectFields", "NumberInput", "Money"];
+    expect(fieldIssues(schema, components)).toEqual([]);
     expect(
-      viewIssues(
-        model.views!.edit!,
-        model.data,
-        ["Object", "Input", "Array", "Money"],
-        model.data,
-        "",
-        model.fields,
+      fieldIssues(
+        schema,
+        components.filter((name) => name !== "Money"),
       ),
-    ).toEqual([]);
-    expect(fieldIssues(model.fields, ["Input"])).toMatchObject([
-      { code: "UNKNOWN_COMPONENT", path: "/fields/~1lines~1*~1price/form/component" },
-    ]);
-    expect(viewIssues({ field: "/name" }, model.data, ["Input"])).toEqual([]);
-    expect(viewIssues({ field: "/missing" }, model.data, ["Input"])[0]?.code).toBe("UNKNOWN_FIELD");
+    ).toMatchObject([{ code: "UNKNOWN_COMPONENT", path: "/data/lines/*/price" }]);
   });
   it.each([
-    ["/missing", { form: { component: "Input" } }, "/fields/~1missing"],
-    ["/lines/0/price", { form: {} }, "/fields/~1lines~10~1price"],
-    ["/name", { form: { props: { value: "override" } } }, "/fields/~1name/form/props/value"],
-    [
-      "/name",
-      { filter: { bindings: { value: "{{ 1 }}" } } },
-      "/fields/~1name/filter/bindings/value",
-    ],
-    ["/name", { form: { bindings: { visible: "{{ (" } } }, "/fields/~1name/form/bindings/visible"],
-    ["/name", { form: false }, "/fields/~1name/form"],
-    ["/name", { order: 0.5 }, "/fields/~1name/order"],
-  ])("拒绝不可定位或不合法的字段覆盖 %s", (pointer, definition, path) => {
-    const model = { ...document(), fields: { [pointer]: definition } };
-    expect(modelIssues(model).map((issue) => issue.path)).toContain(path);
+    { props: { value: "override" } },
+    { props: { scene: "table" } },
+    { ui: { form: { props: { placeholder: "重复" } } } },
+    { ui: { filter: { bindings: { value: "{{ 1 }}" } } } },
+    { ui: { form: { visible: true } } },
+    { order: 0.5 },
+    { component: "Input" },
+  ])("拒绝受控属性和旧展示语法 %j", (override) => {
+    const schema = document();
+    Object.assign(schema.data.name!, override);
+    expect(modelIssues(schema).length).toBeGreaterThan(0);
   });
-  it("纯 JSON 文档拒绝代码 props，Domain 转换保留代码身份", () => {
-    const action = () => "名称";
-    const model = { ...document(), fields: { "/name": { form: { props: { onFocus: action } } } } };
-    expect(modelDocumentSchema.safeParse(model).success).toBe(false);
-    expect(assertRuntimeSchema(model).fields?.["/name"]?.form?.props?.onFocus).toBe(action);
+  it("代码 props 仅从调用处传入，场景覆盖优先于 format", () => {
+    const schema = document();
+    const field = resolveModel(schema).field("/lines/0/price");
+    const onFocus = () => "price";
+    expect(resolveField(field, { scene: "form", props: { onFocus } })).toMatchObject({
+      component: "Money",
+      props: { onFocus },
+    });
+    expect(resolveField(field, { scene: "table" }).component).toBe("NumberInput");
+    expect(resolveField(field, { scene: "form", component: "Explicit" }).component).toBe(
+      "Explicit",
+    );
+    expect(() =>
+      assertRuntimeSchema({
+        ...schema,
+        data: { name: { type: "string", props: { onFocus } } },
+      }),
+    ).toThrow();
   });
-  it("树字段必须可定位为独立的根字符串字段，数据约束不接收展示关键字", () => {
+  it("树字段保持根字符串语义，布局只能由 Page/Window 代码承载", () => {
     expect(
       modelIssues({
         ...document(),
         tree: { parentField: "/lines/0/price", labelField: "/name" },
       }).map((issue) => issue.path),
     ).toContain("/tree/parentField");
-    const model = document();
-    Object.assign(model.data.properties.name!, { component: "Input" });
-    expect(modelIssues(model).map((issue) => issue.path)).toContain(
-      "/data/properties/name/component",
-    );
-    expect(
-      modelIssues({ ...document(), views: { edit: {} } }).map((issue) => issue.path),
-    ).toContain("/views/edit/component");
+    for (const key of ["views", "pages", "fields", "layout"])
+      expect(modelIssues({ ...document(), [key]: {} })).toContainEqual(
+        expect.objectContaining({ path: `/${key}`, code: "MIGRATION_REQUIRED" }),
+      );
   });
 });

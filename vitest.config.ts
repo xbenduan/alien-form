@@ -25,6 +25,7 @@ export default defineConfig({
       },
       {
         plugins: [solid()],
+        server: { fs: { allow: [process.cwd(), join(tmpdir(), "alien-form-vitest-attachments")] } },
         optimizeDeps: { entries: ["packages/formwork/src/router/**/*.test.tsx"] },
         resolve: { conditions: ["solid", "browser", "development|production"] },
         test: {

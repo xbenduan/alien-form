@@ -6,13 +6,18 @@ import type {
   ModelDocument,
   OpenMode,
   RuntimeSchema,
-  RuntimeView,
+  RecordCapabilities,
+  RecordValue,
+  RuntimeSnapshot,
+  Scene,
+  QueryOperator,
   ValidationIssue,
 } from "../model/types";
 import type { FormworkApi } from "../model/http";
 import type { FieldMode } from "../model/presentation";
+import type { FieldContract, FieldDescriptor, ResolvedModel } from "../model/field";
 
-/** 注册有效 View 可以引用的异构 Solid 组件。 */
+/** 注册字段和代码页面可以引用的 Solid 组件。 */
 export type ComponentRegistry = Record<string, Component<any>>;
 /** 绑定当前 Instance 的应用行为函数。 */
 export type BoundFn = Record<string, (...args: any[]) => any>;
@@ -79,6 +84,31 @@ export type ValueScope = {
   reset: (value?: JsonValue) => void;
   validate: () => Promise<ValidationResult>;
   array: (pointer: string) => ArrayHandle;
+  field: (pointer: string) => ValueBinding;
+};
+/** 将响应式记录值接入 renderer，不在字段描述中保存状态。 */
+export type ValueBinding = {
+  kind: "value";
+  path: Accessor<string>;
+  value: Accessor<JsonValue | undefined>;
+  set: (value: JsonValue | undefined) => void;
+  errors: Accessor<readonly ValidationIssue[]>;
+  readOnly: Accessor<boolean>;
+  scope: ValueScope;
+};
+/** 保存独立查询状态，active 与 null operand 分开表示。 */
+export type FilterBinding = {
+  kind: "filter";
+  path: Accessor<string>;
+  active: Accessor<boolean>;
+  setActive: (active: boolean) => void;
+  operator: Accessor<QueryOperator>;
+  setOperator: (operator: QueryOperator) => void;
+  operandSchema: Accessor<DataSchema | undefined>;
+  value: Accessor<JsonValue | undefined>;
+  set: (value: JsonValue | undefined) => void;
+  errors: Accessor<readonly ValidationIssue[]>;
+  readOnly: Accessor<boolean>;
 };
 /** 创建独立值集合，defaults:false 适用于查询和装载已有记录。 */
 export type ScopeOptions = {
@@ -101,32 +131,62 @@ export type FieldContainerProps = ContainerProps & {
   schema?: DataSchema;
   required: boolean;
   errors: readonly ValidationIssue[];
+  field?: FieldDescriptor;
+  scene?: Scene;
 };
 /** 为值组件提供响应式受控属性，onChange 始终执行写入限制。 */
 export type FieldProps = ContainerProps & {
+  field: FieldDescriptor;
+  scene: Scene;
   value: JsonValue | undefined;
   onChange: (value: JsonValue | undefined) => void;
   readOnly: boolean;
   disabled: boolean;
   errors: readonly ValidationIssue[];
   schema: DataSchema;
+  options: readonly import("../model/types").EnumOption[];
+  multiple: boolean;
+  relation?: import("../model/types").FieldRelation;
+  operator?: QueryOperator;
+  operandSchema?: DataSchema;
+  record?: RecordValue;
+  Detail?: Component;
   array?: ArrayHandle;
   Item?: Component<{ scope: ValueScope }>;
+  ValueItem?: Component<{ value: JsonValue }>;
 };
-/** 渲染当前 scope 的默认树、显式 View 或一个字段。 */
+/** 渲染当前 scope 的数据字段，布局由调用它的页面代码承担。 */
 export type RenderProps = {
   mode?: FieldMode;
+  scene?: Scene;
+  field?: string;
   scope?: ValueScope;
   container?: Component<ContainerProps>;
   fieldContainer?: Component<FieldContainerProps>;
   components?: ComponentRegistry;
-} & ({ field: string; view?: never } | { view?: RuntimeView; field?: never });
+};
+/** 绑定一个无状态字段描述，或直接展示当前记录的值。 */
+export type RenderItemProps = {
+  field: FieldDescriptor;
+  scene: Scene;
+  component?: string;
+  props?: Record<string, unknown>;
+  record?: RecordValue;
+  readOnly?: boolean;
+  disabled?: boolean;
+} & (
+  | { binding: ValueBinding | FilterBinding; value?: never }
+  | { value?: JsonValue; binding?: never }
+);
 /** 为模型内容提供共享 Render 和独立 scope。 */
 export type PageContext = PageLoadContext &
   ContainerProps & {
     schema: RuntimeSchema;
+    model: ResolvedModel;
+    capabilities: RecordCapabilities;
     scope: ValueScope;
     Render: Component<RenderProps>;
+    RenderItem: Component<RenderItemProps>;
     createScope: (options?: ScopeOptions) => ValueScope;
   };
 /** 提供本地 Window 的独立模型内容和输入快照。 */
@@ -138,10 +198,11 @@ export type RenderDefaults = {
   fn?: FnRegistry;
 };
 /** 保存可复用的领域能力、扩展模型校验和已加载文档加工。 */
-export type DomainDefinition = RenderDefaults & {
-  modelSchema?: z.ZodType<ModelDocument>;
-  transformSchema?: (ctx: DomainSchemaContext) => RuntimeSchema | Promise<RuntimeSchema>;
-};
+export type DomainDefinition = RenderDefaults &
+  FieldContract & {
+    modelSchema?: z.ZodType<ModelDocument>;
+    transformSchema?: (ctx: DomainSchemaContext) => RuntimeSchema | Promise<RuntimeSchema>;
+  };
 /** 声明明确的模型覆盖及其延迟导入。 */
 export type Domains = Record<
   string,
@@ -163,8 +224,7 @@ type PlainBody = {
 export type PageDefinition = DefinitionBase & {
   router: string;
   windows?: Record<string, WindowDefinition>;
-} & ((SchemaBody & { getSchema?: (ctx: SchemaLoadContext) => ModelDocument | Promise<ModelDocument> }) |
-  (PlainBody & { getSchema?: never }));
+} & ((SchemaBody & { getSchema?: SchemaLoader }) | (PlainBody & { getSchema?: never }));
 /** 支持插件在 JSX 编译前转换直接 render 字面量。 */
 export type PageAuthorDefinition = Omit<PageDefinition, "render"> & {
   render?: Component<ActionContext> | JSX.Element;
@@ -172,28 +232,43 @@ export type PageAuthorDefinition = Omit<PageDefinition, "render"> & {
 /** 声明所属 Page 的相对路径、默认打开方式与独立值加载。 */
 export type WindowDefinition = DefinitionBase & {
   openMode?: OpenMode;
-} & ((SchemaBody<WindowContext> & {
-  readOnly?: boolean;
-  getValue?: (ctx: WindowLoadContext) => JsonValue | undefined | Promise<JsonValue | undefined>;
-}) | (PlainBody & { readOnly?: never; getValue?: never }));
+} & (
+    | (SchemaBody<WindowContext> & {
+        readOnly?: boolean;
+        getValue?: (
+          ctx: WindowLoadContext,
+        ) => JsonValue | undefined | Promise<JsonValue | undefined>;
+      })
+    | (PlainBody & { readOnly?: never; getValue?: never })
+  );
 /** 为 Window 提供相同的插件作者语法。 */
 export type WindowAuthorDefinition = Omit<WindowDefinition, "render"> & {
   render?: Component<ActionContext> | JSX.Element;
 };
 /** 在当前 owner 内承载完整内容，close 进入取消终态。 */
-export type PresenterProps = { children?: JSX.Element; direct: boolean; window?: string; close: () => void };
-/** 装配应用定义、唯一 HTTP API 和三种 Presenter。 */
-export type FormworkDefinition = RenderDefaults & {
-  api: FormworkApi;
-  getSchema?: (ctx: SchemaLoadContext) => ModelDocument | Promise<ModelDocument>;
-  modelSchema?: z.ZodType<ModelDocument>;
-  domains?: Domains;
-  pages: readonly PageDefinition[];
-  presenters: {
-    page: Component<PresenterProps>;
-    modal?: Component<PresenterProps>;
-    drawer?: Component<PresenterProps>;
-  };
+export type PresenterProps = {
+  children?: JSX.Element;
+  direct: boolean;
+  window?: string;
+  close: () => void;
 };
+/** 同时允许代码 Schema 和带服务端能力的正式运行时快照。 */
+export type SchemaLoader = (
+  ctx: SchemaLoadContext,
+) => ModelDocument | RuntimeSnapshot | Promise<ModelDocument | RuntimeSnapshot>;
+/** 装配应用定义、唯一 HTTP API 和三种 Presenter。 */
+export type FormworkDefinition = RenderDefaults &
+  FieldContract & {
+    api: FormworkApi;
+    getSchema?: SchemaLoader;
+    modelSchema?: z.ZodType<ModelDocument>;
+    domains?: Domains;
+    pages: readonly PageDefinition[];
+    presenters: {
+      page: Component<PresenterProps>;
+      modal?: Component<PresenterProps>;
+      drawer?: Component<PresenterProps>;
+    };
+  };
 /** 每次 render 在调用 owner 下创建独立应用状态。 */
 export type FormworkApplication = { render: Component };

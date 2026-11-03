@@ -38,6 +38,9 @@ const server = await createServer({
 await server.listen();
 console.log(`Formwork E2E Vite :5184 / Worker D1 :${servicePort} ready`);
 let stopping = false;
+worker.child.once("exit", (code, signal) => {
+  if (!stopping) console.error(`E2E Worker 提前退出 (${code ?? signal}): ${worker.logs()}`);
+});
 for (const signal of ["SIGINT", "SIGTERM"] as const)
   process.once(signal, () => {
     if (stopping) return;

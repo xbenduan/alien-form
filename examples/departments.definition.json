@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "departments",
+  "title": "组织架构",
+  "tree": { "parentField": "/parentId", "labelField": "/name" },
+  "data": {
+    "name": { "type": "string", "title": "部门名称", "required": true, "minLength": 1 },
+    "parentId": {
+      "type": "string",
+      "title": "上级部门",
+      "relation": { "model": "departments", "valueField": "/id", "labelField": "/name" }
+    },
+    "enabled": { "type": "boolean", "title": "启用", "default": true }
+  }
+}

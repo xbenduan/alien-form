@@ -46,7 +46,9 @@ export const toolInputSchemas = {
       modelId,
       definition: z
         .unknown()
-        .describe("完整 {document,backend}；结构和模板由 formwork.describe 返回。"),
+        .describe(
+          "完整 {schemaVersion:1,id,title,data,...}；结构和模板由 formwork.describe 返回。",
+        ),
       router: router.optional(),
       window: window.optional(),
     })
@@ -58,7 +60,9 @@ export const toolInputSchemas = {
   "models.write": z
     .object({
       modelId,
-      definition: z.unknown().describe("完整共享草稿 {document,backend}，不是局部 patch。"),
+      definition: z
+        .unknown()
+        .describe("完整作者 Schema {schemaVersion:1,id,title,data,...}，不是局部 patch。"),
       ifRevision: z
         .string()
         .min(1)

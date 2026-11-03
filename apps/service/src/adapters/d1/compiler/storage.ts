@@ -1,10 +1,12 @@
 import { pointerSegments } from "formwork/model";
-import type { ModelDefinition, StorageBinding } from "formwork/model";
+import type { CompiledDefinition, StorageBinding } from "formwork/model";
 import type { StorageManifest } from "../../../contracts";
 import { ServiceError } from "../../../http/errors";
 
 const identifier = /^[A-Za-z_][A-Za-z0-9_]*$/u;
 const reservedColumns = new Set(["id", "created_at", "updated_at", "creator_id", "data_content"]);
+/** 在现有 JSON 容器中记录列字段存在性，避免 NULL 与 unset 混淆。 */
+export const presenceKey = "$fw:present";
 /** 引用已经验证的 SQL 标识符，绝不接受记录值作为标识符。 */
 export function quote(value: string): string {
   if (!identifier.test(value))
@@ -27,6 +29,14 @@ export function bindingExpression(binding: StorageBinding): string {
   return binding.column
     ? quote(binding.column)
     : `json_extract("data_content", ${literal(`$.${JSON.stringify(binding.jsonKey)}`)})`;
+}
+/** 判断字段是否存在；旧列记录保留历史 NULL 语义，后续写入补齐存在性。 */
+export function bindingExistsExpression(binding: StorageBinding): string {
+  if (!binding.column)
+    return `json_type("data_content", ${literal(`$.${JSON.stringify(binding.jsonKey)}`)}) IS NOT NULL`;
+  if (reservedColumns.has(binding.column)) return "1";
+  const presence = `$.${JSON.stringify(presenceKey)}`;
+  return `(CASE WHEN json_type("data_content", ${literal(presence)}) IS NULL THEN 1 ELSE json_type("data_content", ${literal(`${presence}.${JSON.stringify(binding.id)}`)}) IS NOT NULL END)`;
 }
 /** 为模型主表创建 nullable 业务列和服务端身份列。 */
 export function createTableSql(table: string, bindings: readonly StorageBinding[]): string {
@@ -56,7 +66,7 @@ function storageIssue(path: string, message: string): never {
 /** 合并实际保留列与当前 bindings，生成保留历史数据的原子 DDL 计划。 */
 export async function planStorage(
   db: D1Database,
-  definition: ModelDefinition,
+  definition: CompiledDefinition,
   previous?: StorageManifest,
 ): Promise<{ manifest: StorageManifest; statements: D1PreparedStatement[] }> {
   const { table, bindings } = definition.backend.storage;
@@ -94,6 +104,7 @@ export async function planStorage(
     bindingKey(binding);
     if (!!binding.column === !!binding.jsonKey)
       storageIssue(path, "binding 必须且只能选择 column 或 jsonKey");
+    if (binding.jsonKey === presenceKey) storageIssue(path, "jsonKey 与内部存在性记录冲突");
     const before = manifest.bindings.find((item) => item.id === binding.id);
     if (
       before &&

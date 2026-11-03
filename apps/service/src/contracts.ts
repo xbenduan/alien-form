@@ -1,6 +1,6 @@
 import type {
   ActorSummary,
-  ModelDefinition,
+  CompiledDefinition,
   StorageBinding,
   RelationDefinition,
 } from "formwork/model";
@@ -35,7 +35,7 @@ export type StorageManifest = {
 /** 将当前不可变定义与数据库头和物理 manifest 一起交给应用服务。 */
 export type StoredModel = {
   head: ModelHead;
-  definition: ModelDefinition;
+  definition: CompiledDefinition;
   manifest: StorageManifest;
   version: number;
   revision: string;

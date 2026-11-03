@@ -17,11 +17,11 @@ import { errorPayload, isObject } from "formwork/model";
 import { refreshModelMenu } from "../../formwork/shell/model-menu";
 import { Icon } from "../../formwork/shell/icons";
 import { PageTopbar } from "../../formwork/shell/page-topbar";
-import { ResizablePanels } from "../../formwork/shell/resizable-panels";
-import { SelectControl } from "../../formwork/shell/select";
+import { ResizablePanels } from "../../components/ui/resizable-panels";
+import { SelectControl } from "../../components/ui/select";
 
 const JsonEditor = lazy(() =>
-  import("../../formwork/shell/json-editor").then((module) => ({ default: module.JsonEditor })),
+  import("../../components/ui/json-editor").then((module) => ({ default: module.JsonEditor })),
 );
 
 const previewPages = [
@@ -217,7 +217,7 @@ export const ModelDetail: Component<ActionContext> = (ctx) => {
               模型列表
             </button>
             <Icon name="chevron" />
-            <h1>{historical()?.definition.document.title || snapshot()?.title || modelId()}</h1>
+            <h1>{historical()?.definition.title || snapshot()?.title || modelId()}</h1>
             <span
               class="draft-state"
               classList={{ dirty: versionNumber() === undefined && dirty() }}
@@ -404,8 +404,9 @@ export const ModelDetail: Component<ActionContext> = (ctx) => {
                               <code>
                                 {[
                                   issue.modelId !== modelId() ? issue.modelId : "",
-                                  previewPages.find((page) => page.value === (issue.window ?? issue.router))?.label ??
-                                    issue.router,
+                                  previewPages.find(
+                                    (page) => page.value === (issue.window ?? issue.router),
+                                  )?.label ?? issue.router,
                                   issue.path,
                                   issue.source
                                     ? `${issue.source.file}:${issue.source.line}:${issue.source.column}`

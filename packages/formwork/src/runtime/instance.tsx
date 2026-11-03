@@ -10,10 +10,10 @@ import {
 import { Dynamic } from "solid-js/web";
 import { FormworkError, errorPayload } from "../model/errors";
 import { cloneJson } from "../model/pointer";
-import { fieldIssues, viewIssues } from "../model/schema";
-import { pageParams, routeKey, createRoutes } from "../model/routes";
+import { fieldIssues } from "../model/schema";
+import { pageParams, createRoutes } from "../model/routes";
 import type { JsonValue, RuntimeSchema } from "../model/types";
-import { createRender } from "../render/render";
+import { createRender, createRenderItem } from "../render/render";
 import { lifetime } from "./lifecycle";
 import { bindFunctions, mergeDefaults } from "./resolve";
 import { prepareModel } from "./model-context";
@@ -52,9 +52,9 @@ export function createInstance(
   options: InstanceOptions = {},
 ) {
   const definition = options.window === undefined ? page : page.windows?.[options.window];
-  if (!definition) throw new FormworkError("UNKNOWN_WINDOW", `未知 Window: ${page.router}/${options.window}`);
+  if (!definition)
+    throw new FormworkError("UNKNOWN_WINDOW", `未知 Window: ${page.router}/${options.window}`);
   const initialValue = cloneJson(options.initialValue);
-  const target = { router: page.router, window: options.window };
   const pageRoute = createRoutes([page])[0]!;
   const parent = getOwner()!;
   const [loaded, setLoaded] = createSignal<{
@@ -110,39 +110,47 @@ export function createInstance(
         };
         Promise.resolve()
           .then(async () => {
-            const model = options.model ?? (!page.render
-              ? await prepareModel(app, page, { ...ctx, window: undefined, params: pageParams(pageRoute, params) })
-              : undefined);
+            const model =
+              options.model ??
+              (!page.render
+                ? await prepareModel(app, page, {
+                    ...ctx,
+                    window: undefined,
+                    params: pageParams(pageRoute, params),
+                  })
+                : undefined);
             if (!life.alive()) return;
-            const effective = mergeDefaults(model?.effective ?? mergeDefaults(app, page),
-              ...(options.window === undefined ? [] : [definition]));
+            const effective = mergeDefaults(
+              model?.effective ?? mergeDefaults(app, page),
+              ...(options.window === undefined ? [] : [definition]),
+            );
             const schema = model?.schema;
             ctx.domain = model?.domain;
             ctx.schema = schema;
             bindFunctions(effective, ctx);
             if (definition.render) return { effective, schema, model, ctx, life, defaults: false };
-            if (!schema) throw new FormworkError("INVALID_DEFINITION", "模型 Window 缺少所属 Page schema");
-            const fieldErrors = fieldIssues(schema.fields, Object.keys(effective.components ?? {}));
+            if (!schema)
+              throw new FormworkError("INVALID_DEFINITION", "模型 Window 缺少所属 Page schema");
+            const fieldErrors = fieldIssues(
+              schema,
+              Object.keys(effective.components ?? {}),
+              model?.contract,
+            );
             if (fieldErrors.length)
-              throw new FormworkError("INVALID_VIEW", "字段展示配置不合法", fieldErrors);
-            const view = schema.views?.[routeKey(target)];
-            if (view) {
-              const issues = viewIssues(
-                view,
-                schema.data,
-                Object.keys(effective.components ?? {}),
-                schema.data,
-                "",
-                schema.fields,
-              );
-              if (issues.length)
-                throw new FormworkError("INVALID_VIEW", "有效 View 不合法", issues);
-            }
+              throw new FormworkError("INVALID_FIELD", "字段组件配置不合法", fieldErrors);
             const getter = "getValue" in definition ? definition.getValue : undefined;
             const value = getter
               ? await getter({ ...ctx, initialValue: cloneJson(initialValue) } as WindowLoadContext)
               : initialValue;
-            return { effective, schema, model, value: cloneJson(value), defaults: !getter && initialValue === undefined, ctx, life };
+            return {
+              effective,
+              schema,
+              model,
+              value: cloneJson(value),
+              defaults: !getter && initialValue === undefined,
+              ctx,
+              life,
+            };
           })
           .then((loaded) => {
             if (!loaded || !life.alive() || current !== turn || !alive) return;
@@ -165,7 +173,7 @@ export function createInstance(
   onCleanup(dispose);
   start();
   const Mounted = (props: { data: NonNullable<ReturnType<typeof loaded>> }) => {
-    const { ctx, effective, schema, life, value, defaults } = props.data;
+    const { ctx, effective, schema, life, value, defaults, model } = props.data;
     let disposeContent = () => {};
     const node = createRoot((dispose) => {
       disposeContent = dispose;
@@ -179,7 +187,17 @@ export function createInstance(
       };
       const createScope = (options: ScopeOptions = {}) => {
         checkOwner();
-        const value = createValueScope(options, schema!.data, schema!.data);
+        const value = createValueScope(
+          {
+            ...options,
+            validate: async (value, context) => [
+              ...(!options.schema ? model!.model.validateFormats(value) : []),
+              ...(options.validate ? await options.validate(value, context) : []),
+            ],
+          },
+          model!.model.valueSchema,
+          model!.model.valueSchema,
+        );
         const cell = scopeCell(value);
         const stop = () => cell.stop();
         const cleanup = () => cell.dispose();
@@ -197,18 +215,21 @@ export function createInstance(
         readOnly: "readOnly" in definition ? definition.readOnly : undefined,
       });
       const scope = () => defaultScope;
-      const Render = createRender({
-        ctx,
+      const renderConfiguration = {
+        model: model!.model,
         components: effective.components ?? {},
         fieldContainer: effective.fieldContainer,
         scope,
-        view: schema!.views?.[routeKey(target)],
-      });
+      };
+      const Render = createRender(renderConfiguration);
       const context: PageContext = {
         ...ctx,
         modelId: ctx.modelId!,
         schema: schema!,
+        model: model!.model,
+        capabilities: model!.capabilities,
         Render,
+        RenderItem: createRenderItem(renderConfiguration),
         createScope,
         get scope() {
           return scope();
@@ -217,7 +238,13 @@ export function createInstance(
           return <Render />;
         },
       };
-      return <Dynamic component={definition.container!} {...context as WindowContext} initialValue={cloneJson(initialValue)} />;
+      return (
+        <Dynamic
+          component={definition.container!}
+          {...(context as WindowContext)}
+          initialValue={cloneJson(initialValue)}
+        />
+      );
     });
     onCleanup(disposeContent);
     return node;
@@ -262,7 +289,9 @@ export function createInstance(
     </Show>
   );
   return {
-    get output() { return output(); },
+    get output() {
+      return output();
+    },
     model: () => loaded()?.model,
     stop: () => {
       stopLoading();

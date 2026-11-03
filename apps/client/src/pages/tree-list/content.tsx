@@ -3,7 +3,7 @@ import type { Component } from "solid-js";
 import { FormworkError } from "formwork";
 import type { PageContext, RecordValue } from "formwork";
 import { pointerSegments } from "formwork/model";
-import { List } from "../list/content";
+import { RecordList } from "../../formwork/data/record-list";
 
 type TreeNode = { id: string; label: string; children: TreeNode[] };
 function buildTree(records: RecordValue[], parentField: string, labelField: string): TreeNode[] {
@@ -130,8 +130,8 @@ export const TreeList: Component<PageContext> = (ctx) => {
           <p class="muted">暂无层级记录</p>
         </Show>
       </aside>
-      <List
-        {...ctx}
+      <RecordList
+        ctx={ctx}
         parentId={selected()}
         onRecordsChanged={() => {
           void refetch();

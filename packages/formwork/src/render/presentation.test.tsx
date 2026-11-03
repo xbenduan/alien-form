@@ -1,48 +1,37 @@
 import { afterEach, expect, it } from "vitest";
 import { For } from "solid-js";
 import { render } from "solid-js/web";
-import type { ActionContext, FieldProps, ValueScope } from "../runtime/types";
-import type { RuntimeSchema } from "../model/types";
+import type { FieldProps, ValueScope } from "../runtime/types";
+import { resolveModel } from "../model/field";
 import { createValueScope } from "../runtime/scope";
-import { createRender } from "./render";
+import { createQueryState } from "../runtime/query";
+import { createRender, createRenderItem } from "./render";
 
-const model: RuntimeSchema = {
-  id: "orders",
-  title: "订单",
-  data: {
-    type: "object",
-    properties: {
-      quantity: { type: "number", default: 2 },
-      total: { type: "number" },
+const model = resolveModel(
+  {
+    schemaVersion: 1,
+    id: "orders",
+    title: "订单",
+    data: {
+      total: { type: "number", default: 2, readOnly: true, ui: { form: { component: "Money" } } },
       lines: {
         type: "array",
-        items: { type: "object", properties: { price: { type: "number" } } },
+        items: {
+          type: "object",
+          properties: {
+            price: {
+              type: "number",
+              ui: { form: { component: "Money" } },
+              props: { title: "金额" },
+            },
+          },
+        },
       },
     },
   },
-  fields: {
-    "/total": {
-      form: {
-        component: "Money",
-        props: { title: "表单金额" },
-        bindings: { value: "{{ $values.quantity * 10 }}" },
-      },
-      table: { component: "Money", props: { title: "单元格金额" } },
-    },
-    "/lines/*/price": { form: { component: "Money", props: { title: "{{ $value + '元' }}" } } },
-  },
-};
-const ctx: ActionContext = {
-  router: "list",
-  schema: model,
-  params: {},
-  api: {} as ActionContext["api"],
-  signal: new AbortController().signal,
-  fn: {},
-  navigate: () => {},
-  open: async () => ({ status: "cancelled" }),
-  complete: () => {},
-};
+  {},
+  { fields: { "/total": { read: true, filter: ["eq", "between", "isNull"], sort: true } } },
+);
 let dispose: (() => void) | undefined;
 afterEach(() => {
   dispose?.();
@@ -55,87 +44,81 @@ const mount = (body: () => any) => {
   return host;
 };
 
-it("字段简写继承展示、显式 View 覆盖 props，表格不执行表单 writer", () => {
-  let form!: ValueScope;
-  let row!: ValueScope;
+it("同一字段按场景选择组件，筛选的 operand 与记录只读和默认值独立", () => {
+  let props!: FieldProps;
+  const query = createQueryState(model);
   const host = mount(() => {
-    form = createValueScope({}, model.data);
-    row = createValueScope(
-      { readOnly: true, defaults: false, value: { quantity: 99, total: 42 } },
-      model.data,
-    );
-    const Render = createRender({
-      ctx,
-      scope: () => form,
-      components: { Money: (props) => <input aria-label={props.title} value={props.value} /> },
+    const Item = createRenderItem({
+      model,
+      scope: () => {
+        throw new Error("独立查询不使用 scope");
+      },
+      components: {
+        NumberInput: (value) => {
+          props = value;
+          return (
+            <output>
+              {value.scene}:{String(value.value)}
+            </output>
+          );
+        },
+      },
     });
-    return (
-      <>
-        <Render view={{ field: "/total", props: { title: "显式金额" } }} />
-        <Render scope={row} mode="table" field="/total" />
-      </>
-    );
+    return <Item field={model.field("/total")} scene="filter" binding={query.field("/total")} />;
   });
-  expect(host.querySelector<HTMLInputElement>('[aria-label="显式金额"]')!.value).toBe("20");
-  expect(host.querySelector<HTMLInputElement>('[aria-label="单元格金额"]')!.value).toBe("42");
-  form.set("/quantity", 3);
-  expect(form.value()).toMatchObject({ total: 30 });
-  expect(row.value()).toMatchObject({ total: 42 });
-  expect(host.textContent).not.toContain("READ_ONLY");
+  expect(query.clauses()).toEqual([]);
+  expect(props.readOnly).toBe(false);
+  expect(props.value).toBeUndefined();
+  props.onChange(0);
+  expect(host.textContent).toBe("filter:0");
+  expect(query.clauses()).toEqual([{ field: "/total", operator: "eq", operand: 0 }]);
+  query.field("/total").setOperator("between");
+  props.onChange([0, 5]);
+  expect(props.multiple).toBe(true);
+  expect(query.clauses()).toEqual([{ field: "/total", operator: "between", operand: [0, 5] }]);
+  query.reset();
+  expect(query.clauses()).toEqual([]);
 });
 
-it("数组通配配置跟随稳定项身份移动，嵌套默认渲染省略组件名称", () => {
+it("数组字段跟随稳定项身份移动，嵌套字段复用组件和共享 props", () => {
   let scope!: ValueScope;
   const host = mount(() => {
-    scope = createValueScope({ value: { lines: [{ price: 3 }, { price: 7 }] } }, model.data);
+    scope = createValueScope({ value: { lines: [{ price: 3 }, { price: 7 }] } }, model.valueSchema);
     const Render = createRender({
-      ctx,
+      model,
       scope: () => scope,
       components: {
-        Object: (props) => props.children,
-        Array: (props: FieldProps) => {
+        ObjectFields: (props) => props.children,
+        ArrayFields: (props: FieldProps) => {
           const Item = props.Item!;
           return <For each={props.array!.items()}>{(item) => <Item scope={item.scope} />}</For>;
         },
         Money: (props) => <input title={props.title} value={props.value} />,
       },
     });
-    return <Render view={{ field: "/lines", children: [{ field: "/price" }] }} />;
+    return <Render field="/lines" />;
   });
   const inputs = () => [...host.querySelectorAll("input")];
-  expect(inputs().map((input) => input.title)).toEqual(["3元", "7元"]);
+  expect(inputs().map((input) => input.value)).toEqual(["3", "7"]);
+  expect(inputs().map((input) => input.title)).toEqual(["金额", "金额"]);
   const first = inputs()[0]!;
   const array = scope.array("/lines");
   array.move(array.items()[0]!.key, 1);
-  expect(inputs().map((input) => input.title)).toEqual(["7元", "3元"]);
+  expect(inputs().map((input) => input.value)).toEqual(["7", "3"]);
   expect(inputs()[1]).toBe(first);
   scope.set("/lines/1/price", 9);
-  expect(first.title).toBe("9元");
+  expect(first.value).toBe("9");
 });
 
-it("独立查询 scope 的额外字段不继承不存在的模型展示", () => {
-  const host = mount(() => {
-    const query = createValueScope(
-      {
-        schema: {
-          type: "object",
-          properties: {
-            transient: { type: "object", properties: { keyword: { type: "string" } } },
-          },
-        },
-        value: { transient: { keyword: "查询" } },
-      },
-      model.data,
-    );
-    const Render = createRender({
-      ctx,
-      scope: () => query,
-      components: {
-        Object: (props) => props.children,
-        Input: (props) => <input value={props.value} />,
-      },
-    });
-    return <Render mode="filter" />;
-  });
-  expect(host.querySelector("input")!.value).toBe("查询");
+it("空值筛选是显式条件，停用与 null 不混淆，非法范围无法提交", () => {
+  const query = createQueryState(model);
+  const field = query.field("/total");
+  field.set(null);
+  expect(query.clauses()).toEqual([{ field: "/total", operator: "isNull" }]);
+  field.setActive(false);
+  expect(query.clauses()).toEqual([]);
+  field.setOperator("between");
+  field.set([9, 1]);
+  expect(() => query.clauses()).toThrow(/筛选条件无效/);
+  expect(() => field.setOperator("contains")).toThrow(/不支持/);
 });

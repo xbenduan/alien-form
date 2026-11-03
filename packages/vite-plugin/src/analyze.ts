@@ -2,7 +2,18 @@ import { readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 import { parseSync } from "oxc-parser";
 import { FormworkError, modelIdPattern, createRoutes, manifestCapabilities } from "formwork/model";
-import type { CapabilityLayer, CapabilityManifest, CapabilityMember, Diagnostic, EffectiveCapabilities, ModelDocument, OpenMode, PageCapabilities, RouteDefinition, RouteTarget } from "formwork/model";
+import type {
+  CapabilityLayer,
+  CapabilityManifest,
+  CapabilityMember,
+  Diagnostic,
+  EffectiveCapabilities,
+  ModelDocument,
+  OpenMode,
+  PageCapabilities,
+  RouteDefinition,
+  RouteTarget,
+} from "formwork/model";
 
 // Oxc 提供完整 ESTree；本分析器仅按 type 读取有限语法，不求值函数体。
 type Ast = { type: string; start: number; end: number; [key: string]: any };
@@ -19,10 +30,16 @@ type Module = {
 /** 保存从实际 entry 可达的路由、覆盖能力和 JSX 转换范围。 */
 export type FormworkAnalysis = {
   routes: RouteDefinition[];
-  catalog: Pick<CapabilityManifest, "formatVersion" | "presenters" | "framework" | "domains" | "pages">;
+  catalog: Pick<
+    CapabilityManifest,
+    "formatVersion" | "presenters" | "framework" | "domains" | "pages"
+  >;
   files: Set<string>;
   transforms: Map<string, Array<{ start: number; end: number }>>;
-  capabilities: (document: Pick<ModelDocument, "id" | "domain">, target: RouteTarget) => EffectiveCapabilities;
+  capabilities: (
+    document: Pick<ModelDocument, "id" | "domain">,
+    target: RouteTarget,
+  ) => EffectiveCapabilities;
 };
 /** 通过 Vite 的实际模块解析规则分析静态定义，不导入或执行应用 UI。 */
 export async function analyzeFormwork(
@@ -303,33 +320,39 @@ export async function analyzeFormwork(
   };
   const layer = async (values: Map<string, Ref>): Promise<CapabilityLayer> => {
     const result: CapabilityLayer = { components: [], fn: [], runtimeChecks: [] };
-    for (const kind of ["components", "fn"] as const)
-      if (values.has(kind))
-      {
+    for (const kind of ["components", "fn", "formats"] as const)
+      if (values.has(kind)) {
         const members: CapabilityMember[] = [];
         for (const [key, ref] of await object(values.get(kind)!)) {
-          if (!/^[A-Za-z_$][\w$]*$/u.test(key)) return fail(ref, `非法 ${kind} key ${key}`);
+          if (!(kind === "formats" ? /^[\w-]+$/u : /^[A-Za-z_$][\w$]*$/u).test(key))
+            return fail(ref, `非法 ${kind} key ${key}`);
           members.push(await member(key, ref));
         }
         result[kind] = members;
       }
     for (const name of ["modelSchema", "getSchema", "transformSchema", "getValue"] as const)
       if (values.has(name)) result[name] = await member(name, values.get(name)!);
-    const checks: Diagnostic[] = [{
-      path: "", code: "RUNTIME_RENDER",
-      message: "局部 Render、表达式返回值与网络行为在实际挂载中验证",
-    }];
+    const checks: Diagnostic[] = [
+      {
+        path: "",
+        code: "RUNTIME_RENDER",
+        message: "局部 RenderItem、format 值契约与网络行为在实际挂载中验证",
+      },
+    ];
     for (const name of ["modelSchema", "transformSchema"] as const)
-      if (result[name]) checks.push({
-        path: "", code: name === "modelSchema" ? "RUNTIME_MODEL_SCHEMA" : "RUNTIME_SCHEMA_TRANSFORM",
-        message: `${name} 需要在浏览器预览中执行`, source: result[name]!.source,
-      });
+      if (result[name])
+        checks.push({
+          path: "",
+          code: name === "modelSchema" ? "RUNTIME_MODEL_SCHEMA" : "RUNTIME_SCHEMA_TRANSFORM",
+          message: `${name} 需要在浏览器预览中执行`,
+          source: result[name]!.source,
+        });
     result.runtimeChecks = checks;
     return result;
   };
   const reject = (values: Map<string, Ref>, names: readonly string[]) => {
-    for (const name of names) if (values.has(name))
-      fail(values.get(name)!, `当前定义不支持 ${name}`);
+    for (const name of names)
+      if (values.has(name)) fail(values.get(name)!, `当前定义不支持 ${name}`);
   };
   const domainLayers = async (input: Ref): Promise<Record<string, CapabilityLayer>> => {
     const result: Record<string, CapabilityLayer> = {};
@@ -346,7 +369,15 @@ export async function analyzeFormwork(
         ref = exported;
       }
       const values = await definitionObject(ref, "defineDomain");
-      reject(values, ["container", "getSchema", "schema", "domains", "router", "windows", "render"]);
+      reject(values, [
+        "container",
+        "getSchema",
+        "schema",
+        "domains",
+        "router",
+        "windows",
+        "render",
+      ]);
       result[id] = await layer(values);
     }
     return result;
@@ -359,17 +390,33 @@ export async function analyzeFormwork(
   reject(app, ["layouts", "windows", "container", "schema"]);
   const framework = await layer(app);
   const domains = app.has("domains") ? await domainLayers(app.get("domains")!) : {};
-  const presenters = app.has("presenters") ? [...(await object(app.get("presenters")!)).keys()] : [];
-  if (!presenters.includes("page") || presenters.some((name) => !["page", "drawer", "modal"].includes(name)))
-    throw new FormworkError("TOOL_CONTRACT", "presenters 必须包含 page，且只能注册 page/drawer/modal");
+  const presenters = app.has("presenters")
+    ? [...(await object(app.get("presenters")!)).keys()]
+    : [];
+  if (
+    !presenters.includes("page") ||
+    presenters.some((name) => !["page", "drawer", "modal"].includes(name))
+  )
+    throw new FormworkError(
+      "TOOL_CONTRACT",
+      "presenters 必须包含 page，且只能注册 page/drawer/modal",
+    );
   const checkBody = async (values: Map<string, Ref>) => {
     const render = values.get("render");
     if (!render) {
-      if (!values.has("container")) throw new FormworkError("TOOL_CONTRACT", "模型内容必须声明 container");
+      if (!values.has("container"))
+        throw new FormworkError("TOOL_CONTRACT", "模型内容必须声明 container");
       await unwrap(values.get("container")!);
       return;
     }
-    reject(values, ["container", "getSchema", "getValue", "modelSchema", "fieldContainer", "readOnly"]);
+    reject(values, [
+      "container",
+      "getSchema",
+      "getValue",
+      "modelSchema",
+      "fieldContainer",
+      "readOnly",
+    ]);
     const ref = await unwrap(render);
     if (["JSXElement", "JSXFragment"].includes(ref.node.type)) {
       const ranges = transforms.get(ref.module.file) ?? [];
@@ -383,20 +430,39 @@ export async function analyzeFormwork(
   if (!app.has("pages")) throw new FormworkError("TOOL_CONTRACT", "Formwork 必须显式注册 pages");
   for (const input of await array(app.get("pages")!)) {
     const values = await definitionObject(input, "definePage");
-    reject(values, ["domains", "schema", "modelSchema", "presentation", "returnTo", "openMode", "getValue"]);
+    reject(values, [
+      "domains",
+      "schema",
+      "modelSchema",
+      "presentation",
+      "returnTo",
+      "openMode",
+      "getValue",
+    ]);
     if (!values.has("router")) return fail(input, "Page 缺少 router");
     await checkBody(values);
     const router = String(await literal(values.get("router")!));
     const model = !values.has("render");
     if (model && !values.has("getSchema") && !app.has("getSchema"))
       return fail(input, "模型 Page 必须声明或继承 getSchema");
-    const path = values.has("path") ? String(await literal(values.get("path")!)) : `/${router}${model ? "/:modelId" : ""}`;
+    const path = values.has("path")
+      ? String(await literal(values.get("path")!))
+      : `/${router}${model ? "/:modelId" : ""}`;
     const windows: PageCapabilities["windows"] = {};
     const relativeWindows: NonNullable<Parameters<typeof createRoutes>[0][number]["windows"]> = {};
     if (values.has("windows"))
       for (const [name, ref] of await object(values.get("windows")!)) {
         const child = await definitionObject(ref, "defineWindow");
-        reject(child, ["router", "returnTo", "presentation", "getSchema", "schema", "modelSchema", "domains", "windows"]);
+        reject(child, [
+          "router",
+          "returnTo",
+          "presentation",
+          "getSchema",
+          "schema",
+          "modelSchema",
+          "domains",
+          "windows",
+        ]);
         await checkBody(child);
         if (!model && !child.has("render")) return fail(ref, "模型 Window 必须属于模型 Page");
         const relativePath = child.has("path") ? String(await literal(child.get("path")!)) : name;
@@ -404,20 +470,46 @@ export async function analyzeFormwork(
         if (typeof mode !== "string" || !["page", "modal", "drawer"].includes(mode))
           return fail(ref, "Window openMode 无效");
         if (!presenters.includes(mode)) return fail(ref, `缺少 ${mode} Presenter`);
-        relativeWindows[name] = { path: relativePath, openMode: mode as OpenMode, ...(child.has("render") ? { render: true } : {}) };
-        windows[name] = { path: `${path}/${relativePath}`, model: model && !child.has("render"), openMode: mode as OpenMode, capabilities: await layer(child) };
+        relativeWindows[name] = {
+          path: relativePath,
+          openMode: mode as OpenMode,
+          ...(child.has("render") ? { render: true } : {}),
+        };
+        windows[name] = {
+          path: `${path}/${relativePath}`,
+          model: model && !child.has("render"),
+          openMode: mode as OpenMode,
+          capabilities: await layer(child),
+        };
       }
-    registrations.push({ router, path, ...(model ? {} : { render: true }), windows: relativeWindows });
+    registrations.push({
+      router,
+      path,
+      ...(model ? {} : { render: true }),
+      windows: relativeWindows,
+    });
     pages[router] = { path, model, capabilities: await layer(values), windows };
   }
   const routes = createRoutes(registrations);
-  for (const route of routes) if (route.window !== undefined) pages[route.router]!.windows[route.window]!.path = route.path!;
-  const catalog: FormworkAnalysis["catalog"] = { formatVersion: 2, framework, domains, pages, presenters: presenters as OpenMode[] };
+  for (const route of routes)
+    if (route.window !== undefined) pages[route.router]!.windows[route.window]!.path = route.path!;
+  const catalog: FormworkAnalysis["catalog"] = {
+    formatVersion: 2,
+    framework,
+    domains,
+    pages,
+    presenters: presenters as OpenMode[],
+  };
   return {
     routes,
     catalog,
     files: new Set(modules.keys()),
     transforms,
-    capabilities: (document, target) => manifestCapabilities({ ...catalog, appId: "", clientOrigin: "", revision: "" }, document, target),
+    capabilities: (document, target) =>
+      manifestCapabilities(
+        { ...catalog, appId: "", clientOrigin: "", revision: "" },
+        document,
+        target,
+      ),
   };
 }

@@ -159,6 +159,7 @@ export async function startLocalWorker(options) {
     return {
       origin,
       child,
+      logs: () => redact(logs),
       sql: (sql) => command(["d1", "execute", "alien-mdm", ...common, "--command", sql, "--json"]),
       close: () => stop(child, detached),
     };

@@ -12,7 +12,10 @@ export function mergeDefaults(...layers: RenderDefaults[]): RenderDefaults {
 }
 
 /** 只加载选中的 Domain，导入失败保留原始错误供实例重试。 */
-export async function resolveDomain(app: FormworkDefinition, name?: string): Promise<DomainDefinition> {
+export async function resolveDomain(
+  app: FormworkDefinition,
+  name?: string,
+): Promise<DomainDefinition> {
   if (name === undefined) return {};
   const entry = app.domains?.[name];
   if (!entry || !Object.hasOwn(app.domains!, name))
@@ -25,11 +28,13 @@ export async function resolveDomain(app: FormworkDefinition, name?: string): Pro
 
 /** 将未绑定的声明绑定到当前实例，销毁后拒绝继续调用。 */
 export function bindFunctions(defaults: RenderDefaults, ctx: ActionContext): void {
-  ctx.fn = Object.fromEntries(Object.entries(defaults.fn ?? {}).map(([name, fn]) => [
-    name,
-    (...args: unknown[]) => {
-      if (ctx.signal.aborted) throw new FormworkError("ABORTED", "Instance 已销毁");
-      return fn(ctx, ...args);
-    },
-  ]));
+  ctx.fn = Object.fromEntries(
+    Object.entries(defaults.fn ?? {}).map(([name, fn]) => [
+      name,
+      (...args: unknown[]) => {
+        if (ctx.signal.aborted) throw new FormworkError("ABORTED", "Instance 已销毁");
+        return fn(ctx, ...args);
+      },
+    ]),
+  );
 }

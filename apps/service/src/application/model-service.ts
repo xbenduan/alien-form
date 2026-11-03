@@ -5,6 +5,8 @@ import {
   routeKey,
   manifestRoutes,
   schemaTargets,
+  assignFieldIds,
+  runtimeDocument,
 } from "formwork/model";
 import type {
   DraftDefinition,
@@ -21,9 +23,10 @@ import {
   readPublished,
   revisionConflict,
   transactionGuard,
+  storedDefinition,
 } from "../adapters/d1/repositories/models";
 import { planStorage } from "../adapters/d1/compiler/storage";
-import { accessFor, projectSchema } from "./auth/access";
+import { accessFor, projectSchema, recordCapabilities } from "./auth/access";
 import { requireUser } from "./auth/service";
 import { capabilityCatalog, effectiveCapabilities, readManifest } from "./capabilities";
 import { behaviorCommands, behaviorEvents, validateDefinition } from "./model-validation";
@@ -106,7 +109,7 @@ export class ModelService {
     const published: StoredModel | undefined = row.published_json
       ? {
           head,
-          definition: JSON.parse(row.published_json),
+          definition: storedDefinition(row.published_json),
           manifest: JSON.parse(row.storage_manifest_json!),
           version: head.active_version!,
           revision: row.publish_revision!,
@@ -120,10 +123,12 @@ export class ModelService {
       )
     )
       forbidden();
-    const definition = JSON.parse(row.draft_json ?? row.published_json!) as DraftDefinition;
+    const definition = (
+      row.draft_json ? JSON.parse(row.draft_json) : published!.definition.schema
+    ) as DraftDefinition;
     return {
       id,
-      title: typeof definition.document.title === "string" ? definition.document.title : id,
+      title: typeof definition.title === "string" ? definition.title : id,
       revision: head.management_revision,
       stage: row.draft_json ? "draft" : "published",
       publishedVersion: head.active_version,
@@ -152,7 +157,7 @@ export class ModelService {
   async save(id: string, input: unknown, ifRevision: string | null): Promise<ManagedSnapshot> {
     assertModelId(id);
     if (isSystemModel(id)) forbidden("系统模型由 service 代码维护，只能随部署更新");
-    const definition = assertDraftDefinition(input, id);
+    let definition = assertDraftDefinition(input, id);
     const head = await readHead(this.db, id);
     if (ifRevision === null) {
       if (head) return revisionConflict(this.db, id);
@@ -163,6 +168,18 @@ export class ModelService {
       if (head.management_revision !== ifRevision) return revisionConflict(this.db, id);
     }
     const previous = head?.active_version ? await readPublished(this.db, id) : undefined;
+    const previousDraft = head
+      ? await this.db
+          .prepare("SELECT definition_json FROM fw_model_drafts WHERE model_id = ?")
+          .bind(id)
+          .first<{ definition_json: string }>()
+      : null;
+    definition = assignFieldIds(
+      definition,
+      previousDraft
+        ? JSON.parse(previousDraft.definition_json)
+        : (previous?.definition.schema as DraftDefinition | undefined),
+    );
     const validation = await validateDefinition(this.db, definition, previous);
     const now = new Date().toISOString(),
       next = crypto.randomUUID();
@@ -288,7 +305,7 @@ export class ModelService {
         },
       ]);
     }
-    return { id, version, revision, definition: result.definition };
+    return { id, version, revision, definition: result.definition.schema };
   }
   async versions(id: string): Promise<PublishedSnapshot[]> {
     requireUser(this.actor);
@@ -305,7 +322,7 @@ export class ModelService {
       id,
       version: row.version,
       revision: row.publish_revision,
-      definition: JSON.parse(row.definition_json),
+      definition: storedDefinition(row.definition_json).schema,
     }));
   }
   async preview(
@@ -317,8 +334,8 @@ export class ModelService {
     const snapshot = await this.read(id);
     if (expected && snapshot.revision !== expected) return revisionConflict(this.db, id);
     const manifest = await readManifest(this.db);
-    const domain = snapshot.definition.document.domain;
-    if (domain !== undefined && typeof domain !== "string") invalid("document.domain 必须是字符串");
+    const domain = snapshot.definition.domain;
+    if (domain !== undefined && typeof domain !== "string") invalid("domain 必须是字符串");
     effectiveCapabilities(manifest, { id, domain }, target);
     if (!schemaTargets(manifest).some((item) => routeKey(item) === routeKey(target)))
       invalid("此目标不加载 schema");
@@ -345,8 +362,16 @@ export class ModelService {
     );
     if (!result.definition || result.report.errors.length)
       throw new ServiceError("INVALID_MODEL", "草稿无法预览", 422, result.report.errors);
+    const previewModel: StoredModel = {
+      head: head!,
+      definition: result.definition,
+      manifest: { table: result.definition.backend.storage.table, bindings: [], relations: [] },
+      version: snapshot.baseVersion ?? 0,
+      revision,
+    };
     return {
-      schema: result.definition.document,
+      schema: runtimeDocument(result.definition),
+      capabilities: recordCapabilities(previewModel, { ...this.actor, super: true }),
       managementRevision: revision,
       stage: snapshot.stage,
       baseVersion: snapshot.baseVersion,
@@ -359,6 +384,7 @@ export class ModelService {
       schema: projectSchema(model, this.actor),
       version: model.version,
       revision: model.revision,
+      capabilities: recordCapabilities(model, this.actor),
     };
   }
   /** 无需模型或页面身份，返回当前应用全部已登记的代码能力。 */
@@ -445,9 +471,8 @@ export class ModelService {
       try {
         await this.manageable(id);
         const snapshot = await this.read(id);
-        const domain = snapshot.definition.document.domain;
-        if (domain !== undefined && typeof domain !== "string")
-          invalid("document.domain 必须是字符串");
+        const domain = snapshot.definition.domain;
+        if (domain !== undefined && typeof domain !== "string") invalid("domain 必须是字符串");
         document = { id, domain };
       } catch (error) {
         if (!(error instanceof ServiceError && error.status === 403)) throw error;

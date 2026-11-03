@@ -1,7 +1,7 @@
 import type { JsonValue, RecordValue, StorageBinding } from "formwork/model";
 import { isObject } from "formwork/model";
 import type { StoredModel } from "../../../contracts";
-import { bindingKey, quote } from "../compiler/storage";
+import { bindingKey, quote, presenceKey } from "../compiler/storage";
 
 /** 表示包含物理列及保留 JSON 内容的 D1 行。 */
 export type PhysicalRow = Record<string, string | number | null> & {
@@ -32,8 +32,17 @@ export function decodeRow(model: StoredModel, row: PhysicalRow): RecordValue {
   };
   for (const binding of model.definition.backend.storage.bindings) {
     const key = bindingKey(binding);
+    const presence = content[presenceKey];
+    if (
+      binding.column &&
+      !["id", "createdAt", "updatedAt", "creatorId"].includes(key) &&
+      isObject(presence) &&
+      !Object.hasOwn(presence, binding.id)
+    )
+      continue;
     const raw = binding.column ? row[binding.column] : content[binding.jsonKey!];
-    if (raw === undefined || raw === null) {
+    if (raw === undefined) continue;
+    if (raw === null) {
       const schema = model.definition.document.data.properties[key];
       if (schema && "type" in schema && (schema.type === "null" || Array.isArray(schema.type)))
         result[key] = null;
@@ -75,7 +84,9 @@ export async function withRelations(
     const binding = model.definition.backend.storage.bindings.find(
       (item) => item.id === relation.fieldId,
     )!;
-    record[bindingKey(binding)] = (
+    const key = bindingKey(binding);
+    if (Object.hasOwn(record, key)) continue;
+    const values = (
       await db
         .prepare(
           `SELECT target_value FROM ${quote(relation.table)} WHERE source_id = ? ORDER BY target_value`,
@@ -83,6 +94,7 @@ export async function withRelations(
         .bind(row.id)
         .all<{ target_value: string }>()
     ).results.map((item) => item.target_value);
+    if (values.length) record[key] = values;
   }
   return record;
 }
@@ -94,12 +106,19 @@ export function mergeContent(
 ): string {
   const parsed: unknown = JSON.parse(previous?.data_content || "{}");
   const content = isObject(parsed) ? parsed : {};
+  const presence: Record<string, JsonValue> = isObject(content[presenceKey])
+    ? ({ ...content[presenceKey] } as Record<string, JsonValue>)
+    : {};
   for (const binding of model.definition.backend.storage.bindings) {
     if (binding.jsonKey) {
       const key = bindingKey(binding);
       if (Object.hasOwn(record, key)) content[binding.jsonKey] = record[key];
       else delete content[binding.jsonKey];
+    } else {
+      if (Object.hasOwn(record, bindingKey(binding))) presence[binding.id] = true;
+      else delete presence[binding.id];
     }
   }
+  content[presenceKey] = presence;
   return JSON.stringify(content);
 }

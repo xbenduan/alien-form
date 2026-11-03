@@ -1,14 +1,20 @@
 import { z } from "zod";
-import { applyDefaults, isObject, resolveSchema, schemaType, validateValue } from "formwork/model";
-import type {
-  JsonValue,
-  RecordValue,
-  RecordPage,
-  RecordQuery,
-  StorageBinding,
+import {
+  applyDefaults,
+  isObject,
+  resolveModel,
+  validateValue,
+  pointerSegments,
+  escapePointer,
 } from "formwork/model";
+import type { DataSchema, JsonValue, RecordValue, RecordPage, RecordQuery } from "formwork/model";
 import type { Actor, StoredModel } from "../contracts";
-import { readHead, readPublished, transactionGuard } from "../adapters/d1/repositories/models";
+import {
+  readHead,
+  readPublished,
+  transactionGuard,
+  storedDefinition,
+} from "../adapters/d1/repositories/models";
 import { bindingKey, bindingExpression, quote } from "../adapters/d1/compiler/storage";
 import {
   encodeValue,
@@ -18,16 +24,27 @@ import {
 } from "../adapters/d1/repositories/values";
 import type { PhysicalRow } from "../adapters/d1/repositories/values";
 import { accessFor, requireAccess, projectRecord } from "./auth/access";
-import type { Access } from "./auth/access";
 import { prepareAndValidate, systemAssertions } from "./behaviors/rules";
 import { outboxStatements } from "./outbox";
 import { assertModelId } from "./model-service";
 import { forbidden, invalid, notFound, ServiceError } from "../http/errors";
+import { predicates, queryBinding } from "../adapters/d1/compiler/query";
+import { modelContract } from "../../../../packages/domain-contracts";
 
 const metadata = new Set(["id", "createdAt", "updatedAt", "creatorId"]);
 const querySchema = z
   .object({
-    filters: z.record(z.string(), z.json()),
+    clauses: z
+      .array(
+        z
+          .object({
+            field: z.string(),
+            operator: z.enum(["eq", "in", "contains", "between", "isNull", "isNotNull"]),
+            operand: z.json().optional(),
+          })
+          .strict(),
+      )
+      .max(50),
     page: z.number().int().positive(),
     pageSize: z.number().int().min(1).max(200),
     sort: z
@@ -44,98 +61,37 @@ function recordInput(input: unknown): RecordValue {
   if (!isObject(input)) invalid("记录必须是 JSON object");
   return input as RecordValue;
 }
-function checkedField(model: StoredModel, access: Access, key: string): StorageBinding {
-  if (!access.fields.has(key) && key !== "id") forbidden("字段不允许用于筛选或排序");
-  const binding = model.definition.backend.storage.bindings.find(
-    (item) => bindingKey(item) === key,
-  );
-  if (!binding) {
-    if (key === "id")
-      return { id: "id", path: "/id", column: "id", sqlType: "TEXT", encoding: "scalar" };
-    invalid(`未知字段 ${key}`);
+
+function assertWritableValue(
+  schema: DataSchema,
+  value: JsonValue | undefined,
+  previous: JsonValue | undefined,
+  path: string,
+) {
+  if (schema.readOnly) {
+    if (JSON.stringify(value) !== JSON.stringify(previous)) forbidden(`字段 ${path} 只读`);
+    return;
   }
-  if (binding.encoding === "json") invalid(`字段 ${key} 不能使用标量查询`);
-  return binding;
-}
-function predicates(model: StoredModel, actor: Actor, access: Access, query: RecordQuery) {
-  const sql: string[] = [],
-    values: (string | number | null)[] = [];
-  if (access.scope === "own") {
-    sql.push('"creator_id" = ?');
-    values.push(actor.id);
-  }
-  const filters = { ...query.filters };
-  if (query.parentId !== undefined) {
-    const relation = model.definition.backend.relations.find(
-      (item) =>
-        item.kind === "many-to-one" &&
-        item.targetModel === model.head.id &&
-        (!model.definition.document.tree ||
-          model.definition.backend.storage.bindings.some(
-            (binding) =>
-              binding.id === item.fieldId &&
-              binding.path === model.definition.document.tree!.parentField,
-          )),
-    );
-    if (!relation) invalid("模型未声明父级关系");
-    const binding = model.definition.backend.storage.bindings.find(
-      (item) => item.id === relation.fieldId,
-    )!;
-    filters[bindingKey(binding)] = query.parentId;
-  }
-  for (const [key, value] of Object.entries(filters)) {
-    const binding = checkedField(model, access, key);
-    const schema = model.definition.document.data.properties[key] ?? { type: "string" as const };
-    // Filter strings are partial matches, so minLength/enum are not record constraints here.
-    const type = schemaType(resolveSchema(schema, model.definition.document.data));
-    if (
-      value !== null &&
-      (type === "integer"
-        ? typeof value !== "number" || !Number.isInteger(value)
-        : type === "number"
-          ? typeof value !== "number" || !Number.isFinite(value)
-          : typeof value !== type)
-    )
-      invalid(`筛选字段 ${key} 需要 ${type}`);
-    const expression = bindingExpression(binding);
-    if (value === null) {
-      const resolved = resolveSchema(schema, model.definition.document.data);
-      if (!("type" in resolved) || !(resolved.type === "null" || Array.isArray(resolved.type)))
-        invalid(`筛选字段 ${key} 不允许 null`);
-      sql.push(`${expression} IS NULL`);
-    } else if (
-      typeof value === "string" &&
-      key !== "id" &&
-      !("enum" in schema) &&
-      !model.definition.backend.relations.some((relation) => relation.fieldId === binding.id)
-    ) {
-      sql.push(`instr(${expression}, ?) > 0`);
-      values.push(value);
-    } else {
-      sql.push(`${expression} = ?`);
-      values.push(encodeValue(binding, value));
+  if ("properties" in schema) {
+    const before = isObject(previous) ? previous : {};
+    const after = isObject(value) ? value : {};
+    for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
+      const child = schema.properties[key] ?? schema.additionalProperties;
+      if (child)
+        assertWritableValue(
+          child,
+          after[key] as JsonValue | undefined,
+          before[key] as JsonValue | undefined,
+          `${path}/${escapePointer(key)}`,
+        );
     }
   }
-  if (query.keyword) {
-    const strings = model.definition.backend.storage.bindings.filter(
-      (binding) =>
-        access.fields.has(bindingKey(binding)) &&
-        binding.encoding === "scalar" &&
-        schemaType(
-          resolveSchema(
-            model.definition.document.data.properties[bindingKey(binding)]!,
-            model.definition.document.data,
-          ),
-        ) === "string",
-    );
-    if (strings.length) {
-      sql.push(
-        `(${strings.map((binding) => `instr(${bindingExpression(binding)}, ?) > 0`).join(" OR ")})`,
-      );
-      values.push(...strings.map(() => query.keyword!));
-    } else sql.push("0");
+  if ("items" in schema) {
+    const before = Array.isArray(previous) ? previous : [];
+    const after = Array.isArray(value) ? value : [];
+    for (let index = 0; index < Math.max(before.length, after.length); index++)
+      assertWritableValue(schema.items, after[index], before[index], `${path}/${index}`);
   }
-  return { sql: sql.length ? `WHERE ${sql.join(" AND ")}` : "", values };
 }
 
 /** 对当前已发布模型执行字段授权、隐藏值合并和版本受保护的记录事务。 */
@@ -154,7 +110,7 @@ export class RecordService {
       access = requireAccess(model, this.actor, "read");
     const where = predicates(model, this.actor, access, query);
     const sort = query.sort
-      ? `${bindingExpression(checkedField(model, access, query.sort.field))} ${query.sort.direction.toUpperCase()}, id ASC`
+      ? `${bindingExpression(queryBinding(model, this.actor, query.sort.field, "sort"))} ${query.sort.direction.toUpperCase()}, id ASC`
       : "created_at DESC, id ASC";
     const [count, rows] = await this.db.batch([
       this.db
@@ -189,12 +145,11 @@ export class RecordService {
       const targets =
         relation.kind === "many-to-many"
           ? Array.isArray(value)
-            ? [...new Set(value)]
+            ? value
             : []
-          : value === null || value === undefined || value === ""
+          : value === null || value === undefined
             ? []
             : [value];
-      if (relation.kind === "many-to-many" && Array.isArray(value)) record[key] = targets;
       if (targets.length > 200) invalid("一次记录提交最多关联 200 个目标");
       const target = await readPublished(this.db, relation.targetModel);
       const targetBinding = target.definition.backend.storage.bindings.find(
@@ -203,11 +158,19 @@ export class RecordService {
       const expression = targetBinding ? bindingExpression(targetBinding) : '"id"';
       const targetAccess = accessFor(target, this.actor, "read");
       if (Object.hasOwn(input, key) && !targetAccess.allowed) forbidden("没有读取关系目标的权限");
+      if (
+        Object.hasOwn(input, key) &&
+        targetBinding &&
+        !targetAccess.fields.has(bindingKey(targetBinding))
+      )
+        forbidden("没有读取关系目标值字段的权限");
       for (const item of targets) {
-        if (typeof item !== "string") invalid("关系值必须是 string");
+        if (item === null || !["string", "number", "boolean"].includes(typeof item))
+          invalid("关系值必须是非 null 原子值");
+        const parameter = typeof item === "boolean" ? Number(item) : (item as string | number);
         const owned = Object.hasOwn(input, key) && targetAccess.scope === "own";
         const sql = `EXISTS(SELECT 1 FROM ${quote(target.manifest.table)} WHERE ${expression} = ?${owned ? " AND creator_id = ?" : ""})`;
-        const values = owned ? [item, this.actor.id] : [item];
+        const values = owned ? [parameter, this.actor.id] : [parameter];
         if (
           !(await this.db
             .prepare(`SELECT 1 WHERE ${sql}`)
@@ -220,7 +183,7 @@ export class RecordService {
       if (
         model.definition.document.tree?.parentField === binding.path &&
         relation.targetModel === model.head.id &&
-        relation.targetFieldId === "id" &&
+        relation.valueField === "/id" &&
         targets.length
       ) {
         const parentExpression = bindingExpression(binding);
@@ -261,7 +224,7 @@ export class RecordService {
         .all<{ definition_json: string; storage_manifest_json: string }>()
     ).results;
     for (const row of rows) {
-      const definition = JSON.parse(row.definition_json) as StoredModel["definition"];
+      const definition = storedDefinition(row.definition_json);
       const manifest = JSON.parse(row.storage_manifest_json) as StoredModel["manifest"];
       for (const relation of manifest.relations.filter(
         (item) => item.active && item.targetModel === model.head.id,
@@ -277,7 +240,14 @@ export class RecordService {
         const sql = relation.table
           ? `NOT EXISTS(SELECT 1 FROM ${quote(relation.table)} WHERE target_value = ?${self ? " AND source_id <> ?" : ""})`
           : `NOT EXISTS(SELECT 1 FROM ${quote(manifest.table)} WHERE ${bindingExpression(sourceBinding)} = ?${self ? " AND id <> ?" : ""})`;
-        const values = self ? [String(value), String(record.id)] : [String(value)];
+        const parameter = relation.table
+          ? String(value)
+          : value === null || value === undefined
+            ? null
+            : typeof value === "boolean"
+              ? Number(value)
+              : (value as string | number);
+        const values = self ? [parameter, String(record.id)] : [parameter];
         if (
           !(await this.db
             .prepare(`SELECT 1 WHERE ${sql}`)
@@ -296,17 +266,39 @@ export class RecordService {
   async update(id: string, recordId: string, input: unknown): Promise<RecordValue> {
     return this.write(id, "update", recordId, recordInput(input));
   }
+  async patch(id: string, recordId: string, input: unknown): Promise<RecordValue> {
+    const body = z
+      .object({
+        set: z.record(z.string(), z.json()).default({}),
+        unset: z.array(z.string()).max(200).default([]),
+      })
+      .strict()
+      .parse(input);
+    return this.write(id, "update", recordId, body.set, body.unset);
+  }
   private async write(
     id: string,
     operation: "create" | "update" | "delete",
     recordId?: string,
     input: RecordValue = {},
+    unset: readonly string[] = [],
   ): Promise<RecordValue> {
     const model = await this.model(id);
     const previousRow = recordId ? await readRow(this.db, model, recordId) : null;
     if (operation !== "create" && !previousRow) notFound("记录不存在");
     const previous = previousRow ? await withRelations(this.db, model, previousRow) : undefined;
     const access = requireAccess(model, this.actor, operation, previous);
+    const unsetKeys = unset.map((pointer) => {
+      const segments = pointerSegments(pointer);
+      if (segments.length !== 1) invalid("unset 必须使用根字段 Pointer；嵌套更新请提交所属对象");
+      const key = segments[0]!;
+      if (metadata.has(key) || !access.fields.has(key)) forbidden(`不允许删除字段 ${key}`);
+      const schema = model.definition.document.data.properties[key];
+      if (!schema) invalid(`未声明字段 ${key}`);
+      assertWritableValue(schema, undefined, previous?.[key], `/${escapePointer(key)}`);
+      if (Object.hasOwn(input, key)) invalid(`不能同时 set 和 unset ${key}`);
+      return key;
+    });
     if (
       Object.hasOwn(input, "id") &&
       (typeof input.id !== "string" || !input.id || (recordId && input.id !== recordId))
@@ -320,22 +312,20 @@ export class RecordService {
       if (!access.fields.has(key)) forbidden(`没有提交字段 ${key} 的权限`);
       const schema = model.definition.document.data.properties[key];
       if (!schema) invalid(`未声明字段 ${key}`);
-      if (
-        resolveSchema(schema, model.definition.document.data).readOnly &&
-        input[key] !== previous?.[key]
-      )
-        forbidden(`字段 ${key} 只读`);
+      assertWritableValue(schema, input[key], previous?.[key], `/${escapePointer(key)}`);
     }
     const generatedId = recordId ?? (typeof input.id === "string" ? input.id : crypto.randomUUID());
     const now = new Date().toISOString();
     let record: RecordValue = {
-      ...(previous ?? (applyDefaults(model.definition.document.data, {}) as RecordValue)),
-      ...input,
+      ...(previous
+        ? { ...previous, ...input }
+        : (applyDefaults(model.definition.document.data, input) as RecordValue)),
       id: generatedId,
       createdAt: previous?.createdAt ?? now,
       updatedAt: now,
       creatorId: previous?.creatorId ?? this.actor.id,
     };
+    for (const key of unsetKeys) delete record[key];
     record = await prepareAndValidate(this.db, model, this.actor, operation, record, previous);
     if (operation !== "delete") {
       const data = Object.fromEntries(
@@ -343,7 +333,13 @@ export class RecordService {
           Object.hasOwn(model.definition.document.data.properties, key),
         ),
       );
-      const issues = validateValue(model.definition.document.data, data);
+      const issues = [
+        ...validateValue(model.definition.document.data, data),
+        ...resolveModel(
+          model.definition.schema,
+          modelContract(model.definition.schema),
+        ).validateFormats(data),
+      ];
       if (issues.length)
         throw new ServiceError("INVALID_VALUE", "记录不符合当前已发布 schema", 422, issues);
     }
@@ -426,14 +422,14 @@ export class RecordService {
         const binding = model.definition.backend.storage.bindings.find(
           (item) => item.id === relation.fieldId,
         )!;
-        const values = record[bindingKey(binding)] as string[];
-        for (const value of new Set(values))
+        const values = record[bindingKey(binding)];
+        for (const value of Array.isArray(values) ? values : [])
           statements.push(
             this.db
               .prepare(
                 `INSERT INTO ${quote(relation.table!)}(source_id, target_value) VALUES (?, ?)`,
               )
-              .bind(generatedId, value),
+              .bind(generatedId, String(value)),
           );
       }
     }
@@ -538,42 +534,39 @@ export class RecordService {
       .object({
         fieldId: z.string(),
         keyword: z.string().optional(),
-        selectedValues: z.array(z.string()).max(200).optional(),
+        selectedValues: z
+          .array(z.union([z.string(), z.number().finite(), z.boolean()]))
+          .max(200)
+          .optional(),
         limit: z.number().int().min(1).max(200).default(50),
       })
       .strict()
       .parse(input);
     const source = await this.model(id),
-      sourceAccess = requireAccess(source, this.actor, "read");
+      sourceAccesses = ["read", "create", "update"].map((action) =>
+        accessFor(source, this.actor, action as "read" | "create" | "update"),
+      );
     const relation = source.definition.backend.relations.find(
-      (item) => item.fieldId === body.fieldId,
+      (item) =>
+        item.fieldId === body.fieldId ||
+        source.definition.backend.storage.bindings.some(
+          (binding) => binding.id === item.fieldId && binding.path === body.fieldId,
+        ),
     );
     const binding = source.definition.backend.storage.bindings.find(
-      (item) => item.id === body.fieldId,
+      (item) => item.id === relation?.fieldId,
     );
     if (!relation || !binding) invalid("未知关系 fieldId");
-    if (!sourceAccess.fields.has(bindingKey(binding))) forbidden();
+    if (!sourceAccesses.some((access) => access.allowed && access.fields.has(bindingKey(binding))))
+      forbidden();
     const target = await this.model(relation.targetModel),
       targetAccess = requireAccess(target, this.actor, "read");
     const targetBinding = target.definition.backend.storage.bindings.find(
       (item) => item.id === relation.targetFieldId,
     );
     if (targetBinding && !targetAccess.fields.has(bindingKey(targetBinding))) forbidden();
-    const labelKey = [
-      "name",
-      "title",
-      "username",
-      ...Object.keys(target.definition.document.data.properties),
-    ].find(
-      (key) =>
-        targetAccess.fields.has(key) &&
-        schemaType(
-          resolveSchema(
-            target.definition.document.data.properties[key]!,
-            target.definition.document.data,
-          ),
-        ) === "string",
-    );
+    const labelKey = pointerSegments(relation.labelField ?? "/name")[0]!;
+    if (!targetAccess.fields.has(labelKey)) forbidden("没有读取关系展示字段的权限");
     const table = quote(target.manifest.table);
     const labelBinding = target.definition.backend.storage.bindings.find(
       (item) => bindingKey(item) === labelKey,
@@ -591,7 +584,9 @@ export class RecordService {
         .prepare(`SELECT * FROM ${table} WHERE ${search} ORDER BY ${labelExpression}, id LIMIT ?`)
         .bind(...searchArgs, body.limit),
     ]);
-    const selected = [...new Set(body.selectedValues)],
+    const selected = [...new Set(body.selectedValues)].map((value) =>
+        typeof value === "boolean" ? Number(value) : value,
+      ),
       selectedRows: PhysicalRow[] = [];
     for (let offset = 0; offset < selected.length; offset += 80) {
       const values = selected.slice(offset, offset + 80);
@@ -627,7 +622,7 @@ export class RecordService {
     if (handler !== "records.count") notFound("命令未注册");
     requireAccess(model, this.actor, "read");
     const query = z
-      .object({ filters: z.record(z.string(), z.json()).default({}) })
+      .object({ clauses: querySchema.shape.clauses.default([]) })
       .strict()
       .parse(input);
     const result = await this.query(id, { ...query, page: 1, pageSize: 1 });
