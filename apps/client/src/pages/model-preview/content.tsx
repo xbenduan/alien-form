@@ -4,19 +4,14 @@ import { createMemoryHistory } from "@solidjs/router";
 import { defineFormwork, Formwork, FormworkError } from "formwork";
 import type { PageContext, ModelDocument } from "formwork";
 import type { RecordSnapshot } from "formwork/data";
-import {
-  errorPayload,
-  isObject,
-  modelDocumentSchema,
-  modelIssues,
-  identityFields,
-} from "formwork/model";
+import { isObject, modelDocumentSchema, modelIssues, identityFields } from "formwork/model";
 import { cmsContract } from "../../../../../packages/domain-contracts";
 import { domains } from "../../domains";
 import { components } from "../../formwork/components";
 import { ui } from "../../formwork/ui";
 import { api } from "../../formwork/api";
 import { createPreviewApi } from "./api";
+import { Message } from "../../components/ui/message";
 
 // 保留弹层外的稳定节点，查询 Suspense 切换时仍能正确恢复外部可访问性状态。
 const PreviewShell: Component<{ children?: JSX.Element }> = (props) => (
@@ -103,7 +98,10 @@ export const ModelPreview: Component<PageContext> = (ctx) => {
             acceptSchema(document);
           }
         } catch (error) {
-          if (!ctx.signal.aborted) setMessage(errorPayload(error).message);
+          if (!ctx.signal.aborted) {
+            Message.error(error);
+            setMessage("预览加载失败，请重新加载页面。");
+          }
         }
       })();
     }

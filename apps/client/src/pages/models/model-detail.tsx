@@ -13,8 +13,8 @@ import {
 import type { Component } from "solid-js";
 import type { PageContext, Diagnostic } from "formwork";
 import { api } from "../../formwork/api";
-import { FormworkError } from "formwork";
 import { errorPayload, isObject } from "formwork/model";
+import { ErrorMessage, Message } from "../../components/ui/message";
 import { refreshModelMenu } from "../../formwork/shell/model-menu";
 import { Icon } from "../../formwork/shell/icons";
 import { PageTopbar } from "../../formwork/shell/page-topbar";
@@ -58,7 +58,6 @@ export const ModelDetail: Component<PageContext & { modelId: string }> = (ctx) =
   onCleanup(ctx.guard(dirty));
   const [revision, setRevision] = createSignal<string | null>(null);
   const [busy, setBusy] = createSignal(false);
-  const [message, setMessage] = createSignal("");
   const [issues, setIssues] = createSignal<readonly Diagnostic[]>([]);
   const [schemaOpen, setSchemaOpen] = createSignal(true);
   const [diagnosticsOpen, setDiagnosticsOpen] = createSignal(false);
@@ -152,15 +151,12 @@ export const ModelDetail: Component<PageContext & { modelId: string }> = (ctx) =
   const reportFailure = (error: unknown) => {
     if (ctx.signal.aborted) return;
     const payload = errorPayload(error);
-    setMessage(
-      `${payload.code}: ${payload.message}${error instanceof FormworkError && error.currentRevision ? `；当前 revision ${error.currentRevision}。编辑文本已保留，请重新载入后合并。` : ""}`,
-    );
+    Message.error(error);
     setIssues(payload.issues ?? []);
   };
   const run = async (action: () => Promise<void>) => {
     if (busy()) return;
     setBusy(true);
-    setMessage("");
     setIssues([]);
     try {
       await action();
@@ -184,7 +180,7 @@ export const ModelDetail: Component<PageContext & { modelId: string }> = (ctx) =
       setDraft(JSON.stringify(result.definition, null, 2));
       mutate(result);
       await refreshModelMenu();
-      setMessage(
+      Message.success(
         `已保存草稿；${result.diagnostics.errors.length ? `有 ${result.diagnostics.errors.length} 项错误` : "校验通过"}，尚未发布。`,
       );
     });
@@ -206,7 +202,7 @@ export const ModelDetail: Component<PageContext & { modelId: string }> = (ctx) =
       await refreshSelected();
       await refreshModelMenu();
       await refreshVersions();
-      setMessage(`已手动发布版本 ${result.version}；普通页面刷新后使用新 schema。`);
+      Message.success(`已手动发布版本 ${result.version}；普通页面刷新后使用新 schema。`);
     });
   return (
     <div class="workbench-page">
@@ -237,7 +233,6 @@ export const ModelDetail: Component<PageContext & { modelId: string }> = (ctx) =
               onChange={(value) => {
                 if (!value) return;
                 setVersionNumber(value === "latest" ? undefined : Number(value));
-                setMessage("");
               }}
             />
             <button
@@ -254,7 +249,7 @@ export const ModelDetail: Component<PageContext & { modelId: string }> = (ctx) =
                   if (versionNumber() !== undefined) {
                     await refreshVersions();
                     if (versions.error) throw versions.error;
-                    setMessage(`已重新载入发布版本 ${versionNumber()}。`);
+                    Message.success(`已重新载入发布版本 ${versionNumber()}。`);
                   } else {
                     const current = await refreshSelected();
                     if (selected.error) throw selected.error;
@@ -264,7 +259,7 @@ export const ModelDetail: Component<PageContext & { modelId: string }> = (ctx) =
                       setDirty(false);
                     }
                     await refreshVersions();
-                    setMessage("已重新载入最新管理状态。");
+                    Message.success("已重新载入最新管理状态。");
                   }
                 })
               }
@@ -299,17 +294,8 @@ export const ModelDetail: Component<PageContext & { modelId: string }> = (ctx) =
           </>
         }
       />
-      <Show when={selected.error}>
-        <p role="alert">{errorPayload(selected.error).message}</p>
-      </Show>
-      <Show when={versions.error}>
-        <p role="alert">发布版本加载失败：{errorPayload(versions.error).message}</p>
-      </Show>
-      <Show when={message()}>
-        <p class="workbench-message" role="status">
-          {message()}
-        </p>
-      </Show>
+      <ErrorMessage error={selected.error} retry={refreshSelected} />
+      <ErrorMessage error={versions.error} prefix="发布版本加载失败：" retry={refreshVersions} />
       <Show
         when={snapshot()}
         fallback={
@@ -386,7 +372,7 @@ export const ModelDetail: Component<PageContext & { modelId: string }> = (ctx) =
                 <div id={diagnosticsId} hidden={!diagnosticsOpen()}>
                   <For each={diagnostics()}>
                     {(issue) => (
-                      <p role="alert">
+                      <p class="diagnostic-error">
                         <code>{issue.path || "/"}</code> · {issue.code} · {issue.message}
                       </p>
                     )}

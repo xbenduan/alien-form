@@ -7,6 +7,7 @@ import { TagList } from "../ui/tag-list";
 import { useRelationOptions } from "./relation-options";
 import { useFieldLabel } from "./field-container";
 import { valueText } from "./display";
+import { ErrorMessage } from "../ui/message";
 
 type Atom = EnumOption["value"];
 const atom = (value: unknown): value is Atom =>
@@ -121,58 +122,65 @@ export const Select: Component<
     );
   };
   return (
-    <Show
-      when={!props.readOnly}
-      fallback={
-        <span title={service?.error(props.field)}>
-          <Show
-            when={Array.isArray(props.value)}
-            fallback={
-              <span class="value-badge">
-                {props.value === undefined ? "—" : values().map(label).join("、")}
-              </span>
-            }
-          >
-            <TagList
-              labels={values().map(label)}
-              maxTagCount={props.scene === "detail" ? values().length : props.maxTagCount}
-            />
-          </Show>
-          <Show when={service?.error(props.field)}>
-            <button type="button" class="text-button" onClick={() => service?.retry(props.field)}>
-              重试标签
-            </button>
-          </Show>
-        </span>
-      }
-    >
-      <ChoiceControl
-        options={visible()}
-        selected={values().map((value) => ({ key: key(value), label: label(value) }))}
-        multiple={props.multiple}
-        placeholder={props.placeholder}
-        labelledBy={useFieldLabel()}
-        disabled={props.disabled}
-        invalid={props.errors.length > 0}
-        clearable={props.clearable ?? true}
-        loading={loading()}
-        search={search()}
-        onSearch={setSearch}
-        onOpen={() => setOpened(true)}
-        onChoose={(selected) => choose(JSON.parse(selected) as Atom)}
-        onClear={() => props.onChange(undefined)}
-        onCreate={
-          candidate() !== undefined && !values().includes(candidate()!)
-            ? () => {
-                choose(candidate()!);
-                setSearch("");
-              }
-            : undefined
-        }
+    <>
+      <ErrorMessage
+        error={failure() || service?.error(props.field)}
+        retry={() => {
+          service?.retry(props.field);
+          setAttempt((value) => value + 1);
+        }}
+        retryLabel="重试标签"
       />
-      <Show when={failure() || service?.error(props.field)}>
-        <p class="field-error" role="alert">
-          {failure() || service?.error(props.field)}
+      <Show
+        when={!props.readOnly}
+        fallback={
+          <span title={service?.error(props.field)}>
+            <Show
+              when={Array.isArray(props.value)}
+              fallback={
+                <span class="value-badge">
+                  {props.value === undefined ? "—" : values().map(label).join("、")}
+                </span>
+              }
+            >
+              <TagList
+                labels={values().map(label)}
+                maxTagCount={props.scene === "detail" ? values().length : props.maxTagCount}
+              />
+            </Show>
+            <Show when={service?.error(props.field)}>
+              <button type="button" class="text-button" onClick={() => service?.retry(props.field)}>
+                重试标签
+              </button>
+            </Show>
+          </span>
+        }
+      >
+        <ChoiceControl
+          options={visible()}
+          selected={values().map((value) => ({ key: key(value), label: label(value) }))}
+          multiple={props.multiple}
+          placeholder={props.placeholder}
+          labelledBy={useFieldLabel()}
+          disabled={props.disabled}
+          invalid={props.errors.length > 0}
+          clearable={props.clearable ?? true}
+          loading={loading()}
+          search={search()}
+          onSearch={setSearch}
+          onOpen={() => setOpened(true)}
+          onChoose={(selected) => choose(JSON.parse(selected) as Atom)}
+          onClear={() => props.onChange(undefined)}
+          onCreate={
+            candidate() !== undefined && !values().includes(candidate()!)
+              ? () => {
+                  choose(candidate()!);
+                  setSearch("");
+                }
+              : undefined
+          }
+        />
+        <Show when={failure() || service?.error(props.field)}>
           <button
             type="button"
             class="text-button"
@@ -183,8 +191,8 @@ export const Select: Component<
           >
             重试
           </button>
-        </p>
+        </Show>
       </Show>
-    </Show>
+    </>
   );
 };

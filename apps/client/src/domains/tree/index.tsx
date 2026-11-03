@@ -1,4 +1,5 @@
-import { For, Show } from "solid-js";
+import { For } from "solid-js";
+import { ErrorMessage } from "../../components/ui/message";
 import { defineDomain } from "formwork";
 import { readPointer } from "formwork/model";
 import { createRecordList, Detail, Pagination, RecordActions, RecordOutlet } from "formwork/atom";
@@ -23,9 +24,7 @@ export default defineDomain({
       <div class="list-page">
         <RecordActions controller={list} />
         <p class="muted">树形布局示例 · 按当前页的父节点分组</p>
-        <Show when={list.error()}>
-          <p role="alert">{String(list.error())}</p>
-        </Show>
+        <ErrorMessage error={list.error()} retry={list.refresh} />
         <For each={groups()}>
           {(parent) => (
             <details class="panel" open>

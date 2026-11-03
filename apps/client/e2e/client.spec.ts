@@ -37,7 +37,9 @@ test.beforeEach(async ({ page }) => {
   await login(page);
 });
 
-test("默认 list 新建与编辑排除只读字段，详情、删除和 revision 写入贯通", async ({ page }) => {
+test("默认 list 新建与编辑排除只读字段，详情、删除和 revision 写入贯通", async ({
+  page,
+}, testInfo) => {
   const modelId = `readonly-${Date.now()}`;
   const definition: ModelDefinition = {
     schemaVersion: 1,
@@ -140,11 +142,36 @@ test("默认 list 新建与编辑排除只读字段，详情、删除和 revisio
   const editedRow = page.locator("tbody tr").filter({ hasText: "只读编辑" });
   await expect(editedRow).toBeVisible();
   await editedRow.getByRole("button", { name: "删除", exact: true }).click();
+  const confirmation = page.getByRole("dialog", { name: "确认操作" });
+  await expect(confirmation).toHaveClass("popconfirm");
+  await expect(page.locator(".window-overlay")).toHaveCount(0);
+  await expect(confirmation.getByRole("button", { name: "取消", exact: true })).toBeFocused();
+  await page.screenshot({ path: testInfo.outputPath("delete-popconfirm.png") });
   await page
     .getByRole("dialog", { name: "确认操作" })
     .getByRole("button", { name: "取消", exact: true })
     .click();
   await expect(editedRow).toBeVisible();
+  await expect(editedRow.getByRole("button", { name: "删除", exact: true })).toBeFocused();
+  await editedRow.getByRole("button", { name: "删除", exact: true }).press("Enter");
+  await page.keyboard.press("Escape");
+  await expect(confirmation).toHaveCount(0);
+  await expect(editedRow.getByRole("button", { name: "删除", exact: true })).toBeFocused();
+
+  const deleteUrl = `**/api/v1/records/${modelId}/${created.id}`;
+  await page.route(deleteUrl, (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ error: { code: "TEMPORARY_FAILURE", message: "删除暂时不可用" } }),
+    }),
+  );
+  await editedRow.getByRole("button", { name: "删除", exact: true }).click();
+  await confirmation.getByRole("button", { name: "确定", exact: true }).click();
+  await expect(page.locator(".message-error")).toContainText("删除暂时不可用");
+  await expect(editedRow).toBeVisible();
+  await expect(page.locator(".list-page [role=alert]")).toHaveCount(0);
+  await page.unroute(deleteUrl);
   await editedRow.getByRole("button", { name: "删除", exact: true }).click();
   const deleted = page.waitForResponse(
     (response) =>
@@ -157,6 +184,23 @@ test("默认 list 新建与编辑排除只读字段，详情、删除和 revisio
     .click();
   expect((await deleted).status()).toBe(200);
   await expect(editedRow).toHaveCount(0);
+  const panel = page.locator(".data-panel");
+  await expect(panel.locator(".table-empty")).toBeVisible();
+  await expect(panel.locator(".table-footer")).toContainText("共 0 条");
+  await expect(panel).toHaveCSS("border-bottom-style", "solid");
+  await page.screenshot({ path: testInfo.outputPath("empty-table.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(panel.locator(".table-footer")).toBeVisible();
+  const overflow = {
+    page: await page
+      .locator("html")
+      .evaluate((element) => element.scrollWidth > element.clientWidth),
+    table: await panel
+      .locator(".table-scroll")
+      .evaluate((element) => element.scrollWidth > element.clientWidth),
+  };
+  expect(overflow).toEqual({ page: false, table: true });
+  await panel.screenshot({ path: testInfo.outputPath("empty-table-mobile.png") });
 });
 
 test("浏览器禁用 localStorage 时明亮登录页仍正常输入", async ({ browser }) => {
@@ -229,7 +273,11 @@ test("新建草稿不能固定，发布后开放固定且不自动添加菜单",
   await page.getByRole("button", { name: "新建模型", exact: true }).click();
   await page.getByLabel("新模型 ID").fill("menu-created");
   await page.getByRole("button", { name: "创建模型", exact: true }).click();
-  await expect(page.getByRole("dialog").getByRole("alert")).toBeVisible();
+  await expect(page.locator(".message-error")).toBeVisible();
+  await expect(page.getByRole("dialog").getByRole("alert")).toHaveCount(0);
+  await page.getByRole("button", { name: "创建模型", exact: true }).click();
+  await expect(page.getByRole("button", { name: "创建模型", exact: true })).toBeEnabled();
+  await expect(page.locator(".message-error")).toHaveCount(1);
   await expect(page.getByLabel("新模型 ID")).toHaveValue("menu-created");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
@@ -242,11 +290,11 @@ test("外层会话核实网络失败可重试，真实 401 清理会话与菜单
     else await route.continue();
   });
   await page.goto("/models");
-  await expect(page.getByRole("alert")).toContainText("登录会话核实失败");
+  await expect(page.locator(".message-error")).toContainText("登录会话核实失败");
   expect(await page.evaluate(() => !!sessionStorage.getItem("formwork-user-session"))).toBe(true);
   await expect(page.getByRole("table", { name: "模型列表", exact: true })).toHaveCount(0);
   fail = false;
-  await page.getByRole("button", { name: "重试登录验证" }).click();
+  await page.locator(".message-error").getByRole("button", { name: "重试登录验证" }).click();
   await expect(page.getByRole("table", { name: "模型列表", exact: true })).toBeVisible();
   await page.unroute("**/api/v1/auth/me");
   await page.route("**/api/v1/auth/me", (route) =>
@@ -262,6 +310,86 @@ test("外层会话核实网络失败可重试，真实 401 清理会话与菜单
   await expect(
     page.getByRole("navigation", { name: "主导航" }).getByRole("link", { name: "用户管理" }),
   ).toHaveCount(0);
+});
+
+test("公共 Popconfirm 异步撤销防重复提交，失败用 Message 且可以重试", async ({
+  page,
+}, testInfo) => {
+  const label = `popconfirm-${Date.now()}`;
+  const issued = await request(page, "/auth/tokens", "POST", {
+    label,
+    kind: "agent",
+    expiresInDays: 1,
+  });
+  expect(issued.ok()).toBe(true);
+  await page.goto("/tokens");
+  const row = page.getByRole("row").filter({ hasText: label });
+  const trigger = row.getByRole("button", { name: "撤销", exact: true });
+  await trigger.click();
+  const confirmation = page.getByRole("dialog", { name: "确认操作" });
+  await page.getByRole("heading", { name: "API token", exact: true }).click();
+  await expect(confirmation).toHaveCount(0);
+  await expect(row).toContainText("有效");
+  await trigger.click();
+
+  let requests = 0;
+  let release: (() => void) | undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const endpoint = "**/api/v1/auth/tokens/*";
+  await page.route(endpoint, async (route) => {
+    requests++;
+    await gate;
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ error: { code: "TEMPORARY_FAILURE", message: "撤销暂时不可用" } }),
+    });
+  });
+  await confirmation.getByRole("button", { name: "确定", exact: true }).click();
+  await expect(confirmation.getByRole("button", { name: "正在处理…" })).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await expect(confirmation).toBeVisible();
+  expect(requests).toBe(1);
+  release!();
+  await expect(page.locator(".message-error")).toContainText("撤销暂时不可用");
+  await expect(confirmation.getByRole("button", { name: "确定", exact: true })).toBeEnabled();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(async () => {
+      const bounds = await confirmation.boundingBox();
+      return !!bounds && bounds.x >= 0 && bounds.x + bounds.width <= 390;
+    })
+    .toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath("popconfirm-message-mobile.png"),
+    fullPage: true,
+  });
+  await page.locator(".message-error").getByRole("button", { name: "关闭提示" }).click();
+  await expect(page.locator(".message-error")).toHaveCount(0);
+  await expect(confirmation).toBeVisible();
+  await page.unroute(endpoint);
+  await confirmation.getByRole("button", { name: "确定", exact: true }).click();
+  await expect(confirmation).toHaveCount(0);
+  await expect(row).toContainText("已撤销");
+});
+
+test("页面加载错误仅显示全局 Message，可关闭并返回列表", async ({ page }) => {
+  await page.route("**/api/v1/models/missing-message-model", (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ error: { code: "TEMPORARY_FAILURE", message: "模型暂时不可用" } }),
+    }),
+  );
+  await page.goto("/models?modelId=missing-message-model");
+  await expect(page.locator(".message-error")).toContainText("模型暂时不可用");
+  await expect(page.locator("main [role=alert]")).toHaveCount(0);
+  await page.locator(".message-error").getByRole("button", { name: "关闭提示" }).click();
+  await expect(page.locator(".message-error")).toHaveCount(0);
+  await page.getByRole("button", { name: "返回模型列表" }).click();
+  await expect(page.getByRole("table", { name: "模型列表", exact: true })).toBeVisible();
 });
 
 async function publishFilterModel(page: Page, modelId: string) {
@@ -429,12 +557,13 @@ test("动态筛选独立组合、提交与重置，保留数值和空值语义",
   };
   page.on("request", trackQuery);
   await form.getByRole("button", { name: "查询", exact: true }).click();
-  await expect(form.getByRole("alert")).toContainText(["范围起点不能大于终点", "请检查筛选条件"]);
+  await expect(form.locator(".field-error")).toContainText("范围起点不能大于终点");
+  await expect(page.locator(".message-error")).toContainText("请检查筛选条件");
   expect(queries).toBe(0);
   page.off("request", trackQuery);
   await chooseFilter(page, 1, "运算符", "等于");
   await expect(form.getByLabel("金额筛选值")).toHaveValue("");
-  await expect(form.getByRole("alert")).toHaveCount(0);
+  await expect(form.locator(".field-error")).toHaveCount(0);
   await reset();
 });
 
@@ -546,7 +675,8 @@ test("编辑页刷新直达，冲突保留输入，关闭时可取消丢弃", as
   });
   expect(updated.ok()).toBe(true);
   await editor.getByRole("button", { name: "保存", exact: true }).click();
-  await expect(editor.getByRole("alert")).toBeVisible();
+  await expect(page.locator(".message-error")).toBeVisible();
+  await expect(editor.getByRole("alert")).toHaveCount(0);
   await expect(editor.getByLabel("标题 *", { exact: true })).toHaveValue("本地未保存");
   await page.getByRole("button", { name: "返回列表" }).click();
   const confirmation = page.getByRole("dialog", { name: "确认操作" });

@@ -1,13 +1,13 @@
-import { For, Show } from "solid-js";
+import { Show } from "solid-js";
 import type { Component, JSX } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import type { ModelContext, RecordOperation } from "formwork";
 import type { RecordEditorController, RecordListController } from "formwork/atom";
-import { errorPayload } from "formwork/model";
 import { FilterBar } from "../../components/records/filter-bar";
 import { RecordTable } from "../../components/records/record-table";
 import { SelectControl } from "../../components/ui/select";
-import { Modal } from "../../components/ui/window";
+import { ErrorMessage, Message } from "../../components/ui/message";
+import { Popconfirm } from "../../components/ui/popconfirm";
 import { RecordRelations } from "../data/record-relations";
 import { PageTopbar } from "../shell/page-topbar";
 import { Icon } from "../shell/icons";
@@ -120,13 +120,14 @@ export const ListTable: Component<ListProps> = (props) => {
                         if (snapshot) void list.delete(snapshot);
                       }}
                     >
-                      删除
+                      {list.removing() === id ? "删除中…" : "删除"}
                     </button>
                   </Show>
                 </div>
               );
             }}
           />
+          {props.children}
         </section>
       )}
     </Show>
@@ -200,7 +201,11 @@ export const EditorLayout: Component<{
         onSubmit={async (event) => {
           event.preventDefault();
           await editor.submit();
-          form?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+          const invalid = form?.querySelector<HTMLElement>('[aria-invalid="true"]');
+          if (invalid) {
+            Message.error("请检查表单中的字段");
+            invalid.focus();
+          }
         }}
       >
         <div class="record-heading">
@@ -235,42 +240,31 @@ export const Empty: Component = () => (
     <p>没有符合条件的记录</p>
   </div>
 );
-/** 展示可读错误、字段问题与显式重试入口。 */
-export const Failure: Component<{ error: unknown; retry?: () => unknown }> = (props) => {
-  const payload = () => errorPayload(props.error);
-  return (
-    <div class="workbench-message" role="alert">
-      <p>{payload().message}</p>
-      <For each={payload().issues ?? []}>
-        {(issue) => (
-          <p>
-            <code>{issue.path || "/"}</code> · {issue.message}
-          </p>
-        )}
-      </For>
-      <Show when={props.retry}>
-        <button class="text-button" onClick={() => props.retry?.()}>
-          重新加载
-        </button>
-      </Show>
-    </div>
-  );
-};
+/** 将框架错误边界与请求失败接入全局 Message，并保留重试入口。 */
+export const Failure: Component<{ error: unknown; retry?: () => unknown }> = (props) => (
+  <>
+    <ErrorMessage error={props.error} retry={props.retry} />
+    <Show when={props.retry}>
+      <button class="text-button" onClick={() => props.retry?.()}>
+        重新加载
+      </button>
+    </Show>
+  </>
+);
 /** 为删除和丢弃草稿提供可取消的确认界面。 */
 export const Confirmation: Component<{
   message: string;
   confirm: () => void;
   cancel: () => void;
-}> = (props) => (
-  <Modal open label="确认操作" onClose={props.cancel}>
-    <p>{props.message}</p>
-    <div class="actions">
-      <button class="button secondary" onClick={props.cancel}>
-        取消
-      </button>
-      <button class="button" onClick={props.confirm}>
-        确定
-      </button>
-    </div>
-  </Modal>
-);
+}> = (props) => {
+  const anchor = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
+  return (
+    <Popconfirm
+      open
+      anchor={anchor}
+      message={props.message}
+      onConfirm={props.confirm}
+      onCancel={props.cancel}
+    />
+  );
+};

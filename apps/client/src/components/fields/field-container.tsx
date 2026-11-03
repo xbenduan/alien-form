@@ -68,13 +68,7 @@ export const FormItem: Component<FieldContainerProps> = (props) => {
       <Show when={props.field?.props.help}>
         <p class="muted">{String(props.field?.props.help)}</p>
       </Show>
-      <For each={props.errors}>
-        {(error) => (
-          <p class="field-error" role="alert">
-            {error.message}
-          </p>
-        )}
-      </For>
+      <For each={props.errors}>{(error) => <p class="field-error">{error.message}</p>}</For>
     </>
   );
   return (
@@ -108,13 +102,7 @@ export const FilterItem: Component<FieldContainerProps> = (props) => {
           {props.title}
         </span>
         {props.children}
-        <For each={props.errors}>
-          {(error) => (
-            <p class="field-error" role="alert">
-              {error.message}
-            </p>
-          )}
-        </For>
+        <For each={props.errors}>{(error) => <p class="field-error">{error.message}</p>}</For>
       </div>
     </FieldLabel.Provider>
   );

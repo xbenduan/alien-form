@@ -72,6 +72,8 @@ export const transformSchema: SchemaTransform = (ctx) => {
 
 `Records` 默认组合全部列表部件和 `RecordOutlet`，也可接收已有 controller。自定义布局将同一 controller 交给多个 atom，自己渲染卡片或树形行，最后挂载一个 `RecordOutlet`。部件不创建第二份查询。
 
+`ui.records.table` 对应的组件需渲染 `children`，其中包含默认加载/空态与分页。应用将它们放在表格的同一面板内，使外框连续；单独使用 `RecordsTable` 时也可传入自己的页脚。
+
 每个 controller 只允许一个 outlet；同一模型及 Domain 的多个集合须使用不同 `scopeKey`，非默认集合写入 URL 的 `?scope=…`。outlet 应随布局稳定挂载，避免被列表加载或空态条件卸载。controller 由创建它的 Solid owner 清理，借用者只消费状态。
 
 `detail/create/edit` 是延迟 slot，激活操作时才传入 `RecordOperation` 并创建内容。省略时使用默认 Detail/Editor，传 `false` 同时禁用相应动作与直达入口。自定义 slot 应使用 `operation.guard()` 注册未保存检查，完成后调用 `operation.complete(snapshot)`，取消调用 `operation.close()`。

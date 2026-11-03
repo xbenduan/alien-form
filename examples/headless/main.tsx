@@ -76,39 +76,42 @@ const Filters: Component<ListProps> = (props) => (
   </form>
 );
 const Table: Component<ListProps> = (props) => (
-  <table>
-    <thead>
-      <tr>
-        <th>
-          <button
-            onClick={() =>
-              props.controller.sort({
-                field: "/title",
-                direction: props.controller.query().sort?.direction === "asc" ? "desc" : "asc",
-              })
-            }
-          >
-            标题 ↕
-          </button>
-        </th>
-        <th>操作</th>
-      </tr>
-    </thead>
-    <tbody>
-      <For each={props.controller.items()}>
-        {(record) => (
-          <tr>
-            <td>{String(record.data.title)}</td>
-            <td>
-              <button onClick={() => props.controller.openDetail(record.id)}>详情</button>
-              <button onClick={() => props.controller.openEdit(record.id)}>编辑</button>
-              <button onClick={() => props.controller.delete(record)}>删除</button>
-            </td>
-          </tr>
-        )}
-      </For>
-    </tbody>
-  </table>
+  <>
+    <table>
+      <thead>
+        <tr>
+          <th>
+            <button
+              onClick={() =>
+                props.controller.sort({
+                  field: "/title",
+                  direction: props.controller.query().sort?.direction === "asc" ? "desc" : "asc",
+                })
+              }
+            >
+              标题 ↕
+            </button>
+          </th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <For each={props.controller.items()}>
+          {(record) => (
+            <tr>
+              <td>{String(record.data.title)}</td>
+              <td>
+                <button onClick={() => props.controller.openDetail(record.id)}>详情</button>
+                <button onClick={() => props.controller.openEdit(record.id)}>编辑</button>
+                <button onClick={() => props.controller.delete(record)}>删除</button>
+              </td>
+            </tr>
+          )}
+        </For>
+      </tbody>
+    </table>
+    {props.children}
+  </>
 );
 const Pagination: Component<ListProps> = (props) => (
   <footer>

@@ -2,7 +2,8 @@ import { createResource, createSignal, For, Show } from "solid-js";
 import type { Component } from "solid-js";
 import type { PageContext } from "formwork";
 import { api } from "../../formwork/api";
-import { errorPayload } from "formwork/model";
+import { ErrorMessage, Message } from "../../components/ui/message";
+import { Popconfirm } from "../../components/ui/popconfirm";
 import { sessionUser } from "../../formwork/api";
 import { PageTopbar } from "../../formwork/shell/page-topbar";
 
@@ -10,17 +11,17 @@ import { PageTopbar } from "../../formwork/shell/page-topbar";
 export const ApiTokens: Component<PageContext> = (ctx) => {
   const [directory, { refetch }] = createResource(() => api.auth.tokens({ signal: ctx.signal }));
   const [issued, setIssued] = createSignal("");
-  const [failure, setFailure] = createSignal("");
   const [busy, setBusy] = createSignal(false);
   const run = async (action: () => Promise<unknown>) => {
-    if (busy()) return;
+    if (busy()) return false;
     setBusy(true);
-    setFailure("");
     try {
       await action();
       await refetch();
+      return true;
     } catch (error) {
-      if (!ctx.signal.aborted) setFailure(errorPayload(error).message);
+      if (!ctx.signal.aborted) Message.error(error);
+      return false;
     } finally {
       if (!ctx.signal.aborted) setBusy(false);
     }
@@ -30,7 +31,7 @@ export const ApiTokens: Component<PageContext> = (ctx) => {
       <PageTopbar title={<h1>API token</h1>} />
       <Show
         when={sessionUser()?.kind === "user"}
-        fallback={<p role="alert">仅用户登录会话可以签发或撤销 token。</p>}
+        fallback={<ErrorMessage error="仅用户登录会话可以签发或撤销 token。" />}
       >
         <form
           class="panel token-form"
@@ -89,9 +90,7 @@ export const ApiTokens: Component<PageContext> = (ctx) => {
             </button>
           </section>
         </Show>
-        <Show when={failure() || directory.error}>
-          <p role="alert">{failure() || errorPayload(directory.error).message}</p>
-        </Show>
+        <ErrorMessage error={directory.error} retry={refetch} />
         <section class="panel table-scroll" tabindex="0" aria-label="token 表格，可横向滚动">
           <table aria-label="本人 token 目录">
             <thead>
@@ -112,15 +111,15 @@ export const ApiTokens: Component<PageContext> = (ctx) => {
                     <td>{new Date(entry.expiresAt).toLocaleString("zh-CN")}</td>
                     <td>{entry.revokedAt ? "已撤销" : "有效"}</td>
                     <td>
-                      <button
-                        class="text-button danger"
+                      <Popconfirm
+                        message={`确定撤销「${entry.label}」吗？撤销后该 token 将立即失效。`}
                         disabled={busy() || !!entry.revokedAt}
-                        onClick={() =>
+                        onConfirm={() =>
                           run(() => api.auth.revokeToken(entry.id, { signal: ctx.signal }))
                         }
                       >
                         撤销
-                      </button>
+                      </Popconfirm>
                     </td>
                   </tr>
                 )}

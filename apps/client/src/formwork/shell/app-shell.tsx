@@ -13,6 +13,7 @@ import { modelMenu, modelMenuFailure, modelMenuLoading, refreshModelMenu } from 
 import { BrandMark, Icon } from "./icons";
 import { TopbarContext } from "./page-topbar";
 import type { TopbarSlots } from "./page-topbar";
+import { ErrorMessage, Message } from "../../components/ui/message";
 
 const [pinnedOpen, setPinnedOpen] = createSignal(true);
 
@@ -32,7 +33,6 @@ export const AppShell: Component<{ children?: JSX.Element }> = (props) => {
       });
     }
   });
-  const [failure, setFailure] = createSignal("");
   const [pageActive, setPageActive] = createSignal(false);
   const [topbar, setTopbar] = createSignal<TopbarSlots>();
   let titleSlot!: HTMLDivElement;
@@ -172,18 +172,11 @@ export const AppShell: Component<{ children?: JSX.Element }> = (props) => {
                 </For>
               </div>
             </div>
-            <Show when={modelMenuFailure()}>
-              <div class="nav-error" role="alert">
-                {modelMenuFailure()}
-                <button
-                  class="text-button"
-                  disabled={modelMenuLoading()}
-                  onClick={() => refreshModelMenu()}
-                >
-                  重试菜单
-                </button>
-              </div>
-            </Show>
+            <ErrorMessage
+              error={modelMenuFailure()}
+              retry={refreshModelMenu}
+              retryLabel="重试菜单"
+            />
           </nav>
           <div class="sidebar-bottom">
             <Show
@@ -207,11 +200,10 @@ export const AppShell: Component<{ children?: JSX.Element }> = (props) => {
                     aria-label="退出"
                     title="退出登录"
                     onClick={async () => {
-                      setFailure("");
                       try {
                         await logout();
                       } catch {
-                        setFailure("会话已在本页清除，服务端注销失败。");
+                        Message.error("会话已在本页清除，服务端注销失败。");
                       }
                     }}
                   >
@@ -219,9 +211,6 @@ export const AppShell: Component<{ children?: JSX.Element }> = (props) => {
                   </button>
                 </div>
               )}
-            </Show>
-            <Show when={failure()}>
-              <p role="alert">{failure()}</p>
             </Show>
           </div>
         </aside>
@@ -247,13 +236,16 @@ export const AppShell: Component<{ children?: JSX.Element }> = (props) => {
           </header>
           <main id="main-content" class="page-canvas" tabindex="-1">
             <Show when={!sessionLoading()} fallback={<p role="status">正在核实登录会话…</p>}>
+              <ErrorMessage
+                error={sessionFailure()}
+                prefix="登录会话核实失败："
+                retry={retrySession}
+                retryLabel="重试登录验证"
+              />
               <Show when={sessionFailure()}>
-                <p role="alert">
-                  登录会话核实失败：{sessionFailure()}{" "}
-                  <button class="text-button" onClick={() => retrySession()}>
-                    重试登录验证
-                  </button>
-                </p>
+                <button class="text-button" onClick={retrySession}>
+                  重试登录验证
+                </button>
               </Show>
               <Show when={sessionUser() || location.pathname === "/login"}>{props.children}</Show>
             </Show>

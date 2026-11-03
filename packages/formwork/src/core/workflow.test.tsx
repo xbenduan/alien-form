@@ -116,17 +116,20 @@ function fixture() {
       Actions: (props: { controller: RecordListController }) => (
         <button onClick={() => props.controller.openCreate()}>新建</button>
       ),
-      Table: (props: { controller: RecordListController }) => (
-        <For each={props.controller.items()}>
-          {(record) => (
-            <div>
-              <span>{record.data.title as string}</span>
-              <button onClick={() => props.controller.openEdit(record.id)}>编辑</button>
-              <button onClick={() => props.controller.openDetail(record.id)}>详情</button>
-              <button onClick={() => props.controller.delete(record)}>删除</button>
-            </div>
-          )}
-        </For>
+      Table: (props: { controller: RecordListController; children?: JSX.Element }) => (
+        <>
+          <For each={props.controller.items()}>
+            {(record) => (
+              <div>
+                <span>{record.data.title as string}</span>
+                <button onClick={() => props.controller.openEdit(record.id)}>编辑</button>
+                <button onClick={() => props.controller.openDetail(record.id)}>详情</button>
+                <button onClick={() => props.controller.delete(record)}>删除</button>
+              </div>
+            )}
+          </For>
+          {props.children}
+        </>
       ),
       Presenter: (props: PresenterProps) => (
         <aside data-operation={props.operation.operationId} data-direct={props.direct}>

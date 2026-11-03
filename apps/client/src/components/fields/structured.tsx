@@ -1,9 +1,10 @@
-import { createSignal, For, Show } from "solid-js";
+import { For, Show } from "solid-js";
 import type { Component } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import type { FieldProps } from "formwork";
 import { isObject, schemaType } from "formwork/model";
 import { DetailCell, valueText } from "./display";
+import { Message } from "../ui/message";
 
 /** 编辑真实对象子字段，表格使用详情入口，未填写与 null 保持独立。 */
 export const ObjectFields: Component<FieldProps> = (props) => (
@@ -29,7 +30,6 @@ export const ObjectFields: Component<FieldProps> = (props) => (
 
 /** 通过稳定 ArrayHandle 编辑明细，在 detail 直接递归原始值且不创建 scope。 */
 export const ArrayFields: Component<FieldProps> = (props) => {
-  const [error, setError] = createSignal("");
   const add = () => {
     try {
       const schema = "items" in props.schema ? props.schema.items : undefined;
@@ -47,9 +47,8 @@ export const ArrayFields: Component<FieldProps> = (props) => {
                   ? null
                   : undefined),
       );
-      setError("");
     } catch (error) {
-      setError(error instanceof Error ? error.message : String(error));
+      Message.error(error);
     }
   };
   return (
@@ -119,9 +118,6 @@ export const ArrayFields: Component<FieldProps> = (props) => {
           <button type="button" class="button secondary" disabled={props.disabled} onClick={add}>
             添加明细
           </button>
-        </Show>
-        <Show when={error()}>
-          <p role="alert">{error()}</p>
         </Show>
       </div>
     </Show>

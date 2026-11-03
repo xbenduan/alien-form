@@ -22,7 +22,7 @@ type IconName =
   | "spark"
   | "search"
   | "layers";
-type MenuIconName = "pin" | "user" | "roles" | "key" | "logout";
+type MenuIconName = "pin" | "user" | "roles" | "key" | "logout" | "info";
 
 const paths: Record<IconName | MenuIconName, string> = {
   grid: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
@@ -51,6 +51,7 @@ const paths: Record<IconName | MenuIconName, string> = {
   roles: "M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6z M8 12l3 3 5-6",
   key: "M21 7a5 5 0 11-10 0 5 5 0 0110 0 M12.5 10.5L3 20v1h4v-4h4v-4 M17 7h.01",
   logout: "M9 4H4v16h5 M10 12h11 M17 8l4 4-4 4",
+  info: "M12 22a10 10 0 110-20 10 10 0 010 20 M12 10v6 M12 6h.01",
 };
 
 /** 提供应用共用的线性图标，装饰图标不参与可访问名称。 */

@@ -2,7 +2,8 @@ import { Dialog } from "@kobalte/core/dialog";
 import { createMemo, createResource, createSignal, For, Show } from "solid-js";
 import type { Component } from "solid-js";
 import type { PageContext } from "formwork";
-import { errorPayload, modelIdPattern } from "formwork/model";
+import { modelIdPattern } from "formwork/model";
+import { ErrorMessage, Message } from "../../components/ui/message";
 import { api, sessionUser } from "../../formwork/api";
 import {
   modelMenu,
@@ -29,20 +30,16 @@ export const ModelList: Component<PageContext> = (ctx) => {
   const [open, setOpen] = createSignal(false);
   const [id, setId] = createSignal("");
   const [creating, setCreating] = createSignal(false);
-  const [createFailure, setCreateFailure] = createSignal("");
   const [pending, setPending] = createSignal<ReadonlySet<string>>(new Set());
-  const [errors, setErrors] = createSignal<Record<string, string>>({});
   const pinned = (modelId: string) =>
     !!modelMenu()?.pinnedModels.some((entry) => entry.id === modelId);
   const toggle = async (modelId: string) => {
     if (pending().has(modelId)) return;
     setPending(new Set([...pending(), modelId]));
-    setErrors((value) => ({ ...value, [modelId]: "" }));
     try {
       await setModelPinned(modelId, !pinned(modelId));
     } catch (error) {
-      if (!ctx.signal.aborted)
-        setErrors((value) => ({ ...value, [modelId]: errorPayload(error).message }));
+      if (!ctx.signal.aborted) Message.error(error);
     } finally {
       if (!ctx.signal.aborted)
         setPending((value) => new Set([...value].filter((item) => item !== modelId)));
@@ -82,7 +79,7 @@ export const ModelList: Component<PageContext> = (ctx) => {
                 刷新列表
               </button>
               <Show when={sessionUser()?.canCreateModel}>
-                <Dialog.Trigger class="button" onClick={() => setCreateFailure("")}>
+                <Dialog.Trigger class="button">
                   <Icon name="plus" />
                   新建模型
                 </Dialog.Trigger>
@@ -91,14 +88,7 @@ export const ModelList: Component<PageContext> = (ctx) => {
           }
         />
         <McpGuide />
-        <Show when={directory.error}>
-          <p role="alert">
-            {errorPayload(directory.error).message}{" "}
-            <button class="text-button" onClick={() => refetch()}>
-              重试列表
-            </button>
-          </p>
-        </Show>
+        <ErrorMessage error={directory.error} retry={refetch} retryLabel="重试列表" />
         <section class="panel model-directory">
           <div class="model-directory-toolbar">
             <label class="model-search">
@@ -224,11 +214,6 @@ export const ModelList: Component<PageContext> = (ctx) => {
                             </Show>
                           </Show>
                         </div>
-                        <Show when={errors()[entry.id]}>
-                          <p class="pin-error" role="alert">
-                            {errors()[entry.id]}
-                          </p>
-                        </Show>
                       </td>
                     </tr>
                   )}
@@ -295,11 +280,10 @@ export const ModelList: Component<PageContext> = (ctx) => {
               if (creating()) return;
               const modelId = id().trim();
               if (!modelIdPattern.test(modelId) || modelId.startsWith("system-")) {
-                setCreateFailure("模型 ID 必须是单段小写标识，不能使用 system- 前缀。");
+                Message.error("模型 ID 必须是单段小写标识，不能使用 system- 前缀。");
                 return;
               }
               setCreating(true);
-              setCreateFailure("");
               try {
                 await api.models.saveDraft(
                   modelId,
@@ -314,7 +298,7 @@ export const ModelList: Component<PageContext> = (ctx) => {
                 if (!ctx.signal.aborted)
                   ctx.navigate(`/models?modelId=${encodeURIComponent(modelId)}`);
               } catch (error) {
-                if (!ctx.signal.aborted) setCreateFailure(errorPayload(error).message);
+                if (!ctx.signal.aborted) Message.error(error);
               } finally {
                 if (!ctx.signal.aborted) setCreating(false);
               }
@@ -331,9 +315,6 @@ export const ModelList: Component<PageContext> = (ctx) => {
               required
               disabled={creating()}
             />
-            <Show when={createFailure()}>
-              <p role="alert">{createFailure()}</p>
-            </Show>
             <div class="actions">
               <button class="button" disabled={creating()}>
                 {creating() ? "正在创建…" : "创建模型"}

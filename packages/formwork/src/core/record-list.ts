@@ -48,6 +48,7 @@ export function createRecordList(options: Accessor<RecordListOptions> = () => ({
   let previousModel: string | undefined;
   const scopeKey = () => options().scopeKey ?? "default";
   const refresh = () => {
+    setFailure(undefined);
     if (result.error instanceof FormworkError && result.error.code === "SCHEMA_CONFLICT")
       void reloadModel();
     else setRefreshKey((key) => key + 1);

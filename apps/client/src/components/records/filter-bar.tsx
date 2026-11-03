@@ -12,6 +12,7 @@ import type {
 import { Icon } from "../../formwork/shell/icons";
 import { FilterItem } from "../fields/field-container";
 import { SelectControl } from "../ui/select";
+import { Message } from "../ui/message";
 
 const labels: Record<QueryOperator, string> = {
   eq: "等于",
@@ -43,7 +44,6 @@ export const FilterBar: Component<{
   }));
   const initialConditions = () => (fields[0] ? [createFilterBinding(fields[0])] : []);
   const [conditions, setConditions] = createSignal<FilterBinding[]>(initialConditions());
-  const [failure, setFailure] = createSignal("");
   const RenderItem = props.RenderItem;
   let conditionList: HTMLDivElement | undefined;
 
@@ -62,9 +62,8 @@ export const FilterBar: Component<{
           normalizeClause(binding.path(), binding.operator(), binding.value()),
         ),
       );
-      setFailure("");
     } catch (error) {
-      setFailure(error instanceof Error ? error.message : String(error));
+      Message.error(error);
       conditionList?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
     }
   };
@@ -74,7 +73,6 @@ export const FilterBar: Component<{
       <form
         class="panel filters"
         aria-label="筛选记录"
-        onInput={() => setFailure("")}
         onSubmit={(event) => {
           event.preventDefault();
           submit();
@@ -106,7 +104,6 @@ export const FilterBar: Component<{
                           item === binding ? createFilterBinding(next) : item,
                         ),
                       );
-                      setFailure("");
                       focusCondition(position);
                     }}
                   />
@@ -122,7 +119,6 @@ export const FilterBar: Component<{
                       if (!value || value === binding.operator()) return;
                       binding.setOperator(value as QueryOperator);
                       binding.setActive(!binding.operandSchema());
-                      setFailure("");
                     }}
                   />
                   <div class="filter-value">
@@ -164,7 +160,6 @@ export const FilterBar: Component<{
                       onClick={() => {
                         const position = index();
                         setConditions((current) => current.filter((item) => item !== binding));
-                        setFailure("");
                         focusCondition(Math.min(position, conditions().length - 1));
                       }}
                     >
@@ -186,7 +181,6 @@ export const FilterBar: Component<{
             onClick={() => {
               if (!fields[0] || conditions().length >= maxConditions) return;
               setConditions((current) => [...current, createFilterBinding(fields[0]!)]);
-              setFailure("");
               focusCondition(conditions().length - 1);
             }}
           >
@@ -200,18 +194,12 @@ export const FilterBar: Component<{
             class="button secondary"
             onClick={() => {
               setConditions(initialConditions());
-              setFailure("");
               props.onQuery([]);
             }}
           >
             重置
           </button>
         </div>
-        <Show when={failure()}>
-          <p class="field-error filter-error" role="alert">
-            {failure()}
-          </p>
-        </Show>
       </form>
     </Show>
   );

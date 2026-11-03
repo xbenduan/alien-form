@@ -1,4 +1,5 @@
-import { For, Show } from "solid-js";
+import { For } from "solid-js";
+import { ErrorMessage } from "../../components/ui/message";
 import { defineDomain } from "formwork";
 import { createRecordList, Detail, Pagination, RecordActions, RecordOutlet } from "formwork/atom";
 
@@ -11,9 +12,7 @@ export default defineDomain({
       <div class="list-page">
         <RecordActions controller={list} />
         <p class="muted">视频卡片布局示例</p>
-        <Show when={list.error()}>
-          <p role="alert">{String(list.error())}</p>
-        </Show>
+        <ErrorMessage error={list.error()} retry={list.refresh} />
         <div class="example-cards">
           <For each={list.items()}>
             {(record) => (

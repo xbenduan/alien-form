@@ -1,5 +1,5 @@
 import { ErrorBoundary, onCleanup, Show } from "solid-js";
-import type { Component } from "solid-js";
+import type { Component, JSX } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import { createRecordList } from "../core/record-list";
 import type { RecordListController, RecordListOptions } from "../core/record-list";
@@ -9,7 +9,7 @@ import { component, ModelProvider, useRuntime } from "../core/context";
 import { Feedback } from "../core/formwork";
 import { Detail, Editor } from "./record";
 
-type SharedProps = { controller: RecordListController };
+type SharedProps = { controller: RecordListController; children?: JSX.Element };
 /** 组合默认列表部件，或者借用 app 创建的共享 controller。 */
 export type RecordsProps = RecordListOptions &
   RecordSlots & {
@@ -23,6 +23,7 @@ function piece(key: "filter" | "actions" | "table" | "pagination"): Component<Sh
       <Dynamic
         component={component(runtime, runtime.app.ui.records?.[key])}
         controller={props.controller}
+        children={props.children}
       />
     );
   };
@@ -31,7 +32,7 @@ function piece(key: "filter" | "actions" | "table" | "pagination"): Component<Sh
 export const Filters = piece("filter");
 /** 将授权后的记录动作交给 app 展示。 */
 export const RecordActions = piece("actions");
-/** 将当前查询页和字段 renderer 交给 app 表格。 */
+/** 将当前查询页和字段 renderer 交给 app 表格，children 承载状态和分页。 */
 export const RecordsTable = piece("table");
 /** 使用 app 的分页界面控制同一查询。 */
 export const Pagination = piece("pagination");
@@ -105,14 +106,15 @@ export const Records: Component<RecordsProps> = (props) => {
       <Show when={controller.error()}>
         {(error) => <Feedback kind="error" error={error()} retry={controller.refresh} />}
       </Show>
-      <RecordsTable controller={controller} />
-      <Show when={controller.loading()}>
-        <Feedback kind="loading" />
-      </Show>
-      <Show when={!controller.loading() && !controller.error() && !controller.items().length}>
-        <Feedback kind="empty" />
-      </Show>
-      <Pagination controller={controller} />
+      <RecordsTable controller={controller}>
+        <Show when={controller.loading()}>
+          <Feedback kind="loading" />
+        </Show>
+        <Show when={!controller.loading() && !controller.error() && !controller.items().length}>
+          <Feedback kind="empty" />
+        </Show>
+        <Pagination controller={controller} />
+      </RecordsTable>
     </>
   );
   return (
