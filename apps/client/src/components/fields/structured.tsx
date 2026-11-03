@@ -3,7 +3,7 @@ import type { Component } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import type { FieldProps } from "formwork";
 import { isObject, schemaType } from "formwork/model";
-import { DetailCell, valueText } from "./display";
+import { DetailCell, EmptyValue, valueText } from "./display";
 import { Message } from "../ui/message";
 
 /** 编辑真实对象子字段，表格使用详情入口，未填写与 null 保持独立。 */
@@ -11,9 +11,23 @@ export const ObjectFields: Component<FieldProps> = (props) => (
   <Show when={props.scene !== "table"} fallback={<DetailCell {...props} />}>
     <Show
       when={isObject(props.value) || (!props.readOnly && props.value === undefined)}
-      fallback={<span class="muted">{valueText(props.value)}</span>}
+      fallback={
+        <Show
+          when={props.scene === "detail"}
+          fallback={<span class="muted">{valueText(props.value)}</span>}
+        >
+          <EmptyValue value={props.value} />
+        </Show>
+      }
     >
-      <div class="field-grid object-fields">{props.children}</div>
+      <Show
+        when={
+          props.scene !== "detail" || (isObject(props.value) && Object.keys(props.value).length > 0)
+        }
+        fallback={<EmptyValue value={props.value} />}
+      >
+        <div class="field-grid object-fields">{props.children}</div>
+      </Show>
     </Show>
     <Show when={!props.readOnly && props.value === null}>
       <button
@@ -53,27 +67,38 @@ export const ArrayFields: Component<FieldProps> = (props) => {
   };
   return (
     <Show when={props.scene !== "table"} fallback={<DetailCell {...props} />}>
-      <div class="array-fields">
+      <div class="array-fields" classList={{ "detail-array": props.scene === "detail" }}>
         <Show
           when={!props.readOnly}
           fallback={
             <Show
-              when={Array.isArray(props.value)}
-              fallback={<span>{valueText(props.value)}</span>}
+              when={Array.isArray(props.value) && props.value.length > 0}
+              fallback={
+                <Show
+                  when={props.scene === "detail"}
+                  fallback={<span>{valueText(props.value)}</span>}
+                >
+                  <EmptyValue value={props.value} />
+                </Show>
+              }
             >
               <For each={Array.isArray(props.value) ? props.value : []}>
                 {(value, index) => (
                   <div class="array-item">
-                    <div class="array-item-header">第 {index() + 1} 项</div>
+                    <div class="array-item-header">
+                      <Show when={props.scene === "detail"} fallback={`第 ${index() + 1} 项`}>
+                        <span class="detail-item-number">
+                          {String(index() + 1).padStart(2, "0")}
+                        </span>
+                        <span>明细</span>
+                      </Show>
+                    </div>
                     <div class="array-item-body">
                       <Dynamic component={props.ValueItem} value={value} />
                     </div>
                   </div>
                 )}
               </For>
-              <Show when={Array.isArray(props.value) && props.value.length === 0}>
-                <p class="field-empty">[]</p>
-              </Show>
             </Show>
           }
         >

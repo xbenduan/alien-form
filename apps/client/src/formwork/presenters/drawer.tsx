@@ -6,7 +6,11 @@ import { Drawer } from "../../components/ui/window";
 export const DrawerPresenter: Component<PresenterProps> = (props) => (
   <Drawer
     open
-    label={props.operation.mode === "detail" ? "记录详情" : "编辑记录"}
+    label={
+      props.operation.mode === "detail"
+        ? `${props.operation.model.schema.title}详情`
+        : `${props.operation.mode === "create" ? "新建" : "编辑"}${props.operation.model.schema.title}`
+    }
     onClose={() => void props.close()}
     portalTarget={props.portalTarget}
   >

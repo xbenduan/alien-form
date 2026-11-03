@@ -2,6 +2,7 @@ import { createContext, createUniqueId, For, Show, useContext } from "solid-js";
 import type { Component } from "solid-js";
 import type { FieldContainerProps } from "formwork";
 import { FieldsetCard } from "../../formwork/shell/fieldset-card";
+import { DetailItem } from "./detail-item";
 
 const FieldLabel = createContext<string>();
 
@@ -73,20 +74,22 @@ export const FormItem: Component<FieldContainerProps> = (props) => {
   );
   return (
     <FieldLabel.Provider value={id}>
-      <Show
-        when={grouped()}
-        fallback={
-          <div class="form-item" data-field-path={props.path}>
-            <div id={id} class="field-label">
-              {label()}
+      <Show when={props.scene !== "detail"} fallback={<DetailItem {...props} labelId={id} />}>
+        <Show
+          when={grouped()}
+          fallback={
+            <div class="form-item" data-field-path={props.path}>
+              <div id={id} class="field-label">
+                {label()}
+              </div>
+              {content()}
             </div>
+          }
+        >
+          <FieldsetCard title={label()} labelId={id} fieldPath={props.path}>
             {content()}
-          </div>
-        }
-      >
-        <FieldsetCard title={label()} labelId={id} fieldPath={props.path}>
-          {content()}
-        </FieldsetCard>
+          </FieldsetCard>
+        </Show>
       </Show>
     </FieldLabel.Provider>
   );

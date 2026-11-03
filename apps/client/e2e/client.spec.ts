@@ -79,6 +79,10 @@ test("默认 list 新建与编辑排除只读字段，详情、删除和 revisio
   await page.goto(`/list/${modelId}`);
   await page.getByRole("button", { name: "新建记录", exact: true }).click();
   const editor = page.getByRole("dialog");
+  for (const field of ["createdAt", "updatedAt", "creatorId"]) {
+    await expect(editor.locator(`[data-field-path="/${field}"]`)).toBeHidden();
+  }
+  await expect(editor.getByText("服务端默认值", { exact: true })).toBeVisible();
   await editor.getByLabel("标题").fill("只读新增");
   await editor.locator(".rich-editor").fill("正文");
   const createResponse = page.waitForResponse(
@@ -108,8 +112,14 @@ test("默认 list 新建与编辑排除只读字段，详情、删除和 revisio
   await expect(row.getByText("否", { exact: true })).toBeVisible();
   await row.getByRole("button", { name: "详情", exact: true }).click();
   await expect(page.getByRole("dialog")).toContainText("服务端对象");
+  for (const field of ["createdAt", "updatedAt", "creatorId"]) {
+    await expect(page.getByRole("dialog").locator(`[data-field-path="/${field}"]`)).toBeVisible();
+  }
   await page.keyboard.press("Escape");
   await row.getByRole("button", { name: "编辑", exact: true }).click();
+  for (const field of ["createdAt", "updatedAt", "creatorId"]) {
+    await expect(editor.locator(`[data-field-path="/${field}"]`)).toBeVisible();
+  }
   await editor.getByLabel("标题").fill("只读编辑");
   await editor
     .locator(".form-item")
@@ -201,6 +211,188 @@ test("默认 list 新建与编辑排除只读字段，详情、删除和 revisio
   };
   expect(overflow).toEqual({ page: false, table: true });
   await panel.screenshot({ path: testInfo.outputPath("empty-table-mobile.png") });
+});
+
+test("行内字段详情复用窗口标题栏，长 Drawer 正文滚动时标题和关闭按钮固定", async ({
+  page,
+}, testInfo) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const modelId = `window-layout-${Date.now()}`;
+  const definition: ModelDefinition = {
+    schemaVersion: 1,
+    id: modelId,
+    title: "窗口布局回归",
+    data: {
+      title: { type: "string", title: "标题" },
+      amount: { type: "number", title: "订单金额" },
+      paid: { type: "boolean", title: "已支付" },
+      status: { type: "string", title: "订单状态", enum: ["待处理", "处理中", "已完成"] },
+      notes: { type: "string", title: "备注", format: "richtext" },
+      emptyText: { type: "string", title: "空文本" },
+      reference: { type: "string", title: "外部编号" },
+      customer: {
+        type: "object",
+        title: "客户信息",
+        properties: {
+          name: { type: "string", title: "客户名称" },
+          phone: { type: "string", title: "联系电话" },
+          address: { type: "string", title: "收货地址" },
+        },
+      },
+      items: {
+        type: "array",
+        nullable: true,
+        title: "明细",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string", title: "明细名称" },
+            count: { type: "integer", title: "数量" },
+          },
+        },
+      },
+    },
+  };
+  const draft = await request(page, `/models/${modelId}/draft`, "PUT", {
+    definition,
+    ifRevision: null,
+  });
+  expect(draft.ok()).toBe(true);
+  const saved = await draft.json();
+  expect(saved.diagnostics.errors).toEqual([]);
+  const published = await request(page, `/models/${modelId}/publish`, "POST", {
+    ifRevision: saved.revision,
+  });
+  expect(published.ok()).toBe(true);
+  const schemaResponse = await request(page, `/runtime/models/${modelId}/schema`);
+  expect(schemaResponse.ok()).toBe(true);
+  const { schemaRevision } = await schemaResponse.json();
+  // 使用同一发布 revision，缺失、null、空数组和长数组分别保留原始语义。
+  for (const data of [
+    { title: "未填写明细" },
+    { title: "null 明细", items: null },
+    { title: "空数组明细", items: [] },
+    {
+      title: "长明细记录",
+      amount: 12800.5,
+      paid: false,
+      status: "处理中",
+      notes: "客户要求工作日配送，请提前联系。\n明细与发票一同寄送，保留完整备注内容。",
+      emptyText: "",
+      reference: "ORDER-2026-000000000000000000000000000000000000001",
+      customer: { name: "陈女士", phone: "138 0000 1234", address: "上海市 · 徐汇区 · 漕河泾" },
+      items: Array.from({ length: 24 }, (_, index) => ({
+        name: `明细内容 ${index + 1}`,
+        count: index,
+      })),
+    },
+  ]) {
+    const response = await request(page, `/records/${modelId}`, "POST", {
+      data,
+      ifSchemaRevision: schemaRevision,
+    });
+    expect(response.ok()).toBe(true);
+  }
+  await page.goto(`/list/${modelId}`);
+  for (const [title, value] of [
+    ["未填写明细", "未填写"],
+    ["null 明细", "空值 null"],
+    ["空数组明细", "暂无明细 []"],
+  ]) {
+    const row = page.getByRole("row").filter({ hasText: title });
+    const trigger = row.getByRole("button", { name: "查看明细详情" });
+    await trigger.click();
+    const dialog = page.getByRole("dialog", { name: "明细详情", exact: true });
+    await expect(dialog.locator(".window-heading")).toHaveCSS("min-height", "52px");
+    await expect(dialog.getByRole("heading", { name: "明细详情", exact: true })).toHaveCount(1);
+    await expect(dialog.locator(".detail-fields")).toContainText(value!);
+    await expect(dialog.locator(".detail-fields")).toHaveCSS("padding", "24px");
+    if (value === "未填写")
+      await dialog.screenshot({ path: testInfo.outputPath("inline-detail-empty.png") });
+    await page.keyboard.press("Escape");
+    await expect(trigger).toBeFocused();
+  }
+  const row = page.getByRole("row").filter({ hasText: "长明细记录" });
+  await row.getByRole("button", { name: "查看明细详情" }).click();
+  const inline = page.getByRole("dialog", { name: "明细详情", exact: true });
+  await expect(inline).toContainText("明细内容 24");
+  await expect(inline.locator(".array-item")).toHaveCount(24);
+  await inline.locator(".window-body").hover();
+  await page.mouse.wheel(0, 700);
+  await expect
+    .poll(() => inline.locator(".window-body").evaluate((element) => element.scrollTop))
+    .toBeGreaterThan(0);
+  await expect(inline.getByRole("heading", { name: "明细详情", exact: true })).toBeInViewport();
+  await inline.getByRole("button", { name: "关闭窗口" }).click();
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 720 });
+    await row.getByRole("button", { name: "详情", exact: true }).click();
+    const drawer = page.getByRole("dialog", { name: "窗口布局回归详情", exact: true });
+    const heading = drawer.locator(".window-heading");
+    const close = drawer.getByRole("button", { name: "关闭窗口" });
+    await expect(drawer.locator(".array-item")).toHaveCount(24);
+    await expect(drawer.locator('[data-field-path="/amount"]')).toContainText("12,800.5");
+    await expect(drawer.locator('[data-field-path="/paid"] .value-badge')).toHaveText("否");
+    await expect(drawer.locator('[data-field-path="/emptyText"]')).toContainText('空文本 ""');
+    await expect(drawer.locator('[data-field-path="/notes"]')).toContainText("保留完整备注内容");
+    await expect(drawer.locator('[data-field-path="/customer"]')).toContainText("陈女士");
+    await expect(drawer.locator('[data-field-path="/createdAt"] time')).toHaveAttribute(
+      "datetime",
+      /T/,
+    );
+    const alignment = await drawer.evaluate((element, viewportWidth) => {
+      const center = (node: NonNullable<ReturnType<typeof element.querySelector>>) => {
+        const bounds = node.getBoundingClientRect();
+        return bounds.y + bounds.height / 2;
+      };
+      const field = (path: string) => element.querySelector(`[data-field-path="${path}"]`)!;
+      const value = (path: string) =>
+        field(path).querySelector(".value-badge, .detail-text, .detail-empty")!;
+      const values = ["/title", "/amount", "/paid", "/status", "/emptyText"];
+      return {
+        rows:
+          viewportWidth === 390
+            ? values.map((path) =>
+                Math.abs(center(field(path).querySelector("dt")!) - center(value(path))),
+              )
+            : [Math.abs(center(value("/title")) - center(value("/amount")))],
+        copies: [...element.querySelectorAll(".detail-scalar:has(.detail-copy)")].map((node) =>
+          Math.abs(
+            center(node.querySelector(".detail-text")!) -
+              center(node.querySelector(".detail-copy")!),
+          ),
+        ),
+      };
+    }, width);
+    for (const offset of [...alignment.rows, ...alignment.copies]) expect(offset).toBeLessThan(1);
+    if (width === 1280) {
+      await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+      await drawer.locator('[data-field-path="/reference"]').hover();
+      await drawer.getByRole("button", { name: "复制外部编号" }).click();
+      expect(
+        await drawer.evaluate((element) =>
+          element.ownerDocument.defaultView!.navigator.clipboard.readText(),
+        ),
+      ).toBe("ORDER-2026-000000000000000000000000000000000000001");
+    }
+    await drawer.screenshot({ path: testInfo.outputPath(`detail-overview-${width}.png`) });
+    expect(await drawer.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+      true,
+    );
+    const before = { heading: await heading.boundingBox(), close: await close.boundingBox() };
+    await drawer.locator(".window-body").hover();
+    await page.mouse.wheel(0, 900);
+    await expect
+      .poll(() => drawer.locator(".window-body").evaluate((element) => element.scrollTop))
+      .toBeGreaterThan(0);
+    expect((await heading.boundingBox())!.y).toBe(before.heading!.y);
+    expect((await close.boundingBox())!.y).toBe(before.close!.y);
+    await expect(close).toBeInViewport();
+    await drawer.screenshot({ path: testInfo.outputPath(`drawer-scrolled-${width}.png`) });
+    await close.click();
+    await expect(drawer).toHaveCount(0);
+    await expect(row.getByRole("button", { name: "详情", exact: true })).toBeFocused();
+  }
 });
 
 test("浏览器禁用 localStorage 时明亮登录页仍正常输入", async ({ browser }) => {
@@ -709,7 +901,7 @@ test("默认 list 接入只写密码和角色关系，新建后可用新账号�
   expect(role.status()).toBe(201);
   await page.goto("/list/system-users");
   await page.getByRole("button", { name: "新建记录", exact: true }).click();
-  const editor = page.getByRole("dialog", { name: "新建记录" });
+  const editor = page.getByRole("dialog", { name: "新建用户管理" });
   await editor.getByLabel("用户名 *", { exact: true }).fill(username);
   await editor.getByLabel("密码", { exact: true }).fill(password);
   await editor.getByRole("combobox", { name: "角色 *", exact: true }).click();

@@ -21,7 +21,8 @@ type IconName =
   | "upload"
   | "spark"
   | "search"
-  | "layers";
+  | "layers"
+  | "copy";
 type MenuIconName = "pin" | "user" | "roles" | "key" | "logout" | "info";
 
 const paths: Record<IconName | MenuIconName, string> = {
@@ -46,6 +47,7 @@ const paths: Record<IconName | MenuIconName, string> = {
   spark: "M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z",
   search: "M17 10a7 7 0 11-14 0 7 7 0 0114 0 M15 15l6 6",
   layers: "M12 2l10 6-10 6L2 8z M2 12l10 6 10-6 M2 16l10 6 10-6",
+  copy: "M9 9h12v12H9z M15 9V3H3v12h6",
   pin: "M9 3h6 M10 3v6l-4 4v2h12v-2l-4-4V3 M12 15v7",
   user: "M16 7a4 4 0 11-8 0 4 4 0 018 0 M4 21v-2a8 8 0 0116 0v2",
   roles: "M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6z M8 12l3 3 5-6",

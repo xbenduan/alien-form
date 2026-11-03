@@ -6,7 +6,7 @@ import { ChoiceControl } from "../ui/choice-control";
 import { TagList } from "../ui/tag-list";
 import { useRelationOptions } from "./relation-options";
 import { useFieldLabel } from "./field-container";
-import { valueText } from "./display";
+import { EmptyValue, valueText } from "./display";
 import { ErrorMessage } from "../ui/message";
 
 type Atom = EnumOption["value"];
@@ -136,17 +136,38 @@ export const Select: Component<
         fallback={
           <span title={service?.error(props.field)}>
             <Show
-              when={Array.isArray(props.value)}
-              fallback={
-                <span class="value-badge">
-                  {props.value === undefined ? "—" : values().map(label).join("、")}
-                </span>
+              when={
+                props.scene !== "detail" ||
+                props.options.some((option) => option.value === props.value) ||
+                (props.value !== undefined &&
+                  props.value !== null &&
+                  props.value !== "" &&
+                  (!Array.isArray(props.value) || props.value.length > 0))
               }
+              fallback={<EmptyValue value={props.value} />}
             >
-              <TagList
-                labels={values().map(label)}
-                maxTagCount={props.scene === "detail" ? values().length : props.maxTagCount}
-              />
+              <Show
+                when={Array.isArray(props.value)}
+                fallback={
+                  <span
+                    class="value-badge"
+                    classList={{
+                      positive: props.scene === "detail" && props.value === true,
+                      "detail-negative": props.scene === "detail" && props.value === false,
+                    }}
+                  >
+                    <Show when={props.scene === "detail" && typeof props.value === "boolean"}>
+                      <span class="status-dot" aria-hidden="true" />
+                    </Show>
+                    {props.value === undefined ? "—" : values().map(label).join("、")}
+                  </span>
+                }
+              >
+                <TagList
+                  labels={values().map(label)}
+                  maxTagCount={props.scene === "detail" ? values().length : props.maxTagCount}
+                />
+              </Show>
             </Show>
             <Show when={service?.error(props.field)}>
               <button type="button" class="text-button" onClick={() => service?.retry(props.field)}>

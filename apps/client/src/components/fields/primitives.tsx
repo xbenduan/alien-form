@@ -3,7 +3,7 @@ import type { Component } from "solid-js";
 import type { FieldProps } from "formwork";
 import { schemaType } from "formwork/model";
 import { useFieldLabel } from "./field-container";
-import { valueText } from "./display";
+import { DetailValue, valueText } from "./display";
 import { Select } from "./select";
 
 type TextProps = FieldProps & {
@@ -18,16 +18,27 @@ export const Input: Component<TextProps> = (props) => (
   <Show
     when={!props.readOnly}
     fallback={
-      <span
-        class="value-text"
-        title={valueText(props.value)}
-        style={{
-          "max-width": props.maxWidth ? `${props.maxWidth}px` : undefined,
-          "-webkit-line-clamp": props.maxLines ?? 2,
-        }}
+      <Show
+        when={props.scene === "detail"}
+        fallback={
+          <span
+            class="value-text"
+            title={valueText(props.value)}
+            style={{
+              "max-width": props.maxWidth ? `${props.maxWidth}px` : undefined,
+              "-webkit-line-clamp": props.maxLines ?? 2,
+            }}
+          >
+            {valueText(props.value)}
+          </span>
+        }
       >
-        {valueText(props.value)}
-      </span>
+        <DetailValue
+          value={props.value}
+          label={props.field.schema.title}
+          datetime={["/createdAt", "/updatedAt"].includes(props.field.path)}
+        />
+      </Show>
     }
   >
     <Show when={!props.multiple} fallback={<Select {...props} />}>
@@ -48,7 +59,17 @@ export const Input: Component<TextProps> = (props) => (
 /** 为长字符串提供多行编辑，filter 使用单行输入、table 使用摘要。 */
 export const Text: Component<TextProps> = (props) => (
   <Show when={props.scene !== "filter" && props.scene !== "table"} fallback={<Input {...props} />}>
-    <Show when={!props.readOnly} fallback={<div class="rich-text">{valueText(props.value)}</div>}>
+    <Show
+      when={!props.readOnly}
+      fallback={
+        <Show
+          when={props.scene === "detail"}
+          fallback={<div class="rich-text">{valueText(props.value)}</div>}
+        >
+          <DetailValue value={props.value} label={props.field.schema.title} multiline />
+        </Show>
+      }
+    >
       <textarea
         class="control rich-editor"
         placeholder={props.placeholder}
@@ -65,7 +86,14 @@ export const Text: Component<TextProps> = (props) => (
 
 /** 编辑有限数值，between 使用两个有序端点，in 使用原始数值多选。 */
 export const NumberInput: Component<FieldProps & { placeholder?: string }> = (props) => (
-  <Show when={!props.readOnly} fallback={<span>{valueText(props.value)}</span>}>
+  <Show
+    when={!props.readOnly}
+    fallback={
+      <Show when={props.scene === "detail"} fallback={<span>{valueText(props.value)}</span>}>
+        <DetailValue value={props.value} />
+      </Show>
+    }
+  >
     <Show
       when={props.operator !== "between"}
       fallback={
@@ -127,7 +155,17 @@ export const BooleanField: Component<FieldProps> = (props) => <Select {...props}
 
 /** 展示 null 字段，编辑时允许明确设置 null。 */
 export const NullValue: Component<FieldProps> = (props) => (
-  <Show when={!props.readOnly} fallback={<span class="muted">{valueText(props.value)}</span>}>
+  <Show
+    when={!props.readOnly}
+    fallback={
+      <Show
+        when={props.scene === "detail"}
+        fallback={<span class="muted">{valueText(props.value)}</span>}
+      >
+        <DetailValue value={props.value} />
+      </Show>
+    }
+  >
     <button
       class="button secondary"
       type="button"

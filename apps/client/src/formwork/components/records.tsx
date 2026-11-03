@@ -172,12 +172,18 @@ export const ListPagination: Component<ListProps> = (props) => {
 };
 
 /** 提供详情的标题与关系标签加载环境。 */
-export const DetailLayout: Component<{ model: ModelContext; children?: JSX.Element }> = (props) => (
+export const DetailLayout: Component<{
+  model: ModelContext;
+  operation?: RecordOperation;
+  children?: JSX.Element;
+}> = (props) => (
   <RecordRelations ctx={props.model}>
     <div class="record-detail">
-      <div class="record-heading">
-        <h1 tabindex="-1">{props.model.schema.title}详情</h1>
-      </div>
+      <Show when={!props.operation || props.operation.presentation === "page"}>
+        <div class="record-heading">
+          <h1 tabindex="-1">{props.model.schema.title}详情</h1>
+        </div>
+      </Show>
       <div class="detail-fields">{props.children}</div>
     </div>
   </RecordRelations>
@@ -195,6 +201,7 @@ export const EditorLayout: Component<{
     <RecordRelations ctx={editor.session()!.model}>
       <form
         class="record-form"
+        data-mode={editor.session()?.mode}
         ref={(element) => {
           form = element;
         }}
@@ -208,12 +215,14 @@ export const EditorLayout: Component<{
           }
         }}
       >
-        <div class="record-heading">
-          <h1 tabindex="-1">
-            {editor.session()?.mode === "create" ? "新建" : "编辑"}
-            {editor.session()?.model.schema.title}
-          </h1>
-        </div>
+        <Show when={!props.operation || props.operation.presentation === "page"}>
+          <div class="record-heading">
+            <h1 tabindex="-1">
+              {editor.session()?.mode === "create" ? "新建" : "编辑"}
+              {editor.session()?.model.schema.title}
+            </h1>
+          </div>
+        </Show>
         <div class="record-fields">{props.children}</div>
         <div class="record-actions">
           <span>标记 * 的字段为必填项</span>

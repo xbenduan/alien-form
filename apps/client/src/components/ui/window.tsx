@@ -44,12 +44,12 @@ export const OverlayWindow: Component<WindowProps & { presentation?: "modal" | "
           }}
         >
           <div class="window-heading">
-            <Dialog.Title class="sr-only">{props.label}</Dialog.Title>
+            <Dialog.Title>{props.label}</Dialog.Title>
             <Dialog.CloseButton class="icon-button" aria-label="关闭窗口">
               <Icon name="close" />
             </Dialog.CloseButton>
           </div>
-          {props.children}
+          <div class="window-body">{props.children}</div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog>

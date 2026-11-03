@@ -6,7 +6,11 @@ import { Modal } from "../../components/ui/window";
 export const ModalPresenter: Component<PresenterProps> = (props) => (
   <Modal
     open
-    label={props.operation.mode === "create" ? "新建记录" : "编辑记录"}
+    label={
+      props.operation.mode === "detail"
+        ? `${props.operation.model.schema.title}详情`
+        : `${props.operation.mode === "create" ? "新建" : "编辑"}${props.operation.model.schema.title}`
+    }
     onClose={() => void props.close()}
     portalTarget={props.portalTarget}
   >
